@@ -1,0 +1,35 @@
+{
+  "name": "@bim-quantify/ui",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared React UI components for BIMQuantify",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@bim-quantify/tsconfig": "workspace:*",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@bim-quantify/ai-takeoff": "workspace:*",
+    "@bim-quantify/bcf-parser": "workspace:*"
+  }
+}

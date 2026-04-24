@@ -1,0 +1,31 @@
+{
+  "name": "web",
+  "version": "0.0.1",
+  "private": true,
+  "description": "BIMQuantify Next.js frontend",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3000",
+    "start": "next start --port 3000",
+    "type-check": "tsc --noEmit",
+    "lint": "next lint",
+    "clean": "rimraf .next"
+  },
+  "dependencies": {
+    "@bim-quantify/ai-takeoff": "workspace:*",
+    "@bim-quantify/bcf-parser": "workspace:*",
+    "@bim-quantify/ifc-parser": "workspace:*",
+    "@bim-quantify/ui": "workspace:*",
+    "next": "^15.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@bim-quantify/tsconfig": "workspace:*",
+    "@types/node": "^20.17.48",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.8.3"
+  }
+}
