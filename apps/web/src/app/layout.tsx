@@ -1,20 +1,28 @@
 import type { Metadata } from 'next';
+import type { JSX, ReactNode } from 'react';
+
+import { AuthProvider } from '@/providers/AuthProvider';
+import { QueryProvider } from '@/providers/QueryProvider';
+
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BIMQuantify — AI-based BIM Takeoff',
-  description:
-    'Upload IFC and BCF files to generate AI-powered quantity takeoffs instantly.',
+  title: 'BIMQuantify',
+  description: 'AI-based BIM takeoff platform supporting IFC and BCF',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+type Props = {
+  children: ReactNode;
+};
+
+export default function RootLayout({ children }: Props): JSX.Element {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-screen antialiased">
+        <QueryProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </QueryProvider>
+      </body>
     </html>
   );
 }
