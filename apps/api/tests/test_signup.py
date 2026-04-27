@@ -2,7 +2,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimquantify_api.models.organization import Organization
+from bimstitch_api.models.organization import Organization
 
 
 async def test_signup_creates_unverified_user(client: AsyncClient, email_transport: object) -> None:

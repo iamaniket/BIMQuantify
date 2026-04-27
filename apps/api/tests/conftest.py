@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 _TEST_DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://bim:bim@localhost:5434/bimquantify_test",
+    "postgresql+asyncpg://bim:bim@localhost:5434/bimstitch_test",
 )
 os.environ["DATABASE_URL"] = _TEST_DB_URL
 os.environ.setdefault("JWT_SECRET", "test-secret")
@@ -32,8 +32,8 @@ os.environ.setdefault("SMTP_PORT", "1025")
 @pytest.fixture(scope="session")
 async def engine() -> AsyncGenerator[AsyncEngine, None]:
     # Imported here so env vars above take effect first.
-    from bimquantify_api.db import Base
-    from bimquantify_api.models import Organization, User  # noqa: F401
+    from bimstitch_api.db import Base
+    from bimstitch_api.models import Organization, User  # noqa: F401
 
     eng = create_async_engine(_TEST_DB_URL, future=True)
 
@@ -74,7 +74,7 @@ async def session(
 
 @pytest.fixture
 def email_transport() -> Generator[object, None, None]:
-    from bimquantify_api.email.transport import (
+    from bimstitch_api.email.transport import (
         InMemoryEmailTransport,
         get_email_transport,
         set_email_transport,
@@ -94,8 +94,8 @@ async def client(
     engine: AsyncEngine,
     session_maker: async_sessionmaker[AsyncSession],
 ) -> AsyncGenerator[AsyncClient, None]:
-    from bimquantify_api import db as db_module
-    from bimquantify_api.main import create_app
+    from bimstitch_api import db as db_module
+    from bimstitch_api.main import create_app
 
     # Ensure the app uses the same engine / session maker as the tests.
     db_module._engine = engine

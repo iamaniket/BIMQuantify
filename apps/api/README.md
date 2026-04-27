@@ -1,6 +1,6 @@
-# BIMQuantify API
+# BIMstitch API
 
-FastAPI backend for BIMQuantify. Auth (signup + email verification + JWT login + refresh) is the current scope; IFC/BCF/takeoff endpoints come next.
+FastAPI backend for BIMstitch. Auth (signup + email verification + JWT login + refresh) is the current scope; IFC/BCF/takeoff endpoints come next.
 
 ## Prerequisites
 
@@ -23,7 +23,7 @@ uv run alembic upgrade head
 ## Run
 
 ```bash
-uv run uvicorn bimquantify_api.main:app --reload --port 8000
+uv run uvicorn bimstitch_api.main:app --reload --port 8000
 ```
 
 Open http://localhost:8000/docs for Swagger UI.

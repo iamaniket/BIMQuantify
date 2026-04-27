@@ -2,8 +2,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimquantify_api.models.organization import Organization
-from bimquantify_api.models.user import User
+from bimstitch_api.models.organization import Organization
+from bimstitch_api.models.user import User
 
 
 async def test_two_users_same_org_share_organization_id(

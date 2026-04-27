@@ -1,4 +1,4 @@
-# BIMQuantify
+# BIMstitch
 
 > AI-powered BIM quantity takeoff platform supporting IFC and BCF formats
 
@@ -8,14 +8,14 @@
 
 ## Overview
 
-BIMQuantify is a monorepo built with [Turborepo](https://turbo.build) that provides an AI-based takeoff tool for Building Information Modeling (BIM). It parses **IFC** (Industry Foundation Classes) files and **BCF** (BIM Collaboration Format) files to automatically generate accurate material and cost takeoffs using AI.
+BIMstitch is a monorepo built with [Turborepo](https://turbo.build) that provides an AI-based takeoff tool for Building Information Modeling (BIM). It parses **IFC** (Industry Foundation Classes) files and **BCF** (BIM Collaboration Format) files to automatically generate accurate material and cost takeoffs using AI.
 
 ---
 
 ## Monorepo Structure
 
 ```
-BIMQuantify/
+BIMstitch/
 ├── apps/
 │   ├── web/          # Next.js 14 frontend — BIM viewer & takeoff dashboard
 │   └── api/          # Fastify API server — IFC/BCF processing & AI takeoff
@@ -43,8 +43,8 @@ BIMQuantify/
 
 ```bash
 # Clone the repository
-git clone https://github.com/iamaniket/BIMQuantify.git
-cd BIMQuantify
+git clone https://github.com/iamaniket/BIMstitch.git
+cd BIMstitch
 
 # Install all dependencies
 pnpm install
@@ -74,7 +74,7 @@ pnpm --filter=api dev
 pnpm build
 
 # Build a specific package
-pnpm --filter=@bim-quantify/ifc-parser build
+pnpm --filter=@bimstitch/ifc-parser build
 ```
 
 ### Testing

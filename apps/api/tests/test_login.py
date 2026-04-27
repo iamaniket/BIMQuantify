@@ -2,7 +2,7 @@ import re
 
 from httpx import AsyncClient
 
-from bimquantify_api.email.transport import InMemoryEmailTransport
+from bimstitch_api.email.transport import InMemoryEmailTransport
 
 
 async def _register(client: AsyncClient, email: str) -> None:

@@ -1,7 +1,7 @@
 [project]
-name = "bimquantify-api"
+name = "bimstitch-api"
 version = "0.0.1"
-description = "BIMQuantify FastAPI backend with auth"
+description = "BIMstitch FastAPI backend with auth"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -33,7 +33,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bimquantify_api"]
+packages = ["src/bimstitch_api"]
 
 [tool.ruff]
 line-length = 100
@@ -50,7 +50,7 @@ ignore = ["B008"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-packages = ["bimquantify_api"]
+packages = ["bimstitch_api"]
 mypy_path = "src"
 
 [[tool.mypy.overrides]]

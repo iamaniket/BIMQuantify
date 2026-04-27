@@ -1,0 +1,36 @@
+{
+  "name": "@bimstitch/design-tokens",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./themes/light": {
+      "types": "./dist/themes/light.d.ts",
+      "import": "./dist/themes/light.js"
+    },
+    "./themes/dark": {
+      "types": "./dist/themes/dark.d.ts",
+      "import": "./dist/themes/dark.js"
+    },
+    "./tokens.css": "./dist/tokens.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-css.mjs",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf dist .turbo"
+  },
+  "devDependencies": {
+    "@bimstitch/tsconfig": "workspace:*",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.8.3"
+  }
+}

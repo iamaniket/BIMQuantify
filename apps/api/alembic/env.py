@@ -8,9 +8,9 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from bimquantify_api.config import get_settings
-from bimquantify_api.db import Base
-from bimquantify_api.models import Organization, User  # noqa: F401 — ensure models are imported
+from bimstitch_api.config import get_settings
+from bimstitch_api.db import Base
+from bimstitch_api.models import Organization, User  # noqa: F401 — ensure models are imported
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Connection

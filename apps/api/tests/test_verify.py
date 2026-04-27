@@ -2,7 +2,7 @@ import re
 
 from httpx import AsyncClient
 
-from bimquantify_api.email.transport import InMemoryEmailTransport
+from bimstitch_api.email.transport import InMemoryEmailTransport
 
 
 def _extract_token(body: str) -> str:

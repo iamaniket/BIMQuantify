@@ -223,7 +223,7 @@ wheels = [
 ]
 
 [[package]]
-name = "bimquantify-api"
+name = "bimstitch-api"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [

@@ -18,7 +18,7 @@ Requires Node ≥20 and pnpm ≥9 (`engines` in `package.json`). Package manager
 
 - `pnpm install` — bootstrap the workspace.
 - `pnpm --filter=web dev` — web only (Next.js, port 3000).
-- `pnpm --filter=@bim-quantify/<pkg> build` — build a single package. Apps use bare names (`web`); internal packages use the `@bim-quantify/*` scope.
+- `pnpm --filter=@bimstitch/<pkg> build` — build a single package. Apps use bare names (`web`); internal packages use the `@bimstitch/*` scope.
 - `pnpm build` / `pnpm lint` / `pnpm type-check` / `pnpm test` — turbo-coordinated across the TS graph.
 
 ### Python side (API)
@@ -31,10 +31,10 @@ docker compose up -d postgres mailhog   # from repo root; Postgres on :5434, Mai
 cp .env.example .env
 uv sync
 uv run alembic upgrade head
-uv run python -m bimquantify_api.seed   # creates 3 default dev users (superadmin / admin / user)
+uv run python -m bimstitch_api.seed   # creates 3 default dev users (superadmin / admin / user)
 
 # dev server
-uv run uvicorn bimquantify_api.main:app --reload --port 8000
+uv run uvicorn bimstitch_api.main:app --reload --port 8000
 
 # migrations
 uv run alembic revision --autogenerate -m "message"
@@ -52,18 +52,18 @@ uv run ruff format .
 uv run mypy src
 ```
 
-**Test database**: `tests/conftest.py` points at `bimquantify_test` on `localhost:5434` (or `TEST_DATABASE_URL`). Create it once with `docker exec bimquantify-postgres psql -U bim -d postgres -c "CREATE DATABASE bimquantify_test;"`. The conftest does `create_all`/`drop_all` per session and truncates tables between tests — no migrations in the test loop.
+**Test database**: `tests/conftest.py` points at `bimstitch_test` on `localhost:5434` (or `TEST_DATABASE_URL`). Create it once with `docker exec bimstitch-postgres psql -U bim -d postgres -c "CREATE DATABASE bimstitch_test;"`. The conftest does `create_all`/`drop_all` per session and truncates tables between tests — no migrations in the test loop.
 
 ## Architecture — Python API
 
-**Package**: `src/bimquantify_api/` (src layout). Entry point: `bimquantify_api.main:app`.
+**Package**: `src/bimstitch_api/` (src layout). Entry point: `bimstitch_api.main:app`.
 
 **Auth stack**: FastAPI Users handles registration, verification, password reset, and the `/users/*` router. Two pieces are custom:
 
 1. `auth/routes.py::login` overrides `/auth/jwt/login` to return **both** access + refresh tokens (FastAPI Users' built-in login only returns access). Uses `OAuth2PasswordRequestForm`, gates on `is_verified`, responds with `TokenPair`.
 2. `auth/refresh.py` exposes `POST /auth/jwt/refresh` — decodes the refresh JWT, verifies `typ=refresh`, issues a fresh access token.
 
-**Token separation** (`auth/tokens.py`): access and refresh tokens share the same secret/algorithm but use **different audiences** (`"fastapi-users:auth"` vs `"bimquantify:refresh"`). FastAPI Users' default `JWTStrategy` is pinned to the access audience, so presenting a refresh token at `/users/me` yields 401 — this is the only thing stopping refresh tokens from being accepted as access. Both tokens also carry a `typ` claim, which `decode_token` checks defensively.
+**Token separation** (`auth/tokens.py`): access and refresh tokens share the same secret/algorithm but use **different audiences** (`"fastapi-users:auth"` vs `"bimstitch:refresh"`). FastAPI Users' default `JWTStrategy` is pinned to the access audience, so presenting a refresh token at `/users/me` yields 401 — this is the only thing stopping refresh tokens from being accepted as access. Both tokens also carry a `typ` claim, which `decode_token` checks defensively.
 
 **Signup → org link flow**:
 1. `POST /auth/register` receives `email, password, full_name, organization_name`.
