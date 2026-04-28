@@ -9,6 +9,7 @@ from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
 from bimstitch_api.routers.health import router as health_router
+from bimstitch_api.routers.projects import router as projects_router
 
 
 @asynccontextmanager
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(build_auth_router())
+    app.include_router(projects_router)
     return app
 
 

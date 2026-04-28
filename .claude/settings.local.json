@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(pnpm install *)",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(docker exec *)",
+      "Bash(uv run *)"
     ]
   }
 }

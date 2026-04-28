@@ -36,19 +36,41 @@ os.environ["REDIS_URL"] = _TEST_REDIS_URL
 @pytest.fixture(scope="session")
 async def engine() -> AsyncGenerator[AsyncEngine, None]:
     # Imported here so env vars above take effect first.
+    from bimstitch_api._rls_sql import (
+        create_app_role_statements,
+        disable_rls_statements,
+        enable_rls_statements,
+    )
     from bimstitch_api.db import Base
-    from bimstitch_api.models import Organization, User  # noqa: F401
+    from bimstitch_api.models import Organization, Project, ProjectMember, User  # noqa: F401
 
     eng = create_async_engine(_TEST_DB_URL, future=True)
 
     async with eng.begin() as conn:
+        # Drop policies/enum left behind from a prior aborted run, then recreate
+        # the schema from metadata. `create_all` is DDL-only — RLS policies are
+        # applied separately below to mirror what the migration does.
+        for stmt in disable_rls_statements():
+            await conn.exec_driver_sql(
+                f"DO $$ BEGIN {stmt} EXCEPTION WHEN others THEN NULL; END $$;"
+            )
         await conn.run_sync(Base.metadata.drop_all)
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectrole")
         await conn.run_sync(Base.metadata.create_all)
+        for stmt in create_app_role_statements():
+            await conn.exec_driver_sql(stmt)
+        for stmt in enable_rls_statements():
+            await conn.exec_driver_sql(stmt)
 
     yield eng
 
     async with eng.begin() as conn:
+        for stmt in disable_rls_statements():
+            await conn.exec_driver_sql(
+                f"DO $$ BEGIN {stmt} EXCEPTION WHEN others THEN NULL; END $$;"
+            )
         await conn.run_sync(Base.metadata.drop_all)
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectrole")
     await eng.dispose()
 
 
@@ -71,8 +93,14 @@ async def _clean_tables(
 ) -> AsyncGenerator[None, None]:
     yield
     async with session_maker() as session:
-        await session.execute(text("DELETE FROM users"))
-        await session.execute(text("DELETE FROM organizations"))
+        # TRUNCATE ... CASCADE handles FK ordering atomically. RLS policies do
+        # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
+        await session.execute(
+            text(
+                "TRUNCATE TABLE project_members, projects, users, organizations "
+                "RESTART IDENTITY CASCADE"
+            )
+        )
         await session.commit()
 
 
@@ -167,3 +195,105 @@ async def rate_limited_client(
             yield ac
     finally:
         await FastAPILimiter.close()
+
+
+# ---------------------------------------------------------------------------
+# Tenant / project fixtures
+# ---------------------------------------------------------------------------
+
+
+async def _register_login(
+    client: AsyncClient,
+    email_transport: object,
+    email: str,
+    organization_name: str,
+) -> dict[str, str]:
+    import re
+
+    register_resp = await client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": "correct-horse-battery",
+            "full_name": email.split("@")[0],
+            "organization_name": organization_name,
+        },
+    )
+    assert register_resp.status_code in (200, 201), (
+        f"register failed: {register_resp.status_code} {register_resp.text}"
+    )
+    sent = email_transport.last_for(email)  # type: ignore[attr-defined]
+    assert sent is not None, (
+        f"no verification email sent for {email}; "
+        f"register={register_resp.status_code} {register_resp.text}"
+    )
+    match = re.search(r"Token:\s*(\S+)", sent.body)
+    assert match is not None
+    await client.post("/auth/verify", json={"token": match.group(1)})
+    response = await client.post(
+        "/auth/jwt/login",
+        data={"username": email, "password": "correct-horse-battery"},
+    )
+    return response.json()
+
+
+@pytest.fixture
+async def org_user(
+    client: AsyncClient,
+    email_transport: object,
+) -> dict[str, str]:
+    """Verified user belonging to AlphaCo. Returns dict with access_token,
+    refresh_token, email, and the user's id (resolved via /users/me)."""
+    tokens = await _register_login(client, email_transport, "alice@example.com", "AlphaCo")
+    me = await client.get(
+        "/users/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    )
+    body = me.json()
+    return {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "email": body["email"],
+        "id": body["id"],
+        "organization_id": body["organization_id"],
+    }
+
+
+@pytest.fixture
+async def other_org_user(
+    client: AsyncClient,
+    email_transport: object,
+) -> dict[str, str]:
+    """Verified user belonging to BetaCo (different org from `org_user`)."""
+    tokens = await _register_login(client, email_transport, "bob@example.org", "BetaCo")
+    me = await client.get(
+        "/users/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    )
+    body = me.json()
+    return {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "email": body["email"],
+        "id": body["id"],
+        "organization_id": body["organization_id"],
+    }
+
+
+@pytest.fixture
+async def same_org_user(
+    client: AsyncClient,
+    email_transport: object,
+    org_user: dict[str, str],
+) -> dict[str, str]:
+    """A second verified user in the same org (AlphaCo) as `org_user`."""
+    tokens = await _register_login(client, email_transport, "carol@example.com", "AlphaCo")
+    me = await client.get(
+        "/users/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    )
+    body = me.json()
+    return {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "email": body["email"],
+        "id": body["id"],
+        "organization_id": body["organization_id"],
+    }
