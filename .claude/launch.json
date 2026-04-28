@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "portal",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "portal", "exec", "next", "dev", "--turbopack"],
+      "port": 3001,
+      "autoPort": true
+    }
+  ]
+}

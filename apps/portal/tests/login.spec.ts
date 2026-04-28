@@ -37,7 +37,7 @@ test.describe('login screen', () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
-  test('redirects to dashboard on successful login', async ({ page }) => {
+  test('redirects to projects on successful login', async ({ page }) => {
     await page.route('**/auth/jwt/login', async (route) => {
       await route.fulfill({
         status: 200,
@@ -50,14 +50,22 @@ test.describe('login screen', () => {
       });
     });
 
+    await page.route('**/projects', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      });
+    });
+
     await page.goto('/login');
     await page.getByLabel(/email/i).fill('user@example.com');
     await page.getByLabel(/password/i).fill('correctpass');
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    await expect(page).toHaveURL('/dashboard');
+    await expect(page).toHaveURL('/projects');
     await expect(
-      page.getByRole('heading', { name: /welcome to bimstitch/i }),
+      page.getByRole('heading', { name: /^projects$/i }),
     ).toBeVisible();
   });
 });

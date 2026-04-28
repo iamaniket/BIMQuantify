@@ -15,6 +15,8 @@
     "@bimstitch/design-tokens": "workspace:*",
     "@bimstitch/ui": "workspace:*",
     "@hookform/resolvers": "^3.9.1",
+    "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-dropdown-menu": "^2.1.6",
     "@tanstack/react-query": "^5.62.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",

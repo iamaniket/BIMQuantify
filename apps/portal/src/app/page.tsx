@@ -7,11 +7,12 @@ import { useAuth } from '@/providers/AuthProvider';
 
 export default function PortalRootPage(): JSX.Element {
   const router = useRouter();
-  const { tokens } = useAuth();
+  const { tokens, hasHydrated } = useAuth();
 
   useEffect(() => {
-    router.replace(tokens === null ? '/login' : '/dashboard');
-  }, [router, tokens]);
+    if (!hasHydrated) return;
+    router.replace(tokens === null ? '/login' : '/projects');
+  }, [router, tokens, hasHydrated]);
 
   return <main className="flex flex-1 items-center justify-center" />;
 }

@@ -36,7 +36,7 @@ export function LoginForm(): JSX.Element {
     login.mutate(values, {
       onSuccess: (tokens) => {
         setTokens(tokens);
-        router.push('/dashboard');
+        router.push('/projects');
       },
     });
   };

@@ -32,3 +32,31 @@ export const ApiErrorBodySchema = z.object({
 });
 
 export type ApiErrorBody = z.infer<typeof ApiErrorBodySchema>;
+
+export const ProjectSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.union([z.string(), z.null()]),
+  thumbnail_url: z.union([z.string(), z.null()]),
+  owner_id: z.string().uuid(),
+  organization_id: z.string().uuid(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type Project = z.infer<typeof ProjectSchema>;
+
+export const ProjectListSchema = z.array(ProjectSchema);
+
+export type ProjectList = z.infer<typeof ProjectListSchema>;
+
+export const ProjectCreateSchema = z.object({
+  name: z.string().min(1).max(255),
+  description: z.union([z.string(), z.null()]).optional(),
+});
+
+export type ProjectCreateInput = z.infer<typeof ProjectCreateSchema>;
+
+export const ProjectUpdateSchema = ProjectCreateSchema.partial();
+
+export type ProjectUpdateInput = z.infer<typeof ProjectUpdateSchema>;

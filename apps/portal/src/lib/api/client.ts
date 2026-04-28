@@ -28,6 +28,12 @@ type RequestOptions<TBody> = {
   accessToken: string | undefined;
 };
 
+type NoContentRequestOptions = {
+  method: HttpMethod;
+  path: string;
+  accessToken: string | undefined;
+};
+
 async function parseErrorDetail(response: Response): Promise<string> {
   try {
     const raw: unknown = await response.json();
@@ -51,15 +57,20 @@ function encodeFormBody(body: Record<string, string>): string {
   return params.toString();
 }
 
-async function request<TResponse, TBody>(
-  options: RequestOptions<TBody>,
-): Promise<TResponse> {
+function buildHeaders(accessToken: string | undefined): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
   };
-  if (options.accessToken !== undefined) {
-    headers['Authorization'] = `Bearer ${options.accessToken}`;
+  if (accessToken !== undefined) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
   }
+  return headers;
+}
+
+async function request<TResponse, TBody>(
+  options: RequestOptions<TBody>,
+): Promise<TResponse> {
+  const headers = buildHeaders(options.accessToken);
 
   const init: RequestInit = {
     method: options.method,
@@ -90,6 +101,18 @@ async function request<TResponse, TBody>(
   return parsed.data as TResponse;
 }
 
+async function requestNoContent(options: NoContentRequestOptions): Promise<void> {
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${options.path}`, {
+    method: options.method,
+    headers: buildHeaders(options.accessToken),
+  });
+
+  if (!response.ok) {
+    const detail = await parseErrorDetail(response);
+    throw new ApiError(response.status, detail);
+  }
+}
+
 export const apiClient = {
   postForm: async <TResponse>(
     path: string,
@@ -113,6 +136,37 @@ export const apiClient = {
     body: undefined,
     formEncoded: false,
     responseSchema,
+    accessToken,
+  }),
+  post: async <TResponse>(
+    path: string,
+    body: unknown,
+    responseSchema: ZodType<TResponse>,
+    accessToken: string,
+  ): Promise<TResponse> => request<TResponse, unknown>({
+    method: 'POST',
+    path,
+    body,
+    formEncoded: false,
+    responseSchema,
+    accessToken,
+  }),
+  patch: async <TResponse>(
+    path: string,
+    body: unknown,
+    responseSchema: ZodType<TResponse>,
+    accessToken: string,
+  ): Promise<TResponse> => request<TResponse, unknown>({
+    method: 'PATCH',
+    path,
+    body,
+    formEncoded: false,
+    responseSchema,
+    accessToken,
+  }),
+  delete: async (path: string, accessToken: string): Promise<void> => requestNoContent({
+    method: 'DELETE',
+    path,
     accessToken,
   }),
 };

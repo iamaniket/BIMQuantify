@@ -20,13 +20,25 @@ export function Header(): JSX.Element {
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-border bg-background-secondary/80 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-        <Link
-          href={isAuthenticated ? '/dashboard' : '/login'}
-          className="text-title2 font-semibold text-foreground hover:text-primary"
-        >
-          BIMstitch
-        </Link>
+      <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-6">
+          <Link
+            href={isAuthenticated ? '/projects' : '/login'}
+            className="text-title2 font-semibold text-foreground hover:text-primary"
+          >
+            BIMstitch
+          </Link>
+          {isAuthenticated ? (
+            <nav className="flex items-center gap-1">
+              <Link
+                href="/projects"
+                className="rounded-md px-3 py-1.5 text-body2 font-medium text-foreground-secondary hover:bg-background-hover hover:text-foreground"
+              >
+                Projects
+              </Link>
+            </nav>
+          ) : null}
+        </div>
 
         <nav className="flex items-center gap-2">
           <ThemeToggle />

@@ -4,7 +4,25 @@
       "Bash(pnpm install *)",
       "Bash(docker compose *)",
       "Bash(docker exec *)",
-      "Bash(uv run *)"
+      "Bash(uv run *)",
+      "Bash(pnpm --filter=@bimstitch/ui build)",
+      "Bash(pnpm --filter=@bimstitch/ui type-check)",
+      "Bash(pnpm --filter=portal type-check)",
+      "Bash(pnpm --filter=portal lint)",
+      "Bash(git stash *)",
+      "Bash(pnpm --filter @bimstitch/ui build)",
+      "Bash(pnpm --filter portal type-check)",
+      "Bash(pnpm --filter @bimstitch/ui type-check)",
+      "Bash(pnpm --filter portal build)",
+      "Bash(pnpm --filter portal clean)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://localhost:8000/docs)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://localhost:3001/projects)",
+      "Bash(curl -s -i -X OPTIONS http://localhost:8000/projects -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization')",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "Bash(curl -s -X POST http://localhost:8000/auth/jwt/login -H 'Content-Type: application/x-www-form-urlencoded' -d 'username=user@bimstitch.dev&password=User123!')",
+      "Bash(curl -s -i -X OPTIONS http://localhost:8000/projects -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: authorization,content-type')",
+      "Bash(curl -s -i -X OPTIONS http://localhost:8000/projects/abc -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: DELETE' -H 'Access-Control-Request-Headers: authorization')"
     ]
   }
 }
