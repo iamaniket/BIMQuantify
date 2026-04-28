@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis, from_url
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -27,6 +28,9 @@ os.environ["DATABASE_URL"] = _TEST_DB_URL
 os.environ.setdefault("JWT_SECRET", "test-secret")
 os.environ.setdefault("SMTP_HOST", "localhost")
 os.environ.setdefault("SMTP_PORT", "1025")
+
+_TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6380/1")
+os.environ["REDIS_URL"] = _TEST_REDIS_URL
 
 
 @pytest.fixture(scope="session")
@@ -53,6 +57,14 @@ def session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
+@pytest.fixture(scope="session")
+async def redis_client() -> AsyncGenerator[Redis, None]:
+    client = from_url(_TEST_REDIS_URL, decode_responses=True)
+    await client.ping()
+    yield client
+    await client.aclose()
+
+
 @pytest.fixture(autouse=True)
 async def _clean_tables(
     session_maker: async_sessionmaker[AsyncSession],
@@ -62,6 +74,12 @@ async def _clean_tables(
         await session.execute(text("DELETE FROM users"))
         await session.execute(text("DELETE FROM organizations"))
         await session.commit()
+
+
+@pytest.fixture(autouse=True)
+async def _flush_redis(redis_client: Redis) -> AsyncGenerator[None, None]:
+    yield
+    await redis_client.flushdb()
 
 
 @pytest.fixture
@@ -93,15 +111,59 @@ def email_transport() -> Generator[object, None, None]:
 async def client(
     engine: AsyncEngine,
     session_maker: async_sessionmaker[AsyncSession],
+    redis_client: Redis,
 ) -> AsyncGenerator[AsyncClient, None]:
     from bimstitch_api import db as db_module
+    from bimstitch_api.auth.refresh import REFRESH_RATE_LIMITER
+    from bimstitch_api.auth.routes import (
+        FORGOT_RATE_LIMITER,
+        LOGIN_RATE_LIMITER,
+        REGISTER_RATE_LIMITER,
+    )
+    from bimstitch_api.cache import client as cache_module
     from bimstitch_api.main import create_app
 
-    # Ensure the app uses the same engine / session maker as the tests.
     db_module._engine = engine
     db_module._session_maker = session_maker
+    cache_module._redis = redis_client
 
     app = create_app()
+    # Disable rate limiting by default; tests covering rate limiting use `rate_limited_client`.
+    for limiter in (
+        LOGIN_RATE_LIMITER,
+        REGISTER_RATE_LIMITER,
+        FORGOT_RATE_LIMITER,
+        REFRESH_RATE_LIMITER,
+    ):
+        app.dependency_overrides[limiter] = lambda: None
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest.fixture
+async def rate_limited_client(
+    engine: AsyncEngine,
+    session_maker: async_sessionmaker[AsyncSession],
+    redis_client: Redis,
+) -> AsyncGenerator[AsyncClient, None]:
+    """Same as `client` but with rate limiting active. Use for rate-limit tests."""
+    from fastapi_limiter import FastAPILimiter
+
+    from bimstitch_api import db as db_module
+    from bimstitch_api.cache import client as cache_module
+    from bimstitch_api.main import create_app
+
+    db_module._engine = engine
+    db_module._session_maker = session_maker
+    cache_module._redis = redis_client
+
+    await FastAPILimiter.init(redis_client)
+    try:
+        app = create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
+    finally:
+        await FastAPILimiter.close()
