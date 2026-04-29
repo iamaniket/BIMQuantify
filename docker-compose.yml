@@ -37,6 +37,56 @@ services:
       timeout: 5s
       retries: 10
 
+  minio:
+    image: minio/minio:latest
+    container_name: bimstitch-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: bimstitch
+      MINIO_ROOT_PASSWORD: bimstitch-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  extractor:
+    build:
+      context: ./apps/extractor
+      dockerfile: Dockerfile
+    container_name: bimstitch-extractor
+    environment:
+      NODE_ENV: development
+      PORT: "8080"
+      REDIS_URL: redis://redis:6379/2
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: bimstitch
+      S3_SECRET_ACCESS_KEY: bimstitch-secret
+      S3_BUCKET_IFC: ifc-files
+      # apps/api still runs on the host during dev, so the extractor reaches
+      # it via host.docker.internal. Override to http://api:8000 if/when the
+      # API is containerised.
+      API_BASE_URL: http://host.docker.internal:8000
+      EXTRACTOR_SHARED_SECRET: ${EXTRACTOR_SHARED_SECRET:-dev-shared-secret-change-me}
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      # Published only for local debugging — production should keep this on
+      # the internal docker network.
+      - "8088:8080"
+
 volumes:
   pgdata:
   redisdata:
+  miniodata:

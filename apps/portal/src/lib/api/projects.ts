@@ -12,6 +12,10 @@ export async function listProjects(accessToken: string): Promise<ProjectList> {
   return apiClient.get<ProjectList>('/projects', ProjectListSchema, accessToken);
 }
 
+export async function getProject(accessToken: string, id: string): Promise<Project> {
+  return apiClient.get<Project>(`/projects/${id}`, ProjectSchema, accessToken);
+}
+
 export async function createProject(
   accessToken: string,
   input: ProjectCreateInput,

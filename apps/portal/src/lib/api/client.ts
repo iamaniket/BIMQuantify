@@ -169,4 +169,22 @@ export const apiClient = {
     path,
     accessToken,
   }),
+  // Raw PUT to a presigned URL. Bypasses the JSON request helper because
+  // (a) we need to send a Blob, not stringified JSON, and
+  // (b) we MUST NOT attach the Authorization header — it would invalidate the
+  //     presigned signature.
+  putRaw: async (
+    url: string,
+    body: Blob,
+    contentType: string,
+  ): Promise<void> => {
+    const response = await fetch(url, {
+      method: 'PUT',
+      body,
+      headers: { 'Content-Type': contentType },
+    });
+    if (!response.ok) {
+      throw new ApiError(response.status, `Upload failed: ${response.statusText}`);
+    }
+  },
 };

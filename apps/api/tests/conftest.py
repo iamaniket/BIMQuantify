@@ -42,7 +42,13 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         enable_rls_statements,
     )
     from bimstitch_api.db import Base
-    from bimstitch_api.models import Organization, Project, ProjectMember, User  # noqa: F401
+    from bimstitch_api.models import (  # noqa: F401
+        Organization,
+        Project,
+        ProjectFile,
+        ProjectMember,
+        User,
+    )
 
     eng = create_async_engine(_TEST_DB_URL, future=True)
 
@@ -56,6 +62,9 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
             )
         await conn.run_sync(Base.metadata.drop_all)
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectrole")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectfilestatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS extractionstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS ifcschema")
         await conn.run_sync(Base.metadata.create_all)
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
@@ -71,6 +80,9 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
             )
         await conn.run_sync(Base.metadata.drop_all)
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectrole")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectfilestatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS extractionstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS ifcschema")
     await eng.dispose()
 
 
@@ -97,8 +109,8 @@ async def _clean_tables(
         # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
         await session.execute(
             text(
-                "TRUNCATE TABLE project_members, projects, users, organizations "
-                "RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE project_files, project_members, projects, users, "
+                "organizations RESTART IDENTITY CASCADE"
             )
         )
         await session.commit()
@@ -110,12 +122,174 @@ async def _flush_redis(redis_client: Redis) -> AsyncGenerator[None, None]:
     await redis_client.flushdb()
 
 
+@pytest.fixture(autouse=True)
+def _stub_extraction_dispatcher() -> Generator[list[dict[str, str]], None, None]:
+    """Default: no-op extractor dispatcher that records calls.
+
+    Tests that need to assert extractor dispatch was called can pull this
+    fixture in by name (`extraction_calls`) — it's the same list. Tests that
+    want to simulate dispatch failure use `extraction_dispatch_failure`.
+    """
+    from uuid import UUID
+
+    from bimstitch_api.config import Settings
+    from bimstitch_api.extraction import (
+        reset_extraction_dispatcher,
+        set_extraction_dispatcher,
+    )
+
+    calls: list[dict[str, str]] = []
+
+    async def _record(
+        file_id: UUID, project_id: UUID, storage_key: str, settings: Settings
+    ) -> None:
+        calls.append(
+            {
+                "file_id": str(file_id),
+                "project_id": str(project_id),
+                "storage_key": storage_key,
+            }
+        )
+
+    set_extraction_dispatcher(_record)
+    try:
+        yield calls
+    finally:
+        reset_extraction_dispatcher()
+
+
+@pytest.fixture
+def extraction_calls(
+    _stub_extraction_dispatcher: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    """Alias so test signatures read naturally."""
+    return _stub_extraction_dispatcher
+
+
 @pytest.fixture
 async def session(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> AsyncGenerator[AsyncSession, None]:
     async with session_maker() as s:
         yield s
+
+
+# ---------------------------------------------------------------------------
+# Shared project-files fixtures (used by both test_project_files and
+# test_project_files_extraction).
+# ---------------------------------------------------------------------------
+
+
+VALID_IFC_HEADER = (
+    b"ISO-10303-21;\nHEADER;\n"
+    b"FILE_DESCRIPTION(('ViewDefinition'),'2;1');\n"
+    b"FILE_NAME('m.ifc','2026-01-01T00:00:00','','','','','');\n"
+    b"FILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n"
+)
+
+
+class FakeStorage:
+    """In-memory stand-in for S3Storage. Records calls and stores bytes."""
+
+    def __init__(self) -> None:
+        self.objects: dict[str, bytes] = {}
+        self.deleted: list[str] = []
+        self.presign_ttl_value: int = 900
+        self.last_put_url: str | None = None
+
+    @property
+    def presign_ttl(self) -> int:
+        return self.presign_ttl_value
+
+    async def presigned_put_url(self, key: str, content_type: str, content_length: int) -> str:
+        self.last_put_url = f"http://fake-storage/{key}?put"
+        return self.last_put_url
+
+    async def presigned_get_url(self, key: str, filename: str) -> str:
+        return f"http://fake-storage/{key}?download={filename}"
+
+    async def head_object(self, key: str) -> dict[str, object]:
+        from bimstitch_api.storage.minio import ObjectNotFoundError
+
+        if key not in self.objects:
+            raise ObjectNotFoundError(key)
+        return {"ContentLength": len(self.objects[key])}
+
+    async def get_object_range(self, key: str, start: int, end: int) -> bytes:
+        return self.objects[key][start : end + 1]
+
+    async def delete_object(self, key: str) -> None:
+        if key in self.objects:
+            del self.objects[key]
+        self.deleted.append(key)
+
+    async def ensure_bucket(self) -> None:
+        return
+
+
+@pytest.fixture
+async def fake_storage_client(
+    engine: AsyncEngine,
+    session_maker: async_sessionmaker[AsyncSession],
+    redis_client: Redis,
+) -> AsyncGenerator[tuple[AsyncClient, FakeStorage], None]:
+    """Like the `client` fixture but with `get_storage` overridden to FakeStorage.
+
+    Returns the (client, fake_storage) tuple so tests can assert on storage calls."""
+    from bimstitch_api import db as db_module
+    from bimstitch_api.auth.refresh import REFRESH_RATE_LIMITER
+    from bimstitch_api.auth.routes import (
+        FORGOT_RATE_LIMITER,
+        LOGIN_RATE_LIMITER,
+        REGISTER_RATE_LIMITER,
+    )
+    from bimstitch_api.cache import client as cache_module
+    from bimstitch_api.main import create_app
+    from bimstitch_api.storage import get_storage
+
+    db_module._engine = engine
+    db_module._session_maker = session_maker
+    cache_module._redis = redis_client
+
+    app = create_app()
+    fake = FakeStorage()
+    app.dependency_overrides[get_storage] = lambda: fake
+    for limiter in (
+        LOGIN_RATE_LIMITER,
+        REGISTER_RATE_LIMITER,
+        FORGOT_RATE_LIMITER,
+        REFRESH_RATE_LIMITER,
+    ):
+        app.dependency_overrides[limiter] = lambda: None
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac, fake
+
+
+def _auth(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def _create_project(client: AsyncClient, token: str, name: str = "P1") -> dict:
+    resp = await client.post("/projects", json={"name": name}, headers=_auth(token))
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+async def _add_member(
+    client: AsyncClient,
+    owner_token: str,
+    project_id: str,
+    user_id: str,
+    role: str,
+) -> None:
+    resp = await client.post(
+        f"/projects/{project_id}/members",
+        json={"user_id": user_id, "role": role},
+        headers=_auth(owner_token),
+    )
+    assert resp.status_code == 201, resp.text
 
 
 @pytest.fixture

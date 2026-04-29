@@ -22,7 +22,10 @@
       "mcp__Claude_in_Chrome__list_connected_browsers",
       "Bash(curl -s -X POST http://localhost:8000/auth/jwt/login -H 'Content-Type: application/x-www-form-urlencoded' -d 'username=user@bimstitch.dev&password=User123!')",
       "Bash(curl -s -i -X OPTIONS http://localhost:8000/projects -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: authorization,content-type')",
-      "Bash(curl -s -i -X OPTIONS http://localhost:8000/projects/abc -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: DELETE' -H 'Access-Control-Request-Headers: authorization')"
+      "Bash(curl -s -i -X OPTIONS http://localhost:8000/projects/abc -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: DELETE' -H 'Access-Control-Request-Headers: authorization')",
+      "Bash(uv sync *)",
+      "Bash(pnpm --filter portal lint)",
+      "Bash(pnpm --filter portal lint --fix)"
     ]
   }
 }

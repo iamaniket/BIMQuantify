@@ -1,0 +1,16 @@
+{
+  "extends": "@bimstitch/tsconfig/base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // ThatOpen's published .d.ts files do not include .js extensions on
+    // re-exports, which breaks NodeNext resolution. Use bundler mode here
+    // since the consumer (Next.js portal) bundles anyway.
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules"]
+}

@@ -28,7 +28,7 @@ export function LoginForm(): JSX.Element {
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(LoginFormSchema),
-    defaultValues: { username: '', password: '' },
+    defaultValues: { username: 'superadmin@bimstitch.dev', password: 'SuperAdmin123!' },
     mode: 'onSubmit',
   });
 

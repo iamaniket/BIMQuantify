@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { JSX } from 'react';
 
 import {
@@ -54,47 +55,52 @@ export function ProjectCard({ project }: Props): JSX.Element {
 
   return (
     <Card>
-      <div className="relative">
-        {project.thumbnail_url === null ? (
-          <div
-            className={cn(
-              'flex h-32 items-center justify-center text-h4 font-semibold text-primary-foreground',
-              tileColor,
-            )}
-          >
-            {initial}
-          </div>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={project.thumbnail_url}
-            alt=""
-            className="h-32 w-full object-cover"
-          />
-        )}
-        <ProjectCardMenu project={project} />
-      </div>
+      <Link
+        href={`/projects/${project.id}`}
+        className="flex flex-col gap-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="relative">
+          {project.thumbnail_url === null ? (
+            <div
+              className={cn(
+                'flex h-32 items-center justify-center text-h4 font-semibold text-primary-foreground',
+                tileColor,
+              )}
+            >
+              {initial}
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={project.thumbnail_url}
+              alt=""
+              className="h-32 w-full object-cover"
+            />
+          )}
+        </div>
 
-      <CardBody>
-        <h3 className="text-title3 font-semibold text-foreground">
-          {project.name}
-        </h3>
-        {project.description === null || project.description.length === 0 ? (
-          <p className="text-body2 italic text-foreground-tertiary">
-            No description
-          </p>
-        ) : (
-          <p className="line-clamp-2 text-body2 text-foreground-secondary">
-            {project.description}
-          </p>
-        )}
-      </CardBody>
+        <CardBody>
+          <h3 className="text-title3 font-semibold text-foreground">
+            {project.name}
+          </h3>
+          {project.description === null || project.description.length === 0 ? (
+            <p className="text-body2 italic text-foreground-tertiary">
+              No description
+            </p>
+          ) : (
+            <p className="line-clamp-2 text-body2 text-foreground-secondary">
+              {project.description}
+            </p>
+          )}
+        </CardBody>
 
-      <CardFooter>
-        <span className="text-caption text-foreground-tertiary">
-          {createdLabel === '' ? '' : `Created ${createdLabel}`}
-        </span>
-      </CardFooter>
+        <CardFooter>
+          <span className="text-caption text-foreground-tertiary">
+            {createdLabel === '' ? '' : `Created ${createdLabel}`}
+          </span>
+        </CardFooter>
+      </Link>
+      <ProjectCardMenu project={project} />
     </Card>
   );
 }

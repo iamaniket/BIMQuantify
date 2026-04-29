@@ -26,11 +26,26 @@ APP_ROLE = "bim_app"
 
 # Tables that get RLS + FORCE applied. `organizations` is intentionally excluded
 # so users can read their own org row at signup.
-RLS_TABLES = ("users", "projects", "project_members")
+RLS_TABLES = ("users", "projects", "project_members", "project_files")
 
 # Tables the app role needs DML privileges on (broader than RLS_TABLES because
 # organizations is read by signup paths under SET ROLE too in the future).
-APP_GRANT_TABLES = ("users", "organizations", "projects", "project_members")
+APP_GRANT_TABLES = (
+    "users",
+    "organizations",
+    "projects",
+    "project_members",
+    "project_files",
+)
+
+# Subquery snippet reused by tables that scope through `projects.organization_id`.
+PROJECT_ID_IN_ORG_SUBQUERY = (
+    "project_id IN (\n"
+    "    SELECT id FROM projects\n"
+    "    WHERE organization_id = "
+    "NULLIF(current_setting('app.current_org_id', true), '')::uuid\n"
+    ")"
+)
 
 
 def create_app_role_statements() -> list[str]:
@@ -83,13 +98,7 @@ def enable_rls_statements() -> list[str]:
     )
 
     org_match = "organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid"
-    project_id_in_org = (
-        "project_id IN (\n"
-        "    SELECT id FROM projects\n"
-        "    WHERE organization_id = "
-        "NULLIF(current_setting('app.current_org_id', true), '')::uuid\n"
-        ")"
-    )
+    project_id_in_org = PROJECT_ID_IN_ORG_SUBQUERY
 
     # projects: straight org match.
     stmts.append("DROP POLICY IF EXISTS projects_tenant_isolation ON projects;")
@@ -112,12 +121,23 @@ def enable_rls_statements() -> list[str]:
         """
     )
 
+    # project_files: same subquery scoping as project_members.
+    stmts.append("DROP POLICY IF EXISTS project_files_tenant_isolation ON project_files;")
+    stmts.append(
+        f"""
+        CREATE POLICY project_files_tenant_isolation ON project_files
+        USING ({project_id_in_org})
+        WITH CHECK ({project_id_in_org});
+        """
+    )
+
     return stmts
 
 
 def disable_rls_statements() -> list[str]:
     """Reverse of enable_rls_statements; used by migration downgrade."""
     stmts: list[str] = []
+    stmts.append("DROP POLICY IF EXISTS project_files_tenant_isolation ON project_files;")
     stmts.append("DROP POLICY IF EXISTS project_members_tenant_isolation ON project_members;")
     stmts.append("DROP POLICY IF EXISTS projects_tenant_isolation ON projects;")
     stmts.append("DROP POLICY IF EXISTS users_tenant_isolation ON users;")

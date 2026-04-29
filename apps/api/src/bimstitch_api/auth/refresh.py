@@ -13,9 +13,7 @@ from bimstitch_api.models.user import User
 
 router = APIRouter(prefix="/auth/jwt", tags=["auth"])
 
-REFRESH_RATE_LIMITER = RateLimiter(
-    times=get_settings().rate_limit_refresh_per_min, seconds=60
-)
+REFRESH_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_refresh_per_min, seconds=60)
 
 
 class RefreshRequest(BaseModel):

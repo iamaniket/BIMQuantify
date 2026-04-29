@@ -31,9 +31,7 @@ async def logout(
     try:
         access = decode_token_full(access_token, expected_type="access")
     except TokenError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
     if access.jti:
         await revoke_jti(redis, access.jti, _ttl_seconds(access))
@@ -42,9 +40,7 @@ async def logout(
         try:
             refresh = decode_token_full(payload.refresh_token, expected_type="refresh")
         except TokenError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         if refresh.jti:
             await revoke_jti(redis, refresh.jti, _ttl_seconds(refresh))
 

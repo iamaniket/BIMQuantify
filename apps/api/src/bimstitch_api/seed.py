@@ -42,9 +42,7 @@ SEED_USERS = [
 
 
 async def _upsert_organization(session) -> Organization:
-    result = await session.execute(
-        select(Organization).where(Organization.name == SEED_ORG)
-    )
+    result = await session.execute(select(Organization).where(Organization.name == SEED_ORG))
     org = result.scalar_one_or_none()
     if org is not None:
         return org
@@ -55,9 +53,7 @@ async def _upsert_organization(session) -> Organization:
         await session.flush()
     except IntegrityError:
         await session.rollback()
-        result = await session.execute(
-            select(Organization).where(Organization.name == SEED_ORG)
-        )
+        result = await session.execute(select(Organization).where(Organization.name == SEED_ORG))
         org = result.scalar_one()
     return org
 
@@ -71,9 +67,7 @@ async def seed() -> None:
         org = await _upsert_organization(session)
 
         for data in SEED_USERS:
-            result = await session.execute(
-                select(User).where(User.email == data["email"])
-            )
+            result = await session.execute(select(User).where(User.email == data["email"]))
             if result.scalar_one_or_none() is not None:
                 print(f"  Already exists: {data['email']}")
                 continue

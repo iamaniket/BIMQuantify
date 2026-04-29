@@ -12,15 +12,9 @@ from bimstitch_api.auth.tokens import create_token
 from bimstitch_api.config import get_settings
 from bimstitch_api.schemas.user import UserCreate, UserRead, UserUpdate
 
-LOGIN_RATE_LIMITER = RateLimiter(
-    times=get_settings().rate_limit_login_per_min, seconds=60
-)
-REGISTER_RATE_LIMITER = RateLimiter(
-    times=get_settings().rate_limit_register_per_hour, seconds=3600
-)
-FORGOT_RATE_LIMITER = RateLimiter(
-    times=get_settings().rate_limit_forgot_per_hour, seconds=3600
-)
+LOGIN_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_login_per_min, seconds=60)
+REGISTER_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_register_per_hour, seconds=3600)
+FORGOT_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_forgot_per_hour, seconds=3600)
 
 
 def build_auth_router() -> APIRouter:

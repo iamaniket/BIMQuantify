@@ -35,6 +35,22 @@ class Settings(BaseSettings):
     rate_limit_refresh_per_min: int = Field(default=10, alias="RATE_LIMIT_REFRESH_PER_MIN")
     rate_limit_forgot_per_hour: int = Field(default=3, alias="RATE_LIMIT_FORGOT_PER_HOUR")
 
+    s3_endpoint_url: str = Field(default="http://localhost:9000", alias="S3_ENDPOINT_URL")
+    s3_region: str = Field(default="us-east-1", alias="S3_REGION")
+    s3_access_key_id: str = Field(default="bimstitch", alias="S3_ACCESS_KEY_ID")
+    s3_secret_access_key: str = Field(default="bimstitch-secret", alias="S3_SECRET_ACCESS_KEY")
+    s3_bucket_ifc: str = Field(default="ifc-files", alias="S3_BUCKET_IFC")
+    s3_presign_ttl_seconds: int = Field(default=900, alias="S3_PRESIGN_TTL_SECONDS")
+    upload_max_bytes: int = Field(default=2 * 1024 * 1024 * 1024, alias="UPLOAD_MAX_BYTES")
+
+    extractor_url: str = Field(default="http://localhost:8088", alias="EXTRACTOR_URL")
+    extractor_shared_secret: str = Field(
+        default="dev-shared-secret-change-me", alias="EXTRACTOR_SHARED_SECRET"
+    )
+    extractor_dispatch_timeout_seconds: float = Field(
+        default=5.0, alias="EXTRACTOR_DISPATCH_TIMEOUT_SECONDS"
+    )
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

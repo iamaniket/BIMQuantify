@@ -7,6 +7,29 @@
       "runtimeArgs": ["--filter", "portal", "exec", "next", "dev", "--turbopack"],
       "port": 3001,
       "autoPort": true
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "--directory",
+        "apps/api",
+        "run",
+        "uvicorn",
+        "bimstitch_api.main:app",
+        "--reload",
+        "--port",
+        "8000"
+      ],
+      "port": 8000,
+      "autoPort": false
+    },
+    {
+      "name": "extractor",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/extractor", "run", "dev"],
+      "port": 8088,
+      "autoPort": false
     }
   ]
 }

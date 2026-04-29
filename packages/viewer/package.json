@@ -1,0 +1,48 @@
+{
+  "name": "@bimstitch/viewer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./wasm-path": {
+      "types": "./dist/wasm.d.ts",
+      "import": "./dist/wasm.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf dist .turbo"
+  },
+  "dependencies": {
+    "@thatopen/components": "^2.4.11",
+    "@thatopen/fragments": "~3.0.0",
+    "web-ifc": "0.0.68"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": ">=0.175.0"
+  },
+  "devDependencies": {
+    "@bimstitch/tsconfig": "workspace:*",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "@types/three": "^0.175.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rimraf": "^5.0.10",
+    "three": "^0.175.0",
+    "typescript": "^5.8.3"
+  }
+}

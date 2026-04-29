@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-wasm.mjs",
     "dev": "next dev --turbopack --port 3001",
+    "prebuild": "node scripts/copy-wasm.mjs",
     "build": "next build",
     "start": "next start --port 3001",
     "lint": "eslint .",
@@ -14,6 +16,10 @@
   "dependencies": {
     "@bimstitch/design-tokens": "workspace:*",
     "@bimstitch/ui": "workspace:*",
+    "@bimstitch/viewer": "workspace:*",
+    "@thatopen/fragments": "~3.0.0",
+    "three": "^0.175.0",
+    "web-ifc": "0.0.68",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-dropdown-menu": "^2.1.6",
