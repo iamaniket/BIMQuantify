@@ -52,6 +52,9 @@ export function ProjectCard({ project }: Props): JSX.Element {
     : project.name.charAt(0).toUpperCase();
   const tileColor = pickTileColor(project.name);
   const createdLabel = formatCreatedDate(project.created_at);
+  const updatedLabel = formatCreatedDate(project.updated_at);
+  // Only surface the updated label when the date is genuinely different from creation
+  const showUpdated = updatedLabel !== '' && updatedLabel !== createdLabel;
 
   return (
     <Card>
@@ -95,8 +98,13 @@ export function ProjectCard({ project }: Props): JSX.Element {
         </CardBody>
 
         <CardFooter>
-          <span className="text-caption text-foreground-tertiary">
-            {createdLabel === '' ? '' : `Created ${createdLabel}`}
+          <span className="flex flex-col gap-0.5 text-caption text-foreground-tertiary">
+            {createdLabel === '' ? null : (
+              <span>Created {createdLabel}</span>
+            )}
+            {showUpdated ? (
+              <span>Updated {updatedLabel}</span>
+            ) : null}
           </span>
         </CardFooter>
       </Link>

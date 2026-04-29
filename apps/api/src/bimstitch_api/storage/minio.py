@@ -32,6 +32,8 @@ class StorageBackend(Protocol):
 
     async def presigned_get_url(self, key: str, filename: str) -> str: ...
 
+    async def put_object(self, key: str, content_type: str, data: bytes) -> None: ...
+
     async def head_object(self, key: str) -> dict[str, object]: ...
 
     async def get_object_range(self, key: str, start: int, end: int) -> bytes: ...
@@ -97,6 +99,15 @@ class S3Storage:
                 ExpiresIn=self._ttl,
             )
             return url
+
+    async def put_object(self, key: str, content_type: str, data: bytes) -> None:
+        async with self._client() as client:
+            await client.put_object(  # type: ignore[attr-defined]
+                Bucket=self._bucket,
+                Key=key,
+                Body=data,
+                ContentType=content_type,
+            )
 
     async def head_object(self, key: str) -> dict[str, object]:
         async with self._client() as client:

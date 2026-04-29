@@ -350,3 +350,93 @@ async def test_user_without_org_forbidden(
 
     response = await client.get("/projects", headers=_auth(token))
     assert response.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Thumbnail upload (POST /projects/with-thumbnail)
+# ---------------------------------------------------------------------------
+
+# Minimal valid JPEG header bytes (1×1 white pixel)
+_TINY_JPEG = (
+    b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+    b"\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t"
+    b"\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a"
+    b"\x1f\x1e\x1d\x1a\x1c\x1c $.' \",#\x1c\x1c(7),01444\x1f'9=82<.342\x1e"
+    b"\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4\x00\x1f"
+    b"\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00"
+    b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\xff\xda\x00\x08\x01\x01"
+    b"\x00\x00?\x00\xfb\xd4\xb0\xff\xd9"
+)
+
+
+async def test_create_project_with_thumbnail_stores_and_returns_presigned_url(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+) -> None:
+    client, fake_storage = fake_storage_client  # type: ignore[misc]
+    response = await client.post(
+        "/projects/with-thumbnail",
+        data={"name": "Thumb Project", "description": "with image"},
+        files={"thumbnail": ("cover.jpg", _TINY_JPEG, "image/jpeg")},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["name"] == "Thumb Project"
+    assert body["description"] == "with image"
+    # thumbnail_url should be the fake presigned GET URL (from FakeStorage)
+    assert body["thumbnail_url"] is not None
+    assert "http://fake-storage/" in body["thumbnail_url"]
+    assert "thumbnails/" in body["thumbnail_url"]
+    # The raw bytes should be stored in FakeStorage
+    stored_keys = list(fake_storage.objects.keys())  # type: ignore[attr-defined]
+    assert len(stored_keys) == 1
+    assert stored_keys[0].startswith("thumbnails/")
+    assert stored_keys[0].endswith(".jpg")
+
+
+async def test_create_project_without_thumbnail_via_multipart_endpoint(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+) -> None:
+    client, fake_storage = fake_storage_client  # type: ignore[misc]
+    response = await client.post(
+        "/projects/with-thumbnail",
+        data={"name": "No Thumb"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["thumbnail_url"] is None
+    assert len(fake_storage.objects) == 0  # type: ignore[attr-defined]
+
+
+async def test_create_project_thumbnail_too_large_returns_413(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+) -> None:
+    client, _ = fake_storage_client  # type: ignore[misc]
+    over_limit = b"x" * (2 * 1024 * 1024 + 1)  # 2 MB + 1 byte
+    response = await client.post(
+        "/projects/with-thumbnail",
+        data={"name": "BigThumb"},
+        files={"thumbnail": ("big.jpg", over_limit, "image/jpeg")},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 413
+    assert response.json()["detail"] == "THUMBNAIL_TOO_LARGE"
+
+
+async def test_create_project_thumbnail_unsupported_mime_returns_415(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+) -> None:
+    client, _ = fake_storage_client  # type: ignore[misc]
+    response = await client.post(
+        "/projects/with-thumbnail",
+        data={"name": "PdfThumb"},
+        files={"thumbnail": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 415
+    assert response.json()["detail"] == "THUMBNAIL_UNSUPPORTED_TYPE"

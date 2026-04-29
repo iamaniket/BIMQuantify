@@ -169,6 +169,30 @@ export const apiClient = {
     path,
     accessToken,
   }),
+  postMultipart: async <TResponse>(
+    path: string,
+    formData: FormData,
+    responseSchema: ZodType<TResponse>,
+    accessToken: string,
+  ): Promise<TResponse> => {
+    const headers = buildHeaders(accessToken);
+    // Do NOT set Content-Type — the browser sets it with the multipart boundary.
+    const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const detail = await parseErrorDetail(response);
+      throw new ApiError(response.status, detail);
+    }
+    const raw: unknown = await response.json();
+    const parsed = responseSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new ApiError(500, `Response validation failed: ${parsed.error.message}`);
+    }
+    return parsed.data as TResponse;
+  },
   // Raw PUT to a presigned URL. Bypasses the JSON request helper because
   // (a) we need to send a Blob, not stringified JSON, and
   // (b) we MUST NOT attach the Authorization header — it would invalidate the

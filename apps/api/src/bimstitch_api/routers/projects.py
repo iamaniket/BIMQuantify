@@ -1,11 +1,13 @@
-from uuid import UUID
+from typing import Annotated
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.models.project import Project
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
 from bimstitch_api.models.user import User
@@ -17,14 +19,35 @@ from bimstitch_api.schemas.project import (
     ProjectRead,
     ProjectUpdate,
 )
+from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.tenancy import get_tenant_session
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+_THUMBNAIL_KEY_PREFIX = "thumbnails/"
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+async def _resolve_thumbnail_url(
+    thumbnail_url: str | None, storage: StorageBackend
+) -> str | None:
+    """Return a presigned GET URL when thumbnail_url is an S3 key; passthrough otherwise."""
+    if thumbnail_url is None:
+        return None
+    if thumbnail_url.startswith(_THUMBNAIL_KEY_PREFIX):
+        return await storage.presigned_get_url(thumbnail_url, "thumbnail")
+    return thumbnail_url
+
+
+async def _project_to_read(project: Project, storage: StorageBackend) -> dict[str, object]:
+    """Serialize a Project ORM object to a dict with the thumbnail URL resolved."""
+    data: dict[str, object] = ProjectRead.model_validate(project).model_dump()
+    data["thumbnail_url"] = await _resolve_thumbnail_url(project.thumbnail_url, storage)
+    return data
 
 
 async def _load_project_or_404(session: AsyncSession, project_id: UUID) -> Project:
@@ -78,7 +101,8 @@ async def create_project(
     payload: ProjectCreate,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
-) -> Project:
+    storage: StorageBackend = Depends(get_storage),
+) -> dict[str, object]:
     project = Project(
         organization_id=user.organization_id,
         name=payload.name,
@@ -97,14 +121,76 @@ async def create_project(
     session.add(ProjectMember(project_id=project.id, user_id=user.id, role=ProjectRole.owner))
     await session.flush()
     await session.refresh(project)
-    return project
+    return await _project_to_read(project, storage)
+
+
+@router.post("/with-thumbnail", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
+async def create_project_with_thumbnail(
+    name: Annotated[str, Form(min_length=1, max_length=255)],
+    description: Annotated[str | None, Form()] = None,
+    thumbnail: Annotated[UploadFile | None, File()] = None,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    storage: StorageBackend = Depends(get_storage),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, object]:
+    """Create a project with an optional thumbnail image (multipart/form-data).
+
+    Thumbnail rules:
+    - Max size: THUMBNAIL_MAX_BYTES (default 2 MB)
+    - Allowed types: THUMBNAIL_ALLOWED_CONTENT_TYPES (default JPEG, PNG, WebP)
+    """
+    thumbnail_key: str | None = None
+
+    if thumbnail is not None and thumbnail.filename:
+        allowed_types = [
+            t.strip() for t in settings.thumbnail_allowed_content_types.split(",")
+        ]
+        content_type = thumbnail.content_type or ""
+        if content_type not in allowed_types:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail="THUMBNAIL_UNSUPPORTED_TYPE",
+            )
+
+        data = await thumbnail.read()
+        if len(data) > settings.thumbnail_max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="THUMBNAIL_TOO_LARGE",
+            )
+
+        ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+        thumbnail_key = f"{_THUMBNAIL_KEY_PREFIX}{uuid4()}.{ext}"
+        await storage.put_object(thumbnail_key, content_type, data)
+
+    project = Project(
+        organization_id=user.organization_id,
+        name=name,
+        description=description if description else None,
+        thumbnail_url=thumbnail_key,
+        owner_id=user.id,
+    )
+    session.add(project)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="PROJECT_NAME_CONFLICT"
+        ) from exc
+
+    session.add(ProjectMember(project_id=project.id, user_id=user.id, role=ProjectRole.owner))
+    await session.flush()
+    await session.refresh(project)
+    return await _project_to_read(project, storage)
 
 
 @router.get("", response_model=list[ProjectRead])
 async def list_projects(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
-) -> list[Project]:
+    storage: StorageBackend = Depends(get_storage),
+) -> list[dict[str, object]]:
     stmt = (
         select(Project)
         .join(ProjectMember, ProjectMember.project_id == Project.id)
@@ -112,7 +198,8 @@ async def list_projects(
         .order_by(Project.created_at)
     )
     result = await session.execute(stmt)
-    return list(result.scalars().all())
+    projects = list(result.scalars().all())
+    return [await _project_to_read(p, storage) for p in projects]
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
@@ -120,10 +207,11 @@ async def get_project(
     project_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
-) -> Project:
+    storage: StorageBackend = Depends(get_storage),
+) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
     await _require_membership(session, project.id, user.id)
-    return project
+    return await _project_to_read(project, storage)
 
 
 @router.patch("/{project_id}", response_model=ProjectRead)
@@ -132,7 +220,8 @@ async def update_project(
     payload: ProjectUpdate,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
-) -> Project:
+    storage: StorageBackend = Depends(get_storage),
+) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
@@ -147,7 +236,7 @@ async def update_project(
             status_code=status.HTTP_409_CONFLICT, detail="PROJECT_NAME_CONFLICT"
         ) from exc
     await session.refresh(project)
-    return project
+    return await _project_to_read(project, storage)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -160,8 +249,17 @@ async def delete_project(
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner)
 
+    thumbnail_key = project.thumbnail_url
     await session.delete(project)
     await session.flush()
+
+    if thumbnail_key and thumbnail_key.startswith(_THUMBNAIL_KEY_PREFIX):
+        try:
+            storage = get_storage()
+            await storage.delete_object(thumbnail_key)
+        except Exception:  # noqa: BLE001
+            pass  # Storage cleanup is best-effort; don't fail the delete
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -23,6 +23,20 @@ export async function createProject(
   return apiClient.post<Project>('/projects', input, ProjectSchema, accessToken);
 }
 
+export async function createProjectWithThumbnail(
+  accessToken: string,
+  input: ProjectCreateInput,
+  thumbnailFile: File,
+): Promise<Project> {
+  const formData = new FormData();
+  formData.append('name', input.name);
+  if (input.description !== null && input.description !== undefined) {
+    formData.append('description', input.description);
+  }
+  formData.append('thumbnail', thumbnailFile);
+  return apiClient.postMultipart<Project>('/projects/with-thumbnail', formData, ProjectSchema, accessToken);
+}
+
 export async function updateProject(
   accessToken: string,
   id: string,

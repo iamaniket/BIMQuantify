@@ -208,6 +208,9 @@ class FakeStorage:
     async def presigned_get_url(self, key: str, filename: str) -> str:
         return f"http://fake-storage/{key}?download={filename}"
 
+    async def put_object(self, key: str, content_type: str, data: bytes) -> None:
+        self.objects[key] = data
+
     async def head_object(self, key: str) -> dict[str, object]:
         from bimstitch_api.storage.minio import ObjectNotFoundError
 

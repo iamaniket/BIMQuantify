@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     s3_bucket_ifc: str = Field(default="ifc-files", alias="S3_BUCKET_IFC")
     s3_presign_ttl_seconds: int = Field(default=900, alias="S3_PRESIGN_TTL_SECONDS")
     upload_max_bytes: int = Field(default=2 * 1024 * 1024 * 1024, alias="UPLOAD_MAX_BYTES")
+    thumbnail_max_bytes: int = Field(default=2 * 1024 * 1024, alias="THUMBNAIL_MAX_BYTES")
+    thumbnail_allowed_content_types: str = Field(
+        default="image/jpeg,image/png,image/webp", alias="THUMBNAIL_ALLOWED_CONTENT_TYPES"
+    )
 
     extractor_url: str = Field(default="http://localhost:8088", alias="EXTRACTOR_URL")
     extractor_shared_secret: str = Field(

@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, X } from 'lucide-react';
+import { ImagePlus, Plus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
   useEffect, useId, useRef, useState, type ChangeEvent, type JSX,
@@ -35,6 +35,46 @@ import { useCreateProject } from './useCreateProject';
 import { UploadProgressItem, type UploadState } from './UploadProgressItem';
 import { useUpdateProject } from './useUpdateProject';
 import { useUploadProjectFile } from './useUploadProjectFile';
+
+const THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+const THUMBNAIL_MAX_DIM = 800;
+const THUMBNAIL_ACCEPT = 'image/jpeg,image/png,image/webp';
+
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      let { width, height } = img;
+      if (width > THUMBNAIL_MAX_DIM) {
+        height = Math.round((height * THUMBNAIL_MAX_DIM) / width);
+        width = THUMBNAIL_MAX_DIM;
+      }
+      if (height > THUMBNAIL_MAX_DIM) {
+        width = Math.round((width * THUMBNAIL_MAX_DIM) / height);
+        height = THUMBNAIL_MAX_DIM;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx === null) { reject(new Error('Canvas unavailable')); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob === null) { reject(new Error('Encode failed')); return; }
+          const outName = file.name.replace(/\.[^.]+$/, '.jpg');
+          resolve(new File([blob], outName, { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        0.82,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error('Load failed')); };
+    img.src = blobUrl;
+  });
+}
 
 type Props =
   | { mode: 'create'; open: boolean; onOpenChange: (open: boolean) => void }
@@ -89,6 +129,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   const nameId = useId();
   const descriptionId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement | null>(null);
 
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
@@ -97,6 +138,9 @@ export function ProjectFormDialog(props: Props): JSX.Element {
 
   const [pendingFiles, setPendingFiles] = useState<FileUpload[]>([]);
   const [uploadStarted, setUploadStarted] = useState(false);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
+  const [thumbnailError, setThumbnailError] = useState<string | null>(null);
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(ProjectFormSchema),
@@ -115,6 +159,12 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     resetUpdateMutation();
     setPendingFiles([]);
     setUploadStarted(false);
+    setThumbnailFile(null);
+    setThumbnailPreviewUrl((prev) => {
+      if (prev !== null) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setThumbnailError(null);
   }, [open, project, resetForm, resetCreateMutation, resetUpdateMutation]);
 
   const addFiles = (files: FileList | null): void => {
@@ -134,6 +184,35 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     if (fileInputRef.current !== null) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleThumbnailChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const file = event.target.files?.[0];
+    if (thumbnailInputRef.current !== null) {
+      thumbnailInputRef.current.value = '';
+    }
+    if (file === undefined) return;
+    if (!THUMBNAIL_ACCEPT.split(',').includes(file.type)) {
+      setThumbnailError('Only JPEG, PNG, or WebP images are allowed.');
+      return;
+    }
+    if (file.size > THUMBNAIL_MAX_BYTES) {
+      setThumbnailError('Image must be 2 MB or smaller.');
+      return;
+    }
+    setThumbnailError(null);
+    compressImage(file)
+      .then((compressed) => {
+        const preview = URL.createObjectURL(compressed);
+        setThumbnailPreviewUrl((prev) => {
+          if (prev !== null) URL.revokeObjectURL(prev);
+          return preview;
+        });
+        setThumbnailFile(compressed);
+      })
+      .catch(() => {
+        setThumbnailError('Could not process image. Please try another file.');
+      });
   };
 
   const removePending = (id: string): void => {
@@ -208,7 +287,11 @@ export function ProjectFormDialog(props: Props): JSX.Element {
 
     if (mode === 'create') {
       createMutation.mutate(
-        { name: values.name, description },
+        {
+          name: values.name,
+          description,
+          ...(thumbnailFile !== null ? { thumbnailFile } : {}),
+        },
         {
           onSuccess: (createdProject) => {
             uploadFilesAndContinue(createdProject);
@@ -309,6 +392,66 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                 </span>
               )}
             </div>
+
+            {mode === 'create' ? (
+              <div className="flex flex-col gap-2">
+                <Label>Cover image <span className="text-foreground-tertiary font-normal">(optional)</span></Label>
+                <input
+                  ref={thumbnailInputRef}
+                  type="file"
+                  accept={THUMBNAIL_ACCEPT}
+                  className="hidden"
+                  onChange={handleThumbnailChange}
+                />
+                {thumbnailFile !== null && thumbnailPreviewUrl !== null ? (
+                  <div className="relative overflow-hidden rounded-md border border-border">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={thumbnailPreviewUrl}
+                      alt="Cover preview"
+                      className="h-32 w-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-2 h-7 w-7 bg-background/80 p-0 backdrop-blur-sm"
+                      aria-label="Remove cover image"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        setThumbnailPreviewUrl((prev) => {
+                          if (prev !== null) URL.revokeObjectURL(prev);
+                          return null;
+                        });
+                        setThumbnailFile(null);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="border"
+                    size="sm"
+                    className="self-start"
+                    disabled={isSubmitting}
+                    onClick={() => { thumbnailInputRef.current?.click(); }}
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    Add cover image
+                  </Button>
+                )}
+                {thumbnailError === null ? null : (
+                  <span role="alert" className="text-body3 text-error">
+                    {thumbnailError}
+                  </span>
+                )}
+                <p className="text-caption text-foreground-tertiary">
+                  JPEG, PNG or WebP · max 2 MB · auto-resized to 800 px
+                </p>
+              </div>
+            ) : null}
 
             {mode === 'create' ? (
               <div className="flex flex-col gap-2">

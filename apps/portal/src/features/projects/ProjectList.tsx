@@ -1,10 +1,10 @@
 'use client';
 
-import { FolderOpen } from 'lucide-react';
-import type { JSX } from 'react';
+import { FolderOpen, Search } from 'lucide-react';
+import { useState, type JSX } from 'react';
 
 import {
-  Card, CardBody, CardFooter, EmptyState, Skeleton,
+  Card, CardBody, CardFooter, EmptyState, Input, Skeleton,
 } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
@@ -13,6 +13,8 @@ import { ProjectCard } from './ProjectCard';
 import { useProjects } from './useProjects';
 
 const SKELETON_COUNT = 6;
+
+const GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4';
 
 function ProjectSkeleton(): JSX.Element {
   return (
@@ -32,14 +34,32 @@ function ProjectSkeleton(): JSX.Element {
 
 export function ProjectList(): JSX.Element {
   const query = useProjects();
+  const [search, setSearch] = useState('');
+
+  const searchBar = (
+    <div className="relative mb-6">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-tertiary" />
+      <Input
+        type="search"
+        placeholder="Search projects…"
+        value={search}
+        onChange={(e) => { setSearch(e.target.value); }}
+        className="pl-9"
+        aria-label="Search projects"
+      />
+    </div>
+  );
 
   if (query.isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-          <ProjectSkeleton key={`skeleton-${String(i)}`} />
-        ))}
-      </div>
+      <>
+        {searchBar}
+        <div className={GRID_CLASS}>
+          {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+            <ProjectSkeleton key={`skeleton-${String(i)}`} />
+          ))}
+        </div>
+      </>
     );
   }
 
@@ -70,11 +90,33 @@ export function ProjectList(): JSX.Element {
     );
   }
 
+  const term = search.trim().toLowerCase();
+  const filtered = term.length === 0
+    ? projects
+    : projects.filter(
+        (p) => p.name.toLowerCase().includes(term)
+          || (p.description?.toLowerCase().includes(term) ?? false),
+      );
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {projects.map((project) => (
-        <ProjectCard key={project.id} project={project} />
-      ))}
-    </div>
+    <>
+      {searchBar}
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={Search}
+          title="No matching projects"
+          description={`No projects match "${search}". Try a different search.`}
+          action={undefined}
+          className={undefined}
+        />
+      ) : (
+        <div className={GRID_CLASS}>
+          {filtered.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
+
