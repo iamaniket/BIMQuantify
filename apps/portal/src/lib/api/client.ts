@@ -191,7 +191,7 @@ export const apiClient = {
     if (!parsed.success) {
       throw new ApiError(500, `Response validation failed: ${parsed.error.message}`);
     }
-    return parsed.data as TResponse;
+    return parsed.data;
   },
   // Raw PUT to a presigned URL. Bypasses the JSON request helper because
   // (a) we need to send a Blob, not stringified JSON, and

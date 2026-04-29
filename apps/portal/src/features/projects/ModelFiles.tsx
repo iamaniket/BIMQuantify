@@ -23,7 +23,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
   Skeleton,
   cn,
 } from '@bimstitch/ui';
@@ -40,13 +39,14 @@ import {
   formatSchemaLabel,
 } from './fileFormatting';
 import { UploadProgressItem, type UploadState } from './UploadProgressItem';
-import { useDeleteProjectFile } from './useDeleteProjectFile';
-import { useProjectFiles } from './useProjectFiles';
+import { useDeleteModelFile } from './useDeleteModelFile';
+import { useModelFiles } from './useModelFiles';
 import { useRetryExtraction } from './useRetryExtraction';
-import { useUploadProjectFile } from './useUploadProjectFile';
+import { useUploadModelFile } from './useUploadModelFile';
 
 type Props = {
   projectId: string;
+  modelId: string;
 };
 
 type PendingUpload = {
@@ -90,7 +90,6 @@ function ExtractionBadge({
       </span>
     );
   }
-  // failed
   return (
     <span
       title={error ?? 'Extraction failed.'}
@@ -102,12 +101,113 @@ function ExtractionBadge({
   );
 }
 
-export function ProjectFiles({ projectId }: Props): JSX.Element {
-  const filesQuery = useProjectFiles(projectId, 'all');
-  const uploadMutation = useUploadProjectFile();
-  const deleteMutation = useDeleteProjectFile();
-  const retryMutation = useRetryExtraction();
+function FileRow({
+  projectId,
+  modelId,
+  file,
+  onDeleteRequest,
+}: {
+  projectId: string;
+  modelId: string;
+  file: ProjectFile;
+  onDeleteRequest: (file: ProjectFile) => void;
+}): JSX.Element {
   const { tokens } = useAuth();
+  const retryMutation = useRetryExtraction();
+
+  const handleDownload = async (): Promise<void> => {
+    if (tokens === null) return;
+    try {
+      const response = await getDownloadUrl(tokens.access_token, projectId, modelId, file.id);
+      window.open(response.download_url, '_blank', 'noopener,noreferrer');
+    } catch {
+      // surfaced via list query
+    }
+  };
+
+  return (
+    <li className="flex items-center gap-3 px-4 py-3">
+      <FileText className="h-5 w-5 text-foreground-secondary" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-body2 font-medium text-foreground">
+          v{file.version_number} · {file.original_filename}
+        </span>
+        <span className="text-caption text-foreground-tertiary">
+          {formatFileSize(file.size_bytes)}
+          {' · '}
+          {formatSchemaLabel(file.ifc_schema)}
+          {' · uploaded '}
+          {formatDate(file.created_at)}
+        </span>
+      </div>
+      <ExtractionBadge status={file.extraction_status} error={file.extraction_error} />
+      {file.extraction_status === 'failed' ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={`Retry extraction for ${file.original_filename}`}
+          disabled={retryMutation.isPending}
+          onClick={() => {
+            retryMutation.mutate({ projectId, modelId, fileId: file.id });
+          }}
+        >
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Retry
+        </Button>
+      ) : null}
+      {file.extraction_status === 'succeeded' ? (
+        <Link
+          href={`/projects/${projectId}/models/${modelId}/viewer/${file.id}`}
+          aria-label={`View ${file.original_filename} in 3D`}
+          className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-caption font-medium text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
+        >
+          <Box className="h-4 w-4" />
+          View 3D
+        </Link>
+      ) : null}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label={`Download ${file.original_filename}`}
+        onClick={() => { handleDownload().catch(() => undefined); }}
+      >
+        <Download className="h-4 w-4" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="File actions"
+            className="h-8 w-8 p-0"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={(event) => {
+              event.preventDefault();
+              onDeleteRequest(file);
+            }}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
+  );
+}
+
+export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
+  const filesQuery = useModelFiles(projectId, modelId, 'all');
+  const uploadMutation = useUploadModelFile();
+  const deleteMutation = useDeleteModelFile();
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [pending, setPending] = useState<PendingUpload[]>([]);
@@ -119,11 +219,7 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
       const id = nextUploadId();
       setPending((prev) => [
         ...prev,
-        {
-          id,
-          file,
-          state: { kind: 'rejected', reason: 'FILE_NOT_ISO_10303_21' },
-        },
+        { id, file, state: { kind: 'rejected', reason: 'FILE_NOT_ISO_10303_21' } },
       ]);
       return;
     }
@@ -132,7 +228,7 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
     setPending((prev) => [...prev, { id, file, state: { kind: 'uploading' } }]);
 
     uploadMutation.mutate(
-      { projectId, file },
+      { projectId, modelId, file },
       {
         onSuccess: (result) => {
           if (result.status === 'rejected') {
@@ -161,7 +257,7 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
         },
       },
     );
-  }, [projectId, uploadMutation]);
+  }, [projectId, modelId, uploadMutation]);
 
   const handleFiles = useCallback((files: FileList | null): void => {
     if (files === null) return;
@@ -181,20 +277,10 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
     handleFiles(event.dataTransfer.files);
   };
 
-  const handleDownload = async (file: ProjectFile): Promise<void> => {
-    if (tokens === null) return;
-    try {
-      const response = await getDownloadUrl(tokens.access_token, projectId, file.id);
-      window.open(response.download_url, '_blank', 'noopener,noreferrer');
-    } catch {
-      // The list query already surfaces any auth issues. Keep this silent.
-    }
-  };
-
   const handleDeleteConfirm = (): void => {
     if (deleteTarget === null) return;
     deleteMutation.mutate(
-      { projectId, fileId: deleteTarget.id },
+      { projectId, modelId, fileId: deleteTarget.id },
       {
         onSuccess: () => {
           setDeleteTarget(null);
@@ -208,26 +294,29 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
   };
 
   const files = filesQuery.data ?? [];
+  // Backend returns files ordered by version_number desc — so files[0] is the latest.
   const readyFiles = files.filter((f) => f.status === 'ready');
   const rejectedFiles = files.filter((f) => f.status === 'rejected');
+  const latest = readyFiles[0];
+  const history = readyFiles.slice(1);
   const fileError = filesQuery.error;
 
   return (
-    <section className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => { setIsDragging(false); }}
         onDrop={handleDrop}
         className={cn(
-          'flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors',
+          'flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed px-4 py-6 text-center transition-colors',
           isDragging
             ? 'border-primary bg-primary/5'
             : 'border-border bg-background-secondary',
         )}
       >
-        <UploadCloud className="h-8 w-8 text-foreground-tertiary" />
-        <p className="text-body2 text-foreground">
-          Drag &amp; drop IFC files here, or
+        <UploadCloud className="h-6 w-6 text-foreground-tertiary" />
+        <p className="text-body3 text-foreground">
+          Drop an IFC here, or
         </p>
         <Button
           type="button"
@@ -239,11 +328,9 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
             }
           }}
         >
-          Choose files
+          Choose file
         </Button>
-        <p className="text-caption text-foreground-tertiary">
-          .ifc files only
-        </p>
+        <p className="text-caption text-foreground-tertiary">.ifc files only</p>
         <input
           ref={inputRef}
           type="file"
@@ -269,117 +356,62 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
       )}
 
       {filesQuery.isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 3 }, (_, i) => (
-            <Skeleton key={`file-skeleton-${String(i)}`} className="h-14 w-full" />
-          ))}
-        </div>
+        <Skeleton className="h-14 w-full" />
       ) : null}
 
       {fileError === null ? null : (
         <div
           role="alert"
-          className="rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body2 text-error"
+          className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-body3 text-error"
         >
           {fileError instanceof ApiError ? fileError.detail : 'Failed to load files.'}
         </div>
       )}
 
       {!filesQuery.isLoading && readyFiles.length === 0 && pending.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title="No files yet"
-          description="Upload an IFC model to get started."
-          action={undefined}
-          className={undefined}
-        />
+        <p className="px-1 text-caption text-foreground-tertiary">
+          No versions yet. Upload an IFC to create the first version.
+        </p>
       ) : null}
 
-      {readyFiles.length === 0 ? null : (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-background">
-          {readyFiles.map((file) => (
-            <li key={file.id} className="flex items-center gap-3 px-4 py-3">
-              <FileText className="h-5 w-5 text-foreground-secondary" />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-body2 font-medium text-foreground">
-                  {file.original_filename}
-                </span>
-                <span className="text-caption text-foreground-tertiary">
-                  {formatFileSize(file.size_bytes)}
-                  {' · '}
-                  {formatSchemaLabel(file.ifc_schema)}
-                  {' · uploaded '}
-                  {formatDate(file.created_at)}
-                </span>
-              </div>
-              <ExtractionBadge status={file.extraction_status} error={file.extraction_error} />
-              {file.extraction_status === 'failed' ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`Retry extraction for ${file.original_filename}`}
-                  disabled={retryMutation.isPending}
-                  onClick={() => {
-                    retryMutation.mutate({ projectId, fileId: file.id });
-                  }}
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Retry
-                </Button>
-              ) : null}
-              {file.extraction_status === 'succeeded' ? (
-                <Link
-                  href={`/projects/${projectId}/viewer/${file.id}`}
-                  aria-label={`View ${file.original_filename} in 3D`}
-                  className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-caption font-medium text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
-                >
-                  <Box className="h-4 w-4" />
-                  View 3D
-                </Link>
-              ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-label={`Download ${file.original_filename}`}
-                onClick={() => { handleDownload(file).catch(() => undefined); }}
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label="File actions"
-                    className="h-8 w-8 p-0"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onSelect={(event) => {
-                      event.preventDefault();
-                      setDeleteTarget(file);
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </li>
-          ))}
-        </ul>
+      {latest === undefined ? null : (
+        <div className="flex flex-col">
+          <span className="px-1 text-caption font-medium uppercase tracking-wide text-foreground-tertiary">
+            Latest version
+          </span>
+          <ul className="flex flex-col rounded-md border border-border bg-background">
+            <FileRow
+              projectId={projectId}
+              modelId={modelId}
+              file={latest}
+              onDeleteRequest={setDeleteTarget}
+            />
+          </ul>
+        </div>
+      )}
+
+      {history.length === 0 ? null : (
+        <details className="rounded-md border border-border bg-background">
+          <summary className="cursor-pointer px-4 py-2 text-body3 font-medium text-foreground-secondary">
+            Older versions ({history.length})
+          </summary>
+          <ul className="flex flex-col divide-y divide-border border-t border-border">
+            {history.map((file) => (
+              <FileRow
+                key={file.id}
+                projectId={projectId}
+                modelId={modelId}
+                file={file}
+                onDeleteRequest={setDeleteTarget}
+              />
+            ))}
+          </ul>
+        </details>
       )}
 
       {rejectedFiles.length === 0 ? null : (
-        <details className="rounded-lg border border-border bg-background px-4 py-3">
-          <summary className="cursor-pointer text-body2 font-medium text-foreground-secondary">
+        <details className="rounded-md border border-border bg-background px-4 py-2">
+          <summary className="cursor-pointer text-body3 font-medium text-foreground-secondary">
             {rejectedFiles.length} rejected file{rejectedFiles.length === 1 ? '' : 's'}
           </summary>
           <ul className="mt-2 flex flex-col gap-1">
@@ -389,9 +421,7 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
                 className="flex items-center justify-between gap-3 text-caption text-foreground-tertiary"
               >
                 <span className="truncate">{file.original_filename}</span>
-                <span className="text-error">
-                  {formatRejection(file.rejection_reason)}
-                </span>
+                <span className="text-error">{formatRejection(file.rejection_reason)}</span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -428,6 +458,6 @@ export function ProjectFiles({ projectId }: Props): JSX.Element {
             : null
         }
       />
-    </section>
+    </div>
   );
 }

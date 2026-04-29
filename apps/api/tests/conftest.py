@@ -43,6 +43,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
     )
     from bimstitch_api.db import Base
     from bimstitch_api.models import (  # noqa: F401
+        Model,
         Organization,
         Project,
         ProjectFile,
@@ -65,6 +66,8 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectfilestatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS extractionstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS ifcschema")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS modelstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS modeldiscipline")
         await conn.run_sync(Base.metadata.create_all)
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
@@ -83,6 +86,8 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectfilestatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS extractionstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS ifcschema")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS modelstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS modeldiscipline")
     await eng.dispose()
 
 
@@ -109,8 +114,8 @@ async def _clean_tables(
         # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
         await session.execute(
             text(
-                "TRUNCATE TABLE project_files, project_members, projects, users, "
-                "organizations RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE project_files, models, project_members, projects, "
+                "users, organizations RESTART IDENTITY CASCADE"
             )
         )
         await session.commit()
@@ -276,6 +281,22 @@ def _auth(token: str) -> dict[str, str]:
 
 async def _create_project(client: AsyncClient, token: str, name: str = "P1") -> dict:
     resp = await client.post("/projects", json={"name": name}, headers=_auth(token))
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+async def _create_model(
+    client: AsyncClient,
+    token: str,
+    project_id: str,
+    name: str = "M1",
+    discipline: str = "architectural",
+    status: str | None = None,
+) -> dict:
+    body: dict[str, object] = {"name": name, "discipline": discipline}
+    if status is not None:
+        body["status"] = status
+    resp = await client.post(f"/projects/{project_id}/models", json=body, headers=_auth(token))
     assert resp.status_code == 201, resp.text
     return resp.json()
 

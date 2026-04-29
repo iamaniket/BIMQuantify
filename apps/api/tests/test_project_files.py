@@ -1,8 +1,8 @@
-"""Integration tests for project file uploads.
+"""Integration tests for project file uploads (now nested under Model).
 
 Storage is mocked via dependency override so tests run without MinIO.
 Shared fixtures (FakeStorage, fake_storage_client, _auth, _create_project,
-_add_member, VALID_IFC_HEADER) live in conftest.py.
+_create_model, _add_member, VALID_IFC_HEADER) live in conftest.py.
 """
 
 from __future__ import annotations
@@ -17,8 +17,20 @@ from tests.conftest import (
     FakeStorage,
     _add_member,
     _auth,
+    _create_model,
     _create_project,
 )
+
+
+async def _project_and_model(
+    client: AsyncClient,
+    token: str,
+    project_name: str = "P1",
+    model_name: str = "M1",
+) -> tuple[str, str]:
+    project = await _create_project(client, token, name=project_name)
+    model = await _create_model(client, token, project["id"], name=model_name)
+    return project["id"], model["id"]
 
 
 # ---------------------------------------------------------------------------
@@ -32,9 +44,9 @@ async def test_initiate_owner_succeeds(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"])
+    project_id, model_id = await _project_and_model(client, org_user["access_token"])
     resp = await client.post(
-        f"/projects/{project['id']}/files/initiate",
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
         json={
             "filename": "model.ifc",
             "size_bytes": 1024,
@@ -45,10 +57,103 @@ async def test_initiate_owner_succeeds(
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert body["upload_url"].startswith("http://fake-storage/")
-    assert body["storage_key"].startswith(f"projects/{project['id']}/")
+    assert body["storage_key"].startswith(f"projects/{project_id}/models/{model_id}/")
     assert body["storage_key"].endswith(".ifc")
     assert "file_id" in body
     assert body["expires_in"] == fake.presign_ttl_value
+
+
+async def test_initiate_assigns_version_number_1_for_first_file(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], model_name="V1"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "first.ifc",
+                "size_bytes": 100,
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+
+    listing = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files?status=all",
+        headers=_auth(org_user["access_token"]),
+    )
+    files = listing.json()
+    assert len(files) == 1
+    assert files[0]["id"] == init["file_id"]
+    assert files[0]["version_number"] == 1
+
+
+async def test_initiate_assigns_incrementing_version_numbers(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], model_name="VInc"
+    )
+    for i in range(3):
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": f"v{i}.ifc",
+                "size_bytes": 100,
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+
+    listing = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files?status=all",
+        headers=_auth(org_user["access_token"]),
+    )
+    files = listing.json()
+    # Listing is ordered by version_number DESC.
+    assert [f["version_number"] for f in files] == [3, 2, 1]
+
+
+async def test_initiate_version_number_unique_per_model(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Two different models in the same project both start at version_number=1."""
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="MultiModel")
+    a = await _create_model(client, org_user["access_token"], project["id"], name="A")
+    b = await _create_model(client, org_user["access_token"], project["id"], name="B")
+
+    for model in (a, b):
+        await client.post(
+            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            json={
+                "filename": "f.ifc",
+                "size_bytes": 100,
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+
+    for model in (a, b):
+        listing = (
+            await client.get(
+                f"/projects/{project['id']}/models/{model['id']}/files?status=all",
+                headers=_auth(org_user["access_token"]),
+            )
+        ).json()
+        assert len(listing) == 1
+        assert listing[0]["version_number"] == 1
 
 
 async def test_initiate_editor_succeeds(
@@ -58,12 +163,12 @@ async def test_initiate_editor_succeeds(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="ShareEditor")
-    await _add_member(
-        client, org_user["access_token"], project["id"], same_org_user["id"], "editor"
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="ShareEditor"
     )
+    await _add_member(client, org_user["access_token"], project_id, same_org_user["id"], "editor")
     resp = await client.post(
-        f"/projects/{project['id']}/files/initiate",
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
         json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream"},
         headers=_auth(same_org_user["access_token"]),
     )
@@ -77,12 +182,12 @@ async def test_initiate_viewer_forbidden(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="LockedV")
-    await _add_member(
-        client, org_user["access_token"], project["id"], same_org_user["id"], "viewer"
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="LockedV"
     )
+    await _add_member(client, org_user["access_token"], project_id, same_org_user["id"], "viewer")
     resp = await client.post(
-        f"/projects/{project['id']}/files/initiate",
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
         json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream"},
         headers=_auth(same_org_user["access_token"]),
     )
@@ -95,9 +200,11 @@ async def test_initiate_rejects_non_ifc_extension(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="ExtCheck")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="ExtCheck"
+    )
     resp = await client.post(
-        f"/projects/{project['id']}/files/initiate",
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
         json={"filename": "model.txt", "size_bytes": 100, "content_type": "text/plain"},
         headers=_auth(org_user["access_token"]),
     )
@@ -117,9 +224,11 @@ async def test_initiate_rejects_oversized(
     get_settings.cache_clear()
     try:
         client, _ = fake_storage_client
-        project = await _create_project(client, org_user["access_token"], name="SizeCap")
+        project_id, model_id = await _project_and_model(
+            client, org_user["access_token"], project_name="SizeCap"
+        )
         resp = await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "huge.ifc",
                 "size_bytes": 4096,
@@ -141,13 +250,31 @@ async def test_initiate_cross_org_returns_404(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="AOnly")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="AOnly"
+    )
     resp = await client.post(
-        f"/projects/{project['id']}/files/initiate",
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
         json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream"},
         headers=_auth(other_org_user["access_token"]),
     )
     assert resp.status_code == 404
+
+
+async def test_initiate_unknown_model_returns_404(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="UnknownM")
+    resp = await client.post(
+        f"/projects/{project['id']}/models/{uuid4()}/files/initiate",
+        json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "MODEL_NOT_FOUND"
 
 
 # ---------------------------------------------------------------------------
@@ -161,10 +288,12 @@ async def test_complete_happy_path_marks_ready(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="HappyComplete")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="HappyComplete"
+    )
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "m.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -177,7 +306,7 @@ async def test_complete_happy_path_marks_ready(
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
 
     resp = await client.post(
-        f"/projects/{project['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -185,6 +314,8 @@ async def test_complete_happy_path_marks_ready(
     assert body["status"] == "ready"
     assert body["ifc_schema"] == "IFC4"
     assert body["rejection_reason"] is None
+    assert body["model_id"] == model_id
+    assert body["version_number"] == 1
 
 
 async def test_complete_invalid_bytes_marks_rejected_and_deletes_object(
@@ -193,11 +324,13 @@ async def test_complete_invalid_bytes_marks_rejected_and_deletes_object(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="BadBytes")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="BadBytes"
+    )
     bad = b"this is not an IFC file at all\n" * 4
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "fake.ifc",
                 "size_bytes": len(bad),
@@ -209,7 +342,7 @@ async def test_complete_invalid_bytes_marks_rejected_and_deletes_object(
     fake.objects[init["storage_key"]] = bad
 
     resp = await client.post(
-        f"/projects/{project['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -220,16 +353,70 @@ async def test_complete_invalid_bytes_marks_rejected_and_deletes_object(
     assert init["storage_key"] in fake.deleted
 
 
+async def test_initiate_gap_after_rejected_complete(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Rejected uploads still consume their version_number — the next initiate
+    gets the next number, leaving a gap. This is intentional per spec."""
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="GapP"
+    )
+    bad = b"not ifc\n"
+    init1 = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "v1.ifc",
+                "size_bytes": len(bad),
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init1["storage_key"]] = bad
+    rejected = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init1['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert rejected.json()["status"] == "rejected"
+
+    init2 = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "v2.ifc",
+                "size_bytes": 100,
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+
+    listing = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files?status=all",
+        headers=_auth(org_user["access_token"]),
+    )
+    versions = sorted(f["version_number"] for f in listing.json())
+    # Both rows still exist; the rejected one kept its v=1, new one is v=2.
+    assert versions == [1, 2]
+    assert init2["file_id"] != init1["file_id"]
+
+
 async def test_complete_object_missing_returns_422(
     org_user: dict[str, str],
     email_transport: object,
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="NoUpload")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="NoUpload"
+    )
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "m.ifc",
                 "size_bytes": 1024,
@@ -238,9 +425,8 @@ async def test_complete_object_missing_returns_422(
             headers=_auth(org_user["access_token"]),
         )
     ).json()
-    # Don't upload — go straight to complete.
     resp = await client.post(
-        f"/projects/{project['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 422
@@ -253,10 +439,12 @@ async def test_complete_size_mismatch_returns_422(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="SizeMismatch")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="SizeMismatch"
+    )
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "m.ifc",
                 "size_bytes": 9999,
@@ -265,10 +453,10 @@ async def test_complete_size_mismatch_returns_422(
             headers=_auth(org_user["access_token"]),
         )
     ).json()
-    fake.objects[init["storage_key"]] = VALID_IFC_HEADER  # different length
+    fake.objects[init["storage_key"]] = VALID_IFC_HEADER
 
     resp = await client.post(
-        f"/projects/{project['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 422
@@ -281,10 +469,12 @@ async def test_complete_already_finalized_returns_409(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="DoubleComplete")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DoubleComplete"
+    )
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "m.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -295,12 +485,12 @@ async def test_complete_already_finalized_returns_409(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     first = await client.post(
-        f"/projects/{project['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert first.status_code == 200
     second = await client.post(
-        f"/projects/{project['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert second.status_code == 409
@@ -318,12 +508,14 @@ async def test_list_files_default_returns_only_ready(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="Listing")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="Listing"
+    )
 
     # Ready file.
     init1 = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "ok.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -334,13 +526,13 @@ async def test_list_files_default_returns_only_ready(
     ).json()
     fake.objects[init1["storage_key"]] = VALID_IFC_HEADER
     await client.post(
-        f"/projects/{project['id']}/files/{init1['file_id']}/complete",
+        f"/projects/{project_id}/models/{model_id}/files/{init1['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
 
     # Pending file (no complete).
     await client.post(
-        f"/projects/{project['id']}/files/initiate",
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
         json={
             "filename": "pending.ifc",
             "size_bytes": 1024,
@@ -350,19 +542,66 @@ async def test_list_files_default_returns_only_ready(
     )
 
     default_resp = await client.get(
-        f"/projects/{project['id']}/files", headers=_auth(org_user["access_token"])
+        f"/projects/{project_id}/models/{model_id}/files",
+        headers=_auth(org_user["access_token"]),
     )
     assert default_resp.status_code == 200
     default_files = default_resp.json()
     assert [f["original_filename"] for f in default_files] == ["ok.ifc"]
 
     all_resp = await client.get(
-        f"/projects/{project['id']}/files?status=all",
+        f"/projects/{project_id}/models/{model_id}/files?status=all",
         headers=_auth(org_user["access_token"]),
     )
     assert all_resp.status_code == 200
     all_files = all_resp.json()
     assert sorted(f["original_filename"] for f in all_files) == ["ok.ifc", "pending.ifc"]
+
+
+async def test_list_files_scoped_to_model(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="MultiModelList")
+    a = await _create_model(client, org_user["access_token"], project["id"], name="A")
+    b = await _create_model(client, org_user["access_token"], project["id"], name="B")
+
+    for _ in range(2):
+        await client.post(
+            f"/projects/{project['id']}/models/{a['id']}/files/initiate",
+            json={
+                "filename": "f.ifc",
+                "size_bytes": 100,
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    await client.post(
+        f"/projects/{project['id']}/models/{b['id']}/files/initiate",
+        json={
+            "filename": "f.ifc",
+            "size_bytes": 100,
+            "content_type": "application/octet-stream",
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+
+    a_list = (
+        await client.get(
+            f"/projects/{project['id']}/models/{a['id']}/files?status=all",
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    b_list = (
+        await client.get(
+            f"/projects/{project['id']}/models/{b['id']}/files?status=all",
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    assert len(a_list) == 2
+    assert len(b_list) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -376,10 +615,12 @@ async def test_download_returns_presigned_url_for_ready_file(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="DL")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DL"
+    )
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "down.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -390,12 +631,12 @@ async def test_download_returns_presigned_url_for_ready_file(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     await client.post(
-        f"/projects/{project['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
 
     resp = await client.get(
-        f"/projects/{project['id']}/files/{init['file_id']}/download",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/download",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
@@ -410,10 +651,12 @@ async def test_download_404_for_pending_file(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="DLPending")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DLPending"
+    )
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "p.ifc",
                 "size_bytes": 100,
@@ -423,7 +666,7 @@ async def test_download_404_for_pending_file(
         )
     ).json()
     resp = await client.get(
-        f"/projects/{project['id']}/files/{init['file_id']}/download",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/download",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 404
@@ -441,10 +684,12 @@ async def test_delete_removes_row_and_object(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="DelP")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DelP"
+    )
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "del.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -456,7 +701,7 @@ async def test_delete_removes_row_and_object(
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
 
     resp = await client.delete(
-        f"/projects/{project['id']}/files/{init['file_id']}",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 204
@@ -464,7 +709,7 @@ async def test_delete_removes_row_and_object(
     assert init["storage_key"] in fake.deleted
 
     listing = await client.get(
-        f"/projects/{project['id']}/files?status=all",
+        f"/projects/{project_id}/models/{model_id}/files?status=all",
         headers=_auth(org_user["access_token"]),
     )
     assert listing.json() == []
@@ -476,9 +721,11 @@ async def test_delete_unknown_file_returns_404(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="DelUnknown")
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DelUnknown"
+    )
     resp = await client.delete(
-        f"/projects/{project['id']}/files/{uuid4()}",
+        f"/projects/{project_id}/models/{model_id}/files/{uuid4()}",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 404
@@ -491,13 +738,13 @@ async def test_delete_viewer_forbidden(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project = await _create_project(client, org_user["access_token"], name="DelViewer")
-    await _add_member(
-        client, org_user["access_token"], project["id"], same_org_user["id"], "viewer"
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DelViewer"
     )
+    await _add_member(client, org_user["access_token"], project_id, same_org_user["id"], "viewer")
     init = (
         await client.post(
-            f"/projects/{project['id']}/files/initiate",
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
                 "filename": "x.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -509,7 +756,7 @@ async def test_delete_viewer_forbidden(
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
 
     resp = await client.delete(
-        f"/projects/{project['id']}/files/{init['file_id']}",
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}",
         headers=_auth(same_org_user["access_token"]),
     )
     assert resp.status_code == 403

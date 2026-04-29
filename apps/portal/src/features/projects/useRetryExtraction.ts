@@ -10,9 +10,9 @@ import { retryExtraction } from '@/lib/api/projectFiles';
 import type { ProjectFile } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
-import { projectFilesKey } from './queryKeys';
+import { modelFilesKey } from './queryKeys';
 
-type RetryArgs = { projectId: string; fileId: string };
+type RetryArgs = { projectId: string; modelId: string; fileId: string };
 
 export function useRetryExtraction(): UseMutationResult<
   ProjectFile,
@@ -23,13 +23,13 @@ export function useRetryExtraction(): UseMutationResult<
   const { tokens } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ projectId, fileId }: RetryArgs): Promise<ProjectFile> => {
+    mutationFn: async ({ projectId, modelId, fileId }: RetryArgs): Promise<ProjectFile> => {
       if (tokens === null) throw new Error('Not authenticated');
-      return retryExtraction(tokens.access_token, projectId, fileId);
+      return retryExtraction(tokens.access_token, projectId, modelId, fileId);
     },
-    onSuccess: (_data, { projectId }) => {
+    onSuccess: (_data, { projectId, modelId }) => {
       queryClient
-        .invalidateQueries({ queryKey: projectFilesKey(projectId) })
+        .invalidateQueries({ queryKey: modelFilesKey(projectId, modelId) })
         .catch(() => undefined);
     },
   });

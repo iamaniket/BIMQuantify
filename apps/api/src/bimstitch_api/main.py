@@ -11,6 +11,7 @@ from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
 from bimstitch_api.routers.extraction_internal import router as extraction_internal_router
 from bimstitch_api.routers.health import router as health_router
+from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
 from bimstitch_api.storage import get_storage
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
+        allow_origin_regex=settings.cors_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -51,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(build_auth_router())
     app.include_router(projects_router)
+    app.include_router(models_router)
     app.include_router(project_files_router)
     app.include_router(extraction_internal_router)
     return app

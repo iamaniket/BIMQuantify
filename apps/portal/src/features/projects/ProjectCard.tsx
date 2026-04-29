@@ -1,34 +1,16 @@
 'use client';
 
+import { Building2, Layers, Ruler } from 'lucide-react';
 import Link from 'next/link';
 import type { JSX } from 'react';
 
 import {
-  Card, CardBody, CardFooter, cn,
+  Card, CardBody, CardFooter,
 } from '@bimstitch/ui';
 
 import type { Project } from '@/lib/api/schemas';
 
 import { ProjectCardMenu } from './ProjectCardMenu';
-
-const tileColors: readonly string[] = [
-  'bg-primary',
-  'bg-success',
-  'bg-warning',
-  'bg-info',
-  'bg-error',
-  'bg-primary-hover',
-];
-
-const FALLBACK_TILE_COLOR = 'bg-primary';
-
-function pickTileColor(seed: string): string {
-  if (seed.length === 0) {
-    return FALLBACK_TILE_COLOR;
-  }
-  const idx = seed.charCodeAt(0) % tileColors.length;
-  return tileColors[idx] ?? FALLBACK_TILE_COLOR;
-}
 
 function formatCreatedDate(iso: string): string {
   const parsed = new Date(iso);
@@ -47,14 +29,7 @@ type Props = {
 };
 
 export function ProjectCard({ project }: Props): JSX.Element {
-  const initial = project.name.length === 0
-    ? '?'
-    : project.name.charAt(0).toUpperCase();
-  const tileColor = pickTileColor(project.name);
   const createdLabel = formatCreatedDate(project.created_at);
-  const updatedLabel = formatCreatedDate(project.updated_at);
-  // Only surface the updated label when the date is genuinely different from creation
-  const showUpdated = updatedLabel !== '' && updatedLabel !== createdLabel;
 
   return (
     <Card>
@@ -64,20 +39,17 @@ export function ProjectCard({ project }: Props): JSX.Element {
       >
         <div className="relative">
           {project.thumbnail_url === null ? (
-            <div
-              className={cn(
-                'flex h-32 items-center justify-center text-h4 font-semibold text-primary-foreground',
-                tileColor,
-              )}
-            >
-              {initial}
+            <div className="flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-slate-50 to-slate-100">
+              <Building2 className="h-10 w-10 text-slate-300" />
+              <Layers className="h-7 w-7 text-slate-200" />
+              <Ruler className="h-6 w-6 text-slate-200" />
             </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={project.thumbnail_url}
               alt=""
-              className="h-32 w-full object-cover"
+              className="h-36 w-full object-cover"
             />
           )}
         </div>
@@ -86,11 +58,7 @@ export function ProjectCard({ project }: Props): JSX.Element {
           <h3 className="text-title3 font-semibold text-foreground">
             {project.name}
           </h3>
-          {project.description === null || project.description.length === 0 ? (
-            <p className="text-body2 italic text-foreground-tertiary">
-              No description
-            </p>
-          ) : (
+          {project.description === null || project.description.length === 0 ? null : (
             <p className="line-clamp-2 text-body2 text-foreground-secondary">
               {project.description}
             </p>
@@ -98,14 +66,11 @@ export function ProjectCard({ project }: Props): JSX.Element {
         </CardBody>
 
         <CardFooter>
-          <span className="flex flex-col gap-0.5 text-caption text-foreground-tertiary">
-            {createdLabel === '' ? null : (
-              <span>Created {createdLabel}</span>
-            )}
-            {showUpdated ? (
-              <span>Updated {updatedLabel}</span>
-            ) : null}
-          </span>
+          {createdLabel === '' ? null : (
+            <span className="text-caption text-foreground-tertiary">
+              Created {createdLabel}
+            </span>
+          )}
         </CardFooter>
       </Link>
       <ProjectCardMenu project={project} />

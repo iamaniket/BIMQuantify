@@ -9,7 +9,7 @@ from bimstitch_api.db import Base
 from bimstitch_api.models._mixins import TimestampMixin
 
 if TYPE_CHECKING:
-    from bimstitch_api.models.project_file import ProjectFile
+    from bimstitch_api.models.model import Model
     from bimstitch_api.models.project_member import ProjectMember
 
 
@@ -34,7 +34,7 @@ class Project(TimestampMixin, Base):
     members: Mapped[list["ProjectMember"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    files: Mapped[list["ProjectFile"]] = relationship(
+    models: Mapped[list["Model"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
 

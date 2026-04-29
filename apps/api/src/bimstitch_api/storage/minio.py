@@ -157,6 +157,16 @@ class S3Storage:
                     }
                 ]
             }
-            await client.put_bucket_cors(  # type: ignore[attr-defined]
-                Bucket=self._bucket, CORSConfiguration=cors_config
-            )
+            try:
+                await client.put_bucket_cors(  # type: ignore[attr-defined]
+                    Bucket=self._bucket, CORSConfiguration=cors_config
+                )
+            except ClientError as exc:
+                code = exc.response.get("Error", {}).get("Code", "")
+                if code == "NotImplemented":
+                    logger.warning(
+                        "put_bucket_cors is not supported by this storage backend; "
+                        "configure CORS on the storage server directly"
+                    )
+                else:
+                    raise

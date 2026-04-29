@@ -27,7 +27,8 @@ class ProjectFileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    project_id: UUID
+    model_id: UUID
+    version_number: int
     uploaded_by_user_id: UUID
     original_filename: str
     size_bytes: int
@@ -66,9 +67,7 @@ class ExtractionCallbackRequest(BaseModel):
     # Allow `running` so the extractor can announce it has started, plus the
     # two terminal states. `queued` and `not_started` are not valid here — the
     # API owns those transitions.
-    status: ExtractionStatus = Field(
-        description="One of running, succeeded, failed."
-    )
+    status: ExtractionStatus = Field(description="One of running, succeeded, failed.")
     fragments_key: str | None = None
     metadata_key: str | None = None
     properties_key: str | None = None

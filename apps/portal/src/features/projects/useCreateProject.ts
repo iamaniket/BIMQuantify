@@ -10,7 +10,9 @@ import { useAuth } from '@/providers/AuthProvider';
 
 import { projectsKey } from './queryKeys';
 
-export type ProjectCreatePayload = ProjectCreateInput & { thumbnailFile?: File };
+export type ProjectCreatePayload = ProjectCreateInput & {
+  thumbnailFile: File | undefined;
+};
 
 export function useCreateProject(): UseMutationResult<Project, Error, ProjectCreatePayload> {
   const { tokens } = useAuth();

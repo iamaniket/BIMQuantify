@@ -28,16 +28,7 @@ export function Header(): JSX.Element {
           >
             BIMstitch
           </Link>
-          {isAuthenticated ? (
-            <nav className="flex items-center gap-1">
-              <Link
-                href="/projects"
-                className="rounded-md px-3 py-1.5 text-body2 font-medium text-foreground-secondary hover:bg-background-hover hover:text-foreground"
-              >
-                Projects
-              </Link>
-            </nav>
-          ) : null}
+          {null}
         </div>
 
         <nav className="flex items-center gap-2">

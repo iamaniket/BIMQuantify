@@ -4,31 +4,28 @@ import {
   useMutation, useQueryClient, type UseMutationResult,
 } from '@tanstack/react-query';
 
-import { deleteProjectFile } from '@/lib/api/projectFiles';
+import { deleteModel } from '@/lib/api/models';
 import { useAuth } from '@/providers/AuthProvider';
 
-import { projectFilesKey } from './queryKeys';
+import { modelsKey } from './queryKeys';
 
-type DeleteInput = {
-  projectId: string;
-  fileId: string;
-};
+type DeleteInput = { projectId: string; modelId: string };
 
-export function useDeleteProjectFile(): UseMutationResult<undefined, Error, DeleteInput> {
+export function useDeleteModel(): UseMutationResult<undefined, Error, DeleteInput> {
   const { tokens } = useAuth();
   const accessToken = tokens === null ? null : tokens.access_token;
   const queryClient = useQueryClient();
 
   return useMutation<undefined, Error, DeleteInput>({
-    mutationFn: async ({ projectId, fileId }) => {
+    mutationFn: async ({ projectId, modelId }) => {
       if (accessToken === null) {
         throw new Error('Not authenticated');
       }
-      await deleteProjectFile(accessToken, projectId, fileId);
+      await deleteModel(accessToken, projectId, modelId);
       return undefined;
     },
     onSuccess: async (_data, { projectId }) => {
-      await queryClient.invalidateQueries({ queryKey: projectFilesKey(projectId) });
+      await queryClient.invalidateQueries({ queryKey: modelsKey(projectId) });
     },
   });
 }

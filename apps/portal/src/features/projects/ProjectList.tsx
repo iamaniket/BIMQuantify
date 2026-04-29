@@ -1,20 +1,22 @@
 'use client';
 
 import { FolderOpen, Search } from 'lucide-react';
-import { useState, type JSX } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, type JSX } from 'react';
 
 import {
-  Card, CardBody, CardFooter, EmptyState, Input, Skeleton,
+  Card, CardBody, CardFooter, EmptyState, Skeleton,
 } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
+import { useAuth } from '@/providers/AuthProvider';
 
 import { ProjectCard } from './ProjectCard';
 import { useProjects } from './useProjects';
 
 const SKELETON_COUNT = 6;
 
-const GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4';
+const GRID_CLASS = 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6';
 
 function ProjectSkeleton(): JSX.Element {
   return (
@@ -32,34 +34,36 @@ function ProjectSkeleton(): JSX.Element {
   );
 }
 
-export function ProjectList(): JSX.Element {
-  const query = useProjects();
-  const [search, setSearch] = useState('');
+type ProjectListProps = {
+  search: string;
+};
 
-  const searchBar = (
-    <div className="relative mb-6">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-tertiary" />
-      <Input
-        type="search"
-        placeholder="Search projects…"
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); }}
-        className="pl-9"
-        aria-label="Search projects"
-      />
-    </div>
-  );
+export function ProjectList({ search }: ProjectListProps): JSX.Element {
+  const router = useRouter();
+  const { setTokens } = useAuth();
+  const query = useProjects();
+
+  const isUnauthorized = query.isError && query.error instanceof ApiError
+    && (query.error.status === 401 || query.error.status === 403);
+
+  useEffect(() => {
+    if (isUnauthorized) {
+      setTokens(null);
+      router.replace('/login');
+    }
+  }, [isUnauthorized, setTokens, router]);
+
+  if (isUnauthorized) {
+    return <div />;
+  }
 
   if (query.isLoading) {
     return (
-      <>
-        {searchBar}
-        <div className={GRID_CLASS}>
-          {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-            <ProjectSkeleton key={`skeleton-${String(i)}`} />
-          ))}
-        </div>
-      </>
+      <div className={GRID_CLASS}>
+        {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+          <ProjectSkeleton key={`skeleton-${String(i)}`} />
+        ))}
+      </div>
     );
   }
 
@@ -93,30 +97,29 @@ export function ProjectList(): JSX.Element {
   const term = search.trim().toLowerCase();
   const filtered = term.length === 0
     ? projects
-    : projects.filter(
-        (p) => p.name.toLowerCase().includes(term)
-          || (p.description?.toLowerCase().includes(term) ?? false),
-      );
+    : projects.filter((p) => {
+      if (p.name.toLowerCase().includes(term)) return true;
+      if (p.description === null) return false;
+      return p.description.toLowerCase().includes(term);
+    });
+
+  if (filtered.length === 0) {
+    return (
+      <EmptyState
+        icon={Search}
+        title="No matching projects"
+        description={`No projects match "${search}". Try a different search.`}
+        action={undefined}
+        className={undefined}
+      />
+    );
+  }
 
   return (
-    <>
-      {searchBar}
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          title="No matching projects"
-          description={`No projects match "${search}". Try a different search.`}
-          action={undefined}
-          className={undefined}
-        />
-      ) : (
-        <div className={GRID_CLASS}>
-          {filtered.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
-      )}
-    </>
+    <div className={GRID_CLASS}>
+      {filtered.map((project) => (
+        <ProjectCard key={project.id} project={project} />
+      ))}
+    </div>
   );
 }
-

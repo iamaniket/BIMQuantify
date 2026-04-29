@@ -30,8 +30,8 @@ function buildBundle(response: ViewerBundleResponse): ViewerBundle {
 
 export default function ViewerPage(): JSX.Element {
   const router = useRouter();
-  const params = useParams<{ projectId: string; fileId: string }>();
-  const { projectId, fileId } = params;
+  const params = useParams<{ projectId: string; modelId: string; fileId: string }>();
+  const { projectId, modelId, fileId } = params;
   const { tokens, hasHydrated } = useAuth();
 
   const [bundle, setBundle] = useState<ViewerBundleResponse | null>(null);
@@ -50,7 +50,7 @@ export default function ViewerPage(): JSX.Element {
     const cancelToken = { cancelled: false };
     (async () => {
       try {
-        const result = await getViewerBundle(accessToken, projectId, fileId);
+        const result = await getViewerBundle(accessToken, projectId, modelId, fileId);
         if (cancelToken.cancelled) return;
         setBundle(result);
       } catch (err) {
@@ -69,7 +69,7 @@ export default function ViewerPage(): JSX.Element {
     return () => {
       cancelToken.cancelled = true;
     };
-  }, [tokens, projectId, fileId]);
+  }, [tokens, projectId, modelId, fileId]);
 
   if (!hasHydrated || tokens === null) {
     return <main className="flex flex-1 items-center justify-center" />;

@@ -9,8 +9,10 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -20,7 +22,7 @@ from bimstitch_api.db import Base
 from bimstitch_api.models._mixins import TimestampMixin
 
 if TYPE_CHECKING:
-    from bimstitch_api.models.project import Project
+    from bimstitch_api.models.model import Model
 
 
 class IfcSchema(StrEnum):
@@ -49,11 +51,12 @@ class ProjectFile(TimestampMixin, Base):
     __tablename__ = "project_files"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    project_id: Mapped[UUID] = mapped_column(
+    model_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("projects.id", ondelete="CASCADE"),
+        ForeignKey("models.id", ondelete="CASCADE"),
         nullable=False,
     )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     uploaded_by_user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
@@ -105,11 +108,12 @@ class ProjectFile(TimestampMixin, Base):
     metadata_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     properties_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
-    project: Mapped["Project"] = relationship(back_populates="files")
+    model: Mapped["Model"] = relationship(back_populates="files")
 
     __table_args__ = (
         CheckConstraint("size_bytes >= 0", name="ck_project_files_size_nonneg"),
-        Index("ix_project_files_project_id", "project_id"),
+        UniqueConstraint("model_id", "version_number", name="uq_project_files_model_version"),
+        Index("ix_project_files_model_id", "model_id"),
         Index("ix_project_files_status_created_at", "status", "created_at"),
         Index("ix_project_files_extraction_status", "extraction_status"),
     )

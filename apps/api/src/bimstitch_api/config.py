@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     )
 
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
+    cors_origin_regex: str | None = Field(default=None, alias="CORS_ORIGIN_REGEX")
 
     redis_url: str = Field(default="redis://localhost:6380/0", alias="REDIS_URL")
     test_redis_url: str | None = Field(default=None, alias="TEST_REDIS_URL")
