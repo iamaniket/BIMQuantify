@@ -3,7 +3,6 @@ import type {
   ControlsOptions,
   EffectsOptions,
   EffectsQuality,
-  GhostMode,
   MouseBindingMap,
   ShortcutMap,
   ViewCubeCorner,
@@ -11,15 +10,13 @@ import type {
 
 const STORAGE_KEY = 'bimstitch.viewerSettings.v2';
 
-export type ShadowQuality = 'low' | 'medium' | 'high';
-
 export type EffectsSettings = Required<EffectsOptions>;
 
 export type ControlsSettings = Required<ControlsOptions>;
 
 export type ViewerSettings = {
   viewCube: { enabled: boolean; corner: ViewCubeCorner };
-  shadows: { enabled: boolean; quality: ShadowQuality };
+  shadows: { enabled: boolean };
   background: { color: number };
   effects: EffectsSettings;
   /** command name → key combo. Matches `IfcViewerProps.shortcuts`. */
@@ -33,13 +30,6 @@ export type ViewerSettings = {
 export const DEFAULT_EFFECTS: EffectsSettings = {
   enabled: true,
   edges: true,
-  // SSAO is API-stable but not yet wired (the base renderer enables
-  // logarithmicDepthBuffer for BIM z-fighting, which the built-in
-  // SAO/SSAO passes don't support — needs a depth-aware AO replacement).
-  ssao: false,
-  outline: true,
-  ghost: 'on-selection',
-  environment: true,
   quality: 'medium',
 };
 
@@ -63,7 +53,7 @@ export const DEFAULT_CONTROLS: ControlsSettings = {
 
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   viewCube: { enabled: true, corner: 'top-right' },
-  shadows: { enabled: true, quality: 'medium' },
+  shadows: { enabled: true },
   background: { color: 0xffffff },
   effects: DEFAULT_EFFECTS,
   shortcuts: {},
@@ -115,4 +105,4 @@ export function hexToColor(hex: string): number {
   return Number.isFinite(n) ? n : 0xffffff;
 }
 
-export type { CameraAction, EffectsQuality, GhostMode };
+export type { CameraAction, EffectsQuality };

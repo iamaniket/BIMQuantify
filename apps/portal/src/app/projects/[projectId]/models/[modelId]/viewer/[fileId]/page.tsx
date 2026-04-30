@@ -125,7 +125,6 @@ export default function ViewerPage(): JSX.Element {
           }}
           shadows={{
             enabled: settings.shadows.enabled,
-            quality: settings.shadows.quality,
           }}
           background={{ color: settings.background.color }}
           effects={settings.effects}

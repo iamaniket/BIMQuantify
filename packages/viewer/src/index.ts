@@ -22,7 +22,6 @@ export type {
   ControlsOptions,
   EffectsOptions,
   EffectsQuality,
-  GhostMode,
   PivotRotateOptions,
 } from './types.js';
 

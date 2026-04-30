@@ -48,8 +48,6 @@ export type BackgroundOptions = {
 
 export type ShadowOptions = {
   enabled?: boolean;
-  /** 'low' = 1024px shadow map; 'medium' = 2048; 'high' = 4096 + VSM. */
-  quality?: 'low' | 'medium' | 'high';
 };
 
 /**
@@ -89,7 +87,7 @@ export type IfcViewerProps = {
   viewCube?: ViewCubeOptions;
   background?: BackgroundOptions;
   shadows?: ShadowOptions;
-  /** Forge-style post-processing (edges / SSAO / outline / ghost / PBR env). */
+  /** Forge-style post-processing (silhouette edge lines). */
   effects?: EffectsOptions;
   /**
    * Forge-style orbit-around-cursor. Pass `false` to disable, an options
@@ -99,7 +97,7 @@ export type IfcViewerProps = {
   ref?: Ref<ViewerHandle>;
 };
 
-export type { EffectsOptions, EffectsQuality, GhostMode } from './plugins/effects/types.js';
+export type { EffectsOptions, EffectsQuality } from './plugins/effects/types.js';
 
 export type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 

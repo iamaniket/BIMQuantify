@@ -1,10 +1,10 @@
 /**
- * Effects plugin — Forge/APS-style visual polish on top of the base scene.
+ * Effects plugin — silhouette edge lines via Sobel on a normal buffer.
  *
  * Pipeline:
  *   RenderPass (color, MSAA) → NormalEdgePass (custom; detects edges from a
- *   normal+depth buffer and darkens color where they break) → OutlinePass
- *   (selection glow) → SMAAPass → OutputPass.
+ *   normal+depth buffer and darkens color where they break) → SMAAPass →
+ *   OutputPass.
  *
  * Why a normal-buffer Sobel instead of luminance Sobel: BIM models have
  * large flat-coloured regions where luminance Sobel misses real geometric
@@ -12,55 +12,41 @@
  * the *normal* buffer (and depth as a tie-break for far-apart but parallel
  * surfaces) detects exactly the silhouettes and hard creases Forge draws.
  *
- * Why not extract geometric LineSegments via THREE.EdgesGeometry: fragments
- * keeps its mesh data on the GPU and exposes BufferAttributes whose
- * `.array` is null on the CPU side, so EdgesGeometry throws. Geometric
- * edges would need to be done inside fragments' worker pipeline.
- *
  * Render strategy: gated on `viewer:idle` and driven by a small RAF loop
  * so post passes only run while the camera is still. During motion the
  * base SimpleRenderer keeps doing its cheap render and post effects cost
  * nothing.
- *
- * Notes:
- *   - BIM z-fighting is handled by per-material polygonOffset (set up in
- *     the core Viewer); the renderer uses linear depth so polygonOffset
- *     and SSAO/SAO post-passes work correctly. SSAOPass remains API-stable
- *     but unwired pending tuning.
  */
 
 import * as THREE from 'three';
-import * as FRAGS from '@thatopen/fragments';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
-import type { SelectionPluginAPI } from '../selection/index.js';
-import type { EffectsOptions, EffectsQuality, GhostMode } from './types.js';
+import type { Plugin, ViewerContext } from '../../core/types.js';
+import type { EffectsOptions, EffectsQuality } from './types.js';
 
 const NAME = 'effects' as const;
-const GHOST_CUSTOM_ID = 'ghost' as const;
 
 const DEFAULTS: Required<EffectsOptions> = {
   enabled: true,
   edges: true,
-  ssao: false,
-  outline: true,
-  ghost: 'on-selection',
-  environment: true,
   quality: 'medium',
 };
 
 /**
- * Reads a normal buffer (RGB-encoded view-space normals) and detects edges
- * via Sobel on the normal channels. Output: original color, darkened
- * proportional to the edge magnitude. With smoothstep + MSAA on the
- * input buffers this produces clean Forge-style silhouettes.
+ * Reads a packed normal+linearDepth buffer (RGB = view-space normal,
+ * A = linear depth in [0,1] with a small epsilon bias so background
+ * stays at exactly 0). Computes two edge terms:
+ *
+ *   - normal-discontinuity (silhouettes & sharp creases)
+ *   - depth-discontinuity using a second-derivative kernel so gentle
+ *     slopes don't fire false edges, only true depth jumps do.
+ *
+ * The two terms are combined with a max(), passed through smoothstep,
+ * and used to mix the source color toward a tinted edge color.
  */
 const NormalEdgeShader = {
   name: 'NormalEdgeShader',
@@ -68,7 +54,11 @@ const NormalEdgeShader = {
     tDiffuse: { value: null as THREE.Texture | null },
     tNormal: { value: null as THREE.Texture | null },
     resolution: { value: new THREE.Vector2() },
-    strength: { value: 1.0 },
+    uNormalStrength: { value: 2.0 },
+    uDepthScale: { value: 14.0 },
+    uEdgeLow: { value: 0.15 },
+    uEdgeHigh: { value: 0.6 },
+    uEdgeColor: { value: new THREE.Color(0.18, 0.2, 0.24) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -81,14 +71,12 @@ const NormalEdgeShader = {
     uniform sampler2D tDiffuse;
     uniform sampler2D tNormal;
     uniform vec2 resolution;
-    uniform float strength;
+    uniform float uNormalStrength;
+    uniform float uDepthScale;
+    uniform float uEdgeLow;
+    uniform float uEdgeHigh;
+    uniform vec3 uEdgeColor;
     varying vec2 vUv;
-
-    // Squared magnitude of (a - b) — cheap proxy for vector difference.
-    float ndiff(vec3 a, vec3 b) {
-      vec3 d = a - b;
-      return dot(d, d);
-    }
 
     void main() {
       vec4 col = texture2D(tDiffuse, vUv);
@@ -100,36 +88,40 @@ const NormalEdgeShader = {
       vec4 sU = texture2D(tNormal, vUv + texel * vec2( 0.0,-1.0));
       vec4 sD = texture2D(tNormal, vUv + texel * vec2( 0.0, 1.0));
 
-      // Mask out background pixels (no geometry). MeshNormalMaterial
-      // writes alpha=1; the cleared target stays alpha=0. If any of the
-      // 5-tap samples is on background, we're at the silhouette of a
-      // far surface meeting the sky — drop the edge to avoid drawing
-      // the horizon line where the ground plane ends.
+      // Background pixels have alpha == 0 (cleared). Geometry has a small
+      // epsilon-biased linearDepth in alpha. If any of the 5 taps is
+      // background, skip — silhouette against the background gets handled
+      // by the normal-Sobel naturally without polluting the depth term.
       float aMin = min(min(min(min(sC.a, sL.a), sR.a), sU.a), sD.a);
-      if (aMin < 0.5) {
+      if (aMin < 0.001) {
         gl_FragColor = col;
         return;
       }
 
-      // Decode encoded normals (MeshNormalMaterial writes n*0.5+0.5).
-      // Compare neighbor pairs by their actual normal angle — squared
-      // chord length = 2 - 2*cos(angle). Threshold ~0.3 corresponds to
-      // ~32° which is typical Forge "hard edge" angle.
+      // Normal-discontinuity term (silhouettes & creases).
       vec3 nL = normalize(sL.rgb * 2.0 - 1.0);
       vec3 nR = normalize(sR.rgb * 2.0 - 1.0);
       vec3 nU = normalize(sU.rgb * 2.0 - 1.0);
       vec3 nD = normalize(sD.rgb * 2.0 - 1.0);
-
       float dx = 1.0 - dot(nL, nR);
       float dy = 1.0 - dot(nU, nD);
-      float g = (dx + dy) * strength;
+      float gN = (dx + dy) * uNormalStrength;
 
-      // Wider smoothstep band kills the stipple from coplanar-triangle
-      // normal noise (slab tessellation, etc.) while still catching real
-      // silhouettes / hard creases.
-      float edge = smoothstep(0.15, 0.6, g);
+      // Depth-discontinuity term, second-derivative style. A continuously
+      // tilted surface gives ~0 because dC = 0.5*(dL+dR); only true depth
+      // jumps (where dC departs from the neighbour midpoint) survive.
+      float dC = sC.a;
+      float gDx = abs(dC - 0.5 * (sL.a + sR.a));
+      float gDy = abs(dC - 0.5 * (sU.a + sD.a));
+      float gD = (gDx + gDy) * uDepthScale;
 
-      gl_FragColor = vec4(col.rgb * (1.0 - edge), col.a);
+      float g = max(gN, gD);
+      float edge = smoothstep(uEdgeLow, uEdgeHigh, g);
+
+      // Mix toward a tinted dark gray instead of pure darkening — keeps
+      // lines readable on bright surfaces and avoids the "muddy" look.
+      vec3 edgeRgb = mix(col.rgb * 0.15, uEdgeColor, 0.35);
+      gl_FragColor = vec4(mix(col.rgb, edgeRgb, edge), col.a);
     }
   `,
 };
@@ -148,67 +140,42 @@ export function effectsPlugin(
   let ctxRef: ViewerContext | null = null;
 
   let composer: EffectComposer | null = null;
-  let outlinePass: OutlinePass | null = null;
   let edgesPass: ShaderPass | null = null;
   let smaaPass: SMAAPass | null = null;
   let composerTarget: THREE.WebGLRenderTarget | null = null;
   let normalTarget: THREE.WebGLRenderTarget | null = null;
-  // Custom material that writes WORLD-space normals (instead of MeshNormalMaterial's
-  // view-space normals). View-space normals vary across a flat surface due to
-  // perspective, producing spurious dotted edges on large ground planes.
   let normalMaterial: THREE.ShaderMaterial | null = null;
-  let envTexture: THREE.Texture | null = null;
-  let pmremGen: THREE.PMREMGenerator | null = null;
 
   let isIdle = false;
 
-  const ghostedByModel = new Map<string, number[]>();
-
-  const ghostMaterial: FRAGS.MaterialDefinition = {
-    color: new THREE.Color(0xcccccc),
-    opacity: 0.15,
-    transparent: true,
-    renderedFaces: FRAGS.RenderedFaces.TWO,
-    customId: GHOST_CUSTOM_ID,
-  };
-
   const applyPassToggles = (): void => {
-    if (outlinePass) outlinePass.enabled = opts.enabled && opts.outline;
     if (edgesPass) edgesPass.enabled = opts.enabled && opts.edges;
   };
 
-  const applyEnvironment = (scene: THREE.Scene): void => {
-    if (opts.enabled && opts.environment) {
-      if (envTexture === null && pmremGen !== null) {
-        const env = new RoomEnvironment();
-        envTexture = pmremGen.fromScene(env, 0.04).texture;
-      }
-      scene.environment = envTexture;
-    } else {
-      scene.environment = null;
-    }
-  };
-
   const tuneQuality = (): void => {
+    if (!edgesPass) return;
     const q: EffectsQuality = opts.quality;
-    if (outlinePass) {
-      outlinePass.edgeThickness = q === 'high' ? 2 : 1;
-      outlinePass.edgeStrength = q === 'high' ? 5 : 3;
-      outlinePass.edgeGlow = 0.5;
-      outlinePass.visibleEdgeColor.set(0xff8a3d);
-      outlinePass.hiddenEdgeColor.set(0x4a2510);
-    }
-    if (edgesPass) {
-      const u = edgesPass.uniforms as { strength: { value: number } };
-      u.strength.value = q === 'high' ? 2.5 : q === 'low' ? 1.4 : 2.0;
-    }
+    // Tuple per preset: (normalStrength, depthScale, edgeLow, edgeHigh).
+    // Higher quality widens the smoothstep window and increases sensitivity
+    // to both normal and depth gradients, picking up more subtle edges.
+    const preset =
+      q === 'high'
+        ? { ns: 2.6, ds: 22.0, lo: 0.1, hi: 0.5 }
+        : q === 'low'
+          ? { ns: 1.4, ds: 8.0, lo: 0.2, hi: 0.7 }
+          : { ns: 2.0, ds: 14.0, lo: 0.15, hi: 0.6 };
+    const u = edgesPass.uniforms as {
+      uNormalStrength: { value: number };
+      uDepthScale: { value: number };
+      uEdgeLow: { value: number };
+      uEdgeHigh: { value: number };
+    };
+    u.uNormalStrength.value = preset.ns;
+    u.uDepthScale.value = preset.ds;
+    u.uEdgeLow.value = preset.lo;
+    u.uEdgeHigh.value = preset.hi;
   };
 
-  /**
-   * Render the scene with a MeshNormalMaterial override into the normal
-   * render target. Called inside our composer-render path so the normal
-   * buffer is fresh before NormalEdgePass samples it.
-   */
   const renderNormalBuffer = (): void => {
     if (!ctxRef || !normalTarget || !normalMaterial) return;
     const renderer = ctxRef.renderer;
@@ -221,9 +188,6 @@ export function effectsPlugin(
     renderer.getClearColor(prevClearColor);
     const prevClearAlpha = renderer.getClearAlpha();
 
-    // Hide the shadow-ground plane during the normal pass: it contributes
-    // nothing to silhouettes (it's just a flat shadow receiver) but its
-    // edge against the cleared background draws a spurious horizon line.
     const tempHidden: THREE.Object3D[] = [];
     scene.traverse((obj) => {
       if (obj.name === 'shadow-ground' && obj.visible) {
@@ -231,6 +195,16 @@ export function effectsPlugin(
         tempHidden.push(obj);
       }
     });
+
+    // Push current camera near/far so the normal material can compute a
+    // linearised depth into alpha. Both PerspectiveCamera and
+    // OrthographicCamera expose `near`/`far`.
+    const nu = normalMaterial.uniforms as {
+      uCameraNear: { value: number };
+      uCameraFar: { value: number };
+    };
+    nu.uCameraNear.value = camera.near;
+    nu.uCameraFar.value = camera.far;
 
     scene.overrideMaterial = normalMaterial;
     scene.background = null;
@@ -252,60 +226,12 @@ export function effectsPlugin(
       if (opts.edges) renderNormalBuffer();
       composer.render();
     } catch {
-      // Render targets may not be ready on first frame; the RAF loop
-      // (and subsequent idle ticks) will retry.
-    }
-  };
-
-  const collectSelectedObjects = (selection: ItemId[]): THREE.Object3D[] => {
-    if (!ctxRef) return [];
-    const modelIds = new Set(selection.map((s) => s.modelId));
-    if (modelIds.size === 0) return [];
-    const objs: THREE.Object3D[] = [];
-    for (const id of modelIds) {
-      const model = ctxRef.models().get(id);
-      if (model) objs.push(model.object);
-    }
-    return objs;
-  };
-
-  const repaintGhost = async (selection: ItemId[]): Promise<void> => {
-    if (!ctxRef) return;
-    const wantGhost = opts.enabled && opts.ghost === 'on-selection' && selection.length > 0;
-
-    for (const [modelId, ids] of ghostedByModel) {
-      const model = ctxRef.models().get(modelId);
-      if (model && ids.length > 0) {
-        await model.resetHighlight(ids).catch(() => undefined);
-      }
-    }
-    ghostedByModel.clear();
-
-    if (!wantGhost) return;
-
-    const selectedByModel = new Map<string, Set<number>>();
-    for (const it of selection) {
-      let set = selectedByModel.get(it.modelId);
-      if (!set) {
-        set = new Set();
-        selectedByModel.set(it.modelId, set);
-      }
-      set.add(it.localId);
-    }
-
-    for (const [modelId, model] of ctxRef.models()) {
-      const visible = await model.getItemsByVisibility(true).catch(() => [] as number[]);
-      const selectedIds = selectedByModel.get(modelId) ?? new Set<number>();
-      const ghostIds = visible.filter((id) => !selectedIds.has(id));
-      if (ghostIds.length === 0) continue;
-      await model.highlight(ghostIds, ghostMaterial).catch(() => undefined);
-      ghostedByModel.set(modelId, ghostIds);
+      // Render targets may not be ready on first frame.
     }
   };
 
   const api: Plugin & EffectsPluginAPI = {
     name: NAME,
-    dependencies: ['selection'],
 
     getOptions() {
       return { ...opts };
@@ -315,7 +241,6 @@ export function effectsPlugin(
       opts = { ...opts, ...next };
       applyPassToggles();
       tuneQuality();
-      if (ctxRef) applyEnvironment(ctxRef.scene);
       requestComposerFrame();
     },
 
@@ -326,42 +251,50 @@ export function effectsPlugin(
       const scene = ctx.scene;
       const camera = ctx.camera;
 
-      pmremGen = new THREE.PMREMGenerator(renderer);
-      pmremGen.compileEquirectangularShader();
-
       const size = renderer.getSize(new THREE.Vector2());
       const dpr = renderer.getPixelRatio();
       const w = Math.round(size.x * dpr);
       const h = Math.round(size.y * dpr);
 
-      // MSAA target so scene render going into the composer is already
-      // anti-aliased.
       composerTarget = new THREE.WebGLRenderTarget(w, h, {
         samples: 4,
         type: THREE.HalfFloatType,
       });
 
-      // Separate target for the normal buffer (also MSAA so edge detection
-      // sees smooth normal transitions).
+      // HalfFloat for the normal+depth target so the alpha channel can carry
+      // ~16-bit linearised depth (8-bit was too coarse for the depth-Sobel
+      // second-derivative term).
       normalTarget = new THREE.WebGLRenderTarget(w, h, {
         samples: 4,
+        type: THREE.HalfFloatType,
       });
 
       normalMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          uCameraNear: { value: 0.1 },
+          uCameraFar: { value: 1000.0 },
+        },
         vertexShader: /* glsl */ `
           varying vec3 vWorldNormal;
+          varying float vViewZ;
           void main() {
             vWorldNormal = normalize(mat3(modelMatrix) * normal);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            vViewZ = -mv.z;
+            gl_Position = projectionMatrix * mv;
           }
         `,
         fragmentShader: /* glsl */ `
+          uniform float uCameraNear;
+          uniform float uCameraFar;
           varying vec3 vWorldNormal;
+          varying float vViewZ;
           void main() {
-            // Encode (-1..1) → (0..1) so we can read back through an
-            // RGBA8 target. Alpha=1 marks "geometry here" so the edge
-            // pass can mask out empty background.
-            gl_FragColor = vec4(normalize(vWorldNormal) * 0.5 + 0.5, 1.0);
+            float linearDepth = (vViewZ - uCameraNear) / max(uCameraFar - uCameraNear, 1e-6);
+            // Bias into [0.005, 1.0] so geometry never has alpha == 0 (which
+            // is the "background" sentinel the edge shader checks for).
+            float depthA = clamp(linearDepth, 0.0, 1.0) * 0.995 + 0.005;
+            gl_FragColor = vec4(normalize(vWorldNormal) * 0.5 + 0.5, depthA);
           }
         `,
       });
@@ -381,9 +314,6 @@ export function effectsPlugin(
       eu.tNormal.value = normalTarget.texture;
       composer.addPass(edgesPass);
 
-      outlinePass = new OutlinePass(size, scene, camera);
-      composer.addPass(outlinePass);
-
       smaaPass = new SMAAPass();
       smaaPass.setSize(w, h);
       composer.addPass(smaaPass);
@@ -392,7 +322,6 @@ export function effectsPlugin(
 
       tuneQuality();
       applyPassToggles();
-      applyEnvironment(scene);
 
       const onCamChange = (): void => {
         isIdle = false;
@@ -401,34 +330,10 @@ export function effectsPlugin(
         isIdle = true;
         requestComposerFrame();
       };
-      const onSelectionChange = (e: { selected: ItemId[] }): void => {
-        if (outlinePass) {
-          outlinePass.selectedObjects = opts.enabled && opts.outline
-            ? collectSelectedObjects(e.selected)
-            : [];
-        }
-        void repaintGhost(e.selected).then(() => {
-          requestComposerFrame();
-        });
-      };
-      const onModelLoaded = (): void => {
-        const sel = ctx.plugins.get<SelectionPluginAPI>('selection');
-        if (outlinePass && sel) {
-          outlinePass.selectedObjects = opts.enabled && opts.outline
-            ? collectSelectedObjects(sel.list())
-            : [];
-        }
-        requestComposerFrame();
-      };
 
       const offCam = ctx.events.on('camera:change', onCamChange);
       const offIdle = ctx.events.on('viewer:idle', onIdle);
-      const offSel = ctx.events.on('selection:change', onSelectionChange);
-      const offModel = ctx.events.on('model:loaded', onModelLoaded);
 
-      // Composer drives every frame *while idle* — the base SimpleRenderer
-      // keeps painting cheap frames in between, which would otherwise
-      // erase our composer output 16ms later.
       let raf = 0;
       const loop = (): void => {
         raf = requestAnimationFrame(loop);
@@ -437,7 +342,7 @@ export function effectsPlugin(
           if (opts.edges) renderNormalBuffer();
           composer.render();
         } catch {
-          // ignore — see requestComposerFrame
+          // ignore
         }
       };
       raf = requestAnimationFrame(loop);
@@ -450,7 +355,6 @@ export function effectsPlugin(
         const nh = Math.round(s.y * r);
         composer.setSize(s.x, s.y);
         composer.setPixelRatio(r);
-        if (outlinePass) outlinePass.setSize(s.x, s.y);
         if (smaaPass) smaaPass.setSize(nw, nh);
         if (normalTarget) normalTarget.setSize(nw, nh);
         if (edgesPass) {
@@ -467,26 +371,12 @@ export function effectsPlugin(
         cancelAnimationFrame(raf);
         offCam();
         offIdle();
-        offSel();
-        offModel();
         ro.disconnect();
-
-        for (const [modelId, ids] of ghostedByModel) {
-          const model = ctxRef?.models().get(modelId);
-          if (model && ids.length > 0) {
-            void model.resetHighlight(ids).catch(() => undefined);
-          }
-        }
-        ghostedByModel.clear();
-
-        if (ctxRef) ctxRef.scene.environment = null;
 
         composer?.dispose();
         composer = null;
-        outlinePass?.dispose?.();
         edgesPass?.dispose?.();
         smaaPass?.dispose?.();
-        outlinePass = null;
         edgesPass = null;
         smaaPass = null;
         composerTarget?.dispose();
@@ -495,10 +385,6 @@ export function effectsPlugin(
         normalTarget = null;
         normalMaterial?.dispose();
         normalMaterial = null;
-        envTexture?.dispose();
-        envTexture = null;
-        pmremGen?.dispose();
-        pmremGen = null;
       };
 
       ctx.commands.register(
@@ -527,4 +413,4 @@ export function effectsPlugin(
   return api;
 }
 
-export type { EffectsOptions, EffectsQuality, GhostMode } from './types.js';
+export type { EffectsOptions, EffectsQuality } from './types.js';

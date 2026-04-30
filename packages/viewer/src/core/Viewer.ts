@@ -26,11 +26,8 @@ import type { Plugin, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, SimpleCamera, SimpleRenderer>;
 
-export type ShadowQuality = 'low' | 'medium' | 'high';
-
 export interface ShadowOptions {
   enabled?: boolean;
-  quality?: ShadowQuality;
 }
 
 export interface BackgroundOptions {
@@ -71,14 +68,8 @@ export interface ViewerOptions {
   controls?: ControlsOptions;
 }
 
-const SHADOW_MAP_SIZE: Record<ShadowQuality, number> = {
-  low: 1024,
-  medium: 2048,
-  high: 4096,
-};
-
-/** Camera idle window after which the shadow map is refreshed. */
-const SHADOW_IDLE_MS = 150;
+/** Camera idle window after which the `viewer:idle` event fires. */
+const IDLE_MS = 150;
 
 export class Viewer {
   readonly events = new EventBus<ViewerEvents>();
@@ -192,7 +183,14 @@ export class Viewer {
         position: { x: pos.x, y: pos.y, z: pos.z },
         target: { x: target.x, y: target.y, z: target.z },
       });
-      this.scheduleShadowRefresh();
+      // Reset the idle countdown — fires `viewer:idle` once the camera
+      // has been still for IDLE_MS so plugins (effects composer) can
+      // run their expensive frame.
+      if (this.idleTimer !== null) clearTimeout(this.idleTimer);
+      this.idleTimer = setTimeout(() => {
+        this.idleTimer = null;
+        this.events.emit('viewer:idle', undefined);
+      }, IDLE_MS);
     };
     camControls.addEventListener('update', onCamChange);
     this.cameraChangeUnsub = () => {
@@ -223,23 +221,11 @@ export class Viewer {
     const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
     sceneThree.add(model.object);
 
-    // Every mesh in the loaded fragment should both cast and receive
-    // shadows so the contact-shadow pass under the model is meaningful.
-    if (this.shadowsEnabled) {
-      model.object.traverse((obj) => {
-        if ((obj as THREE.Mesh).isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        }
-      });
-    }
-
     await this.frameModel(model);
-    // After framing, fit lights/ground to the model so the shadow camera
-    // wraps the bbox tightly (large frustums waste shadow-map resolution).
+    // Position sun + size the blob shadow plane to the model's footprint.
     this.fitLightsToModel(model);
-    // Force one fresh shadow render now that geometry exists.
-    this.requestShadowRender();
+    // Trigger an immediate idle frame so post-processing kicks in.
+    this.events.emit('viewer:idle', undefined);
 
     this.events.emit('model:loaded', { modelId });
     return modelId;
@@ -326,27 +312,20 @@ export class Viewer {
     sceneThree.background = new THREE.Color(color);
     const renderer = world.renderer!.three;
     renderer.setClearColor(color, 1);
+    // Force sRGB output so direct canvas renders match the post-processing
+    // composer's OutputPass (which does linear → sRGB conversion). Without
+    // this, our custom ShaderMaterial-based shadow plane writes linear color
+    // values straight to the canvas — alpha blending then happens in linear
+    // space and the shadow renders noticeably darker during camera motion
+    // (when only the base SimpleRenderer is drawing) than when idle (when
+    // the composer takes over).
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
   }
 
   private applyLightingAndShadows(world: World): void {
     const opts = this.options.shadows ?? {};
     this.shadowsEnabled = opts.enabled ?? true;
-    const quality: ShadowQuality = opts.quality ?? 'medium';
-    const renderer = world.renderer!.three;
     const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
-
-    if (this.shadowsEnabled) {
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type =
-        quality === 'high' ? THREE.VSMShadowMap : THREE.PCFSoftShadowMap;
-      // Shadow map only refreshes when we explicitly flag it dirty — the
-      // idle-render loop drives this. Cheap moving frames, full-quality
-      // shadows once motion stops.
-      renderer.shadowMap.autoUpdate = false;
-      renderer.shadowMap.needsUpdate = true;
-    } else {
-      renderer.shadowMap.enabled = false;
-    }
 
     // Forge-style neutral studio lighting: a hemisphere ambient + a soft
     // directional sun. SimpleScene.setup() may have already added its own
@@ -361,35 +340,55 @@ export class Viewer {
     const sun = new THREE.DirectionalLight(0xffffff, 1.0);
     sun.position.set(50, 100, 50);
     sun.target.position.set(0, 0, 0);
-    sun.castShadow = this.shadowsEnabled;
-    if (this.shadowsEnabled) {
-      const mapSize = SHADOW_MAP_SIZE[quality];
-      sun.shadow.mapSize.set(mapSize, mapSize);
-      // Generous default — fitLightsToModel tightens this once geometry loads.
-      sun.shadow.camera.near = 0.5;
-      sun.shadow.camera.far = 500;
-      sun.shadow.camera.left = -100;
-      sun.shadow.camera.right = 100;
-      sun.shadow.camera.top = 100;
-      sun.shadow.camera.bottom = -100;
-      sun.shadow.bias = -0.0005;
-      sun.shadow.normalBias = 0.02;
-    }
     sceneThree.add(sun);
     sceneThree.add(sun.target);
     this.sun = sun;
 
-    // Ground plane that only receives shadows (transparent material).
-    // Sized large up-front; repositioned per-model in fitLightsToModel.
+    // Custom-shader "blob shadow" ground plane. A soft elliptical dark
+    // gradient below the model — always visible, no shadow-map cost,
+    // no dependence on streamed/LOD mesh castShadow flags.
+    //
+    // Layout (in plane-local UV space, 0..1):
+    //   r=0..coreRadius          → full shadow opacity
+    //   r=coreRadius..1          → smooth falloff to transparent
     if (this.shadowsEnabled) {
-      const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(1, 1),
-        new THREE.ShadowMaterial({ opacity: 0.25 }),
-      );
+      const groundMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          color: { value: new THREE.Color(0x000000) },
+          opacity: { value: 0.6 },
+          coreRadius: { value: 0.35 },
+        },
+        vertexShader: /* glsl */ `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          uniform vec3 color;
+          uniform float opacity;
+          uniform float coreRadius;
+          varying vec2 vUv;
+          void main() {
+            // Distance from center, normalized to 0..1 at plane edge.
+            vec2 d = vUv - 0.5;
+            float r = length(d) * 2.0;
+            // Full opacity inside coreRadius, smooth falloff outside.
+            float a = 1.0 - smoothstep(coreRadius, 1.0, r);
+            // Soften the falloff curve — squared gives a more natural,
+            // photographic shadow gradient.
+            a = a * a;
+            gl_FragColor = vec4(color, a * opacity);
+          }
+        `,
+      });
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), groundMat);
       ground.rotation.x = -Math.PI / 2;
-      ground.receiveShadow = true;
       ground.name = 'shadow-ground';
-      // Push ground rendering before opaque so shadow doesn't z-fight.
+      // Render before opaque geometry so the model itself draws over us.
       ground.renderOrder = -1;
       sceneThree.add(ground);
       this.shadowGround = ground;
@@ -397,9 +396,9 @@ export class Viewer {
   }
 
   /**
-   * Fit the directional light's shadow camera tightly to the model's
-   * bbox, and place the ground plane just under it. Tight frustum =
-   * sharper, less-wasted shadow texels.
+   * Position the sun and the blob-shadow plane based on the model's bbox.
+   * The blob plane is sized to roughly 2.5× the model footprint so the
+   * gradient extends well beyond the model's edges.
    */
   private fitLightsToModel(model: FRAGS.FragmentsModel): void {
     const sun = this.sun;
@@ -419,51 +418,20 @@ export class Viewer {
     sun.target.position.copy(center);
     sun.target.updateMatrixWorld();
 
-    if (this.shadowsEnabled) {
-      const half = maxDim * 1.2;
-      sun.shadow.camera.left = -half;
-      sun.shadow.camera.right = half;
-      sun.shadow.camera.top = half;
-      sun.shadow.camera.bottom = -half;
-      sun.shadow.camera.near = Math.max(maxDim * 0.1, 0.1);
-      sun.shadow.camera.far = maxDim * 8;
-      sun.shadow.camera.updateProjectionMatrix();
-    }
-
     const ground = this.shadowGround;
     if (ground !== null) {
-      const planeSize = maxDim * 6;
-      ground.scale.set(planeSize, planeSize, 1);
+      // Size the plane to match the model's XZ footprint independently,
+      // so the elliptical gradient stretches to fit a rectangular model.
+      // Pad by 3× so the soft falloff has plenty of room to fade out.
+      const padX = Math.max(size.x, 1) * 3.0;
+      const padZ = Math.max(size.z, 1) * 3.0;
+      // Plane is XY before rotation; after rotation -π/2 around X,
+      // local-X maps to world-X and local-Y maps to world-Z. So scale.x
+      // controls world-X span and scale.y controls world-Z span.
+      ground.scale.set(padX, padZ, 1);
       ground.position.set(center.x, box.min.y - maxDim * 0.001, center.z);
       ground.updateMatrixWorld();
     }
-  }
-
-  /**
-   * Request a fresh shadow-map render on the next frame. Called by the
-   * idle timer (after camera stops) and once after each model load.
-   */
-  private requestShadowRender(): void {
-    if (!this.shadowsEnabled) return;
-    const renderer = this.world?.renderer?.three;
-    if (!renderer) return;
-    renderer.shadowMap.needsUpdate = true;
-    this.events.emit('viewer:idle', undefined);
-  }
-
-  /**
-   * Reset the idle countdown — called on every camera change. When the
-   * camera has been still for SHADOW_IDLE_MS the shadow map is refreshed
-   * exactly once. This is the "last frame" balance: zero shadow cost
-   * during motion, full-quality shadow on the first idle frame.
-   */
-  private scheduleShadowRefresh(): void {
-    if (!this.shadowsEnabled) return;
-    if (this.idleTimer !== null) clearTimeout(this.idleTimer);
-    this.idleTimer = setTimeout(() => {
-      this.idleTimer = null;
-      this.requestShadowRender();
-    }, SHADOW_IDLE_MS);
   }
 
   async registerPlugin(plugin: Plugin): Promise<void> {

@@ -18,8 +18,6 @@ import {
   saveViewerSettings,
   type CameraAction,
   type EffectsQuality,
-  type GhostMode,
-  type ShadowQuality,
   type ViewerSettings,
 } from '@/lib/viewerSettings';
 
@@ -30,9 +28,7 @@ const VIEWCUBE_CORNERS: ViewerSettings['viewCube']['corner'][] = [
   'bottom-left',
 ];
 
-const SHADOW_QUALITIES: ShadowQuality[] = ['low', 'medium', 'high'];
 const EFFECTS_QUALITIES: EffectsQuality[] = ['low', 'medium', 'high'];
-const GHOST_MODES: GhostMode[] = ['off', 'on-selection'];
 
 const CAMERA_ACTIONS: { value: CameraAction; label: string }[] = [
   { value: 'rotate', label: 'Rotate (orbit)' },
@@ -493,27 +489,6 @@ export function ViewerSettingsPopover({
               });
             }}
           />
-          <Field label="Quality">
-            <select
-              className={SELECT_CLS}
-              value={settings.shadows.quality}
-              onChange={(e) => {
-                update({
-                  ...settings,
-                  shadows: {
-                    ...settings.shadows,
-                    quality: e.target.value as ShadowQuality,
-                  },
-                });
-              }}
-            >
-              {SHADOW_QUALITIES.map((q) => (
-                <option key={q} value={q}>
-                  {q}
-                </option>
-              ))}
-            </select>
-          </Field>
         </Section>
 
         <Section title="Visual effects" note="Applies on next viewer reload">
@@ -537,57 +512,6 @@ export function ViewerSettingsPopover({
               });
             }}
           />
-          <Toggle
-            label="SSAO (ambient occlusion)"
-            checked={settings.effects.ssao}
-            onChange={(ssao) => {
-              update({
-                ...settings,
-                effects: { ...settings.effects, ssao },
-              });
-            }}
-          />
-          <Toggle
-            label="Selection outline glow"
-            checked={settings.effects.outline}
-            onChange={(outline) => {
-              update({
-                ...settings,
-                effects: { ...settings.effects, outline },
-              });
-            }}
-          />
-          <Toggle
-            label="PBR environment"
-            checked={settings.effects.environment}
-            onChange={(environment) => {
-              update({
-                ...settings,
-                effects: { ...settings.effects, environment },
-              });
-            }}
-          />
-          <Field label="Ghost mode">
-            <select
-              className={SELECT_CLS}
-              value={settings.effects.ghost}
-              onChange={(e) => {
-                update({
-                  ...settings,
-                  effects: {
-                    ...settings.effects,
-                    ghost: e.target.value as GhostMode,
-                  },
-                });
-              }}
-            >
-              {GHOST_MODES.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-          </Field>
           <Field label="Quality">
             <select
               className={SELECT_CLS}
