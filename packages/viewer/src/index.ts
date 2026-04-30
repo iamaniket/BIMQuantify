@@ -23,6 +23,7 @@ export type {
   EffectsOptions,
   EffectsQuality,
   GhostMode,
+  PivotRotateOptions,
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
@@ -43,3 +44,4 @@ export {
 } from './plugins/mouse-bindings/index.js';
 export { viewCubePlugin } from './plugins/viewcube/index.js';
 export { effectsPlugin } from './plugins/effects/index.js';
+export { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';

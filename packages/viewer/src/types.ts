@@ -14,6 +14,7 @@ import type {
 } from './core/types.js';
 import type { CameraAction, ControlsOptions } from './core/Viewer.js';
 import type { EffectsOptions } from './plugins/effects/types.js';
+import type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 
 export type ViewerBundle = {
   fragmentsUrl: string;
@@ -90,10 +91,17 @@ export type IfcViewerProps = {
   shadows?: ShadowOptions;
   /** Forge-style post-processing (edges / SSAO / outline / ghost / PBR env). */
   effects?: EffectsOptions;
+  /**
+   * Forge-style orbit-around-cursor. Pass `false` to disable, an options
+   * object to tune. Defaults are sensible — most consumers can omit this.
+   */
+  pivotRotate?: PivotRotateOptions | false;
   ref?: Ref<ViewerHandle>;
 };
 
 export type { EffectsOptions, EffectsQuality, GhostMode } from './plugins/effects/types.js';
+
+export type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 
 export type { CameraAction, ControlsOptions } from './core/Viewer.js';
 

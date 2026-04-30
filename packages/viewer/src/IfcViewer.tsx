@@ -16,6 +16,7 @@ import { effectsPlugin } from './plugins/effects/index.js';
 import { hoverHighlightPlugin } from './plugins/hover-highlight/index.js';
 import { keyboardShortcutsPlugin } from './plugins/keyboard-shortcuts/index.js';
 import { mouseBindingsPlugin } from './plugins/mouse-bindings/index.js';
+import { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
 import { selectionPlugin } from './plugins/selection/index.js';
 import { viewCubePlugin } from './plugins/viewcube/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
@@ -95,6 +96,9 @@ function IfcViewerImpl(
             }),
           ]
         : []),
+      ...(props.pivotRotate === false
+        ? []
+        : [pivotRotatePlugin(props.pivotRotate ?? {})]),
       effectsPlugin(props.effects ?? {}),
     ];
 
