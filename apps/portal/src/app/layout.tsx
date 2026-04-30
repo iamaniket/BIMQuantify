@@ -24,9 +24,11 @@ export default function RootLayout({ children }: Props): JSX.Element {
         <ThemeProvider>
           <QueryProvider>
             <AuthProvider>
-              <div className="flex min-h-screen flex-col">
+              <div className="flex h-screen flex-col">
                 <Header />
-                <div className="flex-1">{children}</div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                  {children}
+                </div>
               </div>
             </AuthProvider>
           </QueryProvider>

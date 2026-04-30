@@ -4,14 +4,26 @@ import { ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, type JSX } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type JSX,
+} from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
-import type { ViewerBundle } from '@bimstitch/viewer';
+import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
+
+import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import type { ViewerBundleResponse } from '@/lib/api/schemas';
+import {
+  DEFAULT_VIEWER_SETTINGS,
+  loadViewerSettings,
+  type ViewerSettings,
+} from '@/lib/viewerSettings';
 import { useAuth } from '@/providers/AuthProvider';
 
 // next/dynamic with ssr:false because @bimstitch/viewer pulls in three.js
@@ -37,6 +49,19 @@ export default function ViewerPage(): JSX.Element {
   const [bundle, setBundle] = useState<ViewerBundleResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewerError, setViewerError] = useState<string | null>(null);
+  const viewerHandleRef = useRef<ViewerHandle | null>(null);
+  const [viewerReady, setViewerReady] = useState(false);
+  const [selectionCount, setSelectionCount] = useState(0);
+  // Viewer settings live in localStorage. We seed with defaults on the
+  // server render; once mounted, we hydrate from storage in an effect to
+  // avoid SSR/CSR mismatches.
+  const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
+  // Bumping this remounts <IfcViewer> so init-only options take effect.
+  const [viewerEpoch, setViewerEpoch] = useState(0);
+
+  useEffect(() => {
+    setSettings(loadViewerSettings());
+  }, []);
 
   useEffect(() => {
     if (hasHydrated && tokens === null) {
@@ -89,17 +114,56 @@ export default function ViewerPage(): JSX.Element {
     body = <Skeleton className="absolute inset-0" />;
   } else {
     body = (
-      <IfcViewer
-        bundle={buildBundle(bundle)}
-        onError={(err) => {
-          setViewerError(err.message);
-        }}
-      />
+      <>
+        <IfcViewer
+          key={viewerEpoch}
+          ref={viewerHandleRef}
+          bundle={buildBundle(bundle)}
+          viewCube={{
+            enabled: settings.viewCube.enabled,
+            corner: settings.viewCube.corner,
+          }}
+          shadows={{
+            enabled: settings.shadows.enabled,
+            quality: settings.shadows.quality,
+          }}
+          background={{ color: settings.background.color }}
+          effects={settings.effects}
+          shortcuts={settings.shortcuts}
+          onReady={(handle) => {
+            viewerHandleRef.current = handle;
+            setViewerReady(true);
+            const off = handle.events.on('selection:change', (payload) => {
+              setSelectionCount(payload.selected.length);
+            });
+            // Stash the unsubscribe on a closure for unmount; the page is
+            // a single mount per file, so leaking on tab switch is fine
+            // (the viewer disposes events on unmount anyway).
+            return off;
+          }}
+          onError={(err) => {
+            setViewerError(err.message);
+          }}
+        />
+        {viewerReady ? (
+          <ViewerToolbar
+            handle={viewerHandleRef.current}
+            selectionCount={selectionCount}
+            settings={settings}
+            onSettingsChange={setSettings}
+            onReloadViewer={() => {
+              setViewerReady(false);
+              setSelectionCount(0);
+              setViewerEpoch((n) => n + 1);
+            }}
+          />
+        ) : null}
+      </>
     );
   }
 
   return (
-    <main className="flex h-screen w-full flex-col">
+    <main className="flex min-h-0 w-full flex-1 flex-col">
       <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
         <Link
           href={`/projects/${projectId}`}
@@ -113,7 +177,7 @@ export default function ViewerPage(): JSX.Element {
         ) : null}
       </div>
 
-      <div className="relative flex-1">{body}</div>
+      <div className="relative min-h-0 flex-1">{body}</div>
     </main>
   );
 }

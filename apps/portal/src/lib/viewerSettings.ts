@@ -1,0 +1,87 @@
+import type {
+  EffectsOptions,
+  EffectsQuality,
+  GhostMode,
+  ShortcutMap,
+  ViewCubeCorner,
+} from '@bimstitch/viewer';
+
+const STORAGE_KEY = 'bimstitch.viewerSettings.v2';
+
+export type ShadowQuality = 'low' | 'medium' | 'high';
+
+export type EffectsSettings = Required<EffectsOptions>;
+
+export type ViewerSettings = {
+  viewCube: { enabled: boolean; corner: ViewCubeCorner };
+  shadows: { enabled: boolean; quality: ShadowQuality };
+  background: { color: number };
+  effects: EffectsSettings;
+  /** command name → key combo. Matches `IfcViewerProps.shortcuts`. */
+  shortcuts: ShortcutMap;
+};
+
+export const DEFAULT_EFFECTS: EffectsSettings = {
+  enabled: true,
+  edges: true,
+  // SSAO is API-stable but not yet wired (the base renderer enables
+  // logarithmicDepthBuffer for BIM z-fighting, which the built-in
+  // SAO/SSAO passes don't support — needs a depth-aware AO replacement).
+  ssao: false,
+  outline: true,
+  ghost: 'on-selection',
+  environment: true,
+  quality: 'medium',
+};
+
+export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
+  viewCube: { enabled: true, corner: 'top-right' },
+  shadows: { enabled: true, quality: 'medium' },
+  background: { color: 0xffffff },
+  effects: DEFAULT_EFFECTS,
+  shortcuts: {},
+};
+
+function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
+  const d = DEFAULT_VIEWER_SETTINGS;
+  return {
+    viewCube: p.viewCube ?? d.viewCube,
+    shadows: p.shadows ?? d.shadows,
+    background: p.background ?? d.background,
+    effects: { ...d.effects, ...(p.effects ?? {}) },
+    shortcuts: p.shortcuts ?? d.shortcuts,
+  };
+}
+
+export function loadViewerSettings(): ViewerSettings {
+  if (typeof window === 'undefined') return DEFAULT_VIEWER_SETTINGS;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return DEFAULT_VIEWER_SETTINGS;
+    const parsed = JSON.parse(raw) as Partial<ViewerSettings>;
+    return mergeWithDefaults(parsed);
+  } catch {
+    return DEFAULT_VIEWER_SETTINGS;
+  }
+}
+
+export function saveViewerSettings(settings: ViewerSettings): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // localStorage can throw (quota, private mode); silently ignore.
+  }
+}
+
+export function colorToHex(c: number): string {
+  return `#${c.toString(16).padStart(6, '0')}`;
+}
+
+export function hexToColor(hex: string): number {
+  const cleaned = hex.startsWith('#') ? hex.slice(1) : hex;
+  const n = Number.parseInt(cleaned, 16);
+  return Number.isFinite(n) ? n : 0xffffff;
+}
+
+export type { EffectsQuality, GhostMode };

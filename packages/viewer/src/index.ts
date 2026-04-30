@@ -5,4 +5,34 @@ export {
   getWorkerUrl,
   setWorkerUrl,
 } from './wasm.js';
-export type { IfcViewerProps, ViewerBundle } from './types.js';
+export type {
+  IfcViewerProps,
+  ViewerBundle,
+  ViewerHandle,
+  ViewCubeCorner,
+  ViewCubeOptions,
+  Plugin,
+  ViewerContext,
+  ViewerEvents,
+  ItemId,
+  Vec3,
+  ShortcutMap,
+  EffectsOptions,
+  EffectsQuality,
+  GhostMode,
+} from './types.js';
+
+// Lower-level building blocks for users writing custom plugins.
+export { EventBus } from './core/EventBus.js';
+export { CommandRegistry, CommandNotFoundError } from './core/CommandRegistry.js';
+export type { CommandHandler, CommandMeta } from './core/CommandRegistry.js';
+
+// Built-in plugin factories — re-exported so consumers can disable a
+// built-in (by passing `viewCube: { enabled: false }`) and re-add it
+// elsewhere, or compose them with custom ones.
+export { cameraPlugin } from './plugins/camera/index.js';
+export { hoverHighlightPlugin } from './plugins/hover-highlight/index.js';
+export { selectionPlugin } from './plugins/selection/index.js';
+export { keyboardShortcutsPlugin } from './plugins/keyboard-shortcuts/index.js';
+export { viewCubePlugin } from './plugins/viewcube/index.js';
+export { effectsPlugin } from './plugins/effects/index.js';
