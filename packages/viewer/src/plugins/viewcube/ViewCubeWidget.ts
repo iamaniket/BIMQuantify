@@ -45,14 +45,18 @@ export interface ViewCubeWidgetOptions {
   onHome: () => void;
 }
 
-const FACE_COLOR = 0xfbfcfd;
+const FACE_COLOR = 0xffffff;
 const EDGE_COLOR = 0xeef0f4;
 const CORNER_COLOR = 0xe4e7ed;
 const HOVER_COLOR = 0x6cb4ff;
+// Face plane is inset *inside* the cube face: 0.45 means the labeled
+// plane covers 90% of the cube's face (a ~5% margin on each side).
+// Anything ≥ 0.5 makes the plane bigger than the cube and the overflow
+// renders as a visible shelf at view angles.
 const HIGHLIGHT_COLOR = 0xcfe4ff;
 
 const CUBE_SIZE = 1.4;
-const FACE_INSET = CUBE_SIZE * 0.62;
+const FACE_INSET = CUBE_SIZE * 0.45;
 const EDGE_THICKNESS = CUBE_SIZE * 0.18;
 const CORNER_SIZE = CUBE_SIZE * 0.22;
 
@@ -254,11 +258,14 @@ export class ViewCubeWidget {
     tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const mat = new THREE.MeshBasicMaterial({
       map: tex,
-      color: FACE_COLOR,
-      transparent: false,
+      color: 0xffffff,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     });
     const mesh = new THREE.Mesh(geom, mat);
-    const half = CUBE_SIZE / 2 + 0.001;
+    mesh.renderOrder = 1;
+    const half = CUBE_SIZE / 2 + 0.01;
     const v = new THREE.Vector3(...dir);
     mesh.position.copy(v).multiplyScalar(half);
     if (dir[0] !== 0) {
@@ -446,9 +453,11 @@ export class ViewCubeWidget {
     btn.setAttribute('role', 'button');
     btn.setAttribute('aria-label', direction === -1 ? 'Rotate left' : 'Rotate right');
     btn.setAttribute('title', direction === -1 ? 'Rotate left 90°' : 'Rotate right 90°');
-    // Curved arrow icon — flipped horizontally for the "right" variant.
-    const flip = direction === 1 ? ' transform="scale(-1,1) translate(-24,0)"' : '';
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${flip}><path d="M3 12a9 9 0 0 1 15.5-6.3"/><polyline points="19 3 19 8 14 8"/></svg>`;
+    // Curved arrow icon — flipped via inner <g> for the "right" variant.
+    const inner = direction === 1
+      ? '<g transform="scale(-1,1) translate(-24,0)"><path d="M3 12a9 9 0 0 1 15.5-6.3"/><polyline points="19 3 19 8 14 8"/></g>'
+      : '<path d="M3 12a9 9 0 0 1 15.5-6.3"/><polyline points="19 3 19 8 14 8"/>';
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
     const ringY = this.options.size * 0.78;
     const offsetX = direction === -1 ? 4 : this.options.size - 4 - 22;
     Object.assign(btn.style, {
@@ -507,27 +516,11 @@ export class ViewCubeWidget {
 
   // ─── orientation sync helpers ────────────────────────────────────
 
-  private updateHighlight(viewDir: THREE.Vector3): void {
-    let best: RegionMesh | null = null;
-    let bestDot = -Infinity;
-    for (const r of this.regionMeshes) {
-      const dot = r.region.direction.dot(viewDir);
-      if (dot > bestDot) {
-        bestDot = dot;
-        best = r;
-      }
-    }
-    // Only highlight if the alignment is reasonably close (small angular error).
-    if (bestDot < 0.985) best = null;
-    if (best === this.currentHighlight) return;
+  private updateHighlight(_viewDir: THREE.Vector3): void {
     if (this.currentHighlight) {
       this.currentHighlight.highlighted = false;
       this.applyRegionColor(this.currentHighlight);
-    }
-    this.currentHighlight = best;
-    if (best) {
-      best.highlighted = true;
-      this.applyRegionColor(best);
+      this.currentHighlight = null;
     }
   }
 
@@ -649,7 +642,10 @@ export class ViewCubeWidget {
       if (wasClick) {
         this.setPointerNdc(ev);
         const hit = this.pickRegion();
-        if (hit) this.options.onPick(hit.region);
+        if (hit) {
+          this.setHovered(null);
+          this.options.onPick(hit.region);
+        }
       }
     }
   };
@@ -722,7 +718,7 @@ export class ViewCubeWidget {
     s.height = `${String(this.options.size)}px`;
     s.pointerEvents = 'none';
     s.zIndex = '10';
-    s.filter = 'drop-shadow(0 4px 12px rgba(0,0,0,0.18))';
+    s.filter = 'drop-shadow(0 8px 20px rgba(0,0,0,0.35))';
     s.userSelect = 'none';
     s.top = s.bottom = s.left = s.right = '';
     const pad = '12px';
@@ -766,10 +762,9 @@ function makeFaceTexture(label: string): THREE.CanvasTexture {
   cv.width = size;
   cv.height = size;
   const ctx = cv.getContext('2d')!;
-  // Rounded-rect background gives a softer "chamfered" look without
-  // needing RoundedBoxGeometry on the cube body.
+  ctx.fillStyle = '#e4e8ee';
+  ctx.fillRect(0, 0, size, size);
   const r = 36;
-  ctx.fillStyle = '#fbfcfd';
   roundedRect(ctx, 6, 6, size - 12, size - 12, r);
   ctx.fill();
   ctx.fillStyle = '#1f2937';

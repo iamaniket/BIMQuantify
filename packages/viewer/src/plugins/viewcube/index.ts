@@ -33,7 +33,7 @@ export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
       widget = new ViewCubeWidget({
         size: options.size ?? 160,
         corner: options.corner ?? 'top-right',
-        showCompass: options.showCompass ?? true,
+        showCompass: options.showCompass ?? false,
         showSnapArrows: options.showSnapArrows ?? true,
         showHomeButton: options.showHomeButton ?? true,
         onPick: (region) => {
@@ -55,7 +55,7 @@ export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
         onSnapRotate: (dir) => {
           void ctx.commands
             .execute('camera.orbit.delta', {
-              deltaAzimuth: dir * (Math.PI / 2),
+              deltaAzimuth: -dir * (Math.PI / 2),
               deltaPolar: 0,
               animate: true,
             })

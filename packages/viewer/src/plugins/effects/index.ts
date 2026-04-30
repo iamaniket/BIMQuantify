@@ -23,10 +23,10 @@
  * nothing.
  *
  * Notes:
- *   - The base renderer enables `logarithmicDepthBuffer` (eliminates BIM
- *     z-fighting). Three.js' built-in SAOPass / SSAOPass don't support
- *     log depth, so the `ssao` option is API-stable but not yet wired.
- *     Adding GTAOPass (which handles log depth) is a follow-up.
+ *   - BIM z-fighting is handled by per-material polygonOffset (set up in
+ *     the core Viewer); the renderer uses linear depth so polygonOffset
+ *     and SSAO/SAO post-passes work correctly. SSAOPass remains API-stable
+ *     but unwired pending tuning.
  */
 
 import * as THREE from 'three';

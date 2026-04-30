@@ -107,12 +107,15 @@ export class Viewer {
     const world = worlds.create<SimpleScene, SimpleCamera, SimpleRenderer>();
 
     world.scene = new SimpleScene(components);
-    // logarithmicDepthBuffer is constructor-only on WebGLRenderer; enabling
-    // it eliminates z-fighting on coplanar BIM geometry (slabs/floors,
-    // wall/glazing) that depth-range tuning alone cannot fully resolve.
+    // Z-fighting on coplanar BIM geometry (slab/wall, glazing/frame) is
+    // handled by per-material polygonOffset wired up below — NOT by
+    // logarithmicDepthBuffer. The two conflict: log depth writes
+    // gl_FragDepth in the fragment shader, which runs after the rasterizer
+    // state polygonOffset operates on, so the offset is silently ignored.
+    // Linear depth + tight near/far (frameModel) + polygonOffset is the
+    // ThatOpen-recommended combo and preserves early-Z performance.
     world.renderer = new SimpleRenderer(components, container, {
       antialias: true,
-      logarithmicDepthBuffer: true,
     });
     world.camera = new SimpleCamera(components);
     world.scene.setup();
@@ -125,6 +128,17 @@ export class Viewer {
     this.applyLightingAndShadows(world);
 
     const fragmentsModels = new FRAGS.FragmentsModels(getWorkerUrl());
+
+    // Give every non-LOD material a unique polygon offset so coplanar BIM
+    // surfaces (slab-on-wall, glazing-on-frame) resolve deterministically
+    // instead of z-fighting.
+    fragmentsModels.models.materials.list.onItemSet.add(({ value: material }) => {
+      if ('isLodMaterial' in material && material.isLodMaterial) return;
+      material.polygonOffset = true;
+      material.polygonOffsetUnits = 1;
+      material.polygonOffsetFactor = Math.random();
+    });
+
     // FragmentsModels streams tile data from a worker; pull updates on a
     // gentle 200ms interval (force=false to avoid a per-frame stall).
     this.updateTimer = setInterval(() => {
