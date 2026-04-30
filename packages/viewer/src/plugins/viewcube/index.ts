@@ -1,10 +1,8 @@
 /**
- * ViewCube plugin — uses the same `Plugin` interface as the others. The
- * cube is its own canvas overlay (own renderer, own scene), so we don't
- * fight the main render loop. Orientation is slaved to main-camera
- * changes via the `camera:change` event; clicking a region (face / edge
- * / corner) dispatches `camera.view.fromVector` with the region's
- * direction vector.
+ * ViewCube plugin — wires the nav-cube widget to the viewer's command bus.
+ * The widget itself never touches `cameraControls`; everything goes through
+ * `camera.*` commands so the camera plugin remains the single owner of
+ * camera state.
  */
 
 import * as THREE from 'three';
@@ -18,6 +16,9 @@ const NAME = 'viewcube' as const;
 interface ViewCubePluginOptions {
   corner?: ViewCubeCorner;
   size?: number;
+  showCompass?: boolean;
+  showSnapArrows?: boolean;
+  showHomeButton?: boolean;
 }
 
 export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
@@ -30,8 +31,11 @@ export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
 
     install(ctx: ViewerContext) {
       widget = new ViewCubeWidget({
-        size: options.size ?? 120,
+        size: options.size ?? 160,
         corner: options.corner ?? 'top-right',
+        showCompass: options.showCompass ?? true,
+        showSnapArrows: options.showSnapArrows ?? true,
+        showHomeButton: options.showHomeButton ?? true,
         onPick: (region) => {
           void ctx.commands
             .execute('camera.view.fromVector', {
@@ -43,9 +47,26 @@ export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
             })
             .catch(() => undefined);
         },
+        onOrbit: (deltaAzimuth, deltaPolar) => {
+          void ctx.commands
+            .execute('camera.orbit.delta', { deltaAzimuth, deltaPolar })
+            .catch(() => undefined);
+        },
+        onSnapRotate: (dir) => {
+          void ctx.commands
+            .execute('camera.orbit.delta', {
+              deltaAzimuth: dir * (Math.PI / 2),
+              deltaPolar: 0,
+              animate: true,
+            })
+            .catch(() => undefined);
+        },
+        onHome: () => {
+          void ctx.commands.execute('camera.home').catch(() => undefined);
+        },
       });
 
-      ctx.container.appendChild(widget.canvas);
+      ctx.container.appendChild(widget.element);
 
       const sync = (): void => {
         if (!widget) return;
@@ -54,7 +75,6 @@ export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
         widget.syncTo(ctx.camera, target);
       };
 
-      // Initial render + every camera move.
       sync();
       unsubCamera = ctx.events.on('camera:change', sync);
     },

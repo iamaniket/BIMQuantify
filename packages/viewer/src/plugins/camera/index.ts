@@ -83,6 +83,32 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         });
       }
 
+      // Relative-orbit primitive used by the ViewCube for live drag and
+      // snap-rotate arrows. Wraps camera-controls' `rotate(dA, dP, anim)`
+      // so plugins never touch `cameraControls` directly.
+      commands.register(
+        'camera.orbit.delta',
+        async (args) => {
+          const a = args as
+            | { deltaAzimuth?: number; deltaPolar?: number; animate?: boolean }
+            | undefined;
+          if (!a) return;
+          const dA = a.deltaAzimuth ?? 0;
+          const dP = a.deltaPolar ?? 0;
+          if (dA === 0 && dP === 0) return;
+          await ctx.cameraControls.rotate(dA, dP, a.animate ?? false);
+        },
+        { title: 'Orbit camera by delta' },
+      );
+
+      commands.register(
+        'camera.home',
+        async () => {
+          await setView('iso');
+        },
+        { title: 'Home view', defaultShortcut: 'H' },
+      );
+
       // Generic "frame model along an arbitrary direction" — used by the
       // ViewCube for edge/corner picks (any of the 26 regions can resolve
       // to a non-axis vector). Direction is normalised here.

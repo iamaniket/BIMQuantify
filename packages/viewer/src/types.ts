@@ -30,8 +30,14 @@ export type ViewCubeCorner =
 export type ViewCubeOptions = {
   enabled?: boolean;
   corner?: ViewCubeCorner;
-  /** Edge length of the corner viewport in pixels. Default: 120. */
+  /** Edge length of the corner viewport in pixels. Default: 160. */
   size?: number;
+  /** Show the N/S/E/W compass ring under the cube. Default: true. */
+  showCompass?: boolean;
+  /** Show the curved ±90° snap-rotate arrow buttons. Default: true. */
+  showSnapArrows?: boolean;
+  /** Show the home/reset button. Default: true. */
+  showHomeButton?: boolean;
 };
 
 export type BackgroundOptions = {
