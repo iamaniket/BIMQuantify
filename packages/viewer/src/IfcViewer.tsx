@@ -15,6 +15,7 @@ import { cameraPlugin } from './plugins/camera/index.js';
 import { effectsPlugin } from './plugins/effects/index.js';
 import { hoverHighlightPlugin } from './plugins/hover-highlight/index.js';
 import { keyboardShortcutsPlugin } from './plugins/keyboard-shortcuts/index.js';
+import { mouseBindingsPlugin } from './plugins/mouse-bindings/index.js';
 import { selectionPlugin } from './plugins/selection/index.js';
 import { viewCubePlugin } from './plugins/viewcube/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
@@ -83,6 +84,9 @@ function IfcViewerImpl(
       hoverHighlightPlugin(),
       selectionPlugin(),
       keyboardShortcutsPlugin(shortcuts ? { overrides: shortcuts } : {}),
+      // Mouse-bindings registers AFTER selection/hover so the default
+      // bindings can resolve `selection.pickSet` etc. at install time.
+      mouseBindingsPlugin(props.mouseBindings ? { overrides: props.mouseBindings } : {}),
       ...(viewCubeEnabled
         ? [
             viewCubePlugin({
@@ -98,6 +102,7 @@ function IfcViewerImpl(
       plugins: [...builtIns, ...userPlugins],
       ...(props.background ? { background: props.background } : {}),
       ...(props.shadows ? { shadows: props.shadows } : {}),
+      ...(props.controls ? { controls: props.controls } : {}),
     });
     viewerRef.current = viewer;
 

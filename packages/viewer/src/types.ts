@@ -6,7 +6,13 @@
 import type { Ref } from 'react';
 
 import type { EventBus } from './core/EventBus.js';
-import type { Plugin, ShortcutMap, ViewerEvents } from './core/types.js';
+import type {
+  MouseBindingMap,
+  Plugin,
+  ShortcutMap,
+  ViewerEvents,
+} from './core/types.js';
+import type { CameraAction, ControlsOptions } from './core/Viewer.js';
 import type { EffectsOptions } from './plugins/effects/types.js';
 
 export type ViewerBundle = {
@@ -66,6 +72,13 @@ export type IfcViewerProps = {
   plugins?: Plugin[];
   /** Override default keyboard combos: `{ "camera.zoomExtents": "Space" }`. */
   shortcuts?: ShortcutMap;
+  /**
+   * Override default mouse gestures:
+   * `{ "click:right": "selection.pickSet", "move": "hover.pick" }`.
+   */
+  mouseBindings?: MouseBindingMap;
+  /** Drag-mouse-button assignments (rotate/pan/zoom). */
+  controls?: ControlsOptions;
   viewCube?: ViewCubeOptions;
   background?: BackgroundOptions;
   shadows?: ShadowOptions;
@@ -76,6 +89,8 @@ export type IfcViewerProps = {
 
 export type { EffectsOptions, EffectsQuality, GhostMode } from './plugins/effects/types.js';
 
+export type { CameraAction, ControlsOptions } from './core/Viewer.js';
+
 export type {
   Plugin,
   ViewerContext,
@@ -83,4 +98,5 @@ export type {
   ItemId,
   Vec3,
   ShortcutMap,
+  MouseBindingMap,
 } from './core/types.js';

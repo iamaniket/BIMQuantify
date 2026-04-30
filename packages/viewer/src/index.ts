@@ -17,6 +17,9 @@ export type {
   ItemId,
   Vec3,
   ShortcutMap,
+  MouseBindingMap,
+  CameraAction,
+  ControlsOptions,
   EffectsOptions,
   EffectsQuality,
   GhostMode,
@@ -34,5 +37,9 @@ export { cameraPlugin } from './plugins/camera/index.js';
 export { hoverHighlightPlugin } from './plugins/hover-highlight/index.js';
 export { selectionPlugin } from './plugins/selection/index.js';
 export { keyboardShortcutsPlugin } from './plugins/keyboard-shortcuts/index.js';
+export {
+  mouseBindingsPlugin,
+  DEFAULT_MOUSE_BINDINGS,
+} from './plugins/mouse-bindings/index.js';
 export { viewCubePlugin } from './plugins/viewcube/index.js';
 export { effectsPlugin } from './plugins/effects/index.js';

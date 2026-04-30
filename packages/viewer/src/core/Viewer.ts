@@ -38,11 +38,37 @@ export interface BackgroundOptions {
   color?: number;
 }
 
+/**
+ * Symbolic camera-drag actions. Maps 1:1 onto camera-controls' ACTION
+ * enum without requiring the consumer to import that package.
+ */
+export type CameraAction =
+  | 'rotate'
+  | 'truck'
+  | 'dolly'
+  | 'zoom'
+  | 'offset'
+  | 'none';
+
+/**
+ * Mouse-button → camera-drag action assignments. Anything left undefined
+ * inherits camera-controls' default (left=rotate, middle=dolly,
+ * right=truck, wheel=dolly).
+ */
+export interface ControlsOptions {
+  left?: CameraAction;
+  middle?: CameraAction;
+  right?: CameraAction;
+  wheel?: CameraAction;
+}
+
 export interface ViewerOptions {
   /** Plugins to register at construction. Order matters for dependencies. */
   plugins?: Plugin[];
   background?: BackgroundOptions;
   shadows?: ShadowOptions;
+  /** Drag-mouse-button assignments (rotate/pan/zoom). */
+  controls?: ControlsOptions;
 }
 
 const SHADOW_MAP_SIZE: Record<ShadowQuality, number> = {
@@ -94,6 +120,7 @@ export class Viewer {
     components.init();
     world.camera.controls.setLookAt(15, 15, 15, 0, 0, 0);
 
+    this.applyControls(world);
     this.applyBackground(world);
     this.applyLightingAndShadows(world);
 
@@ -240,6 +267,42 @@ export class Viewer {
       cam.near = Math.max(maxDim / 1000, 0.01);
       cam.far = maxDim * 100;
       cam.updateProjectionMatrix();
+    }
+  }
+
+  /**
+   * Apply user-configured drag-button assignments to the live
+   * camera-controls instance. We reach the ACTION enum via the
+   * controls' constructor so we don't take a direct dependency on
+   * `camera-controls` in this package's `package.json`.
+   */
+  private applyControls(world: World): void {
+    const opts = this.options.controls;
+    if (!opts) return;
+    const controls = world.camera!.controls;
+    const ctor = controls.constructor as { ACTION?: Record<string, number> };
+    const action = ctor.ACTION;
+    if (!action) return;
+    const map: Record<CameraAction, number | undefined> = {
+      rotate: action.ROTATE,
+      truck: action.TRUCK,
+      dolly: action.DOLLY,
+      zoom: action.ZOOM,
+      offset: action.OFFSET,
+      none: action.NONE,
+    };
+    const buttons = controls.mouseButtons;
+    if (opts.left !== undefined && map[opts.left] !== undefined) {
+      buttons.left = map[opts.left] as typeof buttons.left;
+    }
+    if (opts.middle !== undefined && map[opts.middle] !== undefined) {
+      buttons.middle = map[opts.middle] as typeof buttons.middle;
+    }
+    if (opts.right !== undefined && map[opts.right] !== undefined) {
+      buttons.right = map[opts.right] as typeof buttons.right;
+    }
+    if (opts.wheel !== undefined && map[opts.wheel] !== undefined) {
+      buttons.wheel = map[opts.wheel] as typeof buttons.wheel;
     }
   }
 

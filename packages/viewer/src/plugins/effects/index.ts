@@ -200,7 +200,7 @@ export function effectsPlugin(
     }
     if (edgesPass) {
       const u = edgesPass.uniforms as { strength: { value: number } };
-      u.strength.value = q === 'high' ? 1.4 : q === 'low' ? 0.7 : 1.0;
+      u.strength.value = q === 'high' ? 2.5 : q === 'low' ? 1.4 : 2.0;
     }
   };
 
@@ -220,14 +220,26 @@ export function effectsPlugin(
     const prevClearColor = new THREE.Color();
     renderer.getClearColor(prevClearColor);
     const prevClearAlpha = renderer.getClearAlpha();
+
+    // Hide the shadow-ground plane during the normal pass: it contributes
+    // nothing to silhouettes (it's just a flat shadow receiver) but its
+    // edge against the cleared background draws a spurious horizon line.
+    const tempHidden: THREE.Object3D[] = [];
+    scene.traverse((obj) => {
+      if (obj.name === 'shadow-ground' && obj.visible) {
+        obj.visible = false;
+        tempHidden.push(obj);
+      }
+    });
+
     scene.overrideMaterial = normalMaterial;
     scene.background = null;
     renderer.setRenderTarget(normalTarget);
-    // Clear with alpha=0 so the edge shader can detect "no geometry"
-    // pixels and skip drawing edges at the ground/sky horizon.
     renderer.setClearColor(0x000000, 0);
     renderer.clear(true, true, false);
     renderer.render(scene, camera);
+
+    for (const obj of tempHidden) obj.visible = true;
     scene.overrideMaterial = prevOverride;
     scene.background = prevBackground;
     renderer.setRenderTarget(prevTarget);
@@ -335,7 +347,24 @@ export function effectsPlugin(
         samples: 4,
       });
 
-      normalMaterial = new THREE.MeshNormalMaterial();
+      normalMaterial = new THREE.ShaderMaterial({
+        vertexShader: /* glsl */ `
+          varying vec3 vWorldNormal;
+          void main() {
+            vWorldNormal = normalize(mat3(modelMatrix) * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          varying vec3 vWorldNormal;
+          void main() {
+            // Encode (-1..1) → (0..1) so we can read back through an
+            // RGBA8 target. Alpha=1 marks "geometry here" so the edge
+            // pass can mask out empty background.
+            gl_FragColor = vec4(normalize(vWorldNormal) * 0.5 + 0.5, 1.0);
+          }
+        `,
+      });
 
       composer = new EffectComposer(renderer, composerTarget);
       composer.setSize(size.x, size.y);

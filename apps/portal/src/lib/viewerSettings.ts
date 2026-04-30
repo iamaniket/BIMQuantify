@@ -1,7 +1,10 @@
 import type {
+  CameraAction,
+  ControlsOptions,
   EffectsOptions,
   EffectsQuality,
   GhostMode,
+  MouseBindingMap,
   ShortcutMap,
   ViewCubeCorner,
 } from '@bimstitch/viewer';
@@ -12,6 +15,8 @@ export type ShadowQuality = 'low' | 'medium' | 'high';
 
 export type EffectsSettings = Required<EffectsOptions>;
 
+export type ControlsSettings = Required<ControlsOptions>;
+
 export type ViewerSettings = {
   viewCube: { enabled: boolean; corner: ViewCubeCorner };
   shadows: { enabled: boolean; quality: ShadowQuality };
@@ -19,6 +24,10 @@ export type ViewerSettings = {
   effects: EffectsSettings;
   /** command name → key combo. Matches `IfcViewerProps.shortcuts`. */
   shortcuts: ShortcutMap;
+  /** Mouse gesture → command name. Matches `IfcViewerProps.mouseBindings`. */
+  mouseBindings: MouseBindingMap;
+  /** Drag-mouse-button assignments (rotate/pan/zoom). */
+  controls: ControlsSettings;
 };
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
@@ -34,12 +43,32 @@ export const DEFAULT_EFFECTS: EffectsSettings = {
   quality: 'medium',
 };
 
+export const DEFAULT_MOUSE_BINDINGS_SETTINGS: MouseBindingMap = {
+  'click:left': 'selection.pickSet',
+  'click:Shift+left': 'selection.pickAdd',
+  'click:Ctrl+left': 'selection.pickToggle',
+  'click:Meta+left': 'selection.pickToggle',
+  move: 'hover.pick',
+  'move:leave': 'hover.clear',
+};
+
+export const DEFAULT_CONTROLS: ControlsSettings = {
+  // Matches camera-controls' built-in defaults, so existing users see
+  // identical drag behaviour after upgrading.
+  left: 'rotate',
+  middle: 'dolly',
+  right: 'truck',
+  wheel: 'dolly',
+};
+
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   viewCube: { enabled: true, corner: 'top-right' },
   shadows: { enabled: true, quality: 'medium' },
   background: { color: 0xffffff },
   effects: DEFAULT_EFFECTS,
   shortcuts: {},
+  mouseBindings: DEFAULT_MOUSE_BINDINGS_SETTINGS,
+  controls: DEFAULT_CONTROLS,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
@@ -50,6 +79,8 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
     background: p.background ?? d.background,
     effects: { ...d.effects, ...(p.effects ?? {}) },
     shortcuts: p.shortcuts ?? d.shortcuts,
+    mouseBindings: p.mouseBindings ?? d.mouseBindings,
+    controls: { ...d.controls, ...(p.controls ?? {}) },
   };
 }
 
@@ -84,4 +115,4 @@ export function hexToColor(hex: string): number {
   return Number.isFinite(n) ? n : 0xffffff;
 }
 
-export type { EffectsQuality, GhostMode };
+export type { CameraAction, EffectsQuality, GhostMode };

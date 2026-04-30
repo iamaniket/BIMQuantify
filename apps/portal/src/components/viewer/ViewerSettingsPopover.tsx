@@ -16,6 +16,7 @@ import {
   colorToHex,
   hexToColor,
   saveViewerSettings,
+  type CameraAction,
   type EffectsQuality,
   type GhostMode,
   type ShadowQuality,
@@ -32,6 +33,22 @@ const VIEWCUBE_CORNERS: ViewerSettings['viewCube']['corner'][] = [
 const SHADOW_QUALITIES: ShadowQuality[] = ['low', 'medium', 'high'];
 const EFFECTS_QUALITIES: EffectsQuality[] = ['low', 'medium', 'high'];
 const GHOST_MODES: GhostMode[] = ['off', 'on-selection'];
+
+const CAMERA_ACTIONS: { value: CameraAction; label: string }[] = [
+  { value: 'rotate', label: 'Rotate (orbit)' },
+  { value: 'truck', label: 'Truck (pan)' },
+  { value: 'dolly', label: 'Dolly (zoom)' },
+  { value: 'zoom', label: 'Zoom' },
+  { value: 'offset', label: 'Offset' },
+  { value: 'none', label: 'None' },
+];
+
+const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; label: string }[] = [
+  { key: 'left', label: 'Left button' },
+  { key: 'middle', label: 'Middle button' },
+  { key: 'right', label: 'Right button' },
+  { key: 'wheel', label: 'Wheel' },
+];
 
 const SELECT_CLS = 'h-7 rounded border border-border bg-background px-2 text-caption text-foreground focus:outline-none focus:ring-2 focus:ring-ring';
 
@@ -216,6 +233,162 @@ function ShortcutsSection({
           ))
         )}
       </ul>
+    </Section>
+  );
+}
+
+type MouseBinding = { gesture: string; command: string };
+
+function MouseBindingsSection({
+  handle,
+  settings,
+  onChange,
+}: {
+  handle: ViewerHandle;
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  const [bindings, setBindings] = useState<MouseBinding[]>([]);
+  const [commandList, setCommandList] = useState<string[]>([]);
+
+  useEffect(() => {
+    handle.commands
+      .execute<MouseBinding[]>('mouseBindings.list')
+      .then((list) => {
+        setBindings(list);
+      })
+      .catch(() => undefined);
+    // Pull all known commands so the dropdown only offers callable
+    // targets. Filter out the binder/list/get helpers so users don't
+    // accidentally bind a click to "list bindings".
+    const all = handle.commands.list();
+    setCommandList(
+      all
+        .map((c) => c.name)
+        .filter((n) => {
+          if (n.startsWith('shortcuts.')) return false;
+          if (n.startsWith('mouseBindings.')) return false;
+          if (n === 'selection.get') return false;
+          if (n === 'selection.has') return false;
+          if (n === 'effects.get') return false;
+          return true;
+        })
+        .sort(),
+    );
+  }, [handle]);
+
+  const rebind = async (gesture: string, command: string): Promise<void> => {
+    if (command === '__unbind__') {
+      await handle.commands.execute('mouseBindings.unbind', { gesture });
+      const nextBindings = await handle.commands.execute<MouseBinding[]>(
+        'mouseBindings.list',
+      );
+      setBindings(nextBindings);
+      const nextMap = Object.fromEntries(
+        Object.entries(settings.mouseBindings).filter(([k]) => k !== gesture),
+      );
+      onChange({ ...settings, mouseBindings: nextMap });
+      return;
+    }
+    await handle.commands.execute('mouseBindings.bind', { gesture, command });
+    const nextBindings = await handle.commands.execute<MouseBinding[]>(
+      'mouseBindings.list',
+    );
+    setBindings(nextBindings);
+    onChange({
+      ...settings,
+      mouseBindings: { ...settings.mouseBindings, [gesture]: command },
+    });
+  };
+
+  // Stable list of gestures we surface in the UI. We always show the
+  // common ones — left/right/middle click with optional Shift/Ctrl/Meta —
+  // plus `move` and `move:leave`, regardless of whether they're bound.
+  const knownGestures: string[] = [
+    'click:left',
+    'click:Shift+left',
+    'click:Ctrl+left',
+    'click:Meta+left',
+    'click:middle',
+    'click:right',
+    'click:Shift+right',
+    'click:Ctrl+right',
+    'move',
+    'move:leave',
+  ];
+
+  const bindingFor = (gesture: string): string => {
+    const m = bindings.find((b) => b.gesture === gesture);
+    return m ? m.command : '';
+  };
+
+  return (
+    <Section title="Mouse bindings" note="Live">
+      <ul
+        className="max-h-48 space-y-1 overflow-y-auto"
+        data-testid="viewer-settings-mouse-bindings"
+      >
+        {knownGestures.map((g) => (
+          <li
+            key={g}
+            className="flex items-center justify-between gap-2 text-caption"
+          >
+            <span className="truncate font-mono text-foreground-secondary">
+              {g}
+            </span>
+            <select
+              className={`${SELECT_CLS} max-w-[10rem]`}
+              value={bindingFor(g)}
+              onChange={(e) => {
+                rebind(g, e.target.value).catch(() => undefined);
+              }}
+            >
+              <option value="__unbind__">— none —</option>
+              {commandList.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+function MouseControlsSection({
+  settings,
+  onChange,
+}: {
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  return (
+    <Section title="Mouse drag actions" note="Applies on next viewer reload">
+      {DRAG_BUTTONS.map((btn) => (
+        <Field key={btn.key} label={btn.label}>
+          <select
+            className={SELECT_CLS}
+            value={settings.controls[btn.key]}
+            onChange={(e) => {
+              onChange({
+                ...settings,
+                controls: {
+                  ...settings.controls,
+                  [btn.key]: e.target.value as CameraAction,
+                },
+              });
+            }}
+          >
+            {CAMERA_ACTIONS.map((a) => (
+              <option key={a.value} value={a.value}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ))}
     </Section>
   );
 }
@@ -467,6 +640,22 @@ export function ViewerSettingsPopover({
             </p>
           </Section>
         )}
+
+        {handle ? (
+          <MouseBindingsSection
+            handle={handle}
+            settings={settings}
+            onChange={update}
+          />
+        ) : (
+          <Section title="Mouse bindings" note={undefined}>
+            <p className="text-caption text-foreground-secondary">
+              Viewer not ready.
+            </p>
+          </Section>
+        )}
+
+        <MouseControlsSection settings={settings} onChange={update} />
 
         <div className="flex items-center justify-between border-t border-border pt-3">
           <button

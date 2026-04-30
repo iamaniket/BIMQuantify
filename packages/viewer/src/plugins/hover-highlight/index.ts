@@ -1,19 +1,23 @@
 /**
- * Hover-highlight plugin. Listens for pointer movement on the canvas,
- * raycasts on a rAF tick, applies a translucent highlight to the picked
- * item, and emits `hover:change`. Selection takes priority — we don't
- * highlight already-selected items (avoids material flicker).
+ * Hover-highlight plugin. Registers a `hover.pick` command that takes
+ * an NDC point (or null to clear), raycasts, and applies a translucent
+ * highlight to the picked item. Selection takes priority — already-
+ * selected items are not over-highlighted (avoids material flicker).
+ *
+ * The plugin owns no DOM listeners. The `mouse-bindings` plugin is the
+ * single owner of canvas pointer events and dispatches `hover.pick` for
+ * whichever pointer gesture the user has bound to it (default: `move`).
  */
 
 import * as THREE from 'three';
 import * as FRAGS from '@thatopen/fragments';
 
-import { clientToNdc, pick } from '../../core/Raycaster.js';
+import { pick } from '../../core/Raycaster.js';
 import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
 
 const NAME = 'hover-highlight' as const;
 
-interface HoverPluginOptions {
+export interface HoverPluginOptions {
   /** Highlight color. Default: light blue. */
   color?: number;
   /** Opacity (0–1). Default: 0.5. */
@@ -24,104 +28,102 @@ export function hoverHighlightPlugin(options: HoverPluginOptions = {}): Plugin {
   const color = new THREE.Color(options.color ?? 0x6cb4ff);
   const opacity = options.opacity ?? 0.5;
 
-  let cleanup: (() => void) | null = null;
+  let ctxRef: ViewerContext | null = null;
+  let current: ItemId | null = null;
+  let inFlight = false;
+  let pending: { x: number; y: number } | null = null;
+
+  const material: FRAGS.MaterialDefinition = {
+    color,
+    opacity,
+    transparent: opacity < 1,
+    renderedFaces: FRAGS.RenderedFaces.TWO,
+    customId: 'hover',
+  };
+
+  const isSelected = (item: ItemId): boolean => {
+    const sel = ctxRef?.plugins.get<{ hasItem(i: ItemId): boolean }>('selection');
+    return sel?.hasItem(item) ?? false;
+  };
+
+  const apply = async (next: ItemId | null): Promise<void> => {
+    if (!ctxRef) return;
+    if (sameItem(next, current)) return;
+    const prev = current;
+    current = next;
+    if (prev) {
+      const model = ctxRef.models().get(prev.modelId);
+      await model?.resetHighlight([prev.localId]).catch(() => undefined);
+    }
+    if (next && !isSelected(next)) {
+      const model = ctxRef.models().get(next.modelId);
+      await model?.highlight([next.localId], material).catch(() => undefined);
+    }
+    ctxRef.events.emit('hover:change', { item: next });
+  };
+
+  // Coalesce concurrent picks. If a pick is in flight when a new NDC
+  // arrives, hold it as `pending` and run it once the in-flight one
+  // resolves. The picker is async (worker raycast) so naive dispatch
+  // would queue a backlog at high pointermove rates.
+  const dispatch = async (ndc: { x: number; y: number } | null): Promise<void> => {
+    if (!ctxRef) return;
+    if (ndc === null) {
+      pending = null;
+      if (current) await apply(null);
+      return;
+    }
+    pending = ndc;
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      while (pending) {
+        const next = pending;
+        pending = null;
+        const hit = await pick(ctxRef, next);
+        await apply(hit?.item ?? null);
+      }
+    } finally {
+      inFlight = false;
+    }
+  };
 
   return {
     name: NAME,
 
     install(ctx: ViewerContext) {
-      const canvas = ctx.canvas;
-      let pendingNdc: { x: number; y: number } | null = null;
-      let raf = 0;
-      let current: ItemId | null = null;
-      let inFlight = false;
+      ctxRef = ctx;
 
-      const material: FRAGS.MaterialDefinition = {
-        color,
-        opacity,
-        transparent: opacity < 1,
-        renderedFaces: FRAGS.RenderedFaces.TWO,
-        customId: 'hover',
-      };
+      ctx.commands.register(
+        'hover.pick',
+        (args: unknown) => {
+          // args may be `{ ndc: {x,y} }`, a bare `{x,y}`, or `null` to clear.
+          if (args === null || args === undefined) return dispatch(null);
+          const a = args as { ndc?: { x: number; y: number } | null; x?: number; y?: number };
+          if (a.ndc === null) return dispatch(null);
+          if (a.ndc) return dispatch(a.ndc);
+          if (typeof a.x === 'number' && typeof a.y === 'number') {
+            return dispatch({ x: a.x, y: a.y });
+          }
+          return dispatch(null);
+        },
+        { title: 'Update hover highlight at pointer' },
+      );
 
-      const isSelected = (item: ItemId): boolean => {
-        if (!ctx.commands.has('selection.has')) return false;
-        // synchronous-ish: selection plugin's `has` returns boolean directly.
-        // CommandRegistry returns Promise<R>; we accept a microtask delay,
-        // but here we do a fast best-effort check via the plugin instance.
-        const sel = ctx.plugins.get<{ hasItem(i: ItemId): boolean }>('selection');
-        return sel?.hasItem(item) ?? false;
-      };
-
-      const apply = async (next: ItemId | null): Promise<void> => {
-        if (sameItem(next, current)) return;
-        const prev = current;
-        current = next;
-        if (prev) {
-          const model = ctx.models().get(prev.modelId);
-          await model?.resetHighlight([prev.localId]).catch(() => undefined);
-        }
-        if (next && !isSelected(next)) {
-          const model = ctx.models().get(next.modelId);
-          await model?.highlight([next.localId], material).catch(() => undefined);
-        }
-        ctx.events.emit('hover:change', { item: next });
-      };
-
-      const tick = async (): Promise<void> => {
-        raf = 0;
-        if (inFlight) {
-          // re-schedule — coalesce while a previous pick is mid-flight.
-          if (pendingNdc) raf = requestAnimationFrame(() => void tick());
-          return;
-        }
-        const ndc = pendingNdc;
-        pendingNdc = null;
-        if (!ndc) return;
-        inFlight = true;
-        try {
-          const hit = await pick(ctx, ndc);
-          await apply(hit?.item ?? null);
-        } finally {
-          inFlight = false;
-          if (pendingNdc) raf = requestAnimationFrame(() => void tick());
-        }
-      };
-
-      const onMove = (ev: PointerEvent): void => {
-        const ndc = clientToNdc(canvas, ev.clientX, ev.clientY);
-        pendingNdc = ndc;
-        ctx.events.emit('pointer:move', {
-          ndc,
-          clientX: ev.clientX,
-          clientY: ev.clientY,
-        });
-        if (!raf) raf = requestAnimationFrame(() => void tick());
-      };
-
-      const onLeave = (): void => {
-        pendingNdc = null;
-        if (current) void apply(null);
-      };
-
-      canvas.addEventListener('pointermove', onMove);
-      canvas.addEventListener('pointerleave', onLeave);
-
-      cleanup = (): void => {
-        canvas.removeEventListener('pointermove', onMove);
-        canvas.removeEventListener('pointerleave', onLeave);
-        if (raf) cancelAnimationFrame(raf);
-        if (current) {
-          const model = ctx.models().get(current.modelId);
-          model?.resetHighlight([current.localId]).catch(() => undefined);
-        }
-        current = null;
-      };
+      ctx.commands.register('hover.clear', () => dispatch(null), {
+        title: 'Clear hover highlight',
+      });
     },
 
     uninstall() {
-      cleanup?.();
-      cleanup = null;
+      if (current && ctxRef) {
+        const model = ctxRef.models().get(current.modelId);
+        model?.resetHighlight([current.localId]).catch(() => undefined);
+      }
+      current = null;
+      pending = null;
+      inFlight = false;
+      ctxRef = null;
     },
   };
 }

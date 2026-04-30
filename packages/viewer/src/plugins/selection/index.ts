@@ -1,8 +1,11 @@
 /**
- * Selection plugin. Click to select, Shift+Click to add, Ctrl/Cmd+Click
- * to toggle, click empty space to clear. Maintains the selection set
- * across models, paints sticky highlight materials, and emits
- * `selection:change`.
+ * Selection plugin. Maintains a model-spanning selection set, paints
+ * sticky highlight materials, and emits `selection:change`.
+ *
+ * The plugin owns no DOM listeners. Picking is exposed through commands
+ * (`selection.pickSet`, `selection.pickAdd`, `selection.pickToggle`,
+ * `selection.pickClear`) which the `mouse-bindings` plugin dispatches on
+ * whichever pointer gestures the user has bound to them.
  *
  * Exposes itself through `ctx.plugins.get('selection')` so other plugins
  * (e.g. hover) can do fast reads without going through the bus.
@@ -11,16 +14,14 @@
 import * as THREE from 'three';
 import * as FRAGS from '@thatopen/fragments';
 
-import { clientToNdc, pick } from '../../core/Raycaster.js';
+import { pick } from '../../core/Raycaster.js';
 import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
 
 const NAME = 'selection' as const;
 
-interface SelectionPluginOptions {
+export interface SelectionPluginOptions {
   color?: number;
   opacity?: number;
-  /** Drag distance in px before a pointerup is treated as a drag-not-click. */
-  clickThreshold?: number;
 }
 
 export interface SelectionPluginAPI {
@@ -33,7 +34,6 @@ export interface SelectionPluginAPI {
 export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & SelectionPluginAPI {
   const color = new THREE.Color(options.color ?? 0xff8a3d);
   const opacity = options.opacity ?? 0.7;
-  const clickThreshold = options.clickThreshold ?? 4;
 
   // `${modelId}::${localId}` keys for cheap Set ops.
   const selected = new Set<string>();
@@ -41,7 +41,6 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
   const key = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
-  let cleanup: (() => void) | null = null;
   let ctxRef: ViewerContext | null = null;
 
   const material: FRAGS.MaterialDefinition = {
@@ -141,6 +140,51 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     emitChange([], all);
   };
 
+  // Pick-by-NDC helpers — used by the mouse-bindings dispatcher.
+  type PickArgs = { ndc?: { x: number; y: number } | null; x?: number; y?: number } | null | undefined;
+  const ndcOf = (args: PickArgs): { x: number; y: number } | null => {
+    if (!args) return null;
+    if (args.ndc) return args.ndc;
+    if (typeof args.x === 'number' && typeof args.y === 'number') {
+      return { x: args.x, y: args.y };
+    }
+    return null;
+  };
+
+  const pickSet = async (args: PickArgs): Promise<void> => {
+    if (!ctxRef) return;
+    const ndc = ndcOf(args);
+    if (!ndc) {
+      await clear();
+      return;
+    }
+    const hit = await pick(ctxRef, ndc);
+    if (!hit) {
+      await clear();
+      return;
+    }
+    await setSelection([hit.item]);
+  };
+
+  const pickAdd = async (args: PickArgs): Promise<void> => {
+    if (!ctxRef) return;
+    const ndc = ndcOf(args);
+    if (!ndc) return;
+    const hit = await pick(ctxRef, ndc);
+    if (!hit) return;
+    await addItems([hit.item]);
+  };
+
+  const pickToggle = async (args: PickArgs): Promise<void> => {
+    if (!ctxRef) return;
+    const ndc = ndcOf(args);
+    if (!ndc) return;
+    const hit = await pick(ctxRef, ndc);
+    if (!hit) return;
+    if (selected.has(key(hit.item))) await removeItems([hit.item]);
+    else await addItems([hit.item]);
+  };
+
   const api: Plugin & SelectionPluginAPI = {
     name: NAME,
 
@@ -156,52 +200,6 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
     install(ctx: ViewerContext) {
       ctxRef = ctx;
-      const canvas = ctx.canvas;
-
-      let downX = 0;
-      let downY = 0;
-      let downBtn = -1;
-
-      const onDown = (ev: PointerEvent): void => {
-        downX = ev.clientX;
-        downY = ev.clientY;
-        downBtn = ev.button;
-      };
-
-      const onUp = (ev: PointerEvent): void => {
-        if (ev.button !== 0 || downBtn !== 0) return;
-        const dx = ev.clientX - downX;
-        const dy = ev.clientY - downY;
-        if (Math.hypot(dx, dy) > clickThreshold) return; // it was a drag
-
-        const ndc = clientToNdc(canvas, ev.clientX, ev.clientY);
-        ctx.events.emit('pointer:click', {
-          ndc,
-          button: ev.button,
-          shift: ev.shiftKey,
-          ctrl: ev.ctrlKey,
-          meta: ev.metaKey,
-        });
-        void (async () => {
-          const hit = await pick(ctx, ndc);
-          if (!hit) {
-            if (!ev.shiftKey && !ev.ctrlKey && !ev.metaKey) await clear();
-            return;
-          }
-          if (ev.ctrlKey || ev.metaKey) {
-            // toggle
-            if (selected.has(key(hit.item))) await removeItems([hit.item]);
-            else await addItems([hit.item]);
-          } else if (ev.shiftKey) {
-            await addItems([hit.item]);
-          } else {
-            await setSelection([hit.item]);
-          }
-        })();
-      };
-
-      canvas.addEventListener('pointerdown', onDown);
-      canvas.addEventListener('pointerup', onUp);
 
       ctx.commands.register('selection.clear', () => clear(), {
         title: 'Clear selection',
@@ -234,17 +232,30 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
         { title: 'Check selection membership' },
       );
 
-      cleanup = (): void => {
-        canvas.removeEventListener('pointerdown', onDown);
-        canvas.removeEventListener('pointerup', onUp);
-        // Reset visual state on shutdown.
-        void clear();
-      };
+      // Pick-at-pointer commands — bind these to mouse gestures.
+      ctx.commands.register(
+        'selection.pickSet',
+        (args: unknown) => pickSet(args as PickArgs),
+        { title: 'Select item at pointer' },
+      );
+      ctx.commands.register(
+        'selection.pickAdd',
+        (args: unknown) => pickAdd(args as PickArgs),
+        { title: 'Add item at pointer to selection' },
+      );
+      ctx.commands.register(
+        'selection.pickToggle',
+        (args: unknown) => pickToggle(args as PickArgs),
+        { title: 'Toggle item at pointer in selection' },
+      );
+      ctx.commands.register('selection.pickClear', () => clear(), {
+        title: 'Clear selection (pointer)',
+      });
     },
 
     uninstall() {
-      cleanup?.();
-      cleanup = null;
+      // Reset visual state on shutdown.
+      void clear();
       ctxRef = null;
     },
   };

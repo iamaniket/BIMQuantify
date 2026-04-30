@@ -130,6 +130,8 @@ export default function ViewerPage(): JSX.Element {
           background={{ color: settings.background.color }}
           effects={settings.effects}
           shortcuts={settings.shortcuts}
+          mouseBindings={settings.mouseBindings}
+          controls={settings.controls}
           onReady={(handle) => {
             viewerHandleRef.current = handle;
             setViewerReady(true);

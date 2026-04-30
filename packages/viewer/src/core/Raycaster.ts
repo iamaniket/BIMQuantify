@@ -5,7 +5,7 @@
  * module just wraps the multi-model dispatch.
  */
 
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
 
 import type { ItemId, ViewerContext } from './types.js';
@@ -27,8 +27,16 @@ export async function pick(
 ): Promise<PickResult | null> {
   const camera = ctx.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
   const canvas = ctx.canvas;
-  // FragmentsModel.raycast expects `mouse` in NDC.
-  const mouse = { x: ndc.x, y: ndc.y } as unknown as THREE.Vector2;
+  // `FragmentsModel.raycast` expects `mouse` in **client pixel** coords
+  // (it does its own client→NDC conversion using `getBoundingClientRect`
+  // and `clientWidth`/`clientHeight`). Passing NDC here yields a silent
+  // miss after the library's second conversion. Convert NDC → client
+  // pixels for the canvas.
+  const rect = canvas.getBoundingClientRect();
+  const mouse = new THREE.Vector2(
+    ((ndc.x + 1) / 2) * canvas.clientWidth + rect.left,
+    ((1 - ndc.y) / 2) * canvas.clientHeight + rect.top,
+  );
 
   let best: PickResult | null = null;
   for (const model of ctx.models().values()) {

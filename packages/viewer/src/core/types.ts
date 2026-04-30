@@ -80,3 +80,6 @@ export interface Plugin {
 
 /** Map of `keyCombo → commandName` for the keyboard-shortcuts plugin. */
 export type ShortcutMap = Record<string, string>;
+
+/** Map of `mouseGesture → commandName` for the mouse-bindings plugin. */
+export type MouseBindingMap = Record<string, string>;
