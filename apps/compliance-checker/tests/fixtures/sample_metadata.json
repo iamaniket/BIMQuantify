@@ -1,0 +1,49 @@
+{
+  "schema": "IFC4",
+  "project": {
+    "expressID": 1,
+    "globalId": "project-001",
+    "name": "Test Building",
+    "longName": "Test Building for BBL Compliance",
+    "lengthUnit": "mm"
+  },
+  "spatialTree": {
+    "type": "IfcProject",
+    "globalId": "project-001",
+    "name": "Test Building",
+    "children": [
+      {
+        "type": "IfcSite",
+        "globalId": "site-001",
+        "name": "Default Site",
+        "children": [
+          {
+            "type": "IfcBuilding",
+            "globalId": "building-001",
+            "name": "Building A",
+            "children": [
+              {
+                "type": "IfcBuildingStorey",
+                "globalId": "storey-001",
+                "name": "Ground Floor",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "elementCounts": {
+    "IfcWall": 4,
+    "IfcSlab": 2,
+    "IfcDoor": 3,
+    "IfcSpace": 3,
+    "IfcColumn": 2
+  },
+  "totalElements": 14,
+  "bbox": {
+    "min": [0, 0, 0],
+    "max": [12000, 8000, 3000]
+  }
+}

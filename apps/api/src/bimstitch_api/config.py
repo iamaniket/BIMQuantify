@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import EmailStr, Field
+from pydantic import AliasChoices, EmailStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     )
     extractor_dispatch_timeout_seconds: float = Field(
         default=5.0, alias="EXTRACTOR_DISPATCH_TIMEOUT_SECONDS"
+    )
+
+    compliance_checker_url: str = Field(
+        default="http://localhost:8090",
+        validation_alias=AliasChoices("COMPLIANCE_CHECKER_URL", "BBL_CHECKER_URL"),
+    )
+    compliance_checker_timeout_seconds: float = Field(
+        default=30.0,
+        validation_alias=AliasChoices("COMPLIANCE_CHECKER_TIMEOUT_SECONDS", "BBL_CHECKER_TIMEOUT_SECONDS"),
     )
 
     @property

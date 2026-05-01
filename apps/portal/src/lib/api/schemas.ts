@@ -287,3 +287,75 @@ export const ModelWithVersionsSchema = ModelSchema.extend({
 });
 
 export type ModelWithVersions = z.infer<typeof ModelWithVersionsSchema>;
+
+// ── Compliance ────────────────────────────────────────────────────────
+
+export const CheckResultItemSchema = z.object({
+  rule_id: z.string(),
+  article: z.string(),
+  element_global_id: z.string(),
+  element_type: z.union([z.string(), z.null()]).optional(),
+  element_name: z.union([z.string(), z.null()]).optional(),
+  status: z.enum(['pass', 'fail', 'warn', 'skip', 'error']),
+  message: z.string(),
+  actual_value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+  expected_value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+  property_set: z.union([z.string(), z.null()]).optional(),
+  property_name: z.union([z.string(), z.null()]).optional(),
+  severity: z.string(),
+});
+
+export type CheckResultItem = z.infer<typeof CheckResultItemSchema>;
+
+export const RuleSummaryItemSchema = z.object({
+  rule_id: z.string(),
+  article: z.string(),
+  title: z.string(),
+  title_nl: z.string(),
+  category: z.string(),
+  severity: z.string(),
+  total_checked: z.number(),
+  passed: z.number(),
+  failed: z.number(),
+  warned: z.number(),
+  skipped: z.number(),
+  errors: z.number(),
+});
+
+export type RuleSummaryItem = z.infer<typeof RuleSummaryItemSchema>;
+
+export const CategorySummaryItemSchema = z.object({
+  category: z.string(),
+  total_rules: z.number(),
+  total_checks: z.number(),
+  passed: z.number(),
+  failed: z.number(),
+  warned: z.number(),
+});
+
+export type CategorySummaryItem = z.infer<typeof CategorySummaryItemSchema>;
+
+export const ComplianceCheckResponseSchema = z.object({
+  file_id: z.string(),
+  job_id: z.string().uuid(),
+  checked_at: z.string(),
+  total_rules: z.number(),
+  total_elements_checked: z.number(),
+  rules_summary: z.array(RuleSummaryItemSchema),
+  category_summary: z.array(CategorySummaryItemSchema),
+  details: z.array(CheckResultItemSchema),
+});
+
+export type ComplianceCheckResponse = z.infer<typeof ComplianceCheckResponseSchema>;
+
+export const ComplianceSummaryResponseSchema = z.object({
+  file_id: z.string(),
+  job_id: z.string().uuid(),
+  checked_at: z.string(),
+  total_rules: z.number(),
+  total_elements_checked: z.number(),
+  rules_summary: z.array(RuleSummaryItemSchema),
+  category_summary: z.array(CategorySummaryItemSchema),
+});
+
+export type ComplianceSummaryResponse = z.infer<typeof ComplianceSummaryResponseSchema>;

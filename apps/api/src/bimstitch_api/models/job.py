@@ -17,6 +17,9 @@ class JobType(StrEnum):
     pdf_extraction = "pdf_extraction"
     verification = "verification"
     batch_update = "batch_update"
+    bbl_compliance_check = "bbl_compliance_check"
+    wkb_compliance_check = "wkb_compliance_check"
+    compliance_check = "compliance_check"
 
 
 class JobStatus(StrEnum):

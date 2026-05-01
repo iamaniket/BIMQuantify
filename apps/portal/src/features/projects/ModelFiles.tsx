@@ -8,6 +8,7 @@ import {
   Loader2,
   MoreVertical,
   RotateCcw,
+  ShieldCheck,
   Trash2,
   UploadCloud,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ import {
   formatSchemaLabel,
 } from './fileFormatting';
 import { UploadProgressItem, type UploadState } from './UploadProgressItem';
+import { useCheckCompliance } from './compliance/hooks';
 import { useDeleteModelFile } from './useDeleteModelFile';
 import { useModelFiles } from './useModelFiles';
 import { useRetryExtraction } from './useRetryExtraction';
@@ -120,6 +122,7 @@ function FileRow({
 }): JSX.Element {
   const { tokens } = useAuth();
   const retryMutation = useRetryExtraction();
+  const complianceMutation = useCheckCompliance(projectId, modelId);
 
   const handleDownload = async (): Promise<void> => {
     if (tokens === null) return;
@@ -174,6 +177,25 @@ function FileRow({
             <><FileText className="h-4 w-4" /> View</>
           )}
         </Link>
+      ) : null}
+      {file.extraction_status === 'succeeded' && file.file_type === 'ifc' ? (
+        <Button
+          type="button"
+          variant="border"
+          size="sm"
+          aria-label={`Check BBL compliance for ${file.original_filename}`}
+          disabled={complianceMutation.isPending}
+          onClick={() => {
+            complianceMutation.mutate({ fileId: file.id });
+          }}
+        >
+          {complianceMutation.isPending ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+          )}
+          Check BBL
+        </Button>
       ) : null}
       <Button
         type="button"

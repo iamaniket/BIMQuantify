@@ -1,0 +1,22 @@
+rules:
+  - id: bbl_4_40_escape_door_width
+    article: "BBL Afd. 4.2, Art. 4.40"
+    article_number: "4.40"
+    title: "Escape route door minimum width"
+    title_nl: "Vluchtroute - breedte deur"
+    description: "Doors in escape routes must have a minimum clear width of 850mm"
+    description_nl: "Een deur in een vluchtroute heeft een vrije breedte van ten minste 0,85 m"
+    category: fire_safety
+    chapter: "4"
+    severity: error
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcDoor]
+    checks:
+      - property_set: "Pset_DoorCommon"
+        property_name: "Width"
+        operator: gte
+        threshold: 850
+        unit: mm
+        description: "Escape route door width must be >= 850mm"
+    implementation_status: implemented
+    notes: "Applies to all doors; refinement needed to filter only doors in escape routes via custom pset or IfcRelAssigns."

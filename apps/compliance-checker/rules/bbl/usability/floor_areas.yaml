@@ -1,0 +1,49 @@
+rules:
+  - id: bbl_4_86_habitable_room_area
+    article: "BBL Afd. 4.5, Art. 4.86"
+    article_number: "4.86"
+    title: "Minimum habitable room floor area"
+    title_nl: "Vloeroppervlakte verblijfsruimte"
+    description: "A habitable room must have a minimum floor area of 5.0 m²"
+    description_nl: "Een verblijfsruimte heeft een vloeroppervlakte van ten minste 5 m²"
+    category: usability
+    chapter: "4"
+    severity: error
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcSpace]
+    checks:
+      - property_set: "BaseQuantities"
+        property_name: "GrossFloorArea"
+        operator: gte
+        threshold: 5.0
+        unit: "m2"
+        description: "Floor area must be >= 5.0 m²"
+      - property_set: "Qto_SpaceBaseQuantities"
+        property_name: "GrossFloorArea"
+        operator: gte
+        threshold: 5.0
+        unit: "m2"
+        description: "Floor area (from Qto) must be >= 5.0 m²"
+    implementation_status: implemented
+
+  - id: bbl_4_87_toilet_area
+    article: "BBL Afd. 4.5, Art. 4.87"
+    article_number: "4.87"
+    title: "Minimum toilet/bathroom floor area"
+    title_nl: "Vloeroppervlakte toiletruimte/badruimte"
+    description: "A toilet room or bathroom must have a minimum floor area of 1.1 m²"
+    description_nl: "Een toiletruimte of badruimte heeft een vloeroppervlakte van ten minste 1,1 m²"
+    category: usability
+    chapter: "4"
+    severity: error
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcSpace]
+    checks:
+      - property_set: "BaseQuantities"
+        property_name: "GrossFloorArea"
+        operator: gte
+        threshold: 1.1
+        unit: "m2"
+        description: "Floor area must be >= 1.1 m²"
+    implementation_status: implemented
+    notes: "Only applies to spaces classified as toilet/bathroom. Classification depends on IFC space naming or custom psets."

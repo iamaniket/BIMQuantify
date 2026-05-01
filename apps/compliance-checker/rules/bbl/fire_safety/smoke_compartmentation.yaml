@@ -1,0 +1,22 @@
+rules:
+  - id: bbl_4_51_smoke_compartment_wall
+    article: "BBL Afd. 4.2, Art. 4.51"
+    article_number: "4.51"
+    title: "Smoke compartment wall fire rating"
+    title_nl: "Rookcompartimentering - wand"
+    description: "Walls forming smoke compartment boundaries must have smoke resistance of at least 30 minutes"
+    description_nl: "Een scheidingsconstructie tussen subbrandcompartimenten heeft een rookwerendheid van ten minste 30 minuten"
+    category: fire_safety
+    chapter: "4"
+    severity: error
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcWall]
+    checks:
+      - property_set: "Pset_WallCommon"
+        property_name: "FireRating"
+        operator: gte
+        threshold: 30
+        unit: min
+        description: "Smoke compartment wall rating must be >= 30 minutes"
+    implementation_status: implemented
+    notes: "Uses FireRating as proxy for smoke resistance. Dedicated SmokeRating property would be more precise but is not standard in IFC."

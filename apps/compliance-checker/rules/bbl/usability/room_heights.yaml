@@ -1,0 +1,48 @@
+rules:
+  - id: bbl_4_85_room_height_new
+    article: "BBL Afd. 4.5, Art. 4.85"
+    article_number: "4.85"
+    title: "Minimum room height - new construction"
+    title_nl: "Vrije hoogte verblijfsruimte - nieuwbouw"
+    description: "Habitable rooms in new construction must have a minimum clear height of 2600mm"
+    description_nl: "Een verblijfsruimte heeft een vrije hoogte van ten minste 2,6 m, gemeten vanaf de afgewerkte vloer tot het afgewerkte plafond"
+    category: usability
+    chapter: "4"
+    severity: error
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcSpace]
+    checks:
+      - property_set: "Pset_SpaceCommon"
+        property_name: "Height"
+        operator: gte
+        threshold: 2600
+        unit: mm
+        description: "Room height must be >= 2600mm"
+      - property_set: "BaseQuantities"
+        property_name: "Height"
+        operator: gte
+        threshold: 2600
+        unit: mm
+        description: "Room height (from BaseQuantities) must be >= 2600mm"
+    implementation_status: implemented
+
+  - id: bbl_3_71_room_height_existing
+    article: "BBL Afd. 3.5, Art. 3.71"
+    article_number: "3.71"
+    title: "Minimum room height - existing building"
+    title_nl: "Vrije hoogte verblijfsruimte - bestaand"
+    description: "Habitable rooms in existing buildings must have a minimum clear height of 2100mm"
+    description_nl: "Een verblijfsruimte heeft een vrije hoogte van ten minste 2,1 m"
+    category: usability
+    chapter: "3"
+    severity: error
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcSpace]
+    checks:
+      - property_set: "Pset_SpaceCommon"
+        property_name: "Height"
+        operator: gte
+        threshold: 2100
+        unit: mm
+        description: "Room height must be >= 2100mm"
+    implementation_status: implemented

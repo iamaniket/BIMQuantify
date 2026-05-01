@@ -1,0 +1,309 @@
+# BBL Rule Implementation Manifest
+# Tracks all BBL rules relevant for automated BIM model checking
+# Last updated: 2026-05-01
+
+summary:
+  total_rules_identified: 87
+  implemented: 12
+  partial: 0
+  planned: 45
+  not_automatable: 30
+
+categories:
+  usability:
+    description: "Bruikbaarheid - Usability requirements (Chapter 4, Afd. 4.5)"
+    total: 18
+    rules:
+      - article: "4.85"
+        title_nl: "Vrije hoogte verblijfsruimte (nieuwbouw)"
+        status: implemented
+      - article: "3.71"
+        title_nl: "Vrije hoogte verblijfsruimte (bestaand)"
+        status: implemented
+      - article: "4.86"
+        title_nl: "Vloeroppervlakte verblijfsruimte"
+        status: implemented
+      - article: "4.87"
+        title_nl: "Vloeroppervlakte toiletruimte/badruimte"
+        status: implemented
+      - article: "4.24"
+        title_nl: "Vrije breedte doorgang"
+        status: implemented
+      - article: "4.24"
+        title_nl: "Vrije hoogte doorgang"
+        status: implemented
+      - article: "4.88"
+        title_nl: "Afmetingen bergruimte"
+        status: planned
+      - article: "4.89"
+        title_nl: "Buitenruimte"
+        status: planned
+      - article: "4.90"
+        title_nl: "Stallingsruimte fietsen"
+        status: planned
+      - article: "4.91"
+        title_nl: "Aanrecht en opstelplaats kooktoestel"
+        status: not_automatable
+      - article: "4.92"
+        title_nl: "Opstelplaats verwarmingstoestel"
+        status: not_automatable
+      - article: "4.93"
+        title_nl: "Opstelplaats wasapparaat"
+        status: not_automatable
+      - article: "3.72"
+        title_nl: "Vloeroppervlakte verblijfsruimte (bestaand)"
+        status: planned
+      - article: "3.73"
+        title_nl: "Vloeroppervlakte toilet/bad (bestaand)"
+        status: planned
+      - article: "4.25"
+        title_nl: "Vrije hoogte verkeersruimte"
+        status: planned
+      - article: "4.26"
+        title_nl: "Afmeting trappenhuis"
+        status: planned
+      - article: "4.27"
+        title_nl: "Afmeting trap"
+        status: planned
+      - article: "4.28"
+        title_nl: "Afmeting hellingbaan"
+        status: planned
+
+  fire_safety:
+    description: "Brandveiligheid - Fire safety requirements (Chapter 4, Afd. 4.2)"
+    total: 24
+    rules:
+      - article: "4.30"
+        title_nl: "Beperking uitbreiding brand (WBDBO) - wand"
+        status: implemented
+      - article: "4.30"
+        title_nl: "Beperking uitbreiding brand (WBDBO) - vloer"
+        status: implemented
+      - article: "4.40"
+        title_nl: "Vluchtroute - breedte deur"
+        status: implemented
+      - article: "4.51"
+        title_nl: "Rookcompartimentering - wand"
+        status: implemented
+      - article: "4.31"
+        title_nl: "Omvang brandcompartiment"
+        status: planned
+      - article: "4.32"
+        title_nl: "Subbrandcompartiment"
+        status: planned
+      - article: "4.33"
+        title_nl: "Beschermd subbrandcompartiment"
+        status: planned
+      - article: "4.34"
+        title_nl: "Loopafstand"
+        status: planned
+      - article: "4.35"
+        title_nl: "Extra beschermd subbrandcompartiment"
+        status: planned
+      - article: "4.36"
+        title_nl: "Veiligheidszone"
+        status: planned
+      - article: "4.37"
+        title_nl: "Brandweerlift"
+        status: planned
+      - article: "4.38"
+        title_nl: "Brandbeveiligingsinstallatie"
+        status: not_automatable
+      - article: "4.39"
+        title_nl: "Hulpverlening bij brand"
+        status: not_automatable
+      - article: "4.41"
+        title_nl: "Inrichting vluchtroute"
+        status: planned
+      - article: "4.42"
+        title_nl: "Noodverlichting"
+        status: planned
+      - article: "4.43"
+        title_nl: "Vluchtrouteaanduiding"
+        status: not_automatable
+      - article: "4.44"
+        title_nl: "Ontruimingsalarm"
+        status: not_automatable
+      - article: "4.45"
+        title_nl: "Rookmelders"
+        status: planned
+      - article: "4.46"
+        title_nl: "Blustoestellen"
+        status: not_automatable
+      - article: "4.47"
+        title_nl: "Droge blusleiding"
+        status: planned
+      - article: "4.48"
+        title_nl: "Brandmeldinstallatie"
+        status: not_automatable
+      - article: "4.49"
+        title_nl: "Automatische brandblusinstallatie"
+        status: not_automatable
+      - article: "4.50"
+        title_nl: "Brandweeringang"
+        status: planned
+      - article: "4.52"
+        title_nl: "Rook- en warmteafvoer"
+        status: planned
+
+  accessibility:
+    description: "Toegankelijkheid - Accessibility requirements (Chapter 4, Afd. 4.6)"
+    total: 12
+    rules:
+      - article: "4.21"
+        title_nl: "Toegankelijkheidssector - deur breedte"
+        status: implemented
+      - article: "4.21"
+        title_nl: "Toegankelijkheidssector - vrije doorgang"
+        status: implemented
+      - article: "4.22"
+        title_nl: "Gemeenschappelijke verkeersruimte"
+        status: planned
+      - article: "4.23"
+        title_nl: "Toegang gebouw"
+        status: planned
+      - article: "4.100"
+        title_nl: "Bereikbaarheid vanaf openbare weg"
+        status: planned
+      - article: "4.101"
+        title_nl: "Toegankelijkheid woonfunctie"
+        status: planned
+      - article: "4.102"
+        title_nl: "Toegankelijkheid overige gebruiksfunctie"
+        status: planned
+      - article: "4.103"
+        title_nl: "Rolstoeltoegankelijkheid"
+        status: planned
+      - article: "4.104"
+        title_nl: "Hellingbaan bij hoogteverschil"
+        status: planned
+      - article: "4.105"
+        title_nl: "Liftinstallatie"
+        status: planned
+      - article: "4.106"
+        title_nl: "Toegankelijke toiletruimte"
+        status: planned
+      - article: "4.107"
+        title_nl: "Toegankelijke badruimte"
+        status: planned
+
+  structural:
+    description: "Constructieve veiligheid - Structural safety (Chapter 4, Afd. 4.2)"
+    total: 8
+    rules:
+      - article: "4.12"
+        title_nl: "Sterkte bouwconstructie"
+        status: not_automatable
+        notes: "Requires FEM structural analysis"
+      - article: "4.13"
+        title_nl: "Sterkte bij brand"
+        status: not_automatable
+        notes: "Requires fire simulation + structural analysis"
+      - article: "4.14"
+        title_nl: "Beperking van het ontstaan van brand"
+        status: planned
+      - article: "4.15"
+        title_nl: "Beperking van het ontwikkelen van brand"
+        status: planned
+      - article: "4.16"
+        title_nl: "Beperking van verspreiding van rook"
+        status: planned
+      - article: "4.17"
+        title_nl: "Vluchtroute bij brand"
+        status: planned
+      - article: "4.18"
+        title_nl: "Bescherming tegen vallen"
+        status: planned
+      - article: "4.19"
+        title_nl: "Overige veiligheid"
+        status: not_automatable
+
+  health:
+    description: "Gezondheid - Health requirements (Chapter 4, Afd. 4.3)"
+    total: 15
+    rules:
+      - article: "4.130"
+        title_nl: "Ventilatie"
+        status: planned
+      - article: "4.131"
+        title_nl: "Spuivoorziening"
+        status: planned
+      - article: "4.132"
+        title_nl: "Luchtverversing verblijfsgebied"
+        status: planned
+      - article: "4.133"
+        title_nl: "Luchtverversing verblijfsruimte"
+        status: planned
+      - article: "4.134"
+        title_nl: "Luchtverversing overig"
+        status: planned
+      - article: "4.135"
+        title_nl: "Toevoer verbrandingslucht"
+        status: planned
+      - article: "4.136"
+        title_nl: "Afvoer rookgas"
+        status: not_automatable
+      - article: "4.137"
+        title_nl: "Bescherming tegen geluid van buiten"
+        status: not_automatable
+        notes: "Requires acoustic simulation"
+      - article: "4.138"
+        title_nl: "Bescherming tegen geluid van installaties"
+        status: not_automatable
+      - article: "4.139"
+        title_nl: "Geluidwering tussen ruimten"
+        status: not_automatable
+      - article: "4.140"
+        title_nl: "Beperking galm"
+        status: not_automatable
+      - article: "4.141"
+        title_nl: "Daglicht"
+        status: planned
+      - article: "4.142"
+        title_nl: "Daglichtoppervlakte"
+        status: planned
+      - article: "4.143"
+        title_nl: "Bescherming tegen ratten en muizen"
+        status: not_automatable
+      - article: "4.144"
+        title_nl: "Watervoorziening"
+        status: not_automatable
+
+  sustainability:
+    description: "Duurzaamheid - Sustainability requirements (Chapter 4, Afd. 4.4)"
+    total: 10
+    rules:
+      - article: "4.159"
+        title_nl: "Milieuprestatie (MPG)"
+        status: not_automatable
+        notes: "Requires full lifecycle assessment (LCA)"
+      - article: "4.160"
+        title_nl: "BENG-1 (energiebehoefte)"
+        status: not_automatable
+        notes: "Requires NTA 8800 energy calculation"
+      - article: "4.161"
+        title_nl: "BENG-2 (primair fossiel energiegebruik)"
+        status: not_automatable
+        notes: "Requires NTA 8800 energy calculation"
+      - article: "4.162"
+        title_nl: "BENG-3 (aandeel hernieuwbare energie)"
+        status: not_automatable
+        notes: "Requires NTA 8800 energy calculation"
+      - article: "4.163"
+        title_nl: "Thermische isolatie"
+        status: planned
+      - article: "4.164"
+        title_nl: "Luchtdoorlatendheid"
+        status: not_automatable
+      - article: "4.165"
+        title_nl: "Koeling"
+        status: not_automatable
+      - article: "4.166"
+        title_nl: "Laadinfrastructuur elektrische voertuigen"
+        status: not_automatable
+      - article: "4.167"
+        title_nl: "Gebouwautomatisering"
+        status: not_automatable
+      - article: "4.168"
+        title_nl: "Duurzaam bouwen"
+        status: not_automatable

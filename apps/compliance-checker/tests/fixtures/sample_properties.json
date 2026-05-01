@@ -1,0 +1,160 @@
+{
+  "space-living-001": {
+    "Pset_SpaceCommon": {
+      "Height": 2800,
+      "IsExternal": false,
+      "Reference": "Living Room"
+    },
+    "BaseQuantities": {
+      "Height": 2800,
+      "GrossFloorArea": 28.5,
+      "NetFloorArea": 26.0
+    }
+  },
+  "space-bathroom-002": {
+    "Pset_SpaceCommon": {
+      "Height": 2600,
+      "IsExternal": false,
+      "Reference": "Bathroom"
+    },
+    "BaseQuantities": {
+      "Height": 2600,
+      "GrossFloorArea": 4.2,
+      "NetFloorArea": 3.8
+    }
+  },
+  "space-small-003": {
+    "Pset_SpaceCommon": {
+      "Height": 2000,
+      "IsExternal": false,
+      "Reference": "Storage"
+    },
+    "BaseQuantities": {
+      "Height": 2000,
+      "GrossFloorArea": 0.8,
+      "NetFloorArea": 0.7
+    }
+  },
+  "door-main-001": {
+    "Pset_DoorCommon": {
+      "Width": 900,
+      "Height": 2400,
+      "FireRating": "EI30",
+      "IsExternal": true,
+      "ClearWidth": 870
+    },
+    "BaseQuantities": {
+      "Width": 900,
+      "Height": 2400
+    }
+  },
+  "door-internal-002": {
+    "Pset_DoorCommon": {
+      "Width": 800,
+      "Height": 2100,
+      "IsExternal": false,
+      "ClearWidth": 770
+    },
+    "BaseQuantities": {
+      "Width": 800,
+      "Height": 2100
+    }
+  },
+  "door-fire-003": {
+    "Pset_DoorCommon": {
+      "Width": 950,
+      "Height": 2300,
+      "FireRating": "EI60",
+      "IsExternal": false,
+      "ClearWidth": 920
+    },
+    "BaseQuantities": {
+      "Width": 950,
+      "Height": 2300
+    }
+  },
+  "wall-ext-001": {
+    "Pset_WallCommon": {
+      "FireRating": "REI120",
+      "IsExternal": true,
+      "ThermalTransmittance": 0.18
+    },
+    "BaseQuantities": {
+      "Height": 2800,
+      "Width": 300,
+      "Length": 6000
+    }
+  },
+  "wall-int-002": {
+    "Pset_WallCommon": {
+      "FireRating": "EI60",
+      "IsExternal": false
+    },
+    "BaseQuantities": {
+      "Height": 2800,
+      "Width": 200,
+      "Length": 4000
+    }
+  },
+  "wall-partition-003": {
+    "Pset_WallCommon": {
+      "FireRating": "EI15",
+      "IsExternal": false
+    },
+    "BaseQuantities": {
+      "Height": 2800,
+      "Width": 100,
+      "Length": 3000
+    }
+  },
+  "wall-no-rating-004": {
+    "Pset_WallCommon": {
+      "IsExternal": false
+    },
+    "BaseQuantities": {
+      "Height": 2800,
+      "Width": 100,
+      "Length": 2000
+    }
+  },
+  "slab-floor-001": {
+    "Pset_SlabCommon": {
+      "FireRating": "REI60",
+      "IsExternal": false
+    },
+    "BaseQuantities": {
+      "Width": 200,
+      "GrossArea": 96.0
+    }
+  },
+  "slab-roof-002": {
+    "Pset_SlabCommon": {
+      "FireRating": "REI30",
+      "IsExternal": true
+    },
+    "BaseQuantities": {
+      "Width": 250,
+      "GrossArea": 96.0
+    }
+  },
+  "column-001": {
+    "Pset_ColumnCommon": {
+      "FireRating": "R90",
+      "IsExternal": false
+    },
+    "BaseQuantities": {
+      "Height": 2800,
+      "CrossSectionArea": 0.09
+    }
+  },
+  "column-002": {
+    "Pset_ColumnCommon": {
+      "FireRating": "R60",
+      "IsExternal": false
+    },
+    "BaseQuantities": {
+      "Height": 2800,
+      "CrossSectionArea": 0.04
+    }
+  }
+}
