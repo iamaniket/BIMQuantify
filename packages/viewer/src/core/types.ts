@@ -38,6 +38,7 @@ export interface ViewerEvents {
   'selection:change': { selected: ItemId[]; added: ItemId[]; removed: ItemId[] };
   'camera:change': { position: Vec3; target: Vec3 };
   'viewer:idle': undefined;
+  'visibility:change': { hidden: ItemId[]; isolated: ItemId[]; isolationActive: boolean };
   'command:executed': { name: string; ok: boolean; error?: string };
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };

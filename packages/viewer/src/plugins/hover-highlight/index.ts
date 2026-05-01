@@ -14,24 +14,26 @@ import * as FRAGS from '@thatopen/fragments';
 
 import { pick } from '../../core/Raycaster.js';
 import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
+import { EdgeOverlay } from '../shared/edge-overlay.js';
 
 const NAME = 'hover-highlight' as const;
 
 export interface HoverPluginOptions {
-  /** Highlight color. Default: light blue. */
+  /** Highlight color. Default: gold yellow. */
   color?: number;
   /** Opacity (0–1). Default: 0.5. */
   opacity?: number;
 }
 
 export function hoverHighlightPlugin(options: HoverPluginOptions = {}): Plugin {
-  const color = new THREE.Color(options.color ?? 0x6cb4ff);
+  const color = new THREE.Color(options.color ?? 0xffd700);
   const opacity = options.opacity ?? 0.5;
 
   let ctxRef: ViewerContext | null = null;
   let current: ItemId | null = null;
   let inFlight = false;
   let pending: { x: number; y: number } | null = null;
+  const edges = new EdgeOverlay();
 
   const material: FRAGS.MaterialDefinition = {
     color,
@@ -54,10 +56,12 @@ export function hoverHighlightPlugin(options: HoverPluginOptions = {}): Plugin {
     if (prev) {
       const model = ctxRef.models().get(prev.modelId);
       await model?.resetHighlight([prev.localId]).catch(() => undefined);
+      edges.remove(ctxRef, [prev]);
     }
     if (next && !isSelected(next)) {
       const model = ctxRef.models().get(next.modelId);
       await model?.highlight([next.localId], material).catch(() => undefined);
+      void edges.add(ctxRef, [next], color);
     }
     ctxRef.events.emit('hover:change', { item: next });
   };
@@ -119,6 +123,7 @@ export function hoverHighlightPlugin(options: HoverPluginOptions = {}): Plugin {
       if (current && ctxRef) {
         const model = ctxRef.models().get(current.modelId);
         model?.resetHighlight([current.localId]).catch(() => undefined);
+        edges.dispose(ctxRef);
       }
       current = null;
       pending = null;

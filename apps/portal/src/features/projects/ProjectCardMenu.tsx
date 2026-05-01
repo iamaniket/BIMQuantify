@@ -75,7 +75,13 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
             variant="ghost"
             size="sm"
             aria-label="Project actions"
-            className="absolute right-2 top-2 h-8 w-8 rounded-full bg-black/25 p-0 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
+            className="absolute right-2 top-2 z-20 h-8 w-8 rounded-full bg-black/25 p-0 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
           >
             <MoreVertical className="h-4 w-4" />
           </Button>

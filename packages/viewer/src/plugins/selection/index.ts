@@ -4,8 +4,8 @@
  *
  * The plugin owns no DOM listeners. Picking is exposed through commands
  * (`selection.pickSet`, `selection.pickAdd`, `selection.pickToggle`,
- * `selection.pickClear`) which the `mouse-bindings` plugin dispatches on
- * whichever pointer gestures the user has bound to them.
+ * `selection.pickRemove`, `selection.pickClear`) which the `mouse-bindings`
+ * plugin dispatches on whichever pointer gestures the user has bound to them.
  *
  * Exposes itself through `ctx.plugins.get('selection')` so other plugins
  * (e.g. hover) can do fast reads without going through the bus.
@@ -16,6 +16,7 @@ import * as FRAGS from '@thatopen/fragments';
 
 import { pick } from '../../core/Raycaster.js';
 import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
+import { EdgeOverlay } from '../shared/edge-overlay.js';
 
 const NAME = 'selection' as const;
 
@@ -32,7 +33,7 @@ export interface SelectionPluginAPI {
 }
 
 export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & SelectionPluginAPI {
-  const color = new THREE.Color(options.color ?? 0xff8a3d);
+  const color = new THREE.Color(options.color ?? 0x4a90d9);
   const opacity = options.opacity ?? 0.7;
 
   // `${modelId}::${localId}` keys for cheap Set ops.
@@ -42,6 +43,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
   const key = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
   let ctxRef: ViewerContext | null = null;
+  const edges = new EdgeOverlay();
 
   const material: FRAGS.MaterialDefinition = {
     color,
@@ -70,6 +72,11 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
       } else {
         await model.resetHighlight(ids).catch(() => undefined);
       }
+    }
+    if (on) {
+      void edges.add(ctxRef, items, color);
+    } else {
+      edges.remove(ctxRef, items);
     }
   };
 
@@ -185,6 +192,15 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     else await addItems([hit.item]);
   };
 
+  const pickRemove = async (args: PickArgs): Promise<void> => {
+    if (!ctxRef) return;
+    const ndc = ndcOf(args);
+    if (!ndc) return;
+    const hit = await pick(ctxRef, ndc);
+    if (!hit) return;
+    await removeItems([hit.item]);
+  };
+
   const api: Plugin & SelectionPluginAPI = {
     name: NAME,
 
@@ -248,13 +264,18 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
         (args: unknown) => pickToggle(args as PickArgs),
         { title: 'Toggle item at pointer in selection' },
       );
+      ctx.commands.register(
+        'selection.pickRemove',
+        (args: unknown) => pickRemove(args as PickArgs),
+        { title: 'Remove item at pointer from selection' },
+      );
       ctx.commands.register('selection.pickClear', () => clear(), {
         title: 'Clear selection (pointer)',
       });
     },
 
     uninstall() {
-      // Reset visual state on shutdown.
+      if (ctxRef) edges.dispose(ctxRef);
       void clear();
       ctxRef = null;
     },

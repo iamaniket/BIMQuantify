@@ -37,7 +37,7 @@ export function RightColumnTabs({
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-      <div className="shrink-0 border-b border-border px-4 pt-3">
+      <div className="shrink-0 px-4 pt-4">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="models">
@@ -58,18 +58,18 @@ export function RightColumnTabs({
         </Tabs>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {tab === 'models' && (
           <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />
         )}
         {tab === 'issues' && <IssuesTab issues={issues} />}
         {tab === 'activity' && (
-          <div className="p-4">
+          <div>
             <ActivityTab activity={activity} />
           </div>
         )}
         {tab === 'dossier' && dossier !== undefined && (
-          <div className="p-4">
+          <div>
             <DossierTab dossier={dossier} />
           </div>
         )}

@@ -23,6 +23,7 @@ type Props = {
   overallScore: number;
   totalChecks: number;
   failCount: number;
+  embedded?: boolean;
 };
 
 const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -41,6 +42,7 @@ export function ComplianceByDomainCard({
   overallScore,
   totalChecks,
   failCount,
+  embedded = false,
 }: Props): JSX.Element {
   const [tab, setTab] = useState('domains');
 
@@ -57,7 +59,11 @@ export function ComplianceByDomainCard({
   const donutSegments = seed;
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background p-4 shadow-sm">
+    <div
+      className={`relative flex min-h-0 flex-1 flex-col overflow-hidden p-4 ${
+        embedded ? 'bg-transparent' : 'rounded-xl border border-border bg-background shadow-sm'
+      }`}
+    >
       <BlueprintTexture className="opacity-[0.04]" />
 
       {/* Header */}
@@ -87,7 +93,7 @@ export function ComplianceByDomainCard({
             centerValue={`${overallScore}%`}
             centerLabel="Wkb compliant"
             centerSub={`${failCount} failing`}
-            size={190}
+            size={380}
           />
         </div>
 

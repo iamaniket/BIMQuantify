@@ -24,7 +24,9 @@ export type {
   ControlsOptions,
   EffectsOptions,
   EffectsQuality,
+  HoverPluginOptions,
   PivotRotateOptions,
+  SelectionPluginOptions,
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
@@ -46,3 +48,4 @@ export {
 export { viewCubePlugin } from './plugins/viewcube/index.js';
 export { effectsPlugin } from './plugins/effects/index.js';
 export { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
+export { visibilityPlugin } from './plugins/visibility/index.js';

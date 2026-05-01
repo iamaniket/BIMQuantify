@@ -49,6 +49,7 @@ export const DEFAULT_MOUSE_BINDINGS: MouseBindingMap = {
   'click:Shift+left': 'selection.pickAdd',
   'click:Ctrl+left': 'selection.pickToggle',
   'click:Meta+left': 'selection.pickToggle',
+  'click:Alt+left': 'selection.pickRemove',
   move: 'hover.pick',
   'move:leave': 'hover.clear',
 };

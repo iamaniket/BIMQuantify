@@ -19,6 +19,7 @@ import { ProjectCardMenu } from './ProjectCardMenu';
 import {
   formatPhaseLabel,
   formatProjectBadgeLabel,
+  isProjectArchived,
   projectBadgeClasses,
   projectDotClasses,
 } from './projectFormatting';
@@ -41,11 +42,18 @@ type Props = {
 
 export function ProjectCard({ project }: Props): JSX.Element {
   const { locale, messages } = useLocale();
+  const archived = isProjectArchived(project);
   const createdLabel = formatDateLabel(project.created_at, locale);
   const updatedLabel = formatDateLabel(project.updated_at, locale);
   const deliveryLabel = project.delivery_date === null ? '' : formatDateLabel(project.delivery_date, locale);
   const cityLine = project.city ?? null;
   const contractorName = project.contractor_name ?? null;
+  const thumbnailClassName = archived
+    ? 'h-36 w-full object-cover grayscale transition-transform duration-300 group-hover:scale-[1.03]'
+    : 'h-36 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]';
+  const emptyStateClassName = archived
+    ? 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-slate-50 to-slate-100 grayscale'
+    : 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-slate-50 to-slate-100';
 
   const [aerialFailed, setAerialFailed] = useState(false);
   const aerialUrl = (
@@ -77,18 +85,18 @@ export function ProjectCard({ project }: Props): JSX.Element {
             <img
               src={project.thumbnail_url}
               alt=""
-              className="h-36 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              className={thumbnailClassName}
             />
           ) : aerialUrl !== null ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={aerialUrl}
               alt=""
-              className="h-36 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              className={thumbnailClassName}
               onError={() => setAerialFailed(true)}
             />
           ) : (
-            <div className="flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-slate-50 to-slate-100">
+            <div className={emptyStateClassName}>
               <Building2 className="h-10 w-10 text-slate-300" />
               <Layers className="h-7 w-7 text-slate-200" />
               <Ruler className="h-6 w-6 text-slate-200" />

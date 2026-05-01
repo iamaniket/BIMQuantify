@@ -19,6 +19,7 @@ import { mouseBindingsPlugin } from './plugins/mouse-bindings/index.js';
 import { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
 import { selectionPlugin } from './plugins/selection/index.js';
 import { viewCubePlugin } from './plugins/viewcube/index.js';
+import { visibilityPlugin } from './plugins/visibility/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
 
 /**
@@ -82,8 +83,9 @@ function IfcViewerImpl(
 
     const builtIns = [
       cameraPlugin(),
-      hoverHighlightPlugin(),
-      selectionPlugin(),
+      hoverHighlightPlugin(props.hoverHighlight ?? {}),
+      selectionPlugin(props.selectionHighlight ?? {}),
+      visibilityPlugin(),
       keyboardShortcutsPlugin(shortcuts ? { overrides: shortcuts } : {}),
       // Mouse-bindings registers AFTER selection/hover so the default
       // bindings can resolve `selection.pickSet` etc. at install time.

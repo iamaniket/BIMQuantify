@@ -14,7 +14,9 @@ import type {
 } from './core/types.js';
 import type { CameraAction, ControlsOptions } from './core/Viewer.js';
 import type { EffectsOptions } from './plugins/effects/types.js';
+import type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
 import type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
+import type { SelectionPluginOptions } from './plugins/selection/index.js';
 
 export type ViewerBundle = {
   fragmentsUrl: string;
@@ -85,6 +87,10 @@ export type IfcViewerProps = {
   viewCube?: ViewCubeOptions;
   background?: BackgroundOptions;
   shadows?: ShadowOptions;
+  /** Hover highlight color and opacity. */
+  hoverHighlight?: HoverPluginOptions;
+  /** Selection highlight color and opacity. */
+  selectionHighlight?: SelectionPluginOptions;
   /** Forge-style post-processing (silhouette edge lines). */
   effects?: EffectsOptions;
   /**
@@ -100,6 +106,10 @@ export type { EffectsOptions, EffectsQuality } from './plugins/effects/types.js'
 export type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 
 export type { CameraAction, ControlsOptions } from './core/Viewer.js';
+
+export type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
+
+export type { SelectionPluginOptions } from './plugins/selection/index.js';
 
 export type {
   Plugin,

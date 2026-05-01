@@ -142,21 +142,26 @@ export default function ProjectDetailPage(): JSX.Element {
       <div className="grid min-h-0 flex-1 grid-cols-2 gap-3.5 overflow-y-auto p-3.5">
         {/* Left column */}
         <div className="flex flex-col gap-3.5">
-          {summary !== undefined && (
-            <ComplianceHealthCard
-              summary={summary}
-              holdbackAmount={dossier?.holdbackAmount ?? '—'}
+          <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+            {summary !== undefined && (
+              <ComplianceHealthCard
+                summary={summary}
+                holdbackAmount={dossier?.holdbackAmount ?? '—'}
+                embedded
+              />
+            )}
+            <div className="border-t border-border" />
+            <ComplianceByDomainCard
+              domains={domains}
+              articles={articles}
+              models={models}
+              trend={trend}
+              overallScore={overallScore}
+              totalChecks={summary !== undefined ? summary.passCount + summary.warnCount + summary.failCount : 0}
+              failCount={summary?.failCount ?? 0}
+              embedded
             />
-          )}
-          <ComplianceByDomainCard
-            domains={domains}
-            articles={articles}
-            models={models}
-            trend={trend}
-            overallScore={overallScore}
-            totalChecks={summary !== undefined ? summary.passCount + summary.warnCount + summary.failCount : 0}
-            failCount={summary?.failCount ?? 0}
-          />
+          </div>
         </div>
 
         {/* Right column */}

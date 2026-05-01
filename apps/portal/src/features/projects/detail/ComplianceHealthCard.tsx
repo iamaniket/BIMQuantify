@@ -8,6 +8,7 @@ import { HoldbackUnlock } from './HoldbackUnlock';
 type Props = {
   summary: ComplianceSummary;
   holdbackAmount: string;
+  embedded?: boolean;
 };
 
 const counters: Array<{
@@ -20,9 +21,15 @@ const counters: Array<{
   { label: 'Fail', key: 'failCount', borderClass: 'border-l-error' },
 ];
 
-export function ComplianceHealthCard({ summary, holdbackAmount }: Props): JSX.Element {
+export function ComplianceHealthCard({ summary, holdbackAmount, embedded = false }: Props): JSX.Element {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-background shadow-sm dark:border-none dark:bg-gradient-to-br dark:from-[#0e141c] dark:via-[#152035] dark:to-[#1e3253]">
+    <div
+      className={`relative overflow-hidden ${
+        embedded
+          ? 'bg-transparent'
+          : 'rounded-xl border border-border bg-background shadow-sm dark:border-none dark:bg-gradient-to-br dark:from-[#0e141c] dark:via-[#152035] dark:to-[#1e3253]'
+      }`}
+    >
       <BlueprintTexture />
       <div className="relative grid grid-cols-[1.4fr_1fr] gap-4 p-5">
         <div>

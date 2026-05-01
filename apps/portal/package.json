@@ -24,7 +24,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-query": "^5.62.0",
-    "@thatopen/fragments": "~3.0.0",
+    "@thatopen/fragments": "~3.4.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "next": "^15.0.3",
@@ -34,8 +34,8 @@
     "react-hook-form": "^7.54.0",
     "recharts": "^3.8.1",
     "tailwind-merge": "^2.5.5",
-    "three": "^0.175.0",
-    "web-ifc": "0.0.68",
+    "three": "^0.184.0",
+    "web-ifc": "0.0.77",
     "zod": "^3.24.1"
   },
   "devDependencies": {

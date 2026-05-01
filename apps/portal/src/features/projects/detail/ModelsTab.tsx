@@ -20,22 +20,25 @@ export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
   const [newModelOpen, setNewModelOpen] = useState(false);
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between px-4 py-2.5">
-        <div className="grid grid-cols-[1fr_50px_100px_60px_90px] items-center gap-0 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_56px_88px_112px] items-center gap-4 px-1">
+        <div className="grid grid-cols-[minmax(0,1fr)_56px_88px] items-center gap-4 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
           <span>Model</span>
-          <span>Files</span>
-          <span>Score</span>
+          <span className="text-center">Files</span>
           <span>Sync</span>
-          <span />
         </div>
-        <Button variant="border" size="sm" onClick={() => { setNewModelOpen(true); }}>
+        <Button
+          variant="border"
+          size="sm"
+          className="justify-self-end"
+          onClick={() => { setNewModelOpen(true); }}
+        >
           <Plus className="h-3.5 w-3.5" />
           New model
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-background">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         {models.length === 0 ? (
           <div className="px-4 py-8 text-center text-body3 text-foreground-tertiary">
             No models yet. Create one to get started.
