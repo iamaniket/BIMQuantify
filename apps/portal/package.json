@@ -14,6 +14,7 @@
     "clean": "rimraf .next .turbo node_modules"
   },
   "dependencies": {
+    "@bimstitch/i18n": "workspace:*",
     "@bimstitch/design-tokens": "workspace:*",
     "@bimstitch/ui": "workspace:*",
     "@bimstitch/viewer": "workspace:*",

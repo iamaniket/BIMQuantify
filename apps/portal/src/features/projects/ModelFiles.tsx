@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import {
-  useCallback, useRef, useState, type ChangeEvent, type DragEvent, type JSX,
+  useCallback, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX,
 } from 'react';
 
 import {
@@ -67,11 +67,14 @@ function formatDate(iso: string): string {
   }).format(parsed);
 }
 
-const ALLOWED_EXTENSIONS = ['.ifc', '.pdf'];
+const ALL_EXTENSIONS = ['.ifc', '.pdf'] as const;
 
-function isAllowedFile(file: File): boolean {
+function isAllowedFile(file: File, lockedFileType: string | null): boolean {
   const lower = file.name.toLowerCase();
-  return ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  if (lockedFileType !== null) {
+    return lower.endsWith(`.${lockedFileType}`);
+  }
+  return ALL_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
 function ExtractionBadge({
@@ -220,8 +223,17 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
   const [isDragging, setIsDragging] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProjectFile | null>(null);
 
+  const files = filesQuery.data ?? [];
+  // Backend returns files ordered by version_number desc — so files[0] is the latest.
+  const readyFiles = files.filter((f) => f.status === 'ready');
+  const lockedFileType = useMemo(
+    () => readyFiles[0]?.file_type ?? null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filesQuery.data],
+  );
+
   const startUpload = useCallback((file: File): void => {
-    if (!isAllowedFile(file)) {
+    if (!isAllowedFile(file, lockedFileType)) {
       const id = nextUploadId();
       setPending((prev) => [
         ...prev,
@@ -263,7 +275,7 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
         },
       },
     );
-  }, [projectId, modelId, uploadMutation]);
+  }, [projectId, modelId, uploadMutation, lockedFileType]);
 
   const handleFiles = useCallback((files: FileList | null): void => {
     if (files === null) return;
@@ -299,9 +311,6 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
     setPending((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const files = filesQuery.data ?? [];
-  // Backend returns files ordered by version_number desc — so files[0] is the latest.
-  const readyFiles = files.filter((f) => f.status === 'ready');
   const rejectedFiles = files.filter((f) => f.status === 'rejected');
   const latest = readyFiles[0];
   const history = readyFiles.slice(1);
@@ -336,11 +345,15 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
         >
           Choose file
         </Button>
-        <p className="text-caption text-foreground-tertiary">.ifc and .pdf files</p>
+        <p className="text-caption text-foreground-tertiary">
+          {lockedFileType !== null
+            ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> only — locked by first upload</>
+            : '.ifc and .pdf files'}
+        </p>
         <input
           ref={inputRef}
           type="file"
-          accept=".ifc,.pdf"
+          accept={lockedFileType !== null ? `.${lockedFileType}` : '.ifc,.pdf'}
           multiple
           className="hidden"
           onChange={handleInputChange}

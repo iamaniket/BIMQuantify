@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { JSX, ReactNode } from 'react';
 
 import { AuthProvider } from '@/providers/AuthProvider';
+import { LocaleProvider } from '@/providers/LocaleProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 
@@ -20,13 +21,15 @@ export default function RootLayout({ children }: Props): JSX.Element {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
-        <ThemeProvider>
-          <QueryProvider>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-          </QueryProvider>
-        </ThemeProvider>
+        <LocaleProvider>
+          <ThemeProvider>
+            <QueryProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </QueryProvider>
+          </ThemeProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

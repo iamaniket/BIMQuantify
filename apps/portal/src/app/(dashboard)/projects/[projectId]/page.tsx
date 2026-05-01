@@ -3,7 +3,9 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, Skeleton } from '@bimstitch/ui';
+
+import { ModelFiles } from '@/features/projects/ModelFiles';
 
 import { ApiError } from '@/lib/api/client';
 import { useModels } from '@/features/projects/useModels';
@@ -106,8 +108,30 @@ export default function ProjectDetailPage(): JSX.Element {
   const overallScore = summary?.overallScore ?? 0;
   const dossierPct = summary?.dossierPercentage ?? 0;
 
+  const uploadModel = uploadModelId !== null
+    ? models.find((m) => m.id === uploadModelId)
+    : undefined;
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      <Dialog
+        open={uploadModelId !== null}
+        onOpenChange={(open) => { if (!open) setUploadModelId(null); }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {uploadModel !== undefined ? `Upload — ${uploadModel.name}` : 'Upload file'}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {uploadModelId !== null && (
+              <ModelFiles projectId={projectId} modelId={uploadModelId} />
+            )}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
+
       <ProjectDetailHeader
         project={project}
         compliance={summary}

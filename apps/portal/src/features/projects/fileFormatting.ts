@@ -24,6 +24,8 @@ export function formatRejection(reason: string | null): string {
       return 'Not a valid PDF file (missing %PDF header).';
     case 'INVALID_FILE_EXTENSION':
       return 'File type not supported. Allowed: .ifc, .pdf';
+    case 'MODEL_FILE_TYPE_LOCKED':
+      return 'This model is locked to its existing file type.';
     default:
       return reason;
   }

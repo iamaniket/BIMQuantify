@@ -77,6 +77,9 @@ importers:
       '@bimstitch/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@bimstitch/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@bimstitch/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -306,6 +309,18 @@ importers:
         version: 8.59.0(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
 
   packages/design-tokens:
+    devDependencies:
+      '@bimstitch/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      rimraf:
+        specifier: ^5.0.10
+        version: 5.0.10
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/i18n:
     devDependencies:
       '@bimstitch/tsconfig':
         specifier: workspace:*

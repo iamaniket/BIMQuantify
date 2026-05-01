@@ -763,6 +763,98 @@ async def test_delete_viewer_forbidden(
 
 
 # ---------------------------------------------------------------------------
+# File-type locking
+# ---------------------------------------------------------------------------
+
+
+async def test_initiate_locked_model_rejects_different_type(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Once an IFC file is ready, uploading a PDF to the same model is rejected."""
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="LockReject"
+    )
+    # Upload and complete an IFC file so the model is locked to IFC.
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "model.ifc",
+                "size_bytes": len(VALID_IFC_HEADER),
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_IFC_HEADER
+    complete_resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert complete_resp.status_code == 200
+    assert complete_resp.json()["status"] == "ready"
+
+    # Now try to initiate a PDF upload — must be rejected.
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
+        json={
+            "filename": "drawing.pdf",
+            "size_bytes": 1024,
+            "content_type": "application/pdf",
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 422, resp.text
+    body = resp.json()
+    assert body["detail"]["code"] == "MODEL_FILE_TYPE_LOCKED"
+    assert body["detail"]["locked_to"] == "ifc"
+
+
+async def test_initiate_locked_model_allows_same_type(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """After an IFC file is ready, a second IFC upload is still allowed."""
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="LockAllow"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "model.ifc",
+                "size_bytes": len(VALID_IFC_HEADER),
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_IFC_HEADER
+    complete_resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert complete_resp.status_code == 200
+
+    # A second IFC initiate for the same model should still succeed.
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
+        json={
+            "filename": "model_v2.ifc",
+            "size_bytes": len(VALID_IFC_HEADER),
+            "content_type": "application/octet-stream",
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+
+
+# ---------------------------------------------------------------------------
 # PDF upload + complete
 # ---------------------------------------------------------------------------
 

@@ -2,6 +2,7 @@
 
 import { Eye, Upload, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, type JSX } from 'react';
 
 import { Button, Progress } from '@bimstitch/ui';
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Element {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const filesQuery = useModelFiles(projectId, model.id);
   const files = filesQuery.data ?? [];
@@ -31,6 +33,11 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
   const statusColor = score > 90 ? 'success' : score > 75 ? 'warning' : 'error';
   const colors = DISC_COLORS[model.discipline] ?? DISC_COLORS['other']!;
   const latestFile = files.length > 0 ? files[0] : undefined;
+  const isViewable = latestFile !== undefined && (
+    latestFile.file_type === 'pdf'
+      ? latestFile.status === 'ready'
+      : latestFile.extraction_status === 'succeeded'
+  );
 
   return (
     <div className="border-b border-border">
@@ -75,9 +82,15 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
             <>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); }}
-                title="View in 3D"
-                className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary"
+                disabled={!isViewable}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (latestFile !== undefined) {
+                    router.push(`/projects/${projectId}/models/${model.id}/viewer/${latestFile.id}`);
+                  }
+                }}
+                title={isViewable ? 'View file' : 'No viewable file yet'}
+                className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Eye className="h-3.5 w-3.5" />
               </button>
