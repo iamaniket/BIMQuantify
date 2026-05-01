@@ -23,7 +23,9 @@ from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.extraction import ExtractionDispatchError, dispatch_extraction
 from bimstitch_api.ifc.header import parse_ifc_header
 from bimstitch_api.models.project_file import (
+    ALLOWED_EXTENSIONS,
     ExtractionStatus,
+    FileType,
     ProjectFile,
     ProjectFileStatus,
 )
@@ -101,7 +103,11 @@ async def initiate_upload(
 
     model = await _load_model_or_404(session, project.id, model_id)
 
-    if not payload.filename.lower().endswith(".ifc"):
+    fname_lower = payload.filename.lower()
+    dot_pos = fname_lower.rfind(".")
+    ext = fname_lower[dot_pos:] if dot_pos >= 0 else ""
+    file_type = ALLOWED_EXTENSIONS.get(ext)
+    if file_type is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="INVALID_FILE_EXTENSION"
         )
@@ -110,7 +116,7 @@ async def initiate_upload(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="FILE_TOO_LARGE"
         )
 
-    storage_key = f"projects/{project.id}/models/{model.id}/{uuid4()}.ifc"
+    storage_key = f"projects/{project.id}/models/{model.id}/{uuid4()}{ext}"
 
     max_version = (
         await session.execute(
@@ -129,6 +135,7 @@ async def initiate_upload(
         original_filename=payload.filename,
         size_bytes=payload.size_bytes,
         content_type=payload.content_type,
+        file_type=file_type,
         status=ProjectFileStatus.pending,
     )
     session.add(row)
@@ -186,6 +193,29 @@ async def complete_upload(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="SIZE_MISMATCH"
         )
 
+    if row.file_type == FileType.pdf:
+        head_bytes = await storage.get_object_range(row.storage_key, 0, min(4, row.size_bytes - 1))
+        if not head_bytes.startswith(b"%PDF"):
+            row.status = ProjectFileStatus.rejected
+            row.rejection_reason = "FILE_NOT_VALID_PDF"
+            try:
+                await storage.delete_object(row.storage_key)
+            except Exception:
+                logger.warning(
+                    "Failed to delete rejected upload %s; row marked rejected anyway",
+                    row.storage_key,
+                    exc_info=True,
+                )
+            await session.flush()
+            await session.refresh(row)
+            return row
+
+        row.status = ProjectFileStatus.ready
+        await session.flush()
+        await session.refresh(row)
+        return row
+
+    # IFC path
     range_end = min(HEADER_PEEK_BYTES - 1, max(row.size_bytes - 1, 0))
     head_bytes = await storage.get_object_range(row.storage_key, 0, range_end)
     result = parse_ifc_header(head_bytes)
@@ -322,6 +352,20 @@ async def get_viewer_bundle(
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)
+
+    if row.file_type == FileType.pdf:
+        if row.status is not ProjectFileStatus.ready:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="VIEWER_BUNDLE_NOT_READY"
+            )
+        file_url = await storage.presigned_get_url(row.storage_key, row.original_filename)
+        return ViewerBundleResponse(
+            file_type=row.file_type,
+            file_url=file_url,
+            expires_in=storage.presign_ttl,
+        )
+
+    # IFC path
     if row.extraction_status is not ExtractionStatus.succeeded or row.fragments_storage_key is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VIEWER_BUNDLE_NOT_READY")
 
@@ -338,6 +382,7 @@ async def get_viewer_bundle(
         )
 
     return ViewerBundleResponse(
+        file_type=row.file_type,
         fragments_url=fragments_url,
         metadata_url=metadata_url,
         properties_url=properties_url,

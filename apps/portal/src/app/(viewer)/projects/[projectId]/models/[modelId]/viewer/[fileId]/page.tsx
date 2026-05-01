@@ -18,7 +18,7 @@ import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
-import type { ViewerBundleResponse } from '@/lib/api/schemas';
+import type { FileTypeValue, ViewerBundleResponse } from '@/lib/api/schemas';
 import {
   DEFAULT_VIEWER_SETTINGS,
   loadViewerSettings,
@@ -31,8 +31,13 @@ const IfcViewer = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
+const DocumentViewer = dynamic(
+  () => import('@bimstitch/viewer').then((m) => m.DocumentViewer),
+  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
+);
+
 function buildBundle(response: ViewerBundleResponse): ViewerBundle {
-  const out: ViewerBundle = { fragmentsUrl: response.fragments_url };
+  const out: ViewerBundle = { fragmentsUrl: response.fragments_url! };
   if (response.metadata_url !== null) out.metadataUrl = response.metadata_url;
   if (response.properties_url !== null) out.propertiesUrl = response.properties_url;
   return out;
@@ -95,6 +100,16 @@ export default function ViewerPage(): JSX.Element {
     );
   } else if (bundle === null) {
     body = <Skeleton className="absolute inset-0" />;
+  } else if (bundle.file_type === 'pdf') {
+    body = (
+      <DocumentViewer
+        fileUrl={bundle.file_url!}
+        className="absolute inset-0"
+        onError={(err) => {
+          setViewerError(err.message);
+        }}
+      />
+    );
   } else {
     body = (
       <>

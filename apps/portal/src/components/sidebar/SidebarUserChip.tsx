@@ -1,9 +1,8 @@
 'use client';
 
-import { LogOut, Moon, Sun } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { JSX } from 'react';
-import { useTheme } from 'next-themes';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';
 
@@ -15,36 +14,19 @@ export function SidebarUserChip(): JSX.Element {
   const { collapsed } = useSidebar();
   const { setTokens } = useAuth();
   const router = useRouter();
-  const { resolvedTheme, setTheme } = useTheme();
 
   const onSignOut = (): void => {
     setTokens(null);
     router.replace('/login');
   };
 
-  const toggleTheme = (): void => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-  };
-
-  const ThemeIcon = resolvedTheme === 'dark' ? Moon : Sun;
+  const actionButtonClassName =
+    'grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white';
+  const actionIconClassName = 'h-[1.3rem] w-[1.3rem] text-white/55';
 
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-2 border-t border-white/12 px-2 py-3">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="grid h-7 w-7 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20"
-            >
-              <ThemeIcon className="h-3 w-3" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            {resolvedTheme === 'dark' ? 'Switch to light' : 'Switch to dark'}
-          </TooltipContent>
-        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <div
@@ -69,22 +51,18 @@ export function SidebarUserChip(): JSX.Element {
         <div className="truncate text-body3 font-semibold text-white">Lieke Beumer</div>
         <div className="truncate text-caption text-white/55">Wkb-inspecteur · Admin</div>
       </div>
-      <button
-        type="button"
-        onClick={toggleTheme}
-        title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20"
-      >
-        <ThemeIcon className="h-3 w-3" />
-      </button>
-      <button
-        type="button"
-        onClick={onSignOut}
-        title="Sign out"
-        className="shrink-0 text-white/55 transition-colors hover:text-white"
-      >
-        <LogOut className="h-3.5 w-3.5" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className={actionButtonClassName}
+          >
+            <LogOut className={actionIconClassName} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Sign out</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

@@ -760,3 +760,166 @@ async def test_delete_viewer_forbidden(
         headers=_auth(same_org_user["access_token"]),
     )
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# PDF upload + complete
+# ---------------------------------------------------------------------------
+
+VALID_PDF_BYTES = b"%PDF-1.7\n%test content\n"
+
+
+async def test_initiate_pdf_succeeds(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="PdfInit"
+    )
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
+        json={
+            "filename": "drawing.pdf",
+            "size_bytes": 2048,
+            "content_type": "application/pdf",
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["storage_key"].endswith(".pdf")
+
+
+async def test_initiate_unknown_extension_rejected(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="UnkExt"
+    )
+    for filename in ("model.dwg", "model.xyz", "model.step"):
+        resp = await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": filename,
+                "size_bytes": 100,
+                "content_type": "application/octet-stream",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+        assert resp.status_code == 400, f"{filename}: {resp.text}"
+        assert resp.json()["detail"] == "INVALID_FILE_EXTENSION"
+
+
+async def test_complete_pdf_valid_marks_ready_no_extraction(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, str]],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="PdfComplete"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "plan.pdf",
+                "size_bytes": len(VALID_PDF_BYTES),
+                "content_type": "application/pdf",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_PDF_BYTES
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "ready"
+    assert body["file_type"] == "pdf"
+    assert body["ifc_schema"] is None
+    assert body["extraction_status"] == "not_started"
+    assert len(extraction_calls) == 0
+
+
+async def test_complete_pdf_invalid_magic_rejects(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="PdfBadMagic"
+    )
+    bad = b"this is not a pdf at all\n"
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "fake.pdf",
+                "size_bytes": len(bad),
+                "content_type": "application/pdf",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = bad
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "rejected"
+    assert body["rejection_reason"] == "FILE_NOT_VALID_PDF"
+    assert init["storage_key"] not in fake.objects
+    assert init["storage_key"] in fake.deleted
+
+
+async def test_viewer_bundle_pdf_returns_file_url(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="PdfViewer"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "plan.pdf",
+                "size_bytes": len(VALID_PDF_BYTES),
+                "content_type": "application/pdf",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_PDF_BYTES
+    await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+
+    resp = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/viewer-bundle",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["file_type"] == "pdf"
+    assert body["file_url"] is not None
+    assert body["file_url"].endswith("?download=plan.pdf")
+    assert body["fragments_url"] is None
+    assert body["expires_in"] == fake.presign_ttl_value

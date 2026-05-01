@@ -1,4 +1,4 @@
-import type { ExtractionStatusValue, IfcSchemaValue } from '@/lib/api/schemas';
+import type { ExtractionStatusValue, FileTypeValue, IfcSchemaValue } from '@/lib/api/schemas';
 
 const KIB = 1024;
 const MIB = KIB * 1024;
@@ -20,12 +20,20 @@ export function formatRejection(reason: string | null): string {
       return 'IFC file is missing FILE_SCHEMA declaration.';
     case 'FILE_SCHEMA_UNSUPPORTED':
       return 'IFC schema is not one of IFC2X3, IFC4, IFC4X3.';
+    case 'FILE_NOT_VALID_PDF':
+      return 'Not a valid PDF file (missing %PDF header).';
+    case 'INVALID_FILE_EXTENSION':
+      return 'File type not supported. Allowed: .ifc, .pdf';
     default:
       return reason;
   }
 }
 
-export function formatSchemaLabel(schema: IfcSchemaValue | null): string {
+export function formatSchemaLabel(
+  schema: IfcSchemaValue | null,
+  fileType?: FileTypeValue,
+): string {
+  if (fileType === 'pdf') return 'PDF';
   if (schema === null) return '—';
   if (schema === 'unknown') return 'Unknown';
   return schema;

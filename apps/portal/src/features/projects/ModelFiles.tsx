@@ -67,8 +67,11 @@ function formatDate(iso: string): string {
   }).format(parsed);
 }
 
-function isIfcFile(file: File): boolean {
-  return file.name.toLowerCase().endsWith('.ifc');
+const ALLOWED_EXTENSIONS = ['.ifc', '.pdf'];
+
+function isAllowedFile(file: File): boolean {
+  const lower = file.name.toLowerCase();
+  return ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
 function ExtractionBadge({
@@ -135,7 +138,7 @@ function FileRow({
         <span className="text-caption text-foreground-tertiary">
           {formatFileSize(file.size_bytes)}
           {' · '}
-          {formatSchemaLabel(file.ifc_schema)}
+          {formatSchemaLabel(file.ifc_schema, file.file_type)}
           {' · uploaded '}
           {formatDate(file.created_at)}
         </span>
@@ -156,14 +159,17 @@ function FileRow({
           Retry
         </Button>
       ) : null}
-      {file.extraction_status === 'succeeded' ? (
+      {file.extraction_status === 'succeeded' || (file.file_type === 'pdf' && file.status === 'ready') ? (
         <Link
           href={`/projects/${projectId}/models/${modelId}/viewer/${file.id}`}
-          aria-label={`View ${file.original_filename} in 3D`}
+          aria-label={`View ${file.original_filename}${file.file_type === 'ifc' ? ' in 3D' : ''}`}
           className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-caption font-medium text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
         >
-          <Box className="h-4 w-4" />
-          View 3D
+          {file.file_type === 'ifc' ? (
+            <><Box className="h-4 w-4" /> View 3D</>
+          ) : (
+            <><FileText className="h-4 w-4" /> View</>
+          )}
         </Link>
       ) : null}
       <Button
@@ -215,11 +221,11 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
   const [deleteTarget, setDeleteTarget] = useState<ProjectFile | null>(null);
 
   const startUpload = useCallback((file: File): void => {
-    if (!isIfcFile(file)) {
+    if (!isAllowedFile(file)) {
       const id = nextUploadId();
       setPending((prev) => [
         ...prev,
-        { id, file, state: { kind: 'rejected', reason: 'FILE_NOT_ISO_10303_21' } },
+        { id, file, state: { kind: 'rejected', reason: 'INVALID_FILE_EXTENSION' } },
       ]);
       return;
     }
@@ -316,7 +322,7 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
       >
         <UploadCloud className="h-6 w-6 text-foreground-tertiary" />
         <p className="text-body3 text-foreground">
-          Drop an IFC here, or
+          Drop a file here, or
         </p>
         <Button
           type="button"
@@ -330,11 +336,11 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
         >
           Choose file
         </Button>
-        <p className="text-caption text-foreground-tertiary">.ifc files only</p>
+        <p className="text-caption text-foreground-tertiary">.ifc and .pdf files</p>
         <input
           ref={inputRef}
           type="file"
-          accept=".ifc"
+          accept=".ifc,.pdf"
           multiple
           className="hidden"
           onChange={handleInputChange}
@@ -370,7 +376,7 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
 
       {!filesQuery.isLoading && readyFiles.length === 0 && pending.length === 0 ? (
         <p className="px-1 text-caption text-foreground-tertiary">
-          No versions yet. Upload an IFC to create the first version.
+          No versions yet. Upload a file to create the first version.
         </p>
       ) : null}
 

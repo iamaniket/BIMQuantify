@@ -25,6 +25,17 @@ if TYPE_CHECKING:
     from bimstitch_api.models.model import Model
 
 
+class FileType(StrEnum):
+    ifc = "ifc"
+    pdf = "pdf"
+
+
+ALLOWED_EXTENSIONS: dict[str, "FileType"] = {
+    ".ifc": FileType.ifc,
+    ".pdf": FileType.pdf,
+}
+
+
 class IfcSchema(StrEnum):
     ifc2x3 = "IFC2X3"
     ifc4 = "IFC4"
@@ -66,6 +77,16 @@ class ProjectFile(TimestampMixin, Base):
     original_filename: Mapped[str] = mapped_column(String(512), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     content_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[FileType] = mapped_column(
+        SAEnum(
+            FileType,
+            name="filetype",
+            values_callable=lambda enum: [m.value for m in enum],
+        ),
+        nullable=False,
+        default=FileType.ifc,
+        server_default=FileType.ifc.value,
+    )
     ifc_schema: Mapped[IfcSchema | None] = mapped_column(
         SAEnum(
             IfcSchema,

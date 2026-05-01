@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from bimstitch_api.models.project_file import (
     ExtractionStatus,
+    FileType,
     IfcSchema,
     ProjectFileStatus,
 )
@@ -33,6 +34,7 @@ class ProjectFileRead(BaseModel):
     original_filename: str
     size_bytes: int
     content_type: str
+    file_type: FileType
     ifc_schema: IfcSchema | None
     status: ProjectFileStatus
     rejection_reason: str | None
@@ -51,9 +53,11 @@ class ProjectFileDownloadResponse(BaseModel):
 
 
 class ViewerBundleResponse(BaseModel):
-    fragments_url: str
-    metadata_url: str | None
-    properties_url: str | None
+    file_type: FileType
+    fragments_url: str | None = None
+    metadata_url: str | None = None
+    properties_url: str | None = None
+    file_url: str | None = None
     expires_in: int
 
 

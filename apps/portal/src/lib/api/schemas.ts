@@ -147,6 +147,10 @@ export const ContractorUpdateSchema = ContractorCreateSchema.partial();
 
 export type ContractorUpdateInput = z.infer<typeof ContractorUpdateSchema>;
 
+export const FileTypeEnum = z.enum(['ifc', 'pdf']);
+
+export type FileTypeValue = z.infer<typeof FileTypeEnum>;
+
 export const IfcSchemaEnum = z.enum(['IFC2X3', 'IFC4', 'IFC4X1', 'IFC4X3', 'unknown']);
 
 export type IfcSchemaValue = z.infer<typeof IfcSchemaEnum>;
@@ -173,6 +177,7 @@ export const ProjectFileSchema = z.object({
   original_filename: z.string(),
   size_bytes: z.number().int().nonnegative(),
   content_type: z.string(),
+  file_type: FileTypeEnum,
   ifc_schema: z.union([IfcSchemaEnum, z.null()]),
   status: ProjectFileStatusEnum,
   rejection_reason: z.union([z.string(), z.null()]),
@@ -216,9 +221,11 @@ export const ProjectFileDownloadResponseSchema = z.object({
 export type ProjectFileDownloadResponse = z.infer<typeof ProjectFileDownloadResponseSchema>;
 
 export const ViewerBundleResponseSchema = z.object({
-  fragments_url: z.string().url(),
+  file_type: FileTypeEnum,
+  fragments_url: z.union([z.string().url(), z.null()]),
   metadata_url: z.union([z.string().url(), z.null()]),
   properties_url: z.union([z.string().url(), z.null()]),
+  file_url: z.union([z.string().url(), z.null()]),
   expires_in: z.number().int().positive(),
 });
 
