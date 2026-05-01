@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.project import Project
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
 from bimstitch_api.models.user import User
@@ -44,10 +45,34 @@ async def _resolve_thumbnail_url(
 
 
 async def _project_to_read(project: Project, storage: StorageBackend) -> dict[str, object]:
-    """Serialize a Project ORM object to a dict with the thumbnail URL resolved."""
+    """Serialize a Project ORM object to a dict with the thumbnail URL resolved
+    and the linked contractor's name denormalized into `contractor_name`."""
     data: dict[str, object] = ProjectRead.model_validate(project).model_dump()
     data["thumbnail_url"] = await _resolve_thumbnail_url(project.thumbnail_url, storage)
+    data["contractor_name"] = project.contractor.name if project.contractor is not None else None
     return data
+
+
+async def _validate_contractor_belongs_to_org(
+    session: AsyncSession, contractor_id: UUID | None, organization_id: UUID
+) -> None:
+    """RLS already filters across orgs, but a non-matching contractor_id resolves
+    to None — surface that as a 400 with a clear error so the caller knows the
+    FK is invalid in their tenant context."""
+    if contractor_id is None:
+        return
+    found = (
+        await session.execute(
+            select(Contractor.id).where(
+                Contractor.id == contractor_id,
+                Contractor.organization_id == organization_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if found is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="CONTRACTOR_NOT_FOUND"
+        )
 
 
 async def _load_project_or_404(session: AsyncSession, project_id: UUID) -> Project:
@@ -103,17 +128,21 @@ async def create_project(
     user: User = Depends(current_verified_user),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
+    await _validate_contractor_belongs_to_org(
+        session, payload.contractor_id, user.organization_id
+    )
+
     project = Project(
         organization_id=user.organization_id,
-        name=payload.name,
-        description=payload.description,
-        thumbnail_url=payload.thumbnail_url,
         owner_id=user.id,
+        **payload.model_dump(),
     )
     session.add(project)
     try:
         await session.flush()
     except IntegrityError as exc:
+        # Could be name OR reference_code uniqueness; surface both via shared
+        # CONFLICT code — clients distinguish by inspecting which field they sent.
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="PROJECT_NAME_CONFLICT"
         ) from exc
@@ -227,6 +256,10 @@ async def update_project(
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
 
     updates = payload.model_dump(exclude_unset=True)
+    if "contractor_id" in updates:
+        await _validate_contractor_belongs_to_org(
+            session, updates["contractor_id"], project.organization_id
+        )
     for field, value in updates.items():
         setattr(project, field, value)
     try:

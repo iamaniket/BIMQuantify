@@ -43,6 +43,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
     )
     from bimstitch_api.db import Base
     from bimstitch_api.models import (  # noqa: F401
+        Contractor,
         Model,
         Organization,
         Project,
@@ -68,6 +69,8 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS ifcschema")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS modelstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS modeldiscipline")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectphase")
         await conn.run_sync(Base.metadata.create_all)
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
@@ -88,6 +91,8 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS ifcschema")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS modelstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS modeldiscipline")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectphase")
     await eng.dispose()
 
 
@@ -115,7 +120,7 @@ async def _clean_tables(
         await session.execute(
             text(
                 "TRUNCATE TABLE project_files, models, project_members, projects, "
-                "users, organizations RESTART IDENTITY CASCADE"
+                "contractors, users, organizations RESTART IDENTITY CASCADE"
             )
         )
         await session.commit()

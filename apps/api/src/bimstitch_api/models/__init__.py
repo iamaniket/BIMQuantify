@@ -1,6 +1,7 @@
+from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.organization import Organization
-from bimstitch_api.models.project import Project
+from bimstitch_api.models.project import Project, ProjectPhase, ProjectStatus
 from bimstitch_api.models.project_file import (
     ExtractionStatus,
     IfcSchema,
@@ -11,6 +12,7 @@ from bimstitch_api.models.project_member import ProjectMember, ProjectRole
 from bimstitch_api.models.user import User
 
 __all__ = [
+    "Contractor",
     "ExtractionStatus",
     "IfcSchema",
     "Model",
@@ -21,6 +23,8 @@ __all__ = [
     "ProjectFile",
     "ProjectFileStatus",
     "ProjectMember",
+    "ProjectPhase",
     "ProjectRole",
+    "ProjectStatus",
     "User",
 ]

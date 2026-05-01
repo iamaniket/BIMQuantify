@@ -2,6 +2,8 @@ export { Button } from './Button.js';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button.js';
 export { Input } from './Input.js';
 export type { InputProps, InputSize } from './Input.js';
+export { Icon, iconSizeClassNames } from './Icon.js';
+export type { IconProps, IconSize } from './Icon.js';
 export { Label } from './Label.js';
 export type { LabelProps } from './Label.js';
 export { Textarea } from './Textarea.js';
@@ -69,4 +71,8 @@ export type { ProgressProps, ProgressVariant } from './Progress.js';
 export {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from './Table.js';
+export { Wizard, WizardStepper } from './Wizard.js';
+export type {
+  WizardProps, WizardStep, WizardStepperProps,
+} from './Wizard.js';
 

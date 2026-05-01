@@ -58,3 +58,5 @@ export const dossierKey = (
 export const trendKey = (
   projectId: string,
 ) => ['projects', projectId, 'compliance', 'trend'] as const;
+
+export const contractorsKey = ['contractors'] as const;

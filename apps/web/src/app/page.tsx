@@ -62,13 +62,22 @@ export default function WelcomePage(): JSX.Element {
         {features.map((feature) => (
           <article
             key={feature.title}
-            className="flex flex-col gap-3 rounded-lg border border-border bg-surface-main p-6 shadow-sm transition-colors hover:border-border-hover"
+            className="group flex flex-col overflow-hidden rounded-2xl border border-primary-light bg-surface-main shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary hover:shadow-xl hover:shadow-primary/15"
           >
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary-light text-primary">
-              {feature.icon}
+            <div className="flex items-start gap-4 bg-gradient-to-br from-primary via-primary-hover to-primary-dark px-6 py-5 text-primary-foreground">
+              <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/16 text-primary-foreground shadow-sm ring-1 ring-white/20 transition-all duration-200 group-hover:scale-105 group-hover:bg-white/24 group-hover:shadow-md">
+                {feature.icon}
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-h6 font-semibold text-primary-foreground">{feature.title}</h2>
+                <p className="text-body3 text-primary-foreground/80">
+                  Structured BIM workflows with faster visual scanning.
+                </p>
+              </div>
             </div>
-            <h2 className="text-h6 font-semibold text-foreground">{feature.title}</h2>
-            <p className="text-body2 text-foreground-tertiary">{feature.body}</p>
+            <div className="p-6 pt-5">
+              <p className="text-body2 text-foreground-secondary">{feature.body}</p>
+            </div>
           </article>
         ))}
       </section>

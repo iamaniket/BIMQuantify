@@ -9,6 +9,7 @@ from fastapi_limiter import FastAPILimiter
 from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
+from bimstitch_api.routers.contractors import router as contractors_router
 from bimstitch_api.routers.extraction_internal import router as extraction_internal_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.models import router as models_router
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(build_auth_router())
     app.include_router(projects_router)
+    app.include_router(contractors_router)
     app.include_router(models_router)
     app.include_router(project_files_router)
     app.include_router(extraction_internal_router)

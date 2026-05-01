@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from bimstitch_api.models.project import ProjectPhase, ProjectStatus
 from bimstitch_api.models.project_member import ProjectRole
 
 
@@ -12,6 +13,24 @@ class ProjectBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = None
     thumbnail_url: str | None = Field(default=None, max_length=2048)
+
+    reference_code: str | None = Field(default=None, max_length=50)
+    status: ProjectStatus = ProjectStatus.planning
+    phase: ProjectPhase = ProjectPhase.ontwerp
+    delivery_date: date | None = None
+
+    street: str | None = Field(default=None, max_length=255)
+    house_number: str | None = Field(default=None, max_length=20)
+    postal_code: str | None = Field(default=None, max_length=7)
+    city: str | None = Field(default=None, max_length=255)
+    municipality: str | None = Field(default=None, max_length=255)
+    bag_id: str | None = Field(default=None, max_length=50)
+    permit_number: str | None = Field(default=None, max_length=100)
+
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+
+    contractor_id: UUID | None = None
 
 
 class ProjectCreate(ProjectBase):
@@ -25,6 +44,24 @@ class ProjectUpdate(BaseModel):
     description: str | None = None
     thumbnail_url: str | None = Field(default=None, max_length=2048)
 
+    reference_code: str | None = Field(default=None, max_length=50)
+    status: ProjectStatus | None = None
+    phase: ProjectPhase | None = None
+    delivery_date: date | None = None
+
+    street: str | None = Field(default=None, max_length=255)
+    house_number: str | None = Field(default=None, max_length=20)
+    postal_code: str | None = Field(default=None, max_length=7)
+    city: str | None = Field(default=None, max_length=255)
+    municipality: str | None = Field(default=None, max_length=255)
+    bag_id: str | None = Field(default=None, max_length=50)
+    permit_number: str | None = Field(default=None, max_length=100)
+
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+
+    contractor_id: UUID | None = None
+
 
 class ProjectRead(ProjectBase):
     id: UUID
@@ -32,6 +69,7 @@ class ProjectRead(ProjectBase):
     owner_id: UUID
     created_at: datetime
     updated_at: datetime
+    contractor_name: str | None = None
 
 
 class ProjectMemberRead(BaseModel):

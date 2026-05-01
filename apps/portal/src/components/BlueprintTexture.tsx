@@ -3,9 +3,14 @@ import { useId, type JSX } from 'react';
 type Props = {
   cellSize?: number;
   className?: string;
+  toneClassName?: string;
 };
 
-export function BlueprintTexture({ cellSize = 32, className }: Props): JSX.Element {
+export function BlueprintTexture({
+  cellSize = 32,
+  className,
+  toneClassName = 'text-primary dark:text-white',
+}: Props): JSX.Element {
   const patternId = useId();
 
   return (
@@ -27,7 +32,7 @@ export function BlueprintTexture({ cellSize = 32, className }: Props): JSX.Eleme
             fill="none"
             stroke="currentColor"
             strokeWidth="0.6"
-            className="text-primary dark:text-white"
+            className={toneClassName}
           />
         </pattern>
       </defs>

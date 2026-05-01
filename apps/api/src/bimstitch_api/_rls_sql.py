@@ -26,7 +26,14 @@ APP_ROLE = "bim_app"
 
 # Tables that get RLS + FORCE applied. `organizations` is intentionally excluded
 # so users can read their own org row at signup.
-RLS_TABLES = ("users", "projects", "project_members", "models", "project_files")
+RLS_TABLES = (
+    "users",
+    "projects",
+    "project_members",
+    "models",
+    "project_files",
+    "contractors",
+)
 
 # Tables the app role needs DML privileges on (broader than RLS_TABLES because
 # organizations is read by signup paths under SET ROLE too in the future).
@@ -37,6 +44,7 @@ APP_GRANT_TABLES = (
     "project_members",
     "models",
     "project_files",
+    "contractors",
 )
 
 # Subquery snippet reused by tables that scope through `projects.organization_id`.
@@ -156,12 +164,23 @@ def enable_rls_statements() -> list[str]:
         """
     )
 
+    # contractors: straight org match (same shape as projects).
+    stmts.append("DROP POLICY IF EXISTS contractors_tenant_isolation ON contractors;")
+    stmts.append(
+        f"""
+        CREATE POLICY contractors_tenant_isolation ON contractors
+        USING ({org_match})
+        WITH CHECK ({org_match});
+        """
+    )
+
     return stmts
 
 
 def disable_rls_statements() -> list[str]:
     """Reverse of enable_rls_statements; used by migration downgrade."""
     stmts: list[str] = []
+    stmts.append("DROP POLICY IF EXISTS contractors_tenant_isolation ON contractors;")
     stmts.append("DROP POLICY IF EXISTS project_files_tenant_isolation ON project_files;")
     stmts.append("DROP POLICY IF EXISTS models_tenant_isolation ON models;")
     stmts.append("DROP POLICY IF EXISTS project_members_tenant_isolation ON project_members;")

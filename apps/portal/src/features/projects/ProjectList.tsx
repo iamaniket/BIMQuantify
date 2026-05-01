@@ -98,9 +98,13 @@ export function ProjectList({ search }: ProjectListProps): JSX.Element {
   const filtered = term.length === 0
     ? projects
     : projects.filter((p) => {
-      if (p.name.toLowerCase().includes(term)) return true;
-      if (p.description === null) return false;
-      return p.description.toLowerCase().includes(term);
+      const haystacks: (string | null)[] = [
+        p.name, p.description, p.reference_code,
+        p.city, p.contractor_name,
+      ];
+      return haystacks.some(
+        (s) => s !== null && s.toLowerCase().includes(term),
+      );
     });
 
   if (filtered.length === 0) {
