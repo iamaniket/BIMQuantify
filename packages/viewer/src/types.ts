@@ -35,8 +35,6 @@ export type ViewCubeOptions = {
   size?: number;
   /** Show the N/S/E/W compass ring under the cube. Default: true. */
   showCompass?: boolean;
-  /** Show the curved ±90° snap-rotate arrow buttons. Default: true. */
-  showSnapArrows?: boolean;
   /** Show the home/reset button. Default: true. */
   showHomeButton?: boolean;
 };

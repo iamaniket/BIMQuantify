@@ -52,3 +52,21 @@ export { ConfirmDialog } from './ConfirmDialog.js';
 export type { ConfirmDialogProps } from './ConfirmDialog.js';
 export { cn } from './lib/cn.js';
 export { ThemeToggle } from './ThemeToggle.js';
+export {
+  Tabs, TabsList, TabsTrigger, TabsContent,
+} from './Tabs.js';
+export type {
+  TabsListProps, TabsTriggerProps, TabsContentProps,
+} from './Tabs.js';
+export {
+  TooltipProvider, Tooltip, TooltipTrigger, TooltipContent,
+} from './Tooltip.js';
+export type { TooltipContentProps } from './Tooltip.js';
+export { Badge } from './Badge.js';
+export type { BadgeProps, BadgeVariant } from './Badge.js';
+export { Progress } from './Progress.js';
+export type { ProgressProps, ProgressVariant } from './Progress.js';
+export {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from './Table.js';
+

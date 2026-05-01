@@ -14,5 +14,5 @@ export default function PortalRootPage(): JSX.Element {
     router.replace(tokens === null ? '/login' : '/projects');
   }, [router, tokens, hasHydrated]);
 
-  return <main className="flex flex-1 items-center justify-center" />;
+  return <main className="flex min-h-screen items-center justify-center" />;
 }

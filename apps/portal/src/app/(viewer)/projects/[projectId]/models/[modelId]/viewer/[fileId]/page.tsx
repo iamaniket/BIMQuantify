@@ -3,7 +3,7 @@
 import { ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import {
   useEffect,
   useRef,
@@ -26,8 +26,6 @@ import {
 } from '@/lib/viewerSettings';
 import { useAuth } from '@/providers/AuthProvider';
 
-// next/dynamic with ssr:false because @bimstitch/viewer pulls in three.js
-// + WASM and must run only in the browser.
 const IfcViewer = dynamic(
   () => import('@bimstitch/viewer').then((m) => m.IfcViewer),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
@@ -41,10 +39,9 @@ function buildBundle(response: ViewerBundleResponse): ViewerBundle {
 }
 
 export default function ViewerPage(): JSX.Element {
-  const router = useRouter();
   const params = useParams<{ projectId: string; modelId: string; fileId: string }>();
   const { projectId, modelId, fileId } = params;
-  const { tokens, hasHydrated } = useAuth();
+  const { tokens } = useAuth();
 
   const [bundle, setBundle] = useState<ViewerBundleResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,22 +49,12 @@ export default function ViewerPage(): JSX.Element {
   const viewerHandleRef = useRef<ViewerHandle | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [selectionCount, setSelectionCount] = useState(0);
-  // Viewer settings live in localStorage. We seed with defaults on the
-  // server render; once mounted, we hydrate from storage in an effect to
-  // avoid SSR/CSR mismatches.
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
-  // Bumping this remounts <IfcViewer> so init-only options take effect.
   const [viewerEpoch, setViewerEpoch] = useState(0);
 
   useEffect(() => {
     setSettings(loadViewerSettings());
   }, []);
-
-  useEffect(() => {
-    if (hasHydrated && tokens === null) {
-      router.replace('/login');
-    }
-  }, [router, tokens, hasHydrated]);
 
   useEffect(() => {
     if (tokens === null) return undefined;
@@ -95,10 +82,6 @@ export default function ViewerPage(): JSX.Element {
       cancelToken.cancelled = true;
     };
   }, [tokens, projectId, modelId, fileId]);
-
-  if (!hasHydrated || tokens === null) {
-    return <main className="flex flex-1 items-center justify-center" />;
-  }
 
   let body: JSX.Element;
   if (error !== null) {
@@ -137,9 +120,6 @@ export default function ViewerPage(): JSX.Element {
             const off = handle.events.on('selection:change', (payload) => {
               setSelectionCount(payload.selected.length);
             });
-            // Stash the unsubscribe on a closure for unmount; the page is
-            // a single mount per file, so leaking on tab switch is fine
-            // (the viewer disposes events on unmount anyway).
             return off;
           }}
           onError={(err) => {

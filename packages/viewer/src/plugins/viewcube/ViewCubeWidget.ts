@@ -8,7 +8,6 @@
  *   ├── compass ring (svg)        — drag to spin azimuth
  *   ├── cube canvas (three.js)    — pick or drag to orbit
  *   ├── home button (div)         — reset to iso
- *   ├── snap-rotate buttons (div) — animated ±90° azimuth
  *   └── tooltip (div)             — hover label
  *
  * Communication is callback-based — the widget never touches the main
@@ -34,13 +33,10 @@ export interface ViewCubeWidgetOptions {
   size: number;
   corner: ViewCubeCorner;
   showCompass: boolean;
-  showSnapArrows: boolean;
   showHomeButton: boolean;
   onPick: (region: Region) => void;
   /** Called continuously while dragging the cube body (radians). */
   onOrbit: (deltaAzimuth: number, deltaPolar: number) => void;
-  /** Called for snap-rotate buttons. dir = -1 left, +1 right (radians applied by host). */
-  onSnapRotate: (dir: -1 | 1) => void;
   /** Called when the home button is clicked. */
   onHome: () => void;
 }
@@ -152,13 +148,6 @@ export class ViewCubeWidget {
     if (options.showHomeButton) {
       const home = this.buildHomeButton();
       this.element.appendChild(home);
-    }
-
-    if (options.showSnapArrows) {
-      const left = this.buildSnapArrow(-1);
-      const right = this.buildSnapArrow(1);
-      this.element.appendChild(left);
-      this.element.appendChild(right);
     }
 
     this.tooltip = this.buildTooltip();
@@ -417,7 +406,7 @@ export class ViewCubeWidget {
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>';
     Object.assign(btn.style, {
       position: 'absolute',
-      top: '0px',
+      bottom: '0px',
       left: '0px',
       width: '22px',
       height: '22px',
@@ -444,51 +433,6 @@ export class ViewCubeWidget {
     btn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       this.options.onHome();
-    });
-    return btn;
-  }
-
-  private buildSnapArrow(direction: -1 | 1): HTMLDivElement {
-    const btn = document.createElement('div');
-    btn.setAttribute('role', 'button');
-    btn.setAttribute('aria-label', direction === -1 ? 'Rotate left' : 'Rotate right');
-    btn.setAttribute('title', direction === -1 ? 'Rotate left 90°' : 'Rotate right 90°');
-    // Curved arrow icon — flipped via inner <g> for the "right" variant.
-    const inner = direction === 1
-      ? '<g transform="scale(-1,1) translate(-24,0)"><path d="M3 12a9 9 0 0 1 15.5-6.3"/><polyline points="19 3 19 8 14 8"/></g>'
-      : '<path d="M3 12a9 9 0 0 1 15.5-6.3"/><polyline points="19 3 19 8 14 8"/>';
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
-    const ringY = this.options.size * 0.78;
-    const offsetX = direction === -1 ? 4 : this.options.size - 4 - 22;
-    Object.assign(btn.style, {
-      position: 'absolute',
-      top: `${String(ringY - 11)}px`,
-      left: `${String(offsetX)}px`,
-      width: '22px',
-      height: '22px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer',
-      color: '#4b5563',
-      background: 'rgba(255,255,255,0.85)',
-      border: '1px solid #d1d6df',
-      borderRadius: '50%',
-      pointerEvents: 'auto',
-      transition: 'background 120ms, color 120ms',
-      zIndex: '2',
-    } as Partial<CSSStyleDeclaration>);
-    btn.addEventListener('pointerenter', () => {
-      btn.style.background = '#6cb4ff';
-      btn.style.color = '#ffffff';
-    });
-    btn.addEventListener('pointerleave', () => {
-      btn.style.background = 'rgba(255,255,255,0.85)';
-      btn.style.color = '#4b5563';
-    });
-    btn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      this.options.onSnapRotate(direction);
     });
     return btn;
   }

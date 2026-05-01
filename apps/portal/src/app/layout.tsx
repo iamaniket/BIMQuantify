@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import type { JSX, ReactNode } from 'react';
 
-import { Header } from '@/components/Header';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
@@ -24,12 +23,7 @@ export default function RootLayout({ children }: Props): JSX.Element {
         <ThemeProvider>
           <QueryProvider>
             <AuthProvider>
-              <div className="flex h-screen flex-col">
-                <Header />
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                  {children}
-                </div>
-              </div>
+              {children}
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
