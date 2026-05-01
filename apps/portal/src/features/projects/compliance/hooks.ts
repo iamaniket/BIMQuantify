@@ -8,14 +8,14 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 
-import { apiClient } from '@/lib/api/client.js';
+import { apiClient } from '@/lib/api/client';
 import {
   ComplianceCheckResponseSchema,
   ComplianceSummaryResponseSchema,
   type ComplianceCheckResponse,
   type ComplianceSummaryResponse,
-} from '@/lib/api/schemas.js';
-import { useAuth } from '@/providers/AuthProvider.js';
+} from '@/lib/api/schemas';
+import { useAuth } from '@/providers/AuthProvider';
 
 import {
   complianceSummaryKey,
@@ -25,7 +25,7 @@ import {
   activityKey,
   dossierKey,
   trendKey,
-} from '../queryKeys.js';
+} from '../queryKeys';
 
 import type {
   ComplianceSummary,
@@ -41,7 +41,7 @@ import {
   MOCK_ACTIVITY,
   MOCK_DOSSIER,
   MOCK_TREND,
-} from './mockData.js';
+} from './mockData';
 
 function mapToComplianceSummary(resp: ComplianceSummaryResponse): ComplianceSummary {
   let passCount = 0;

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -103,10 +104,17 @@ async def _scheduler_loop(
             logger.exception("Scheduled sync failed")
 
 
+def _run_scheduler_thread(
+    rule_index: RuleIndex,
+    settings: Settings,
+) -> None:
+    asyncio.run(_scheduler_loop(rule_index, settings))
+
+
 def start_scheduler(
     rule_index: RuleIndex,
     settings: Settings,
-) -> asyncio.Task[None] | None:
+) -> asyncio.Task[None] | threading.Thread | None:
     if not settings.sync_enabled:
         logger.info("Scheduled sync disabled")
         return None
@@ -115,4 +123,16 @@ def start_scheduler(
         settings.sync_interval_hours,
         settings.sync_auto_apply,
     )
-    return asyncio.create_task(_scheduler_loop(rule_index, settings))
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        thread = threading.Thread(
+            target=_run_scheduler_thread,
+            args=(rule_index, settings),
+            name="compliance-sync-scheduler",
+            daemon=True,
+        )
+        thread.start()
+        return thread
+
+    return loop.create_task(_scheduler_loop(rule_index, settings))

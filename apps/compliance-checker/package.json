@@ -1,0 +1,8 @@
+{
+  "name": "compliance-checker",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "uv run python -m compliance_checker"
+  }
+}

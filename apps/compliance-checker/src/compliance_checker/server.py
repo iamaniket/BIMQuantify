@@ -21,6 +21,7 @@ mcp = FastMCP(
     host=settings.host,
     port=settings.port,
     json_response=True,
+    stateless_http=True,
 )
 
 rule_index = RuleIndex()

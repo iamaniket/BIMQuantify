@@ -6,6 +6,7 @@ for any supported framework (BBL, WKB).
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -18,6 +19,19 @@ logger = logging.getLogger(__name__)
 
 class ComplianceCheckError(Exception):
     pass
+
+
+def _parse_mcp_response(response: httpx.Response) -> dict[str, Any]:
+    """Parse an MCP Streamable HTTP response (handles both JSON and SSE)."""
+    content_type = response.headers.get("content-type", "")
+    if "text/event-stream" in content_type:
+        for line in response.text.splitlines():
+            if line.startswith("data:"):
+                payload = line[5:].strip()
+                if payload:
+                    return json.loads(payload)  # type: ignore[no-any-return]
+        raise ComplianceCheckError("Empty SSE response from compliance checker")
+    return response.json()  # type: ignore[no-any-return]
 
 
 async def run_compliance_check(
@@ -59,14 +73,17 @@ async def run_compliance_check(
             response = await client.post(
                 url,
                 json=mcp_request,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                },
             )
             response.raise_for_status()
     except httpx.HTTPError as exc:
         logger.error("Compliance checker request failed: %s", exc)
         raise ComplianceCheckError(f"Compliance checker unreachable: {exc}") from exc
 
-    data = response.json()
+    data = _parse_mcp_response(response)
 
     if "error" in data:
         error_msg = data["error"].get("message", "Unknown MCP error")
@@ -78,8 +95,14 @@ async def run_compliance_check(
 
     if isinstance(result, list) and len(result) > 0:
         content = result[0].get("text", "{}")
-        import json
-
         return json.loads(content)  # type: ignore[no-any-return]
+
+    if isinstance(result, dict) and "content" in result:
+        content_items = result.get("content", [])
+        if isinstance(content_items, list) and len(content_items) > 0:
+            text = content_items[0].get("text", "{}")
+            return json.loads(text)  # type: ignore[no-any-return]
+        if isinstance(result.get("structuredContent"), dict):
+            return result["structuredContent"]  # type: ignore[no-any-return]
 
     return result  # type: ignore[no-any-return]
