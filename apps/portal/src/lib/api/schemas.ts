@@ -45,6 +45,10 @@ export const ProjectStatusEnum = z.enum([
 
 export type ProjectStatusValue = z.infer<typeof ProjectStatusEnum>;
 
+export const ProjectLifecycleStateEnum = z.enum(['active', 'archived', 'removed']);
+
+export type ProjectLifecycleStateValue = z.infer<typeof ProjectLifecycleStateEnum>;
+
 export const ProjectPhaseEnum = z.enum([
   'ontwerp',
   'bestek',
@@ -68,6 +72,7 @@ export const ProjectSchema = z.object({
 
   reference_code: z.union([z.string(), z.null()]),
   status: ProjectStatusEnum,
+  lifecycle_state: ProjectLifecycleStateEnum,
   phase: ProjectPhaseEnum,
   delivery_date: z.union([z.string(), z.null()]),
 

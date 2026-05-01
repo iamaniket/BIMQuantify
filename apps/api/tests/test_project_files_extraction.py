@@ -296,7 +296,7 @@ async def test_retry_requeues_failed_extraction(
     # Replace dispatcher with a recording stub so the retry succeeds.
     extraction_calls.clear()
 
-    async def _record(file_id_arg, project_id_arg, storage_key, _settings) -> None:
+    async def _record(file_id_arg, project_id_arg, storage_key, _settings, _job_id=None, _job_type="ifc_extraction") -> None:
         extraction_calls.append(
             {
                 "file_id": str(file_id_arg),

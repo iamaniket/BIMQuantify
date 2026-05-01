@@ -20,6 +20,7 @@ export type StepContractorProps = {
   newContractorName: string;
   contractorError: string | null;
   isAddingContractor: boolean;
+  isReadOnly: boolean;
   onShowAddContractor: () => void;
   onCancelAddContractor: () => void;
   onChangeNewContractorName: (value: string) => void;
@@ -33,6 +34,7 @@ export function StepContractor({
   newContractorName,
   contractorError,
   isAddingContractor,
+  isReadOnly,
   onShowAddContractor,
   onCancelAddContractor,
   onChangeNewContractorName,
@@ -49,7 +51,7 @@ export function StepContractor({
         <select
           id={contractorId}
           className={selectClass}
-          disabled={contractorsLoading}
+          disabled={contractorsLoading || isReadOnly}
           {...form.register('contractor_id')}
         >
           <option value="">— None —</option>
@@ -57,7 +59,7 @@ export function StepContractor({
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        {!showAddContractor && (
+        {!showAddContractor && !isReadOnly && (
           <Button
             type="button"
             variant="ghost"
@@ -81,6 +83,7 @@ export function StepContractor({
               type="text"
               placeholder="Bouw BV"
               value={newContractorName}
+              disabled={isReadOnly}
               onChange={(e) => { onChangeNewContractorName(e.target.value); }}
               invalid={contractorError !== null}
               onKeyDown={(e) => {
@@ -94,7 +97,7 @@ export function StepContractor({
               type="button"
               variant="primary"
               size="sm"
-              disabled={isAddingContractor}
+              disabled={isAddingContractor || isReadOnly}
               onClick={onSubmitNewContractor}
             >
               {isAddingContractor ? 'Adding…' : 'Add'}
@@ -103,6 +106,7 @@ export function StepContractor({
               type="button"
               variant="border"
               size="sm"
+              disabled={isReadOnly}
               onClick={onCancelAddContractor}
             >
               Cancel

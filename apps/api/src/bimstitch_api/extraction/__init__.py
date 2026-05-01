@@ -37,16 +37,26 @@ class ExtractionDispatchError(Exception):
 
 # A callable shape so tests can swap in a stub. Signature mirrors the body
 # we send to POST {extractor_url}/jobs.
-ExtractionDispatcher = Callable[[UUID, UUID, str, Settings], Awaitable[None]]
+ExtractionDispatcher = Callable[
+    [UUID, UUID, str, Settings, "UUID | None", str],
+    Awaitable[None],
+]
 
 
 async def _http_dispatch(
-    file_id: UUID, project_id: UUID, storage_key: str, settings: Settings
+    file_id: UUID,
+    project_id: UUID,
+    storage_key: str,
+    settings: Settings,
+    job_id: UUID | None = None,
+    job_type: str = "ifc_extraction",
 ) -> None:
     payload = {
         "file_id": str(file_id),
         "project_id": str(project_id),
         "storage_key": storage_key,
+        "job_id": str(job_id) if job_id is not None else None,
+        "job_type": job_type,
     }
     headers = {"Authorization": f"Bearer {settings.extractor_shared_secret}"}
     timeout = httpx.Timeout(settings.extractor_dispatch_timeout_seconds)
@@ -65,7 +75,7 @@ async def _http_dispatch(
         raise ExtractionDispatchError(f"{type(exc).__name__}: {exc}") from exc
 
 
-_dispatcher: ExtractionDispatcher = _http_dispatch
+_dispatcher: ExtractionDispatcher = _http_dispatch  # type: ignore[assignment]
 
 
 def set_extraction_dispatcher(dispatcher: ExtractionDispatcher) -> None:
@@ -77,14 +87,19 @@ def set_extraction_dispatcher(dispatcher: ExtractionDispatcher) -> None:
 def reset_extraction_dispatcher() -> None:
     """Reset the dispatcher to the real HTTP implementation."""
     global _dispatcher
-    _dispatcher = _http_dispatch
+    _dispatcher = _http_dispatch  # type: ignore[assignment]
 
 
 async def dispatch_extraction(
-    file_id: UUID, project_id: UUID, storage_key: str, settings: Settings
+    file_id: UUID,
+    project_id: UUID,
+    storage_key: str,
+    settings: Settings,
+    job_id: UUID | None = None,
+    job_type: str = "ifc_extraction",
 ) -> None:
     """Hand a file off to the extractor. Raises ExtractionDispatchError on failure."""
-    await _dispatcher(file_id, project_id, storage_key, settings)
+    await _dispatcher(file_id, project_id, storage_key, settings, job_id, job_type)  # type: ignore[call-arg]
 
 
 # ---------------------------------------------------------------------------

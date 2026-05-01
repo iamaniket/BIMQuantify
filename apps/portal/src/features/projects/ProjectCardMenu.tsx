@@ -16,7 +16,10 @@ import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';
 
 import { ProjectFormDialog } from './ProjectFormDialog';
+import { isProjectArchived } from './projectFormatting';
+import { useArchiveProject } from './useArchiveProject';
 import { useDeleteProject } from './useDeleteProject';
+import { useReactivateProject } from './useReactivateProject';
 
 type Props = {
   project: Project;
@@ -39,8 +42,11 @@ function formatDeleteError(error: unknown): string | null {
 export function ProjectCardMenu({ project }: Props): JSX.Element {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const archived = isProjectArchived(project);
 
+  const archiveMutation = useArchiveProject();
   const deleteMutation = useDeleteProject();
+  const reactivateMutation = useReactivateProject();
 
   const handleDeleteOpenChange = (open: boolean): void => {
     setDeleteOpen(open);
@@ -69,7 +75,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
             variant="ghost"
             size="sm"
             aria-label="Project actions"
-            className="absolute right-2 top-2 h-8 w-8 rounded-full bg-background/80 p-0 text-foreground hover:bg-background"
+            className="absolute right-2 top-2 h-8 w-8 rounded-full bg-black/25 p-0 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
           >
             <MoreVertical className="h-4 w-4" />
           </Button>
@@ -78,11 +84,32 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
           <DropdownMenuItem
             onSelect={(event) => {
               event.preventDefault();
-              setEditOpen(true);
+              if (!archived) {
+                setEditOpen(true);
+              }
             }}
           >
-            Edit
+            {archived ? 'View' : 'Edit'}
           </DropdownMenuItem>
+          {archived ? (
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                reactivateMutation.mutate({ id: project.id });
+              }}
+            >
+              Reactivate
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                archiveMutation.mutate({ id: project.id });
+              }}
+            >
+              Archive
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             variant="destructive"
             onSelect={(event) => {
@@ -90,7 +117,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
               setDeleteOpen(true);
             }}
           >
-            Delete
+            Remove
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -106,8 +133,8 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
         open={deleteOpen}
         onOpenChange={handleDeleteOpenChange}
         title="Delete project"
-        description={`Delete "${project.name}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        description={`Remove "${project.name}" from active views? It will be hidden from normal project lists.`}
+        confirmLabel="Remove"
         cancelLabel="Cancel"
         onConfirm={handleConfirmDelete}
         variant="destructive"

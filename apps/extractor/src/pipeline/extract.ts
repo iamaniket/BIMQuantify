@@ -31,6 +31,8 @@ export type ExtractionJob = {
   file_id: string;
   project_id: string;
   storage_key: string;
+  job_id?: string;
+  job_type: 'ifc_extraction' | 'pdf_extraction';
 };
 
 let cachedVersion: string | null = null;
@@ -55,6 +57,7 @@ export async function runExtraction(job: ExtractionJob): Promise<void> {
 
   await postCallback({
     file_id: job.file_id,
+    job_id: job.job_id,
     status: 'running',
     started_at: startedAt,
     extractor_version: version,
@@ -100,6 +103,7 @@ export async function runExtraction(job: ExtractionJob): Promise<void> {
 
     await postCallback({
       file_id: job.file_id,
+      job_id: job.job_id,
       status: 'succeeded',
       fragments_key: fragmentsKey,
       metadata_key: metadataKey,
@@ -118,6 +122,7 @@ export async function runExtraction(job: ExtractionJob): Promise<void> {
     logger.error({ err, job }, 'extraction failed');
     await postCallback({
       file_id: job.file_id,
+      job_id: job.job_id,
       status: 'failed',
       error: message.slice(0, 500),
       started_at: startedAt,

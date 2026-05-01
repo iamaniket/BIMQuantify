@@ -72,9 +72,11 @@ class ExtractionCallbackRequest(BaseModel):
     # two terminal states. `queued` and `not_started` are not valid here — the
     # API owns those transitions.
     status: ExtractionStatus = Field(description="One of running, succeeded, failed.")
+    job_id: UUID | None = None
     fragments_key: str | None = None
     metadata_key: str | None = None
     properties_key: str | None = None
+    page_count: int | None = None
     error: str | None = None
     extractor_version: str | None = None
     started_at: datetime | None = None

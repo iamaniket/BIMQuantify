@@ -17,7 +17,10 @@ import { useLocale } from '@/providers/LocaleProvider';
 
 import { ProjectCardMenu } from './ProjectCardMenu';
 import {
-  formatPhaseLabel, formatStatusLabel, statusDotClasses,
+  formatPhaseLabel,
+  formatProjectBadgeLabel,
+  projectBadgeClasses,
+  projectDotClasses,
 } from './projectFormatting';
 
 function formatDateLabel(iso: string, locale: string): string {
@@ -64,8 +67,8 @@ export function ProjectCard({ project }: Props): JSX.Element {
         <div className="relative bg-background-secondary">
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 py-3">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground shadow-sm shadow-primary/20 transition-colors duration-200 group-hover:bg-primary-hover">
-              <span className={`h-1.5 w-1.5 rounded-full ${statusDotClasses(project.status)}`} />
-              {formatStatusLabel(project.status, messages)}
+              <span className={`h-1.5 w-1.5 rounded-full ${projectDotClasses(project)}`} />
+              {formatProjectBadgeLabel(project, messages)}
             </span>
           </div>
 
@@ -98,6 +101,12 @@ export function ProjectCard({ project }: Props): JSX.Element {
           <div className="relative grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
             <div className="min-w-0 space-y-3">
               <div className="space-y-1.5">
+                {project.lifecycle_state === 'archived' && (
+                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${projectBadgeClasses(project)}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${projectDotClasses(project)}`} />
+                    Archived · read only
+                  </span>
+                )}
                 <h3 className="text-title3 font-semibold text-primary-foreground">
                   {project.name}
                 </h3>
@@ -111,13 +120,11 @@ export function ProjectCard({ project }: Props): JSX.Element {
               <div className="grid grid-cols-1 gap-1.5 pt-1 text-body3 text-primary-foreground/85">
                 <p className="inline-flex items-center gap-1.5">
                   <Icon icon={Layers} size="sm" className="text-white/80" />
-                  <span className="font-semibold text-primary-foreground">{messages.projects.card.phaseLabel}</span>{' '}
                   {formatPhaseLabel(project.phase, messages)}
                 </p>
                 {project.permit_number !== null && (
                   <p className="inline-flex items-center gap-1.5 line-clamp-1">
                     <Icon icon={FileText} size="sm" className="text-white/80" />
-                    <span className="font-semibold text-primary-foreground">{messages.projects.card.permitLabel}</span>{' '}
                     {project.permit_number}
                   </p>
                 )}

@@ -8,6 +8,7 @@ import { Button } from '@bimstitch/ui';
 import type { Project } from '@/lib/api/schemas';
 
 import { ProjectFormDialog } from './ProjectFormDialog';
+import { isProjectArchived } from './projectFormatting';
 
 type Props = {
   project: Project;
@@ -23,6 +24,7 @@ function formatDate(iso: string): string {
 
 export function ProjectHeader({ project }: Props): JSX.Element {
   const [editOpen, setEditOpen] = useState(false);
+  const archived = isProjectArchived(project);
 
   return (
     <header className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5 sm:flex-row sm:items-start">
@@ -60,10 +62,11 @@ export function ProjectHeader({ project }: Props): JSX.Element {
           type="button"
           variant="border"
           size="sm"
+          disabled={archived}
           onClick={() => { setEditOpen(true); }}
         >
           <Pencil className="mr-2 h-4 w-4" />
-          Edit
+          {archived ? 'Archived' : 'Edit'}
         </Button>
       </div>
 

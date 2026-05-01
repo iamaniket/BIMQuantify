@@ -3,7 +3,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from bimstitch_api.models.project import ProjectPhase, ProjectStatus
+from bimstitch_api.models.project import (
+    ProjectLifecycleState,
+    ProjectPhase,
+    ProjectStatus,
+)
 from bimstitch_api.models.project_member import ProjectRole
 
 
@@ -67,6 +71,7 @@ class ProjectRead(ProjectBase):
     id: UUID
     organization_id: UUID
     owner_id: UUID
+    lifecycle_state: ProjectLifecycleState
     created_at: datetime
     updated_at: datetime
     contractor_name: str | None = None

@@ -69,3 +69,7 @@ export function metadataKeyFor(sourceKey: string): string {
 export function propertiesKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.ifc$/i, '.properties.json');
 }
+
+export function pdfMetadataKeyFor(sourceKey: string): string {
+  return sourceKey.replace(/\.pdf$/i, '.metadata.json');
+}

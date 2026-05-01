@@ -12,9 +12,9 @@ import {
   daysUntil,
   formatAddress,
   formatDeliveryDate,
+  formatProjectBadgeLabel,
   formatStatusAndPhaseLabel,
-  formatStatusLabel,
-  statusBadgeClasses,
+  projectBadgeClasses,
 } from '@/features/projects/projectFormatting';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/lib/mapThumbnail';
 import { useLocale } from '@/providers/LocaleProvider';
@@ -39,7 +39,7 @@ export function ProjectDetailHeader({
   const overall = compliance?.overallScore ?? 0;
   const address = formatAddress(project);
   const refLabel = project.reference_code ?? '—';
-  const statusBadgeClass = statusBadgeClasses(project.status);
+  const statusBadgeClass = projectBadgeClasses(project);
   const stageLabel = formatStatusAndPhaseLabel(project.status, project.phase, messages);
   const aerialUrl = (
     project.thumbnail_url === null
@@ -105,7 +105,7 @@ export function ProjectDetailHeader({
               <span
                 className={`rounded-full border px-2 py-px text-[10px] font-bold uppercase tracking-[0.04em] ${statusBadgeClass}`}
               >
-                ● {formatStatusLabel(project.status, messages)}
+                ● {formatProjectBadgeLabel(project, messages)}
               </span>
               {compliance?.lastScanAt !== undefined && compliance.lastScanAt !== null && (
                 <>

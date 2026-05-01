@@ -256,7 +256,53 @@ async def test_patch_project_empty_body_leaves_unchanged(
     assert response.json()["name"] == "Stable"
 
 
-async def test_delete_project_owner_cascades(
+async def test_archive_project_owner_makes_project_read_only(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    p = (
+        await client.post(
+            "/projects", json={"name": "Archive Me"}, headers=_auth(org_user["access_token"])
+        )
+    ).json()
+
+    archive = await client.post(
+        f"/projects/{p['id']}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert archive.status_code == 200
+    assert archive.json()["lifecycle_state"] == "archived"
+    assert archive.json()["status"] == "planning"
+
+    patch = await client.patch(
+        f"/projects/{p['id']}",
+        json={"description": "blocked"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert patch.status_code == 409
+    assert patch.json()["detail"] == "PROJECT_ARCHIVED"
+
+
+async def test_reactivate_project_owner_restores_active_state(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    p = (
+        await client.post(
+            "/projects", json={"name": "Reactivatable"}, headers=_auth(org_user["access_token"])
+        )
+    ).json()
+    await client.post(f"/projects/{p['id']}/archive", headers=_auth(org_user["access_token"]))
+
+    response = await client.post(
+        f"/projects/{p['id']}/reactivate",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 200
+    assert response.json()["lifecycle_state"] == "active"
+
+
+async def test_delete_project_owner_soft_removes_and_hides_from_reads(
     client: AsyncClient,
     org_user: dict[str, str],
     same_org_user: dict[str, str],
@@ -264,7 +310,7 @@ async def test_delete_project_owner_cascades(
 ) -> None:
     p = (
         await client.post(
-            "/projects", json={"name": "ToDelete"}, headers=_auth(org_user["access_token"])
+            "/projects", json={"name": "ToRemove"}, headers=_auth(org_user["access_token"])
         )
     ).json()
     await client.post(
@@ -272,17 +318,32 @@ async def test_delete_project_owner_cascades(
         json={"user_id": same_org_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
+
     response = await client.delete(f"/projects/{p['id']}", headers=_auth(org_user["access_token"]))
     assert response.status_code == 204
 
+    get_removed = await client.get(f"/projects/{p['id']}", headers=_auth(org_user["access_token"]))
+    assert get_removed.status_code == 404
+
+    listed = await client.get("/projects", headers=_auth(org_user["access_token"]))
+    assert listed.status_code == 200
+    assert [project["name"] for project in listed.json()] == []
+
     async with session_maker() as session:
+        state = (
+            await session.execute(
+                text("SELECT lifecycle_state FROM projects WHERE id = :pid"),
+                {"pid": p["id"]},
+            )
+        ).scalar_one()
         members = (
             await session.execute(
                 text("SELECT count(*) FROM project_members WHERE project_id = :pid"),
                 {"pid": p["id"]},
             )
         ).scalar_one()
-    assert members == 0
+    assert state == "removed"
+    assert members == 2
 
 
 async def test_delete_project_editor_forbidden(
@@ -302,6 +363,29 @@ async def test_delete_project_editor_forbidden(
     )
     response = await client.delete(
         f"/projects/{p['id']}", headers=_auth(same_org_user["access_token"])
+    )
+    assert response.status_code == 403
+
+
+async def test_archive_project_editor_forbidden(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_user: dict[str, str],
+) -> None:
+    p = (
+        await client.post(
+            "/projects", json={"name": "ArchiveProtected"}, headers=_auth(org_user["access_token"])
+        )
+    ).json()
+    await client.post(
+        f"/projects/{p['id']}/members",
+        json={"user_id": same_org_user["id"], "role": "editor"},
+        headers=_auth(org_user["access_token"]),
+    )
+
+    response = await client.post(
+        f"/projects/{p['id']}/archive",
+        headers=_auth(same_org_user["access_token"]),
     )
     assert response.status_code == 403
 

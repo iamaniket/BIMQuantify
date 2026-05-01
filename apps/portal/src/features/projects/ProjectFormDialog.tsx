@@ -40,6 +40,7 @@ import { StepAddress } from './wizard/StepAddress';
 import { StepBasics } from './wizard/StepBasics';
 import { StepContractor } from './wizard/StepContractor';
 import { StepDetails } from './wizard/StepDetails';
+import { isProjectArchived } from './projectFormatting';
 
 const THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const THUMBNAIL_MAX_DIM = 800;
@@ -154,6 +155,7 @@ const LAST_STEP = PROJECT_WIZARD_STEPS.length - 1;
 export function ProjectFormDialog(props: Props): JSX.Element {
   const { mode, open, onOpenChange } = props;
   const project = mode === 'edit' ? props.project : null;
+  const isReadOnly = project !== null && isProjectArchived(project);
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -376,18 +378,24 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   }, [highestVisited, currentStep]);
 
   const handleSubmit = useCallback(async (): Promise<void> => {
+    if (isReadOnly) {
+      onOpenChange(false);
+      return;
+    }
     await form.handleSubmit(onSubmitImpl)();
     // onSubmitImpl wires success/error via mutation callbacks.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form]);
+  }, [form, isReadOnly, onOpenChange]);
 
   const apiErrorMessage = formatApiError(mutation.error, mode);
 
   const title = mode === 'create' ? 'New project' : 'Edit project';
   const description = mode === 'create'
     ? 'Walk through a few quick steps. You can edit any of these later.'
-    : 'Jump to any step to update the project.';
-  const submitLabel = mode === 'create' ? 'Create project' : 'Save changes';
+    : isReadOnly
+      ? 'This project is archived. You can review the fields, but editing is disabled until it is reactivated.'
+      : 'Jump to any step to update the project.';
+  const submitLabel = isReadOnly ? 'Close' : mode === 'create' ? 'Create project' : 'Save changes';
   const submitPendingLabel = mode === 'create' ? 'Creating…' : 'Saving…';
   const isSubmitting = mutation.isPending;
   const contractors = contractorsQuery.data ?? [];
@@ -453,12 +461,13 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                     onThumbnailFileChange={handleThumbnailChange}
                     onClearThumbnail={handleClearThumbnail}
                     isSubmitting={isSubmitting}
+                    isReadOnly={isReadOnly}
                     firstFieldRef={firstFieldRef}
                   />
                 )}
-                {activeStepId === 'details' && <StepDetails />}
+                {activeStepId === 'details' && <StepDetails isReadOnly={isReadOnly} />}
                 {activeStepId === 'address' && (
-                  <StepAddress initialLookupLabel={initialAddressLabel} />
+                  <StepAddress initialLookupLabel={initialAddressLabel} isReadOnly={isReadOnly} />
                 )}
                 {activeStepId === 'contractor' && (
                   <StepContractor
@@ -468,6 +477,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                     newContractorName={newContractorName}
                     contractorError={contractorError}
                     isAddingContractor={createContractorMutation.isPending}
+                    isReadOnly={isReadOnly}
                     onShowAddContractor={() => { setShowAddContractor(true); }}
                     onCancelAddContractor={() => {
                       setShowAddContractor(false);

@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.db import get_async_session
 from bimstitch_api.extraction import require_extractor_secret
+from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile
 from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
 
@@ -88,8 +89,38 @@ async def extraction_callback(
             if payload.extractor_version is not None:
                 row.extractor_version = payload.extractor_version
 
+        # Also update the Job record if a job_id was provided.
+        if payload.job_id is not None:
+            job = await _load_job_optional(session, payload.job_id)
+            if job is not None and job.status not in _JOB_TERMINAL:
+                _apply_job_update(job, payload)
+
     await session.refresh(row)
     return row
+
+
+def _apply_job_update(job: Job, payload: ExtractionCallbackRequest) -> None:
+    if payload.status is ExtractionStatus.running:
+        job.status = JobStatus.running
+        if payload.started_at is not None:
+            job.started_at = payload.started_at
+    elif payload.status is ExtractionStatus.succeeded:
+        job.status = JobStatus.succeeded
+        job.finished_at = payload.finished_at
+        job.result = {
+            k: v
+            for k, v in {
+                "fragments_key": payload.fragments_key,
+                "metadata_key": payload.metadata_key,
+                "properties_key": payload.properties_key,
+                "page_count": payload.page_count,
+            }.items()
+            if v is not None
+        }
+    else:  # failed
+        job.status = JobStatus.failed
+        job.error = payload.error
+        job.finished_at = payload.finished_at
 
 
 async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
@@ -99,6 +130,12 @@ async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FILE_NOT_FOUND")
     return row
+
+
+async def _load_job_optional(session: AsyncSession, job_id: UUID) -> Job | None:
+    return (
+        await session.execute(select(Job).where(Job.id == job_id))
+    ).scalar_one_or_none()
 
 
 __all__ = ["router"]

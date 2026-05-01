@@ -25,6 +25,7 @@ from bimstitch_api.models.user import User
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
+    _require_project_writable,
     _require_role,
 )
 from bimstitch_api.schemas.model import (
@@ -64,6 +65,7 @@ async def create_model(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    _require_project_writable(project)
 
     model = Model(
         project_id=project.id,
@@ -151,6 +153,7 @@ async def update_model(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    _require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
 
@@ -178,6 +181,7 @@ async def delete_model(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner)
+    _require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
 

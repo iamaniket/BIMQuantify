@@ -18,9 +18,10 @@ type Props = {
   onSelect: (address: ResolvedAddress) => void;
   /** Optional initial label to seed the input (e.g., when editing). */
   initialLabel?: string;
+  disabled?: boolean;
 };
 
-export function AddressLookup({ onSelect, initialLabel }: Props): JSX.Element {
+export function AddressLookup({ onSelect, initialLabel, disabled = false }: Props): JSX.Element {
   const inputId = useId();
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -35,7 +36,7 @@ export function AddressLookup({ onSelect, initialLabel }: Props): JSX.Element {
   // Debounced suggest fetch.
   useEffect(() => {
     const trimmed = query.trim();
-    if (trimmed.length < MIN_QUERY_LEN) {
+    if (disabled || trimmed.length < MIN_QUERY_LEN) {
       setSuggestions([]);
       setOpen(false);
       return;
@@ -62,7 +63,7 @@ export function AddressLookup({ onSelect, initialLabel }: Props): JSX.Element {
       ctrl.abort();
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [disabled, query]);
 
   // Close dropdown on outside click.
   useEffect(() => {
@@ -128,6 +129,7 @@ export function AddressLookup({ onSelect, initialLabel }: Props): JSX.Element {
           aria-controls={listboxId}
           aria-autocomplete="list"
           placeholder="Start typing street + city, e.g. Damrak 70 Amsterdam"
+          disabled={disabled}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { if (suggestions.length > 0) setOpen(true); }}

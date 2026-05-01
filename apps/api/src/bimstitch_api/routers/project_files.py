@@ -22,6 +22,7 @@ from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.extraction import ExtractionDispatchError, dispatch_extraction
 from bimstitch_api.ifc.header import parse_ifc_header
+from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.project_file import (
     ALLOWED_EXTENSIONS,
     ExtractionStatus,
@@ -35,6 +36,7 @@ from bimstitch_api.routers.models import _load_model_or_404
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
+    _require_project_writable,
     _require_role,
 )
 from bimstitch_api.schemas.project_file import (
@@ -100,6 +102,7 @@ async def initiate_upload(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    _require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
 
@@ -185,6 +188,7 @@ async def complete_upload(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    _require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
     row = await _load_file_or_404(session, model.id, file_id)
@@ -223,7 +227,32 @@ async def complete_upload(
             return row
 
         row.status = ProjectFileStatus.ready
+        row.extraction_status = ExtractionStatus.queued
+
+        pdf_job = Job(
+            organization_id=project.organization_id,
+            project_id=project.id,
+            file_id=row.id,
+            job_type=JobType.pdf_extraction,
+            status=JobStatus.pending,
+            payload={"storage_key": row.storage_key},
+            created_by_user_id=user.id,
+        )
+        session.add(pdf_job)
         await session.flush()
+
+        try:
+            await dispatch_extraction(
+                row.id, project.id, row.storage_key, settings, pdf_job.id, "pdf_extraction"
+            )
+        except ExtractionDispatchError as exc:
+            row.extraction_status = ExtractionStatus.failed
+            row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
+            pdf_job.status = JobStatus.failed
+            pdf_job.error = f"DISPATCH_FAILED: {exc}"[:500]
+            logger.warning("Extractor dispatch failed for %s: %s", row.storage_key, exc)
+            await session.flush()
+
         await session.refresh(row)
         return row
 
@@ -236,13 +265,28 @@ async def complete_upload(
         row.ifc_schema = result.schema
         row.status = ProjectFileStatus.ready
         row.extraction_status = ExtractionStatus.queued
+
+        ifc_job = Job(
+            organization_id=project.organization_id,
+            project_id=project.id,
+            file_id=row.id,
+            job_type=JobType.ifc_extraction,
+            status=JobStatus.pending,
+            payload={"storage_key": row.storage_key},
+            created_by_user_id=user.id,
+        )
+        session.add(ifc_job)
         await session.flush()
 
         try:
-            await dispatch_extraction(row.id, project.id, row.storage_key, settings)
+            await dispatch_extraction(
+                row.id, project.id, row.storage_key, settings, ifc_job.id, "ifc_extraction"
+            )
         except ExtractionDispatchError as exc:
             row.extraction_status = ExtractionStatus.failed
             row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
+            ifc_job.status = JobStatus.failed
+            ifc_job.error = f"DISPATCH_FAILED: {exc}"[:500]
             logger.warning("Extractor dispatch failed for %s: %s", row.storage_key, exc)
             await session.flush()
 
@@ -324,6 +368,7 @@ async def retry_extraction(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    _require_project_writable(project)
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)
@@ -332,17 +377,36 @@ async def retry_extraction(
     if row.extraction_status is not ExtractionStatus.failed:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="EXTRACTION_NOT_FAILED")
 
+    retry_job_type = (
+        JobType.pdf_extraction if row.file_type == FileType.pdf else JobType.ifc_extraction
+    )
+
     row.extraction_status = ExtractionStatus.queued
     row.extraction_error = None
     row.extraction_started_at = None
     row.extraction_finished_at = None
+
+    retry_job = Job(
+        organization_id=project.organization_id,
+        project_id=project.id,
+        file_id=row.id,
+        job_type=retry_job_type,
+        status=JobStatus.pending,
+        payload={"storage_key": row.storage_key, "retry": True},
+        created_by_user_id=user.id,
+    )
+    session.add(retry_job)
     await session.flush()
 
     try:
-        await dispatch_extraction(row.id, project.id, row.storage_key, settings)
+        await dispatch_extraction(
+            row.id, project.id, row.storage_key, settings, retry_job.id, retry_job_type.value
+        )
     except ExtractionDispatchError as exc:
         row.extraction_status = ExtractionStatus.failed
         row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
+        retry_job.status = JobStatus.failed
+        retry_job.error = f"DISPATCH_FAILED: {exc}"[:500]
         logger.warning("Extractor re-dispatch failed for %s: %s", row.storage_key, exc)
         await session.flush()
 
@@ -414,6 +478,7 @@ async def delete_file(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    _require_project_writable(project)
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)

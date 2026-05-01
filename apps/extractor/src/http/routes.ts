@@ -8,6 +8,8 @@ const JobBody = z.object({
   file_id: z.string().uuid(),
   project_id: z.string().uuid(),
   storage_key: z.string().min(1),
+  job_id: z.string().uuid().optional(),
+  job_type: z.enum(['ifc_extraction', 'pdf_extraction']).default('ifc_extraction'),
 });
 
 export function registerRoutes(app: FastifyInstance): void {

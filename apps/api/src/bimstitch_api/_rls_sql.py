@@ -33,6 +33,7 @@ RLS_TABLES = (
     "models",
     "project_files",
     "contractors",
+    "jobs",
 )
 
 # Tables the app role needs DML privileges on (broader than RLS_TABLES because
@@ -45,6 +46,7 @@ APP_GRANT_TABLES = (
     "models",
     "project_files",
     "contractors",
+    "jobs",
 )
 
 # Subquery snippet reused by tables that scope through `projects.organization_id`.
@@ -174,12 +176,23 @@ def enable_rls_statements() -> list[str]:
         """
     )
 
+    # jobs: straight org match via organization_id column.
+    stmts.append("DROP POLICY IF EXISTS jobs_tenant_isolation ON jobs;")
+    stmts.append(
+        f"""
+        CREATE POLICY jobs_tenant_isolation ON jobs
+        USING ({org_match})
+        WITH CHECK ({org_match});
+        """
+    )
+
     return stmts
 
 
 def disable_rls_statements() -> list[str]:
     """Reverse of enable_rls_statements; used by migration downgrade."""
     stmts: list[str] = []
+    stmts.append("DROP POLICY IF EXISTS jobs_tenant_isolation ON jobs;")
     stmts.append("DROP POLICY IF EXISTS contractors_tenant_isolation ON contractors;")
     stmts.append("DROP POLICY IF EXISTS project_files_tenant_isolation ON project_files;")
     stmts.append("DROP POLICY IF EXISTS models_tenant_isolation ON models;")

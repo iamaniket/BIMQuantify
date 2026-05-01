@@ -12,6 +12,7 @@ from bimstitch_api.config import get_settings
 from bimstitch_api.routers.contractors import router as contractors_router
 from bimstitch_api.routers.extraction_internal import router as extraction_internal_router
 from bimstitch_api.routers.health import router as health_router
+from bimstitch_api.routers.jobs import router as jobs_router
 from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     app.include_router(models_router)
     app.include_router(project_files_router)
     app.include_router(extraction_internal_router)
+    app.include_router(jobs_router)
     return app
 
 

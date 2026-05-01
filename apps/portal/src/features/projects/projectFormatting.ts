@@ -1,4 +1,9 @@
-import type { ProjectPhaseValue, ProjectStatusValue } from '@/lib/api/schemas';
+import type {
+  Project,
+  ProjectLifecycleStateValue,
+  ProjectPhaseValue,
+  ProjectStatusValue,
+} from '@/lib/api/schemas';
 import type { Locale, PortalMessages } from '@bimstitch/i18n';
 
 // Tailwind classes for the colored dot + badge per status.
@@ -21,6 +26,18 @@ const STATUS_DOT_CLASSES: Record<ProjectStatusValue, string> = {
   oplevering: 'bg-violet-500',
   gereed: 'bg-blue-500',
   on_hold: 'bg-rose-500',
+};
+
+const LIFECYCLE_BADGE_CLASSES: Record<ProjectLifecycleStateValue, string> = {
+  active: 'border-slate-400/35 bg-slate-400/20 text-slate-200',
+  archived: 'border-white/30 bg-white/16 text-white',
+  removed: 'border-rose-400/35 bg-rose-400/20 text-rose-200',
+};
+
+const LIFECYCLE_DOT_CLASSES: Record<ProjectLifecycleStateValue, string> = {
+  active: 'bg-slate-400',
+  archived: 'bg-white',
+  removed: 'bg-rose-500',
 };
 
 export function formatStatus(status: ProjectStatusValue): string {
@@ -51,6 +68,46 @@ export function formatStatusAndPhaseLabel(
   messages: PortalMessages,
 ): string {
   return `${messages.projects.statuses[status]} · ${messages.projects.phases[phase]}`;
+}
+
+export function formatProjectLifecycleLabel(lifecycleState: ProjectLifecycleStateValue): string {
+  switch (lifecycleState) {
+    case 'archived':
+      return 'Archived';
+    case 'removed':
+      return 'Removed';
+    case 'active':
+    default:
+      return 'Active';
+  }
+}
+
+export function isProjectArchived(project: Pick<Project, 'lifecycle_state'>): boolean {
+  return project.lifecycle_state === 'archived';
+}
+
+export function projectBadgeClasses(project: Pick<Project, 'status' | 'lifecycle_state'>): string {
+  if (project.lifecycle_state === 'active') {
+    return STATUS_BADGE_CLASSES[project.status];
+  }
+  return LIFECYCLE_BADGE_CLASSES[project.lifecycle_state];
+}
+
+export function projectDotClasses(project: Pick<Project, 'status' | 'lifecycle_state'>): string {
+  if (project.lifecycle_state === 'active') {
+    return STATUS_DOT_CLASSES[project.status];
+  }
+  return LIFECYCLE_DOT_CLASSES[project.lifecycle_state];
+}
+
+export function formatProjectBadgeLabel(
+  project: Pick<Project, 'status' | 'lifecycle_state'>,
+  messages: PortalMessages,
+): string {
+  if (project.lifecycle_state === 'active') {
+    return formatStatusLabel(project.status, messages);
+  }
+  return formatProjectLifecycleLabel(project.lifecycle_state);
 }
 
 export function statusBadgeClasses(status: ProjectStatusValue): string {

@@ -5,10 +5,12 @@ export type CallbackStatus = 'running' | 'succeeded' | 'failed';
 
 export type CallbackPayload = {
   file_id: string;
+  job_id?: string;
   status: CallbackStatus;
   fragments_key?: string;
   metadata_key?: string;
   properties_key?: string;
+  page_count?: number;
   error?: string;
   extractor_version?: string;
   started_at?: string;

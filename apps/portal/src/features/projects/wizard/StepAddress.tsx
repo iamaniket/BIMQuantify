@@ -18,9 +18,10 @@ import {
 export type StepAddressProps = {
   /** Optional initial label shown in the lookup input (used in edit mode). */
   initialLookupLabel: string | undefined;
+  isReadOnly: boolean;
 };
 
-export function StepAddress({ initialLookupLabel }: StepAddressProps): JSX.Element {
+export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps): JSX.Element {
   const form = useFormContext<ProjectFormValues>();
   const streetId = useId();
   const houseId = useId();
@@ -53,11 +54,12 @@ export function StepAddress({ initialLookupLabel }: StepAddressProps): JSX.Eleme
   return (
     <div className="flex flex-col gap-4">
       {initialLookupLabel === undefined ? (
-        <AddressLookup onSelect={handleAddressSelected} />
+        <AddressLookup onSelect={handleAddressSelected} disabled={isReadOnly} />
       ) : (
         <AddressLookup
           onSelect={handleAddressSelected}
           initialLabel={initialLookupLabel}
+          disabled={isReadOnly}
         />
       )}
 
@@ -76,6 +78,7 @@ export function StepAddress({ initialLookupLabel }: StepAddressProps): JSX.Eleme
             id={streetId}
             type="text"
             placeholder="Hoofdstraat"
+            disabled={isReadOnly}
             {...form.register('street')}
           />
         </div>
@@ -85,6 +88,7 @@ export function StepAddress({ initialLookupLabel }: StepAddressProps): JSX.Eleme
             id={houseId}
             type="text"
             placeholder="12A"
+            disabled={isReadOnly}
             {...form.register('house_number')}
           />
         </div>
@@ -98,6 +102,7 @@ export function StepAddress({ initialLookupLabel }: StepAddressProps): JSX.Eleme
             type="text"
             placeholder="1234 AB"
             invalid={postalError !== undefined}
+            disabled={isReadOnly}
             {...form.register('postal_code')}
           />
           {postalError !== undefined && (
@@ -110,6 +115,7 @@ export function StepAddress({ initialLookupLabel }: StepAddressProps): JSX.Eleme
             id={cityId}
             type="text"
             placeholder="Amsterdam"
+            disabled={isReadOnly}
             {...form.register('city')}
           />
         </div>
@@ -119,6 +125,7 @@ export function StepAddress({ initialLookupLabel }: StepAddressProps): JSX.Eleme
             id={municipalityId}
             type="text"
             placeholder="Amsterdam"
+            disabled={isReadOnly}
             {...form.register('municipality')}
           />
         </div>

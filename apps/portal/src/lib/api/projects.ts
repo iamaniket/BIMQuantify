@@ -45,6 +45,14 @@ export async function updateProject(
   return apiClient.patch<Project>(`/projects/${id}`, input, ProjectSchema, accessToken);
 }
 
+export async function archiveProject(accessToken: string, id: string): Promise<Project> {
+  return apiClient.post<Project>(`/projects/${id}/archive`, undefined, ProjectSchema, accessToken);
+}
+
+export async function reactivateProject(accessToken: string, id: string): Promise<Project> {
+  return apiClient.post<Project>(`/projects/${id}/reactivate`, undefined, ProjectSchema, accessToken);
+}
+
 export async function deleteProject(accessToken: string, id: string): Promise<void> {
   return apiClient.delete(`/projects/${id}`, accessToken);
 }

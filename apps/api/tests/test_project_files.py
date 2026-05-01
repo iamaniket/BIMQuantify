@@ -939,8 +939,9 @@ async def test_complete_pdf_valid_marks_ready_no_extraction(
     assert body["status"] == "ready"
     assert body["file_type"] == "pdf"
     assert body["ifc_schema"] is None
-    assert body["extraction_status"] == "not_started"
-    assert len(extraction_calls) == 0
+    assert body["extraction_status"] == "queued"
+    assert len(extraction_calls) == 1
+    assert extraction_calls[0]["job_type"] == "pdf_extraction"
 
 
 async def test_complete_pdf_invalid_magic_rejects(

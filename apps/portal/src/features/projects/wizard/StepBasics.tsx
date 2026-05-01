@@ -31,6 +31,7 @@ export type StepBasicsProps = {
   onThumbnailFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onClearThumbnail: () => void;
   isSubmitting: boolean;
+  isReadOnly: boolean;
   /** Optional ref so the parent can focus the first field on step entry. */
   firstFieldRef: RefObject<HTMLInputElement | null> | undefined;
 };
@@ -43,6 +44,7 @@ export function StepBasics({
   onThumbnailFileChange,
   onClearThumbnail,
   isSubmitting,
+  isReadOnly,
   firstFieldRef,
 }: StepBasicsProps): JSX.Element {
   const form = useFormContext<ProjectFormValues>();
@@ -76,6 +78,7 @@ export function StepBasics({
           type="text"
           autoComplete="off"
           invalid={nameError !== undefined}
+          disabled={isReadOnly}
           {...nameRegister}
           ref={(node) => {
             nameRegister.ref(node);
@@ -96,6 +99,7 @@ export function StepBasics({
           id={descriptionId}
           rows={3}
           invalid={descriptionError !== undefined}
+          disabled={isReadOnly}
           {...form.register('description')}
         />
         {descriptionError !== undefined && (
@@ -115,6 +119,7 @@ export function StepBasics({
             accept={THUMBNAIL_ACCEPT}
             className="hidden"
             onChange={onThumbnailFileChange}
+            disabled={isReadOnly}
           />
           {thumbnailFile !== null && thumbnailPreviewUrl !== null ? (
             <div className="relative overflow-hidden rounded-md border border-border">
@@ -142,7 +147,7 @@ export function StepBasics({
               variant="border"
               size="sm"
               className="self-start"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isReadOnly}
               onClick={handleOpenFilePicker}
             >
               <ImagePlus className="h-4 w-4" />

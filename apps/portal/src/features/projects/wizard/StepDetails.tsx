@@ -14,7 +14,11 @@ import {
   fieldErrorClass, fieldLabelClass, getFieldErrorMessage, selectClass,
 } from './stepStyles';
 
-export function StepDetails(): JSX.Element {
+type Props = {
+  isReadOnly: boolean;
+};
+
+export function StepDetails({ isReadOnly }: Props): JSX.Element {
   const form = useFormContext<ProjectFormValues>();
   const refCodeId = useId();
   const permitId = useId();
@@ -37,6 +41,7 @@ export function StepDetails(): JSX.Element {
             type="text"
             placeholder="WKB-2026-0411"
             invalid={refCodeError !== undefined}
+            disabled={isReadOnly}
             {...form.register('reference_code')}
           />
           {refCodeError !== undefined && (
@@ -51,6 +56,7 @@ export function StepDetails(): JSX.Element {
             type="text"
             placeholder="OV-2026-0099"
             invalid={permitError !== undefined}
+            disabled={isReadOnly}
             {...form.register('permit_number')}
           />
           {permitError !== undefined && (
@@ -62,7 +68,7 @@ export function StepDetails(): JSX.Element {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={statusId} className={fieldLabelClass}>Status</Label>
-          <select id={statusId} className={selectClass} {...form.register('status')}>
+          <select id={statusId} className={selectClass} disabled={isReadOnly} {...form.register('status')}>
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
@@ -71,7 +77,7 @@ export function StepDetails(): JSX.Element {
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={phaseId} className={fieldLabelClass}>Phase</Label>
-          <select id={phaseId} className={selectClass} {...form.register('phase')}>
+          <select id={phaseId} className={selectClass} disabled={isReadOnly} {...form.register('phase')}>
             {PHASE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
@@ -84,6 +90,7 @@ export function StepDetails(): JSX.Element {
             id={deliveryId}
             type="date"
             invalid={deliveryError !== undefined}
+            disabled={isReadOnly}
             {...form.register('delivery_date')}
           />
           {deliveryError !== undefined && (

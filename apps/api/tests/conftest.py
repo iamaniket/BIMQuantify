@@ -44,6 +44,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
     from bimstitch_api.db import Base
     from bimstitch_api.models import (  # noqa: F401
         Contractor,
+        Job,
         Model,
         Organization,
         Project,
@@ -72,6 +73,9 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS modeldiscipline")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectphase")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectlifecyclestate")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS jobtype")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS jobstatus")
         await conn.run_sync(Base.metadata.create_all)
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
@@ -95,6 +99,9 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS modeldiscipline")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectphase")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectlifecyclestate")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS jobtype")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS jobstatus")
     await eng.dispose()
 
 
@@ -121,7 +128,7 @@ async def _clean_tables(
         # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
         await session.execute(
             text(
-                "TRUNCATE TABLE project_files, models, project_members, projects, "
+                "TRUNCATE TABLE jobs, project_files, models, project_members, projects, "
                 "contractors, users, organizations RESTART IDENTITY CASCADE"
             )
         )
@@ -153,13 +160,19 @@ def _stub_extraction_dispatcher() -> Generator[list[dict[str, str]], None, None]
     calls: list[dict[str, str]] = []
 
     async def _record(
-        file_id: UUID, project_id: UUID, storage_key: str, settings: Settings
+        file_id: UUID,
+        project_id: UUID,
+        storage_key: str,
+        settings: Settings,
+        job_id: UUID | None = None,
+        job_type: str = "ifc_extraction",
     ) -> None:
         calls.append(
             {
                 "file_id": str(file_id),
                 "project_id": str(project_id),
                 "storage_key": storage_key,
+                "job_type": job_type,
             }
         )
 

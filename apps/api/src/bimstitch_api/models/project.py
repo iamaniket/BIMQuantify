@@ -28,6 +28,12 @@ class ProjectStatus(StrEnum):
     on_hold = "on_hold"
 
 
+class ProjectLifecycleState(StrEnum):
+    active = "active"
+    archived = "archived"
+    removed = "removed"
+
+
 class ProjectPhase(StrEnum):
     ontwerp = "ontwerp"
     bestek = "bestek"
@@ -66,6 +72,16 @@ class Project(TimestampMixin, Base):
         nullable=False,
         default=ProjectStatus.planning,
         server_default=ProjectStatus.planning.value,
+    )
+    lifecycle_state: Mapped[ProjectLifecycleState] = mapped_column(
+        SAEnum(
+            ProjectLifecycleState,
+            name="projectlifecyclestate",
+            values_callable=lambda enum: [m.value for m in enum],
+        ),
+        nullable=False,
+        default=ProjectLifecycleState.active,
+        server_default=ProjectLifecycleState.active.value,
     )
     phase: Mapped[ProjectPhase] = mapped_column(
         SAEnum(
@@ -112,6 +128,7 @@ class Project(TimestampMixin, Base):
         UniqueConstraint("organization_id", "name", name="uq_projects_org_name"),
         Index("ix_projects_organization_id", "organization_id"),
         Index("ix_projects_status", "status"),
+        Index("ix_projects_lifecycle_state", "lifecycle_state"),
         Index("ix_projects_contractor_id", "contractor_id"),
         Index(
             "uq_projects_org_reference_code",

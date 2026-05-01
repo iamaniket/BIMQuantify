@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.models.contractor import Contractor
-from bimstitch_api.models.project import Project
+from bimstitch_api.models.project import Project, ProjectLifecycleState
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.project import (
@@ -80,7 +80,7 @@ async def _load_project_or_404(session: AsyncSession, project_id: UUID) -> Proje
     project = (
         await session.execute(select(Project).where(Project.id == project_id))
     ).scalar_one_or_none()
-    if project is None:
+    if project is None or project.lifecycle_state is ProjectLifecycleState.removed:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PROJECT_NOT_FOUND")
     return project
 
@@ -113,6 +113,14 @@ def _require_role(membership: ProjectMember, *allowed: ProjectRole) -> None:
     if membership.role not in allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="INSUFFICIENT_PROJECT_ROLE"
+        )
+
+
+def _require_project_writable(project: Project) -> None:
+    if project.lifecycle_state is ProjectLifecycleState.archived:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="PROJECT_ARCHIVED",
         )
 
 
@@ -223,6 +231,7 @@ async def list_projects(
     stmt = (
         select(Project)
         .join(ProjectMember, ProjectMember.project_id == Project.id)
+        .where(Project.lifecycle_state != ProjectLifecycleState.removed)
         .where(ProjectMember.user_id == user.id)
         .order_by(Project.created_at)
     )
@@ -254,6 +263,7 @@ async def update_project(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    _require_project_writable(project)
 
     updates = payload.model_dump(exclude_unset=True)
     if "contractor_id" in updates:
@@ -282,18 +292,53 @@ async def delete_project(
     membership = await _require_membership(session, project.id, user.id)
     _require_role(membership, ProjectRole.owner)
 
-    thumbnail_key = project.thumbnail_url
-    await session.delete(project)
+    project.lifecycle_state = ProjectLifecycleState.removed
     await session.flush()
 
-    if thumbnail_key and thumbnail_key.startswith(_THUMBNAIL_KEY_PREFIX):
-        try:
-            storage = get_storage()
-            await storage.delete_object(thumbnail_key)
-        except Exception:  # noqa: BLE001
-            pass  # Storage cleanup is best-effort; don't fail the delete
-
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{project_id}/archive", response_model=ProjectRead)
+async def archive_project(
+    project_id: UUID,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    storage: StorageBackend = Depends(get_storage),
+) -> dict[str, object]:
+    project = await _load_project_or_404(session, project_id)
+    membership = await _require_membership(session, project.id, user.id)
+    _require_role(membership, ProjectRole.owner)
+
+    if project.lifecycle_state is ProjectLifecycleState.archived:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="PROJECT_ARCHIVED")
+
+    project.lifecycle_state = ProjectLifecycleState.archived
+    await session.flush()
+    await session.refresh(project)
+    return await _project_to_read(project, storage)
+
+
+@router.post("/{project_id}/reactivate", response_model=ProjectRead)
+async def reactivate_project(
+    project_id: UUID,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    storage: StorageBackend = Depends(get_storage),
+) -> dict[str, object]:
+    project = await _load_project_or_404(session, project_id)
+    membership = await _require_membership(session, project.id, user.id)
+    _require_role(membership, ProjectRole.owner)
+
+    if project.lifecycle_state is not ProjectLifecycleState.archived:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="PROJECT_NOT_ARCHIVED",
+        )
+
+    project.lifecycle_state = ProjectLifecycleState.active
+    await session.flush()
+    await session.refresh(project)
+    return await _project_to_read(project, storage)
 
 
 # ---------------------------------------------------------------------------
@@ -315,6 +360,7 @@ async def add_member(
     project = await _load_project_or_404(session, project_id)
     caller = await _require_membership(session, project.id, user.id)
     _require_role(caller, ProjectRole.owner)
+    _require_project_writable(project)
 
     if payload.role is ProjectRole.owner:
         # No second-owner. The partial unique index would also catch this, but
@@ -356,6 +402,7 @@ async def remove_member(
     project = await _load_project_or_404(session, project_id)
     caller = await _require_membership(session, project.id, user.id)
     _require_role(caller, ProjectRole.owner)
+    _require_project_writable(project)
 
     target = await _get_membership(session, project.id, user_id)
     if target is None:
@@ -379,6 +426,7 @@ async def update_member_role(
     project = await _load_project_or_404(session, project_id)
     caller = await _require_membership(session, project.id, user.id)
     _require_role(caller, ProjectRole.owner)
+    _require_project_writable(project)
 
     target = await _get_membership(session, project.id, user_id)
     if target is None:
