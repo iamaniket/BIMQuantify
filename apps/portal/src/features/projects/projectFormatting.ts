@@ -1,23 +1,5 @@
 import type { ProjectPhaseValue, ProjectStatusValue } from '@/lib/api/schemas';
-
-const STATUS_LABELS: Record<ProjectStatusValue, string> = {
-  planning: 'Planning',
-  ontwerp: 'Ontwerp',
-  vergunning: 'Vergunning',
-  uitvoering: 'Uitvoering',
-  oplevering: 'Oplevering',
-  gereed: 'Gereed',
-  on_hold: 'On hold',
-};
-
-const PHASE_LABELS: Record<ProjectPhaseValue, string> = {
-  ontwerp: 'Ontwerp',
-  bestek: 'Bestek',
-  werkvoorbereiding: 'Werkvoorbereiding',
-  ruwbouw: 'Ruwbouw',
-  afbouw: 'Afbouw',
-  oplevering: 'Oplevering',
-};
+import type { Locale, PortalMessages } from '@bimstitch/i18n';
 
 // Tailwind classes for the colored dot + badge per status.
 const STATUS_BADGE_CLASSES: Record<ProjectStatusValue, string> = {
@@ -42,17 +24,33 @@ const STATUS_DOT_CLASSES: Record<ProjectStatusValue, string> = {
 };
 
 export function formatStatus(status: ProjectStatusValue): string {
-  return STATUS_LABELS[status];
+  return status;
+}
+
+export function formatStatusLabel(
+  status: ProjectStatusValue,
+  messages: PortalMessages,
+): string {
+  return messages.projects.statuses[status];
 }
 
 export function formatPhase(phase: ProjectPhaseValue): string {
-  return PHASE_LABELS[phase];
+  return phase;
 }
 
-export function formatStatusAndPhase(
-  status: ProjectStatusValue, phase: ProjectPhaseValue,
+export function formatPhaseLabel(
+  phase: ProjectPhaseValue,
+  messages: PortalMessages,
 ): string {
-  return `${STATUS_LABELS[status]} · ${PHASE_LABELS[phase]}`;
+  return messages.projects.phases[phase];
+}
+
+export function formatStatusAndPhaseLabel(
+  status: ProjectStatusValue,
+  phase: ProjectPhaseValue,
+  messages: PortalMessages,
+): string {
+  return `${messages.projects.statuses[status]} · ${messages.projects.phases[phase]}`;
 }
 
 export function statusBadgeClasses(status: ProjectStatusValue): string {
@@ -85,10 +83,10 @@ export function daysUntil(isoDate: string): number {
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
-export function formatDeliveryDate(isoDate: string): string {
+export function formatDeliveryDate(isoDate: string, locale: Locale): string {
   const parsed = new Date(isoDate);
   if (Number.isNaN(parsed.getTime())) return isoDate;
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric', month: 'short', day: 'numeric',
   }).format(parsed);
 }

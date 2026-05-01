@@ -49,4 +49,27 @@ export const portalNlMessages: PortalMessages = {
     userRole: 'Wkb-inspecteur · Beheerder',
     signOut: 'Uitloggen',
   },
+  projects: {
+    statuses: {
+      planning: 'Planning',
+      ontwerp: 'Ontwerp',
+      vergunning: 'Vergunning',
+      uitvoering: 'Uitvoering',
+      oplevering: 'Oplevering',
+      gereed: 'Gereed',
+      on_hold: 'On hold',
+    },
+    phases: {
+      ontwerp: 'Ontwerp',
+      bestek: 'Bestek',
+      werkvoorbereiding: 'Werkvoorbereiding',
+      ruwbouw: 'Ruwbouw',
+      afbouw: 'Afbouw',
+      oplevering: 'Oplevering',
+    },
+    card: {
+      phaseLabel: 'Fase:',
+      permitLabel: 'Vergunning:',
+    },
+  },
 };

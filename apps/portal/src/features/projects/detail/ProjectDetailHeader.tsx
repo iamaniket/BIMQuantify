@@ -12,10 +12,12 @@ import {
   daysUntil,
   formatAddress,
   formatDeliveryDate,
-  formatStatusAndPhase,
+  formatStatusAndPhaseLabel,
+  formatStatusLabel,
   statusBadgeClasses,
 } from '@/features/projects/projectFormatting';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/lib/mapThumbnail';
+import { useLocale } from '@/providers/LocaleProvider';
 
 import { KpiStrip } from './KpiStrip';
 
@@ -32,12 +34,13 @@ export function ProjectDetailHeader({
   issueCount,
   dossierPct,
 }: Props): JSX.Element {
+  const { locale, messages } = useLocale();
   const [aerialFailed, setAerialFailed] = useState(false);
   const overall = compliance?.overallScore ?? 0;
   const address = formatAddress(project);
   const refLabel = project.reference_code ?? '—';
   const statusBadgeClass = statusBadgeClasses(project.status);
-  const stageLabel = formatStatusAndPhase(project.status, project.phase);
+  const stageLabel = formatStatusAndPhaseLabel(project.status, project.phase, messages);
   const aerialUrl = (
     project.thumbnail_url === null
     && project.latitude !== null
@@ -51,7 +54,7 @@ export function ProjectDetailHeader({
   let opleveringValue = '—';
   let opleveringSub = 'No delivery date';
   if (project.delivery_date !== null) {
-    opleveringValue = formatDeliveryDate(project.delivery_date);
+    opleveringValue = formatDeliveryDate(project.delivery_date, locale);
     const days = daysUntil(project.delivery_date);
     opleveringSub = days >= 0
       ? `${String(days)} days remaining`
@@ -102,7 +105,7 @@ export function ProjectDetailHeader({
               <span
                 className={`rounded-full border px-2 py-px text-[10px] font-bold uppercase tracking-[0.04em] ${statusBadgeClass}`}
               >
-                ● {project.status.replace('_', ' ')}
+                ● {formatStatusLabel(project.status, messages)}
               </span>
               {compliance?.lastScanAt !== undefined && compliance.lastScanAt !== null && (
                 <>
@@ -142,7 +145,7 @@ export function ProjectDetailHeader({
               { label: 'Wkb score', value: `${overall}%`, color: '#9ff0bf', sub: '↑ 4.2 wk' },
               { label: 'Issues open', value: String(issueCount), color: '#ffb3a3', sub: `${compliance?.failCount ?? 0} fail · ${compliance?.warnCount ?? 0} warn` },
               { label: 'Holdback', value: '€ 184,500', sub: `${dossierPct}% dossier ready` },
-              { label: 'Oplevering', value: opleveringValue, sub: opleveringSub },
+              { label: 'Delivery', value: opleveringValue, sub: opleveringSub },
             ]}
           />
         </div>

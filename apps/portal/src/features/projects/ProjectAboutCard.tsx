@@ -3,22 +3,23 @@
 import type { JSX } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
+import { useLocale } from '@/providers/LocaleProvider';
 
 import {
   formatAddress,
   formatDeliveryDate,
-  formatPhase,
-  formatStatus,
+  formatPhaseLabel,
+  formatStatusLabel,
 } from './projectFormatting';
 
 type Props = {
   project: Project;
 };
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric', month: 'short', day: 'numeric',
   }).format(parsed);
 }
@@ -34,13 +35,14 @@ function Row({ label, value }: { label: string; value: string | null }): JSX.Ele
 }
 
 export function ProjectAboutCard({ project }: Props): JSX.Element {
+  const { locale, messages } = useLocale();
   const description = project.description === null || project.description.trim().length === 0
     ? null
     : project.description;
 
   const address = formatAddress(project);
   const deliveryDate = project.delivery_date !== null
-    ? formatDeliveryDate(project.delivery_date)
+    ? formatDeliveryDate(project.delivery_date, locale)
     : null;
 
   return (
@@ -66,8 +68,8 @@ export function ProjectAboutCard({ project }: Props): JSX.Element {
         </h2>
         <dl className="flex flex-col gap-1 text-body3">
           <Row label="Reference code" value={project.reference_code} />
-          <Row label="Status" value={formatStatus(project.status)} />
-          <Row label="Phase" value={formatPhase(project.phase)} />
+          <Row label="Status" value={formatStatusLabel(project.status, messages)} />
+          <Row label="Phase" value={formatPhaseLabel(project.phase, messages)} />
           <Row label="Delivery" value={deliveryDate} />
           <Row label="Permit" value={project.permit_number} />
           <Row label="Contractor" value={project.contractor_name} />
@@ -92,8 +94,8 @@ export function ProjectAboutCard({ project }: Props): JSX.Element {
           Timestamps
         </h2>
         <dl className="flex flex-col gap-1 text-body3">
-          <Row label="Created" value={formatDate(project.created_at)} />
-          <Row label="Updated" value={formatDate(project.updated_at)} />
+          <Row label="Created" value={formatDate(project.created_at, locale)} />
+          <Row label="Updated" value={formatDate(project.updated_at, locale)} />
         </dl>
       </section>
     </aside>

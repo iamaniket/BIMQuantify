@@ -47,4 +47,27 @@ export type PortalMessages = {
     userRole: string;
     signOut: string;
   };
+  projects: {
+    statuses: {
+      planning: string;
+      ontwerp: string;
+      vergunning: string;
+      uitvoering: string;
+      oplevering: string;
+      gereed: string;
+      on_hold: string;
+    };
+    phases: {
+      ontwerp: string;
+      bestek: string;
+      werkvoorbereiding: string;
+      ruwbouw: string;
+      afbouw: string;
+      oplevering: string;
+    };
+    card: {
+      phaseLabel: string;
+      permitLabel: string;
+    };
+  };
 };

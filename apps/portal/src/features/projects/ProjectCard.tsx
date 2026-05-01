@@ -13,18 +13,19 @@ import {
 import { BlueprintTexture } from '@/components/BlueprintTexture';
 import type { Project } from '@/lib/api/schemas';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/lib/mapThumbnail';
+import { useLocale } from '@/providers/LocaleProvider';
 
 import { ProjectCardMenu } from './ProjectCardMenu';
 import {
-  formatPhase, formatStatus, statusDotClasses,
+  formatPhaseLabel, formatStatusLabel, statusDotClasses,
 } from './projectFormatting';
 
-function formatDateLabel(iso: string): string {
+function formatDateLabel(iso: string, locale: string): string {
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) {
     return '';
   }
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -36,9 +37,10 @@ type Props = {
 };
 
 export function ProjectCard({ project }: Props): JSX.Element {
-  const createdLabel = formatDateLabel(project.created_at);
-  const updatedLabel = formatDateLabel(project.updated_at);
-  const deliveryLabel = project.delivery_date === null ? '' : formatDateLabel(project.delivery_date);
+  const { locale, messages } = useLocale();
+  const createdLabel = formatDateLabel(project.created_at, locale);
+  const updatedLabel = formatDateLabel(project.updated_at, locale);
+  const deliveryLabel = project.delivery_date === null ? '' : formatDateLabel(project.delivery_date, locale);
   const cityLine = project.city ?? null;
   const contractorName = project.contractor_name ?? null;
 
@@ -63,7 +65,7 @@ export function ProjectCard({ project }: Props): JSX.Element {
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 py-3">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground shadow-sm shadow-primary/20 transition-colors duration-200 group-hover:bg-primary-hover">
               <span className={`h-1.5 w-1.5 rounded-full ${statusDotClasses(project.status)}`} />
-              {formatStatus(project.status)}
+              {formatStatusLabel(project.status, messages)}
             </span>
           </div>
 
@@ -109,13 +111,13 @@ export function ProjectCard({ project }: Props): JSX.Element {
               <div className="grid grid-cols-1 gap-1.5 pt-1 text-body3 text-primary-foreground/85">
                 <p className="inline-flex items-center gap-1.5">
                   <Icon icon={Layers} size="sm" className="text-white/80" />
-                  <span className="font-semibold text-primary-foreground">Phase:</span>{' '}
-                  {formatPhase(project.phase)}
+                  <span className="font-semibold text-primary-foreground">{messages.projects.card.phaseLabel}</span>{' '}
+                  {formatPhaseLabel(project.phase, messages)}
                 </p>
                 {project.permit_number !== null && (
                   <p className="inline-flex items-center gap-1.5 line-clamp-1">
                     <Icon icon={FileText} size="sm" className="text-white/80" />
-                    <span className="font-semibold text-primary-foreground">Permit:</span>{' '}
+                    <span className="font-semibold text-primary-foreground">{messages.projects.card.permitLabel}</span>{' '}
                     {project.permit_number}
                   </p>
                 )}
