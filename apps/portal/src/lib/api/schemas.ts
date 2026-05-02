@@ -359,3 +359,34 @@ export const ComplianceSummaryResponseSchema = z.object({
 });
 
 export type ComplianceSummaryResponse = z.infer<typeof ComplianceSummaryResponseSchema>;
+
+export const ComplianceFrameworkEnum = z.enum(['bbl', 'wkb']);
+
+export type ComplianceFramework = z.infer<typeof ComplianceFrameworkEnum>;
+
+export const ProjectComplianceReportItemSchema = z.object({
+  job_id: z.string().uuid(),
+  file_id: z.string().uuid(),
+  model_id: z.string().uuid(),
+  model_name: z.string(),
+  model_discipline: z.string(),
+  file_name: z.string(),
+  file_version: z.number().int(),
+  framework: ComplianceFrameworkEnum,
+  checked_at: z.string(),
+  finished_at: z.string(),
+  pass_count: z.number().int(),
+  warn_count: z.number().int(),
+  fail_count: z.number().int(),
+  total_rules: z.number().int(),
+  total_elements_checked: z.number().int(),
+  overall_score: z.number().int(),
+});
+
+export type ProjectComplianceReportItem = z.infer<typeof ProjectComplianceReportItemSchema>;
+
+export const ProjectComplianceReportListSchema = z.object({
+  items: z.array(ProjectComplianceReportItemSchema),
+});
+
+export type ProjectComplianceReportList = z.infer<typeof ProjectComplianceReportListSchema>;

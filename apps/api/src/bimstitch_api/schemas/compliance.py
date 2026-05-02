@@ -77,3 +77,31 @@ class ComplianceSummaryResponse(BaseModel):
     total_elements_checked: int
     rules_summary: list[RuleSummaryItem]
     category_summary: list[CategorySummaryItem]
+
+
+class ProjectComplianceReportItem(BaseModel):
+    """One row in the project-level compliance reports list — latest succeeded
+    job per (file_id, framework)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    job_id: UUID
+    file_id: UUID
+    model_id: UUID
+    model_name: str
+    model_discipline: str
+    file_name: str
+    file_version: int
+    framework: Literal["bbl", "wkb"]
+    checked_at: str
+    finished_at: datetime
+    pass_count: int
+    warn_count: int
+    fail_count: int
+    total_rules: int
+    total_elements_checked: int
+    overall_score: int  # 0..100, computed pass / (pass+warn+fail) * 100
+
+
+class ProjectComplianceReportList(BaseModel):
+    items: list[ProjectComplianceReportItem]

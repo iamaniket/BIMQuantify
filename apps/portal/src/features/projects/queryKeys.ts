@@ -59,4 +59,9 @@ export const trendKey = (
   projectId: string,
 ) => ['projects', projectId, 'compliance', 'trend'] as const;
 
+export const projectReportsKey = (
+  projectId: string,
+  framework?: string,
+) => ['projects', projectId, 'compliance', 'reports', framework ?? 'all'] as const;
+
 export const contractorsKey = ['contractors'] as const;

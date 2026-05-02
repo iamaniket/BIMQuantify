@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, Upload, Trash2 } from 'lucide-react';
+import { Eye, Loader2, ShieldCheck, Upload, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type JSX } from 'react';
@@ -8,6 +8,7 @@ import { useState, type JSX } from 'react';
 import { Button } from '@bimstitch/ui';
 
 import type { Model, ProjectFile } from '@/lib/api/schemas';
+import { useCheckCompliance } from '@/features/projects/compliance/hooks';
 import { formatExtractionStatus } from '@/features/projects/fileFormatting';
 import { useModelFiles } from '@/features/projects/useModelFiles';
 
@@ -63,6 +64,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const filesQuery = useModelFiles(projectId, model.id);
+  const complianceMutation = useCheckCompliance(projectId, model.id);
   const files = filesQuery.data ?? [];
   const colors = DISC_COLORS[model.discipline] ?? DISC_COLORS['other']!;
   const latestFile = files.length > 0 ? files[0] : undefined;
@@ -71,12 +73,13 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
       ? latestFile.status === 'ready'
       : latestFile.extraction_status === 'succeeded'
   );
+  const canCheckBbl = latestFile?.file_type === 'ifc' && latestFile.extraction_status === 'succeeded';
 
   return (
     <div className="border-b border-border">
       {/* Row */}
       <div
-        className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_56px_88px_112px] items-center gap-4 px-4 py-3 text-body3 transition-colors ${
+        className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_56px_88px_144px] items-center gap-4 px-4 py-3 text-body3 transition-colors ${
           isOpen
             ? 'border-l-[3px] border-l-primary bg-primary-lighter pl-[13px] dark:bg-white/5'
             : 'border-l-[3px] border-l-transparent hover:bg-background-hover'
@@ -136,6 +139,26 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
               >
                 <Upload className="h-3.5 w-3.5" />
               </button>
+              {canCheckBbl ? (
+                <button
+                  type="button"
+                  disabled={complianceMutation.isPending}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (latestFile !== undefined) {
+                      complianceMutation.mutate({ fileId: latestFile.id });
+                    }
+                  }}
+                  title="Check BBL"
+                  className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {complianceMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              ) : null}
             </>
           ) : (
             <span className="text-caption font-semibold text-primary">▾ Open</span>
@@ -175,6 +198,24 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                 <Upload className="mr-1.5 h-3 w-3" />
                 Upload
               </Button>
+              {canCheckBbl && latestFile !== undefined ? (
+                <Button
+                  variant="border"
+                  size="sm"
+                  disabled={complianceMutation.isPending}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    complianceMutation.mutate({ fileId: latestFile.id });
+                  }}
+                >
+                  {complianceMutation.isPending ? (
+                    <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="mr-1.5 h-3 w-3" />
+                  )}
+                  Check BBL
+                </Button>
+              ) : null}
               <Button variant="border" size="sm" className="text-error hover:border-error">
                 <Trash2 className="mr-1.5 h-3 w-3" />
                 Remove

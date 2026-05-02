@@ -23,10 +23,13 @@ from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
 )
+from bimstitch_api.models.model import Model
 from bimstitch_api.schemas.compliance import (
     ComplianceCheckRequest,
     ComplianceCheckResponse,
     ComplianceSummaryResponse,
+    ProjectComplianceReportItem,
+    ProjectComplianceReportList,
 )
 from bimstitch_api.tenancy import get_tenant_session
 
@@ -37,10 +40,17 @@ router = APIRouter(
     tags=["compliance"],
 )
 
+project_router = APIRouter(
+    prefix="/projects/{project_id}/compliance",
+    tags=["compliance"],
+)
+
 _FRAMEWORK_JOB_TYPE: dict[str, JobType] = {
     "bbl": JobType.bbl_compliance_check,
     "wkb": JobType.wkb_compliance_check,
 }
+
+_JOB_TYPE_FRAMEWORK: dict[JobType, str] = {v: k for k, v in _FRAMEWORK_JOB_TYPE.items()}
 
 
 @router.post(
@@ -153,7 +163,7 @@ async def check_compliance(
 
 @router.get(
     "/latest",
-    response_model=ComplianceSummaryResponse,
+    response_model=ComplianceCheckResponse,
 )
 async def get_latest_compliance(
     project_id: UUID,
@@ -162,8 +172,8 @@ async def get_latest_compliance(
     framework: str = Query(default="bbl", description="Regulation framework (bbl, wkb)"),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
-) -> ComplianceSummaryResponse:
-    """Get the most recent compliance check results for a file."""
+) -> ComplianceCheckResponse:
+    """Get the most recent compliance check results for a file, including per-element details."""
     project = await _load_project_or_404(session, project_id)
     await _require_membership(session, project.id, user.id)
 
@@ -188,7 +198,7 @@ async def get_latest_compliance(
             detail="NO_COMPLIANCE_RESULTS",
         )
 
-    return ComplianceSummaryResponse(
+    return ComplianceCheckResponse(
         file_id=str(file_id),
         job_id=job.id,
         framework=framework,
@@ -197,4 +207,84 @@ async def get_latest_compliance(
         total_elements_checked=job.result.get("total_elements_checked", 0),
         rules_summary=job.result.get("rules_summary", []),
         category_summary=job.result.get("category_summary", []),
+        details=job.result.get("details", []),
     )
+
+
+@project_router.get(
+    "/reports",
+    response_model=ProjectComplianceReportList,
+)
+async def list_project_reports(
+    project_id: UUID,
+    framework: str | None = Query(
+        default=None, description="Filter by framework (bbl, wkb). Omit for all."
+    ),
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+) -> ProjectComplianceReportList:
+    """List the latest succeeded compliance report per (file, framework) for a project."""
+    project = await _load_project_or_404(session, project_id)
+    await _require_membership(session, project.id, user.id)
+
+    job_types: list[JobType] = (
+        [_FRAMEWORK_JOB_TYPE[framework]]
+        if framework in _FRAMEWORK_JOB_TYPE
+        else list(_FRAMEWORK_JOB_TYPE.values())
+    )
+
+    rows = (
+        await session.execute(
+            select(Job, ProjectFile, Model)
+            .join(ProjectFile, ProjectFile.id == Job.file_id)
+            .join(Model, Model.id == ProjectFile.model_id)
+            .where(
+                Job.project_id == project.id,
+                Job.job_type.in_(job_types),
+                Job.status == JobStatus.succeeded,
+            )
+            .order_by(Job.file_id, Job.job_type, Job.finished_at.desc())
+        )
+    ).all()
+
+    # Keep latest job per (file_id, job_type). Rows are sorted by finished_at desc,
+    # so the first occurrence of each (file_id, job_type) pair is the latest.
+    seen: set[tuple[UUID, JobType]] = set()
+    items: list[ProjectComplianceReportItem] = []
+    for job, pf, mdl in rows:
+        key = (pf.id, job.job_type)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        result = job.result or {}
+        category_summary = result.get("category_summary", []) or []
+        pass_count = sum(int(c.get("passed", 0)) for c in category_summary)
+        warn_count = sum(int(c.get("warned", 0)) for c in category_summary)
+        fail_count = sum(int(c.get("failed", 0)) for c in category_summary)
+        total = pass_count + warn_count + fail_count
+        score = round(pass_count / total * 100) if total > 0 else 0
+
+        items.append(
+            ProjectComplianceReportItem(
+                job_id=job.id,
+                file_id=pf.id,
+                model_id=mdl.id,
+                model_name=mdl.name,
+                model_discipline=mdl.discipline.value,
+                file_name=pf.original_filename,
+                file_version=pf.version_number,
+                framework=_JOB_TYPE_FRAMEWORK.get(job.job_type, "bbl"),  # type: ignore[arg-type]
+                checked_at=result.get("checked_at", ""),
+                finished_at=job.finished_at,
+                pass_count=pass_count,
+                warn_count=warn_count,
+                fail_count=fail_count,
+                total_rules=int(result.get("total_rules", 0)),
+                total_elements_checked=int(result.get("total_elements_checked", 0)),
+                overall_score=score,
+            )
+        )
+
+    items.sort(key=lambda x: x.finished_at, reverse=True)
+    return ProjectComplianceReportList(items=items)

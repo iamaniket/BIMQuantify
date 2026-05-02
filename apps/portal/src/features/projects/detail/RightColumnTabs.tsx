@@ -15,6 +15,7 @@ import { ModelsTab } from './ModelsTab';
 import { IssuesTab } from './IssuesTab';
 import { ActivityTab } from './ActivityTab';
 import { DossierTab } from './DossierTab';
+import { ReportsTab } from './ReportsTab';
 
 type Props = {
   projectId: string;
@@ -52,6 +53,7 @@ export function RightColumnTabs({
                 {issues.length}
               </span>
             </TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
             <TabsTrigger value="dossier">Dossier</TabsTrigger>
           </TabsList>
@@ -63,6 +65,7 @@ export function RightColumnTabs({
           <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />
         )}
         {tab === 'issues' && <IssuesTab issues={issues} />}
+        {tab === 'reports' && <ReportsTab projectId={projectId} models={models} />}
         {tab === 'activity' && (
           <div>
             <ActivityTab activity={activity} />
