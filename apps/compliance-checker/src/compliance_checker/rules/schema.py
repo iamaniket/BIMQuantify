@@ -84,10 +84,12 @@ class RuleDefinition(BaseModel):
     source_url: str | None = None
     source_text_hash: str | None = None
     last_synced: str | None = None
-    title: str
-    title_nl: str
-    description: str
-    description_nl: str
+    titles: dict[str, str] = {}
+    descriptions: dict[str, str] = {}
+    title: str | None = None
+    title_nl: str | None = None
+    description: str | None = None
+    description_nl: str | None = None
     legal_text_nl: str | None = None
     legal_text_en: str | None = None
     requirement_summary: str | None = None
@@ -100,6 +102,27 @@ class RuleDefinition(BaseModel):
     checks: list[PropertyCheck]
     implementation_status: ImplementationStatus
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _migrate_flat_titles(self) -> RuleDefinition:
+        """Promote legacy title/title_nl into the titles map."""
+        if not self.titles:
+            self.titles = {}
+            if self.title is not None:
+                self.titles["en"] = self.title
+            if self.title_nl is not None:
+                self.titles["nl"] = self.title_nl
+        if not self.descriptions:
+            self.descriptions = {}
+            if self.description is not None:
+                self.descriptions["en"] = self.description
+            if self.description_nl is not None:
+                self.descriptions["nl"] = self.description_nl
+        self.title = self.titles.get("en")
+        self.title_nl = self.titles.get("nl")
+        self.description = self.descriptions.get("en")
+        self.description_nl = self.descriptions.get("nl")
+        return self
 
 
 class RuleFile(BaseModel):

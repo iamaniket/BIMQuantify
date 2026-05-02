@@ -52,9 +52,11 @@ def _bullet(detail: CheckResult) -> str:
 
 def _rule_section(rule: RuleDefinition, details: list[CheckResult]) -> str:
     lines: list[str] = []
-    lines.append(f"## {rule.article} — {rule.title_nl}")
+    nl_title = rule.titles.get("nl") or rule.title_nl or rule.titles.get("en", "")
+    en_title = rule.titles.get("en") or rule.title or ""
+    lines.append(f"## {rule.article} — {nl_title}")
     lines.append("")
-    lines.append(f"*{rule.title}*")
+    lines.append(f"*{en_title}*")
     lines.append("")
 
     if rule.legal_text_nl:

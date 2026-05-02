@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import type { JSX, ReactNode } from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';

@@ -1,6 +1,7 @@
 'use client';
 
 import { Search } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState, useMemo, type JSX } from 'react';
 
 import { Badge, Input } from '@bimstitch/ui';
@@ -24,13 +25,10 @@ const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
 
 type FilterValue = 'all' | 'fail' | 'warn';
 
-const FILTERS: { value: FilterValue; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'fail', label: 'Fail' },
-  { value: 'warn', label: 'Warn' },
-];
+const FILTER_VALUES: FilterValue[] = ['all', 'fail', 'warn'];
 
 export function IssuesTab({ issues }: Props): JSX.Element {
+  const t = useTranslations('reports.issues');
   const [filter, setFilter] = useState<FilterValue>('all');
   const [search, setSearch] = useState('');
   const [selectedIssue, setSelectedIssue] = useState<ComplianceIssue | null>(null);
@@ -57,18 +55,18 @@ export function IssuesTab({ issues }: Props): JSX.Element {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <div className="flex rounded-md border border-border">
-          {FILTERS.map((f) => (
+          {FILTER_VALUES.map((f) => (
             <button
-              key={f.value}
+              key={f}
               type="button"
-              onClick={() => { setFilter(f.value); }}
+              onClick={() => { setFilter(f); }}
               className={`px-3 py-1 text-caption font-semibold transition-colors ${
-                filter === f.value
+                filter === f
                   ? 'bg-primary text-primary-foreground'
                   : 'text-foreground-secondary hover:bg-background-hover'
-              } ${f.value !== 'all' ? 'border-l border-border' : ''}`}
+              } ${f !== 'all' ? 'border-l border-border' : ''}`}
             >
-              {f.label}
+              {t(`filters.${f}`)}
             </button>
           ))}
         </div>
@@ -76,7 +74,7 @@ export function IssuesTab({ issues }: Props): JSX.Element {
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" />
           <Input
             inputSize="sm"
-            placeholder="Search issues…"
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => { setSearch(e.target.value); }}
             className="pl-8"
@@ -86,16 +84,16 @@ export function IssuesTab({ issues }: Props): JSX.Element {
 
       <div className="rounded-lg border border-border bg-background">
         <div className="grid grid-cols-[50px_80px_1fr_80px_80px_60px] items-center px-3 py-2 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-          <span>Sev.</span>
-          <span>ID</span>
-          <span>Object</span>
-          <span>Location</span>
-          <span>Model</span>
-          <span>Age</span>
+          <span>{t('columns.sev')}</span>
+          <span>{t('columns.id')}</span>
+          <span>{t('columns.object')}</span>
+          <span>{t('columns.location')}</span>
+          <span>{t('columns.model')}</span>
+          <span>{t('columns.age')}</span>
         </div>
         {filtered.length === 0 ? (
           <div className="px-3 py-6 text-center text-body3 text-foreground-tertiary">
-            No issues match your filter.
+            {t('empty')}
           </div>
         ) : (
           filtered.map((issue) => {
@@ -107,7 +105,7 @@ export function IssuesTab({ issues }: Props): JSX.Element {
                 className="grid cursor-pointer grid-cols-[50px_80px_1fr_80px_80px_60px] items-center border-t border-border px-3 py-2 text-body3 transition-colors hover:bg-background-hover"
               >
                 <Badge variant={issue.severity === 'fail' ? 'error' : 'warning'} className="w-fit">
-                  {issue.severity === 'fail' ? 'FAIL' : 'WARN'}
+                  {issue.severity === 'fail' ? t('badges.fail') : t('badges.warn')}
                 </Badge>
                 <span className="font-mono font-bold text-foreground">{issue.id}</span>
                 <div className="min-w-0">

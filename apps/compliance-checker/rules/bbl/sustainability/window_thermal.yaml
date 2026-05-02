@@ -1,0 +1,35 @@
+rules:
+- id: bbl_4_163_window_u_value
+  article: BBL Afd. 4.4, Art. 4.163
+  article_number: '4.163'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.4&artikel=4.163
+  legal_text_nl: Een raam, deur of soortgelijke uitwendige scheidingsconstructie heeft een warmtedoorgangscoëfficiënt van
+    ten hoogste 1,65 W/m²·K (gemiddelde waarde).
+  legal_text_en: A window, door or similar external partition must have a thermal transmittance of at most 1.65 W/(m²·K)
+    (average value).
+  requirement_summary: Pset_WindowCommon.ThermalTransmittance <= 1.65 W/m²·K (external windows)
+  category: sustainability
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcWindow
+  applicability_filters:
+  - property_set: Pset_WindowCommon
+    property_name: IsExternal
+    operator: eq
+    value: true
+  checks:
+  - property_set: Pset_WindowCommon
+    property_name: ThermalTransmittance
+    operator: lte
+    threshold: 1.65
+    description: U-value must be <= 1.65 W/m²·K
+  implementation_status: implemented
+  titles:
+    en: External window thermal transmittance (U-value)
+    nl: Thermische isolatie - U-waarde raam
+  descriptions:
+    en: External windows must have an average thermal transmittance of at most 1.65 W/(m²·K).
+    nl: Een raam in een uitwendige scheidingsconstructie heeft een gemiddelde warmtedoorgangscoëfficiënt van ten hoogste 1,65 W/m²·K.

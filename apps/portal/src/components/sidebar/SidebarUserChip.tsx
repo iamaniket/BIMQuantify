@@ -1,20 +1,21 @@
 'use client';
 
 import { LogOut } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 import type { JSX } from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';
 
+import { useTranslations } from 'next-intl';
+
 import { useAuth } from '@/providers/AuthProvider';
-import { useLocale } from '@/providers/LocaleProvider';
 
 import { useSidebar } from './SidebarContext';
 
 export function SidebarUserChip(): JSX.Element {
   const { collapsed } = useSidebar();
   const { setTokens } = useAuth();
-  const { messages } = useLocale();
+  const t = useTranslations('sidebar');
   const router = useRouter();
 
   const onSignOut = (): void => {
@@ -33,12 +34,12 @@ export function SidebarUserChip(): JSX.Element {
           <TooltipTrigger asChild>
             <div
               className="grid h-8 w-8 cursor-default place-items-center rounded-full bg-primary-light text-caption font-extrabold text-primary"
-              title={messages.sidebar.userSummary}
+              title={t('userSummary')}
             >
               LB
             </div>
           </TooltipTrigger>
-          <TooltipContent side="right">{messages.sidebar.userSummary}</TooltipContent>
+          <TooltipContent side="right">{t('userSummary')}</TooltipContent>
         </Tooltip>
       </div>
     );
@@ -51,7 +52,7 @@ export function SidebarUserChip(): JSX.Element {
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-body3 font-semibold text-white">Lieke Beumer</div>
-        <div className="truncate text-caption text-white/55">{messages.sidebar.userRole}</div>
+        <div className="truncate text-caption text-white/55">{t('userRole')}</div>
       </div>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -63,7 +64,7 @@ export function SidebarUserChip(): JSX.Element {
             <LogOut className={actionIconClassName} />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top">{messages.sidebar.signOut}</TooltipContent>
+        <TooltipContent side="top">{t('signOut')}</TooltipContent>
       </Tooltip>
     </div>
   );

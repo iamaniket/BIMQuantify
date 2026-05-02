@@ -1,29 +1,35 @@
 rules:
-  - id: bbl_4_163_external_wall_u_value
-    article: "BBL Afd. 4.4, Art. 4.163"
-    article_number: "4.163"
-    source_url: "https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.4&artikel=4.163"
-    title: "External wall thermal transmittance (U-value)"
-    title_nl: "Thermische isolatie - U-waarde gevel"
-    description: "External walls must have a thermal transmittance (U-value) of at most 0.30 W/(m²·K) to limit heat loss in new construction."
-    description_nl: "Een uitwendige scheidingsconstructie heeft een warmtedoorgangscoëfficiënt van ten hoogste 0,30 W/m²·K."
-    legal_text_nl: "Een uitwendige scheidingsconstructie van een verblijfsgebied, een toiletruimte of een badruimte heeft een warmtedoorgangscoëfficiënt van ten hoogste 0,30 W/m²·K."
-    legal_text_en: "An external partition of a habitable area, toilet or bathroom must have a thermal transmittance of at most 0.30 W/(m²·K)."
-    requirement_summary: "Pset_WallCommon.ThermalTransmittance ≤ 0.30 W/m²·K (external walls only)"
-    category: sustainability
-    chapter: "4"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcWall]
-    applicability_filters:
-      - property_set: "Pset_WallCommon"
-        property_name: "IsExternal"
-        operator: eq
-        value: true
-    checks:
-      - property_set: "Pset_WallCommon"
-        property_name: "ThermalTransmittance"
-        operator: lte
-        threshold: 0.30
-        description: "U-value must be <= 0.30 W/m²·K"
-    implementation_status: implemented
+- id: bbl_4_163_external_wall_u_value
+  article: BBL Afd. 4.4, Art. 4.163
+  article_number: '4.163'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.4&artikel=4.163
+  legal_text_nl: Een uitwendige scheidingsconstructie van een verblijfsgebied, een toiletruimte of een badruimte heeft een
+    warmtedoorgangscoÃ«fficiÃ«nt van ten hoogste 0,30 W/mÂ²Â·K.
+  legal_text_en: An external partition of a habitable area, toilet or bathroom must have a thermal transmittance of at most
+    0.30 W/(mÂ²Â·K).
+  requirement_summary: Pset_WallCommon.ThermalTransmittance â‰¤ 0.30 W/mÂ²Â·K (external walls only)
+  category: sustainability
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcWall
+  applicability_filters:
+  - property_set: Pset_WallCommon
+    property_name: IsExternal
+    operator: eq
+    value: true
+  checks:
+  - property_set: Pset_WallCommon
+    property_name: ThermalTransmittance
+    operator: lte
+    threshold: 0.3
+    description: U-value must be <= 0.30 W/mÂ²Â·K
+  implementation_status: implemented
+  titles:
+    en: External wall thermal transmittance (U-value)
+    nl: Thermische isolatie - U-waarde gevel
+  descriptions:
+    en: External walls must have a thermal transmittance (U-value) of at most 0.30 W/(mÂ²Â·K) to limit heat loss in new construction.
+    nl: Een uitwendige scheidingsconstructie heeft een warmtedoorgangscoÃ«fficiÃ«nt van ten hoogste 0,30 W/mÂ²Â·K.

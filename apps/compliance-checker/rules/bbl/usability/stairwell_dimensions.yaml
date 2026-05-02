@@ -1,0 +1,30 @@
+rules:
+- id: bbl_4_26_stairwell_headroom
+  article: BBL Afd. 4.5, Art. 4.26
+  article_number: '4.26'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.5&artikel=4.26
+  legal_text_nl: Een trappenhuis heeft boven elke trap een vrije hoogte van ten minste 2,3 m, gemeten loodrecht op de klimlijn.
+  legal_text_en: A stairwell must have a clear height of at least 2.3 m above each stair, measured perpendicular to the pitch
+    line.
+  requirement_summary: Pset_StairCommon.RequiredHeadroom >= 2300 mm
+  category: usability
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcStair
+  checks:
+  - property_set: Pset_StairCommon
+    property_name: RequiredHeadroom
+    operator: gte
+    threshold: 2300
+    unit: mm
+    description: Stairwell headroom must be >= 2300 mm
+  implementation_status: implemented
+  titles:
+    en: Stairwell headroom
+    nl: Afmeting trappenhuis - vrije hoogte
+  descriptions:
+    en: Stairwells must have a clear height of at least 2300 mm above each stair, measured perpendicular to the pitch line.
+    nl: Een trappenhuis heeft boven elke trap een vrije hoogte van ten minste 2,3 m.

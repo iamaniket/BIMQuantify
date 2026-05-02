@@ -67,17 +67,9 @@ function mapToComplianceSummary(resp: ComplianceSummaryResponse): ComplianceSumm
 }
 
 function mapToDomains(resp: ComplianceSummaryResponse): ComplianceDomain[] {
-  const CATEGORY_LABELS: Record<string, string> = {
-    fire_safety: 'Brandveiligheid',
-    structural: 'Constructie',
-    usability: 'Bruikbaarheid',
-    health: 'Gezondheid',
-    accessibility: 'Toegankelijkheid',
-    sustainability: 'Duurzaamheid',
-  };
   return resp.category_summary.map((c) => ({
     id: c.category,
-    name: CATEGORY_LABELS[c.category] ?? c.category,
+    name: c.category,
     articleCount: c.total_rules,
     pass: c.passed,
     warn: c.warned,
@@ -86,18 +78,10 @@ function mapToDomains(resp: ComplianceSummaryResponse): ComplianceDomain[] {
 }
 
 function mapToArticles(resp: ComplianceSummaryResponse): ComplianceArticle[] {
-  const CATEGORY_LABELS: Record<string, string> = {
-    fire_safety: 'Brandveiligheid',
-    structural: 'Constructie',
-    usability: 'Bruikbaarheid',
-    health: 'Gezondheid',
-    accessibility: 'Toegankelijkheid',
-    sustainability: 'Duurzaamheid',
-  };
   return resp.rules_summary.map((r) => ({
     code: r.article,
-    title: r.title_nl,
-    group: CATEGORY_LABELS[r.category] ?? r.category,
+    title: r.titles['nl'] ?? r.titles['en'] ?? r.title_nl ?? r.title ?? r.article,
+    categoryId: r.category,
     checks: r.total_checked,
     pass: r.passed,
     warn: r.warned,

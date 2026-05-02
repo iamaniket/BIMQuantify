@@ -19,7 +19,7 @@ export type ComplianceDomain = {
 export type ComplianceArticle = {
   code: string;
   title: string;
-  group: string;
+  categoryId: string;
   checks: number;
   pass: number;
   warn: number;

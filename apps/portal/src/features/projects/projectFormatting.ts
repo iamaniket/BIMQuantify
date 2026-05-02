@@ -1,10 +1,9 @@
 import type {
   Project,
   ProjectLifecycleStateValue,
-  ProjectPhaseValue,
   ProjectStatusValue,
 } from '@/lib/api/schemas';
-import type { Locale, PortalMessages } from '@bimstitch/i18n';
+import type { Locale } from '@bimstitch/i18n';
 
 // Tailwind classes for the colored dot + badge per status.
 const STATUS_BADGE_CLASSES: Record<ProjectStatusValue, string> = {
@@ -40,35 +39,6 @@ const LIFECYCLE_DOT_CLASSES: Record<ProjectLifecycleStateValue, string> = {
   removed: 'bg-rose-500',
 };
 
-export function formatStatus(status: ProjectStatusValue): string {
-  return status;
-}
-
-export function formatStatusLabel(
-  status: ProjectStatusValue,
-  messages: PortalMessages,
-): string {
-  return messages.projects.statuses[status];
-}
-
-export function formatPhase(phase: ProjectPhaseValue): string {
-  return phase;
-}
-
-export function formatPhaseLabel(
-  phase: ProjectPhaseValue,
-  messages: PortalMessages,
-): string {
-  return messages.projects.phases[phase];
-}
-
-export function formatStatusAndPhaseLabel(
-  status: ProjectStatusValue,
-  phase: ProjectPhaseValue,
-  messages: PortalMessages,
-): string {
-  return `${messages.projects.statuses[status]} · ${messages.projects.phases[phase]}`;
-}
 
 export function formatProjectLifecycleLabel(lifecycleState: ProjectLifecycleStateValue): string {
   switch (lifecycleState) {
@@ -102,10 +72,10 @@ export function projectDotClasses(project: Pick<Project, 'status' | 'lifecycle_s
 
 export function formatProjectBadgeLabel(
   project: Pick<Project, 'status' | 'lifecycle_state'>,
-  messages: PortalMessages,
+  statusLabel: string,
 ): string {
   if (project.lifecycle_state === 'active') {
-    return formatStatusLabel(project.status, messages);
+    return statusLabel;
   }
   return formatProjectLifecycleLabel(project.lifecycle_state);
 }

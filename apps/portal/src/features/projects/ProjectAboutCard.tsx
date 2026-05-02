@@ -2,14 +2,15 @@
 
 import type { JSX } from 'react';
 
+import { useLocale, useTranslations } from 'next-intl';
+
+import type { Locale } from '@bimstitch/i18n';
+
 import type { Project } from '@/lib/api/schemas';
-import { useLocale } from '@/providers/LocaleProvider';
 
 import {
   formatAddress,
   formatDeliveryDate,
-  formatPhaseLabel,
-  formatStatusLabel,
 } from './projectFormatting';
 
 type Props = {
@@ -35,7 +36,9 @@ function Row({ label, value }: { label: string; value: string | null }): JSX.Ele
 }
 
 export function ProjectAboutCard({ project }: Props): JSX.Element {
-  const { locale, messages } = useLocale();
+  const locale = useLocale() as Locale;
+  const tStatuses = useTranslations('projects.statuses');
+  const tPhases = useTranslations('projects.phases');
   const description = project.description === null || project.description.trim().length === 0
     ? null
     : project.description;
@@ -68,8 +71,8 @@ export function ProjectAboutCard({ project }: Props): JSX.Element {
         </h2>
         <dl className="flex flex-col gap-1 text-body3">
           <Row label="Reference code" value={project.reference_code} />
-          <Row label="Status" value={formatStatusLabel(project.status, messages)} />
-          <Row label="Phase" value={formatPhaseLabel(project.phase, messages)} />
+          <Row label="Status" value={tStatuses(project.status)} />
+          <Row label="Phase" value={tPhases(project.phase)} />
           <Row label="Delivery" value={deliveryDate} />
           <Row label="Permit" value={project.permit_number} />
           <Row label="Contractor" value={project.contractor_name} />

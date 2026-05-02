@@ -1,61 +1,71 @@
 framework: wkb
 rules:
-  - id: wkb_3_01_wall_fire_rating_documented
-    framework: wkb
-    article: "WKB Hoofdstuk 3, Art. 3.1"
-    article_number: "3.1"
-    title: "Wall fire rating must be documented"
-    title_nl: "Brandwerendheid wand moet gedocumenteerd zijn"
-    description: "All walls must have their fire resistance rating explicitly documented as a property"
-    description_nl: "Alle wanden moeten hun brandwerendheid als eigenschap gedocumenteerd hebben"
-    category: documentation
-    chapter: "3"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcWall]
-    checks:
-      - property_set: "Pset_WallCommon"
-        property_name: "FireRating"
-        operator: exists
-        description: "Wall must have FireRating property documented"
-    implementation_status: implemented
-
-  - id: wkb_3_02_slab_fire_rating_documented
-    framework: wkb
-    article: "WKB Hoofdstuk 3, Art. 3.2"
-    article_number: "3.2"
-    title: "Slab fire rating must be documented"
-    title_nl: "Brandwerendheid vloer moet gedocumenteerd zijn"
-    description: "All slabs must have their fire resistance rating explicitly documented"
-    description_nl: "Alle vloeren moeten hun brandwerendheid als eigenschap gedocumenteerd hebben"
-    category: documentation
-    chapter: "3"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcSlab]
-    checks:
-      - property_set: "Pset_SlabCommon"
-        property_name: "FireRating"
-        operator: exists
-        description: "Slab must have FireRating property documented"
-    implementation_status: implemented
-
-  - id: wkb_3_03_door_fire_rating_documented
-    framework: wkb
-    article: "WKB Hoofdstuk 3, Art. 3.3"
-    article_number: "3.3"
-    title: "Door fire rating must be documented"
-    title_nl: "Brandwerendheid deur moet gedocumenteerd zijn"
-    description: "All doors must have their fire resistance rating explicitly documented"
-    description_nl: "Alle deuren moeten hun brandwerendheid als eigenschap gedocumenteerd hebben"
-    category: documentation
-    chapter: "3"
-    severity: warning
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcDoor]
-    checks:
-      - property_set: "Pset_DoorCommon"
-        property_name: "FireRating"
-        operator: exists
-        description: "Door must have FireRating property documented"
-    implementation_status: implemented
+- id: wkb_3_01_wall_fire_rating_documented
+  framework: wkb
+  article: WKB Hoofdstuk 3, Art. 3.1
+  article_number: '3.1'
+  category: documentation
+  chapter: '3'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcWall
+  checks:
+  - property_set: Pset_WallCommon
+    property_name: FireRating
+    operator: exists
+    description: Wall must have FireRating property documented
+  implementation_status: implemented
+  titles:
+    en: Wall fire rating must be documented
+    nl: Brandwerendheid wand moet gedocumenteerd zijn
+  descriptions:
+    en: All walls must have their fire resistance rating explicitly documented as a property
+    nl: Alle wanden moeten hun brandwerendheid als eigenschap gedocumenteerd hebben
+- id: wkb_3_02_slab_fire_rating_documented
+  framework: wkb
+  article: WKB Hoofdstuk 3, Art. 3.2
+  article_number: '3.2'
+  category: documentation
+  chapter: '3'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSlab
+  checks:
+  - property_set: Pset_SlabCommon
+    property_name: FireRating
+    operator: exists
+    description: Slab must have FireRating property documented
+  implementation_status: implemented
+  titles:
+    en: Slab fire rating must be documented
+    nl: Brandwerendheid vloer moet gedocumenteerd zijn
+  descriptions:
+    en: All slabs must have their fire resistance rating explicitly documented
+    nl: Alle vloeren moeten hun brandwerendheid als eigenschap gedocumenteerd hebben
+- id: wkb_3_03_door_fire_rating_documented
+  framework: wkb
+  article: WKB Hoofdstuk 3, Art. 3.3
+  article_number: '3.3'
+  category: documentation
+  chapter: '3'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcDoor
+  checks:
+  - property_set: Pset_DoorCommon
+    property_name: FireRating
+    operator: exists
+    description: Door must have FireRating property documented
+  implementation_status: implemented
+  titles:
+    en: Door fire rating must be documented
+    nl: Brandwerendheid deur moet gedocumenteerd zijn
+  descriptions:
+    en: All doors must have their fire resistance rating explicitly documented
+    nl: Alle deuren moeten hun brandwerendheid als eigenschap gedocumenteerd hebben

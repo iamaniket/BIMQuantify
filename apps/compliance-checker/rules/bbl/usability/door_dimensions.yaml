@@ -1,54 +1,61 @@
 rules:
-  - id: bbl_4_24_door_width
-    article: "BBL Afd. 4.5, Art. 4.24"
-    article_number: "4.24"
-    title: "Minimum door clear width"
-    title_nl: "Vrije breedte doorgang"
-    description: "Doors must have a minimum clear width of 850mm"
-    description_nl: "Een doorgang als bedoeld in artikel 4.24 heeft een vrije breedte van ten minste 0,85 m"
-    category: usability
-    chapter: "4"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcDoor]
-    checks:
-      - property_set: "Pset_DoorCommon"
-        property_name: "Width"
-        operator: gte
-        threshold: 850
-        unit: mm
-        description: "Door width must be >= 850mm"
-      - property_set: "BaseQuantities"
-        property_name: "Width"
-        operator: gte
-        threshold: 850
-        unit: mm
-        description: "Door width (from BaseQuantities) must be >= 850mm"
-    implementation_status: implemented
-
-  - id: bbl_4_24_door_height
-    article: "BBL Afd. 4.5, Art. 4.24"
-    article_number: "4.24"
-    title: "Minimum door clear height"
-    title_nl: "Vrije hoogte doorgang"
-    description: "Doors must have a minimum clear height of 2300mm"
-    description_nl: "Een doorgang als bedoeld in artikel 4.24 heeft een vrije hoogte van ten minste 2,3 m"
-    category: usability
-    chapter: "4"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcDoor]
-    checks:
-      - property_set: "Pset_DoorCommon"
-        property_name: "Height"
-        operator: gte
-        threshold: 2300
-        unit: mm
-        description: "Door height must be >= 2300mm"
-      - property_set: "BaseQuantities"
-        property_name: "Height"
-        operator: gte
-        threshold: 2300
-        unit: mm
-        description: "Door height (from BaseQuantities) must be >= 2300mm"
-    implementation_status: implemented
+- id: bbl_4_24_door_width
+  article: BBL Afd. 4.5, Art. 4.24
+  article_number: '4.24'
+  category: usability
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcDoor
+  checks:
+  - property_set: Pset_DoorCommon
+    property_name: Width
+    operator: gte
+    threshold: 850
+    unit: mm
+    description: Door width must be >= 850mm
+  - property_set: BaseQuantities
+    property_name: Width
+    operator: gte
+    threshold: 850
+    unit: mm
+    description: Door width (from BaseQuantities) must be >= 850mm
+  implementation_status: implemented
+  titles:
+    en: Minimum door clear width
+    nl: Vrije breedte doorgang
+  descriptions:
+    en: Doors must have a minimum clear width of 850mm
+    nl: Een doorgang als bedoeld in artikel 4.24 heeft een vrije breedte van ten minste 0,85 m
+- id: bbl_4_24_door_height
+  article: BBL Afd. 4.5, Art. 4.24
+  article_number: '4.24'
+  category: usability
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcDoor
+  checks:
+  - property_set: Pset_DoorCommon
+    property_name: Height
+    operator: gte
+    threshold: 2300
+    unit: mm
+    description: Door height must be >= 2300mm
+  - property_set: BaseQuantities
+    property_name: Height
+    operator: gte
+    threshold: 2300
+    unit: mm
+    description: Door height (from BaseQuantities) must be >= 2300mm
+  implementation_status: implemented
+  titles:
+    en: Minimum door clear height
+    nl: Vrije hoogte doorgang
+  descriptions:
+    en: Doors must have a minimum clear height of 2300mm
+    nl: Een doorgang als bedoeld in artikel 4.24 heeft een vrije hoogte van ten minste 2,3 m

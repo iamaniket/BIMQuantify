@@ -18,21 +18,21 @@ export const MOCK_COMPLIANCE_SUMMARY: ComplianceSummary = {
 };
 
 export const MOCK_DOMAINS: ComplianceDomain[] = [
-  { id: 'brand', name: 'Brandveiligheid', articleCount: 3, pass: 618, warn: 51, fail: 23 },
-  { id: 'toeg', name: 'Toegankelijkheid', articleCount: 2, pass: 194, warn: 6, fail: 0 },
-  { id: 'milieu', name: 'Milieu', articleCount: 2, pass: 49, warn: 10, fail: 1 },
-  { id: 'constr', name: 'Constructie', articleCount: 1, pass: 248, warn: 12, fail: 4 },
+  { id: 'fire_safety', name: 'fire_safety', articleCount: 3, pass: 618, warn: 51, fail: 23 },
+  { id: 'accessibility', name: 'accessibility', articleCount: 2, pass: 194, warn: 6, fail: 0 },
+  { id: 'sustainability', name: 'sustainability', articleCount: 2, pass: 49, warn: 10, fail: 1 },
+  { id: 'structural', name: 'structural', articleCount: 1, pass: 248, warn: 12, fail: 4 },
 ];
 
 export const MOCK_ARTICLES: ComplianceArticle[] = [
-  { group: 'Brandveiligheid', code: 'Bbl 4.30', title: 'Beperking uitbreiding brand', checks: 412, pass: 386, warn: 18, fail: 8 },
-  { group: 'Brandveiligheid', code: 'Bbl 4.40', title: 'Vluchtroutes', checks: 184, pass: 162, warn: 14, fail: 8 },
-  { group: 'Brandveiligheid', code: 'Bbl 4.51', title: 'Rookcompartimentering', checks: 96, pass: 70, warn: 19, fail: 7 },
-  { group: 'Toegankelijkheid', code: 'Bbl 4.21', title: 'Toegankelijkheidssector', checks: 58, pass: 56, warn: 2, fail: 0 },
-  { group: 'Toegankelijkheid', code: 'Bbl 4.24', title: 'Doorgangen & vrije breedte', checks: 142, pass: 138, warn: 4, fail: 0 },
-  { group: 'Milieu', code: 'Bbl 4.159', title: 'Milieuprestatie (MPG)', checks: 24, pass: 19, warn: 4, fail: 1 },
-  { group: 'Milieu', code: 'Bbl 4.161', title: 'Energiezuinigheid (BENG)', checks: 36, pass: 30, warn: 6, fail: 0 },
-  { group: 'Constructie', code: 'Bbl 4.12', title: 'Sterkte bouwconstructie', checks: 264, pass: 248, warn: 12, fail: 4 },
+  { categoryId: 'Brandveiligheid', code: 'Bbl 4.30', title: 'Beperking uitbreiding brand', checks: 412, pass: 386, warn: 18, fail: 8 },
+  { categoryId: 'Brandveiligheid', code: 'Bbl 4.40', title: 'Vluchtroutes', checks: 184, pass: 162, warn: 14, fail: 8 },
+  { categoryId: 'Brandveiligheid', code: 'Bbl 4.51', title: 'Rookcompartimentering', checks: 96, pass: 70, warn: 19, fail: 7 },
+  { categoryId: 'Toegankelijkheid', code: 'Bbl 4.21', title: 'Toegankelijkheidssector', checks: 58, pass: 56, warn: 2, fail: 0 },
+  { categoryId: 'Toegankelijkheid', code: 'Bbl 4.24', title: 'Doorgangen & vrije breedte', checks: 142, pass: 138, warn: 4, fail: 0 },
+  { categoryId: 'Milieu', code: 'Bbl 4.159', title: 'Milieuprestatie (MPG)', checks: 24, pass: 19, warn: 4, fail: 1 },
+  { categoryId: 'Milieu', code: 'Bbl 4.161', title: 'Energiezuinigheid (BENG)', checks: 36, pass: 30, warn: 6, fail: 0 },
+  { categoryId: 'Constructie', code: 'Bbl 4.12', title: 'Sterkte bouwconstructie', checks: 264, pass: 248, warn: 12, fail: 4 },
 ];
 
 export const MOCK_ISSUES: ComplianceIssue[] = [

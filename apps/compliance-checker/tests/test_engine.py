@@ -95,9 +95,10 @@ class TestRuleLoading:
 
     def test_bbl_implemented_count(self, rule_index: RuleIndex) -> None:
         bbl = rule_index.get_applicable_rules(framework="bbl")
-        # 12 original + 6 Tier-1 (one of which adds 2 sibling rules for stair)
-        # = 12 + 7 = 19 total bbl rules with implemented status
-        assert len(bbl) == 19
+        # Floor reflects the standing catalog of "implemented"-status BBL rules.
+        # Bump this when authoring more rules; partial-status rules are excluded
+        # by get_applicable_rules.
+        assert len(bbl) == 35
 
     def test_get_rule_by_id(self, rule_index: RuleIndex) -> None:
         rule = rule_index.get_rule("bbl_4_85_room_height_new")

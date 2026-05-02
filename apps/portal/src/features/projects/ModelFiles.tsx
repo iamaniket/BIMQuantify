@@ -12,7 +12,7 @@ import {
   Trash2,
   UploadCloud,
 } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import {
   useCallback, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX,
 } from 'react';

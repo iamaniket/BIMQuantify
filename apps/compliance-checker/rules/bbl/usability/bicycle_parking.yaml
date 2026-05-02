@@ -1,0 +1,36 @@
+rules:
+- id: bbl_4_90_bicycle_parking_area
+  article: BBL Afd. 4.5, Art. 4.90
+  article_number: '4.90'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.5&artikel=4.90
+  legal_text_nl: Een stallingsruimte voor fietsen heeft een vloeroppervlakte van ten minste 1,5 m² per fiets.
+  legal_text_en: A bicycle storage space must have a floor area of at least 1.5 m² per bicycle.
+  requirement_summary: Bicycle-parking IfcSpace.Qto_SpaceBaseQuantities.NetFloorArea >= 1.5 m² (per-unit; aggregated rule TBD)
+  category: usability
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - residential
+  applicable_ifc_entities:
+  - IfcSpace
+  applicability_filters:
+  - property_set: Pset_SpaceCommon
+    property_name: OccupancyType
+    operator: contains
+    value: Bicycle
+  checks:
+  - property_set: Qto_SpaceBaseQuantities
+    property_name: NetFloorArea
+    operator: gte
+    threshold: 1.5
+    unit: m²
+    description: Bicycle storage area must be >= 1.5 m² (per-bicycle minimum)
+  implementation_status: partial
+  notes: BBL specifies 1.5 m² per bicycle; this rule applies the per-bicycle minimum as a single-space lower bound. Per-bicycle
+    aggregation requires occupancy count (not standardized in IFC).
+  titles:
+    en: Bicycle parking minimum area
+    nl: Stallingsruimte fietsen
+  descriptions:
+    en: Bicycle storage spaces must have at least 1.5 m² of floor area per bicycle.
+    nl: Een stallingsruimte voor fietsen heeft een vloeroppervlakte van ten minste 1,5 m² per fiets.

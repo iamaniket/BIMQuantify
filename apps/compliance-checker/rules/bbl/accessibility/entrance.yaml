@@ -1,0 +1,68 @@
+rules:
+- id: bbl_4_23_entrance_door_width
+  article: BBL Afd. 4.6, Art. 4.23
+  article_number: '4.23'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.6&artikel=4.23
+  legal_text_nl: De toegang van een gebouw heeft een vrije doorgang met een breedte van ten minste 0,85 m.
+  legal_text_en: The entrance to a building must have a clear passage with a width of at least 0.85 m.
+  requirement_summary: External IfcDoor.Pset_DoorCommon.Width >= 850 mm
+  category: accessibility
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcDoor
+  applicability_filters:
+  - property_set: Pset_DoorCommon
+    property_name: IsExternal
+    operator: eq
+    value: true
+  checks:
+  - property_set: Pset_DoorCommon
+    property_name: Width
+    operator: gte
+    threshold: 850
+    unit: mm
+    description: Entrance door clear width must be >= 850 mm
+  implementation_status: implemented
+  titles:
+    en: Building entrance door width
+    nl: Toegang gebouw - breedte deur
+  descriptions:
+    en: Building entrance doors must have a clear passage width of at least 850 mm.
+    nl: De toegang van een gebouw heeft een vrije doorgang van ten minste 0,85 m.
+- id: bbl_4_23_entrance_threshold_height
+  article: BBL Afd. 4.6, Art. 4.23
+  article_number: '4.23'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.6&artikel=4.23
+  legal_text_nl: Een drempel bij de toegang van een gebouw heeft een hoogte van ten hoogste 20 mm.
+  legal_text_en: A threshold at a building entrance must be no higher than 20 mm.
+  requirement_summary: External IfcDoor.Pset_DoorCommon.ThresholdHeight <= 20 mm
+  category: accessibility
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcDoor
+  applicability_filters:
+  - property_set: Pset_DoorCommon
+    property_name: IsExternal
+    operator: eq
+    value: true
+  checks:
+  - property_set: Pset_DoorCommon
+    property_name: ThresholdHeight
+    operator: lte
+    threshold: 20
+    unit: mm
+    description: Threshold height at building entrance must be <= 20 mm
+  implementation_status: partial
+  notes: ThresholdHeight is not in standard Pset_DoorCommon; expects an authored extension property. Skips silently when missing.
+  titles:
+    en: Building entrance threshold height
+    nl: Toegang gebouw - drempel
+  descriptions:
+    en: Thresholds at building entrances must be no higher than 20 mm to remain accessible to wheelchairs.
+    nl: Een drempel bij de toegang van een gebouw heeft een hoogte van ten hoogste 20 mm.

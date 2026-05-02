@@ -59,6 +59,7 @@ def list_rules(
             "framework": r.framework,
             "article": r.article,
             "article_number": r.article_number,
+            "titles": r.titles,
             "title": r.title,
             "title_nl": r.title_nl,
             "category": r.category,

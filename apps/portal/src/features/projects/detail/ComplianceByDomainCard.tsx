@@ -1,8 +1,9 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Tabs, TabsList, TabsTrigger, TabsContent, Progress } from '@bimstitch/ui';
+import { Tabs, TabsList, TabsTrigger, Progress } from '@bimstitch/ui';
 
 import { BlueprintTexture } from '@/components/BlueprintTexture';
 import { ComplianceDonut } from '@/components/charts/ComplianceDonut';
@@ -44,6 +45,8 @@ export function ComplianceByDomainCard({
   failCount,
   embedded = false,
 }: Props): JSX.Element {
+  const t = useTranslations('reports.byDomain');
+  const tCat = useTranslations('reports.categories');
   const [tab, setTab] = useState('domains');
 
   const seed = [
@@ -70,17 +73,17 @@ export function ComplianceByDomainCard({
       <div className="relative mb-3 flex items-start justify-between">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
-            Compliance by domain
+            {t('eyebrow')}
           </div>
           <div className="mt-0.5 text-title3 font-medium tracking-tight text-foreground">
-            Bbl articles · {totalChecks.toLocaleString()} checks
+            {t('articlesTitle', { checks: totalChecks.toLocaleString() })}
           </div>
         </div>
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="domains">Domains</TabsTrigger>
-            <TabsTrigger value="articles">Articles</TabsTrigger>
-            <TabsTrigger value="models">Models</TabsTrigger>
+            <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
+            <TabsTrigger value="articles">{t('tabs.articles')}</TabsTrigger>
+            <TabsTrigger value="models">{t('tabs.models')}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -91,8 +94,8 @@ export function ComplianceByDomainCard({
           <ComplianceDonut
             segments={donutSegments}
             centerValue={`${overallScore}%`}
-            centerLabel="Wkb compliant"
-            centerSub={`${failCount} failing`}
+            centerLabel={t('donutCenterLabel')}
+            centerSub={t('failingSuffix', { count: failCount })}
             size={380}
           />
         </div>
@@ -105,7 +108,7 @@ export function ComplianceByDomainCard({
               return (
                 <div key={d.id}>
                   <div className="mb-1 flex items-baseline justify-between text-body3">
-                    <span className="font-semibold text-foreground">{d.name}</span>
+                    <span className="font-semibold text-foreground">{tCat.has(d.name) ? tCat(d.name) : d.name}</span>
                     <span className="flex items-baseline gap-2">
                       <span className="text-caption text-foreground-tertiary">
                         {d.articleCount} arts · {t} checks
@@ -196,7 +199,7 @@ export function ComplianceByDomainCard({
       <div className="relative mt-3 flex items-center gap-3 border-t border-border pt-3">
         <div>
           <div className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
-            30-day trend
+            {t('trendEyebrow')}
           </div>
           <div className="mt-0.5 flex items-baseline gap-1.5">
             <span className="text-title2 font-semibold text-primary">{overallScore}%</span>

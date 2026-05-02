@@ -1,0 +1,89 @@
+rules:
+- id: bbl_4_130_ventilation_air_rate
+  article: BBL Afd. 4.3, Art. 4.130
+  article_number: '4.130'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.3&artikel=4.130
+  legal_text_nl: Een verblijfsgebied heeft een voorziening voor luchtverversing met een capaciteit van ten minste 0,7 dm³/s per
+    m² vloeroppervlakte met een minimum van 7 dm³/s.
+  legal_text_en: A habitable area must have a ventilation provision with a capacity of at least 0.7 l/s per m² of floor area
+    with a minimum of 7 l/s.
+  requirement_summary: Pset_SpaceThermalRequirements.AirChangeRate >= 0.7 (l/s·m²)
+  category: health
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSpace
+  checks:
+  - property_set: Pset_SpaceThermalRequirements
+    property_name: AirChangeRate
+    operator: gte
+    threshold: 0.7
+    description: Air change rate must be >= 0.7 l/s per m² of floor area
+  implementation_status: implemented
+  titles:
+    en: Habitable area ventilation rate
+    nl: Luchtverversing verblijfsgebied
+  descriptions:
+    en: Habitable areas must provide a ventilation rate of at least 0.7 l/s per m² of floor area.
+    nl: Een verblijfsgebied heeft een voorziening voor luchtverversing met een capaciteit van ten minste 0,7 dm³/s per m² vloeroppervlakte.
+- id: bbl_4_132_air_exchange_habitable_area
+  article: BBL Afd. 4.3, Art. 4.132
+  article_number: '4.132'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.3&artikel=4.132
+  legal_text_nl: De luchtverversing van een verblijfsgebied bedraagt ten minste 0,9 dm³/s per m² vloeroppervlakte.
+  legal_text_en: The air exchange of a habitable area is at least 0.9 l/s per m² of floor area.
+  requirement_summary: Pset_SpaceThermalRequirements.AirChangeRate >= 0.9 (l/s·m²) for living rooms
+  category: health
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - residential
+  applicable_ifc_entities:
+  - IfcSpace
+  applicability_filters:
+  - property_set: Pset_SpaceCommon
+    property_name: OccupancyType
+    operator: contains
+    value: Living
+  checks:
+  - property_set: Pset_SpaceThermalRequirements
+    property_name: AirChangeRate
+    operator: gte
+    threshold: 0.9
+    description: Living room air exchange must be >= 0.9 l/s per m²
+  implementation_status: implemented
+  titles:
+    en: Air exchange - habitable area
+    nl: Luchtverversing verblijfsgebied
+  descriptions:
+    en: Living-area habitable rooms must have an air exchange capacity of at least 0.9 l/s per m².
+    nl: De luchtverversing van een verblijfsgebied bedraagt ten minste 0,9 dm³/s per m² vloeroppervlakte.
+- id: bbl_4_133_air_exchange_habitable_room
+  article: BBL Afd. 4.3, Art. 4.133
+  article_number: '4.133'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.3&artikel=4.133
+  legal_text_nl: De luchtverversing van een verblijfsruimte bedraagt ten minste 0,7 dm³/s per m² vloeroppervlakte.
+  legal_text_en: The air exchange of a habitable room is at least 0.7 l/s per m² of floor area.
+  requirement_summary: Pset_SpaceThermalRequirements.AirChangeRate >= 0.7 (l/s·m²)
+  category: health
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSpace
+  checks:
+  - property_set: Pset_SpaceThermalRequirements
+    property_name: AirChangeRate
+    operator: gte
+    threshold: 0.7
+    description: Habitable room air exchange must be >= 0.7 l/s per m²
+  implementation_status: implemented
+  titles:
+    en: Air exchange - habitable room
+    nl: Luchtverversing verblijfsruimte
+  descriptions:
+    en: Habitable rooms must have an air exchange capacity of at least 0.7 l/s per m².
+    nl: De luchtverversing van een verblijfsruimte bedraagt ten minste 0,7 dm³/s per m² vloeroppervlakte.

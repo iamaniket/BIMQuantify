@@ -1,0 +1,160 @@
+{
+  "settings": {
+    "pageTitle": "Instellingen",
+    "pageSubtitle": "Beheer hier nu het uiterlijk en houd een vaste plek vrij voor persoonlijke voorkeuren terwijl het portaal groeit.",
+    "activeTheme": "Actief thema: {theme}",
+    "activeLanguage": "Taal: {language}",
+    "loadingThemePreference": "Thema-instelling wordt geladen",
+    "selected": "Geselecteerd",
+    "appearanceTitle": "Weergave",
+    "appearanceDescription": "De zijbalk beheert het thema niet langer. Hier bundelen we weergave-instellingen zonder de navigatie voller te maken.",
+    "plannedAppearanceTitle": "Geplande weergave-instellingen",
+    "plannedAppearanceDescription": "Accentkleuren, compacte dichtheid, bewegingsvoorkeuren en viewer-specifieke standaardinstellingen kunnen hier later worden toegevoegd zonder de zijbalk opnieuw te wijzigen.",
+    "accountTitle": "Account",
+    "accountDescription": "Persoonlijke accountinstellingen komen hier samen in plaats van verspreid te raken over de zijbalk en modale vensters.",
+    "accountButton": "Bewerken van gebruikersprofiel volgt later",
+    "roadmapTitle": "Roadmap voor gebruikersinstellingen",
+    "roadmapDescription": "Deze sectie reserveert een vaste plek voor instellingen die gebruikers hierna zullen verwachten.",
+    "languageTitle": "Taal",
+    "languageDescription": "Kies hier de portaaltaal voor interface-labels, uitleg en toekomstige workflowteksten.",
+    "languageHelper": "Engelse en Nederlandse teksten staan apart in de broncode zodat een taalexpert ze later kan controleren en verfijnen.",
+    "themeOptions": {
+      "lightLabel": "Licht",
+      "lightDescription": "Heldere werkruimte met meer contrast voor gebruik overdag.",
+      "darkLabel": "Donker",
+      "darkDescription": "Minder schittering tijdens gerichte reviewsessies en werk bij weinig licht.",
+      "systemLabel": "Systeem",
+      "systemDescription": "Volg automatisch de weergave-instelling van je besturingssysteem."
+    },
+    "placeholders": {
+      "profileDetailsTitle": "Profielgegevens",
+      "profileDetailsDescription": "Naam, rol en contactvoorkeuren worden hier later beheerd.",
+      "securityTitle": "Beveiliging",
+      "securityDescription": "Wachtwoord, sessies en extra aanmeldbeveiliging zijn voor dit onderdeel gepland.",
+      "viewerDefaultsTitle": "Standaard viewer-instellingen",
+      "viewerDefaultsDescription": "Standaard cameragedrag, overlays en inspectievoorkeuren komen hier te staan.",
+      "notificationsTitle": "Meldingen",
+      "notificationsDescription": "E-mail- en in-appmeldingen voor projectactiviteit zijn gereserveerd voor een latere mijlpaal.",
+      "workspaceBehaviorTitle": "Werkruimtegedrag",
+      "workspaceBehaviorDescription": "Zoeken, dashboarddichtheid en opstartvoorkeuren worden hier samengebracht."
+    }
+  },
+  "sidebar": {
+    "adminConsole": "Beheerconsole",
+    "settings": "Instellingen",
+    "helpAndDocs": "Hulp en documentatie",
+    "userSummary": "Lieke Beumer · Wkb-inspecteur",
+    "userRole": "Wkb-inspecteur · Beheerder",
+    "signOut": "Uitloggen"
+  },
+  "projects": {
+    "statuses": {
+      "planning": "Planning",
+      "ontwerp": "Ontwerp",
+      "vergunning": "Vergunning",
+      "uitvoering": "Uitvoering",
+      "oplevering": "Oplevering",
+      "gereed": "Gereed",
+      "on_hold": "On hold"
+    },
+    "phases": {
+      "ontwerp": "Ontwerp",
+      "bestek": "Bestek",
+      "werkvoorbereiding": "Werkvoorbereiding",
+      "ruwbouw": "Ruwbouw",
+      "afbouw": "Afbouw",
+      "oplevering": "Oplevering"
+    },
+    "card": {
+      "phaseLabel": "Fase:",
+      "permitLabel": "Vergunning:"
+    }
+  },
+  "reports": {
+    "page": {
+      "backToProject": "Project",
+      "title": "{projectName} · Nalevingsrapport",
+      "noReport": "Geen {framework}-rapport gevonden voor dit bestand. Voer eerst een controle uit.",
+      "loadingResults": "Nalevingsresultaten laden…",
+      "ruleBreakdownTitle": "Regeloverzicht",
+      "elementsAndChecks": "{elements} elementen · {checks} controles",
+      "loadingRules": "Regeldetails laden…",
+      "issuesTitle": "Bevindingen ({count})"
+    },
+    "health": {
+      "eyebrow": "Nalevingsstatus",
+      "title": "Bbl-scansamenvatting",
+      "pass": "Geslaagd",
+      "warn": "Waarschuwing",
+      "fail": "Fout"
+    },
+    "holdback": {
+      "title": "Vrijgave depot",
+      "dossier": "Dossier {pct}%",
+      "toGo": "{pct}% resterend"
+    },
+    "byDomain": {
+      "eyebrow": "Naleving per domein",
+      "articlesTitle": "Bbl-artikelen · {checks} controles",
+      "tabs": {
+        "domains": "Domeinen",
+        "articles": "Artikelen",
+        "models": "Modellen"
+      },
+      "donutCenterLabel": "Wkb-conform",
+      "failingSuffix": "{count} gefaald",
+      "trendEyebrow": "30-dagentrend"
+    },
+    "rulesBreakdown": {
+      "filters": {
+        "all": "Alle",
+        "fail": "Fout",
+        "warn": "Waarschuwing",
+        "pass": "Geslaagd",
+        "skip": "Overgeslagen"
+      },
+      "countSummary": "{shown} van {total} regels",
+      "emptyFilter": "Geen regels komen overeen met dit filter.",
+      "badges": {
+        "fail": "FOUT",
+        "warn": "WRSCH",
+        "pass": "OK",
+        "skip": "SKIP"
+      },
+      "checkedShort": "ctrl",
+      "detail": {
+        "actualExpected": "werkelijk: {actual} · verwacht: {expected}",
+        "noDetails": "Geen elementdetails vastgelegd voor deze regel."
+      }
+    },
+    "issues": {
+      "filters": {
+        "all": "Alle",
+        "fail": "Fout",
+        "warn": "Waarschuwing"
+      },
+      "searchPlaceholder": "Zoek bevindingen…",
+      "empty": "Geen bevindingen komen overeen met uw filter.",
+      "columns": {
+        "sev": "Ernst",
+        "id": "ID",
+        "object": "Object",
+        "location": "Locatie",
+        "model": "Model",
+        "age": "Leeftijd"
+      },
+      "badges": {
+        "fail": "FOUT",
+        "warn": "WRSCH"
+      }
+    },
+    "categories": {
+      "fire_safety": "Brandveiligheid",
+      "structural": "Constructie",
+      "usability": "Bruikbaarheid",
+      "health": "Gezondheid",
+      "accessibility": "Toegankelijkheid",
+      "sustainability": "Duurzaamheid"
+    }
+  }
+}

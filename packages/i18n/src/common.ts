@@ -14,14 +14,11 @@ export function normalizeLocale(value: string | null | undefined): Locale {
   return value !== null && value !== undefined && isLocale(value) ? value : defaultLocale;
 }
 
-export function formatMessage(
-  template: string,
-  values: Record<string, string | number>,
+export function pickLocalized(
+  map: Partial<Record<Locale, string>>,
+  locale: Locale = defaultLocale,
 ): string {
-  return Object.entries(values).reduce(
-    (message, [key, value]) => message.replaceAll(`{${key}}`, String(value)),
-    template,
-  );
+  return map[locale] ?? map[defaultLocale] ?? Object.values(map)[0] ?? '';
 }
 
 const localeLabels = {

@@ -1,10 +1,5 @@
 import type { Metadata } from 'next';
-import type { JSX, ReactNode } from 'react';
-
-import { AuthProvider } from '@/providers/AuthProvider';
-import { LocaleProvider } from '@/providers/LocaleProvider';
-import { QueryProvider } from '@/providers/QueryProvider';
-import { ThemeProvider } from '@/providers/ThemeProvider';
+import type { ReactNode } from 'react';
 
 import './globals.css';
 
@@ -13,24 +8,6 @@ export const metadata: Metadata = {
   description: 'BIMstitch portal — sign in to manage your projects.',
 };
 
-type Props = {
-  children: ReactNode;
-};
-
-export default function RootLayout({ children }: Props): JSX.Element {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        <LocaleProvider>
-          <ThemeProvider>
-            <QueryProvider>
-              <AuthProvider>
-                {children}
-              </AuthProvider>
-            </QueryProvider>
-          </ThemeProvider>
-        </LocaleProvider>
-      </body>
-    </html>
-  );
+export default function RootLayout({ children }: { children: ReactNode }): ReactNode {
+  return children;
 }

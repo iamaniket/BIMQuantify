@@ -1,8 +1,8 @@
 'use client';
 
 import { Eye, Loader2, ShieldCheck, Upload, Trash2 } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link } from '@/i18n/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { useState, type JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';

@@ -1,0 +1,64 @@
+rules:
+- id: bbl_3_72_habitable_room_area_existing
+  article: BBL Afd. 3.5, Art. 3.72
+  article_number: '3.72'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=3&afdeling=3.5&artikel=3.72
+  legal_text_nl: Een verblijfsruimte van een bestaand bouwwerk heeft een vloeroppervlakte van ten minste 3,5 m².
+  legal_text_en: A habitable room in an existing building must have a floor area of at least 3.5 m².
+  requirement_summary: Existing IfcSpace floor area >= 3.5 m²
+  category: usability
+  chapter: '3'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSpace
+  checks:
+  - property_set: Qto_SpaceBaseQuantities
+    property_name: GrossFloorArea
+    operator: gte
+    threshold: 3.5
+    unit: m2
+    description: Existing-building habitable room floor area must be >= 3.5 m²
+  implementation_status: implemented
+  titles:
+    en: Habitable room floor area - existing building
+    nl: Vloeroppervlakte verblijfsruimte - bestaand
+  descriptions:
+    en: Habitable rooms in existing buildings must have a minimum floor area of 3.5 m² (relaxed threshold versus new construction).
+    nl: Een verblijfsruimte van een bestaand bouwwerk heeft een vloeroppervlakte van ten minste 3,5 m².
+- id: bbl_3_73_toilet_area_existing
+  article: BBL Afd. 3.5, Art. 3.73
+  article_number: '3.73'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=3&afdeling=3.5&artikel=3.73
+  legal_text_nl: Een toiletruimte of badruimte van een bestaand bouwwerk heeft een vloeroppervlakte van ten minste 0,64 m².
+  legal_text_en: A toilet or bathroom in an existing building must have a floor area of at least 0.64 m².
+  requirement_summary: Existing toilet/bathroom IfcSpace floor area >= 0.64 m²
+  category: usability
+  chapter: '3'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSpace
+  applicability_filters:
+  - property_set: Pset_SpaceCommon
+    property_name: OccupancyType
+    operator: in_list
+    value:
+    - Toilet
+    - Bathroom
+  checks:
+  - property_set: Qto_SpaceBaseQuantities
+    property_name: GrossFloorArea
+    operator: gte
+    threshold: 0.64
+    unit: m2
+    description: Existing toilet/bathroom floor area must be >= 0.64 m²
+  implementation_status: implemented
+  titles:
+    en: Toilet/bathroom floor area - existing building
+    nl: Vloeroppervlakte toilet/bad - bestaand
+  descriptions:
+    en: Toilet rooms and bathrooms in existing buildings must have a minimum floor area of 0.64 m².
+    nl: Een toiletruimte of badruimte van een bestaand bouwwerk heeft een vloeroppervlakte van ten minste 0,64 m².

@@ -1,30 +1,17 @@
 'use client';
 
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 
+import { pickLocalized, type Locale } from '@bimstitch/i18n';
 import { Badge } from '@bimstitch/ui';
 
 import type { CheckResultItem, RuleSummaryItem } from '@/lib/api/schemas';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  fire_safety: 'Brandveiligheid',
-  structural: 'Constructie',
-  usability: 'Bruikbaarheid',
-  health: 'Gezondheid',
-  accessibility: 'Toegankelijkheid',
-  sustainability: 'Duurzaamheid',
-};
-
 type FilterValue = 'all' | 'pass' | 'warn' | 'fail' | 'skip';
 
-const FILTERS: { value: FilterValue; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'fail', label: 'Fail' },
-  { value: 'warn', label: 'Warn' },
-  { value: 'pass', label: 'Pass' },
-  { value: 'skip', label: 'Skip' },
-];
+const FILTER_VALUES: FilterValue[] = ['all', 'fail', 'warn', 'pass', 'skip'];
 
 type Props = {
   rules: RuleSummaryItem[];
@@ -32,6 +19,9 @@ type Props = {
 };
 
 export function RulesBreakdown({ rules, details }: Props): JSX.Element {
+  const locale = useLocale() as Locale;
+  const t = useTranslations('reports.rulesBreakdown');
+  const tCat = useTranslations('reports.categories');
   const [filter, setFilter] = useState<FilterValue>('all');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -69,30 +59,30 @@ export function RulesBreakdown({ rules, details }: Props): JSX.Element {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex rounded-md border border-border">
-          {FILTERS.map((f) => (
+          {FILTER_VALUES.map((f) => (
             <button
-              key={f.value}
+              key={f}
               type="button"
-              onClick={() => { setFilter(f.value); }}
+              onClick={() => { setFilter(f); }}
               className={`px-3 py-1 text-caption font-semibold transition-colors ${
-                filter === f.value
+                filter === f
                   ? 'bg-primary text-primary-foreground'
                   : 'text-foreground-secondary hover:bg-background-hover'
-              } ${f.value !== 'all' ? 'border-l border-border' : ''}`}
+              } ${f !== 'all' ? 'border-l border-border' : ''}`}
             >
-              {f.label}
+              {t(`filters.${f}`)}
             </button>
           ))}
         </div>
         <span className="text-caption text-foreground-tertiary">
-          {filteredRules.length} of {rules.length} rules
+          {t('countSummary', { shown: filteredRules.length, total: rules.length })}
         </span>
       </div>
 
       <div className="rounded-lg border border-border bg-background">
         {filteredRules.length === 0 ? (
           <div className="px-3 py-6 text-center text-body3 text-foreground-tertiary">
-            No rules match this filter.
+            {t('emptyFilter')}
           </div>
         ) : (
           filteredRules.map((rule) => (
@@ -102,6 +92,9 @@ export function RulesBreakdown({ rules, details }: Props): JSX.Element {
               isExpanded={expanded.has(rule.rule_id)}
               onToggle={() => { toggle(rule.rule_id); }}
               details={detailsByRule.get(rule.rule_id) ?? []}
+              locale={locale}
+              t={t}
+              tCat={tCat}
             />
           ))
         )}
@@ -115,16 +108,23 @@ function RuleRow({
   isExpanded,
   onToggle,
   details,
+  locale,
+  t,
+  tCat,
 }: {
   rule: RuleSummaryItem;
   isExpanded: boolean;
   onToggle: () => void;
   details: CheckResultItem[];
+  locale: Locale;
+  t: ReturnType<typeof useTranslations>;
+  tCat: ReturnType<typeof useTranslations>;
 }): JSX.Element {
   const fails = rule.failed + rule.errors;
   const dominantTone: 'success' | 'warning' | 'error' | 'default' =
     fails > 0 ? 'error' : rule.warned > 0 ? 'warning' : rule.passed > 0 ? 'success' : 'default';
-  const categoryLabel = CATEGORY_LABELS[rule.category] ?? rule.category;
+  const categoryLabel = tCat.has(rule.category) ? tCat(rule.category) : rule.category;
+  const ruleTitle = rule.titles !== undefined ? pickLocalized(rule.titles, locale) : (rule.title_nl ?? rule.title ?? '');
 
   return (
     <div className="border-b border-border last:border-b-0">
@@ -140,9 +140,9 @@ function RuleRow({
         )}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="truncate font-semibold text-foreground">{rule.title_nl || rule.title}</span>
+            <span className="truncate font-semibold text-foreground">{ruleTitle}</span>
             <Badge variant={dominantTone === 'default' ? 'default' : dominantTone} className="shrink-0">
-              {fails > 0 ? 'FAIL' : rule.warned > 0 ? 'WARN' : rule.passed > 0 ? 'PASS' : 'SKIP'}
+              {fails > 0 ? t('badges.fail') : rule.warned > 0 ? t('badges.warn') : rule.passed > 0 ? t('badges.pass') : t('badges.skip')}
             </Badge>
           </div>
           <div className="truncate font-mono text-caption text-foreground-tertiary">
@@ -150,7 +150,7 @@ function RuleRow({
           </div>
         </div>
         <span className="text-right tabular-nums text-foreground-tertiary">
-          {rule.total_checked} chk
+          {rule.total_checked} {t('checkedShort')}
         </span>
         <span className="text-right tabular-nums text-success">{rule.passed}</span>
         <span className="text-right tabular-nums text-warning">{rule.warned}</span>
@@ -162,7 +162,7 @@ function RuleRow({
         <div className="border-t border-border bg-background-secondary/30 px-3 py-2">
           {details.length === 0 ? (
             <div className="py-2 text-caption text-foreground-tertiary">
-              No element-level details recorded for this rule.
+              {t('detail.noDetails')}
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-border">
@@ -198,6 +198,7 @@ function formatValue(v: CheckResultItem['actual_value']): string {
 }
 
 function DetailRow({ item }: { item: CheckResultItem }): JSX.Element {
+  const t = useTranslations('reports.rulesBreakdown.detail');
   const tone = statusTone(item.status);
   const hasValues = item.actual_value !== null && item.actual_value !== undefined;
   return (
@@ -219,7 +220,7 @@ function DetailRow({ item }: { item: CheckResultItem }): JSX.Element {
         <div className="text-foreground">{item.message}</div>
         {hasValues && (
           <div className="mt-0.5 font-mono text-caption text-foreground-tertiary">
-            actual: {formatValue(item.actual_value)} · expected: {formatValue(item.expected_value)}
+            {t('actualExpected', { actual: formatValue(item.actual_value), expected: formatValue(item.expected_value) })}
           </div>
         )}
       </div>

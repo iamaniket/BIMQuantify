@@ -1,7 +1,7 @@
 'use client';
 
 import { ExternalLink, FileText, Loader2, ShieldCheck } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { useMemo, useState, type JSX } from 'react';
 
 import { Badge, Button } from '@bimstitch/ui';

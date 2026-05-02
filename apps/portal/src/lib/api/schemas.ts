@@ -310,8 +310,9 @@ export type CheckResultItem = z.infer<typeof CheckResultItemSchema>;
 export const RuleSummaryItemSchema = z.object({
   rule_id: z.string(),
   article: z.string(),
-  title: z.string(),
-  title_nl: z.string(),
+  titles: z.record(z.string(), z.string()),
+  title: z.string().nullish(),
+  title_nl: z.string().nullish(),
   category: z.string(),
   severity: z.string(),
   total_checked: z.number(),

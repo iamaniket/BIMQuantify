@@ -1,43 +1,50 @@
 rules:
-  - id: bbl_4_21_accessible_door_width
-    article: "BBL Afd. 4.6, Art. 4.21"
-    article_number: "4.21"
-    title: "Accessible door minimum width"
-    title_nl: "Toegankelijkheidssector - deur breedte"
-    description: "Doors in accessibility zones must have a minimum clear width of 900mm"
-    description_nl: "Een deur in een toegankelijkheidssector heeft een vrije breedte van ten minste 0,9 m"
-    category: accessibility
-    chapter: "4"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcDoor]
-    checks:
-      - property_set: "Pset_DoorCommon"
-        property_name: "Width"
-        operator: gte
-        threshold: 900
-        unit: mm
-        description: "Accessible door width must be >= 900mm"
-    implementation_status: implemented
-    notes: "Currently checks all doors. Refinement needed to filter only doors in accessibility zones."
-
-  - id: bbl_4_21_accessible_door_clearance
-    article: "BBL Afd. 4.6, Art. 4.21"
-    article_number: "4.21"
-    title: "Accessible door clear opening width"
-    title_nl: "Toegankelijkheidssector - vrije doorgang"
-    description: "Clear opening width for accessible doors must be at least 850mm"
-    description_nl: "De vrije doorgang van een deur in een toegankelijkheidssector is ten minste 0,85 m"
-    category: accessibility
-    chapter: "4"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcDoor]
-    checks:
-      - property_set: "Pset_DoorCommon"
-        property_name: "ClearWidth"
-        operator: gte
-        threshold: 850
-        unit: mm
-        description: "Accessible door clear width must be >= 850mm"
-    implementation_status: implemented
+- id: bbl_4_21_accessible_door_width
+  article: BBL Afd. 4.6, Art. 4.21
+  article_number: '4.21'
+  category: accessibility
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcDoor
+  checks:
+  - property_set: Pset_DoorCommon
+    property_name: Width
+    operator: gte
+    threshold: 900
+    unit: mm
+    description: Accessible door width must be >= 900mm
+  implementation_status: implemented
+  notes: Currently checks all doors. Refinement needed to filter only doors in accessibility zones.
+  titles:
+    en: Accessible door minimum width
+    nl: Toegankelijkheidssector - deur breedte
+  descriptions:
+    en: Doors in accessibility zones must have a minimum clear width of 900mm
+    nl: Een deur in een toegankelijkheidssector heeft een vrije breedte van ten minste 0,9 m
+- id: bbl_4_21_accessible_door_clearance
+  article: BBL Afd. 4.6, Art. 4.21
+  article_number: '4.21'
+  category: accessibility
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcDoor
+  checks:
+  - property_set: Pset_DoorCommon
+    property_name: ClearWidth
+    operator: gte
+    threshold: 850
+    unit: mm
+    description: Accessible door clear width must be >= 850mm
+  implementation_status: implemented
+  titles:
+    en: Accessible door clear opening width
+    nl: Toegankelijkheidssector - vrije doorgang
+  descriptions:
+    en: Clear opening width for accessible doors must be at least 850mm
+    nl: De vrije doorgang van een deur in een toegankelijkheidssector is ten minste 0,85 m

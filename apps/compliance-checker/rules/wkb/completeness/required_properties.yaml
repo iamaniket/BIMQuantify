@@ -1,66 +1,77 @@
 framework: wkb
 rules:
-  - id: wkb_2_01_loadbearing_property
-    framework: wkb
-    article: "WKB Hoofdstuk 2, Art. 2.1"
-    article_number: "2.1"
-    title: "LoadBearing property must be present"
-    title_nl: "LoadBearing eigenschap verplicht"
-    description: "All walls must document whether they are load-bearing for structural quality assurance"
-    description_nl: "Alle wanden moeten aangeven of ze dragend zijn voor constructieve kwaliteitsborging"
-    category: completeness
-    chapter: "2"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcWall]
-    checks:
-      - property_set: "Pset_WallCommon"
-        property_name: "LoadBearing"
-        operator: exists
-        description: "Wall must have LoadBearing property"
-    implementation_status: implemented
-
-  - id: wkb_2_02_is_external_property
-    framework: wkb
-    article: "WKB Hoofdstuk 2, Art. 2.2"
-    article_number: "2.2"
-    title: "IsExternal property must be present"
-    title_nl: "IsExternal eigenschap verplicht"
-    description: "All walls and doors must document whether they are external-facing"
-    description_nl: "Alle wanden en deuren moeten aangeven of ze aan de buitenzijde liggen"
-    category: completeness
-    chapter: "2"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcWall, IfcDoor]
-    checks:
-      - property_set: "Pset_WallCommon"
-        property_name: "IsExternal"
-        operator: exists
-        description: "Element must have IsExternal property"
-      - property_set: "Pset_DoorCommon"
-        property_name: "IsExternal"
-        operator: exists
-        description: "Door must have IsExternal property"
-    implementation_status: implemented
-
-  - id: wkb_2_03_thermal_properties
-    framework: wkb
-    article: "WKB Hoofdstuk 2, Art. 2.3"
-    article_number: "2.3"
-    title: "Thermal transmittance must be documented for external walls"
-    title_nl: "Thermische eigenschappen buitenwand verplicht"
-    description: "External walls must have thermal transmittance (U-value) documented"
-    description_nl: "Buitenwanden moeten de thermische doorlatendheid (U-waarde) gedocumenteerd hebben"
-    category: completeness
-    chapter: "2"
-    severity: warning
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcWall]
-    checks:
-      - property_set: "Pset_WallCommon"
-        property_name: "ThermalTransmittance"
-        operator: exists
-        description: "Wall must have ThermalTransmittance property"
-    implementation_status: implemented
-    notes: "Ideally only applies to external walls. Currently checks all walls."
+- id: wkb_2_01_loadbearing_property
+  framework: wkb
+  article: WKB Hoofdstuk 2, Art. 2.1
+  article_number: '2.1'
+  category: completeness
+  chapter: '2'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcWall
+  checks:
+  - property_set: Pset_WallCommon
+    property_name: LoadBearing
+    operator: exists
+    description: Wall must have LoadBearing property
+  implementation_status: implemented
+  titles:
+    en: LoadBearing property must be present
+    nl: LoadBearing eigenschap verplicht
+  descriptions:
+    en: All walls must document whether they are load-bearing for structural quality assurance
+    nl: Alle wanden moeten aangeven of ze dragend zijn voor constructieve kwaliteitsborging
+- id: wkb_2_02_is_external_property
+  framework: wkb
+  article: WKB Hoofdstuk 2, Art. 2.2
+  article_number: '2.2'
+  category: completeness
+  chapter: '2'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcWall
+  - IfcDoor
+  checks:
+  - property_set: Pset_WallCommon
+    property_name: IsExternal
+    operator: exists
+    description: Element must have IsExternal property
+  - property_set: Pset_DoorCommon
+    property_name: IsExternal
+    operator: exists
+    description: Door must have IsExternal property
+  implementation_status: implemented
+  titles:
+    en: IsExternal property must be present
+    nl: IsExternal eigenschap verplicht
+  descriptions:
+    en: All walls and doors must document whether they are external-facing
+    nl: Alle wanden en deuren moeten aangeven of ze aan de buitenzijde liggen
+- id: wkb_2_03_thermal_properties
+  framework: wkb
+  article: WKB Hoofdstuk 2, Art. 2.3
+  article_number: '2.3'
+  category: completeness
+  chapter: '2'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcWall
+  checks:
+  - property_set: Pset_WallCommon
+    property_name: ThermalTransmittance
+    operator: exists
+    description: Wall must have ThermalTransmittance property
+  implementation_status: implemented
+  notes: Ideally only applies to external walls. Currently checks all walls.
+  titles:
+    en: Thermal transmittance must be documented for external walls
+    nl: Thermische eigenschappen buitenwand verplicht
+  descriptions:
+    en: External walls must have thermal transmittance (U-value) documented
+    nl: Buitenwanden moeten de thermische doorlatendheid (U-waarde) gedocumenteerd hebben

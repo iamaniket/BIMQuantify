@@ -1,10 +1,10 @@
 'use client';
 
 import { HelpCircle, Settings, Shield } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/i18n/navigation';
 import type { JSX } from 'react';
 
-import { useLocale } from '@/providers/LocaleProvider';
+import { useTranslations } from 'next-intl';
 
 import { useSidebar } from './SidebarContext';
 import { SidebarNavItem } from './SidebarNavItem';
@@ -18,12 +18,12 @@ const itemDefinitions = [
 export function SidebarNav(): JSX.Element {
   const { collapsed } = useSidebar();
   const pathname = usePathname();
-  const { messages } = useLocale();
+  const t = useTranslations('sidebar');
 
   const labels = {
-    admin: messages.sidebar.adminConsole,
-    settings: messages.sidebar.settings,
-    help: messages.sidebar.helpAndDocs,
+    admin: t('adminConsole'),
+    settings: t('settings'),
+    help: t('helpAndDocs'),
   } as const;
 
   return (

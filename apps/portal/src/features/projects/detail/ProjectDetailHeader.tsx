@@ -13,11 +13,13 @@ import {
   formatAddress,
   formatDeliveryDate,
   formatProjectBadgeLabel,
-  formatStatusAndPhaseLabel,
   projectBadgeClasses,
 } from '@/features/projects/projectFormatting';
+import { useLocale, useTranslations } from 'next-intl';
+
+import type { Locale } from '@bimstitch/i18n';
+
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/lib/mapThumbnail';
-import { useLocale } from '@/providers/LocaleProvider';
 
 import { KpiStrip } from './KpiStrip';
 
@@ -34,13 +36,15 @@ export function ProjectDetailHeader({
   issueCount,
   dossierPct,
 }: Props): JSX.Element {
-  const { locale, messages } = useLocale();
+  const locale = useLocale() as Locale;
+  const tStatuses = useTranslations('projects.statuses');
+  const tPhases = useTranslations('projects.phases');
   const [aerialFailed, setAerialFailed] = useState(false);
   const overall = compliance?.overallScore ?? 0;
   const address = formatAddress(project);
   const refLabel = project.reference_code ?? '—';
   const statusBadgeClass = projectBadgeClasses(project);
-  const stageLabel = formatStatusAndPhaseLabel(project.status, project.phase, messages);
+  const stageLabel = `${tStatuses(project.status)} · ${tPhases(project.phase)}`;
   const aerialUrl = (
     project.thumbnail_url === null
     && project.latitude !== null
@@ -105,7 +109,7 @@ export function ProjectDetailHeader({
               <span
                 className={`rounded-full border px-2 py-px text-[10px] font-bold uppercase tracking-[0.04em] ${statusBadgeClass}`}
               >
-                ● {formatProjectBadgeLabel(project, messages)}
+                ● {formatProjectBadgeLabel(project, tStatuses(project.status))}
               </span>
               {compliance?.lastScanAt !== undefined && compliance.lastScanAt !== null && (
                 <>

@@ -3,11 +3,11 @@
 # Last updated: 2026-05-02
 
 summary:
-  total_rules_identified: 87
-  implemented: 18
-  partial: 0
-  planned: 39
-  not_automatable: 30
+  total_rules_identified: 91
+  implemented: 34
+  partial: 8
+  planned: 20
+  not_automatable: 29
 
 categories:
   usability:
@@ -34,13 +34,13 @@ categories:
         status: implemented
       - article: "4.88"
         title_nl: "Afmetingen bergruimte"
-        status: planned
+        status: implemented
       - article: "4.89"
         title_nl: "Buitenruimte"
-        status: planned
+        status: implemented
       - article: "4.90"
         title_nl: "Stallingsruimte fietsen"
-        status: planned
+        status: partial
       - article: "4.91"
         title_nl: "Aanrecht en opstelplaats kooktoestel"
         status: not_automatable
@@ -52,16 +52,16 @@ categories:
         status: not_automatable
       - article: "3.72"
         title_nl: "Vloeroppervlakte verblijfsruimte (bestaand)"
-        status: planned
+        status: implemented
       - article: "3.73"
         title_nl: "Vloeroppervlakte toilet/bad (bestaand)"
-        status: planned
+        status: implemented
       - article: "4.25"
         title_nl: "Vrije hoogte verkeersruimte"
         status: implemented
       - article: "4.26"
         title_nl: "Afmeting trappenhuis"
-        status: planned
+        status: implemented
       - article: "4.27"
         title_nl: "Afmeting trap"
         status: implemented
@@ -87,7 +87,7 @@ categories:
         status: implemented
       - article: "4.31"
         title_nl: "Omvang brandcompartiment"
-        status: planned
+        status: partial
       - article: "4.32"
         title_nl: "Subbrandcompartiment"
         status: planned
@@ -117,7 +117,7 @@ categories:
         status: planned
       - article: "4.42"
         title_nl: "Noodverlichting"
-        status: planned
+        status: partial
       - article: "4.43"
         title_nl: "Vluchtrouteaanduiding"
         status: not_automatable
@@ -126,7 +126,7 @@ categories:
         status: not_automatable
       - article: "4.45"
         title_nl: "Rookmelders"
-        status: planned
+        status: partial
       - article: "4.46"
         title_nl: "Blustoestellen"
         status: not_automatable
@@ -141,14 +141,14 @@ categories:
         status: not_automatable
       - article: "4.50"
         title_nl: "Brandweeringang"
-        status: planned
+        status: implemented
       - article: "4.52"
         title_nl: "Rook- en warmteafvoer"
         status: planned
 
   accessibility:
     description: "Toegankelijkheid - Accessibility requirements (Chapter 4, Afd. 4.6)"
-    total: 12
+    total: 13
     rules:
       - article: "4.21"
         title_nl: "Toegankelijkheidssector - deur breedte"
@@ -158,10 +158,13 @@ categories:
         status: implemented
       - article: "4.22"
         title_nl: "Gemeenschappelijke verkeersruimte"
-        status: planned
+        status: implemented
       - article: "4.23"
-        title_nl: "Toegang gebouw"
-        status: planned
+        title_nl: "Toegang gebouw - breedte deur"
+        status: implemented
+      - article: "4.23"
+        title_nl: "Toegang gebouw - drempelhoogte"
+        status: partial
       - article: "4.100"
         title_nl: "Bereikbaarheid vanaf openbare weg"
         status: planned
@@ -176,16 +179,16 @@ categories:
         status: planned
       - article: "4.104"
         title_nl: "Hellingbaan bij hoogteverschil"
-        status: planned
+        status: partial
       - article: "4.105"
         title_nl: "Liftinstallatie"
         status: implemented
       - article: "4.106"
         title_nl: "Toegankelijke toiletruimte"
-        status: planned
+        status: implemented
       - article: "4.107"
         title_nl: "Toegankelijke badruimte"
-        status: planned
+        status: implemented
 
   structural:
     description: "Constructieve veiligheid - Structural safety (Chapter 4, Afd. 4.2)"
@@ -224,16 +227,16 @@ categories:
     rules:
       - article: "4.130"
         title_nl: "Ventilatie"
-        status: planned
+        status: implemented
       - article: "4.131"
         title_nl: "Spuivoorziening"
         status: planned
       - article: "4.132"
         title_nl: "Luchtverversing verblijfsgebied"
-        status: planned
+        status: implemented
       - article: "4.133"
         title_nl: "Luchtverversing verblijfsruimte"
-        status: planned
+        status: implemented
       - article: "4.134"
         title_nl: "Luchtverversing overig"
         status: planned
@@ -258,10 +261,10 @@ categories:
         status: not_automatable
       - article: "4.141"
         title_nl: "Daglicht"
-        status: planned
+        status: partial
       - article: "4.142"
         title_nl: "Daglichtoppervlakte"
-        status: planned
+        status: partial
       - article: "4.143"
         title_nl: "Bescherming tegen ratten en muizen"
         status: not_automatable
@@ -271,7 +274,7 @@ categories:
 
   sustainability:
     description: "Duurzaamheid - Sustainability requirements (Chapter 4, Afd. 4.4)"
-    total: 10
+    total: 13
     rules:
       - article: "4.159"
         title_nl: "Milieuprestatie (MPG)"
@@ -290,7 +293,16 @@ categories:
         status: not_automatable
         notes: "Requires NTA 8800 energy calculation"
       - article: "4.163"
-        title_nl: "Thermische isolatie"
+        title_nl: "Thermische isolatie - gevel (wand)"
+        status: implemented
+      - article: "4.163"
+        title_nl: "Thermische isolatie - dak"
+        status: implemented
+      - article: "4.163"
+        title_nl: "Thermische isolatie - vloer"
+        status: implemented
+      - article: "4.163"
+        title_nl: "Thermische isolatie - raam"
         status: implemented
       - article: "4.164"
         title_nl: "Luchtdoorlatendheid"

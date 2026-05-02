@@ -86,8 +86,9 @@ class CheckResult(BaseModel):
 class RuleSummary(BaseModel):
     rule_id: str
     article: str
-    title: str
-    title_nl: str
+    titles: dict[str, str]
+    title: str | None = None
+    title_nl: str | None = None
     category: str
     severity: str
     total_checked: int
@@ -503,6 +504,7 @@ def evaluate(
             RuleSummary(
                 rule_id=rule.id,
                 article=rule.article,
+                titles=rule.titles,
                 title=rule.title,
                 title_nl=rule.title_nl,
                 category=rule.category,

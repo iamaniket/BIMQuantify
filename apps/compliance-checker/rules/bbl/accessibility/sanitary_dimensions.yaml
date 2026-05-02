@@ -1,0 +1,67 @@
+rules:
+- id: bbl_4_106_accessible_toilet_area
+  article: BBL Afd. 4.6, Art. 4.106
+  article_number: '4.106'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.6&artikel=4.106
+  legal_text_nl: Een toegankelijke toiletruimte heeft een vloeroppervlakte van ten minste 3,7 m².
+  legal_text_en: An accessible toilet must have a floor area of at least 3.7 m².
+  requirement_summary: Accessible toilet IfcSpace.Qto_SpaceBaseQuantities.NetFloorArea >= 3.7 m²
+  category: accessibility
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSpace
+  applicability_filters:
+  - property_set: Pset_SpaceCommon
+    property_name: OccupancyType
+    operator: contains
+    value: Toilet
+  checks:
+  - property_set: Qto_SpaceBaseQuantities
+    property_name: NetFloorArea
+    operator: gte
+    threshold: 3.7
+    unit: m²
+    description: Accessible toilet area must be >= 3.7 m²
+  implementation_status: implemented
+  titles:
+    en: Accessible toilet minimum floor area
+    nl: Toegankelijke toiletruimte
+  descriptions:
+    en: Accessible toilets must have a floor area of at least 3.7 m² to allow wheelchair maneuvering.
+    nl: Een toegankelijke toiletruimte heeft een vloeroppervlakte van ten minste 3,7 m².
+- id: bbl_4_107_accessible_bathroom_area
+  article: BBL Afd. 4.6, Art. 4.107
+  article_number: '4.107'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.6&artikel=4.107
+  legal_text_nl: Een toegankelijke badruimte heeft een vloeroppervlakte van ten minste 4,0 m².
+  legal_text_en: An accessible bathroom must have a floor area of at least 4.0 m².
+  requirement_summary: Accessible bathroom IfcSpace.Qto_SpaceBaseQuantities.NetFloorArea >= 4.0 m²
+  category: accessibility
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSpace
+  applicability_filters:
+  - property_set: Pset_SpaceCommon
+    property_name: OccupancyType
+    operator: contains
+    value: Bathroom
+  checks:
+  - property_set: Qto_SpaceBaseQuantities
+    property_name: NetFloorArea
+    operator: gte
+    threshold: 4.0
+    unit: m²
+    description: Accessible bathroom area must be >= 4.0 m²
+  implementation_status: implemented
+  titles:
+    en: Accessible bathroom minimum floor area
+    nl: Toegankelijke badruimte
+  descriptions:
+    en: Accessible bathrooms must have a floor area of at least 4.0 m² to allow wheelchair maneuvering.
+    nl: Een toegankelijke badruimte heeft een vloeroppervlakte van ten minste 4,0 m².

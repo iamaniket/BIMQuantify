@@ -1,7 +1,7 @@
 'use client';
 
 import type { JSX } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/i18n/navigation';
 
 import { House } from 'lucide-react';
 

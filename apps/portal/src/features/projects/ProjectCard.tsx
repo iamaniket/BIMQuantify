@@ -3,7 +3,7 @@
 import {
   Building2, CalendarDays, FileText, Layers, MapPin, RefreshCw, Ruler, Truck,
 } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { useState, type JSX } from 'react';
 
 import {
@@ -13,11 +13,10 @@ import {
 import { BlueprintTexture } from '@/components/BlueprintTexture';
 import type { Project } from '@/lib/api/schemas';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/lib/mapThumbnail';
-import { useLocale } from '@/providers/LocaleProvider';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { ProjectCardMenu } from './ProjectCardMenu';
 import {
-  formatPhaseLabel,
   formatProjectBadgeLabel,
   isProjectArchived,
   projectBadgeClasses,
@@ -41,7 +40,9 @@ type Props = {
 };
 
 export function ProjectCard({ project }: Props): JSX.Element {
-  const { locale, messages } = useLocale();
+  const locale = useLocale();
+  const tStatuses = useTranslations('projects.statuses');
+  const tPhases = useTranslations('projects.phases');
   const archived = isProjectArchived(project);
   const createdLabel = formatDateLabel(project.created_at, locale);
   const updatedLabel = formatDateLabel(project.updated_at, locale);
@@ -76,7 +77,7 @@ export function ProjectCard({ project }: Props): JSX.Element {
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 py-3">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground shadow-sm shadow-primary/20 transition-colors duration-200 group-hover:bg-primary-hover">
               <span className={`h-1.5 w-1.5 rounded-full ${projectDotClasses(project)}`} />
-              {formatProjectBadgeLabel(project, messages)}
+              {formatProjectBadgeLabel(project, tStatuses(project.status))}
             </span>
           </div>
 
@@ -128,7 +129,7 @@ export function ProjectCard({ project }: Props): JSX.Element {
               <div className="grid grid-cols-1 gap-1.5 pt-1 text-body3 text-primary-foreground/85">
                 <p className="inline-flex items-center gap-1.5">
                   <Icon icon={Layers} size="sm" className="text-white/80" />
-                  {formatPhaseLabel(project.phase, messages)}
+                  {tPhases(project.phase)}
                 </p>
                 {project.permit_number !== null && (
                   <p className="inline-flex items-center gap-1.5 line-clamp-1">

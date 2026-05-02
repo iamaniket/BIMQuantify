@@ -1,0 +1,59 @@
+rules:
+- id: bbl_4_141_daylight_presence
+  article: BBL Afd. 4.3, Art. 4.141
+  article_number: '4.141'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.3&artikel=4.141
+  legal_text_nl: Een verblijfsruimte heeft een daglichtopening met een equivalente daglichtoppervlakte die voldoet aan de eisen.
+  legal_text_en: A habitable room must have a daylight opening with an equivalent daylight area meeting the requirements.
+  requirement_summary: Pset_SpaceCommon.NaturalLighting must be present
+  category: health
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSpace
+  checks:
+  - property_set: Pset_SpaceCommon
+    property_name: NaturalLighting
+    operator: exists
+    description: Habitable rooms must declare a NaturalLighting property
+  implementation_status: partial
+  notes: Existence check only — verifies the model authors a NaturalLighting flag. A true daylight area calculation requires
+    window placement and orientation analysis beyond per-element properties.
+  titles:
+    en: Daylight provision in habitable rooms
+    nl: Daglicht in verblijfsruimte
+  descriptions:
+    en: Habitable rooms must include a natural lighting provision (window or other daylight opening).
+    nl: Een verblijfsruimte heeft een daglichtopening die toegang biedt tot daglicht.
+- id: bbl_4_142_daylight_area_ratio
+  article: BBL Afd. 4.3, Art. 4.142
+  article_number: '4.142'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.3&artikel=4.142
+  legal_text_nl: De equivalente daglichtoppervlakte van een verblijfsruimte bedraagt ten minste 10% van de vloeroppervlakte van
+    die ruimte.
+  legal_text_en: The equivalent daylight area of a habitable room is at least 10% of the floor area.
+  requirement_summary: Pset_BBL_Daylight.DaylightAreaPercent >= 10 (% of floor area)
+  category: health
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcSpace
+  checks:
+  - property_set: Pset_BBL_Daylight
+    property_name: DaylightAreaPercent
+    operator: gte
+    threshold: 10
+    description: Daylight area must be >= 10% of floor area
+  implementation_status: partial
+  notes: Requires custom Pset_BBL_Daylight.DaylightAreaPercent authored on IfcSpace (precomputed by daylight analysis tool).
+    Skips silently if the property is absent.
+  titles:
+    en: Daylight area as percentage of floor
+    nl: Daglichtoppervlakte
+  descriptions:
+    en: Habitable rooms must have an equivalent daylight area of at least 10% of the floor area.
+    nl: De equivalente daglichtoppervlakte van een verblijfsruimte bedraagt ten minste 10% van de vloeroppervlakte.

@@ -1,0 +1,42 @@
+rules:
+- id: bbl_4_88_storage_room_area
+  article: BBL Afd. 4.5, Art. 4.88
+  article_number: '4.88'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.5&artikel=4.88
+  legal_text_nl: Een bergruimte voor een woonfunctie heeft een vloeroppervlakte van ten minste 2,7 m² bij een breedte van ten
+    minste 1,3 m en een hoogte van ten minste 2,3 m.
+  legal_text_en: A storage room for a residential occupancy must have a floor area of at least 2.7 m², a width of at least
+    1.3 m, and a height of at least 2.3 m.
+  requirement_summary: Storage IfcSpace area >= 2.7 m² and height >= 2300 mm
+  category: usability
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - residential
+  applicable_ifc_entities:
+  - IfcSpace
+  applicability_filters:
+  - property_set: Pset_SpaceCommon
+    property_name: OccupancyType
+    operator: contains
+    value: Storage
+  checks:
+  - property_set: Qto_SpaceBaseQuantities
+    property_name: NetFloorArea
+    operator: gte
+    threshold: 2.7
+    unit: m²
+    description: Storage area must be >= 2.7 m²
+  - property_set: Pset_SpaceCommon
+    property_name: Height
+    operator: gte
+    threshold: 2300
+    unit: mm
+    description: Storage clear height must be >= 2300 mm
+  implementation_status: implemented
+  titles:
+    en: Residential storage room dimensions
+    nl: Afmetingen bergruimte
+  descriptions:
+    en: Storage rooms in residential occupancies must have a floor area of at least 2.7 m² and a height of at least 2.3 m.
+    nl: Een bergruimte voor een woonfunctie heeft een vloeroppervlakte van ten minste 2,7 m² en een hoogte van ten minste 2,3 m.

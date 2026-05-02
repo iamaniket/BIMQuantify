@@ -1,24 +1,28 @@
 rules:
-  - id: bbl_4_28_ramp_slope
-    article: "BBL Afd. 4.5, Art. 4.28"
-    article_number: "4.28"
-    source_url: "https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.5&artikel=4.28"
-    title: "Maximum ramp slope"
-    title_nl: "Afmeting hellingbaan - helling"
-    description: "Ramps must have a slope of at most 1:12 (≈8.33%) to remain usable, including by people with reduced mobility."
-    description_nl: "Een hellingbaan heeft een helling van ten hoogste 1:12, gemeten over de gehele lengte."
-    legal_text_nl: "Een hellingbaan heeft een helling van ten hoogste 1:12."
-    legal_text_en: "A ramp has a slope of at most 1:12."
-    requirement_summary: "Pset_RampFlightCommon.Slope ≤ 0.0833 (1:12)"
-    category: usability
-    chapter: "4"
-    severity: error
-    applicable_building_types: [all]
-    applicable_ifc_entities: [IfcRampFlight]
-    checks:
-      - property_set: "Pset_RampFlightCommon"
-        property_name: "Slope"
-        operator: lte
-        threshold: 0.0833
-        description: "Ramp slope must be <= 1:12 (0.0833)"
-    implementation_status: implemented
+- id: bbl_4_28_ramp_slope
+  article: BBL Afd. 4.5, Art. 4.28
+  article_number: '4.28'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.5&artikel=4.28
+  legal_text_nl: Een hellingbaan heeft een helling van ten hoogste 1:12.
+  legal_text_en: A ramp has a slope of at most 1:12.
+  requirement_summary: Pset_RampFlightCommon.Slope â‰¤ 0.0833 (1:12)
+  category: usability
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_ifc_entities:
+  - IfcRampFlight
+  checks:
+  - property_set: Pset_RampFlightCommon
+    property_name: Slope
+    operator: lte
+    threshold: 0.0833
+    description: Ramp slope must be <= 1:12 (0.0833)
+  implementation_status: implemented
+  titles:
+    en: Maximum ramp slope
+    nl: Afmeting hellingbaan - helling
+  descriptions:
+    en: Ramps must have a slope of at most 1:12 (â‰ˆ8.33%) to remain usable, including by people with reduced mobility.
+    nl: Een hellingbaan heeft een helling van ten hoogste 1:12, gemeten over de gehele lengte.
