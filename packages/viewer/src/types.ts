@@ -15,6 +15,7 @@ import type {
 import type { CameraAction, ControlsOptions } from './core/Viewer.js';
 import type { EffectsOptions } from './plugins/effects/types.js';
 import type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
+import type { InteractivePerformanceOptions } from './plugins/interactive-performance/index.js';
 import type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 import type { SelectionPluginOptions } from './plugins/selection/index.js';
 
@@ -98,6 +99,11 @@ export type IfcViewerProps = {
    * object to tune. Defaults are sensible — most consumers can omit this.
    */
   pivotRotate?: PivotRotateOptions | false;
+  /**
+   * Drop expensive work while the camera is moving and restore it on idle.
+   * Every toggle defaults to off — opt in per setting.
+   */
+  interactivePerformance?: InteractivePerformanceOptions;
   ref?: Ref<ViewerHandle>;
 };
 
@@ -108,6 +114,8 @@ export type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 export type { CameraAction, ControlsOptions } from './core/Viewer.js';
 
 export type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
+
+export type { InteractivePerformanceOptions } from './plugins/interactive-performance/index.js';
 
 export type { SelectionPluginOptions } from './plugins/selection/index.js';
 

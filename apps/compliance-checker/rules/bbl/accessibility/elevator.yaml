@@ -1,0 +1,24 @@
+rules:
+  - id: bbl_4_105_elevator_presence
+    article: "BBL Afd. 4.6, Art. 4.105"
+    article_number: "4.105"
+    source_url: "https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.6&artikel=4.105"
+    title: "Elevator installation present"
+    title_nl: "Liftinstallatie aanwezig"
+    description: "Buildings with an accessibility sector reaching above the ground floor require an elevator installation. This rule verifies that at least one IfcTransportElement (elevator) is present in the model."
+    description_nl: "In een gebouw met een toegankelijkheidssector op een andere bouwlaag dan de toegankelijkheidssector op het aansluitende terrein, is een liftinstallatie aanwezig."
+    legal_text_nl: "In een te bouwen gebouw met een toegankelijkheidssector op een bouwlaag waarvan de vloer hoger ligt dan 3 m boven de toegangsbouwlaag, is een liftinstallatie aanwezig."
+    legal_text_en: "In a building under construction with an accessibility sector on a floor more than 3 m above the entrance floor, an elevator installation must be present."
+    requirement_summary: "At least one Pset_TransportElementCommon (IfcTransportElement) must be present"
+    category: accessibility
+    chapter: "4"
+    severity: warning
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcTransportElement]
+    checks:
+      - property_set: "Pset_TransportElementCommon"
+        property_name: "Reference"
+        operator: exists
+        description: "Elevator (IfcTransportElement) must be present in the model"
+    notes: "Element-level existence proxy. Full check (height-difference dependent) requires spatial reasoning across IfcBuildingStorey, which is out of scope for the property-set engine."
+    implementation_status: implemented

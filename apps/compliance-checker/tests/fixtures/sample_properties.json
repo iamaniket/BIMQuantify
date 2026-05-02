@@ -35,6 +35,30 @@
       "NetFloorArea": 0.7
     }
   },
+  "space-corridor-004": {
+    "Pset_SpaceCommon": {
+      "Height": 2500,
+      "IsExternal": false,
+      "Reference": "Corridor"
+    },
+    "BaseQuantities": {
+      "Height": 2500,
+      "GrossFloorArea": 6.0,
+      "NetFloorArea": 5.8
+    }
+  },
+  "space-hallway-005": {
+    "Pset_SpaceCommon": {
+      "Height": 2100,
+      "IsExternal": false,
+      "Reference": "Hallway"
+    },
+    "BaseQuantities": {
+      "Height": 2100,
+      "GrossFloorArea": 4.5,
+      "NetFloorArea": 4.3
+    }
+  },
   "door-main-001": {
     "Pset_DoorCommon": {
       "Width": 900,
@@ -85,10 +109,23 @@
       "Length": 6000
     }
   },
+  "wall-ext-poor-005": {
+    "Pset_WallCommon": {
+      "FireRating": "REI60",
+      "IsExternal": true,
+      "ThermalTransmittance": 0.45
+    },
+    "BaseQuantities": {
+      "Height": 2800,
+      "Width": 200,
+      "Length": 5000
+    }
+  },
   "wall-int-002": {
     "Pset_WallCommon": {
       "FireRating": "EI60",
-      "IsExternal": false
+      "IsExternal": false,
+      "ThermalTransmittance": 1.20
     },
     "BaseQuantities": {
       "Height": 2800,
@@ -155,6 +192,69 @@
     "BaseQuantities": {
       "Height": 2800,
       "CrossSectionArea": 0.04
+    }
+  },
+  "stairflight-good-001": {
+    "Pset_StairFlightCommon": {
+      "RiserHeight": 175,
+      "TreadLength": 250,
+      "NumberOfRiser": 16
+    },
+    "BaseQuantities": {
+      "Length": 4000
+    }
+  },
+  "stairflight-bad-002": {
+    "Pset_StairFlightCommon": {
+      "RiserHeight": 200,
+      "TreadLength": 200,
+      "NumberOfRiser": 14
+    },
+    "BaseQuantities": {
+      "Length": 2800
+    }
+  },
+  "rampflight-good-001": {
+    "Pset_RampFlightCommon": {
+      "Slope": 0.06
+    },
+    "BaseQuantities": {
+      "Length": 8000
+    }
+  },
+  "rampflight-bad-002": {
+    "Pset_RampFlightCommon": {
+      "Slope": 0.15
+    },
+    "BaseQuantities": {
+      "Length": 3000
+    }
+  },
+  "railing-good-001": {
+    "Pset_RailingCommon": {
+      "Height": 1100,
+      "Reference": "Balcony Balustrade"
+    },
+    "BaseQuantities": {
+      "Length": 4000
+    }
+  },
+  "railing-bad-002": {
+    "Pset_RailingCommon": {
+      "Height": 850,
+      "Reference": "Stair Handrail"
+    },
+    "BaseQuantities": {
+      "Length": 3000
+    }
+  },
+  "elevator-001": {
+    "Pset_TransportElementCommon": {
+      "Reference": "Passenger Lift",
+      "OperationType": "ELEVATOR"
+    },
+    "BaseQuantities": {
+      "GrossFloorArea": 2.4
     }
   }
 }

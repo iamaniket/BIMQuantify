@@ -25,6 +25,7 @@ export type {
   EffectsOptions,
   EffectsQuality,
   HoverPluginOptions,
+  InteractivePerformanceOptions,
   PivotRotateOptions,
   SelectionPluginOptions,
 } from './types.js';
@@ -47,5 +48,6 @@ export {
 } from './plugins/mouse-bindings/index.js';
 export { viewCubePlugin } from './plugins/viewcube/index.js';
 export { effectsPlugin } from './plugins/effects/index.js';
+export { interactivePerformancePlugin } from './plugins/interactive-performance/index.js';
 export { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
 export { visibilityPlugin } from './plugins/visibility/index.js';

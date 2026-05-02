@@ -3,6 +3,7 @@ import type {
   ControlsOptions,
   EffectsOptions,
   EffectsQuality,
+  InteractivePerformanceOptions,
   MouseBindingMap,
   ShortcutMap,
   ViewCubeCorner,
@@ -13,6 +14,8 @@ const STORAGE_KEY = 'bimstitch.viewerSettings.v2';
 export type EffectsSettings = Required<EffectsOptions>;
 
 export type ControlsSettings = Required<ControlsOptions>;
+
+export type InteractivePerformanceSettings = Required<InteractivePerformanceOptions>;
 
 export type ViewerSettings = {
   viewCube: { enabled: boolean; corner: ViewCubeCorner };
@@ -25,6 +28,8 @@ export type ViewerSettings = {
   mouseBindings: MouseBindingMap;
   /** Drag-mouse-button assignments (rotate/pan/zoom). */
   controls: ControlsSettings;
+  /** Drop expensive work while the camera is moving. */
+  interactivePerformance: InteractivePerformanceSettings;
 };
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
@@ -51,6 +56,31 @@ export const DEFAULT_CONTROLS: ControlsSettings = {
   wheel: 'dolly',
 };
 
+// Mirrors the plugin's defaults — every toggle off, sensible knob values.
+export const DEFAULT_INTERACTIVE_PERFORMANCE: InteractivePerformanceSettings = {
+  hideSmall: false,
+  smallPercentile: 0.5,
+  envelopeOnly: false,
+  envelopeCategories: [
+    'IFCWALL',
+    'IFCWALLSTANDARDCASE',
+    'IFCSLAB',
+    'IFCROOF',
+    'IFCDOOR',
+    'IFCWINDOW',
+    'IFCCURTAINWALL',
+  ],
+  hideTransparent: false,
+  pixelSizeCull: false,
+  pixelSizeMin: 4,
+  dynamicPixelRatio: false,
+  motionRatio: 0.5,
+  tightenFarPlane: false,
+  motionFarMultiplier: 1.5,
+  flatShadeOverride: false,
+  pauseHover: false,
+};
+
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   viewCube: { enabled: true, corner: 'top-right' },
   shadows: { enabled: true },
@@ -59,6 +89,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   shortcuts: {},
   mouseBindings: DEFAULT_MOUSE_BINDINGS_SETTINGS,
   controls: DEFAULT_CONTROLS,
+  interactivePerformance: DEFAULT_INTERACTIVE_PERFORMANCE,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
@@ -71,6 +102,10 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
     shortcuts: p.shortcuts ?? d.shortcuts,
     mouseBindings: p.mouseBindings ?? d.mouseBindings,
     controls: { ...d.controls, ...(p.controls ?? {}) },
+    interactivePerformance: {
+      ...d.interactivePerformance,
+      ...(p.interactivePerformance ?? {}),
+    },
   };
 }
 

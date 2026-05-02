@@ -1,0 +1,25 @@
+rules:
+  - id: bbl_4_18_railing_height
+    article: "BBL Afd. 4.2, Art. 4.18"
+    article_number: "4.18"
+    source_url: "https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.18"
+    title: "Minimum railing height for fall protection"
+    title_nl: "Bescherming tegen vallen - hoogte hekwerk"
+    description: "Railings/balustrades must be at least 1000mm tall to provide adequate fall protection at edges and openings."
+    description_nl: "Een vloer, een trap of een hellingbaan met een hoogteverschil dat groter is dan 1 m heeft een afscheiding met een hoogte van ten minste 1,0 m."
+    legal_text_nl: "Een vloer, een trap of een hellingbaan met een rand waar het hoogteverschil groter is dan 1 m, heeft een niet beklimbare afscheiding met een hoogte van ten minste 1,0 m gemeten vanaf het loopvlak."
+    legal_text_en: "A floor, stair or ramp with an edge where the height difference exceeds 1 m has a non-climbable barrier of at least 1.0 m measured from the walking surface."
+    requirement_summary: "Pset_RailingCommon.Height ≥ 1000 mm"
+    category: structural
+    chapter: "4"
+    severity: error
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcRailing]
+    checks:
+      - property_set: "Pset_RailingCommon"
+        property_name: "Height"
+        operator: gte
+        threshold: 1000
+        unit: mm
+        description: "Railing height must be >= 1000mm"
+    implementation_status: implemented

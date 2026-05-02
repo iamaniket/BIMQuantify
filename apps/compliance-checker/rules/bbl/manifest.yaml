@@ -1,12 +1,12 @@
 # BBL Rule Implementation Manifest
 # Tracks all BBL rules relevant for automated BIM model checking
-# Last updated: 2026-05-01
+# Last updated: 2026-05-02
 
 summary:
   total_rules_identified: 87
-  implemented: 12
+  implemented: 18
   partial: 0
-  planned: 45
+  planned: 39
   not_automatable: 30
 
 categories:
@@ -58,16 +58,16 @@ categories:
         status: planned
       - article: "4.25"
         title_nl: "Vrije hoogte verkeersruimte"
-        status: planned
+        status: implemented
       - article: "4.26"
         title_nl: "Afmeting trappenhuis"
         status: planned
       - article: "4.27"
         title_nl: "Afmeting trap"
-        status: planned
+        status: implemented
       - article: "4.28"
         title_nl: "Afmeting hellingbaan"
-        status: planned
+        status: implemented
 
   fire_safety:
     description: "Brandveiligheid - Fire safety requirements (Chapter 4, Afd. 4.2)"
@@ -179,7 +179,7 @@ categories:
         status: planned
       - article: "4.105"
         title_nl: "Liftinstallatie"
-        status: planned
+        status: implemented
       - article: "4.106"
         title_nl: "Toegankelijke toiletruimte"
         status: planned
@@ -213,7 +213,7 @@ categories:
         status: planned
       - article: "4.18"
         title_nl: "Bescherming tegen vallen"
-        status: planned
+        status: implemented
       - article: "4.19"
         title_nl: "Overige veiligheid"
         status: not_automatable
@@ -291,7 +291,7 @@ categories:
         notes: "Requires NTA 8800 energy calculation"
       - article: "4.163"
         title_nl: "Thermische isolatie"
-        status: planned
+        status: implemented
       - article: "4.164"
         title_nl: "Luchtdoorlatendheid"
         status: not_automatable

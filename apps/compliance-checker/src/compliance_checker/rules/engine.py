@@ -6,7 +6,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from compliance_checker.rules.schema import Operator, PropertyCheck, RuleDefinition, Severity
+from compliance_checker.rules.schema import (
+    ApplicabilityFilter,
+    Operator,
+    PropertyCheck,
+    RuleDefinition,
+    Severity,
+)
 
 PSET_TO_IFC_TYPE: dict[str, str] = {
     "Pset_WallCommon": "IfcWall",
@@ -27,12 +33,38 @@ PSET_TO_IFC_TYPE: dict[str, str] = {
     "Pset_PlateCommon": "IfcPlate",
     "Pset_MemberCommon": "IfcMember",
     "Pset_BuildingStoreyCommon": "IfcBuildingStorey",
+    "Pset_TransportElementCommon": "IfcTransportElement",
     "Qto_WallBaseQuantities": "IfcWall",
     "Qto_SlabBaseQuantities": "IfcSlab",
     "Qto_DoorBaseQuantities": "IfcDoor",
     "Qto_WindowBaseQuantities": "IfcWindow",
     "Qto_SpaceBaseQuantities": "IfcSpace",
 }
+
+
+_OPERATOR_SYMBOL: dict[Operator, str] = {
+    Operator.gte: "≥",
+    Operator.gt: ">",
+    Operator.lte: "≤",
+    Operator.lt: "<",
+    Operator.eq: "=",
+    Operator.neq: "≠",
+    Operator.contains: "contains",
+    Operator.matches: "matches",
+    Operator.exists: "is present",
+    Operator.in_list: "in",
+}
+
+
+class CheckReasoning(BaseModel):
+    article_number: str
+    article_full: str
+    legal_text_nl: str | None = None
+    legal_text_en: str | None = None
+    requirement: str
+    observed: str
+    verdict: str
+    source_url: str | None = None
 
 
 class CheckResult(BaseModel):
@@ -48,6 +80,7 @@ class CheckResult(BaseModel):
     property_set: str | None = None
     property_name: str | None = None
     severity: Severity
+    reasoning: CheckReasoning | None = None
 
 
 class RuleSummary(BaseModel):
@@ -214,6 +247,95 @@ def _evaluate_check(
     return False
 
 
+def _filter_passes(
+    element_psets: dict[str, Any],
+    flt: ApplicabilityFilter,
+) -> bool:
+    pset = element_psets.get(flt.property_set)
+    if not isinstance(pset, dict):
+        return False
+    raw = pset.get(flt.property_name)
+    proxy = PropertyCheck(
+        property_set=flt.property_set,
+        property_name=flt.property_name,
+        operator=flt.operator,
+        threshold=flt.value,
+    )
+    try:
+        return _evaluate_check(raw, proxy)
+    except Exception:
+        return False
+
+
+def _format_value(value: Any) -> str:
+    if isinstance(value, float):
+        if value.is_integer():
+            return str(int(value))
+        return f"{value:g}"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return "—"
+    return str(value)
+
+
+def _build_reasoning(
+    rule: RuleDefinition,
+    check: PropertyCheck,
+    actual_value: Any,
+    passed: bool,
+    *,
+    converted_for_unit: bool,
+) -> CheckReasoning:
+    symbol = _OPERATOR_SYMBOL.get(check.operator, check.operator.value)
+    unit_suffix = f" {check.unit}" if check.unit else ""
+
+    if check.operator == Operator.exists:
+        requirement = (
+            f"{check.property_set}.{check.property_name} must be present"
+        )
+        observed_label = "present" if actual_value is not None else "missing"
+        observed = (
+            f"{check.property_set}.{check.property_name} = {observed_label}"
+        )
+        verdict = "Satisfied: property present" if passed else "Violated: property missing"
+    else:
+        threshold_str = _format_value(check.threshold)
+        actual_str = _format_value(actual_value)
+        requirement = (
+            f"{check.property_set}.{check.property_name} {symbol} "
+            f"{threshold_str}{unit_suffix}"
+        )
+        observed_unit = unit_suffix if converted_for_unit else ""
+        observed = (
+            f"{check.property_set}.{check.property_name} = {actual_str}"
+            f"{observed_unit}"
+        )
+        if passed:
+            verdict = f"Satisfied: {actual_str} {symbol} {threshold_str}"
+        else:
+            inverse = {
+                "≥": "<",
+                ">": "≤",
+                "≤": ">",
+                "<": "≥",
+                "=": "≠",
+                "≠": "=",
+            }.get(symbol, f"not {symbol}")
+            verdict = f"Violated: {actual_str} {inverse} {threshold_str}"
+
+    return CheckReasoning(
+        article_number=rule.article_number,
+        article_full=rule.article,
+        legal_text_nl=rule.legal_text_nl,
+        legal_text_en=rule.legal_text_en,
+        requirement=rule.requirement_summary or requirement,
+        observed=observed,
+        verdict=verdict,
+        source_url=rule.source_url,
+    )
+
+
 def evaluate(
     *,
     properties: dict[str, Any],
@@ -233,7 +355,7 @@ def evaluate(
     checked_elements: set[str] = set()
 
     for rule in rules:
-        passed = 0
+        passed_count = 0
         failed = 0
         warned = 0
         skipped = 0
@@ -248,8 +370,13 @@ def evaluate(
             if element_type not in rule.applicable_ifc_entities:
                 continue
 
+            if rule.applicability_filters and not all(
+                _filter_passes(element_psets, flt)
+                for flt in rule.applicability_filters
+            ):
+                continue
+
             checked_elements.add(element_gid)
-            check_passed_all = True
 
             for check in rule.checks:
                 pset_data = element_psets.get(check.property_set)
@@ -271,7 +398,7 @@ def evaluate(
                     continue
 
                 raw_value = pset_data.get(check.property_name)
-                if raw_value is None:
+                if raw_value is None and check.operator != Operator.exists:
                     skipped += 1
                     all_results.append(
                         CheckResult(
@@ -289,6 +416,7 @@ def evaluate(
                     continue
 
                 actual_value = raw_value
+                converted_for_unit = False
                 if (
                     isinstance(raw_value, int | float)
                     and check.unit is not None
@@ -297,6 +425,7 @@ def evaluate(
                     actual_value = convert_to_rule_unit(
                         float(raw_value), check.unit, model_length_unit
                     )
+                    converted_for_unit = True
 
                 try:
                     check_ok = _evaluate_check(actual_value, check)
@@ -319,8 +448,16 @@ def evaluate(
                     )
                     continue
 
+                reasoning = _build_reasoning(
+                    rule,
+                    check,
+                    actual_value,
+                    check_ok,
+                    converted_for_unit=converted_for_unit,
+                )
+
                 if check_ok:
-                    passed += 1
+                    passed_count += 1
                     all_results.append(
                         CheckResult(
                             rule_id=rule.id,
@@ -334,10 +471,10 @@ def evaluate(
                             property_set=check.property_set,
                             property_name=check.property_name,
                             severity=rule.severity,
+                            reasoning=reasoning,
                         )
                     )
                 else:
-                    check_passed_all = False
                     if rule.severity == Severity.warning:
                         warned += 1
                         status: Literal["pass", "fail", "warn", "skip", "error"] = "warn"
@@ -358,6 +495,7 @@ def evaluate(
                             property_set=check.property_set,
                             property_name=check.property_name,
                             severity=rule.severity,
+                            reasoning=reasoning,
                         )
                     )
 
@@ -369,8 +507,8 @@ def evaluate(
                 title_nl=rule.title_nl,
                 category=rule.category,
                 severity=rule.severity,
-                total_checked=passed + failed + warned + skipped + errors,
-                passed=passed,
+                total_checked=passed_count + failed + warned + skipped + errors,
+                passed=passed_count,
                 failed=failed,
                 warned=warned,
                 skipped=skipped,

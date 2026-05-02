@@ -9,6 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from compliance_checker.config import get_settings
 from compliance_checker.rules.engine import evaluate
 from compliance_checker.rules.loader import RuleIndex
+from compliance_checker.rules.report import build_payload
 from compliance_checker.storage import ArtifactReader
 from compliance_checker.sync.scheduler import get_sync_status, run_sync, start_scheduler
 
@@ -209,6 +210,9 @@ async def get_compliance_report(
     if report_format == "detailed":
         return result.model_dump(mode="json")
 
+    if report_format == "narrative":
+        return build_payload(result, rule_index)
+
     return {
         "file_id": result.file_id,
         "framework": result.framework,
@@ -218,6 +222,62 @@ async def get_compliance_report(
         "category_summary": [c.model_dump(mode="json") for c in result.category_summary],
         "rules_summary": [r.model_dump(mode="json") for r in result.rules_summary],
     }
+
+
+@mcp.tool()
+async def explain_compliance(
+    metadata_key: str,
+    properties_key: str,
+    file_id: str,
+    framework: str | None = None,
+    rule_id: str | None = None,
+    include_passes: bool = True,
+) -> dict[str, Any]:
+    """Markdown narrative explaining each rule's verdict per element.
+
+    Each rule section quotes the article text (when stored on the rule)
+    and renders one bullet per checked element with a satisfied/violated
+    verdict and the observed value.
+
+    Args:
+        metadata_key: S3 storage key for the metadata.json artifact
+        properties_key: S3 storage key for the properties.json artifact
+        file_id: UUID of the ProjectFile being checked
+        framework: Regulation framework filter (bbl, wkb). Default: all.
+        rule_id: Restrict the report to a single rule id. Default: all rules.
+        include_passes: Include passing elements (default True). Set to False
+                        for a violations-only narrative.
+    """
+    metadata = await artifact_reader.get_json(metadata_key)
+    properties = await artifact_reader.get_json(properties_key)
+
+    if not isinstance(metadata, dict) or not isinstance(properties, dict):
+        return {"error": "Invalid artifact format: expected JSON objects"}
+
+    effective_framework: str | None
+    if rule_id is not None:
+        rule = rule_index.get_rule(rule_id)
+        if rule is None:
+            return {"error": f"Rule '{rule_id}' not found"}
+        applicable_rules = [rule]
+        effective_framework = framework or str(rule.framework)
+    else:
+        applicable_rules = rule_index.get_applicable_rules(framework=framework)
+        effective_framework = framework
+
+    result = evaluate(
+        properties=properties,
+        metadata=metadata,
+        rules=applicable_rules,
+        file_id=file_id,
+        framework=effective_framework,
+    )
+    return build_payload(
+        result,
+        rule_index,
+        include_passes=include_passes,
+        rule_id_filter=rule_id,
+    )
 
 
 # ── Resources ──────────────────────────────────────────────────────────

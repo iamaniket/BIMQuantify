@@ -93,6 +93,12 @@ class TestRuleLoading:
         rules = rule_index.get_applicable_rules()
         assert all(r.implementation_status == "implemented" for r in rules)
 
+    def test_bbl_implemented_count(self, rule_index: RuleIndex) -> None:
+        bbl = rule_index.get_applicable_rules(framework="bbl")
+        # 12 original + 6 Tier-1 (one of which adds 2 sibling rules for stair)
+        # = 12 + 7 = 19 total bbl rules with implemented status
+        assert len(bbl) == 19
+
     def test_get_rule_by_id(self, rule_index: RuleIndex) -> None:
         rule = rule_index.get_rule("bbl_4_85_room_height_new")
         assert rule is not None

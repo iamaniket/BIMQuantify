@@ -18,6 +18,7 @@ import {
   saveViewerSettings,
   type CameraAction,
   type EffectsQuality,
+  type InteractivePerformanceSettings,
   type ViewerSettings,
 } from '@/lib/viewerSettings';
 
@@ -353,6 +354,90 @@ function MouseBindingsSection({
   );
 }
 
+function PerformanceSection({
+  handle,
+  settings,
+  onChange,
+}: {
+  handle: ViewerHandle | null;
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  const ip = settings.interactivePerformance;
+
+  const update = (patch: Partial<InteractivePerformanceSettings>): void => {
+    const next: InteractivePerformanceSettings = { ...ip, ...patch };
+    onChange({ ...settings, interactivePerformance: next });
+    // Live: push the change straight into the running plugin so the next
+    // orbit reflects it without a viewer reload.
+    handle?.commands.execute('interactivePerformance.set', patch).catch(() => undefined);
+  };
+
+  return (
+    <Section title="Performance during navigation" note="Live">
+      <p className="text-[10px] text-foreground-secondary">
+        Skip work while the camera is moving. Restored on idle.
+      </p>
+      <Toggle
+        label="Hide small items"
+        checked={ip.hideSmall}
+        onChange={(hideSmall) => {
+          update({ hideSmall });
+        }}
+      />
+      <Toggle
+        label="Envelope only (walls/slabs/roof/doors/windows)"
+        checked={ip.envelopeOnly}
+        onChange={(envelopeOnly) => {
+          update({ envelopeOnly });
+        }}
+      />
+      <Toggle
+        label="Hide transparent items"
+        checked={ip.hideTransparent}
+        onChange={(hideTransparent) => {
+          update({ hideTransparent });
+        }}
+      />
+      <Toggle
+        label="Cull sub-pixel items"
+        checked={ip.pixelSizeCull}
+        onChange={(pixelSizeCull) => {
+          update({ pixelSizeCull });
+        }}
+      />
+      <Toggle
+        label="Lower resolution while moving"
+        checked={ip.dynamicPixelRatio}
+        onChange={(dynamicPixelRatio) => {
+          update({ dynamicPixelRatio });
+        }}
+      />
+      <Toggle
+        label="Tighten far plane"
+        checked={ip.tightenFarPlane}
+        onChange={(tightenFarPlane) => {
+          update({ tightenFarPlane });
+        }}
+      />
+      <Toggle
+        label="Flat shading override"
+        checked={ip.flatShadeOverride}
+        onChange={(flatShadeOverride) => {
+          update({ flatShadeOverride });
+        }}
+      />
+      <Toggle
+        label="Pause hover-highlight"
+        checked={ip.pauseHover}
+        onChange={(pauseHover) => {
+          update({ pauseHover });
+        }}
+      />
+    </Section>
+  );
+}
+
 function MouseControlsSection({
   settings,
   onChange,
@@ -550,6 +635,12 @@ export function ViewerSettingsPopover({
             />
           </Field>
         </Section>
+
+        <PerformanceSection
+          handle={handle}
+          settings={settings}
+          onChange={update}
+        />
 
         {handle ? (
           <ShortcutsSection

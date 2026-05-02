@@ -1,0 +1,30 @@
+rules:
+  - id: bbl_4_25_circulation_height
+    article: "BBL Afd. 4.5, Art. 4.25"
+    article_number: "4.25"
+    source_url: "https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.5&artikel=4.25"
+    title: "Minimum clear height of circulation space"
+    title_nl: "Vrije hoogte verkeersruimte"
+    description: "Circulation spaces (corridors, hallways) must have a minimum clear height of 2300mm to permit safe passage."
+    description_nl: "Een verkeersruimte heeft een vrije hoogte van ten minste 2,3 m, gemeten vanaf de afgewerkte vloer tot het afgewerkte plafond."
+    legal_text_nl: "Een verkeersruimte heeft een vrije hoogte van ten minste 2,3 m boven de vloer."
+    legal_text_en: "A circulation space has a clear height of at least 2.3 m above the floor."
+    requirement_summary: "Pset_SpaceCommon.Height ≥ 2300 mm for circulation spaces"
+    category: usability
+    chapter: "4"
+    severity: error
+    applicable_building_types: [all]
+    applicable_ifc_entities: [IfcSpace]
+    applicability_filters:
+      - property_set: "Pset_SpaceCommon"
+        property_name: "Reference"
+        operator: matches
+        value: "(?i)(corridor|hallway|circulation|hall|gang|verkeer)"
+    checks:
+      - property_set: "Pset_SpaceCommon"
+        property_name: "Height"
+        operator: gte
+        threshold: 2300
+        unit: mm
+        description: "Circulation height must be >= 2300mm"
+    implementation_status: implemented

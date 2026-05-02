@@ -25,7 +25,15 @@ export interface HoverPluginOptions {
   opacity?: number;
 }
 
-export function hoverHighlightPlugin(options: HoverPluginOptions = {}): Plugin {
+export interface HoverPluginAPI {
+  /** Pause/resume hover raycasts. Clears the current highlight on pause. */
+  setEnabled(enabled: boolean): void;
+  isEnabled(): boolean;
+}
+
+export function hoverHighlightPlugin(
+  options: HoverPluginOptions = {},
+): Plugin & HoverPluginAPI {
   const color = new THREE.Color(options.color ?? 0xffd700);
   const opacity = options.opacity ?? 0.5;
 
@@ -33,6 +41,7 @@ export function hoverHighlightPlugin(options: HoverPluginOptions = {}): Plugin {
   let current: ItemId | null = null;
   let inFlight = false;
   let pending: { x: number; y: number } | null = null;
+  let enabled = true;
   const edges = new EdgeOverlay();
 
   const material: FRAGS.MaterialDefinition = {
@@ -72,6 +81,10 @@ export function hoverHighlightPlugin(options: HoverPluginOptions = {}): Plugin {
   // would queue a backlog at high pointermove rates.
   const dispatch = async (ndc: { x: number; y: number } | null): Promise<void> => {
     if (!ctxRef) return;
+    if (!enabled) {
+      pending = null;
+      return;
+    }
     if (ndc === null) {
       pending = null;
       if (current) await apply(null);
@@ -94,6 +107,15 @@ export function hoverHighlightPlugin(options: HoverPluginOptions = {}): Plugin {
 
   return {
     name: NAME,
+
+    setEnabled(next: boolean) {
+      if (enabled === next) return;
+      enabled = next;
+      if (!enabled && current) void apply(null);
+    },
+    isEnabled() {
+      return enabled;
+    },
 
     install(ctx: ViewerContext) {
       ctxRef = ctx;

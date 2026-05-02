@@ -14,6 +14,7 @@ import { fetchFragments } from './loadFragments.js';
 import { cameraPlugin } from './plugins/camera/index.js';
 import { effectsPlugin } from './plugins/effects/index.js';
 import { hoverHighlightPlugin } from './plugins/hover-highlight/index.js';
+import { interactivePerformancePlugin } from './plugins/interactive-performance/index.js';
 import { keyboardShortcutsPlugin } from './plugins/keyboard-shortcuts/index.js';
 import { mouseBindingsPlugin } from './plugins/mouse-bindings/index.js';
 import { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
@@ -102,6 +103,7 @@ function IfcViewerImpl(
         ? []
         : [pivotRotatePlugin(props.pivotRotate ?? {})]),
       effectsPlugin(props.effects ?? {}),
+      interactivePerformancePlugin(props.interactivePerformance ?? {}),
     ];
 
     const viewer = new Viewer({

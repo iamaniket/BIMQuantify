@@ -63,6 +63,19 @@ class PropertyCheck(BaseModel):
     description: str = ""
 
 
+class ApplicabilityFilter(BaseModel):
+    """Restricts a rule to a subset of elements (e.g. external walls only).
+
+    Elements not matching every filter are skipped silently — they are
+    out-of-scope, not failures.
+    """
+
+    property_set: str
+    property_name: str
+    operator: Operator
+    value: str | float | int | bool | list[str] | None = None
+
+
 class RuleDefinition(BaseModel):
     id: str
     framework: RegulationFramework = RegulationFramework.bbl
@@ -75,11 +88,15 @@ class RuleDefinition(BaseModel):
     title_nl: str
     description: str
     description_nl: str
+    legal_text_nl: str | None = None
+    legal_text_en: str | None = None
+    requirement_summary: str | None = None
     category: str
     chapter: str
     severity: Severity
     applicable_building_types: list[str]
     applicable_ifc_entities: list[str]
+    applicability_filters: list[ApplicabilityFilter] = []
     checks: list[PropertyCheck]
     implementation_status: ImplementationStatus
     notes: str | None = None
