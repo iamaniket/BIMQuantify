@@ -13,13 +13,10 @@ rules:
   severity: warning
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcTransportElement
   checks:
-  - property_set: Pset_TransportElementCommon
-    property_name: Reference
-    operator: exists
+  - operator: exists
     description: Elevator (IfcTransportElement) must be present in the model
+    property: common.reference
   notes: Element-level existence proxy. Full check (height-difference dependent) requires spatial reasoning across IfcBuildingStorey,
     which is out of scope for the property-set engine.
   implementation_status: implemented
@@ -31,3 +28,6 @@ rules:
       verifies that at least one IfcTransportElement (elevator) is present in the model.
     nl: In een gebouw met een toegankelijkheidssector op een andere bouwlaag dan de toegankelijkheidssector op het aansluitende
       terrein, is een liftinstallatie aanwezig.
+  applicable_element_types:
+  - transport_element
+  min_source_format: ifc

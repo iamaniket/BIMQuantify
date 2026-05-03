@@ -1,260 +1,231 @@
 {
   "space-living-001": {
-    "Pset_SpaceCommon": {
-      "Height": 2800,
-      "IsExternal": false,
-      "Reference": "Living Room"
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false,
+      "reference": "Living Room"
     },
-    "BaseQuantities": {
-      "Height": 2800,
-      "GrossFloorArea": 28.5,
-      "NetFloorArea": 26.0
+    "quantities": {
+      "gross_floor_area": 28.5,
+      "net_floor_area": 26.0
     }
   },
   "space-bathroom-002": {
-    "Pset_SpaceCommon": {
-      "Height": 2600,
-      "IsExternal": false,
-      "Reference": "Bathroom"
+    "_element_type": "space",
+    "common": {
+      "height": 2600,
+      "is_external": false,
+      "reference": "Bathroom"
     },
-    "BaseQuantities": {
-      "Height": 2600,
-      "GrossFloorArea": 4.2,
-      "NetFloorArea": 3.8
+    "quantities": {
+      "gross_floor_area": 4.2,
+      "net_floor_area": 3.8
     }
   },
   "space-small-003": {
-    "Pset_SpaceCommon": {
-      "Height": 2000,
-      "IsExternal": false,
-      "Reference": "Storage"
+    "_element_type": "space",
+    "common": {
+      "height": 2000,
+      "is_external": false,
+      "reference": "Storage"
     },
-    "BaseQuantities": {
-      "Height": 2000,
-      "GrossFloorArea": 0.8,
-      "NetFloorArea": 0.7
+    "quantities": {
+      "gross_floor_area": 0.8,
+      "net_floor_area": 0.7
     }
   },
   "space-corridor-004": {
-    "Pset_SpaceCommon": {
-      "Height": 2500,
-      "IsExternal": false,
-      "Reference": "Corridor"
+    "_element_type": "space",
+    "common": {
+      "height": 2500,
+      "is_external": false,
+      "reference": "Corridor"
     },
-    "BaseQuantities": {
-      "Height": 2500,
-      "GrossFloorArea": 6.0,
-      "NetFloorArea": 5.8
+    "quantities": {
+      "gross_floor_area": 6.0,
+      "net_floor_area": 5.8
     }
   },
   "space-hallway-005": {
-    "Pset_SpaceCommon": {
-      "Height": 2100,
-      "IsExternal": false,
-      "Reference": "Hallway"
+    "_element_type": "space",
+    "common": {
+      "height": 2100,
+      "is_external": false,
+      "reference": "Hallway"
     },
-    "BaseQuantities": {
-      "Height": 2100,
-      "GrossFloorArea": 4.5,
-      "NetFloorArea": 4.3
+    "quantities": {
+      "gross_floor_area": 4.5,
+      "net_floor_area": 4.3
     }
   },
   "door-main-001": {
-    "Pset_DoorCommon": {
-      "Width": 900,
-      "Height": 2400,
-      "FireRating": "EI30",
-      "IsExternal": true,
-      "ClearWidth": 870
+    "_element_type": "door",
+    "common": {
+      "width": 900,
+      "height": 2400,
+      "is_external": true,
+      "clear_width": 870
     },
-    "BaseQuantities": {
-      "Width": 900,
-      "Height": 2400
+    "fire_safety": {
+      "fire_rating": "EI30"
     }
   },
   "door-internal-002": {
-    "Pset_DoorCommon": {
-      "Width": 800,
-      "Height": 2100,
-      "IsExternal": false,
-      "ClearWidth": 770
-    },
-    "BaseQuantities": {
-      "Width": 800,
-      "Height": 2100
+    "_element_type": "door",
+    "common": {
+      "width": 800,
+      "height": 2100,
+      "is_external": false,
+      "clear_width": 770
     }
   },
   "door-fire-003": {
-    "Pset_DoorCommon": {
-      "Width": 950,
-      "Height": 2300,
-      "FireRating": "EI60",
-      "IsExternal": false,
-      "ClearWidth": 920
+    "_element_type": "door",
+    "common": {
+      "width": 950,
+      "height": 2300,
+      "is_external": false,
+      "clear_width": 920
     },
-    "BaseQuantities": {
-      "Width": 950,
-      "Height": 2300
+    "fire_safety": {
+      "fire_rating": "EI60"
     }
   },
   "wall-ext-001": {
-    "Pset_WallCommon": {
-      "FireRating": "REI120",
-      "IsExternal": true,
-      "ThermalTransmittance": 0.18
+    "_element_type": "wall",
+    "common": {
+      "is_external": true
     },
-    "BaseQuantities": {
-      "Height": 2800,
-      "Width": 300,
-      "Length": 6000
+    "fire_safety": {
+      "fire_rating": "REI120"
+    },
+    "thermal": {
+      "thermal_transmittance": 0.18
     }
   },
   "wall-ext-poor-005": {
-    "Pset_WallCommon": {
-      "FireRating": "REI60",
-      "IsExternal": true,
-      "ThermalTransmittance": 0.45
+    "_element_type": "wall",
+    "common": {
+      "is_external": true
     },
-    "BaseQuantities": {
-      "Height": 2800,
-      "Width": 200,
-      "Length": 5000
+    "fire_safety": {
+      "fire_rating": "REI60"
+    },
+    "thermal": {
+      "thermal_transmittance": 0.45
     }
   },
   "wall-int-002": {
-    "Pset_WallCommon": {
-      "FireRating": "EI60",
-      "IsExternal": false,
-      "ThermalTransmittance": 1.20
+    "_element_type": "wall",
+    "common": {
+      "is_external": false
     },
-    "BaseQuantities": {
-      "Height": 2800,
-      "Width": 200,
-      "Length": 4000
+    "fire_safety": {
+      "fire_rating": "EI60"
+    },
+    "thermal": {
+      "thermal_transmittance": 1.20
     }
   },
   "wall-partition-003": {
-    "Pset_WallCommon": {
-      "FireRating": "EI15",
-      "IsExternal": false
+    "_element_type": "wall",
+    "common": {
+      "is_external": false
     },
-    "BaseQuantities": {
-      "Height": 2800,
-      "Width": 100,
-      "Length": 3000
+    "fire_safety": {
+      "fire_rating": "EI15"
     }
   },
   "wall-no-rating-004": {
-    "Pset_WallCommon": {
-      "IsExternal": false
-    },
-    "BaseQuantities": {
-      "Height": 2800,
-      "Width": 100,
-      "Length": 2000
+    "_element_type": "wall",
+    "common": {
+      "is_external": false
     }
   },
   "slab-floor-001": {
-    "Pset_SlabCommon": {
-      "FireRating": "REI60",
-      "IsExternal": false
+    "_element_type": "slab",
+    "common": {
+      "is_external": false
     },
-    "BaseQuantities": {
-      "Width": 200,
-      "GrossArea": 96.0
+    "fire_safety": {
+      "fire_rating": "REI60"
     }
   },
   "slab-roof-002": {
-    "Pset_SlabCommon": {
-      "FireRating": "REI30",
-      "IsExternal": true
+    "_element_type": "slab",
+    "common": {
+      "is_external": true
     },
-    "BaseQuantities": {
-      "Width": 250,
-      "GrossArea": 96.0
+    "fire_safety": {
+      "fire_rating": "REI30"
     }
   },
   "column-001": {
-    "Pset_ColumnCommon": {
-      "FireRating": "R90",
-      "IsExternal": false
+    "_element_type": "column",
+    "fire_safety": {
+      "fire_rating": "R90"
     },
-    "BaseQuantities": {
-      "Height": 2800,
-      "CrossSectionArea": 0.09
+    "common": {
+      "is_external": false
     }
   },
   "column-002": {
-    "Pset_ColumnCommon": {
-      "FireRating": "R60",
-      "IsExternal": false
+    "_element_type": "column",
+    "fire_safety": {
+      "fire_rating": "R60"
     },
-    "BaseQuantities": {
-      "Height": 2800,
-      "CrossSectionArea": 0.04
+    "common": {
+      "is_external": false
     }
   },
   "stairflight-good-001": {
-    "Pset_StairFlightCommon": {
-      "RiserHeight": 175,
-      "TreadLength": 250,
-      "NumberOfRiser": 16
-    },
-    "BaseQuantities": {
-      "Length": 4000
+    "_element_type": "stair_flight",
+    "stair": {
+      "riser_height": 175,
+      "tread_length": 250
     }
   },
   "stairflight-bad-002": {
-    "Pset_StairFlightCommon": {
-      "RiserHeight": 200,
-      "TreadLength": 200,
-      "NumberOfRiser": 14
-    },
-    "BaseQuantities": {
-      "Length": 2800
+    "_element_type": "stair_flight",
+    "stair": {
+      "riser_height": 200,
+      "tread_length": 200
     }
   },
   "rampflight-good-001": {
-    "Pset_RampFlightCommon": {
-      "Slope": 0.06
-    },
-    "BaseQuantities": {
-      "Length": 8000
+    "_element_type": "ramp_flight",
+    "ramp": {
+      "slope": 0.06
     }
   },
   "rampflight-bad-002": {
-    "Pset_RampFlightCommon": {
-      "Slope": 0.15
-    },
-    "BaseQuantities": {
-      "Length": 3000
+    "_element_type": "ramp_flight",
+    "ramp": {
+      "slope": 0.15
     }
   },
   "railing-good-001": {
-    "Pset_RailingCommon": {
-      "Height": 1100,
-      "Reference": "Balcony Balustrade"
-    },
-    "BaseQuantities": {
-      "Length": 4000
+    "_element_type": "railing",
+    "common": {
+      "height": 1100,
+      "reference": "Balcony Balustrade"
     }
   },
   "railing-bad-002": {
-    "Pset_RailingCommon": {
-      "Height": 850,
-      "Reference": "Stair Handrail"
-    },
-    "BaseQuantities": {
-      "Length": 3000
+    "_element_type": "railing",
+    "common": {
+      "height": 850,
+      "reference": "Stair Handrail"
     }
   },
   "elevator-001": {
-    "Pset_TransportElementCommon": {
-      "Reference": "Passenger Lift",
-      "OperationType": "ELEVATOR"
+    "_element_type": "transport_element",
+    "common": {
+      "reference": "Passenger Lift"
     },
-    "BaseQuantities": {
-      "GrossFloorArea": 2.4
+    "transport": {
+      "operation_type": "ELEVATOR"
     }
   }
 }

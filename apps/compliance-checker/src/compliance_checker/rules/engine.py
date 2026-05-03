@@ -6,6 +6,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from compliance_checker.rules.canonical import (
+    FORMAT_RICHNESS,
+    SourceFormat,
+    format_supports,
+)
 from compliance_checker.rules.schema import (
     ApplicabilityFilter,
     Operator,
@@ -13,33 +18,6 @@ from compliance_checker.rules.schema import (
     RuleDefinition,
     Severity,
 )
-
-PSET_TO_IFC_TYPE: dict[str, str] = {
-    "Pset_WallCommon": "IfcWall",
-    "Pset_SlabCommon": "IfcSlab",
-    "Pset_DoorCommon": "IfcDoor",
-    "Pset_WindowCommon": "IfcWindow",
-    "Pset_SpaceCommon": "IfcSpace",
-    "Pset_ColumnCommon": "IfcColumn",
-    "Pset_BeamCommon": "IfcBeam",
-    "Pset_StairCommon": "IfcStair",
-    "Pset_StairFlightCommon": "IfcStairFlight",
-    "Pset_RoofCommon": "IfcRoof",
-    "Pset_RampCommon": "IfcRamp",
-    "Pset_RampFlightCommon": "IfcRampFlight",
-    "Pset_CoveringCommon": "IfcCovering",
-    "Pset_CurtainWallCommon": "IfcCurtainWall",
-    "Pset_RailingCommon": "IfcRailing",
-    "Pset_PlateCommon": "IfcPlate",
-    "Pset_MemberCommon": "IfcMember",
-    "Pset_BuildingStoreyCommon": "IfcBuildingStorey",
-    "Pset_TransportElementCommon": "IfcTransportElement",
-    "Qto_WallBaseQuantities": "IfcWall",
-    "Qto_SlabBaseQuantities": "IfcSlab",
-    "Qto_DoorBaseQuantities": "IfcDoor",
-    "Qto_WindowBaseQuantities": "IfcWindow",
-    "Qto_SpaceBaseQuantities": "IfcSpace",
-}
 
 
 _OPERATOR_SYMBOL: dict[Operator, str] = {
@@ -77,8 +55,7 @@ class CheckResult(BaseModel):
     message: str
     actual_value: str | float | int | bool | None = None
     expected_value: str | float | int | bool | None = None
-    property_set: str | None = None
-    property_name: str | None = None
+    property_path: str | None = None
     severity: Severity
     reasoning: CheckReasoning | None = None
 
@@ -108,6 +85,13 @@ class CategorySummary(BaseModel):
     warned: int
 
 
+class FormatCoverage(BaseModel):
+    source_format: str
+    total_rules_applicable: int
+    rules_skipped_format: int
+    skipped_rule_ids: list[str]
+
+
 class ComplianceResult(BaseModel):
     file_id: str
     framework: str | None = None
@@ -117,16 +101,28 @@ class ComplianceResult(BaseModel):
     rules_summary: list[RuleSummary]
     details: list[CheckResult]
     category_summary: list[CategorySummary]
+    format_coverage: FormatCoverage | None = None
 
 
-def infer_element_type(
-    element_props: dict[str, dict[str, Any]],
-) -> str | None:
-    for pset_name in element_props:
-        if pset_name in PSET_TO_IFC_TYPE:
-            return PSET_TO_IFC_TYPE[pset_name]
-    return None
+# ---------------------------------------------------------------------------
+# Property resolution
+# ---------------------------------------------------------------------------
 
+def _resolve_property(element_data: dict[str, Any], canonical_path: str) -> Any:
+    """Resolve ``domain.property`` against element data."""
+    parts = canonical_path.split(".", 1)
+    if len(parts) != 2:
+        return None
+    domain, prop = parts
+    domain_data = element_data.get(domain)
+    if not isinstance(domain_data, dict):
+        return None
+    return domain_data.get(prop)
+
+
+# ---------------------------------------------------------------------------
+# Check evaluation
+# ---------------------------------------------------------------------------
 
 _FIRE_RATING_RE = re.compile(r"(\d+)")
 
@@ -201,7 +197,8 @@ def _evaluate_check(
 
     threshold = check.threshold
 
-    if check.property_name in ("FireRating",) and isinstance(value, str):
+    prop_name = check.property.rsplit(".", 1)[-1] if check.property else ""
+    if prop_name == "fire_rating" and isinstance(value, str):
         parsed = parse_fire_rating_minutes(value)
         if parsed is None:
             return False
@@ -249,16 +246,12 @@ def _evaluate_check(
 
 
 def _filter_passes(
-    element_psets: dict[str, Any],
+    element_data: dict[str, Any],
     flt: ApplicabilityFilter,
 ) -> bool:
-    pset = element_psets.get(flt.property_set)
-    if not isinstance(pset, dict):
-        return False
-    raw = pset.get(flt.property_name)
+    raw = _resolve_property(element_data, flt.property)
     proxy = PropertyCheck(
-        property_set=flt.property_set,
-        property_name=flt.property_name,
+        property=flt.property,
         operator=flt.operator,
         threshold=flt.value,
     )
@@ -290,28 +283,19 @@ def _build_reasoning(
 ) -> CheckReasoning:
     symbol = _OPERATOR_SYMBOL.get(check.operator, check.operator.value)
     unit_suffix = f" {check.unit}" if check.unit else ""
+    prop_label = check.property
 
     if check.operator == Operator.exists:
-        requirement = (
-            f"{check.property_set}.{check.property_name} must be present"
-        )
+        requirement = f"{prop_label} must be present"
         observed_label = "present" if actual_value is not None else "missing"
-        observed = (
-            f"{check.property_set}.{check.property_name} = {observed_label}"
-        )
+        observed = f"{prop_label} = {observed_label}"
         verdict = "Satisfied: property present" if passed else "Violated: property missing"
     else:
         threshold_str = _format_value(check.threshold)
         actual_str = _format_value(actual_value)
-        requirement = (
-            f"{check.property_set}.{check.property_name} {symbol} "
-            f"{threshold_str}{unit_suffix}"
-        )
+        requirement = f"{prop_label} {symbol} {threshold_str}{unit_suffix}"
         observed_unit = unit_suffix if converted_for_unit else ""
-        observed = (
-            f"{check.property_set}.{check.property_name} = {actual_str}"
-            f"{observed_unit}"
-        )
+        observed = f"{prop_label} = {actual_str}{observed_unit}"
         if passed:
             verdict = f"Satisfied: {actual_str} {symbol} {threshold_str}"
         else:
@@ -351,28 +335,58 @@ def evaluate(
         else None
     )
 
+    source_format = (
+        metadata.get("source_format", "ifc")
+        if isinstance(metadata, dict)
+        else "ifc"
+    )
+
     all_results: list[CheckResult] = []
     rule_summaries: list[RuleSummary] = []
     checked_elements: set[str] = set()
+    skipped_rule_ids: list[str] = []
 
     for rule in rules:
+        if not format_supports(source_format, rule.min_source_format):
+            skipped_rule_ids.append(rule.id)
+            rule_summaries.append(
+                RuleSummary(
+                    rule_id=rule.id,
+                    article=rule.article,
+                    titles=rule.titles,
+                    title=rule.title,
+                    title_nl=rule.title_nl,
+                    category=rule.category,
+                    severity=rule.severity,
+                    total_checked=0,
+                    passed=0,
+                    failed=0,
+                    warned=0,
+                    skipped=0,
+                    errors=0,
+                )
+            )
+            continue
+
         passed_count = 0
         failed = 0
         warned = 0
         skipped = 0
         errors = 0
 
-        for element_gid, element_psets in properties.items():
-            if not isinstance(element_psets, dict):
+        for element_gid, element_data in properties.items():
+            if not isinstance(element_data, dict):
                 continue
 
-            element_type = infer_element_type(element_psets)
+            element_type = element_data.get("_element_type")
+            if element_type is None:
+                continue
 
-            if element_type not in rule.applicable_ifc_entities:
+            if element_type not in rule.applicable_element_types:
                 continue
 
             if rule.applicability_filters and not all(
-                _filter_passes(element_psets, flt)
+                _filter_passes(element_data, flt)
                 for flt in rule.applicability_filters
             ):
                 continue
@@ -380,25 +394,8 @@ def evaluate(
             checked_elements.add(element_gid)
 
             for check in rule.checks:
-                pset_data = element_psets.get(check.property_set)
-                if not isinstance(pset_data, dict):
-                    skipped += 1
-                    all_results.append(
-                        CheckResult(
-                            rule_id=rule.id,
-                            article=rule.article,
-                            element_global_id=element_gid,
-                            element_type=element_type,
-                            status="skip",
-                            message=f"Property set '{check.property_set}' not found",
-                            property_set=check.property_set,
-                            property_name=check.property_name,
-                            severity=rule.severity,
-                        )
-                    )
-                    continue
+                raw_value = _resolve_property(element_data, check.property)
 
-                raw_value = pset_data.get(check.property_name)
                 if raw_value is None and check.operator != Operator.exists:
                     skipped += 1
                     all_results.append(
@@ -408,9 +405,8 @@ def evaluate(
                             element_global_id=element_gid,
                             element_type=element_type,
                             status="skip",
-                            message=f"Property '{check.property_name}' not found in '{check.property_set}'",
-                            property_set=check.property_set,
-                            property_name=check.property_name,
+                            message=f"Property '{check.property}' not found",
+                            property_path=check.property,
                             severity=rule.severity,
                         )
                     )
@@ -442,8 +438,7 @@ def evaluate(
                             message="Evaluation error",
                             actual_value=str(raw_value),
                             expected_value=str(check.threshold),
-                            property_set=check.property_set,
-                            property_name=check.property_name,
+                            property_path=check.property,
                             severity=rule.severity,
                         )
                     )
@@ -466,11 +461,10 @@ def evaluate(
                             element_global_id=element_gid,
                             element_type=element_type,
                             status="pass",
-                            message=f"{check.property_name} = {actual_value} meets requirement",
+                            message=f"{check.property} = {actual_value} meets requirement",
                             actual_value=actual_value if not isinstance(actual_value, dict) else str(actual_value),
                             expected_value=check.threshold if not isinstance(check.threshold, list) else str(check.threshold),
-                            property_set=check.property_set,
-                            property_name=check.property_name,
+                            property_path=check.property,
                             severity=rule.severity,
                             reasoning=reasoning,
                         )
@@ -490,11 +484,10 @@ def evaluate(
                             element_global_id=element_gid,
                             element_type=element_type,
                             status=status,
-                            message=f"{check.property_name} = {actual_value}, required {check.operator} {check.threshold}",
+                            message=f"{check.property} = {actual_value}, required {check.operator} {check.threshold}",
                             actual_value=actual_value if not isinstance(actual_value, dict) else str(actual_value),
                             expected_value=check.threshold if not isinstance(check.threshold, list) else str(check.threshold),
-                            property_set=check.property_set,
-                            property_name=check.property_name,
+                            property_path=check.property,
                             severity=rule.severity,
                             reasoning=reasoning,
                         )
@@ -536,6 +529,13 @@ def evaluate(
         cs.failed += rs.failed
         cs.warned += rs.warned
 
+    format_coverage = FormatCoverage(
+        source_format=source_format,
+        total_rules_applicable=len(rules) - len(skipped_rule_ids),
+        rules_skipped_format=len(skipped_rule_ids),
+        skipped_rule_ids=skipped_rule_ids,
+    )
+
     return ComplianceResult(
         file_id=file_id,
         framework=framework,
@@ -545,4 +545,5 @@ def evaluate(
         rules_summary=rule_summaries,
         details=all_results,
         category_summary=list(cat_map.values()),
+        format_coverage=format_coverage,
     )

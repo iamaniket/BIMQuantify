@@ -12,15 +12,12 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcStair
   checks:
-  - property_set: Pset_StairCommon
-    property_name: RequiredHeadroom
-    operator: gte
+  - operator: gte
     threshold: 2300
     unit: mm
     description: Stairwell headroom must be >= 2300 mm
+    property: stair.required_headroom
   implementation_status: implemented
   titles:
     en: Stairwell headroom
@@ -28,3 +25,6 @@ rules:
   descriptions:
     en: Stairwells must have a clear height of at least 2300 mm above each stair, measured perpendicular to the pitch line.
     nl: Een trappenhuis heeft boven elke trap een vrije hoogte van ten minste 2,3 m.
+  applicable_element_types:
+  - stair
+  min_source_format: ifc

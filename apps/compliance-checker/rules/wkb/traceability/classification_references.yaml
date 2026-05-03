@@ -9,13 +9,10 @@ rules:
   severity: warning
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWall
   checks:
-  - property_set: Pset_WallCommon
-    property_name: Reference
-    operator: exists
+  - operator: exists
     description: Wall must have a Reference property
+    property: common.reference
   implementation_status: implemented
   titles:
     en: Wall must have classification reference
@@ -23,6 +20,9 @@ rules:
   descriptions:
     en: Every wall element must have a Reference classification for quality traceability
     nl: Elk wandelement moet een Reference-classificatie hebben voor kwaliteitstraceerbaarheid
+  applicable_element_types:
+  - wall
+  min_source_format: ifc
 - id: wkb_4_02_door_reference
   framework: wkb
   article: WKB Hoofdstuk 4, Art. 4.2
@@ -32,13 +32,10 @@ rules:
   severity: warning
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcDoor
   checks:
-  - property_set: Pset_DoorCommon
-    property_name: Reference
-    operator: exists
+  - operator: exists
     description: Door must have a Reference property
+    property: Pset_DoorCommon.Reference
   implementation_status: implemented
   titles:
     en: Door must have classification reference
@@ -46,6 +43,9 @@ rules:
   descriptions:
     en: Every door element must have a Reference classification for quality traceability
     nl: Elk deurelement moet een Reference-classificatie hebben voor kwaliteitstraceerbaarheid
+  applicable_element_types:
+  - door
+  min_source_format: ifc
 - id: wkb_4_03_window_reference
   framework: wkb
   article: WKB Hoofdstuk 4, Art. 4.3
@@ -55,13 +55,10 @@ rules:
   severity: warning
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWindow
   checks:
-  - property_set: Pset_WindowCommon
-    property_name: Reference
-    operator: exists
+  - operator: exists
     description: Window must have a Reference property
+    property: common.reference
   implementation_status: implemented
   titles:
     en: Window must have classification reference
@@ -69,3 +66,6 @@ rules:
   descriptions:
     en: Every window element must have a Reference classification for quality traceability
     nl: Elk raamelement moet een Reference-classificatie hebben voor kwaliteitstraceerbaarheid
+  applicable_element_types:
+  - window
+  min_source_format: ifc

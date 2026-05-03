@@ -11,20 +11,16 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcSpace
   applicability_filters:
-  - property_set: Pset_SpaceCommon
-    property_name: OccupancyType
-    operator: contains
+  - operator: contains
     value: Toilet
+    property: common.occupancy_type
   checks:
-  - property_set: Qto_SpaceBaseQuantities
-    property_name: NetFloorArea
-    operator: gte
+  - operator: gte
     threshold: 3.7
     unit: m²
     description: Accessible toilet area must be >= 3.7 m²
+    property: quantities.net_floor_area
   implementation_status: implemented
   titles:
     en: Accessible toilet minimum floor area
@@ -32,6 +28,9 @@ rules:
   descriptions:
     en: Accessible toilets must have a floor area of at least 3.7 m² to allow wheelchair maneuvering.
     nl: Een toegankelijke toiletruimte heeft een vloeroppervlakte van ten minste 3,7 m².
+  applicable_element_types:
+  - space
+  min_source_format: ifc
 - id: bbl_4_107_accessible_bathroom_area
   article: BBL Afd. 4.6, Art. 4.107
   article_number: '4.107'
@@ -44,20 +43,16 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcSpace
   applicability_filters:
-  - property_set: Pset_SpaceCommon
-    property_name: OccupancyType
-    operator: contains
+  - operator: contains
     value: Bathroom
+    property: common.occupancy_type
   checks:
-  - property_set: Qto_SpaceBaseQuantities
-    property_name: NetFloorArea
-    operator: gte
+  - operator: gte
     threshold: 4.0
     unit: m²
     description: Accessible bathroom area must be >= 4.0 m²
+    property: quantities.net_floor_area
   implementation_status: implemented
   titles:
     en: Accessible bathroom minimum floor area
@@ -65,3 +60,6 @@ rules:
   descriptions:
     en: Accessible bathrooms must have a floor area of at least 4.0 m² to allow wheelchair maneuvering.
     nl: Een toegankelijke badruimte heeft een vloeroppervlakte van ten minste 4,0 m².
+  applicable_element_types:
+  - space
+  min_source_format: ifc

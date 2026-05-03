@@ -23,8 +23,7 @@ class CheckResultItem(BaseModel):
     message: str
     actual_value: str | float | int | bool | None = None
     expected_value: str | float | int | bool | None = None
-    property_set: str | None = None
-    property_name: str | None = None
+    property_path: str | None = None
     severity: str
 
 

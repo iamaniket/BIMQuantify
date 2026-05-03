@@ -7,15 +7,12 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWall
   checks:
-  - property_set: Pset_WallCommon
-    property_name: FireRating
-    operator: gte
+  - operator: gte
     threshold: 30
     unit: min
     description: Smoke compartment wall rating must be >= 30 minutes
+    property: fire_safety.fire_rating
   implementation_status: implemented
   notes: Uses FireRating as proxy for smoke resistance. Dedicated SmokeRating property would be more precise but is not standard
     in IFC.
@@ -25,3 +22,6 @@ rules:
   descriptions:
     en: Walls forming smoke compartment boundaries must have smoke resistance of at least 30 minutes
     nl: Een scheidingsconstructie tussen subbrandcompartimenten heeft een rookwerendheid van ten minste 30 minuten
+  applicable_element_types:
+  - wall
+  min_source_format: ifc

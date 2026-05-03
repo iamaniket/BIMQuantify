@@ -11,20 +11,16 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcSpace
   applicability_filters:
-  - property_set: Pset_SpaceCommon
-    property_name: OccupancyType
-    operator: contains
+  - operator: contains
     value: Circulation
+    property: common.occupancy_type
   checks:
-  - property_set: Qto_SpaceBaseQuantities
-    property_name: NetFloorArea
-    operator: gte
+  - operator: gte
     threshold: 4
     unit: m²
     description: Common circulation area must be >= 4 m²
+    property: quantities.net_floor_area
   implementation_status: implemented
   titles:
     en: Common circulation minimum area
@@ -32,3 +28,6 @@ rules:
   descriptions:
     en: Common circulation spaces (corridors, halls) must have a clear floor area of at least 4 m².
     nl: Een gemeenschappelijke verkeersruimte heeft een vrije vloeroppervlakte van ten minste 4 m².
+  applicable_element_types:
+  - space
+  min_source_format: ifc

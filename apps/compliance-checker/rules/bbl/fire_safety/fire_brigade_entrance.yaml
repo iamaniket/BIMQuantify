@@ -5,34 +5,29 @@ rules:
   source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.50
   legal_text_nl: Een gebouw heeft een ingang die door de brandweer kan worden gebruikt met een vrije doorgang van ten minste
     0,85 m breed en 2,3 m hoog.
-  legal_text_en: A building must have an entrance usable by the fire brigade with a clear passage of at least 0.85 m wide and
-    2.3 m high.
+  legal_text_en: A building must have an entrance usable by the fire brigade with a clear passage of at least 0.85 m wide
+    and 2.3 m high.
   requirement_summary: Fire-exit IfcDoor.Pset_DoorCommon.Width >= 850 mm
   category: fire_safety
   chapter: '4'
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcDoor
   applicability_filters:
-  - property_set: Pset_DoorCommon
-    property_name: FireExit
-    operator: eq
+  - operator: eq
     value: true
+    property: fire_safety.is_fire_exit
   checks:
-  - property_set: Pset_DoorCommon
-    property_name: Width
-    operator: gte
+  - operator: gte
     threshold: 850
     unit: mm
     description: Fire-brigade entrance width must be >= 850 mm
-  - property_set: Pset_DoorCommon
-    property_name: Height
-    operator: gte
+    property: common.width
+  - operator: gte
     threshold: 2300
     unit: mm
     description: Fire-brigade entrance height must be >= 2300 mm
+    property: common.height
   implementation_status: implemented
   titles:
     en: Fire-brigade entrance dimensions
@@ -40,3 +35,6 @@ rules:
   descriptions:
     en: Fire-brigade entrance doors must have a clear passage of at least 850 mm wide and 2300 mm high.
     nl: Een brandweeringang heeft een vrije doorgang van ten minste 0,85 m breed en 2,3 m hoog.
+  applicable_element_types:
+  - door
+  min_source_format: ifc

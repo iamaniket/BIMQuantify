@@ -9,13 +9,10 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWall
   checks:
-  - property_set: Pset_WallCommon
-    property_name: FireRating
-    operator: exists
+  - operator: exists
     description: Wall must have FireRating property documented
+    property: fire_safety.fire_rating
   implementation_status: implemented
   titles:
     en: Wall fire rating must be documented
@@ -23,6 +20,9 @@ rules:
   descriptions:
     en: All walls must have their fire resistance rating explicitly documented as a property
     nl: Alle wanden moeten hun brandwerendheid als eigenschap gedocumenteerd hebben
+  applicable_element_types:
+  - wall
+  min_source_format: ifc
 - id: wkb_3_02_slab_fire_rating_documented
   framework: wkb
   article: WKB Hoofdstuk 3, Art. 3.2
@@ -32,13 +32,10 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcSlab
   checks:
-  - property_set: Pset_SlabCommon
-    property_name: FireRating
-    operator: exists
+  - operator: exists
     description: Slab must have FireRating property documented
+    property: fire_safety.fire_rating
   implementation_status: implemented
   titles:
     en: Slab fire rating must be documented
@@ -46,6 +43,9 @@ rules:
   descriptions:
     en: All slabs must have their fire resistance rating explicitly documented
     nl: Alle vloeren moeten hun brandwerendheid als eigenschap gedocumenteerd hebben
+  applicable_element_types:
+  - slab
+  min_source_format: ifc
 - id: wkb_3_03_door_fire_rating_documented
   framework: wkb
   article: WKB Hoofdstuk 3, Art. 3.3
@@ -55,13 +55,10 @@ rules:
   severity: warning
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcDoor
   checks:
-  - property_set: Pset_DoorCommon
-    property_name: FireRating
-    operator: exists
+  - operator: exists
     description: Door must have FireRating property documented
+    property: fire_safety.fire_rating
   implementation_status: implemented
   titles:
     en: Door fire rating must be documented
@@ -69,3 +66,6 @@ rules:
   descriptions:
     en: All doors must have their fire resistance rating explicitly documented
     nl: Alle deuren moeten hun brandwerendheid als eigenschap gedocumenteerd hebben
+  applicable_element_types:
+  - door
+  min_source_format: ifc

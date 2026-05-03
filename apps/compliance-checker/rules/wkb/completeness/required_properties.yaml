@@ -9,13 +9,10 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWall
   checks:
-  - property_set: Pset_WallCommon
-    property_name: LoadBearing
-    operator: exists
+  - operator: exists
     description: Wall must have LoadBearing property
+    property: common.is_load_bearing
   implementation_status: implemented
   titles:
     en: LoadBearing property must be present
@@ -23,6 +20,9 @@ rules:
   descriptions:
     en: All walls must document whether they are load-bearing for structural quality assurance
     nl: Alle wanden moeten aangeven of ze dragend zijn voor constructieve kwaliteitsborging
+  applicable_element_types:
+  - wall
+  min_source_format: ifc
 - id: wkb_2_02_is_external_property
   framework: wkb
   article: WKB Hoofdstuk 2, Art. 2.2
@@ -32,18 +32,13 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWall
-  - IfcDoor
   checks:
-  - property_set: Pset_WallCommon
-    property_name: IsExternal
-    operator: exists
+  - operator: exists
     description: Element must have IsExternal property
-  - property_set: Pset_DoorCommon
-    property_name: IsExternal
-    operator: exists
+    property: common.is_external
+  - operator: exists
     description: Door must have IsExternal property
+    property: common.is_external
   implementation_status: implemented
   titles:
     en: IsExternal property must be present
@@ -51,6 +46,10 @@ rules:
   descriptions:
     en: All walls and doors must document whether they are external-facing
     nl: Alle wanden en deuren moeten aangeven of ze aan de buitenzijde liggen
+  applicable_element_types:
+  - wall
+  - door
+  min_source_format: ifc
 - id: wkb_2_03_thermal_properties
   framework: wkb
   article: WKB Hoofdstuk 2, Art. 2.3
@@ -60,13 +59,10 @@ rules:
   severity: warning
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWall
   checks:
-  - property_set: Pset_WallCommon
-    property_name: ThermalTransmittance
-    operator: exists
+  - operator: exists
     description: Wall must have ThermalTransmittance property
+    property: thermal.thermal_transmittance
   implementation_status: implemented
   notes: Ideally only applies to external walls. Currently checks all walls.
   titles:
@@ -75,3 +71,6 @@ rules:
   descriptions:
     en: External walls must have thermal transmittance (U-value) documented
     nl: Buitenwanden moeten de thermische doorlatendheid (U-waarde) gedocumenteerd hebben
+  applicable_element_types:
+  - wall
+  min_source_format: ifc

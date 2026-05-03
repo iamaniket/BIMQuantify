@@ -1,4 +1,5 @@
 {
+  "source_format": "ifc",
   "schema": "IFC4",
   "project": {
     "expressID": 1,

@@ -13,18 +13,14 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcRampFlight
   applicability_filters:
-  - property_set: Pset_RampFlightCommon
-    property_name: AccessibilityPerformance
-    operator: exists
+  - operator: exists
+    property: ramp.accessibility_performance
   checks:
-  - property_set: Pset_RampFlightCommon
-    property_name: Slope
-    operator: lte
+  - operator: lte
     threshold: 0.0625
     description: Accessibility ramp slope must be <= 1:16 (0.0625)
+    property: ramp.slope
   implementation_status: partial
   notes: Stricter accessibility threshold (1:16) applies only when AccessibilityPerformance is authored on the ramp. The general
     ramp slope cap (1:12) is checked by bbl_4_28_ramp_slope.
@@ -34,3 +30,6 @@ rules:
   descriptions:
     en: Ramps designated for accessibility (bridging height differences) must have a slope of at most 1:16.
     nl: Een hellingbaan ter overbrugging van een hoogteverschil heeft een helling van ten hoogste 1:16.
+  applicable_element_types:
+  - ramp_flight
+  min_source_format: ifc

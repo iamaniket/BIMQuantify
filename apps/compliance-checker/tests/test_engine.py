@@ -8,7 +8,6 @@ from compliance_checker.rules.engine import (
     ComplianceResult,
     convert_to_rule_unit,
     evaluate,
-    infer_element_type,
     parse_fire_rating_minutes,
 )
 from compliance_checker.rules.loader import RuleIndex
@@ -58,22 +57,50 @@ class TestUnitConversion:
         assert convert_to_rule_unit(60, "min", "mm") == 60.0
 
 
-class TestElementTypeInference:
-    def test_wall(self) -> None:
-        props = {"Pset_WallCommon": {"FireRating": "REI60"}}
-        assert infer_element_type(props) == "IfcWall"
+class TestCanonicalPropertyResolution:
+    def test_canonical_wall(self) -> None:
+        props = {"elem1": {"_element_type": "wall", "fire_safety": {"fire_rating": "REI60"}}}
+        rules_from_fixture = rule_index_fixture()
+        rule = rules_from_fixture.get_rule("bbl_4_30_wall_fire_rating")
+        assert rule is not None
+        result = evaluate(
+            properties=props,
+            metadata={"source_format": "ifc", "project": {"lengthUnit": "mm"}},
+            rules=[rule],
+            file_id="test",
+        )
+        assert any(r.status == "pass" for r in result.details)
 
-    def test_door(self) -> None:
-        props = {"Pset_DoorCommon": {"Width": 900}, "BaseQuantities": {"Width": 900}}
-        assert infer_element_type(props) == "IfcDoor"
+    def test_format_gating_skips_ifc_rules_for_pdf(self) -> None:
+        props = {"elem1": {"_element_type": "wall", "common": {"is_external": True}}}
+        rules_from_fixture = rule_index_fixture()
+        rules = rules_from_fixture.get_applicable_rules(framework="bbl")
+        result = evaluate(
+            properties=props,
+            metadata={"source_format": "pdf", "project": {}},
+            rules=rules,
+            file_id="test",
+        )
+        assert result.format_coverage is not None
+        assert result.format_coverage.source_format == "pdf"
+        assert result.format_coverage.rules_skipped_format == len(rules)
 
-    def test_space(self) -> None:
-        props = {"Pset_SpaceCommon": {"Height": 2600}}
-        assert infer_element_type(props) == "IfcSpace"
+    def test_format_coverage_present(self) -> None:
+        result = evaluate(
+            properties={},
+            metadata={"source_format": "ifc", "project": {}},
+            rules=[],
+            file_id="test",
+        )
+        assert result.format_coverage is not None
+        assert result.format_coverage.source_format == "ifc"
 
-    def test_unknown(self) -> None:
-        props = {"CustomPset": {"Foo": "bar"}}
-        assert infer_element_type(props) is None
+
+def rule_index_fixture() -> RuleIndex:
+    from pathlib import Path
+    idx = RuleIndex()
+    idx.load(Path(__file__).parent.parent / "rules")
+    return idx
 
 
 class TestRuleLoading:

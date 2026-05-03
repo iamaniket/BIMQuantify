@@ -11,20 +11,16 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcDoor
   applicability_filters:
-  - property_set: Pset_DoorCommon
-    property_name: IsExternal
-    operator: eq
+  - operator: eq
     value: true
+    property: common.is_external
   checks:
-  - property_set: Pset_DoorCommon
-    property_name: Width
-    operator: gte
+  - operator: gte
     threshold: 850
     unit: mm
     description: Entrance door clear width must be >= 850 mm
+    property: common.width
   implementation_status: implemented
   titles:
     en: Building entrance door width
@@ -32,6 +28,9 @@ rules:
   descriptions:
     en: Building entrance doors must have a clear passage width of at least 850 mm.
     nl: De toegang van een gebouw heeft een vrije doorgang van ten minste 0,85 m.
+  applicable_element_types:
+  - door
+  min_source_format: ifc
 - id: bbl_4_23_entrance_threshold_height
   article: BBL Afd. 4.6, Art. 4.23
   article_number: '4.23'
@@ -44,20 +43,16 @@ rules:
   severity: warning
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcDoor
   applicability_filters:
-  - property_set: Pset_DoorCommon
-    property_name: IsExternal
-    operator: eq
+  - operator: eq
     value: true
+    property: common.is_external
   checks:
-  - property_set: Pset_DoorCommon
-    property_name: ThresholdHeight
-    operator: lte
+  - operator: lte
     threshold: 20
     unit: mm
     description: Threshold height at building entrance must be <= 20 mm
+    property: common.threshold_height
   implementation_status: partial
   notes: ThresholdHeight is not in standard Pset_DoorCommon; expects an authored extension property. Skips silently when missing.
   titles:
@@ -66,3 +61,6 @@ rules:
   descriptions:
     en: Thresholds at building entrances must be no higher than 20 mm to remain accessible to wheelchairs.
     nl: Een drempel bij de toegang van een gebouw heeft een hoogte van ten hoogste 20 mm.
+  applicable_element_types:
+  - door
+  min_source_format: ifc

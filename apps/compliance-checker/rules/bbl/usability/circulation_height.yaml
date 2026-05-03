@@ -11,20 +11,16 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcSpace
   applicability_filters:
-  - property_set: Pset_SpaceCommon
-    property_name: Reference
-    operator: matches
+  - operator: matches
     value: (?i)(corridor|hallway|circulation|hall|gang|verkeer)
+    property: common.reference
   checks:
-  - property_set: Pset_SpaceCommon
-    property_name: Height
-    operator: gte
+  - operator: gte
     threshold: 2300
     unit: mm
     description: Circulation height must be >= 2300mm
+    property: common.height
   implementation_status: implemented
   titles:
     en: Minimum clear height of circulation space
@@ -33,3 +29,6 @@ rules:
     en: Circulation spaces (corridors, hallways) must have a minimum clear height of 2300mm to permit safe passage.
     nl: Een verkeersruimte heeft een vrije hoogte van ten minste 2,3 m, gemeten vanaf de afgewerkte vloer tot het afgewerkte
       plafond.
+  applicable_element_types:
+  - space
+  min_source_format: ifc

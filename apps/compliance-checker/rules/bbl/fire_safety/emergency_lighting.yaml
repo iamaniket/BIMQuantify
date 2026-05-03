@@ -11,18 +11,14 @@ rules:
   severity: warning
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcSpace
   applicability_filters:
-  - property_set: Pset_SpaceCommon
-    property_name: OccupancyType
-    operator: contains
+  - operator: contains
     value: Escape
+    property: common.occupancy_type
   checks:
-  - property_set: Pset_BBL_EmergencyLighting
-    property_name: Present
-    operator: exists
+  - operator: exists
     description: Emergency lighting flag must be authored on escape-route spaces
+    property: fire_safety.emergency_lighting_present
   implementation_status: partial
   notes: Requires a custom Pset_BBL_EmergencyLighting.Present boolean on escape-route IfcSpace elements. Skips silently when
     the property is absent rather than failing — adopt the convention to enforce.
@@ -32,3 +28,6 @@ rules:
   descriptions:
     en: Escape-route spaces must declare an emergency lighting provision via Pset_BBL_EmergencyLighting.Present.
     nl: Een vluchtroute is voorzien van noodverlichting.
+  applicable_element_types:
+  - space
+  min_source_format: ifc

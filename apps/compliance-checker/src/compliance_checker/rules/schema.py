@@ -4,6 +4,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, model_validator
 
+from compliance_checker.rules.canonical import SourceFormat
+
 
 class RegulationFramework(StrEnum):
     bbl = "bbl"
@@ -55,8 +57,7 @@ class ImplementationStatus(StrEnum):
 
 
 class PropertyCheck(BaseModel):
-    property_set: str
-    property_name: str
+    property: str
     operator: Operator
     threshold: str | float | int | bool | list[str] | None = None
     unit: str | None = None
@@ -70,8 +71,7 @@ class ApplicabilityFilter(BaseModel):
     out-of-scope, not failures.
     """
 
-    property_set: str
-    property_name: str
+    property: str
     operator: Operator
     value: str | float | int | bool | list[str] | None = None
 
@@ -97,7 +97,8 @@ class RuleDefinition(BaseModel):
     chapter: str
     severity: Severity
     applicable_building_types: list[str]
-    applicable_ifc_entities: list[str]
+    applicable_element_types: list[str]
+    min_source_format: SourceFormat = SourceFormat.ifc
     applicability_filters: list[ApplicabilityFilter] = []
     checks: list[PropertyCheck]
     implementation_status: ImplementationStatus

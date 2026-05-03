@@ -13,15 +13,12 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcRailing
   checks:
-  - property_set: Pset_RailingCommon
-    property_name: Height
-    operator: gte
+  - operator: gte
     threshold: 1000
     unit: mm
     description: Railing height must be >= 1000mm
+    property: common.height
   implementation_status: implemented
   titles:
     en: Minimum railing height for fall protection
@@ -30,3 +27,6 @@ rules:
     en: Railings/balustrades must be at least 1000mm tall to provide adequate fall protection at edges and openings.
     nl: Een vloer, een trap of een hellingbaan met een hoogteverschil dat groter is dan 1 m heeft een afscheiding met een
       hoogte van ten minste 1,0 m.
+  applicable_element_types:
+  - railing
+  min_source_format: ifc

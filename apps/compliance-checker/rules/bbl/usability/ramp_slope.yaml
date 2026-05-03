@@ -11,14 +11,11 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcRampFlight
   checks:
-  - property_set: Pset_RampFlightCommon
-    property_name: Slope
-    operator: lte
+  - operator: lte
     threshold: 0.0833
     description: Ramp slope must be <= 1:12 (0.0833)
+    property: ramp.slope
   implementation_status: implemented
   titles:
     en: Maximum ramp slope
@@ -26,3 +23,6 @@ rules:
   descriptions:
     en: Ramps must have a slope of at most 1:12 (â‰ˆ8.33%) to remain usable, including by people with reduced mobility.
     nl: Een hellingbaan heeft een helling van ten hoogste 1:12, gemeten over de gehele lengte.
+  applicable_element_types:
+  - ramp_flight
+  min_source_format: ifc

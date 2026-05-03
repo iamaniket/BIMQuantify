@@ -11,15 +11,12 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcStairFlight
   checks:
-  - property_set: Pset_StairFlightCommon
-    property_name: RiserHeight
-    operator: lte
+  - operator: lte
     threshold: 188
     unit: mm
     description: Riser height must be <= 188mm
+    property: stair.riser_height
   implementation_status: implemented
   titles:
     en: Maximum stair riser height
@@ -27,6 +24,9 @@ rules:
   descriptions:
     en: Stair flights must have a riser height of at most 188mm to permit safe ascent and descent.
     nl: De optrede van een trap is ten hoogste 188 mm.
+  applicable_element_types:
+  - stair_flight
+  min_source_format: ifc
 - id: bbl_4_27_stair_tread_length
   article: BBL Afd. 4.5, Art. 4.27
   article_number: '4.27'
@@ -39,15 +39,12 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcStairFlight
   checks:
-  - property_set: Pset_StairFlightCommon
-    property_name: TreadLength
-    operator: gte
+  - operator: gte
     threshold: 220
     unit: mm
     description: Tread length must be >= 220mm
+    property: stair.tread_length
   implementation_status: implemented
   titles:
     en: Minimum stair tread length
@@ -55,3 +52,6 @@ rules:
   descriptions:
     en: Stair flights must have a tread length of at least 220mm so the foot is fully supported.
     nl: De aantrede van een trap is ten minste 220 mm.
+  applicable_element_types:
+  - stair_flight
+  min_source_format: ifc

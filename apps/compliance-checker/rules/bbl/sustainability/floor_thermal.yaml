@@ -13,19 +13,15 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcSlab
   applicability_filters:
-  - property_set: Pset_SlabCommon
-    property_name: IsExternal
-    operator: eq
+  - operator: eq
     value: true
+    property: common.is_external
   checks:
-  - property_set: Pset_SlabCommon
-    property_name: ThermalTransmittance
-    operator: lte
+  - operator: lte
     threshold: 0.3
     description: U-value must be <= 0.30 W/m²·K
+    property: thermal.thermal_transmittance
   implementation_status: implemented
   titles:
     en: External floor thermal transmittance (U-value)
@@ -33,3 +29,6 @@ rules:
   descriptions:
     en: External floors (ground floor, floors above unheated spaces) must have a thermal transmittance of at most 0.30 W/(m²·K).
     nl: Een uitwendige scheidingsconstructie (vloer) heeft een warmtedoorgangscoëfficiënt van ten hoogste 0,30 W/m²·K.
+  applicable_element_types:
+  - slab
+  min_source_format: ifc

@@ -7,15 +7,12 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWall
   checks:
-  - property_set: Pset_WallCommon
-    property_name: FireRating
-    operator: gte
+  - operator: gte
     threshold: 60
     unit: min
     description: Wall fire rating must be >= 60 minutes
+    property: fire_safety.fire_rating
   implementation_status: implemented
   titles:
     en: Wall fire resistance (WBDBO)
@@ -24,6 +21,9 @@ rules:
     en: Walls forming fire compartment boundaries must have a fire resistance (WBDBO) of at least 60 minutes
     nl: Een scheidingsconstructie tussen brandcompartimenten heeft een weerstand tegen branddoorslag en brandoverslag (WBDBO)
       van ten minste 60 minuten
+  applicable_element_types:
+  - wall
+  min_source_format: ifc
 - id: bbl_4_30_slab_fire_rating
   article: BBL Afd. 4.2, Art. 4.30
   article_number: '4.30'
@@ -32,15 +32,12 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcSlab
   checks:
-  - property_set: Pset_SlabCommon
-    property_name: FireRating
-    operator: gte
+  - operator: gte
     threshold: 60
     unit: min
     description: Slab fire rating must be >= 60 minutes
+    property: fire_safety.fire_rating
   implementation_status: implemented
   titles:
     en: Slab fire resistance (WBDBO)
@@ -48,3 +45,6 @@ rules:
   descriptions:
     en: Slabs forming fire compartment boundaries must have a fire resistance (WBDBO) of at least 60 minutes
     nl: Een scheidingsconstructie tussen brandcompartimenten heeft een WBDBO van ten minste 60 minuten
+  applicable_element_types:
+  - slab
+  min_source_format: ifc

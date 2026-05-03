@@ -16,6 +16,7 @@ import {
 } from 'web-ifc';
 
 import type { SupportedSchema } from '../config.js';
+import { type CanonicalElementType, IFC_ENTITY_TO_CANONICAL } from './canonical.js';
 
 export type SpatialNode = {
   expressID: number;
@@ -26,6 +27,7 @@ export type SpatialNode = {
 };
 
 export type Metadata = {
+  source_format: 'ifc';
   schema: SupportedSchema;
   project: {
     expressID: number;
@@ -36,6 +38,7 @@ export type Metadata = {
   };
   spatialTree: SpatialNode | null;
   elementCounts: Record<string, number>;
+  canonicalElementCounts: Record<CanonicalElementType, number>;
   bbox: {
     min: [number, number, number];
     max: [number, number, number];
@@ -51,13 +54,16 @@ export async function buildMetadata(
   const project = readProject(api, modelID);
   const spatialTree = buildSpatialTree(api, modelID);
   const elementCounts = countElements(api, modelID);
+  const canonicalElementCounts = buildCanonicalCounts(elementCounts);
   const bbox = computeBoundingBox(api, modelID);
 
   return {
+    source_format: 'ifc',
     schema,
     project,
     spatialTree,
     elementCounts,
+    canonicalElementCounts,
     bbox,
     totalElements: Object.values(elementCounts).reduce((a, b) => a + b, 0),
   };
@@ -179,6 +185,19 @@ function countElements(api: IfcAPI, modelID: number): Record<string, number> {
     counts[normalised] = (counts[normalised] ?? 0) + 1;
   }
   return counts;
+}
+
+function buildCanonicalCounts(
+  ifcCounts: Record<string, number>,
+): Record<CanonicalElementType, number> {
+  const out = {} as Record<CanonicalElementType, number>;
+  for (const [ifcType, count] of Object.entries(ifcCounts)) {
+    const canonical = IFC_ENTITY_TO_CANONICAL[ifcType];
+    if (canonical != null) {
+      out[canonical] = (out[canonical] ?? 0) + count;
+    }
+  }
+  return out;
 }
 
 function isProductLike(name: string): boolean {

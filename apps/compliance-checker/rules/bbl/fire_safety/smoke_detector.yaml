@@ -11,18 +11,14 @@ rules:
   severity: warning
   applicable_building_types:
   - residential
-  applicable_ifc_entities:
-  - IfcSpace
   applicability_filters:
-  - property_set: Pset_SpaceCommon
-    property_name: OccupancyType
-    operator: contains
+  - operator: contains
     value: Living
+    property: common.occupancy_type
   checks:
-  - property_set: Pset_BBL_FireSafety
-    property_name: SmokeDetectorPresent
-    operator: exists
+  - operator: exists
     description: Smoke detector flag must be authored on habitable spaces
+    property: fire_safety.smoke_detector_present
   implementation_status: partial
   notes: Requires custom Pset_BBL_FireSafety.SmokeDetectorPresent boolean on habitable IfcSpace elements (or per-storey aggregation).
     Skips silently when the property is absent.
@@ -32,3 +28,6 @@ rules:
   descriptions:
     en: Residential habitable spaces must declare a smoke detector via Pset_BBL_FireSafety.SmokeDetectorPresent.
     nl: Een woonfunctie heeft op iedere bouwlaag met een verblijfsruimte een rookmelder.
+  applicable_element_types:
+  - space
+  min_source_format: ifc

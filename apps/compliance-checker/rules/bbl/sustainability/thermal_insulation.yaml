@@ -13,19 +13,15 @@ rules:
   severity: error
   applicable_building_types:
   - all
-  applicable_ifc_entities:
-  - IfcWall
   applicability_filters:
-  - property_set: Pset_WallCommon
-    property_name: IsExternal
-    operator: eq
+  - operator: eq
     value: true
+    property: common.is_external
   checks:
-  - property_set: Pset_WallCommon
-    property_name: ThermalTransmittance
-    operator: lte
+  - operator: lte
     threshold: 0.3
     description: U-value must be <= 0.30 W/mÂ²Â·K
+    property: thermal.thermal_transmittance
   implementation_status: implemented
   titles:
     en: External wall thermal transmittance (U-value)
@@ -33,3 +29,6 @@ rules:
   descriptions:
     en: External walls must have a thermal transmittance (U-value) of at most 0.30 W/(mÂ²Â·K) to limit heat loss in new construction.
     nl: Een uitwendige scheidingsconstructie heeft een warmtedoorgangscoÃ«fficiÃ«nt van ten hoogste 0,30 W/mÂ²Â·K.
+  applicable_element_types:
+  - wall
+  min_source_format: ifc
