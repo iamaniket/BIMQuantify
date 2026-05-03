@@ -125,7 +125,7 @@ class TestRuleLoading:
         # Floor reflects the standing catalog of "implemented"-status BBL rules.
         # Bump this when authoring more rules; partial-status rules are excluded
         # by get_applicable_rules.
-        assert len(bbl) == 35
+        assert len(bbl) == 54
 
     def test_get_rule_by_id(self, rule_index: RuleIndex) -> None:
         rule = rule_index.get_rule("bbl_4_85_room_height_new")

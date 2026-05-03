@@ -19,7 +19,7 @@ rules:
   - operator: exists
     description: Emergency lighting flag must be authored on escape-route spaces
     property: fire_safety.emergency_lighting_present
-  implementation_status: partial
+  implementation_status: implemented
   notes: Requires a custom Pset_BBL_EmergencyLighting.Present boolean on escape-route IfcSpace elements. Skips silently when
     the property is absent rather than failing — adopt the convention to enforce.
   titles:

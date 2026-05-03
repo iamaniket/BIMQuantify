@@ -33,3 +33,36 @@ rules:
   applicable_element_types:
   - space
   min_source_format: ifc
+- id: bbl_4_32_sub_compartment_max_area
+  article: BBL Afd. 4.2, Art. 4.32
+  article_number: '4.32'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.32
+  legal_text_nl: Een subbrandcompartiment heeft een gebruiksoppervlakte van ten hoogste 500 m².
+  legal_text_en: A sub-fire-compartment must have a usable area of at most 500 m².
+  requirement_summary: Per-IfcSpace area sniff test - NetFloorArea <= 500 m² when fire-compartment classification authored
+  category: fire_safety
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicability_filters:
+  - operator: exists
+    property: fire_safety.fire_risk_factor
+  checks:
+  - operator: lte
+    threshold: 500
+    unit: m2
+    description: Single-space area must be <= 500 m² (sub-compartment per-space sniff test)
+    property: quantities.net_floor_area
+  implementation_status: partial
+  notes: True sub-compartment size requires aggregating spaces sharing a compartment via IfcZone or grouping. This rule treats
+    each fire-classified space as a single-cell upper bound (500 m²).
+  titles:
+    en: Sub-fire-compartment maximum area
+    nl: Subbrandcompartiment - maximale oppervlakte
+  descriptions:
+    en: Per-space upper bound for sub-fire-compartment area; flags individual rooms exceeding 500 m² when fire-classified.
+    nl: Een subbrandcompartiment heeft een gebruiksoppervlakte van ten hoogste 500 m².
+  applicable_element_types:
+  - space
+  min_source_format: ifc

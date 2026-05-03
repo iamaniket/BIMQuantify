@@ -1,0 +1,102 @@
+rules:
+- id: bbl_4_37_fire_brigade_elevator
+  article: BBL Afd. 4.2, Art. 4.37
+  article_number: '4.37'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.37
+  legal_text_nl: Een gebouw met een vloer van een verblijfsgebied hoger dan 20 m boven het meetniveau heeft een brandweerlift.
+  legal_text_en: A building with a habitable floor higher than 20 m above reference level must have a fire brigade elevator.
+  requirement_summary: Fire brigade elevator flag must be authored on transport elements
+  category: fire_safety
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - transport_element
+  min_source_format: ifc
+  metadata_filters:
+  - path: building.height_m
+    operator: gt
+    value: 20
+  checks:
+  - property: fire_safety.is_fire_brigade_elevator
+    operator: exists
+    description: Fire brigade elevator designation must be authored
+  implementation_status: implemented
+  titles:
+    en: Fire brigade elevator
+    nl: Brandweerlift
+  descriptions:
+    en: Buildings above 20 m must designate a fire brigade elevator via Pset_BBL_FireSafety.IsFireBrigadeElevator.
+    nl: Een gebouw met een vloer van een verblijfsgebied hoger dan 20 m boven het meetniveau heeft een brandweerlift.
+  notes: Gated on building height > 20 m (derived from model bounding box).
+- id: bbl_4_47_dry_riser_present
+  article: BBL Afd. 4.2, Art. 4.47
+  article_number: '4.47'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.47
+  legal_text_nl: Een gebouw met een vloer van een verblijfsgebied hoger dan 20 m boven het meetniveau heeft een droge blusleiding.
+  legal_text_en: A building with a habitable floor higher than 20 m above reference level must have a dry riser (standpipe).
+  requirement_summary: Dry riser flag must be authored on stairwell spaces
+  category: fire_safety
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - space
+  min_source_format: ifc
+  metadata_filters:
+  - path: building.height_m
+    operator: gt
+    value: 20
+  applicability_filters:
+  - property: common.occupancy_type
+    operator: contains
+    value: Stairwell
+  checks:
+  - property: fire_safety.dry_riser_present
+    operator: exists
+    description: Dry riser presence must be authored on stairwell spaces
+  implementation_status: implemented
+  titles:
+    en: Dry riser (standpipe)
+    nl: Droge blusleiding
+  descriptions:
+    en: Stairwell spaces in buildings above 20 m must declare dry riser presence via Pset_BBL_FireSafety.DryRiserPresent.
+    nl: Een gebouw met een vloer van een verblijfsgebied hoger dan 20 m boven het meetniveau heeft een droge blusleiding.
+  notes: Gated on building height > 20 m (derived from model bounding box). Filtered to stairwell spaces.
+- id: bbl_4_52_smoke_extraction_present
+  article: BBL Afd. 4.2, Art. 4.52
+  article_number: '4.52'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.52
+  legal_text_nl: Een besloten ruimte waardoor een beschermde vluchtroute voert of een parkeergarage heeft een voorziening voor
+    rook- en warmteafvoer.
+  legal_text_en: An enclosed space through which a protected escape route runs, or a parking garage, must have smoke and heat
+    extraction.
+  requirement_summary: Smoke extraction flag must be authored on parking spaces
+  category: fire_safety
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - space
+  min_source_format: ifc
+  applicability_filters:
+  - property: common.occupancy_type
+    operator: contains
+    value: Parking
+  checks:
+  - property: fire_safety.smoke_extraction_present
+    operator: exists
+    description: Smoke extraction presence must be authored on parking spaces
+  implementation_status: implemented
+  titles:
+    en: Smoke and heat extraction
+    nl: Rook- en warmteafvoer
+  descriptions:
+    en: Parking garages and enclosed escape route spaces must declare smoke extraction via Pset_BBL_FireSafety.SmokeExtractionPresent.
+    nl: Een besloten ruimte waardoor een beschermde vluchtroute voert of een parkeergarage heeft een voorziening voor rook-
+      en warmteafvoer.
+  notes: Presence check only, filtered to parking spaces. Also applies to enclosed escape route spaces but that requires spatial
+    analysis.

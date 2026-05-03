@@ -76,6 +76,14 @@ class ApplicabilityFilter(BaseModel):
     value: str | float | int | bool | list[str] | None = None
 
 
+class MetadataFilter(BaseModel):
+    """Building-level condition checked against metadata before element iteration."""
+
+    path: str
+    operator: Operator
+    value: str | float | int | bool | list[str] | None = None
+
+
 class RuleDefinition(BaseModel):
     id: str
     framework: RegulationFramework = RegulationFramework.bbl
@@ -99,6 +107,7 @@ class RuleDefinition(BaseModel):
     applicable_building_types: list[str]
     applicable_element_types: list[str]
     min_source_format: SourceFormat = SourceFormat.ifc
+    metadata_filters: list[MetadataFilter] = []
     applicability_filters: list[ApplicabilityFilter] = []
     checks: list[PropertyCheck]
     implementation_status: ImplementationStatus

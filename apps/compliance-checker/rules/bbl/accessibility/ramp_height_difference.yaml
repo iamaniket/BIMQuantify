@@ -21,7 +21,7 @@ rules:
     threshold: 0.0625
     description: Accessibility ramp slope must be <= 1:16 (0.0625)
     property: ramp.slope
-  implementation_status: partial
+  implementation_status: implemented
   notes: Stricter accessibility threshold (1:16) applies only when AccessibilityPerformance is authored on the ramp. The general
     ramp slope cap (1:12) is checked by bbl_4_28_ramp_slope.
   titles:

@@ -16,7 +16,11 @@ import {
 } from 'web-ifc';
 
 import type { SupportedSchema } from '../config.js';
-import { type CanonicalElementType, IFC_ENTITY_TO_CANONICAL } from './canonical.js';
+import {
+  type CanonicalElementType,
+  IFC_ENTITY_TO_CANONICAL,
+  IFC_UPPERCASE_TO_PASCAL,
+} from './canonical.js';
 
 export type SpatialNode = {
   expressID: number;
@@ -169,9 +173,6 @@ function childIfcTypeName(
 
 function countElements(api: IfcAPI, modelID: number): Record<string, number> {
   const counts: Record<string, number> = {};
-  // GetAllLines returns every entity in the file. We only care about
-  // IfcProduct subclasses ("real" elements). web-ifc doesn't ship a fast
-  // "isProduct" check, so we walk the type names returned by GetNameFromTypeCode.
   const allIDs = api.GetAllLines(modelID);
   for (let i = 0; i < allIDs.size(); i += 1) {
     const id = allIDs.get(i);
@@ -179,10 +180,10 @@ function countElements(api: IfcAPI, modelID: number): Record<string, number> {
     const name = (api as unknown as {
       GetNameFromTypeCode?: (c: number) => string;
     }).GetNameFromTypeCode?.(code);
-    if (typeof name !== 'string' || !name.startsWith('IFC')) continue;
-    const normalised = `Ifc${name.slice(3).toLowerCase().replace(/^./, (c) => c.toUpperCase())}`;
-    if (!isProductLike(normalised)) continue;
-    counts[normalised] = (counts[normalised] ?? 0) + 1;
+    if (typeof name !== 'string') continue;
+    const pascal = IFC_UPPERCASE_TO_PASCAL.get(name);
+    if (pascal === undefined) continue;
+    counts[pascal] = (counts[pascal] ?? 0) + 1;
   }
   return counts;
 }
@@ -200,32 +201,6 @@ function buildCanonicalCounts(
   return out;
 }
 
-function isProductLike(name: string): boolean {
-  // Whitelist of common IFC product subclasses. Not exhaustive — the goal is
-  // a useful summary, not a perfect inventory.
-  return [
-    'IfcWall',
-    'IfcWallStandardCase',
-    'IfcSlab',
-    'IfcRoof',
-    'IfcColumn',
-    'IfcBeam',
-    'IfcDoor',
-    'IfcWindow',
-    'IfcStair',
-    'IfcRailing',
-    'IfcCovering',
-    'IfcSpace',
-    'IfcFurnishingElement',
-    'IfcBuildingElementProxy',
-    'IfcDuctSegment',
-    'IfcPipeSegment',
-    'IfcFlowFitting',
-    'IfcFlowTerminal',
-    'IfcMember',
-    'IfcPlate',
-  ].includes(name);
-}
 
 function computeBoundingBox(
   api: IfcAPI,

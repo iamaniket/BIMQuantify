@@ -53,7 +53,7 @@ rules:
     unit: mm
     description: Threshold height at building entrance must be <= 20 mm
     property: common.threshold_height
-  implementation_status: partial
+  implementation_status: implemented
   notes: ThresholdHeight is not in standard Pset_DoorCommon; expects an authored extension property. Skips silently when missing.
   titles:
     en: Building entrance threshold height

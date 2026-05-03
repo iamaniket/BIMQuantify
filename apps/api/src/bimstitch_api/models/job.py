@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Text, text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -83,6 +83,9 @@ class Job(TimestampMixin, Base):
 
     __table_args__ = (
         Index("ix_jobs_organization_id", "organization_id"),
+        Index("ix_jobs_project_id", "project_id", postgresql_where=text("project_id IS NOT NULL")),
+        Index("ix_jobs_file_id", "file_id", postgresql_where=text("file_id IS NOT NULL")),
         Index("ix_jobs_status", "status"),
         Index("ix_jobs_job_type", "job_type"),
+        Index("ix_jobs_org_created_at", "organization_id", text("created_at DESC")),
     )

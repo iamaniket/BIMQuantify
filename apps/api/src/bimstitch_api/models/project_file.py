@@ -137,4 +137,5 @@ class ProjectFile(TimestampMixin, Base):
         Index("ix_project_files_model_id", "model_id"),
         Index("ix_project_files_status_created_at", "status", "created_at"),
         Index("ix_project_files_extraction_status", "extraction_status"),
+        Index("ix_project_files_file_type", "file_type"),
     )

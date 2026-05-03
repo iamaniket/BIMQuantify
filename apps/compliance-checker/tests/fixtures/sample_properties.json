@@ -227,5 +227,359 @@
     "transport": {
       "operation_type": "ELEVATOR"
     }
+  },
+  "wall-fire-class-good-001": {
+    "_element_type": "wall",
+    "common": {
+      "is_external": false
+    },
+    "fire_safety": {
+      "fire_reaction_class": "B",
+      "fire_propagation_class": "d0",
+      "smoke_production_class": "s1"
+    }
+  },
+  "wall-fire-class-bad-002": {
+    "_element_type": "wall",
+    "common": {
+      "is_external": false
+    },
+    "fire_safety": {
+      "fire_reaction_class": "D",
+      "fire_propagation_class": "d2",
+      "smoke_production_class": "s3"
+    }
+  },
+  "covering-fire-class-003": {
+    "_element_type": "covering",
+    "common": {
+      "is_external": false
+    },
+    "fire_safety": {
+      "fire_reaction_class": "A1",
+      "fire_propagation_class": "d0",
+      "smoke_production_class": "s1"
+    }
+  },
+  "space-fire-compartment-006": {
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false,
+      "reference": "Office"
+    },
+    "fire_safety": {
+      "fire_risk_factor": "High"
+    },
+    "quantities": {
+      "gross_floor_area": 480,
+      "net_floor_area": 450
+    }
+  },
+  "space-fire-compartment-007": {
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false,
+      "reference": "Warehouse"
+    },
+    "fire_safety": {
+      "fire_risk_factor": "Medium"
+    },
+    "quantities": {
+      "gross_floor_area": 700,
+      "net_floor_area": 650
+    }
+  },
+  "door-fire-self-closing-004": {
+    "_element_type": "door",
+    "common": {
+      "width": 950,
+      "height": 2300,
+      "is_external": false
+    },
+    "fire_safety": {
+      "is_fire_exit": true,
+      "is_self_closing": true,
+      "fire_rating": "EI30"
+    }
+  },
+  "door-fire-not-closing-005": {
+    "_element_type": "door",
+    "common": {
+      "width": 900,
+      "height": 2300,
+      "is_external": false
+    },
+    "fire_safety": {
+      "is_fire_exit": true,
+      "is_self_closing": false,
+      "fire_rating": "EI30"
+    }
+  },
+  "space-toilet-008": {
+    "_element_type": "space",
+    "common": {
+      "height": 2600,
+      "is_external": false,
+      "reference": "Toilet",
+      "occupancy_type": "Toilet"
+    },
+    "thermal": {
+      "air_change_rate": 0.6
+    },
+    "quantities": {
+      "gross_floor_area": 2.5,
+      "net_floor_area": 2.2
+    }
+  },
+  "space-kitchen-009": {
+    "_element_type": "space",
+    "common": {
+      "height": 2600,
+      "is_external": false,
+      "reference": "Kitchen",
+      "occupancy_type": "Kitchen"
+    },
+    "thermal": {
+      "air_change_rate": 0.3
+    },
+    "quantities": {
+      "gross_floor_area": 12.0,
+      "net_floor_area": 11.0
+    }
+  },
+  "elevator-fire-002": {
+    "_element_type": "transport_element",
+    "common": {
+      "reference": "Fire Brigade Lift"
+    },
+    "fire_safety": {
+      "is_fire_brigade_elevator": true
+    },
+    "transport": {
+      "operation_type": "ELEVATOR"
+    }
+  },
+  "space-escape-route-010": {
+    "_element_type": "space",
+    "common": {
+      "height": 2600,
+      "is_external": false,
+      "occupancy_type": "Escape Route"
+    },
+    "fire_safety": {
+      "emergency_lighting_present": true
+    }
+  },
+  "space-escape-route-011": {
+    "_element_type": "space",
+    "common": {
+      "height": 2600,
+      "is_external": false,
+      "occupancy_type": "Escape Route"
+    }
+  },
+  "space-living-hab-012": {
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false,
+      "occupancy_type": "Living Room"
+    },
+    "fire_safety": {
+      "smoke_detector_present": true
+    }
+  },
+  "space-living-hab-013": {
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false,
+      "occupancy_type": "Living Room"
+    }
+  },
+  "space-parking-014": {
+    "_element_type": "space",
+    "common": {
+      "height": 3000,
+      "is_external": false,
+      "occupancy_type": "Parking Garage"
+    },
+    "fire_safety": {
+      "smoke_extraction_present": true
+    }
+  },
+  "space-parking-015": {
+    "_element_type": "space",
+    "common": {
+      "height": 3000,
+      "is_external": false,
+      "occupancy_type": "Parking Garage"
+    }
+  },
+  "door-ext-threshold-low-006": {
+    "_element_type": "door",
+    "common": {
+      "is_external": true,
+      "width": 900,
+      "height": 2400,
+      "threshold_height": 15
+    }
+  },
+  "door-ext-threshold-high-007": {
+    "_element_type": "door",
+    "common": {
+      "is_external": true,
+      "width": 900,
+      "height": 2400,
+      "threshold_height": 25
+    }
+  },
+  "rampflight-accessible-good-003": {
+    "_element_type": "ramp_flight",
+    "ramp": {
+      "slope": 0.05,
+      "accessibility_performance": "wheelchair"
+    }
+  },
+  "rampflight-accessible-bad-004": {
+    "_element_type": "ramp_flight",
+    "ramp": {
+      "slope": 0.08,
+      "accessibility_performance": "wheelchair"
+    }
+  },
+  "space-habitable-daylight-016": {
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false
+    },
+    "thermal": {
+      "natural_lighting": true
+    },
+    "daylight": {
+      "daylight_area_percent": 12
+    }
+  },
+  "space-habitable-nodaylight-017": {
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false
+    },
+    "daylight": {
+      "daylight_area_percent": 8
+    }
+  },
+  "space-habitable-purge-018": {
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false
+    },
+    "health": {
+      "purge_ventilation_rate": 3.5
+    }
+  },
+  "space-habitable-purge-019": {
+    "_element_type": "space",
+    "common": {
+      "height": 2800,
+      "is_external": false
+    },
+    "health": {
+      "purge_ventilation_rate": 2.0
+    }
+  },
+  "space-stairwell-020": {
+    "_element_type": "space",
+    "common": {
+      "occupancy_type": "Stairwell",
+      "height": 2800,
+      "is_external": false
+    },
+    "fire_safety": {
+      "dry_riser_present": true
+    }
+  },
+  "space-stairwell-021": {
+    "_element_type": "space",
+    "common": {
+      "occupancy_type": "Stairwell",
+      "height": 2800,
+      "is_external": false
+    }
+  },
+  "space-combustion-022": {
+    "_element_type": "space",
+    "common": {
+      "height": 2600,
+      "is_external": false
+    },
+    "health": {
+      "has_combustion_appliance": true,
+      "combustion_air_supply_rate": 1.0
+    }
+  },
+  "space-combustion-023": {
+    "_element_type": "space",
+    "common": {
+      "height": 2600,
+      "is_external": false
+    },
+    "health": {
+      "has_combustion_appliance": true,
+      "combustion_air_supply_rate": 0.5
+    }
+  },
+  "door-public-good-008": {
+    "_element_type": "door",
+    "common": {
+      "width": 950,
+      "height": 2400,
+      "clear_width": 900,
+      "is_external": false,
+      "publicly_accessible": true,
+      "threshold_height": 10
+    }
+  },
+  "door-public-narrow-009": {
+    "_element_type": "door",
+    "common": {
+      "width": 800,
+      "height": 2300,
+      "clear_width": 780,
+      "is_external": false,
+      "publicly_accessible": true,
+      "threshold_height": 15
+    }
+  },
+  "door-wheelchair-good-010": {
+    "_element_type": "door",
+    "common": {
+      "width": 1000,
+      "height": 2400,
+      "clear_width": 950,
+      "is_external": false,
+      "threshold_height": 10
+    },
+    "accessibility": {
+      "wheelchair_accessible": true
+    }
+  },
+  "door-wheelchair-narrow-011": {
+    "_element_type": "door",
+    "common": {
+      "width": 850,
+      "height": 2400,
+      "clear_width": 820,
+      "is_external": false,
+      "threshold_height": 25
+    },
+    "accessibility": {
+      "wheelchair_accessible": true
+    }
   }
 }

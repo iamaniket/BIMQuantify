@@ -13,6 +13,7 @@ from compliance_checker.rules.canonical import (
 )
 from compliance_checker.rules.schema import (
     ApplicabilityFilter,
+    MetadataFilter,
     Operator,
     PropertyCheck,
     RuleDefinition,
@@ -261,6 +262,25 @@ def _filter_passes(
         return False
 
 
+def _resolve_nested(data: dict[str, Any], path: str) -> Any:
+    parts = path.split(".")
+    current: Any = data
+    for part in parts:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+
+def _metadata_filter_passes(metadata: dict[str, Any], flt: MetadataFilter) -> bool:
+    value = _resolve_nested(metadata, flt.path)
+    proxy = PropertyCheck(property=flt.path, operator=flt.operator, threshold=flt.value)
+    try:
+        return _evaluate_check(value, proxy)
+    except Exception:
+        return False
+
+
 def _format_value(value: Any) -> str:
     if isinstance(value, float):
         if value.is_integer():
@@ -341,6 +361,16 @@ def evaluate(
         else "ifc"
     )
 
+    if isinstance(metadata, dict) and "building" not in metadata:
+        bbox = metadata.get("bbox")
+        if isinstance(bbox, dict):
+            z_max = bbox.get("max", [0, 0, 0])[2]
+            z_min = bbox.get("min", [0, 0, 0])[2]
+            height_mm = z_max - z_min
+            unit = (model_length_unit or "mm").lower()
+            height_m = height_mm if unit == "m" else height_mm / 1000.0
+            metadata["building"] = {"height_m": height_m}
+
     all_results: list[CheckResult] = []
     rule_summaries: list[RuleSummary] = []
     checked_elements: set[str] = set()
@@ -367,6 +397,30 @@ def evaluate(
                 )
             )
             continue
+
+        if rule.metadata_filters and isinstance(metadata, dict):
+            if not all(
+                _metadata_filter_passes(metadata, mf)
+                for mf in rule.metadata_filters
+            ):
+                rule_summaries.append(
+                    RuleSummary(
+                        rule_id=rule.id,
+                        article=rule.article,
+                        titles=rule.titles,
+                        title=rule.title,
+                        title_nl=rule.title_nl,
+                        category=rule.category,
+                        severity=rule.severity,
+                        total_checked=0,
+                        passed=0,
+                        failed=0,
+                        warned=0,
+                        skipped=0,
+                        errors=0,
+                    )
+                )
+                continue
 
         passed_count = 0
         failed = 0

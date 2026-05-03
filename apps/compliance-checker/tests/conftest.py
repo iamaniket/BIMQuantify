@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,13 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 @pytest.fixture
 def sample_metadata() -> dict[str, Any]:
     return json.loads((FIXTURES_DIR / "sample_metadata.json").read_text())
+
+
+@pytest.fixture
+def sample_metadata_tall(sample_metadata: dict[str, Any]) -> dict[str, Any]:
+    data = copy.deepcopy(sample_metadata)
+    data["bbox"]["max"] = [12000, 8000, 25000]
+    return data
 
 
 @pytest.fixture

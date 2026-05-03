@@ -131,6 +131,13 @@ IFC_PSET_PROP_TO_CANONICAL: dict[tuple[str, str], str] = {
     ("Pset_SpaceFireSafetyRequirements", "FireRiskFactor"): "fire_safety.fire_risk_factor",
     ("Pset_BBL_FireSafety", "SmokeDetectorPresent"): "fire_safety.smoke_detector_present",
     ("Pset_BBL_EmergencyLighting", "Present"): "fire_safety.emergency_lighting_present",
+    ("Pset_BBL_FireReaction", "FireReactionClass"): "fire_safety.fire_reaction_class",
+    ("Pset_BBL_FireReaction", "FirePropagationClass"): "fire_safety.fire_propagation_class",
+    ("Pset_BBL_FireReaction", "SmokeProductionClass"): "fire_safety.smoke_production_class",
+    ("Pset_DoorCommon", "SelfClosing"): "fire_safety.is_self_closing",
+    ("Pset_BBL_FireSafety", "IsFireBrigadeElevator"): "fire_safety.is_fire_brigade_elevator",
+    ("Pset_BBL_FireSafety", "DryRiserPresent"): "fire_safety.dry_riser_present",
+    ("Pset_BBL_FireSafety", "SmokeExtractionPresent"): "fire_safety.smoke_extraction_present",
     # -- thermal --
     ("Pset_WallCommon", "ThermalTransmittance"): "thermal.thermal_transmittance",
     ("Pset_SlabCommon", "ThermalTransmittance"): "thermal.thermal_transmittance",
@@ -152,6 +159,13 @@ IFC_PSET_PROP_TO_CANONICAL: dict[tuple[str, str], str] = {
     ("Pset_RampFlightCommon", "AccessibilityPerformance"): "ramp.accessibility_performance",
     # -- daylight --
     ("Pset_BBL_Daylight", "DaylightAreaPercent"): "daylight.daylight_area_percent",
+    # -- health --
+    ("Pset_BBL_Ventilation", "PurgeVentilationRate"): "health.purge_ventilation_rate",
+    ("Pset_BBL_CombustionAir", "HasCombustionAppliance"): "health.has_combustion_appliance",
+    ("Pset_BBL_CombustionAir", "CombustionAirSupplyRate"): "health.combustion_air_supply_rate",
+    # -- accessibility --
+    ("Pset_BBL_Accessibility", "WheelchairAccessible"): "accessibility.wheelchair_accessible",
+    ("Pset_SpaceCommon", "PubliclyAccessible"): "common.publicly_accessible",
 }
 
 

@@ -16,7 +16,7 @@ rules:
   - operator: exists
     description: Habitable rooms must declare a NaturalLighting property
     property: thermal.natural_lighting
-  implementation_status: partial
+  implementation_status: implemented
   notes: Existence check only — verifies the model authors a NaturalLighting flag. A true daylight area calculation requires
     window placement and orientation analysis beyond per-element properties.
   titles:
@@ -46,7 +46,7 @@ rules:
     threshold: 10
     description: Daylight area must be >= 10% of floor area
     property: daylight.daylight_area_percent
-  implementation_status: partial
+  implementation_status: implemented
   notes: Requires custom Pset_BBL_Daylight.DaylightAreaPercent authored on IfcSpace (precomputed by daylight analysis tool).
     Skips silently if the property is absent.
   titles:

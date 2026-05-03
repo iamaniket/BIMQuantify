@@ -11,9 +11,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import Base
 from bimstitch_api.models import (  # noqa: F401 — ensure models are imported
+    Contractor,
     Job,
+    Model,
     Organization,
     Project,
+    ProjectFile,
     ProjectMember,
     User,
 )

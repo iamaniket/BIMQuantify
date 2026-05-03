@@ -87,3 +87,35 @@ rules:
   applicable_element_types:
   - space
   min_source_format: ifc
+- id: bbl_4_134_ventilation_other_rooms
+  article: BBL Afd. 4.3, Art. 4.134
+  article_number: '4.134'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.3&artikel=4.134
+  legal_text_nl: De luchtverversing van een toiletruimte, een badruimte of een keuken bedraagt ten minste 0,5 dm³/s per m²
+    vloeroppervlakte.
+  legal_text_en: The ventilation of a toilet room, bathroom, or kitchen must be at least 0.5 l/s per m² of floor area.
+  requirement_summary: Pset_SpaceThermalRequirements.AirChangeRate >= 0.5 (l/s·m²) for toilets, bathrooms, kitchens
+  category: health
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicability_filters:
+  - property: common.occupancy_type
+    operator: matches
+    value: (?i)(toilet|bathroom|kitchen|laundry)
+  checks:
+  - operator: gte
+    threshold: 0.5
+    description: Air exchange rate for toilets/bathrooms/kitchens must be >= 0.5 l/s per m²
+    property: thermal.air_change_rate
+  implementation_status: implemented
+  titles:
+    en: Ventilation - toilets, bathrooms, and kitchens
+    nl: Luchtverversing overige ruimten
+  descriptions:
+    en: Toilet rooms, bathrooms, kitchens, and laundry rooms must provide air exchange of at least 0.5 l/s per m².
+    nl: De luchtverversing van een toiletruimte, een badruimte of een keuken bedraagt ten minste 0,5 dm³/s per m² vloeroppervlakte.
+  applicable_element_types:
+  - space
+  min_source_format: ifc

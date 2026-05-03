@@ -19,7 +19,7 @@ rules:
   - operator: exists
     description: Smoke detector flag must be authored on habitable spaces
     property: fire_safety.smoke_detector_present
-  implementation_status: partial
+  implementation_status: implemented
   notes: Requires custom Pset_BBL_FireSafety.SmokeDetectorPresent boolean on habitable IfcSpace elements (or per-storey aggregation).
     Skips silently when the property is absent.
   titles:

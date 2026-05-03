@@ -1,12 +1,12 @@
 # BBL Rule Implementation Manifest
 # Tracks all BBL rules relevant for automated BIM model checking
-# Last updated: 2026-05-02
+# Last updated: 2026-05-03
 
 summary:
   total_rules_identified: 91
-  implemented: 34
-  partial: 8
-  planned: 20
+  implemented: 52
+  partial: 3
+  planned: 10
   not_automatable: 29
 
 categories:
@@ -90,7 +90,7 @@ categories:
         status: partial
       - article: "4.32"
         title_nl: "Subbrandcompartiment"
-        status: planned
+        status: partial
       - article: "4.33"
         title_nl: "Beschermd subbrandcompartiment"
         status: planned
@@ -105,7 +105,7 @@ categories:
         status: planned
       - article: "4.37"
         title_nl: "Brandweerlift"
-        status: planned
+        status: implemented
       - article: "4.38"
         title_nl: "Brandbeveiligingsinstallatie"
         status: not_automatable
@@ -114,10 +114,10 @@ categories:
         status: not_automatable
       - article: "4.41"
         title_nl: "Inrichting vluchtroute"
-        status: planned
+        status: implemented
       - article: "4.42"
         title_nl: "Noodverlichting"
-        status: partial
+        status: implemented
       - article: "4.43"
         title_nl: "Vluchtrouteaanduiding"
         status: not_automatable
@@ -126,13 +126,13 @@ categories:
         status: not_automatable
       - article: "4.45"
         title_nl: "Rookmelders"
-        status: partial
+        status: implemented
       - article: "4.46"
         title_nl: "Blustoestellen"
         status: not_automatable
       - article: "4.47"
         title_nl: "Droge blusleiding"
-        status: planned
+        status: implemented
       - article: "4.48"
         title_nl: "Brandmeldinstallatie"
         status: not_automatable
@@ -144,7 +144,7 @@ categories:
         status: implemented
       - article: "4.52"
         title_nl: "Rook- en warmteafvoer"
-        status: planned
+        status: implemented
 
   accessibility:
     description: "Toegankelijkheid - Accessibility requirements (Chapter 4, Afd. 4.6)"
@@ -164,22 +164,22 @@ categories:
         status: implemented
       - article: "4.23"
         title_nl: "Toegang gebouw - drempelhoogte"
-        status: partial
+        status: implemented
       - article: "4.100"
         title_nl: "Bereikbaarheid vanaf openbare weg"
         status: planned
       - article: "4.101"
         title_nl: "Toegankelijkheid woonfunctie"
-        status: planned
+        status: implemented
       - article: "4.102"
         title_nl: "Toegankelijkheid overige gebruiksfunctie"
-        status: planned
+        status: implemented
       - article: "4.103"
         title_nl: "Rolstoeltoegankelijkheid"
-        status: planned
+        status: implemented
       - article: "4.104"
         title_nl: "Hellingbaan bij hoogteverschil"
-        status: partial
+        status: implemented
       - article: "4.105"
         title_nl: "Liftinstallatie"
         status: implemented
@@ -204,13 +204,13 @@ categories:
         notes: "Requires fire simulation + structural analysis"
       - article: "4.14"
         title_nl: "Beperking van het ontstaan van brand"
-        status: planned
+        status: implemented
       - article: "4.15"
         title_nl: "Beperking van het ontwikkelen van brand"
-        status: planned
+        status: implemented
       - article: "4.16"
         title_nl: "Beperking van verspreiding van rook"
-        status: planned
+        status: implemented
       - article: "4.17"
         title_nl: "Vluchtroute bij brand"
         status: planned
@@ -230,7 +230,7 @@ categories:
         status: implemented
       - article: "4.131"
         title_nl: "Spuivoorziening"
-        status: planned
+        status: implemented
       - article: "4.132"
         title_nl: "Luchtverversing verblijfsgebied"
         status: implemented
@@ -239,10 +239,10 @@ categories:
         status: implemented
       - article: "4.134"
         title_nl: "Luchtverversing overig"
-        status: planned
+        status: implemented
       - article: "4.135"
         title_nl: "Toevoer verbrandingslucht"
-        status: planned
+        status: implemented
       - article: "4.136"
         title_nl: "Afvoer rookgas"
         status: not_automatable
@@ -261,10 +261,10 @@ categories:
         status: not_automatable
       - article: "4.141"
         title_nl: "Daglicht"
-        status: partial
+        status: implemented
       - article: "4.142"
         title_nl: "Daglichtoppervlakte"
-        status: partial
+        status: implemented
       - article: "4.143"
         title_nl: "Bescherming tegen ratten en muizen"
         status: not_automatable

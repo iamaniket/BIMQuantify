@@ -1,0 +1,102 @@
+rules:
+- id: bbl_4_14_interior_surface_fire_reaction
+  article: BBL Afd. 4.2, Art. 4.14
+  article_number: '4.14'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.14
+  legal_text_nl: Een zijde van een constructieonderdeel die grenst aan de binnenlucht heeft een brandklasse van ten minste B.
+  legal_text_en: An interior surface of a building element must have a fire reaction class of at least B (EN 13501-1).
+  requirement_summary: Interior surface fire reaction class must be A1, A2, or B (EN 13501-1)
+  category: structural
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - wall
+  - slab
+  - covering
+  min_source_format: ifc
+  checks:
+  - property: fire_safety.fire_reaction_class
+    operator: in_list
+    threshold:
+    - A1
+    - A2
+    - B
+    description: Fire reaction class must be A1, A2, or B
+  implementation_status: implemented
+  titles:
+    en: Interior surface fire reaction class
+    nl: Beperking van het ontstaan van brand - brandklasse
+  descriptions:
+    en: Interior surfaces of walls, slabs, and coverings must have a fire reaction class of at least B per EN 13501-1.
+    nl: Een zijde van een constructieonderdeel die grenst aan de binnenlucht heeft een brandklasse van ten minste B.
+  notes: Checks Pset_BBL_FireReaction.FireReactionClass. Euroclass A1, A2 and B are accepted.
+- id: bbl_4_15_fire_propagation_class
+  article: BBL Afd. 4.2, Art. 4.15
+  article_number: '4.15'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.15
+  legal_text_nl: Een constructieonderdeel aan de binnenzijde heeft een druppelvorming/deeltjes vallen (brandvoortplanting)
+    van ten hoogste d1.
+  legal_text_en: An interior building element must have a fire propagation (burning droplets) class of at most d1 (EN 13501-1).
+  requirement_summary: Interior surface fire propagation class must be d0 or d1
+  category: structural
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - wall
+  - covering
+  min_source_format: ifc
+  applicability_filters:
+  - property: common.is_external
+    operator: eq
+    value: false
+  checks:
+  - property: fire_safety.fire_propagation_class
+    operator: in_list
+    threshold:
+    - d0
+    - d1
+    description: Fire propagation class must be d0 or d1
+  implementation_status: implemented
+  titles:
+    en: Interior fire propagation class
+    nl: Beperking van het ontwikkelen van brand - brandvoortplanting
+  descriptions:
+    en: Internal walls and coverings must have a fire propagation class of at most d1 (no or limited burning droplets).
+    nl: Een constructieonderdeel aan de binnenzijde heeft een brandvoortplanting van ten hoogste d1.
+  notes: Filtered to internal elements only (is_external=false). Checks Pset_BBL_FireReaction.FirePropagationClass.
+- id: bbl_4_16_smoke_production_class
+  article: BBL Afd. 4.2, Art. 4.16
+  article_number: '4.16'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.16
+  legal_text_nl: Een constructieonderdeel heeft een rookproductieklasse van ten hoogste s2.
+  legal_text_en: A building element must have a smoke production class of at most s2 (EN 13501-1).
+  requirement_summary: Smoke production class must be s1 or s2
+  category: structural
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - wall
+  - slab
+  - covering
+  min_source_format: ifc
+  checks:
+  - property: fire_safety.smoke_production_class
+    operator: in_list
+    threshold:
+    - s1
+    - s2
+    description: Smoke production class must be s1 or s2
+  implementation_status: implemented
+  titles:
+    en: Smoke production class
+    nl: Beperking van verspreiding van rook - rookproductieklasse
+  descriptions:
+    en: Walls, slabs, and coverings must have a smoke production class of at most s2 per EN 13501-1.
+    nl: Een constructieonderdeel heeft een rookproductieklasse van ten hoogste s2.
+  notes: Checks Pset_BBL_FireReaction.SmokeProductionClass. Classes s1 and s2 are accepted.

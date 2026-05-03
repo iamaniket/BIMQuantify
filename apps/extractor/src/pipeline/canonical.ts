@@ -105,6 +105,22 @@ export const IFC_PSET_PROP_TO_CANONICAL: Record<string, string> = {
   'Pset_BBL_Daylight::DaylightAreaPercent': 'daylight.daylight_area_percent',
 };
 
+const EXTRA_PRODUCT_TYPES: readonly string[] = [
+  'IfcFurnishingElement',
+  'IfcBuildingElementProxy',
+  'IfcDuctSegment',
+  'IfcPipeSegment',
+  'IfcFlowFitting',
+  'IfcFlowTerminal',
+];
+
+export const IFC_UPPERCASE_TO_PASCAL: ReadonlyMap<string, string> = new Map([
+  ...Object.keys(IFC_ENTITY_TO_CANONICAL).map(
+    (k) => [k.toUpperCase(), k] as const,
+  ),
+  ...EXTRA_PRODUCT_TYPES.map((k) => [k.toUpperCase(), k] as const),
+]);
+
 export function ifcEntityToCanonical(ifcEntity: string): CanonicalElementType | null {
   return IFC_ENTITY_TO_CANONICAL[ifcEntity] ?? null;
 }
