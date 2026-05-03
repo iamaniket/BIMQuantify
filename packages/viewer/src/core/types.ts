@@ -33,12 +33,15 @@ export interface ViewerEvents {
   'viewer:unmounted': undefined;
   'model:loaded': { modelId: string };
   'pointer:move': { ndc: { x: number; y: number }; clientX: number; clientY: number };
-  'pointer:click': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean };
+  'pointer:click': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean; clientX: number; clientY: number };
   'hover:change': { item: ItemId | null };
   'selection:change': { selected: ItemId[]; added: ItemId[]; removed: ItemId[] };
   'camera:change': { position: Vec3; target: Vec3 };
   'viewer:idle': undefined;
   'visibility:change': { hidden: ItemId[]; isolated: ItemId[]; isolationActive: boolean };
+  'contextmenu:open': { position: { x: number; y: number }; item: ItemId | null; point: Vec3 | null };
+  'contextmenu:close': undefined;
+  'xray:change': { xrayed: ItemId[] };
   'command:executed': { name: string; ok: boolean; error?: string };
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };

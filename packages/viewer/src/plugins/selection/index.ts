@@ -272,6 +272,22 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
       ctx.commands.register('selection.pickClear', () => clear(), {
         title: 'Clear selection (pointer)',
       });
+
+      ctx.commands.register('selection.selectAll', async () => {
+        const all: ItemId[] = [];
+        for (const [modelId, model] of ctx.models()) {
+          let ids: Iterable<number>;
+          try {
+            ids = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
+          } catch {
+            continue;
+          }
+          for (const localId of ids) {
+            all.push({ modelId, localId });
+          }
+        }
+        if (all.length) await setSelection(all);
+      }, { title: 'Select all elements' });
     },
 
     uninstall() {

@@ -119,6 +119,8 @@ export type { InteractivePerformanceOptions } from './plugins/interactive-perfor
 
 export type { SelectionPluginOptions } from './plugins/selection/index.js';
 
+export type { XrayPluginOptions } from './plugins/xray/index.js';
+
 export type {
   Plugin,
   ViewerContext,

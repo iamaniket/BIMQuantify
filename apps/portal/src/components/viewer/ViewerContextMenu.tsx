@@ -1,0 +1,352 @@
+'use client';
+
+import {
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Glasses,
+  MousePointer2,
+  Search,
+  Ruler,
+  Scissors,
+} from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type JSX,
+} from 'react';
+
+import type { ViewerHandle, ViewerEvents } from '@bimstitch/viewer';
+
+import { useViewerState } from './useViewerState';
+
+type ContextMenuData = ViewerEvents['contextmenu:open'];
+
+type MenuItem = {
+  label: string;
+  icon?: JSX.Element;
+  command?: string;
+  disabled?: boolean;
+  children?: MenuItem[];
+  separator?: boolean;
+};
+
+type Props = {
+  handle: ViewerHandle | null;
+};
+
+const ICON_CLASS = 'h-4 w-4 shrink-0 text-foreground-secondary';
+
+function buildMenu(
+  hasSelection: boolean,
+  hasHidden: boolean,
+  hasXray: boolean,
+  hasItem: boolean,
+): MenuItem[] {
+  return [
+    {
+      label: 'Inspect Properties',
+      icon: <Search className={ICON_CLASS} />,
+      disabled: !hasItem,
+    },
+    { label: '', separator: true },
+    {
+      label: 'View / Show',
+      icon: <Eye className={ICON_CLASS} />,
+      children: [
+        { label: 'Show All', command: 'visibility.showAll', disabled: !hasHidden },
+      ],
+    },
+    {
+      label: 'Hide',
+      icon: <EyeOff className={ICON_CLASS} />,
+      children: [
+        { label: 'Hide Selected', command: 'visibility.hide', disabled: !hasSelection },
+        { label: 'Hide Unselected', command: 'visibility.isolate', disabled: !hasSelection },
+      ],
+    },
+    {
+      label: 'X-Ray',
+      icon: <Glasses className={ICON_CLASS} />,
+      children: [
+        { label: 'X-Ray Selected', command: 'xray.selected', disabled: !hasSelection },
+        { label: 'X-Ray Others', command: 'xray.allExcept', disabled: !hasSelection },
+        { label: 'Clear X-Ray', command: 'xray.clear', disabled: !hasXray },
+      ],
+    },
+    {
+      label: 'Select',
+      icon: <MousePointer2 className={ICON_CLASS} />,
+      children: [
+        { label: 'Select All', command: 'selection.selectAll' },
+        { label: 'Clear Selection', command: 'selection.clear', disabled: !hasSelection },
+      ],
+    },
+    { label: '', separator: true },
+    {
+      label: 'Clear all slices',
+      icon: <Scissors className={ICON_CLASS} />,
+      disabled: true,
+    },
+    {
+      label: 'Measurements',
+      icon: <Ruler className={ICON_CLASS} />,
+      disabled: true,
+    },
+  ];
+}
+
+function MenuItemRow({
+  item,
+  onCommand,
+  parentDirection,
+}: {
+  item: MenuItem;
+  onCommand: (cmd: string) => void;
+  parentDirection: 'right' | 'left';
+}): JSX.Element {
+  const [subOpen, setSubOpen] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  const openSub = (): void => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setSubOpen(true);
+  };
+
+  const closeSub = (): void => {
+    timerRef.current = setTimeout(() => setSubOpen(false), 150);
+  };
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  if (item.separator) {
+    return <div className="my-1 h-px bg-border" />;
+  }
+
+  const hasChildren = item.children && item.children.length > 0;
+  const isDisabled = item.disabled === true;
+
+  const handleClick = (): void => {
+    if (isDisabled) return;
+    if (item.command) {
+      onCommand(item.command);
+    }
+  };
+
+  return (
+    <div
+      ref={rowRef}
+      className="relative"
+      onMouseEnter={hasChildren ? openSub : undefined}
+      onMouseLeave={hasChildren ? closeSub : undefined}
+    >
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isDisabled && !hasChildren}
+        className={
+          'flex w-full items-center gap-3 rounded px-3 py-1.5 text-left text-sm '
+          + (isDisabled && !hasChildren
+            ? 'cursor-default text-foreground-secondary/60'
+            : 'text-foreground hover:bg-background-secondary')
+        }
+      >
+        {item.icon ?? <span className="h-4 w-4 shrink-0" />}
+        <span className="flex-1">{item.label}</span>
+        {hasChildren ? (
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground-secondary" />
+        ) : null}
+      </button>
+      {hasChildren && subOpen ? (
+        <SubMenu
+          items={item.children!}
+          onCommand={onCommand}
+          parentRef={rowRef}
+          direction={parentDirection}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SubMenu({
+  items,
+  onCommand,
+  parentRef,
+  direction,
+}: {
+  items: MenuItem[];
+  onCommand: (cmd: string) => void;
+  parentRef: React.RefObject<HTMLDivElement | null>;
+  direction: 'right' | 'left';
+}): JSX.Element {
+  const subRef = useRef<HTMLDivElement>(null);
+  const [actualDir, setActualDir] = useState(direction);
+
+  useEffect(() => {
+    const sub = subRef.current;
+    const parent = parentRef.current;
+    if (!sub || !parent) return;
+    const subRect = sub.getBoundingClientRect();
+    const viewportW = window.innerWidth;
+    if (direction === 'right' && subRect.right > viewportW) {
+      setActualDir('left');
+    } else if (direction === 'left' && subRect.left < 0) {
+      setActualDir('right');
+    }
+  }, [direction, parentRef]);
+
+  const positionClass =
+    actualDir === 'right' ? 'left-full top-0 ml-1' : 'right-full top-0 mr-1';
+
+  return (
+    <div
+      ref={subRef}
+      className={
+        'absolute z-50 min-w-[180px] rounded-lg border border-border bg-background/95 p-1 shadow-xl backdrop-blur ' +
+        positionClass
+      }
+    >
+      {items.map((child, i) => (
+        <MenuItemRow
+          key={child.label || `sep-${String(i)}`}
+          item={child}
+          onCommand={onCommand}
+          parentDirection={actualDir}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function ViewerContextMenu({ handle }: Props): JSX.Element | null {
+  const [menu, setMenu] = useState<ContextMenuData | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewerState = useViewerState(handle);
+
+  useEffect(() => {
+    if (!handle) return undefined;
+
+    const offOpen = handle.events.on('contextmenu:open', (data) => {
+      setMenu(data);
+    });
+
+    const offClose = handle.events.on('contextmenu:close', () => {
+      setMenu(null);
+    });
+
+    return () => {
+      offOpen();
+      offClose();
+    };
+  }, [handle]);
+
+  const runCommand = useCallback(
+    (cmd: string) => {
+      if (!handle) return;
+      handle.commands.execute(cmd).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[context-menu] ${cmd} failed:`, err);
+      });
+      handle.commands.execute('contextMenu.close').catch(() => undefined);
+    },
+    [handle],
+  );
+
+  if (!menu) return null;
+
+  const hasItem = menu.item !== null;
+  const items = buildMenu(
+    viewerState.selectionCount > 0,
+    viewerState.hasHidden || viewerState.isIsolated,
+    viewerState.hasXray,
+    hasItem,
+  );
+
+  return (
+    <div ref={containerRef} className="pointer-events-none absolute inset-0 z-30">
+      <PositionedMenu
+        ref={menuRef}
+        x={menu.position.x}
+        y={menu.position.y}
+        items={items}
+        onCommand={runCommand}
+      />
+    </div>
+  );
+}
+
+import { forwardRef, type ForwardedRef } from 'react';
+
+const PositionedMenu = forwardRef(function PositionedMenu(
+  {
+    x,
+    y,
+    items,
+    onCommand,
+  }: {
+    x: number;
+    y: number;
+    items: MenuItem[];
+    onCommand: (cmd: string) => void;
+  },
+  ref: ForwardedRef<HTMLDivElement>,
+): JSX.Element {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: x, top: y });
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    const parent = el.parentElement;
+    if (!parent) return;
+
+    const parentRect = parent.getBoundingClientRect();
+    const menuW = el.offsetWidth;
+    const menuH = el.offsetHeight;
+
+    let left = x;
+    let top = y;
+
+    if (left + menuW > parentRect.width) {
+      left = Math.max(0, parentRect.width - menuW);
+    }
+    if (top + menuH > parentRect.height) {
+      top = Math.max(0, parentRect.height - menuH);
+    }
+
+    setPos({ left, top });
+    setReady(true);
+  }, [x, y]);
+
+  return (
+    <div
+      ref={(node) => {
+        (innerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        if (typeof ref === 'function') ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }}
+      className={
+        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background/95 p-1 shadow-xl backdrop-blur '
+        + (ready ? 'opacity-100' : 'opacity-0')
+      }
+      style={{ left: pos.left, top: pos.top }}
+    >
+      {items.map((item, i) => (
+        <MenuItemRow
+          key={item.label || `sep-${String(i)}`}
+          item={item}
+          onCommand={onCommand}
+          parentDirection="right"
+        />
+      ))}
+    </div>
+  );
+});

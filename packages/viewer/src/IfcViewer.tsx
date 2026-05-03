@@ -21,6 +21,8 @@ import { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
 import { selectionPlugin } from './plugins/selection/index.js';
 import { viewCubePlugin } from './plugins/viewcube/index.js';
 import { visibilityPlugin } from './plugins/visibility/index.js';
+import { contextMenuPlugin } from './plugins/context-menu/index.js';
+import { xrayPlugin } from './plugins/xray/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
 
 /**
@@ -91,6 +93,8 @@ function IfcViewerImpl(
       // Mouse-bindings registers AFTER selection/hover so the default
       // bindings can resolve `selection.pickSet` etc. at install time.
       mouseBindingsPlugin(props.mouseBindings ? { overrides: props.mouseBindings } : {}),
+      contextMenuPlugin(),
+      xrayPlugin(),
       ...(viewCubeEnabled
         ? [
             viewCubePlugin({

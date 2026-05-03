@@ -170,6 +170,8 @@ export function mouseBindingsPlugin(
           shift: ev.shiftKey,
           ctrl: ev.ctrlKey,
           meta: ev.metaKey,
+          clientX: ev.clientX,
+          clientY: ev.clientY,
         });
         const cmd = bindings.get(gesture);
         if (!cmd) return;

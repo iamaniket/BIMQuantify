@@ -14,6 +14,7 @@ import {
 import { Skeleton } from '@bimstitch/ui';
 import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
 
+import { ViewerContextMenu } from '@/components/viewer/ViewerContextMenu';
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 
 import { ApiError } from '@/lib/api/client';
@@ -142,6 +143,7 @@ export default function ViewerPage(): JSX.Element {
             setViewerError(err.message);
           }}
         />
+        <ViewerContextMenu handle={viewerHandleRef.current} />
         {viewerReady ? (
           <ViewerToolbar
             handle={viewerHandleRef.current}
