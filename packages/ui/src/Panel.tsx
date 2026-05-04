@@ -45,3 +45,18 @@ export const PanelBody = forwardRef<HTMLDivElement, PanelProps>(
 );
 
 PanelBody.displayName = 'PanelBody';
+
+export const PanelFooter = forwardRef<HTMLDivElement, PanelProps>(
+  ({ className, ...rest }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        'border-t border-border bg-background-secondary/60 px-4 py-2',
+        className,
+      )}
+      {...rest}
+    />
+  ),
+);
+
+PanelFooter.displayName = 'PanelFooter';

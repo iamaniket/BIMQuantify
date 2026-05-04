@@ -55,6 +55,7 @@ class ProjectFileDownloadResponse(BaseModel):
 class ViewerBundleResponse(BaseModel):
     file_type: FileType
     fragments_url: str | None = None
+    fragments_key: str | None = None
     metadata_url: str | None = None
     properties_url: str | None = None
     file_url: str | None = None

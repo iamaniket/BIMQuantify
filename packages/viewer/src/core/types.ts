@@ -45,6 +45,7 @@ export interface ViewerEvents {
   'command:executed': { name: string; ok: boolean; error?: string };
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };
+  'feature:enabled': { name: string; enabled: boolean };
 }
 
 /**

@@ -23,6 +23,7 @@ export type ViewerBundle = {
   fragmentsUrl: string;
   metadataUrl?: string;
   propertiesUrl?: string;
+  cacheKey?: string;
 };
 
 export type ViewCubeCorner =
@@ -72,8 +73,10 @@ export type ViewerHandle = {
 export type IfcViewerProps = {
   bundle: ViewerBundle;
   className?: string;
+  onSceneReady?: () => void;
   onReady?: (handle: ViewerHandle) => void;
   onError?: (err: Error) => void;
+  onProgress?: (loaded: number, total: number) => void;
   /** Extra plugins registered after built-ins. */
   plugins?: Plugin[];
   /** Override default keyboard combos: `{ "camera.zoomExtents": "Space" }`. */

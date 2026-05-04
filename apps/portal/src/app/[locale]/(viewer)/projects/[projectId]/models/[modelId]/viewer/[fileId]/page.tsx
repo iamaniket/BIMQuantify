@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { Link } from '@/i18n/navigation';
 import { useParams } from 'next/navigation';
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -15,17 +16,25 @@ import { Skeleton } from '@bimstitch/ui';
 import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
 
 import { ViewerContextMenu } from '@/components/viewer/ViewerContextMenu';
+import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
+import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
+import { ViewerSidePanel, type OpenPanels, type ViewerPanelId } from '@/components/viewer/ViewerSidePanel';
+import { ViewerSideRail } from '@/components/viewer/ViewerSideRail';
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
+import { useModelMetadata } from '@/hooks/useModelMetadata';
+import { useModelProperties } from '@/hooks/useModelProperties';
+import { useViewerBridge } from '@/hooks/useViewerBridge';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
-import type { FileTypeValue, ViewerBundleResponse } from '@/lib/api/schemas';
+import type { ViewerBundleResponse } from '@/lib/api/schemas';
 import {
   DEFAULT_VIEWER_SETTINGS,
   loadViewerSettings,
   type ViewerSettings,
 } from '@/lib/viewerSettings';
 import { useAuth } from '@/providers/AuthProvider';
+import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 const IfcViewer = dynamic(
   () => import('@bimstitch/viewer').then((m) => m.IfcViewer),
@@ -41,7 +50,12 @@ function buildBundle(response: ViewerBundleResponse): ViewerBundle {
   const out: ViewerBundle = { fragmentsUrl: response.fragments_url! };
   if (response.metadata_url !== null) out.metadataUrl = response.metadata_url;
   if (response.properties_url !== null) out.propertiesUrl = response.properties_url;
+  if (response.fragments_key !== null) out.cacheKey = response.fragments_key;
   return out;
+}
+
+function formatMB(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1);
 }
 
 export default function ViewerPage(): JSX.Element {
@@ -54,9 +68,37 @@ export default function ViewerPage(): JSX.Element {
   const [viewerError, setViewerError] = useState<string | null>(null);
   const viewerHandleRef = useRef<ViewerHandle | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
-  const [selectionCount, setSelectionCount] = useState(0);
+  const selectionCount = useViewerEntityStore((s) => s.selected.size);
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
   const [viewerEpoch, setViewerEpoch] = useState(0);
+  const [openPanels, setOpenPanels] = useState<OpenPanels>({
+    explorer: false,
+    properties: false,
+  });
+
+  const togglePanel = useCallback((id: ViewerPanelId) => {
+    setOpenPanels((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+
+  const closePanel = useCallback((id: ViewerPanelId) => {
+    setOpenPanels((prev) => ({ ...prev, [id]: false }));
+  }, []);
+  useViewerBridge(viewerHandleRef.current);
+
+  const metadataUrl = bundle?.metadata_url ?? null;
+  const propertiesUrl = bundle?.properties_url ?? null;
+  const { data: metadata, isLoading: isLoadingMetadata } = useModelMetadata(metadataUrl);
+  const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
+    propertiesUrl,
+    openPanels.properties && selectionCount > 0,
+  );
+
+  const [sceneReady, setSceneReady] = useState(false);
+  const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
+
+  const onProgress = useCallback((loaded: number, total: number) => {
+    setProgress({ loaded, total });
+  }, []);
 
   useEffect(() => {
     setSettings(loadViewerSettings());
@@ -131,19 +173,60 @@ export default function ViewerPage(): JSX.Element {
           mouseBindings={settings.mouseBindings}
           controls={settings.controls}
           interactivePerformance={settings.interactivePerformance}
+          onSceneReady={() => {
+            setSceneReady(true);
+          }}
+          onProgress={onProgress}
           onReady={(handle) => {
             viewerHandleRef.current = handle;
             setViewerReady(true);
-            const off = handle.events.on('selection:change', (payload) => {
-              setSelectionCount(payload.selected.length);
-            });
-            return off;
+            setProgress(null);
           }}
           onError={(err) => {
             setViewerError(err.message);
           }}
         />
+        {sceneReady && !viewerReady && progress !== null ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-12">
+            <div className="flex w-72 flex-col items-center gap-2 rounded-lg bg-background/80 px-4 py-3 shadow-md backdrop-blur-sm">
+              <span className="text-caption text-foreground-secondary">
+                Loading model… {formatMB(progress.loaded)} / {formatMB(progress.total)} MB
+              </span>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-150"
+                  style={{ width: `${progress.total > 0 ? (progress.loaded / progress.total) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
         <ViewerContextMenu handle={viewerHandleRef.current} />
+        {viewerReady ? (
+          <>
+            <ViewerSidePanel
+              openPanels={openPanels}
+              onClosePanel={closePanel}
+              explorerContent={
+                <ModelExplorer
+                  metadata={metadata}
+                  isLoading={isLoadingMetadata}
+                />
+              }
+              propertiesContent={
+                <PropertiesPanel
+                  metadata={metadata}
+                  properties={properties}
+                  isLoadingProperties={isLoadingProperties}
+                />
+              }
+            />
+            <ViewerSideRail
+              openPanels={openPanels}
+              onTogglePanel={togglePanel}
+            />
+          </>
+        ) : null}
         {viewerReady ? (
           <ViewerToolbar
             handle={viewerHandleRef.current}
@@ -152,7 +235,8 @@ export default function ViewerPage(): JSX.Element {
             onSettingsChange={setSettings}
             onReloadViewer={() => {
               setViewerReady(false);
-              setSelectionCount(0);
+              setSceneReady(false);
+              setProgress(null);
               setViewerEpoch((n) => n + 1);
             }}
           />
@@ -162,21 +246,26 @@ export default function ViewerPage(): JSX.Element {
   }
 
   return (
-    <main className="flex min-h-0 w-full flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
+    <main className="relative flex min-h-0 w-full flex-1 flex-col">
+      <div className="relative min-h-0 flex-1">
+        {body}
         <Link
           href={`/projects/${projectId}`}
-          className="inline-flex items-center gap-2 text-body2 text-foreground-secondary hover:text-foreground"
+          aria-label="Back to project"
+          title="Back to project"
+          className="absolute left-2 top-2 z-40 inline-flex h-7 w-7 items-center justify-center rounded-md bg-background/80 text-foreground-secondary shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to project
         </Link>
         {viewerError !== null ? (
-          <span className="text-caption text-error">{viewerError}</span>
+          <div
+            role="alert"
+            className="pointer-events-none absolute left-12 top-2 z-40 rounded-md bg-error-lighter px-2 py-1 text-caption text-error shadow-sm"
+          >
+            {viewerError}
+          </div>
         ) : null}
       </div>
-
-      <div className="relative min-h-0 flex-1">{body}</div>
     </main>
   );
 }

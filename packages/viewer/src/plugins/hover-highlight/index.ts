@@ -1,8 +1,10 @@
 /**
  * Hover-highlight plugin. Registers a `hover.pick` command that takes
  * an NDC point (or null to clear), raycasts, and applies a translucent
- * highlight to the picked item. Selection takes priority — already-
- * selected items are not over-highlighted (avoids material flicker).
+ * color highlight to the picked item via `FragmentsModel.setColor`.
+ *
+ * Selection takes priority — already-selected items are not over-painted
+ * by hover (selection's color stays visible).
  *
  * The plugin owns no DOM listeners. The `mouse-bindings` plugin is the
  * single owner of canvas pointer events and dispatches `hover.pick` for
@@ -10,7 +12,6 @@
  */
 
 import * as THREE from 'three';
-import * as FRAGS from '@thatopen/fragments';
 
 import { pick } from '../../core/Raycaster.js';
 import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
@@ -21,7 +22,7 @@ const NAME = 'hover-highlight' as const;
 export interface HoverPluginOptions {
   /** Highlight color. Default: gold yellow. */
   color?: number;
-  /** Opacity (0–1). Default: 0.5. */
+  /** Reserved — color highlight via setColor preserves item opacity. */
   opacity?: number;
 }
 
@@ -31,48 +32,83 @@ export interface HoverPluginAPI {
   isEnabled(): boolean;
 }
 
+interface SelectionShape {
+  hasItem(i: ItemId): boolean;
+}
+
 export function hoverHighlightPlugin(
   options: HoverPluginOptions = {},
 ): Plugin & HoverPluginAPI {
   const color = new THREE.Color(options.color ?? 0xffd700);
-  const opacity = options.opacity ?? 0.5;
 
   let ctxRef: ViewerContext | null = null;
+  // `current` is the latest hover target (whatever the pointer is over),
+  // independent of whether we actually painted it. `painted` is what we
+  // currently have setColor applied to — we only resetColor on items in
+  // `painted`, so a selected item the pointer happens to be over isn't
+  // accidentally cleared.
   let current: ItemId | null = null;
+  let painted: ItemId | null = null;
   let inFlight = false;
   let pending: { x: number; y: number } | null = null;
   let enabled = true;
   const edges = new EdgeOverlay();
 
-  const material: FRAGS.MaterialDefinition = {
-    color,
-    opacity,
-    transparent: opacity < 1,
-    renderedFaces: FRAGS.RenderedFaces.TWO,
-    customId: 'hover',
+  const sameItem = (a: ItemId | null, b: ItemId | null): boolean => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return a.modelId === b.modelId && a.localId === b.localId;
   };
 
   const isSelected = (item: ItemId): boolean => {
-    const sel = ctxRef?.plugins.get<{ hasItem(i: ItemId): boolean }>('selection');
+    const sel = ctxRef?.plugins.get<SelectionShape>('selection');
     return sel?.hasItem(item) ?? false;
   };
 
-  const apply = async (next: ItemId | null): Promise<void> => {
+  const modelOf = (item: ItemId) => ctxRef?.models().get(item.modelId);
+
+  // Synchronous: we fire setColor/resetColor without awaiting. The
+  // library's MeshConnection batches these inside one tile-update cycle,
+  // so paying for sequential `await`s only delays the visual.
+  const apply = (next: ItemId | null): void => {
     if (!ctxRef) return;
     if (sameItem(next, current)) return;
-    const prev = current;
     current = next;
-    if (prev) {
-      const model = ctxRef.models().get(prev.modelId);
-      await model?.resetHighlight([prev.localId]).catch(() => undefined);
-      edges.remove(ctxRef, [prev]);
+
+    // Always clear what we previously painted.
+    if (painted) {
+      void modelOf(painted)?.resetColor([painted.localId]).catch(() => undefined);
+      edges.remove(ctxRef, [painted]);
+      painted = null;
     }
-    if (next && !isSelected(next)) {
-      const model = ctxRef.models().get(next.modelId);
-      await model?.highlight([next.localId], material).catch(() => undefined);
+
+    // Paint new only if eligible (enabled + not already selected).
+    if (next && enabled && !isSelected(next)) {
+      void modelOf(next)?.setColor([next.localId], color).catch(() => undefined);
       void edges.add(ctxRef, [next], color);
+      painted = next;
     }
+
     ctxRef.events.emit('hover:change', { item: next });
+  };
+
+  // If the currently-hovered item gets selected, the selection plugin
+  // will paint over our color. Drop our `painted` tracking so we don't
+  // resetColor over selection on the next move. If a selected item is
+  // deselected and the pointer is still on it, paint hover.
+  const handleSelectionChange = (added: ItemId[], removed: ItemId[]): void => {
+    if (!ctxRef) return;
+    if (painted && added.some((a) => sameItem(a, painted))) {
+      // Selection took over the color; let it. Drop our edge overlay
+      // (selection has its own).
+      edges.remove(ctxRef, [painted]);
+      painted = null;
+    }
+    if (current && !painted && removed.some((r) => sameItem(r, current)) && !isSelected(current) && enabled) {
+      void modelOf(current)?.setColor([current.localId], color).catch(() => undefined);
+      void edges.add(ctxRef, [current], color);
+      painted = current;
+    }
   };
 
   // Coalesce concurrent picks. If a pick is in flight when a new NDC
@@ -87,7 +123,7 @@ export function hoverHighlightPlugin(
     }
     if (ndc === null) {
       pending = null;
-      if (current) await apply(null);
+      if (current) apply(null);
       return;
     }
     pending = ndc;
@@ -98,7 +134,7 @@ export function hoverHighlightPlugin(
         const next = pending;
         pending = null;
         const hit = await pick(ctxRef, next);
-        await apply(hit?.item ?? null);
+        apply(hit?.item ?? null);
       }
     } finally {
       inFlight = false;
@@ -111,7 +147,8 @@ export function hoverHighlightPlugin(
     setEnabled(next: boolean) {
       if (enabled === next) return;
       enabled = next;
-      if (!enabled && current) void apply(null);
+      if (!enabled && current) apply(null);
+      ctxRef?.events.emit('feature:enabled', { name: NAME, enabled });
     },
     isEnabled() {
       return enabled;
@@ -119,6 +156,12 @@ export function hoverHighlightPlugin(
 
     install(ctx: ViewerContext) {
       ctxRef = ctx;
+
+      // Listen for selection changes so hover and selection stay in sync
+      // on shared items without coordinating through a layered manager.
+      ctx.events.on('selection:change', ({ added, removed }) => {
+        handleSelectionChange(added, removed);
+      });
 
       ctx.commands.register(
         'hover.pick',
@@ -139,24 +182,34 @@ export function hoverHighlightPlugin(
       ctx.commands.register('hover.clear', () => dispatch(null), {
         title: 'Clear hover highlight',
       });
+
+      ctx.commands.register('hover.setEnabled', (args: unknown) => {
+        const on = typeof args === 'boolean' ? args : (args as { enabled?: boolean })?.enabled;
+        if (typeof on === 'boolean') {
+          if (enabled === on) return enabled;
+          enabled = on;
+          if (!enabled && current) apply(null);
+          ctxRef?.events.emit('feature:enabled', { name: NAME, enabled });
+        }
+        return enabled;
+      }, { title: 'Enable/disable hover feature' });
+      ctx.commands.register('hover.isEnabled', () => enabled, {
+        title: 'Get hover enabled state',
+      });
     },
 
     uninstall() {
-      if (current && ctxRef) {
-        const model = ctxRef.models().get(current.modelId);
-        model?.resetHighlight([current.localId]).catch(() => undefined);
+      if (ctxRef) {
+        if (painted) {
+          void modelOf(painted)?.resetColor([painted.localId]).catch(() => undefined);
+        }
         edges.dispose(ctxRef);
       }
       current = null;
+      painted = null;
       pending = null;
       inFlight = false;
       ctxRef = null;
     },
   };
-}
-
-function sameItem(a: ItemId | null, b: ItemId | null): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return a.modelId === b.modelId && a.localId === b.localId;
 }

@@ -10,6 +10,7 @@ import {
   IFCBUILDING,
   IFCBUILDINGSTOREY,
   IFCPROJECT,
+  IFCRELCONTAINEDINSPATIALSTRUCTURE,
   IFCSITE,
   IFCSPACE,
   type IfcAPI,
@@ -30,6 +31,14 @@ export type SpatialNode = {
   children: SpatialNode[];
 };
 
+export type ElementEntry = {
+  expressID: number;
+  globalId: string | null;
+  type: string;
+  name: string | null;
+  containedIn: number | null;
+};
+
 export type Metadata = {
   source_format: 'ifc';
   schema: SupportedSchema;
@@ -41,6 +50,7 @@ export type Metadata = {
     lengthUnit: string | null;
   };
   spatialTree: SpatialNode | null;
+  elements: ElementEntry[];
   elementCounts: Record<string, number>;
   canonicalElementCounts: Record<CanonicalElementType, number>;
   bbox: {
@@ -57,6 +67,7 @@ export async function buildMetadata(
 ): Promise<Metadata> {
   const project = readProject(api, modelID);
   const spatialTree = buildSpatialTree(api, modelID);
+  const elements = collectElements(api, modelID);
   const elementCounts = countElements(api, modelID);
   const canonicalElementCounts = buildCanonicalCounts(elementCounts);
   const bbox = computeBoundingBox(api, modelID);
@@ -66,6 +77,7 @@ export async function buildMetadata(
     schema,
     project,
     spatialTree,
+    elements,
     elementCounts,
     canonicalElementCounts,
     bbox,
@@ -169,6 +181,49 @@ function childIfcTypeName(
     default:
       return null;
   }
+}
+
+function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
+  const elements: ElementEntry[] = [];
+  const relIds = api.GetLineIDsWithType(
+    modelID,
+    IFCRELCONTAINEDINSPATIALSTRUCTURE,
+  );
+  for (let i = 0; i < relIds.size(); i += 1) {
+    const rel = api.GetLine(modelID, relIds.get(i), true) as Record<
+      string,
+      unknown
+    >;
+    const relating = rel['RelatingStructure'] as
+      | Record<string, unknown>
+      | undefined;
+    const containedIn = relating ? numberValue(relating['expressID']) : null;
+    const related = rel['RelatedElements'];
+    if (!Array.isArray(related)) continue;
+    for (const obj of related) {
+      const elem = obj as Record<string, unknown>;
+      const expressID = numberValue(elem['expressID']);
+      if (expressID === null) continue;
+      const code = api.GetLineType(modelID, expressID);
+      const rawName = (
+        api as unknown as {
+          GetNameFromTypeCode?: (c: number) => string;
+        }
+      ).GetNameFromTypeCode?.(code);
+      const type =
+        (typeof rawName === 'string'
+          ? IFC_UPPERCASE_TO_PASCAL.get(rawName)
+          : undefined) ?? rawName ?? 'Unknown';
+      elements.push({
+        expressID,
+        globalId: stringValue(elem['GlobalId']),
+        type,
+        name: stringValue(elem['Name']),
+        containedIn,
+      });
+    }
+  }
+  return elements;
 }
 
 function countElements(api: IfcAPI, modelID: number): Record<string, number> {

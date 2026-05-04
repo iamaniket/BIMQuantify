@@ -3,7 +3,6 @@
 import {
   ChevronRight,
   Eye,
-  EyeOff,
   Glasses,
   MousePointer2,
   Search,
@@ -28,6 +27,7 @@ type MenuItem = {
   label: string;
   icon?: JSX.Element;
   command?: string;
+  commandArgs?: unknown;
   disabled?: boolean;
   children?: MenuItem[];
   separator?: boolean;
@@ -43,8 +43,9 @@ function buildMenu(
   hasSelection: boolean,
   hasHidden: boolean,
   hasXray: boolean,
-  hasItem: boolean,
+  item: ContextMenuData['item'],
 ): MenuItem[] {
+  const hasItem = item !== null;
   return [
     {
       label: 'Inspect Properties',
@@ -53,27 +54,25 @@ function buildMenu(
     },
     { label: '', separator: true },
     {
-      label: 'View / Show',
+      label: 'Visibility',
       icon: <Eye className={ICON_CLASS} />,
       children: [
         { label: 'Show All', command: 'visibility.showAll', disabled: !hasHidden },
-      ],
-    },
-    {
-      label: 'Hide',
-      icon: <EyeOff className={ICON_CLASS} />,
-      children: [
-        { label: 'Hide Selected', command: 'visibility.hide', disabled: !hasSelection },
-        { label: 'Hide Unselected', command: 'visibility.isolate', disabled: !hasSelection },
+        { label: 'Hide All', command: 'visibility.hideAll' },
+        { label: '', separator: true },
+        { label: 'Hide', command: 'visibility.hideItem', commandArgs: item, disabled: !hasItem },
+        { label: 'Show Only This', command: 'visibility.isolateItem', commandArgs: item, disabled: !hasItem },
       ],
     },
     {
       label: 'X-Ray',
       icon: <Glasses className={ICON_CLASS} />,
       children: [
-        { label: 'X-Ray Selected', command: 'xray.selected', disabled: !hasSelection },
-        { label: 'X-Ray Others', command: 'xray.allExcept', disabled: !hasSelection },
+        { label: 'X-Ray All', command: 'xray.all' },
         { label: 'Clear X-Ray', command: 'xray.clear', disabled: !hasXray },
+        { label: '', separator: true },
+        { label: 'X-Ray', command: 'xray.set', commandArgs: item, disabled: !hasItem },
+        { label: 'X-Ray Others', command: 'xray.allExceptItem', commandArgs: item, disabled: !hasItem },
       ],
     },
     {
@@ -104,7 +103,7 @@ function MenuItemRow({
   parentDirection,
 }: {
   item: MenuItem;
-  onCommand: (cmd: string) => void;
+  onCommand: (cmd: string, args?: unknown) => void;
   parentDirection: 'right' | 'left';
 }): JSX.Element {
   const [subOpen, setSubOpen] = useState(false);
@@ -134,7 +133,7 @@ function MenuItemRow({
   const handleClick = (): void => {
     if (isDisabled) return;
     if (item.command) {
-      onCommand(item.command);
+      onCommand(item.command, item.commandArgs);
     }
   };
 
@@ -152,7 +151,7 @@ function MenuItemRow({
         className={
           'flex w-full items-center gap-3 rounded px-3 py-1.5 text-left text-sm '
           + (isDisabled && !hasChildren
-            ? 'cursor-default text-foreground-secondary/60'
+            ? 'cursor-not-allowed bg-background-tertiary text-foreground-disabled'
             : 'text-foreground hover:bg-background-secondary')
         }
       >
@@ -181,7 +180,7 @@ function SubMenu({
   direction,
 }: {
   items: MenuItem[];
-  onCommand: (cmd: string) => void;
+  onCommand: (cmd: string, args?: unknown) => void;
   parentRef: React.RefObject<HTMLDivElement | null>;
   direction: 'right' | 'left';
 }): JSX.Element {
@@ -208,7 +207,7 @@ function SubMenu({
     <div
       ref={subRef}
       className={
-        'absolute z-50 min-w-[180px] rounded-lg border border-border bg-background/95 p-1 shadow-xl backdrop-blur ' +
+        'absolute z-50 min-w-[180px] rounded-lg border border-border bg-background p-1 shadow-xl ' +
         positionClass
       }
     >
@@ -248,9 +247,9 @@ export function ViewerContextMenu({ handle }: Props): JSX.Element | null {
   }, [handle]);
 
   const runCommand = useCallback(
-    (cmd: string) => {
+    (cmd: string, args?: unknown) => {
       if (!handle) return;
-      handle.commands.execute(cmd).catch((err: unknown) => {
+      handle.commands.execute(cmd, args).catch((err: unknown) => {
         // eslint-disable-next-line no-console
         console.warn(`[context-menu] ${cmd} failed:`, err);
       });
@@ -261,12 +260,11 @@ export function ViewerContextMenu({ handle }: Props): JSX.Element | null {
 
   if (!menu) return null;
 
-  const hasItem = menu.item !== null;
   const items = buildMenu(
     viewerState.selectionCount > 0,
     viewerState.hasHidden || viewerState.isIsolated,
     viewerState.hasXray,
-    hasItem,
+    menu.item,
   );
 
   return (
@@ -294,7 +292,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
     x: number;
     y: number;
     items: MenuItem[];
-    onCommand: (cmd: string) => void;
+    onCommand: (cmd: string, args?: unknown) => void;
   },
   ref: ForwardedRef<HTMLDivElement>,
 ): JSX.Element {
@@ -334,7 +332,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
         else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={
-        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background/95 p-1 shadow-xl backdrop-blur '
+        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background p-1 shadow-xl '
         + (ready ? 'opacity-100' : 'opacity-0')
       }
       style={{ left: pos.left, top: pos.top }}

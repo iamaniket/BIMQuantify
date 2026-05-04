@@ -78,7 +78,7 @@ export class Viewer {
   private components: Components | null = null;
   private world: World | null = null;
   private fragmentsModels: FRAGS.FragmentsModels | null = null;
-  private updateTimer: ReturnType<typeof setInterval> | null = null;
+  private updateRafId: number | null = null;
   private cameraChangeUnsub: (() => void) | null = null;
   private pluginManager: PluginManager | null = null;
   private sun: THREE.DirectionalLight | null = null;
@@ -130,11 +130,16 @@ export class Viewer {
       material.polygonOffsetFactor = Math.random();
     });
 
-    // FragmentsModels streams tile data from a worker; pull updates on a
-    // gentle 200ms interval (force=false to avoid a per-frame stall).
-    this.updateTimer = setInterval(() => {
+    // FragmentsModels streams tile data from a worker. Drive `update()`
+    // from rAF so visual changes (setColor / setOpacity / streaming LOD)
+    // appear on the next frame instead of waiting for a slow timer.
+    // `force=false` (default) means we only drain completed batches —
+    // no per-frame stall waiting on pending worker work.
+    const tick = (): void => {
       fragmentsModels.update().catch(() => undefined);
-    }, 200);
+      this.updateRafId = requestAnimationFrame(tick);
+    };
+    this.updateRafId = requestAnimationFrame(tick);
 
     this.components = components;
     this.world = world;
@@ -459,9 +464,9 @@ export class Viewer {
       clearTimeout(this.idleTimer);
       this.idleTimer = null;
     }
-    if (this.updateTimer !== null) {
-      clearInterval(this.updateTimer);
-      this.updateTimer = null;
+    if (this.updateRafId !== null) {
+      cancelAnimationFrame(this.updateRafId);
+      this.updateRafId = null;
     }
     this.fragmentsModels?.dispose().catch(() => undefined);
     this.fragmentsModels = null;

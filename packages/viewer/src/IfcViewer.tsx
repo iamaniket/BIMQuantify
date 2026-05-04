@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { Viewer } from './core/Viewer.js';
+import { getCached, putCached } from './fragmentCache.js';
 import { fetchFragments } from './loadFragments.js';
 import { cameraPlugin } from './plugins/camera/index.js';
 import { effectsPlugin } from './plugins/effects/index.js';
@@ -123,11 +124,25 @@ function IfcViewerImpl(
     (async () => {
       try {
         await viewer.mount(container);
-        const bytes = await fetchFragments(props.bundle.fragmentsUrl);
+        if (cancelled) return;
+        props.onSceneReady?.();
+        const cacheKey = props.bundle.cacheKey;
+        let bytes: Uint8Array | null = null;
+        if (cacheKey) {
+          bytes = await getCached(cacheKey);
+        }
+        if (bytes === null) {
+          bytes = await fetchFragments(
+            props.bundle.fragmentsUrl,
+            props.onProgress,
+          );
+          if (cacheKey && bytes.byteLength > 0) {
+            putCached(cacheKey, bytes).catch(() => undefined);
+          }
+        }
         if (cancelled) return;
         await viewer.loadFragments(bytes);
         if (cancelled) return;
-        // Make sure the handle is materialised before firing onReady.
         const handle = handleRef.current;
         if (handle) props.onReady?.(handle);
       } catch (err) {

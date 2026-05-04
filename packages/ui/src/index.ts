@@ -1,6 +1,6 @@
 export { Button } from './Button.js';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button.js';
-export { Panel, PanelHeader, PanelBody } from './Panel.js';
+export { Panel, PanelHeader, PanelBody, PanelFooter } from './Panel.js';
 export type { PanelProps } from './Panel.js';
 export { Input } from './Input.js';
 export type { InputProps, InputSize } from './Input.js';

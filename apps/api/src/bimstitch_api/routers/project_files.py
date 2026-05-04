@@ -460,6 +460,7 @@ async def get_viewer_bundle(
     return ViewerBundleResponse(
         file_type=row.file_type,
         fragments_url=fragments_url,
+        fragments_key=row.fragments_storage_key,
         metadata_url=metadata_url,
         properties_url=properties_url,
         expires_in=storage.presign_ttl,
