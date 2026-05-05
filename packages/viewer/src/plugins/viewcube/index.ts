@@ -8,13 +8,11 @@
 import * as THREE from 'three';
 
 import type { Plugin, ViewerContext } from '../../core/types.js';
-import type { ViewCubeCorner } from '../../types.js';
 import { ViewCubeWidget } from './ViewCubeWidget.js';
 
 const NAME = 'viewcube' as const;
 
 interface ViewCubePluginOptions {
-  corner?: ViewCubeCorner;
   size?: number;
   showCompass?: boolean;
   showHomeButton?: boolean;
@@ -31,7 +29,6 @@ export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
     install(ctx: ViewerContext) {
       widget = new ViewCubeWidget({
         size: options.size ?? 160,
-        corner: options.corner ?? 'top-right',
         showCompass: options.showCompass ?? false,
         showHomeButton: options.showHomeButton ?? true,
         onPick: (region) => {

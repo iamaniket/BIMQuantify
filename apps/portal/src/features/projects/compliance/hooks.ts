@@ -80,7 +80,7 @@ function mapToDomains(resp: ComplianceSummaryResponse): ComplianceDomain[] {
 function mapToArticles(resp: ComplianceSummaryResponse): ComplianceArticle[] {
   return resp.rules_summary.map((r) => ({
     code: r.article,
-    title: r.titles['nl'] ?? r.titles['en'] ?? r.title_nl ?? r.title ?? r.article,
+    title: r.titles?.['nl'] ?? r.titles?.['en'] ?? r.title_nl ?? r.title ?? r.article,
     categoryId: r.category,
     checks: r.total_checked,
     pass: r.passed,

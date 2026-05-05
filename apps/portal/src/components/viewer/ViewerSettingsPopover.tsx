@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
 import {
@@ -22,12 +23,7 @@ import {
   type ViewerSettings,
 } from '@/lib/viewerSettings';
 
-const VIEWCUBE_CORNERS: ViewerSettings['viewCube']['corner'][] = [
-  'top-right',
-  'top-left',
-  'bottom-right',
-  'bottom-left',
-];
+
 
 const EFFECTS_QUALITIES: EffectsQuality[] = ['low', 'medium', 'high'];
 
@@ -511,7 +507,7 @@ export function ViewerSettingsPopover({
       role="dialog"
       aria-label="Viewer settings"
       data-testid="viewer-settings-popover"
-      className="absolute bottom-12 left-1/2 z-20 w-80 -translate-x-1/2 rounded-md border border-border bg-background p-4 shadow-lg"
+      className="absolute bottom-12 left-1/2 z-20 w-[26rem] -translate-x-1/2 rounded-md border border-border bg-background p-4 shadow-lg"
       onMouseDown={(e) => {
         e.stopPropagation();
       }}
@@ -528,170 +524,162 @@ export function ViewerSettingsPopover({
         </button>
       </div>
 
-      <div className="space-y-4">
-        <Section title="ViewCube" note="Applies on next viewer reload">
-          <Toggle
-            label="Show ViewCube"
-            checked={settings.viewCube.enabled}
-            onChange={(enabled) => {
-              update({
-                ...settings,
-                viewCube: { ...settings.viewCube, enabled },
-              });
-            }}
-          />
-          <Field label="Corner">
-            <select
-              className={SELECT_CLS}
-              value={settings.viewCube.corner}
-              onChange={(e) => {
-                update({
-                  ...settings,
-                  viewCube: {
-                    ...settings.viewCube,
-                    corner: e.target.value as ViewerSettings['viewCube']['corner'],
-                  },
-                });
-              }}
-            >
-              {VIEWCUBE_CORNERS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </Section>
+      <Tabs defaultValue="appearance">
+        <TabsList className="shrink-0">
+          <TabsTrigger value="appearance" className="flex-1 text-caption">
+            Appearance
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="flex-1 text-caption">
+            Performance
+          </TabsTrigger>
+          <TabsTrigger value="controls" className="flex-1 text-caption">
+            Controls
+          </TabsTrigger>
+        </TabsList>
 
-        <Section title="Shadows" note="Applies on next viewer reload">
-          <Toggle
-            label="Enable shadows"
-            checked={settings.shadows.enabled}
-            onChange={(enabled) => {
-              update({
-                ...settings,
-                shadows: { ...settings.shadows, enabled },
-              });
-            }}
-          />
-        </Section>
+        <TabsContent value="appearance" className="max-h-[24rem] overflow-y-auto">
+          <div className="space-y-4 pt-3">
 
-        <Section title="Visual effects" note="Applies on next viewer reload">
-          <Toggle
-            label="Enable effects"
-            checked={settings.effects.enabled}
-            onChange={(enabled) => {
-              update({
-                ...settings,
-                effects: { ...settings.effects, enabled },
-              });
-            }}
-          />
-          <Toggle
-            label="Edges (silhouette)"
-            checked={settings.effects.edges}
-            onChange={(edges) => {
-              update({
-                ...settings,
-                effects: { ...settings.effects, edges },
-              });
-            }}
-          />
-          <Field label="Quality">
-            <select
-              className={SELECT_CLS}
-              value={settings.effects.quality}
-              onChange={(e) => {
-                update({
-                  ...settings,
-                  effects: {
-                    ...settings.effects,
-                    quality: e.target.value as EffectsQuality,
-                  },
-                });
-              }}
-            >
-              {EFFECTS_QUALITIES.map((q) => (
-                <option key={q} value={q}>
-                  {q}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </Section>
 
-        <Section title="Background" note="Applies on next viewer reload">
-          <Field label="Color">
-            <input
-              type="color"
-              value={colorToHex(settings.background.color)}
-              onChange={(e) => {
-                update({
-                  ...settings,
-                  background: { color: hexToColor(e.target.value) },
-                });
-              }}
-              className="h-7 w-12 cursor-pointer rounded border border-border bg-transparent"
+            <Section title="Shadows" note="Applies on next viewer reload">
+              <Toggle
+                label="Enable shadows"
+                checked={settings.shadows.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    shadows: { ...settings.shadows, enabled },
+                  });
+                }}
+              />
+            </Section>
+
+            <Section title="Visual effects" note="Applies on next viewer reload">
+              <Toggle
+                label="Enable effects"
+                checked={settings.effects.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    effects: { ...settings.effects, enabled },
+                  });
+                }}
+              />
+              <Toggle
+                label="Edges (silhouette)"
+                checked={settings.effects.edges}
+                onChange={(edges) => {
+                  update({
+                    ...settings,
+                    effects: { ...settings.effects, edges },
+                  });
+                }}
+              />
+              <Field label="Quality">
+                <select
+                  className={SELECT_CLS}
+                  value={settings.effects.quality}
+                  onChange={(e) => {
+                    update({
+                      ...settings,
+                      effects: {
+                        ...settings.effects,
+                        quality: e.target.value as EffectsQuality,
+                      },
+                    });
+                  }}
+                >
+                  {EFFECTS_QUALITIES.map((q) => (
+                    <option key={q} value={q}>
+                      {q}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </Section>
+
+            <Section title="Background" note="Applies on next viewer reload">
+              <Field label="Color">
+                <input
+                  type="color"
+                  value={colorToHex(settings.background.color)}
+                  onChange={(e) => {
+                    update({
+                      ...settings,
+                      background: { color: hexToColor(e.target.value) },
+                    });
+                  }}
+                  className="h-7 w-12 cursor-pointer rounded border border-border bg-transparent"
+                />
+              </Field>
+            </Section>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="performance" className="max-h-[24rem] overflow-y-auto">
+          <div className="pt-3">
+            <PerformanceSection
+              handle={handle}
+              settings={settings}
+              onChange={update}
             />
-          </Field>
-        </Section>
+          </div>
+        </TabsContent>
 
-        <PerformanceSection
-          handle={handle}
-          settings={settings}
-          onChange={update}
-        />
+        <TabsContent value="controls" className="max-h-[24rem] overflow-y-auto">
+          <div className="space-y-4 pt-3">
+            <MouseControlsSection settings={settings} onChange={update} />
 
-        {handle ? (
-          <ShortcutsSection
-            handle={handle}
-            settings={settings}
-            onChange={update}
-          />
-        ) : (
-          <Section title="Keyboard shortcuts" note={undefined}>
-            <p className="text-caption text-foreground-secondary">
-              Viewer not ready.
-            </p>
-          </Section>
-        )}
+            {handle ? (
+              <ShortcutsSection
+                handle={handle}
+                settings={settings}
+                onChange={update}
+              />
+            ) : (
+              <Section title="Keyboard shortcuts" note={undefined}>
+                <p className="text-caption text-foreground-secondary">
+                  Viewer not ready.
+                </p>
+              </Section>
+            )}
 
-        {handle ? (
-          <MouseBindingsSection
-            handle={handle}
-            settings={settings}
-            onChange={update}
-          />
-        ) : (
-          <Section title="Mouse bindings" note={undefined}>
-            <p className="text-caption text-foreground-secondary">
-              Viewer not ready.
-            </p>
-          </Section>
-        )}
+            {handle ? (
+              <MouseBindingsSection
+                handle={handle}
+                settings={settings}
+                onChange={update}
+              />
+            ) : (
+              <Section title="Mouse bindings" note={undefined}>
+                <p className="text-caption text-foreground-secondary">
+                  Viewer not ready.
+                </p>
+              </Section>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
-        <MouseControlsSection settings={settings} onChange={update} />
-
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <button
-            type="button"
-            onClick={() => {
-              update(DEFAULT_VIEWER_SETTINGS);
-            }}
-            className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-caption text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Reset defaults
-          </button>
-          <button
-            type="button"
-            onClick={onReloadViewer}
-            data-testid="viewer-settings-reload"
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-caption font-medium text-primary-foreground hover:bg-primary-hover"
-          >
-            Reload viewer
-          </button>
-        </div>
+      <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+        <button
+          type="button"
+          onClick={() => {
+            update(DEFAULT_VIEWER_SETTINGS);
+          }}
+          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-caption text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset defaults
+        </button>
+        <button
+          type="button"
+          onClick={onReloadViewer}
+          data-testid="viewer-settings-reload"
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-caption font-medium text-primary-foreground hover:bg-primary-hover"
+        >
+          Reload viewer
+        </button>
       </div>
     </div>
   );

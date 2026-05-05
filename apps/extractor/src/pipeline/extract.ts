@@ -80,7 +80,7 @@ export async function runExtraction(job: ExtractionJob): Promise<void> {
     const metadata = await buildMetadata(ifcApi, modelID, opened.schema);
 
     logger.info('extracting properties');
-    const properties = await buildProperties(ifcApi, modelID);
+    const properties = await buildProperties(ifcApi, modelID, metadata.elements);
 
     const fragmentsKey = fragmentsKeyFor(job.storage_key);
     const metadataKey = metadataKeyFor(job.storage_key);

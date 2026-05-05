@@ -6,7 +6,6 @@ import type {
   InteractivePerformanceOptions,
   MouseBindingMap,
   ShortcutMap,
-  ViewCubeCorner,
 } from '@bimstitch/viewer';
 
 const STORAGE_KEY = 'bimstitch.viewerSettings.v2';
@@ -18,7 +17,7 @@ export type ControlsSettings = Required<ControlsOptions>;
 export type InteractivePerformanceSettings = Required<InteractivePerformanceOptions>;
 
 export type ViewerSettings = {
-  viewCube: { enabled: boolean; corner: ViewCubeCorner };
+  viewCube: { enabled: boolean };
   shadows: { enabled: boolean };
   background: { color: number };
   effects: EffectsSettings;
@@ -82,7 +81,7 @@ export const DEFAULT_INTERACTIVE_PERFORMANCE: InteractivePerformanceSettings = {
 };
 
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
-  viewCube: { enabled: true, corner: 'top-right' },
+  viewCube: { enabled: true },
   shadows: { enabled: true },
   background: { color: 0xffffff },
   effects: DEFAULT_EFFECTS,

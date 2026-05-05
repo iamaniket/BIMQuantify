@@ -5,6 +5,7 @@ import { useEffect, type JSX, type ReactNode } from 'react';
 
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { SidebarProvider } from '@/components/sidebar/SidebarContext';
+import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { useAuth } from '@/providers/AuthProvider';
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
 export default function DashboardLayout({ children }: Props): JSX.Element {
   const router = useRouter();
   const { tokens, hasHydrated } = useAuth();
+  useNotificationSocket(tokens === null ? null : tokens.access_token);
 
   useEffect(() => {
     if (hasHydrated && tokens === null) {

@@ -12,6 +12,7 @@ import { StitchLogo } from '@/components/charts/StitchLogo';
 import { SidebarNavItem } from './SidebarNavItem';
 import { useSidebar } from './SidebarContext';
 import { SidebarCollapseToggle } from './SidebarCollapseToggle';
+import { SidebarNotifications } from './SidebarNotifications';
 import { SidebarTenantCard } from './SidebarTenantCard';
 import { SidebarNav } from './SidebarNav';
 import { SidebarUserChip } from './SidebarUserChip';
@@ -50,6 +51,9 @@ export function Sidebar(): JSX.Element {
         <div className="border-t border-white/12">
           <SidebarNav />
         </div>
+
+        {/* Notifications */}
+        <SidebarNotifications />
 
         {/* User */}
         <SidebarUserChip />

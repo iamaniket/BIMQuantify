@@ -1,27 +1,51 @@
 /**
- * Extract per-element property sets and quantity sets.
+ * Extract per-element canonical properties for the compliance engine.
  *
- * Walks IfcRelDefinesByProperties to map elements ↔ pset names ↔ properties.
- * The output is keyed by element GlobalId so the viewer can join against
- * geometry by stable identity.
+ * Walks IfcRelDefinesByProperties and translates raw (psetName, propName)
+ * pairs into the canonical "domain.property" shape that the rule engine
+ * (apps/compliance-checker) operates on. Each element also carries
+ * `_element_type` (canonical type string) so rules can filter by element.
  *
- * Property values can balloon — for a 50k-element model with 20 psets each
- * this JSON can hit tens of MB. The viewer is expected to lazy-load this on
- * demand.
+ * Output shape per element:
+ *   {
+ *     _element_type: "door",
+ *     fire_safety: { fire_rating: "REI60", is_fire_exit: true },
+ *     common: { width: 900, height: 2100 },
+ *     ...
+ *   }
  */
 
 import { IFCRELDEFINESBYPROPERTIES, type IfcAPI } from 'web-ifc';
 
+import {
+  type CanonicalElementType,
+  ifcEntityToCanonical,
+  ifcPsetPropToCanonical,
+} from './canonical.js';
+import type { ElementEntry } from './metadata.js';
+
 export type PropertyValue = string | number | boolean | null;
 export type PropertySet = Record<string, PropertyValue>;
-export type ElementProperties = Record<string, PropertySet>;
-export type Properties = Record<string, ElementProperties>;
+export type ElementCanonicalData = {
+  _element_type?: CanonicalElementType;
+} & Record<string, PropertySet | CanonicalElementType | undefined>;
+export type Properties = Record<string, ElementCanonicalData>;
 
 export async function buildProperties(
   api: IfcAPI,
   modelID: number,
+  elements: ElementEntry[],
 ): Promise<Properties> {
   const out: Properties = {};
+
+  // Seed each known element with its canonical type so rules can filter
+  // even when an element has no property sets attached.
+  for (const elem of elements) {
+    if (elem.globalId === null) continue;
+    const canonical = ifcEntityToCanonical(elem.type);
+    if (canonical === null) continue;
+    out[elem.globalId] = { _element_type: canonical };
+  }
 
   const relIDs = api.GetLineIDsWithType(modelID, IFCRELDEFINESBYPROPERTIES);
   for (let i = 0; i < relIDs.size(); i += 1) {
@@ -44,12 +68,45 @@ export async function buildProperties(
       const gid = stringValue(target['GlobalId']);
       if (gid === null) continue;
       out[gid] ??= {};
-      // Merge — last write wins if two psets clash, which is fine for v1.
-      out[gid][psetName] = { ...(out[gid][psetName] ?? {}), ...properties };
+      mergeCanonical(out[gid], psetName, properties);
     }
   }
 
   return out;
+}
+
+function mergeCanonical(
+  element: ElementCanonicalData,
+  psetName: string,
+  rawProps: PropertySet,
+): void {
+  for (const [propName, value] of Object.entries(rawProps)) {
+    const canonicalPath = ifcPsetPropToCanonical(psetName, propName);
+    if (canonicalPath === null) continue;
+    const [domain, prop] = canonicalPath.split('.', 2);
+    if (domain === undefined || prop === undefined) continue;
+    const existing = element[domain];
+    const bucket: PropertySet =
+      existing !== undefined && typeof existing === 'object'
+        ? (existing as PropertySet)
+        : {};
+    bucket[prop] = value;
+    element[domain] = bucket;
+  }
+
+  // Also store the raw IFC property set under its original name so the
+  // properties panel can show the full set, not just canonical-mapped props.
+  // Canonical domains (lowercase: common, fire_safety, ...) cannot collide
+  // with IFC pset names (PascalCase or prefixed: Pset_*, Qto_*).
+  if (Object.keys(rawProps).length > 0) {
+    const existing = element[psetName];
+    const bucket: PropertySet =
+      existing !== undefined && typeof existing === 'object'
+        ? (existing as PropertySet)
+        : {};
+    Object.assign(bucket, rawProps);
+    element[psetName] = bucket;
+  }
 }
 
 function collectProperties(

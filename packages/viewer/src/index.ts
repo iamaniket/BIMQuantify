@@ -11,7 +11,6 @@ export type {
   IfcViewerProps,
   ViewerBundle,
   ViewerHandle,
-  ViewCubeCorner,
   ViewCubeOptions,
   Plugin,
   ViewerContext,

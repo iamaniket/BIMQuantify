@@ -71,6 +71,7 @@ function IfcViewerImpl(
         get: <T,>(name: string) =>
           (viewerRef.current?.getPlugin(name) as T | null) ?? null,
       },
+      getModelId: () => viewerRef.current?.modelId ?? null,
     };
     handleRef.current = handle;
     return handle;
@@ -99,7 +100,6 @@ function IfcViewerImpl(
       ...(viewCubeEnabled
         ? [
             viewCubePlugin({
-              ...(viewCubeOpts?.corner ? { corner: viewCubeOpts.corner } : {}),
               ...(viewCubeOpts?.size ? { size: viewCubeOpts.size } : {}),
             }),
           ]

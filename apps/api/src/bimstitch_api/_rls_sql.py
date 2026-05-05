@@ -34,6 +34,8 @@ RLS_TABLES = (
     "project_files",
     "contractors",
     "jobs",
+    "notifications",
+    "notification_reads",
 )
 
 # Tables the app role needs DML privileges on (broader than RLS_TABLES because
@@ -47,6 +49,8 @@ APP_GRANT_TABLES = (
     "project_files",
     "contractors",
     "jobs",
+    "notifications",
+    "notification_reads",
 )
 
 # Subquery snippet reused by tables that scope through `projects.organization_id`.
@@ -186,12 +190,39 @@ def enable_rls_statements() -> list[str]:
         """
     )
 
+    # notifications: straight org match (same shape as jobs).
+    stmts.append("DROP POLICY IF EXISTS notifications_tenant_isolation ON notifications;")
+    stmts.append(
+        f"""
+        CREATE POLICY notifications_tenant_isolation ON notifications
+        USING ({org_match})
+        WITH CHECK ({org_match});
+        """
+    )
+
+    # notification_reads: user_id match — each user manages their own read state.
+    user_match = "user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid"
+    stmts.append(
+        "DROP POLICY IF EXISTS notification_reads_user_isolation ON notification_reads;"
+    )
+    stmts.append(
+        f"""
+        CREATE POLICY notification_reads_user_isolation ON notification_reads
+        USING ({user_match})
+        WITH CHECK ({user_match});
+        """
+    )
+
     return stmts
 
 
 def disable_rls_statements() -> list[str]:
     """Reverse of enable_rls_statements; used by migration downgrade."""
     stmts: list[str] = []
+    stmts.append(
+        "DROP POLICY IF EXISTS notification_reads_user_isolation ON notification_reads;"
+    )
+    stmts.append("DROP POLICY IF EXISTS notifications_tenant_isolation ON notifications;")
     stmts.append("DROP POLICY IF EXISTS jobs_tenant_isolation ON jobs;")
     stmts.append("DROP POLICY IF EXISTS contractors_tenant_isolation ON contractors;")
     stmts.append("DROP POLICY IF EXISTS project_files_tenant_isolation ON project_files;")

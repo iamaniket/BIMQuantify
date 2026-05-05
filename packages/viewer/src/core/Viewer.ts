@@ -85,6 +85,7 @@ export class Viewer {
   private shadowGround: THREE.Mesh | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private shadowsEnabled = true;
+  modelId: string | null = null;
 
   constructor(private readonly options: ViewerOptions = {}) {}
 
@@ -221,6 +222,7 @@ export class Viewer {
       bytes.byteOffset + bytes.byteLength,
     );
     const modelId = `model-${String(Date.now())}`;
+    this.modelId = modelId;
     const model = await fragments.load(buffer as ArrayBuffer, { modelId });
 
     const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
@@ -481,6 +483,7 @@ export class Viewer {
       this.components = null;
     }
     this.world = null;
+    this.modelId = null;
     this.events.emit('viewer:unmounted', undefined);
     this.events.clear();
   }

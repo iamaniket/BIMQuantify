@@ -24,7 +24,7 @@ export default function ViewerLayout({ children }: Props): JSX.Element {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden animate-viewer-fade-in">
       {children}
     </div>
   );

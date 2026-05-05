@@ -1,14 +1,13 @@
 'use client';
 
-import { Info } from 'lucide-react';
-import { useMemo, type JSX } from 'react';
-
-import { Badge } from '@bimstitch/ui';
+import { History, Info } from 'lucide-react';
+import { useMemo, useState, type JSX } from 'react';
 
 import type { ElementEntry, ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore, parseEntityKey } from '@/stores/viewerEntityStore';
 
 import { PanelEmptyState } from '../PanelEmptyState';
+import { ViewerPanelTabs, type ViewerTabDef } from '../ViewerPanelTabs';
 import { ElementHeader } from './ElementHeader';
 import { PropertySetGroup } from './PropertySetGroup';
 
@@ -18,12 +17,20 @@ type PropertiesPanelProps = {
   isLoadingProperties: boolean;
 };
 
+type PropertiesTab = 'properties' | 'history';
+
+const TABS: ViewerTabDef<PropertiesTab>[] = [
+  { id: 'properties', label: 'Properties' },
+  { id: 'history', label: 'History' },
+];
+
 export function PropertiesPanel({
   metadata,
   properties,
   isLoadingProperties,
 }: PropertiesPanelProps): JSX.Element {
   const selected = useViewerEntityStore((s) => s.selected);
+  const [tab, setTab] = useState<PropertiesTab>('properties');
 
   const elementsByExpressId = useMemo(() => {
     const map = new Map<number, ElementEntry>();
@@ -62,11 +69,16 @@ export function PropertiesPanel({
   }
 
   const elementProps =
-    selectedElement.globalId && properties
+    selectedElement.globalId !== null && properties
       ? properties[selectedElement.globalId]
       : undefined;
 
-  const psetEntries = elementProps ? Object.entries(elementProps) : [];
+  const psetEntries = elementProps
+    ? Object.entries(elementProps).filter(
+        ([key, value]) =>
+          key !== '_element_type' && typeof value === 'object' && value !== null,
+      )
+    : [];
 
   return (
     <div className="flex h-full flex-col">
@@ -74,32 +86,36 @@ export function PropertiesPanel({
         name={selectedElement.name}
         type={selectedElement.type}
         globalId={selectedElement.globalId}
+        selectionCount={selected.size}
       />
-      {selected.size > 1 ? (
-        <div className="flex items-center gap-1 border-b border-border px-3 py-1">
-          <Badge>{String(selected.size)} selected</Badge>
-          <span className="text-caption text-foreground-tertiary">
-            Showing first element
-          </span>
-        </div>
-      ) : null}
+      <ViewerPanelTabs tabs={TABS} active={tab} onChange={setTab} />
 
-      {isLoadingProperties ? (
-        <PanelEmptyState message="Loading properties..." />
-      ) : psetEntries.length === 0 ? (
-        <PanelEmptyState message="No property sets found for this element." />
-      ) : (
-        <div className="flex-1 overflow-auto">
-          {psetEntries.map(([psetName, pset], idx) => (
-            <PropertySetGroup
-              key={psetName}
-              name={psetName}
-              properties={pset}
-              defaultOpen={idx === 0}
-            />
-          ))}
-        </div>
-      )}
+      <div className="min-h-0 flex-1 overflow-auto">
+        {tab === 'properties' && (
+          <>
+            {isLoadingProperties ? (
+              <PanelEmptyState message="Loading properties..." />
+            ) : psetEntries.length === 0 ? (
+              <PanelEmptyState message="No property sets found for this element." />
+            ) : (
+              psetEntries.map(([psetName, pset], idx) => (
+                <PropertySetGroup
+                  key={psetName}
+                  name={psetName}
+                  properties={pset}
+                  defaultOpen={idx === 0}
+                />
+              ))
+            )}
+          </>
+        )}
+        {tab === 'history' && (
+          <PanelEmptyState
+            icon={History}
+            message="Change history for this element will appear here."
+          />
+        )}
+      </div>
     </div>
   );
 }

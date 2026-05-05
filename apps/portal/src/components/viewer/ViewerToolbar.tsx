@@ -1,13 +1,26 @@
 'use client';
 
 import {
+  Axis3D,
+  Box,
+  Glasses,
+  Grip,
   Home,
+  Maximize,
   MousePointer2,
+  Move,
+  Orbit,
+  Pencil,
+  Ruler,
+  Scan,
   Settings,
+  User,
+  ZoomIn,
   type LucideIcon,
 } from 'lucide-react';
 import { useState, type JSX } from 'react';
 
+import { cn } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
 import type { ViewerSettings } from '@/lib/viewerSettings';
@@ -22,58 +35,42 @@ type Props = {
   onReloadViewer: () => void;
 };
 
-type IconButtonProps = {
+type ToolButtonDef = {
+  id: string;
   icon: LucideIcon;
   label: string;
-  testId: string;
-  onClick: () => void;
-  active: boolean | undefined;
-  badge: number | undefined;
+  command?: string;
+  disabled?: boolean;
 };
 
-function IconButton({
-  icon: Icon,
-  label,
-  testId,
-  onClick,
-  active,
-  badge,
-}: IconButtonProps): JSX.Element {
-  const isActive = active === true;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      data-testid={testId}
-      data-active={isActive ? 'true' : undefined}
-      className={
-        'relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors '
-        + 'text-foreground-secondary hover:bg-background-secondary hover:text-foreground '
-        + 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring '
-        + 'data-[active=true]:bg-background-secondary data-[active=true]:text-foreground'
-      }
-    >
-      <Icon className="h-4 w-4" />
-      {badge !== undefined ? (
-        <span
-          data-testid="viewer-selection-badge"
-          className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium leading-4 text-primary-foreground"
-        >
-          {badge}
-        </span>
-      ) : null}
-    </button>
-  );
-}
+const GROUPS: ToolButtonDef[][] = [
+  [
+    { id: 'home', icon: Home, label: 'Home view', command: 'camera.home' },
+  ],
+  [
+    { id: 'select', icon: MousePointer2, label: 'Select' },
+    { id: 'pan', icon: Move, label: 'Pan' },
+    { id: 'orbit', icon: Orbit, label: 'Orbit' },
+    { id: 'zoom', icon: ZoomIn, label: 'Zoom' },
+    { id: 'fit', icon: Maximize, label: 'Fit to view', command: 'camera.zoomExtents' },
+  ],
+  [
+    { id: 'section', icon: Scan, label: 'Section', disabled: true },
+    { id: 'measure', icon: Ruler, label: 'Measure', disabled: true },
+    { id: 'markup', icon: Pencil, label: 'Markup', disabled: true },
+  ],
+  [
+    { id: 'wireframe', icon: Axis3D, label: 'Wireframe', disabled: true },
+    { id: 'xray', icon: Glasses, label: 'X-Ray', command: 'xray.toggleAll' },
+    { id: 'isolate', icon: Box, label: 'Isolate', command: 'isolation.toggle' },
+    { id: 'explode', icon: Grip, label: 'Explode', disabled: true },
+    { id: 'walkthrough', icon: User, label: 'First person', disabled: true },
+  ],
+  [
+    { id: 'settings', icon: Settings, label: 'Settings' },
+  ],
+];
 
-/**
- * Bottom-anchored, icon-only toolbar. Orbit/pan/zoom and view presets are
- * already handled inside the viewer (camera plugin + ViewCube), so the
- * portal-side toolbar only owns: Home (reset camera), Selection (clear),
- * and Settings (popover).
- */
 export function ViewerToolbar({
   handle,
   selectionCount,
@@ -82,6 +79,7 @@ export function ViewerToolbar({
   onReloadViewer,
 }: Props): JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState('select');
 
   const run = (cmd: string): void => {
     if (!handle) return;
@@ -91,9 +89,23 @@ export function ViewerToolbar({
     });
   };
 
+  const handleClick = (def: ToolButtonDef): void => {
+    if (def.disabled) return;
+    if (def.id === 'settings') {
+      setSettingsOpen((v) => !v);
+      return;
+    }
+    if (def.command) {
+      run(def.command);
+    }
+    if (!def.command || def.id === 'select' || def.id === 'pan' || def.id === 'orbit') {
+      setActiveTool(def.id);
+    }
+  };
+
   return (
     <div
-      className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
+      className="absolute bottom-5 left-1/2 z-40 -translate-x-1/2"
       data-testid="viewer-toolbar"
     >
       {settingsOpen ? (
@@ -101,9 +113,7 @@ export function ViewerToolbar({
           handle={handle}
           settings={settings}
           onSettingsChange={onSettingsChange}
-          onClose={() => {
-            setSettingsOpen(false);
-          }}
+          onClose={() => setSettingsOpen(false)}
           onReloadViewer={() => {
             setSettingsOpen(false);
             onReloadViewer();
@@ -111,37 +121,50 @@ export function ViewerToolbar({
         />
       ) : null}
 
-      <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 px-1.5 py-1 shadow-md backdrop-blur">
-        <IconButton
-          icon={Home}
-          label="Home view"
-          testId="viewer-cmd-camera.view.iso"
-          active={undefined}
-          badge={undefined}
-          onClick={() => {
-            run('camera.view.iso');
-          }}
-        />
-        <IconButton
-          icon={MousePointer2}
-          label="Select (click to clear)"
-          active
-          badge={selectionCount > 0 ? selectionCount : undefined}
-          testId="viewer-cmd-selection.clear"
-          onClick={() => {
-            run('selection.clear');
-          }}
-        />
-        <IconButton
-          icon={Settings}
-          label="Settings"
-          active={settingsOpen}
-          badge={undefined}
-          testId="viewer-cmd-settings"
-          onClick={() => {
-            setSettingsOpen((v) => !v);
-          }}
-        />
+      <div className="flex items-center rounded-xl border border-border bg-white/95 px-1 py-0.5 shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl backdrop-saturate-150 dark:border-white/[0.08] dark:bg-[rgba(15,15,20,0.75)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]">
+        {GROUPS.map((group, gi) => (
+          <div key={gi} className="flex items-center">
+            {gi > 0 && (
+              <div className="mx-0.5 h-4 w-px rounded-full bg-black/[0.08] dark:bg-white/[0.07]" />
+            )}
+            <div className="flex items-center gap-0.5 px-0.5 py-0.5">
+              {group.map((def) => {
+                const Icon = def.icon;
+                const isActive = def.id === activeTool || (def.id === 'settings' && settingsOpen);
+                return (
+                  <button
+                    key={def.id}
+                    type="button"
+                    onClick={() => handleClick(def)}
+                    title={def.disabled ? `${def.label} (coming soon)` : def.label}
+                    aria-label={def.label}
+                    disabled={def.disabled}
+                    data-testid={`viewer-tool-${def.id}`}
+                    className={cn(
+                      'relative inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ease-out',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
+                      def.disabled
+                        ? 'cursor-not-allowed text-foreground/20'
+                        : isActive
+                          ? 'bg-primary text-primary-foreground shadow-[0_0_12px_rgba(59,130,246,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]'
+                          : 'text-foreground/55 hover:bg-foreground/[0.06] hover:text-foreground/90 active:scale-[0.94]',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={1.75} />
+                    {def.id === 'select' && selectionCount > 0 && (
+                      <span
+                        data-testid="viewer-selection-badge"
+                        className="absolute -right-1 -top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-[16px] text-primary-foreground shadow-[0_2px_8px_rgba(59,130,246,0.4)]"
+                      >
+                        {selectionCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -44,6 +44,11 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
 
     const store = useViewerEntityStore;
 
+    const existingModelId = handle.getModelId();
+    if (existingModelId !== null) {
+      store.getState()._setModelId(existingModelId);
+    }
+
     const offModel = handle.events.on('model:loaded', ({ modelId }) => {
       store.getState()._setModelId(modelId);
     });

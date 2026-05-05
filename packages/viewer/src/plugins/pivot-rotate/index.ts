@@ -148,6 +148,17 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       let pickInflight = false;
       let lastPickAt = 0;
 
+      // Deferred-pivot state. We hold off calling setOrbitPoint until
+      // pointer movement exceeds a dead zone, confirming a drag gesture.
+      // This prevents clicks from shifting the camera (XeoKit-style).
+      const DRAG_DEAD_ZONE = 4; // px, matches mouse-bindings clickThreshold
+      let deferredPivot: THREE.Vector3 | null = null;
+      let deferredSource = '';
+      let downClientX = 0;
+      let downClientY = 0;
+      let pivotApplied = false;
+      let gestureButton = -1;
+
       const maybePick = (ndc: { x: number; y: number }): void => {
         const now = Date.now();
         if (pickInflight) return;
@@ -304,30 +315,89 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         if (!buttonName) return;
         if (controls.mouseButtons[buttonName] !== ROTATE) return;
 
-        isHolding = true;
+        // Snapshot the hover-cache pivot but don't apply yet — wait for
+        // the pointer to move past the dead zone to confirm a drag.
+        downClientX = ev.clientX;
+        downClientY = ev.clientY;
+        pivotApplied = false;
+        gestureButton = ev.button;
+
         if (lastHit) {
-          applyPivot(lastHit, 'hover-cache');
-          return;
+          deferredPivot = lastHit.clone();
+          deferredSource = 'hover-cache';
+        } else {
+          const center = computeSceneCenter();
+          if (center) {
+            deferredPivot = center;
+            deferredSource = 'scene-centre';
+          } else {
+            deferredPivot = null;
+            deferredSource = '';
+          }
         }
-        const center = computeSceneCenter();
-        if (center) {
-          applyPivot(center, 'scene-centre');
-          return;
+
+        // Block camera-controls (bubble phase) from starting rotation
+        // until we confirm drag intent in onDragMove.
+        ev.stopImmediatePropagation();
+      };
+
+      // Capture-phase pointermove: once the pointer exceeds the dead zone,
+      // commit the deferred pivot and kick camera-controls into rotation
+      // by re-dispatching the original pointerdown synthetically.
+      const onDragMove = (ev: PointerEvent): void => {
+        if (gestureButton < 0) return;
+        if (pivotApplied) return;
+
+        const dx = ev.clientX - downClientX;
+        const dy = ev.clientY - downClientY;
+        if (Math.hypot(dx, dy) <= DRAG_DEAD_ZONE) return;
+
+        pivotApplied = true;
+        isHolding = true;
+
+        if (deferredPivot) {
+          applyPivot(deferredPivot, deferredSource);
         }
-        // No hit, no models — pivot stays where it was; don't show indicator.
-        isHolding = false;
+        deferredPivot = null;
+
+        // Re-dispatch a synthetic pointerdown at the original coordinates
+        // so camera-controls enters its drag state with the correct
+        // reference frame. Temporarily remove our capture listener to
+        // prevent re-entry.
+        const syntheticDown = new PointerEvent('pointerdown', {
+          clientX: downClientX,
+          clientY: downClientY,
+          button: gestureButton,
+          buttons: ev.buttons,
+          pointerId: ev.pointerId,
+          pointerType: ev.pointerType,
+          bubbles: true,
+          cancelable: true,
+        });
+        canvas.removeEventListener(
+          'pointerdown',
+          onPointerDown,
+          { capture: true } as EventListenerOptions,
+        );
+        canvas.dispatchEvent(syntheticDown);
+        canvas.addEventListener('pointerdown', onPointerDown, { capture: true });
       };
 
       // Pointerup listens on window, not canvas: a drag often ends with
       // the cursor outside the canvas, in which case canvas pointerup
       // never fires.
       const onPointerUp = (): void => {
+        deferredPivot = null;
+        deferredSource = '';
+        gestureButton = -1;
+
         if (!isHolding) return;
         isHolding = false;
         startFade();
       };
 
       canvas.addEventListener('pointerdown', onPointerDown, { capture: true });
+      canvas.addEventListener('pointermove', onDragMove, { capture: true });
       window.addEventListener('pointerup', onPointerUp);
       window.addEventListener('pointercancel', onPointerUp);
 
@@ -358,6 +428,11 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         canvas.removeEventListener(
           'pointerdown',
           onPointerDown,
+          { capture: true } as EventListenerOptions,
+        );
+        canvas.removeEventListener(
+          'pointermove',
+          onDragMove,
           { capture: true } as EventListenerOptions,
         );
         window.removeEventListener('pointerup', onPointerUp);

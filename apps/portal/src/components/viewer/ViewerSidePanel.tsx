@@ -3,93 +3,84 @@
 import { X } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
-import {
-  Panel,
-  PanelBody,
-  PanelHeader,
-  cn,
-} from '@bimstitch/ui';
+import { cn } from '@bimstitch/ui';
 
-export type ViewerPanelId = 'properties' | 'explorer';
+import { DocumentsPanel } from './documents/DocumentsPanel';
+import type { ViewerPanelId } from './ViewerSideRail';
 
-export type OpenPanels = Record<ViewerPanelId, boolean>;
+export type { ViewerPanelId } from './ViewerSideRail';
+
+const PANEL_TITLES: Record<ViewerPanelId, string> = {
+  explorer: 'Model Tree',
+  properties: 'Properties',
+  documents: 'Documents',
+  issues: 'Issues',
+  compliance: 'BBL Compliance',
+};
 
 type ViewerSidePanelProps = {
-  openPanels: OpenPanels;
-  onClosePanel: (id: ViewerPanelId) => void;
+  activePanel: ViewerPanelId | null;
+  onClose: () => void;
   explorerContent: ReactNode;
   propertiesContent: ReactNode;
 };
 
-const PANEL_TITLES: Record<ViewerPanelId, string> = {
-  properties: 'Properties',
-  explorer: 'Model Explorer',
-};
-
-function SinglePanel({
-  id,
-  onClose,
-  children,
-}: {
-  id: ViewerPanelId;
-  onClose: (id: ViewerPanelId) => void;
-  children: ReactNode;
-}): JSX.Element {
+function PlaceholderContent({ label }: { label: string }): JSX.Element {
   return (
-    <Panel className="flex h-full min-h-0 flex-col rounded-none">
-      <PanelHeader className="flex shrink-0 items-center justify-between">
-        <span className="text-body2 font-medium text-foreground">
-          {PANEL_TITLES[id]}
-        </span>
-        <button
-          type="button"
-          onClick={() => onClose(id)}
-          aria-label={`Close ${PANEL_TITLES[id]}`}
-          className="-mr-1 rounded p-1 text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </PanelHeader>
-      <PanelBody className="flex-1 overflow-auto p-0">
-        {children}
-      </PanelBody>
-    </Panel>
+    <div className="flex flex-1 items-center justify-center p-6">
+      <div className="text-center">
+        <p className="text-body2 font-medium text-foreground-secondary">{label}</p>
+        <p className="mt-1 font-mono text-caption text-foreground-secondary/60">
+          Coming soon
+        </p>
+      </div>
+    </div>
   );
 }
 
 export function ViewerSidePanel({
-  openPanels,
-  onClosePanel,
+  activePanel,
+  onClose,
   explorerContent,
   propertiesContent,
 }: ViewerSidePanelProps): JSX.Element {
-  const anyOpen = openPanels.explorer || openPanels.properties;
+  const isOpen = activePanel !== null;
 
   return (
     <div
-      aria-hidden={!anyOpen}
+      aria-hidden={!isOpen}
       className={cn(
-        'absolute bottom-4 right-0 top-0 z-20 w-80 transition-transform duration-200 ease-out',
-        anyOpen
-          ? 'translate-x-0 pointer-events-auto'
-          : 'translate-x-full pointer-events-none',
+        'absolute bottom-0 right-11 top-0 z-20 w-[360px] transition-transform duration-200 ease-out',
+        isOpen
+          ? 'pointer-events-auto translate-x-0'
+          : 'pointer-events-none translate-x-full',
       )}
     >
-      <div className="flex h-full flex-col gap-2 pr-8">
-        <div className="min-h-0 flex-1">
-          {openPanels.explorer && (
-            <SinglePanel id="explorer" onClose={onClosePanel}>
-              {explorerContent}
-            </SinglePanel>
-          )}
-        </div>
-        <div className="min-h-0 flex-1">
-          {openPanels.properties && (
-            <SinglePanel id="properties" onClose={onClosePanel}>
-              {propertiesContent}
-            </SinglePanel>
-          )}
-        </div>
+      <div className="flex h-full flex-col border-l border-border bg-background shadow-lg">
+        {activePanel !== null && (
+          <>
+            <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background-secondary px-3.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground-secondary">
+                {PANEL_TITLES[activePanel]}
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                title="Close panel"
+                className="-mr-1 rounded p-1 text-foreground-secondary transition-colors hover:bg-background hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto">
+              {activePanel === 'explorer' && explorerContent}
+              {activePanel === 'properties' && propertiesContent}
+              {activePanel === 'documents' && <DocumentsPanel />}
+              {activePanel === 'issues' && <PlaceholderContent label="Issues" />}
+              {activePanel === 'compliance' && <PlaceholderContent label="BBL Compliance" />}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

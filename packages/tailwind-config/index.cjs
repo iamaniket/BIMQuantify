@@ -119,6 +119,15 @@ const preset = {
         normal: '200ms',
         slow: '300ms',
       },
+      keyframes: {
+        'viewer-fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+      },
+      animation: {
+        'viewer-fade-in': 'viewer-fade-in 250ms ease-out',
+      },
     },
   },
   plugins: [],

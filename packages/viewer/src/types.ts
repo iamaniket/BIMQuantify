@@ -26,15 +26,8 @@ export type ViewerBundle = {
   cacheKey?: string;
 };
 
-export type ViewCubeCorner =
-  | 'top-right'
-  | 'top-left'
-  | 'bottom-right'
-  | 'bottom-left';
-
 export type ViewCubeOptions = {
   enabled?: boolean;
-  corner?: ViewCubeCorner;
   /** Edge length of the corner viewport in pixels. Default: 160. */
   size?: number;
   /** Show the N/S/E/W compass ring under the cube. Default: true. */
@@ -68,6 +61,7 @@ export type ViewerHandle = {
     unregister(name: string): Promise<void>;
     get<T extends Plugin = Plugin>(name: string): T | null;
   };
+  getModelId(): string | null;
 };
 
 export type IfcViewerProps = {

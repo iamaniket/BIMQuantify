@@ -17,8 +17,6 @@
 
 import * as THREE from 'three';
 
-import type { ViewCubeCorner } from '../../types.js';
-
 export type RegionKind = 'face' | 'edge' | 'corner';
 
 export interface Region {
@@ -31,7 +29,6 @@ export interface Region {
 
 export interface ViewCubeWidgetOptions {
   size: number;
-  corner: ViewCubeCorner;
   showCompass: boolean;
   showHomeButton: boolean;
   onPick: (region: Region) => void;
@@ -178,11 +175,6 @@ export class ViewCubeWidget {
   render(): void {
     if (this.disposed) return;
     this.renderer.render(this.scene, this.camera);
-  }
-
-  setCorner(corner: ViewCubeCorner): void {
-    this.options.corner = corner;
-    this.applyWrapperStyles();
   }
 
   dispose(): void {
@@ -407,7 +399,7 @@ export class ViewCubeWidget {
     Object.assign(btn.style, {
       position: 'absolute',
       bottom: '0px',
-      left: '0px',
+      right: '0px',
       width: '22px',
       height: '22px',
       display: 'flex',
@@ -664,27 +656,8 @@ export class ViewCubeWidget {
     s.zIndex = '10';
     s.filter = 'drop-shadow(0 8px 20px rgba(0,0,0,0.35))';
     s.userSelect = 'none';
-    s.top = s.bottom = s.left = s.right = '';
-    const pad = '12px';
-    switch (this.options.corner) {
-      case 'top-left':
-        s.top = pad;
-        s.left = pad;
-        break;
-      case 'bottom-right':
-        s.bottom = pad;
-        s.right = pad;
-        break;
-      case 'bottom-left':
-        s.bottom = pad;
-        s.left = pad;
-        break;
-      case 'top-right':
-      default:
-        s.top = pad;
-        s.right = pad;
-        break;
-    }
+    s.top = '12px';
+    s.left = '12px';
   }
 
   private applyCanvasStyles(): void {

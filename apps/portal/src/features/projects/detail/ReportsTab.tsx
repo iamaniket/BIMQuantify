@@ -101,7 +101,7 @@ export function ReportsTab({ projectId, models }: Props): JSX.Element {
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-background">
-          <div className="grid grid-cols-[60px_minmax(0,1fr)_60px_72px_72px_72px_140px] items-center gap-2 px-3 py-2 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
+          <div className="grid grid-cols-[48px_minmax(0,1fr)_52px_52px_52px_52px_80px] items-center gap-2 px-3 py-2 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
             <span>Reg.</span>
             <span>Model / File</span>
             <span className="text-right">Score</span>
@@ -136,7 +136,7 @@ function ReportRow({
   const colors = DISC_COLORS[report.model_discipline] ?? DISC_COLORS['other']!;
   const tone = scoreTone(report.overall_score);
   return (
-    <div className="grid grid-cols-[60px_minmax(0,1fr)_60px_72px_72px_72px_140px] items-center gap-2 border-t border-border px-3 py-2 text-body3">
+    <div className="grid grid-cols-[48px_minmax(0,1fr)_52px_52px_52px_52px_80px] items-center gap-2 border-t border-border px-3 py-2 text-body3">
       <Badge variant={report.framework === 'bbl' ? 'default' : 'info'} className="w-fit uppercase">
         {report.framework}
       </Badge>
@@ -168,8 +168,7 @@ function ReportRow({
           href={`/projects/${projectId}/reports/${report.file_id}?framework=${report.framework}&modelId=${report.model_id}`}
         >
           <Button variant="border" size="sm">
-            <ExternalLink className="mr-1.5 h-3 w-3" />
-            View
+            <ExternalLink className="h-3 w-3" />
           </Button>
         </Link>
       </div>

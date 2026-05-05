@@ -101,10 +101,45 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         { title: 'Orbit camera by delta' },
       );
 
+      /** Snap to iso direction then fitToBox. Shared by home / zoomExtents / frameSelection. */
+      const snapIsoAndFit = async (box: THREE.Box3): Promise<void> => {
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z, 1);
+
+        const dir = VIEW_DIRECTIONS['iso'];
+        const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
+
+        // Snap to iso angle instantly, then animate the fit.
+        const roughDist = maxDim * 2;
+        await ctx.cameraControls.setLookAt(
+          center.x + (dir[0] / len) * roughDist,
+          center.y + (dir[1] / len) * roughDist,
+          center.z + (dir[2] / len) * roughDist,
+          center.x,
+          center.y,
+          center.z,
+          false,
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cc = ctx.cameraControls as any;
+        if (typeof cc.fitToBox === 'function') {
+          await cc.fitToBox(box, true, {
+            paddingTop: 0.1,
+            paddingBottom: 0.1,
+            paddingLeft: 0.1,
+            paddingRight: 0.1,
+          });
+        }
+      };
+
       commands.register(
         'camera.home',
         async () => {
-          await setView('iso');
+          const box = computeSceneBox(ctx);
+          if (box.isEmpty()) return;
+          await snapIsoAndFit(box);
         },
         { title: 'Home view', defaultShortcut: 'H' },
       );
@@ -145,7 +180,7 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         async () => {
           const box = computeSceneBox(ctx);
           if (box.isEmpty()) return;
-          await frameBox(ctx, box, padding);
+          await snapIsoAndFit(box);
         },
         { title: 'Zoom to fit', defaultShortcut: 'F' },
       );
@@ -153,9 +188,6 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
       commands.register(
         'camera.frameSelection',
         async () => {
-          // selection plugin owns the state — read it through the registry
-          // by calling the `selection.get` command. If selection isn't
-          // installed, fall back to zoomExtents.
           if (!commands.has('selection.get')) {
             await commands.execute('camera.zoomExtents');
             return;
@@ -167,7 +199,7 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
           }
           const box = await computeSelectionBox(ctx, selected);
           if (box.isEmpty()) return;
-          await frameBox(ctx, box, padding);
+          await snapIsoAndFit(box);
         },
         { title: 'Frame selection', defaultShortcut: 'Shift+F' },
       );

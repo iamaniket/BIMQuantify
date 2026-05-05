@@ -1,8 +1,6 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { Link } from '@/i18n/navigation';
 import { useParams } from 'next/navigation';
 import {
   useCallback,
@@ -16,17 +14,20 @@ import { Skeleton } from '@bimstitch/ui';
 import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
 
 import { ViewerContextMenu } from '@/components/viewer/ViewerContextMenu';
+import { ViewerHeader } from '@/components/viewer/ViewerHeader';
+import { ViewerSidePanel } from '@/components/viewer/ViewerSidePanel';
+import { ViewerSideRail, type ViewerPanelId } from '@/components/viewer/ViewerSideRail';
+import { ViewerStatusBar } from '@/components/viewer/ViewerStatusBar';
+import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
 import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
-import { ViewerSidePanel, type OpenPanels, type ViewerPanelId } from '@/components/viewer/ViewerSidePanel';
-import { ViewerSideRail } from '@/components/viewer/ViewerSideRail';
-import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 import { useModelMetadata } from '@/hooks/useModelMetadata';
 import { useModelProperties } from '@/hooks/useModelProperties';
 import { useViewerBridge } from '@/hooks/useViewerBridge';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
+import { getProject } from '@/lib/api/projects';
 import type { ViewerBundleResponse } from '@/lib/api/schemas';
 import {
   DEFAULT_VIEWER_SETTINGS,
@@ -71,18 +72,17 @@ export default function ViewerPage(): JSX.Element {
   const selectionCount = useViewerEntityStore((s) => s.selected.size);
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
   const [viewerEpoch, setViewerEpoch] = useState(0);
-  const [openPanels, setOpenPanels] = useState<OpenPanels>({
-    explorer: false,
-    properties: false,
-  });
+  const [activePanel, setActivePanel] = useState<ViewerPanelId | null>(null);
+  const [projectName, setProjectName] = useState<string | null>(null);
 
   const togglePanel = useCallback((id: ViewerPanelId) => {
-    setOpenPanels((prev) => ({ ...prev, [id]: !prev[id] }));
+    setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
-  const closePanel = useCallback((id: ViewerPanelId) => {
-    setOpenPanels((prev) => ({ ...prev, [id]: false }));
+  const closePanel = useCallback(() => {
+    setActivePanel(null);
   }, []);
+
   useViewerBridge(viewerHandleRef.current);
 
   const metadataUrl = bundle?.metadata_url ?? null;
@@ -90,7 +90,7 @@ export default function ViewerPage(): JSX.Element {
   const { data: metadata, isLoading: isLoadingMetadata } = useModelMetadata(metadataUrl);
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,
-    openPanels.properties && selectionCount > 0,
+    activePanel === 'properties' && selectionCount > 0,
   );
 
   const [sceneReady, setSceneReady] = useState(false);
@@ -131,9 +131,22 @@ export default function ViewerPage(): JSX.Element {
     };
   }, [tokens, projectId, modelId, fileId]);
 
-  let body: JSX.Element;
+  useEffect(() => {
+    if (tokens === null) return undefined;
+    const cancelToken = { cancelled: false };
+    getProject(tokens.access_token, projectId)
+      .then((project) => {
+        if (!cancelToken.cancelled) setProjectName(project.name);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelToken.cancelled = true;
+    };
+  }, [tokens, projectId]);
+
+  let viewerBody: JSX.Element;
   if (error !== null) {
-    body = (
+    viewerBody = (
       <div
         role="alert"
         className="m-6 rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body2 text-error"
@@ -142,9 +155,9 @@ export default function ViewerPage(): JSX.Element {
       </div>
     );
   } else if (bundle === null) {
-    body = <Skeleton className="absolute inset-0" />;
+    viewerBody = <Skeleton className="absolute inset-0" />;
   } else if (bundle.file_type === 'pdf') {
-    body = (
+    viewerBody = (
       <DocumentViewer
         fileUrl={bundle.file_url!}
         className="absolute inset-0"
@@ -154,7 +167,7 @@ export default function ViewerPage(): JSX.Element {
       />
     );
   } else {
-    body = (
+    viewerBody = (
       <>
         <IfcViewer
           key={viewerEpoch}
@@ -162,7 +175,6 @@ export default function ViewerPage(): JSX.Element {
           bundle={buildBundle(bundle)}
           viewCube={{
             enabled: settings.viewCube.enabled,
-            corner: settings.viewCube.corner,
           }}
           shadows={{
             enabled: settings.shadows.enabled,
@@ -205,8 +217,8 @@ export default function ViewerPage(): JSX.Element {
         {viewerReady ? (
           <>
             <ViewerSidePanel
-              openPanels={openPanels}
-              onClosePanel={closePanel}
+              activePanel={activePanel}
+              onClose={closePanel}
               explorerContent={
                 <ModelExplorer
                   metadata={metadata}
@@ -222,7 +234,7 @@ export default function ViewerPage(): JSX.Element {
               }
             />
             <ViewerSideRail
-              openPanels={openPanels}
+              activePanel={activePanel}
               onTogglePanel={togglePanel}
             />
           </>
@@ -246,26 +258,20 @@ export default function ViewerPage(): JSX.Element {
   }
 
   return (
-    <main className="relative flex min-h-0 w-full flex-1 flex-col">
+    <main className="flex min-h-0 w-full flex-1 flex-col">
+      <ViewerHeader projectId={projectId} projectName={projectName} />
       <div className="relative min-h-0 flex-1">
-        {body}
-        <Link
-          href={`/projects/${projectId}`}
-          aria-label="Back to project"
-          title="Back to project"
-          className="absolute left-2 top-2 z-40 inline-flex h-7 w-7 items-center justify-center rounded-md bg-background/80 text-foreground-secondary shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+        {viewerBody}
         {viewerError !== null ? (
           <div
             role="alert"
-            className="pointer-events-none absolute left-12 top-2 z-40 rounded-md bg-error-lighter px-2 py-1 text-caption text-error shadow-sm"
+            className="pointer-events-none absolute left-4 top-2 z-40 rounded-md bg-error-lighter px-2 py-1 text-caption text-error shadow-sm"
           >
             {viewerError}
           </div>
         ) : null}
       </div>
+      <ViewerStatusBar metadata={metadata} viewerReady={viewerReady} />
     </main>
   );
 }

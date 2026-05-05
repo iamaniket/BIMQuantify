@@ -9,8 +9,11 @@ from fastapi_limiter import FastAPILimiter
 from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
+from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.routers.compliance import (
     project_router as compliance_project_router,
+)
+from bimstitch_api.routers.compliance import (
     router as compliance_router,
 )
 from bimstitch_api.routers.contractors import router as contractors_router
@@ -18,8 +21,10 @@ from bimstitch_api.routers.extraction_internal import router as extraction_inter
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.jobs import router as jobs_router
 from bimstitch_api.routers.models import router as models_router
+from bimstitch_api.routers.notifications import router as notifications_router
 from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
+from bimstitch_api.routers.ws_notifications import router as ws_notifications_router
 from bimstitch_api.storage import get_storage
 
 logger = logging.getLogger(__name__)
@@ -29,6 +34,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     redis = get_redis()
     await FastAPILimiter.init(redis)
+    manager = get_manager()
+    await manager.start(redis)
     try:
         await get_storage().ensure_bucket()
     except Exception:
@@ -39,6 +46,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        await manager.stop()
         await FastAPILimiter.close()
         await close_redis()
 
@@ -66,6 +74,8 @@ def create_app() -> FastAPI:
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
     app.include_router(jobs_router)
+    app.include_router(notifications_router)
+    app.include_router(ws_notifications_router)
     return app
 
 

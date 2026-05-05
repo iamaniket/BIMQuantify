@@ -23,7 +23,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api.db import get_async_session
 from bimstitch_api.extraction import require_extractor_secret
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
+from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile
+from bimstitch_api.notifications.service import create_notification, publish_notification
 from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
 
 logger = logging.getLogger(__name__)
@@ -90,10 +92,14 @@ async def extraction_callback(
                 row.extractor_version = payload.extractor_version
 
         # Also update the Job record if a job_id was provided.
+        job: Job | None = None
         if payload.job_id is not None:
             job = await _load_job_optional(session, payload.job_id)
             if job is not None and job.status not in _JOB_TERMINAL:
                 _apply_job_update(job, payload)
+
+    # Transaction committed — now create and publish notification.
+    await _emit_notification(session, row, job, payload)
 
     await session.refresh(row)
     return row
@@ -123,6 +129,72 @@ def _apply_job_update(job: Job, payload: ExtractionCallbackRequest) -> None:
         job.finished_at = payload.finished_at
 
 
+_EVENT_MAP: dict[ExtractionStatus, NotificationEventType] = {
+    ExtractionStatus.running: NotificationEventType.job_started,
+    ExtractionStatus.succeeded: NotificationEventType.job_succeeded,
+    ExtractionStatus.failed: NotificationEventType.job_failed,
+}
+
+_TITLE_MAP: dict[ExtractionStatus, str] = {
+    ExtractionStatus.running: "Extraction started",
+    ExtractionStatus.succeeded: "Extraction completed",
+    ExtractionStatus.failed: "Extraction failed",
+}
+
+
+async def _emit_notification(
+    session: AsyncSession,
+    file: ProjectFile,
+    job: Job | None,
+    payload: ExtractionCallbackRequest,
+) -> None:
+    event_type = _EVENT_MAP.get(payload.status)
+    if event_type is None:
+        return
+
+    org_id = job.organization_id if job is not None else await _resolve_org_id(session, file)
+    if org_id is None:
+        return
+
+    title = _TITLE_MAP[payload.status]
+    filename = file.original_filename
+    if payload.status is ExtractionStatus.running:
+        body = f"{filename} extraction is in progress"
+    elif payload.status is ExtractionStatus.succeeded:
+        body = f"{filename} is ready to view"
+    else:
+        snippet = (payload.error or "unknown error")[:200]
+        body = f"{filename} extraction failed: {snippet}"
+
+    async with session.begin():
+        notification = await create_notification(
+            session,
+            organization_id=org_id,
+            event_type=event_type,
+            title=title,
+            body=body,
+            project_id=job.project_id if job else None,
+            file_id=file.id,
+            job_id=job.id if job else None,
+        )
+
+    await publish_notification(notification)
+
+
+async def _resolve_org_id(session: AsyncSession, file: ProjectFile) -> UUID | None:
+    from bimstitch_api.models.model import Model
+    from bimstitch_api.models.project import Project
+
+    row = (
+        await session.execute(
+            select(Project.organization_id)
+            .join(Model, Model.project_id == Project.id)
+            .where(Model.id == file.model_id)
+        )
+    ).scalar_one_or_none()
+    return row
+
+
 async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
     row = (
         await session.execute(select(ProjectFile).where(ProjectFile.id == file_id))
@@ -133,9 +205,7 @@ async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
 
 
 async def _load_job_optional(session: AsyncSession, job_id: UUID) -> Job | None:
-    return (
-        await session.execute(select(Job).where(Job.id == job_id))
-    ).scalar_one_or_none()
+    return (await session.execute(select(Job).where(Job.id == job_id))).scalar_one_or_none()
 
 
 __all__ = ["router"]
