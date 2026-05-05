@@ -5,7 +5,7 @@ import type { JSX } from 'react';
 import { Progress } from '@bimstitch/ui';
 
 import { DossierGauge } from '@/components/charts/DossierGauge';
-import type { DossierData } from '@/features/projects/compliance/types';
+import type { DossierData } from '@/features/compliance/types';
 
 type Props = {
   dossier: DossierData;

@@ -21,7 +21,7 @@ import {
   isProjectArchived,
   projectBadgeClasses,
   projectDotClasses,
-} from './projectFormatting';
+} from '@/lib/formatting/projects';
 
 function formatDateLabel(iso: string, locale: string): string {
   const parsed = new Date(iso);

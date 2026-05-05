@@ -6,7 +6,7 @@ import { useState, type JSX } from 'react';
 import { Button, Panel, PanelBody, PanelHeader } from '@bimstitch/ui';
 
 import type { Model } from '@/lib/api/schemas';
-import { NewModelDialog } from '@/features/projects/NewModelDialog';
+import { NewModelDialog } from '@/features/models/NewModelDialog';
 
 import { ModelsTableRow } from './ModelsTableRow';
 

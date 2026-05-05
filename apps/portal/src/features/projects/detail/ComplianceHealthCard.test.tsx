@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { IntlWrapper } from '@/__tests__/intl-wrapper';
 
-import type { ComplianceSummary } from '@/features/projects/compliance/types';
+import type { ComplianceSummary } from '@/features/compliance/types';
 
 vi.mock('@/components/BlueprintTexture', () => ({
   BlueprintTexture: () => <div data-testid="blueprint-texture" />,

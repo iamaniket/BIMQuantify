@@ -309,6 +309,25 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
         }
         if (all.length) setSelection(all);
       }, { title: 'Select all elements' });
+
+      ctx.commands.register('selection.invert', async () => {
+        if (!enabled) return;
+        const inverted: ItemId[] = [];
+        for (const [modelId, model] of ctx.models()) {
+          let ids: Iterable<number>;
+          try {
+            ids = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
+          } catch {
+            continue;
+          }
+          for (const localId of ids) {
+            if (!selected.has(key({ modelId, localId }))) {
+              inverted.push({ modelId, localId });
+            }
+          }
+        }
+        setSelection(inverted);
+      }, { title: 'Invert selection' });
     },
 
     uninstall() {

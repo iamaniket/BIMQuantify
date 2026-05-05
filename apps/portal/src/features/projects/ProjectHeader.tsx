@@ -8,7 +8,7 @@ import { Button } from '@bimstitch/ui';
 import type { Project } from '@/lib/api/schemas';
 
 import { ProjectFormDialog } from './ProjectFormDialog';
-import { isProjectArchived } from './projectFormatting';
+import { isProjectArchived } from '@/lib/formatting/projects';
 
 type Props = {
   project: Project;

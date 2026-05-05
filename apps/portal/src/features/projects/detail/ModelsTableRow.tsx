@@ -8,9 +8,9 @@ import { useState, type JSX } from 'react';
 import { Button } from '@bimstitch/ui';
 
 import type { Model, ProjectFile } from '@/lib/api/schemas';
-import { useCheckCompliance } from '@/features/projects/compliance/hooks';
-import { formatExtractionStatus } from '@/features/projects/fileFormatting';
-import { useModelFiles } from '@/features/projects/useModelFiles';
+import { useCheckCompliance } from '@/features/compliance/hooks';
+import { formatExtractionStatus } from '@/lib/formatting/files';
+import { useModelFiles } from '@/features/models/useModelFiles';
 
 const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
   architectural: { bg: '#ede8f7', fg: '#5a3fa6' },

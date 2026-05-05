@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type UseMutationResult,
-  type UseQueryResult,
-} from '@tanstack/react-query';
+import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
 import {
   getUnreadCount,
@@ -18,68 +12,35 @@ import type {
   NotificationListResponse,
   UnreadCountResponse,
 } from '@/lib/api/schemas';
-import { useAuth } from '@/providers/AuthProvider';
+import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import { notificationsKey, unreadCountKey } from './queryKeys';
 
 export function useNotifications(): UseQueryResult<NotificationListResponse> {
-  const { tokens } = useAuth();
-  const accessToken = tokens === null ? null : tokens.access_token;
-
-  return useQuery({
+  return useAuthQuery({
     queryKey: notificationsKey,
-    queryFn: async (): Promise<NotificationListResponse> => {
-      if (accessToken === null) throw new Error('Not authenticated');
-      return listNotifications(accessToken);
-    },
-    enabled: accessToken !== null,
+    queryFn: (accessToken) => listNotifications(accessToken),
   });
 }
 
 export function useUnreadCount(): UseQueryResult<UnreadCountResponse> {
-  const { tokens } = useAuth();
-  const accessToken = tokens === null ? null : tokens.access_token;
-
-  return useQuery({
+  return useAuthQuery({
     queryKey: unreadCountKey,
-    queryFn: async (): Promise<UnreadCountResponse> => {
-      if (accessToken === null) throw new Error('Not authenticated');
-      return getUnreadCount(accessToken);
-    },
-    enabled: accessToken !== null,
+    queryFn: (accessToken) => getUnreadCount(accessToken),
   });
 }
 
 export function useMarkRead(): UseMutationResult<void, Error, string> {
-  const { tokens } = useAuth();
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (notificationId: string): Promise<void> => {
-      const accessToken = tokens === null ? null : tokens.access_token;
-      if (!accessToken) throw new Error('Not authenticated');
-      return markNotificationRead(accessToken, notificationId);
-    },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: notificationsKey });
-      await qc.invalidateQueries({ queryKey: unreadCountKey });
-    },
+  return useAuthMutation({
+    mutationFn: (accessToken, notificationId) =>
+      markNotificationRead(accessToken, notificationId),
+    invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }
 
 export function useMarkAllRead(): UseMutationResult<void, Error, void> {
-  const { tokens } = useAuth();
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (): Promise<void> => {
-      const accessToken = tokens === null ? null : tokens.access_token;
-      if (!accessToken) throw new Error('Not authenticated');
-      return markAllNotificationsRead(accessToken);
-    },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: notificationsKey });
-      await qc.invalidateQueries({ queryKey: unreadCountKey });
-    },
+  return useAuthMutation({
+    mutationFn: (accessToken) => markAllNotificationsRead(accessToken),
+    invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }

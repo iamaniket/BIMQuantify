@@ -16,7 +16,7 @@ import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';
 
 import { ProjectFormDialog } from './ProjectFormDialog';
-import { isProjectArchived } from './projectFormatting';
+import { isProjectArchived } from '@/lib/formatting/projects';
 import { useArchiveProject } from './useArchiveProject';
 import { useDeleteProject } from './useDeleteProject';
 import { useReactivateProject } from './useReactivateProject';

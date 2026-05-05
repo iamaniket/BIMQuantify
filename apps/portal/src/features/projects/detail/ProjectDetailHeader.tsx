@@ -7,14 +7,14 @@ import { useState, type JSX } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
 import { BlueprintTexture } from '@/components/BlueprintTexture';
-import type { ComplianceSummary } from '@/features/projects/compliance/types';
+import type { ComplianceSummary } from '@/features/compliance/types';
 import {
   daysUntil,
   formatAddress,
   formatDeliveryDate,
   formatProjectBadgeLabel,
   projectBadgeClasses,
-} from '@/features/projects/projectFormatting';
+} from '@/lib/formatting/projects';
 import { useLocale, useTranslations } from 'next-intl';
 
 import type { Locale } from '@bimstitch/i18n';

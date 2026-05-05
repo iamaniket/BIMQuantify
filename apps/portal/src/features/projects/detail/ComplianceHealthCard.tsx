@@ -2,7 +2,7 @@ import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { BlueprintTexture } from '@/components/BlueprintTexture';
-import type { ComplianceSummary } from '@/features/projects/compliance/types';
+import type { ComplianceSummary } from '@/features/compliance/types';
 
 import { HoldbackUnlock } from './HoldbackUnlock';
 

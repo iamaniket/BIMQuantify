@@ -9,7 +9,7 @@ import type {
   ComplianceIssue,
   ActivityItem,
   DossierData,
-} from '@/features/projects/compliance/types';
+} from '@/features/compliance/types';
 
 import { ModelsTab } from './ModelsTab';
 import { IssuesTab } from './IssuesTab';

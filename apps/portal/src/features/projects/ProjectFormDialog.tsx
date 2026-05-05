@@ -23,13 +23,13 @@ import {
 import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';
 
-import { formatAddress } from './projectFormatting';
+import { formatAddress } from '@/lib/formatting/projects';
 import {
   ProjectFormSchema,
   type ProjectFormValues,
 } from './projectFormSchema';
-import { useContractors } from './useContractors';
-import { useCreateContractor } from './useCreateContractor';
+import { useContractors } from '@/features/contractors/useContractors';
+import { useCreateContractor } from '@/features/contractors/useCreateContractor';
 import { useCreateProject } from './useCreateProject';
 import { useUpdateProject } from './useUpdateProject';
 import {
@@ -40,7 +40,7 @@ import { StepAddress } from './wizard/StepAddress';
 import { StepBasics } from './wizard/StepBasics';
 import { StepContractor } from './wizard/StepContractor';
 import { StepDetails } from './wizard/StepDetails';
-import { isProjectArchived } from './projectFormatting';
+import { isProjectArchived } from '@/lib/formatting/projects';
 
 const THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const THUMBNAIL_MAX_DIM = 800;

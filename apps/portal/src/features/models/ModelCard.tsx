@@ -16,7 +16,7 @@ import { ApiError } from '@/lib/api/client';
 import type { Model } from '@/lib/api/schemas';
 
 import { ModelFiles } from './ModelFiles';
-import { formatDiscipline, formatModelStatus } from './modelFormatting';
+import { formatDiscipline, formatModelStatus } from '@/lib/formatting/models';
 import { useDeleteModel } from './useDeleteModel';
 
 type Props = {

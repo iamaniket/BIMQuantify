@@ -2,24 +2,26 @@
 
 import {
   useMutation,
-  useQuery,
   useQueryClient,
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
 
-import { apiClient } from '@/lib/api/client';
 import {
-  ComplianceCheckResponseSchema,
-  ComplianceSummaryResponseSchema,
-  ProjectComplianceReportListSchema,
-  type ComplianceCheckResponse,
-  type ComplianceSummaryResponse,
-  type ProjectComplianceReportItem,
+  getComplianceLatest,
+  listProjectReports,
+  triggerComplianceCheck,
+} from '@/lib/api/compliance';
+import type {
+  ComplianceCheckResponse,
+  ComplianceSummaryResponse,
+  ProjectComplianceReportItem,
 } from '@/lib/api/schemas';
+import { useAuthQuery } from '@/lib/query/useAuthQuery';
 import { useAuth } from '@/providers/AuthProvider';
 
 import {
+  complianceDataKey,
   complianceSummaryKey,
   complianceDomainsKey,
   complianceArticlesKey,
@@ -28,7 +30,7 @@ import {
   dossierKey,
   trendKey,
   projectReportsKey,
-} from '../queryKeys';
+} from './queryKeys';
 
 import type {
   ComplianceSummary,
@@ -105,23 +107,30 @@ function mapToIssues(resp: ComplianceCheckResponse): ComplianceIssue[] {
     }));
 }
 
+function useComplianceData(
+  projectId: string,
+  fileId?: string,
+  modelId?: string,
+) {
+  return useAuthQuery({
+    queryKey: complianceDataKey(projectId, fileId, modelId),
+    queryFn: (accessToken) =>
+      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    enabled: projectId.length > 0 && !!fileId && !!modelId,
+  });
+}
+
 export function useComplianceSummary(
   projectId: string,
   fileId?: string,
   modelId?: string,
 ): UseQueryResult<ComplianceSummary> {
-  const { tokens } = useAuth();
-  return useQuery({
-    queryKey: complianceSummaryKey(projectId),
-    queryFn: async () => {
-      if (!fileId || !modelId || !tokens) {
-        throw new Error('Missing fileId, modelId, or tokens');
-      }
-      const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/latest`;
-      const resp = await apiClient.get(path, ComplianceCheckResponseSchema, tokens.access_token);
-      return mapToComplianceSummary(resp);
-    },
-    enabled: projectId.length > 0 && !!fileId && !!modelId && !!tokens,
+  return useAuthQuery({
+    queryKey: complianceDataKey(projectId, fileId, modelId),
+    queryFn: (accessToken) =>
+      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    enabled: projectId.length > 0 && !!fileId && !!modelId,
+    select: mapToComplianceSummary,
   });
 }
 
@@ -130,18 +139,12 @@ export function useComplianceDomains(
   fileId?: string,
   modelId?: string,
 ): UseQueryResult<ComplianceDomain[]> {
-  const { tokens } = useAuth();
-  return useQuery({
-    queryKey: complianceDomainsKey(projectId),
-    queryFn: async () => {
-      if (!fileId || !modelId || !tokens) {
-        throw new Error('Missing fileId, modelId, or tokens');
-      }
-      const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/latest`;
-      const resp = await apiClient.get(path, ComplianceCheckResponseSchema, tokens.access_token);
-      return mapToDomains(resp);
-    },
-    enabled: projectId.length > 0 && !!fileId && !!modelId && !!tokens,
+  return useAuthQuery({
+    queryKey: complianceDataKey(projectId, fileId, modelId),
+    queryFn: (accessToken) =>
+      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    enabled: projectId.length > 0 && !!fileId && !!modelId,
+    select: mapToDomains,
   });
 }
 
@@ -150,18 +153,12 @@ export function useComplianceArticles(
   fileId?: string,
   modelId?: string,
 ): UseQueryResult<ComplianceArticle[]> {
-  const { tokens } = useAuth();
-  return useQuery({
-    queryKey: complianceArticlesKey(projectId),
-    queryFn: async () => {
-      if (!fileId || !modelId || !tokens) {
-        throw new Error('Missing fileId, modelId, or tokens');
-      }
-      const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/latest`;
-      const resp = await apiClient.get(path, ComplianceCheckResponseSchema, tokens.access_token);
-      return mapToArticles(resp);
-    },
-    enabled: projectId.length > 0 && !!fileId && !!modelId && !!tokens,
+  return useAuthQuery({
+    queryKey: complianceDataKey(projectId, fileId, modelId),
+    queryFn: (accessToken) =>
+      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    enabled: projectId.length > 0 && !!fileId && !!modelId,
+    select: mapToArticles,
   });
 }
 
@@ -170,24 +167,17 @@ export function useComplianceIssues(
   fileId?: string,
   modelId?: string,
 ): UseQueryResult<ComplianceIssue[]> {
-  const { tokens } = useAuth();
-  return useQuery({
-    queryKey: issuesKey(projectId),
-    queryFn: async () => {
-      if (!fileId || !modelId || !tokens) {
-        throw new Error('Missing fileId, modelId, or tokens');
-      }
-      const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/latest`;
-      const resp = await apiClient.get(path, ComplianceCheckResponseSchema, tokens.access_token);
-      return mapToIssues(resp);
-    },
-    enabled: projectId.length > 0 && !!fileId && !!modelId && !!tokens,
+  return useAuthQuery({
+    queryKey: complianceDataKey(projectId, fileId, modelId),
+    queryFn: (accessToken) =>
+      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    enabled: projectId.length > 0 && !!fileId && !!modelId,
+    select: mapToIssues,
   });
 }
 
-// Activity, dossier, and trend remain mock until those features are built
 export function useProjectActivity(projectId: string): UseQueryResult<ActivityItem[]> {
-  return useQuery({
+  return useAuthQuery({
     queryKey: activityKey(projectId),
     queryFn: async () => MOCK_ACTIVITY,
     enabled: projectId.length > 0,
@@ -195,7 +185,7 @@ export function useProjectActivity(projectId: string): UseQueryResult<ActivityIt
 }
 
 export function useProjectDossier(projectId: string): UseQueryResult<DossierData> {
-  return useQuery({
+  return useAuthQuery({
     queryKey: dossierKey(projectId),
     queryFn: async () => MOCK_DOSSIER,
     enabled: projectId.length > 0,
@@ -203,14 +193,12 @@ export function useProjectDossier(projectId: string): UseQueryResult<DossierData
 }
 
 export function useComplianceTrend(projectId: string): UseQueryResult<ComplianceTrend> {
-  return useQuery({
+  return useAuthQuery({
     queryKey: trendKey(projectId),
     queryFn: async () => MOCK_TREND,
     enabled: projectId.length > 0,
   });
 }
-
-// ── Full latest result (rules_summary + details) ──
 
 export function useComplianceLatest(
   projectId: string,
@@ -218,41 +206,28 @@ export function useComplianceLatest(
   modelId?: string,
   framework: 'bbl' | 'wkb' = 'bbl',
 ): UseQueryResult<ComplianceCheckResponse> {
-  const { tokens } = useAuth();
-  return useQuery({
-    queryKey: ['projects', projectId, 'compliance', 'latest', fileId ?? '', framework],
-    queryFn: async () => {
-      if (!fileId || !modelId || !tokens) {
-        throw new Error('Missing fileId, modelId, or tokens');
-      }
+  return useAuthQuery({
+    queryKey: ['projects', projectId, 'compliance', 'latest', fileId ?? '', framework] as const,
+    queryFn: (accessToken) => {
+      if (!fileId || !modelId) throw new Error('Missing fileId or modelId');
       const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/latest?framework=${framework}`;
-      return apiClient.get(path, ComplianceCheckResponseSchema, tokens.access_token);
+      // This variant uses framework param so it has its own query key
+      return getComplianceLatest(accessToken, projectId, modelId, fileId);
     },
-    enabled: projectId.length > 0 && !!fileId && !!modelId && !!tokens,
+    enabled: projectId.length > 0 && !!fileId && !!modelId,
   });
 }
-
-// ── Project-level reports list ──
 
 export function useProjectReports(
   projectId: string,
   framework?: 'bbl' | 'wkb',
 ): UseQueryResult<ProjectComplianceReportItem[]> {
-  const { tokens } = useAuth();
-  return useQuery({
+  return useAuthQuery({
     queryKey: projectReportsKey(projectId, framework),
-    queryFn: async () => {
-      if (!tokens) throw new Error('Not authenticated');
-      const qs = framework ? `?framework=${framework}` : '';
-      const path = `/projects/${projectId}/compliance/reports${qs}`;
-      const resp = await apiClient.get(path, ProjectComplianceReportListSchema, tokens.access_token);
-      return resp.items;
-    },
-    enabled: projectId.length > 0 && !!tokens,
+    queryFn: (accessToken) => listProjectReports(accessToken, projectId, framework),
+    enabled: projectId.length > 0,
   });
 }
-
-// ── Mutation: trigger a new compliance check ──
 
 export function useCheckCompliance(
   projectId: string,
@@ -261,14 +236,14 @@ export function useCheckCompliance(
   const { tokens } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ fileId, buildingType = 'all' }) => {
+    mutationFn: async ({ fileId, buildingType }) => {
       if (!tokens) throw new Error('Not authenticated');
-      const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/check`;
-      return apiClient.post(
-        path,
-        { building_type: buildingType },
-        ComplianceCheckResponseSchema,
+      return triggerComplianceCheck(
         tokens.access_token,
+        projectId,
+        modelId,
+        fileId,
+        buildingType,
       );
     },
     onSuccess: () => {
@@ -277,7 +252,7 @@ export function useCheckCompliance(
       void queryClient.invalidateQueries({ queryKey: complianceArticlesKey(projectId) });
       void queryClient.invalidateQueries({ queryKey: issuesKey(projectId) });
       void queryClient.invalidateQueries({
-        queryKey: ['projects', projectId, 'compliance', 'reports'],
+        queryKey: ['projects', projectId, 'compliance'],
       });
     },
   });

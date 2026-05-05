@@ -7,10 +7,10 @@ import { useEffect, useState, type JSX } from 'react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, Skeleton } from '@bimstitch/ui';
 
-import { ModelFiles } from '@/features/projects/ModelFiles';
+import { ModelFiles } from '@/features/models/ModelFiles';
 
 import { ApiError } from '@/lib/api/client';
-import { useModels } from '@/features/projects/useModels';
+import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
 import {
   useComplianceSummary,
@@ -20,7 +20,7 @@ import {
   useProjectActivity,
   useProjectDossier,
   useComplianceTrend,
-} from '@/features/projects/compliance/hooks';
+} from '@/features/compliance/hooks';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';

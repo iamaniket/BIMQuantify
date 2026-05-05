@@ -38,9 +38,9 @@ import {
   formatFileSize,
   formatRejection,
   formatSchemaLabel,
-} from './fileFormatting';
+} from '@/lib/formatting/files';
 import { UploadProgressItem, type UploadState } from './UploadProgressItem';
-import { useCheckCompliance } from './compliance/hooks';
+import { useCheckCompliance } from '@/features/compliance/hooks';
 import { useDeleteModelFile } from './useDeleteModelFile';
 import { useModelFiles } from './useModelFiles';
 import { useRetryExtraction } from './useRetryExtraction';

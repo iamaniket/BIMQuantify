@@ -15,7 +15,7 @@ import {
   DialogClose,
 } from '@bimstitch/ui';
 
-import type { ComplianceIssue } from '@/features/projects/compliance/types';
+import type { ComplianceIssue } from '@/features/compliance/types';
 
 type Props = {
   issue: ComplianceIssue | null;

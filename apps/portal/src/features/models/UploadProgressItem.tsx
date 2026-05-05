@@ -7,7 +7,7 @@ import type { JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';
 
-import { formatFileSize, formatRejection } from './fileFormatting';
+import { formatFileSize, formatRejection } from '@/lib/formatting/files';
 
 export type UploadState =
   | { kind: 'idle' }

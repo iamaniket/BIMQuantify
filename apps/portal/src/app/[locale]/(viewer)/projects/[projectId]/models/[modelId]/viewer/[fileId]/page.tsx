@@ -21,9 +21,9 @@ import { ViewerStatusBar } from '@/components/viewer/ViewerStatusBar';
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
 import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
-import { useModelMetadata } from '@/hooks/useModelMetadata';
-import { useModelProperties } from '@/hooks/useModelProperties';
-import { useViewerBridge } from '@/hooks/useViewerBridge';
+import { useModelMetadata } from '@/features/viewer/useModelMetadata';
+import { useModelProperties } from '@/features/viewer/useModelProperties';
+import { useViewerBridge } from '@/features/viewer/useViewerBridge';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';

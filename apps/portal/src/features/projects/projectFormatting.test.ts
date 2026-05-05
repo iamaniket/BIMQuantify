@@ -11,7 +11,7 @@ import {
   projectDotClasses,
   statusBadgeClasses,
   statusDotClasses,
-} from './projectFormatting';
+} from '@/lib/formatting/projects';
 
 describe('formatProjectLifecycleLabel', () => {
   it('returns "Archived" for archived state', () => {

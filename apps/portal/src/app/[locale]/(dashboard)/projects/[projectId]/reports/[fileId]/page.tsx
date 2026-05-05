@@ -19,8 +19,8 @@ import {
   useComplianceLatest,
   useComplianceSummary,
   useProjectReports,
-} from '@/features/projects/compliance/hooks';
-import { useModels } from '@/features/projects/useModels';
+} from '@/features/compliance/hooks';
+import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
 
 export default function ReportDetailPage(): JSX.Element {

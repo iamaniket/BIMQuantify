@@ -13,7 +13,7 @@ import type {
   ComplianceDomain,
   ComplianceArticle,
   ComplianceTrend,
-} from '@/features/projects/compliance/types';
+} from '@/features/compliance/types';
 import type { Model } from '@/lib/api/schemas';
 
 type Props = {

@@ -4,10 +4,7 @@ import {
   ChevronRight,
   Eye,
   Glasses,
-  MousePointer2,
   Search,
-  Ruler,
-  Scissors,
 } from 'lucide-react';
 import {
   useCallback,
@@ -46,6 +43,31 @@ function buildMenu(
   item: ContextMenuData['item'],
 ): MenuItem[] {
   const hasItem = item !== null;
+
+  const visibilityChildren: MenuItem[] = [
+    hasHidden ? { label: 'Show All', command: 'visibility.showAll' } : null,
+    { label: 'Hide All', command: 'visibility.hideAll' },
+    ...(hasItem
+      ? [
+          { label: '', separator: true } as MenuItem,
+          { label: 'Hide', command: 'visibility.hideItem', commandArgs: item } as MenuItem,
+          { label: 'Show Only This', command: 'visibility.isolateItem', commandArgs: item } as MenuItem,
+        ]
+      : []),
+  ].filter(Boolean) as MenuItem[];
+
+  const xrayChildren: MenuItem[] = [
+    { label: 'X-Ray All', command: 'xray.all' },
+    hasXray ? { label: 'Clear X-Ray', command: 'xray.clear' } : null,
+    ...(hasItem
+      ? [
+          { label: '', separator: true } as MenuItem,
+          { label: 'X-Ray', command: 'xray.set', commandArgs: item } as MenuItem,
+          { label: 'X-Ray Others', command: 'xray.allExceptItem', commandArgs: item } as MenuItem,
+        ]
+      : []),
+  ].filter(Boolean) as MenuItem[];
+
   return [
     {
       label: 'Inspect Properties',
@@ -56,45 +78,18 @@ function buildMenu(
     {
       label: 'Visibility',
       icon: <Eye className={ICON_CLASS} />,
-      children: [
-        { label: 'Show All', command: 'visibility.showAll', disabled: !hasHidden },
-        { label: 'Hide All', command: 'visibility.hideAll' },
-        { label: '', separator: true },
-        { label: 'Hide', command: 'visibility.hideItem', commandArgs: item, disabled: !hasItem },
-        { label: 'Show Only This', command: 'visibility.isolateItem', commandArgs: item, disabled: !hasItem },
-      ],
+      children: visibilityChildren,
     },
     {
       label: 'X-Ray',
       icon: <Glasses className={ICON_CLASS} />,
-      children: [
-        { label: 'X-Ray All', command: 'xray.all' },
-        { label: 'Clear X-Ray', command: 'xray.clear', disabled: !hasXray },
-        { label: '', separator: true },
-        { label: 'X-Ray', command: 'xray.set', commandArgs: item, disabled: !hasItem },
-        { label: 'X-Ray Others', command: 'xray.allExceptItem', commandArgs: item, disabled: !hasItem },
-      ],
-    },
-    {
-      label: 'Select',
-      icon: <MousePointer2 className={ICON_CLASS} />,
-      children: [
-        { label: 'Select All', command: 'selection.selectAll' },
-        { label: 'Clear Selection', command: 'selection.clear', disabled: !hasSelection },
-      ],
+      children: xrayChildren,
     },
     { label: '', separator: true },
-    {
-      label: 'Clear all slices',
-      icon: <Scissors className={ICON_CLASS} />,
-      disabled: true,
-    },
-    {
-      label: 'Measurements',
-      icon: <Ruler className={ICON_CLASS} />,
-      disabled: true,
-    },
-  ];
+    { label: 'Select All', command: 'selection.selectAll' },
+    hasSelection ? { label: 'Clear Selection', command: 'selection.clear' } : null,
+    hasSelection ? { label: 'Invert Selection', command: 'selection.invert' } : null,
+  ].filter(Boolean) as MenuItem[];
 }
 
 function MenuItemRow({
@@ -245,6 +240,21 @@ export function ViewerContextMenu({ handle }: Props): JSX.Element | null {
       offClose();
     };
   }, [handle]);
+
+  // Close menu when clicking outside of it
+  useEffect(() => {
+    if (!menu || !handle) return undefined;
+
+    const onOutsideClick = (ev: MouseEvent): void => {
+      const el = menuRef.current;
+      if (el && !el.contains(ev.target as Node)) {
+        handle.commands.execute('contextMenu.close').catch(() => undefined);
+      }
+    };
+
+    document.addEventListener('mousedown', onOutsideClick);
+    return () => document.removeEventListener('mousedown', onOutsideClick);
+  }, [menu, handle]);
 
   const runCommand = useCallback(
     (cmd: string, args?: unknown) => {

@@ -3,7 +3,7 @@
 import type { JSX } from 'react';
 
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
-import { useViewerFPS } from '@/hooks/useViewerFPS';
+import { useViewerFPS } from '@/features/viewer/useViewerFPS';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 type ViewerStatusBarProps = {

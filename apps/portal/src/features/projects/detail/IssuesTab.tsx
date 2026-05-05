@@ -6,7 +6,7 @@ import { useState, useMemo, type JSX } from 'react';
 
 import { Badge, Input } from '@bimstitch/ui';
 
-import type { ComplianceIssue } from '@/features/projects/compliance/types';
+import type { ComplianceIssue } from '@/features/compliance/types';
 
 import { IssueDetailModal } from './IssueDetailModal';
 

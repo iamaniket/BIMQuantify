@@ -11,7 +11,7 @@ import type { Project } from '@/lib/api/schemas';
 import {
   formatAddress,
   formatDeliveryDate,
-} from './projectFormatting';
+} from '@/lib/formatting/projects';
 
 type Props = {
   project: Project;

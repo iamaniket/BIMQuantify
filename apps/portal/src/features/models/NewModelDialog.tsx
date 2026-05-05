@@ -20,7 +20,7 @@ import {
 
 import { ApiError } from '@/lib/api/client';
 
-import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from './modelFormatting';
+import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/lib/formatting/models';
 import {
   ModelFormSchema,
   type ModelFormValues,

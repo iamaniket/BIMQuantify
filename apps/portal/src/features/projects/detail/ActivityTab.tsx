@@ -3,7 +3,7 @@
 import { Upload, ScanLine, MapPin, Wrench, FileText } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
-import type { ActivityItem } from '@/features/projects/compliance/types';
+import type { ActivityItem } from '@/features/compliance/types';
 
 type Props = {
   activity: ActivityItem[];

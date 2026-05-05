@@ -6,8 +6,8 @@ import { useMemo, useState, type JSX } from 'react';
 
 import { Badge, Button } from '@bimstitch/ui';
 
-import { useProjectReports, useCheckCompliance } from '@/features/projects/compliance/hooks';
-import { useModelFiles } from '@/features/projects/useModelFiles';
+import { useProjectReports, useCheckCompliance } from '@/features/compliance/hooks';
+import { useModelFiles } from '@/features/models/useModelFiles';
 import type { Model, ProjectComplianceReportItem, ProjectFile } from '@/lib/api/schemas';
 
 type Framework = 'all' | 'bbl' | 'wkb';

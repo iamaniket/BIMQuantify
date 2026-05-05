@@ -1,5 +1,3 @@
-import { env } from '@/lib/env';
-
 import { apiClient } from './client';
 import {
   NotificationListResponseSchema,
@@ -34,29 +32,11 @@ export async function markNotificationRead(
   accessToken: string,
   notificationId: string,
 ): Promise<void> {
-  const response = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/notifications/${notificationId}/read`,
-    {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to mark notification read: ${String(response.status)}`);
-  }
+  return apiClient.patchNoContent(`/notifications/${notificationId}/read`, accessToken);
 }
 
 export async function markAllNotificationsRead(
   accessToken: string,
 ): Promise<void> {
-  const response = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/notifications/mark-all-read`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to mark all notifications read: ${String(response.status)}`);
-  }
+  return apiClient.postNoContent('/notifications/mark-all-read', accessToken);
 }

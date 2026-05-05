@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  useMutation, useQueryClient, type UseMutationResult,
-} from '@tanstack/react-query';
+import type { UseMutationResult } from '@tanstack/react-query';
 
 import {
   createProject, createProjectWithThumbnail, updateProject,
@@ -10,7 +8,7 @@ import {
 import type {
   Project, ProjectCreateInput, ProjectUpdateInput,
 } from '@/lib/api/schemas';
-import { useAuth } from '@/providers/AuthProvider';
+import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { projectsKey } from './queryKeys';
 
@@ -19,20 +17,11 @@ export type ProjectCreatePayload = ProjectCreateInput & {
 };
 
 export function useCreateProject(): UseMutationResult<Project, Error, ProjectCreatePayload> {
-  const { tokens } = useAuth();
-  const accessToken = tokens === null ? null : tokens.access_token;
-  const queryClient = useQueryClient();
-
-  return useMutation<Project, Error, ProjectCreatePayload>({
-    mutationFn: async ({ thumbnailFile, ...input }) => {
-      if (accessToken === null) {
-        throw new Error('Not authenticated');
-      }
+  return useAuthMutation({
+    mutationFn: async (accessToken, { thumbnailFile, ...input }) => {
       if (thumbnailFile === undefined) {
         return createProject(accessToken, input);
       }
-      // Two-step path: the thumbnail endpoint only accepts name + description,
-      // so create with thumbnail first, then PATCH any remaining fields.
       const { name, description, ...rest } = input;
       const created = await createProjectWithThumbnail(
         accessToken,
@@ -46,8 +35,6 @@ export function useCreateProject(): UseMutationResult<Project, Error, ProjectCre
       if (!hasExtras) return created;
       return updateProject(accessToken, created.id, extras);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: projectsKey });
-    },
+    invalidateKeys: [projectsKey],
   });
 }

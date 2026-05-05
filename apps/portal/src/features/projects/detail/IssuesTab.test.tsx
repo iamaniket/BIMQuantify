@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { IntlWrapper } from '@/__tests__/intl-wrapper';
 
-import type { ComplianceIssue } from '@/features/projects/compliance/types';
+import type { ComplianceIssue } from '@/features/compliance/types';
 
 vi.mock('@bimstitch/ui', () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,

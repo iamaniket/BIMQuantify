@@ -169,6 +169,16 @@ export const apiClient = {
     path,
     accessToken,
   }),
+  patchNoContent: async (path: string, accessToken: string): Promise<void> => requestNoContent({
+    method: 'PATCH',
+    path,
+    accessToken,
+  }),
+  postNoContent: async (path: string, accessToken: string): Promise<void> => requestNoContent({
+    method: 'POST',
+    path,
+    accessToken,
+  }),
   postMultipart: async <TResponse>(
     path: string,
     formData: FormData,
