@@ -2,8 +2,8 @@
  * Effects plugin — silhouette edge lines via Sobel on a normal buffer.
  *
  * Pipeline:
- *   RenderPass (color, MSAA) → NormalEdgePass (custom; detects edges from a
- *   normal+depth buffer and darkens color where they break) → SMAAPass →
+ *   RenderPass (color, MSAA) → NormalEdgePass (custom; dual-scale Sobel on
+ *   a normal+depth buffer, darkens color where edges break) → FXAAPass →
  *   OutputPass.
  *
  * Why a normal-buffer Sobel instead of luminance Sobel: BIM models have
@@ -23,7 +23,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+import { FXAAPass } from 'three/examples/jsm/postprocessing/FXAAPass.js';
 
 import type { Plugin, ViewerContext } from '../../core/types.js';
 import type { EffectsOptions, EffectsQuality } from './types.js';
@@ -54,8 +54,8 @@ const NormalEdgeShader = {
     tDiffuse: { value: null as THREE.Texture | null },
     tNormal: { value: null as THREE.Texture | null },
     resolution: { value: new THREE.Vector2() },
-    uNormalStrength: { value: 2.0 },
-    uDepthScale: { value: 14.0 },
+    uNormalStrength: { value: 1.0 },
+    uDepthScale: { value: 2.5 },
     uEdgeLow: { value: 0.15 },
     uEdgeHigh: { value: 0.6 },
     uEdgeColor: { value: new THREE.Color(0.18, 0.2, 0.24) },
@@ -78,48 +78,70 @@ const NormalEdgeShader = {
     uniform vec3 uEdgeColor;
     varying vec2 vUv;
 
+    vec3 decN(vec4 s) { return normalize(s.rgb * 2.0 - 1.0); }
+
     void main() {
       vec4 col = texture2D(tDiffuse, vUv);
       vec2 texel = 1.0 / resolution;
 
-      vec4 sC = texture2D(tNormal, vUv);
-      vec4 sL = texture2D(tNormal, vUv + texel * vec2(-1.0, 0.0));
-      vec4 sR = texture2D(tNormal, vUv + texel * vec2( 1.0, 0.0));
-      vec4 sU = texture2D(tNormal, vUv + texel * vec2( 0.0,-1.0));
-      vec4 sD = texture2D(tNormal, vUv + texel * vec2( 0.0, 1.0));
+      // --- Inner ring: 3x3 Sobel at 1x texel spacing ---
+      vec4 s00 = texture2D(tNormal, vUv + texel * vec2(-1.0, -1.0));
+      vec4 s10 = texture2D(tNormal, vUv + texel * vec2( 0.0, -1.0));
+      vec4 s20 = texture2D(tNormal, vUv + texel * vec2( 1.0, -1.0));
+      vec4 s01 = texture2D(tNormal, vUv + texel * vec2(-1.0,  0.0));
+      vec4 sC  = texture2D(tNormal, vUv);
+      vec4 s21 = texture2D(tNormal, vUv + texel * vec2( 1.0,  0.0));
+      vec4 s02 = texture2D(tNormal, vUv + texel * vec2(-1.0,  1.0));
+      vec4 s12 = texture2D(tNormal, vUv + texel * vec2( 0.0,  1.0));
+      vec4 s22 = texture2D(tNormal, vUv + texel * vec2( 1.0,  1.0));
 
-      // Background pixels have alpha == 0 (cleared). Geometry has a small
-      // epsilon-biased linearDepth in alpha. If any of the 5 taps is
-      // background, skip — silhouette against the background gets handled
-      // by the normal-Sobel naturally without polluting the depth term.
-      float aMin = min(min(min(min(sC.a, sL.a), sR.a), sU.a), sD.a);
+      // --- Outer ring: cross at 2x texel spacing (wider, softer) ---
+      vec4 wL = texture2D(tNormal, vUv + texel * vec2(-2.0,  0.0));
+      vec4 wR = texture2D(tNormal, vUv + texel * vec2( 2.0,  0.0));
+      vec4 wU = texture2D(tNormal, vUv + texel * vec2( 0.0, -2.0));
+      vec4 wD = texture2D(tNormal, vUv + texel * vec2( 0.0,  2.0));
+
+      float aMin = min(min(min(min(min(min(min(min(
+        sC.a, s00.a), s10.a), s20.a), s01.a), s21.a), s02.a), s12.a), s22.a);
       if (aMin < 0.001) {
         gl_FragColor = col;
         return;
       }
 
-      // Normal-discontinuity term (silhouettes & creases).
-      vec3 nL = normalize(sL.rgb * 2.0 - 1.0);
-      vec3 nR = normalize(sR.rgb * 2.0 - 1.0);
-      vec3 nU = normalize(sU.rgb * 2.0 - 1.0);
-      vec3 nD = normalize(sD.rgb * 2.0 - 1.0);
-      float dx = 1.0 - dot(nL, nR);
-      float dy = 1.0 - dot(nU, nD);
-      float gN = (dx + dy) * uNormalStrength;
+      vec3 nC = decN(sC);
+      float d00 = 1.0 - dot(nC, decN(s00));
+      float d10 = 1.0 - dot(nC, decN(s10));
+      float d20 = 1.0 - dot(nC, decN(s20));
+      float d01 = 1.0 - dot(nC, decN(s01));
+      float d21 = 1.0 - dot(nC, decN(s21));
+      float d02 = 1.0 - dot(nC, decN(s02));
+      float d12 = 1.0 - dot(nC, decN(s12));
+      float d22 = 1.0 - dot(nC, decN(s22));
 
-      // Depth-discontinuity term, second-derivative style. A continuously
-      // tilted surface gives ~0 because dC = 0.5*(dL+dR); only true depth
-      // jumps (where dC departs from the neighbour midpoint) survive.
-      float dC = sC.a;
-      float gDx = abs(dC - 0.5 * (sL.a + sR.a));
-      float gDy = abs(dC - 0.5 * (sU.a + sD.a));
-      float gD = (gDx + gDy) * uDepthScale;
+      // Inner Sobel 3x3
+      float gnX = -d00 + d20 - 2.0*d01 + 2.0*d21 - d02 + d22;
+      float gnY = -d00 - 2.0*d10 - d20 + d02 + 2.0*d12 + d22;
+      float gN1 = sqrt(gnX * gnX + gnY * gnY);
+
+      // Outer cross — extends the edge footprint to ~5 px so the
+      // transition spans multiple pixels instead of a hard 1-px step.
+      float wdx = 1.0 - dot(decN(wL), decN(wR));
+      float wdy = 1.0 - dot(decN(wU), decN(wD));
+      float gN2 = wdx + wdy;
+
+      float gN = max(gN1, gN2 * 0.75) * uNormalStrength;
+
+      // Depth — Laplacian inner + wide cross second-derivative
+      float lap = s00.a + s10.a + s20.a + s01.a + s21.a
+                + s02.a + s12.a + s22.a - 8.0 * sC.a;
+      float gD1 = abs(lap);
+      float gD2 = abs(sC.a - 0.5*(wL.a + wR.a))
+                + abs(sC.a - 0.5*(wU.a + wD.a));
+      float gD = max(gD1, gD2 * 0.75) * uDepthScale;
 
       float g = max(gN, gD);
       float edge = smoothstep(uEdgeLow, uEdgeHigh, g);
 
-      // Mix toward a tinted dark gray instead of pure darkening — keeps
-      // lines readable on bright surfaces and avoids the "muddy" look.
       vec3 edgeRgb = mix(col.rgb * 0.15, uEdgeColor, 0.35);
       gl_FragColor = vec4(mix(col.rgb, edgeRgb, edge), col.a);
     }
@@ -141,7 +163,7 @@ export function effectsPlugin(
 
   let composer: EffectComposer | null = null;
   let edgesPass: ShaderPass | null = null;
-  let smaaPass: SMAAPass | null = null;
+  let fxaaPass: FXAAPass | null = null;
   let composerTarget: THREE.WebGLRenderTarget | null = null;
   let normalTarget: THREE.WebGLRenderTarget | null = null;
   let normalMaterial: THREE.ShaderMaterial | null = null;
@@ -160,10 +182,10 @@ export function effectsPlugin(
     // to both normal and depth gradients, picking up more subtle edges.
     const preset =
       q === 'high'
-        ? { ns: 2.6, ds: 22.0, lo: 0.1, hi: 0.5 }
+        ? { ns: 1.3, ds: 3.5, lo: 0.1, hi: 0.5 }
         : q === 'low'
-          ? { ns: 1.4, ds: 8.0, lo: 0.2, hi: 0.7 }
-          : { ns: 2.0, ds: 14.0, lo: 0.15, hi: 0.6 };
+          ? { ns: 0.7, ds: 1.4, lo: 0.2, hi: 0.7 }
+          : { ns: 1.0, ds: 2.5, lo: 0.15, hi: 0.6 };
     const u = edgesPass.uniforms as {
       uNormalStrength: { value: number };
       uDepthScale: { value: number };
@@ -314,9 +336,9 @@ export function effectsPlugin(
       eu.tNormal.value = normalTarget.texture;
       composer.addPass(edgesPass);
 
-      smaaPass = new SMAAPass();
-      smaaPass.setSize(w, h);
-      composer.addPass(smaaPass);
+      fxaaPass = new FXAAPass();
+      fxaaPass.setSize(w, h);
+      composer.addPass(fxaaPass);
 
       composer.addPass(new OutputPass());
 
@@ -355,7 +377,7 @@ export function effectsPlugin(
         const nh = Math.round(s.y * r);
         composer.setSize(s.x, s.y);
         composer.setPixelRatio(r);
-        if (smaaPass) smaaPass.setSize(nw, nh);
+        if (fxaaPass) fxaaPass.setSize(nw, nh);
         if (normalTarget) normalTarget.setSize(nw, nh);
         if (edgesPass) {
           const u = edgesPass.uniforms as {
@@ -376,9 +398,9 @@ export function effectsPlugin(
         composer?.dispose();
         composer = null;
         edgesPass?.dispose?.();
-        smaaPass?.dispose?.();
+        fxaaPass?.dispose?.();
         edgesPass = null;
-        smaaPass = null;
+        fxaaPass = null;
         composerTarget?.dispose();
         composerTarget = null;
         normalTarget?.dispose();
