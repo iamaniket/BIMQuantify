@@ -52,8 +52,14 @@ export type {
   DropdownMenuSeparatorProps,
   DropdownMenuLabelProps,
 } from './DropdownMenu.js';
+export { AppDialog } from './AppDialog.js';
+export type { AppDialogProps } from './AppDialog.js';
 export { ConfirmDialog } from './ConfirmDialog.js';
 export type { ConfirmDialogProps } from './ConfirmDialog.js';
+export { DialogField } from './DialogField.js';
+export type { DialogFieldProps } from './DialogField.js';
+export { DialogSection } from './DialogSection.js';
+export type { DialogSectionGroupProps } from './DialogSection.js';
 export { cn } from './lib/cn.js';
 export { ThemeToggle } from './ThemeToggle.js';
 export {

@@ -22,6 +22,7 @@ export function startWorker(): Worker<ExtractionJob> {
     {
       connection: getRedis(),
       concurrency: cfg.JOB_CONCURRENCY,
+      lockDuration: cfg.JOB_TIMEOUT_MS + 30_000,
     },
   );
 

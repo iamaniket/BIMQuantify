@@ -121,6 +121,10 @@ export class Viewer {
 
     const fragmentsModels = new FRAGS.FragmentsModels(getWorkerUrl());
 
+    // Render all LOD tiers so every element (furniture, fittings, etc.)
+    // is visible from the start, not just the coarsest structural shell.
+    fragmentsModels.settings.graphicsQuality = 2;
+
     // Give every non-LOD material a unique polygon offset so coplanar BIM
     // surfaces (slab-on-wall, glazing-on-frame) resolve deterministically
     // instead of z-fighting.
@@ -129,6 +133,10 @@ export class Viewer {
       material.polygonOffset = true;
       material.polygonOffsetUnits = 1;
       material.polygonOffsetFactor = Math.random();
+      // BIM authoring tools export geometry with inconsistent face winding.
+      // Without DoubleSide, back-facing triangles are culled and entire
+      // elements disappear even though their geometry is present.
+      material.side = THREE.DoubleSide;
     });
 
     // FragmentsModels streams tile data from a worker. Drive `update()`
@@ -224,6 +232,15 @@ export class Viewer {
     const modelId = `model-${String(Date.now())}`;
     this.modelId = modelId;
     const model = await fragments.load(buffer as ArrayBuffer, { modelId });
+
+    // Connect camera so the LOD streaming system knows the viewpoint and
+    // can stream ALL tile detail levels, not just the coarsest shell.
+    model.useCamera(world.camera.three);
+
+    // Default LodMode culls items outside the camera frustum, making
+    // elements behind the initial viewpoint invisible. ALL_VISIBLE
+    // forces every item to render as full geometry regardless of view.
+    await model.setLodMode(FRAGS.LodMode.ALL_VISIBLE);
 
     const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
     sceneThree.add(model.object);

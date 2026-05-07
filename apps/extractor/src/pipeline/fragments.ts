@@ -15,6 +15,8 @@ import { createRequire } from 'node:module';
 
 import { IfcImporter } from '@thatopen/fragments';
 
+import { getConfig } from '../config.js';
+
 const require = createRequire(import.meta.url);
 
 function resolveWasmDir(): string {
@@ -23,12 +25,30 @@ function resolveWasmDir(): string {
 }
 
 export async function generateFragments(bytes: Uint8Array): Promise<Uint8Array> {
+  const cfg = getConfig();
+  const timeoutMs = cfg.JOB_TIMEOUT_MS;
+
   const importer = new IfcImporter();
   importer.wasm = {
     path: `${resolveWasmDir()}${path.sep}`,
     absolute: true,
   };
-  const result = await importer.process({ bytes });
+
+  // Default threshold (3000) skips elements with simple geometry
+  // (furniture, fittings, fixtures) — they get metadata but no
+  // renderable tiles, making them invisible in the viewer.
+  importer.geometryProcessSettings.threshold = 1;
+
+  const result = await Promise.race([
+    importer.process({ bytes }),
+    new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`Fragment generation timed out after ${timeoutMs}ms`)),
+        timeoutMs,
+      );
+    }),
+  ]);
+
   if (!(result instanceof Uint8Array)) {
     throw new Error('@thatopen/fragments returned non-Uint8Array fragments payload');
   }
