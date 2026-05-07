@@ -169,6 +169,21 @@ export function effectsPlugin(
   let normalMaterial: THREE.ShaderMaterial | null = null;
 
   let isIdle = false;
+  let shadowMat: THREE.ShaderMaterial | null = null;
+
+  const setShadowLinearBlend = (v: number): void => {
+    if (!shadowMat && ctxRef) {
+      ctxRef.scene.traverse((obj) => {
+        if (obj.name === 'shadow-ground' && (obj as THREE.Mesh).material) {
+          shadowMat = (obj as THREE.Mesh).material as THREE.ShaderMaterial;
+        }
+      });
+    }
+    const u = shadowMat?.uniforms as
+      | { uLinearBlend?: { value: number } }
+      | undefined;
+    if (u?.uLinearBlend) u.uLinearBlend.value = v;
+  };
 
   const applyPassToggles = (): void => {
     if (edgesPass) edgesPass.enabled = opts.enabled && opts.edges;
@@ -244,12 +259,14 @@ export function effectsPlugin(
 
   const requestComposerFrame = (): void => {
     if (!composer || !opts.enabled) return;
+    setShadowLinearBlend(1.0);
     try {
       if (opts.edges) renderNormalBuffer();
       composer.render();
     } catch {
       // Render targets may not be ready on first frame.
     }
+    setShadowLinearBlend(0.0);
   };
 
   const api: Plugin & EffectsPluginAPI = {
@@ -360,12 +377,14 @@ export function effectsPlugin(
       const loop = (): void => {
         raf = requestAnimationFrame(loop);
         if (!opts.enabled || !isIdle || !composer) return;
+        setShadowLinearBlend(1.0);
         try {
           if (opts.edges) renderNormalBuffer();
           composer.render();
         } catch {
           // ignore
         }
+        setShadowLinearBlend(0.0);
       };
       raf = requestAnimationFrame(loop);
 
@@ -429,6 +448,7 @@ export function effectsPlugin(
       cleanup?.();
       cleanup = null;
       ctxRef = null;
+      shadowMat = null;
     },
   };
 

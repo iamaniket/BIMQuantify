@@ -336,13 +336,6 @@ export class Viewer {
     sceneThree.background = new THREE.Color(color);
     const renderer = world.renderer!.three;
     renderer.setClearColor(color, 1);
-    // Force sRGB output so direct canvas renders match the post-processing
-    // composer's OutputPass (which does linear → sRGB conversion). Without
-    // this, our custom ShaderMaterial-based shadow plane writes linear color
-    // values straight to the canvas — alpha blending then happens in linear
-    // space and the shadow renders noticeably darker during camera motion
-    // (when only the base SimpleRenderer is drawing) than when idle (when
-    // the composer takes over).
     renderer.outputColorSpace = THREE.SRGBColorSpace;
   }
 
@@ -381,8 +374,9 @@ export class Viewer {
         depthWrite: false,
         uniforms: {
           color: { value: new THREE.Color(0x000000) },
-          opacity: { value: 0.6 },
+          opacity: { value: 0.3 },
           coreRadius: { value: 0.35 },
+          uLinearBlend: { value: 0.0 },
         },
         vertexShader: /* glsl */ `
           varying vec2 vUv;
@@ -395,17 +389,20 @@ export class Viewer {
           uniform vec3 color;
           uniform float opacity;
           uniform float coreRadius;
+          uniform float uLinearBlend;
           varying vec2 vUv;
           void main() {
-            // Distance from center, normalized to 0..1 at plane edge.
             vec2 d = vUv - 0.5;
             float r = length(d) * 2.0;
-            // Full opacity inside coreRadius, smooth falloff outside.
             float a = 1.0 - smoothstep(coreRadius, 1.0, r);
-            // Soften the falloff curve — squared gives a more natural,
-            // photographic shadow gradient.
             a = a * a;
-            gl_FragColor = vec4(color, a * opacity);
+            float rawA = a * opacity;
+            // When the EffectComposer renders to a linear target, alpha
+            // blending produces a lighter shadow than the sRGB canvas
+            // path. Compensate by boosting alpha so the perceptual result
+            // matches: alpha_adj = 1 - (1 - alpha)^gamma.
+            float finalA = mix(rawA, 1.0 - pow(1.0 - rawA, 2.2), uLinearBlend);
+            gl_FragColor = vec4(color, finalA);
           }
         `,
       });
@@ -453,7 +450,7 @@ export class Viewer {
       // local-X maps to world-X and local-Y maps to world-Z. So scale.x
       // controls world-X span and scale.y controls world-Z span.
       ground.scale.set(padX, padZ, 1);
-      ground.position.set(center.x, box.min.y - maxDim * 0.001, center.z);
+      ground.position.set(center.x, box.min.y - maxDim * 0.05, center.z);
       ground.updateMatrixWorld();
     }
   }
