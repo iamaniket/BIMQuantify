@@ -11,7 +11,7 @@ import {
   Move,
   Orbit,
   Pencil,
-  Ruler,
+
   Scan,
   Settings,
   User,
@@ -55,16 +55,15 @@ const GROUPS: ToolButtonDef[][] = [
     { id: 'fit', icon: Maximize, label: 'Fit to view', command: 'camera.zoomExtents' },
   ],
   [
-    { id: 'section', icon: Scan, label: 'Section', disabled: true },
-    { id: 'measure', icon: Ruler, label: 'Measure', disabled: true },
+    { id: 'section', icon: Scan, label: 'Section', command: 'section.add' },
     { id: 'markup', icon: Pencil, label: 'Markup', disabled: true },
   ],
   [
-    { id: 'wireframe', icon: Axis3D, label: 'Wireframe', disabled: true },
+    { id: 'wireframe', icon: Axis3D, label: 'Wireframe', command: 'wireframe.toggle' },
     { id: 'xray', icon: Glasses, label: 'X-Ray', command: 'xray.toggleAll' },
     { id: 'isolate', icon: Box, label: 'Isolate', command: 'isolation.toggle' },
     { id: 'explode', icon: Grip, label: 'Explode', disabled: true },
-    { id: 'walkthrough', icon: User, label: 'First person', disabled: true },
+    { id: 'walkthrough', icon: User, label: 'First person', command: 'walkthrough.toggle' },
   ],
   [
     { id: 'settings', icon: Settings, label: 'Settings' },
@@ -81,9 +80,9 @@ export function ViewerToolbar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTool, setActiveTool] = useState('select');
 
-  const run = (cmd: string): void => {
+  const run = (cmd: string, args?: unknown): void => {
     if (!handle) return;
-    handle.commands.execute(cmd).catch((err: unknown) => {
+    handle.commands.execute(cmd, args).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.warn(`[viewer-toolbar] ${cmd} failed:`, err);
     });
@@ -95,6 +94,19 @@ export function ViewerToolbar({
       setSettingsOpen((v) => !v);
       return;
     }
+
+    // Walkthrough is modal — toggle between active and inactive
+    if (def.id === 'walkthrough') {
+      if (activeTool === 'walkthrough') {
+        run('walkthrough.exit');
+        setActiveTool('select');
+      } else {
+        run('walkthrough.enter');
+        setActiveTool('walkthrough');
+      }
+      return;
+    }
+
     if (def.command) {
       run(def.command);
     }

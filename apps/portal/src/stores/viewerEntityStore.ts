@@ -1,5 +1,9 @@
 import { create } from 'zustand';
 
+import type { EntityAppearance } from '@bimstitch/viewer';
+
+export type { EntityAppearance };
+
 export type EntityKey = string; // "modelId::localId"
 
 export function toEntityKey(modelId: string, localId: number): EntityKey {
@@ -30,6 +34,7 @@ interface ViewerEntityState {
   hidden: Set<EntityKey>;
   isolated: Set<EntityKey>;
   xrayed: Set<EntityKey>;
+  opacityOverrides: Map<EntityKey, number>;
   isolationActive: boolean;
 
   enabled: ViewerFeatureFlags;
@@ -50,6 +55,9 @@ interface ViewerEntityState {
   unxrayItems: (keys: EntityKey[]) => void;
   clearXray: () => void;
 
+  setOpacity: (keys: EntityKey[], opacity: number) => void;
+  resetOpacity: (keys: EntityKey[]) => void;
+
   setFeatureEnabled: (feature: ViewerFeature, on: boolean) => void;
 
   _applyViewerSelection: (keys: EntityKey[]) => void;
@@ -59,12 +67,14 @@ interface ViewerEntityState {
     active: boolean,
   ) => void;
   _applyViewerXray: (xrayed: EntityKey[]) => void;
+  _applyViewerOpacity: (overrides: Array<[EntityKey, number]>) => void;
   _applyViewerFeatureEnabled: (feature: ViewerFeature, on: boolean) => void;
   _setModelId: (id: string) => void;
   _reset: () => void;
 }
 
 const EMPTY_SET = new Set<EntityKey>();
+const EMPTY_MAP = new Map<EntityKey, number>();
 const DEFAULT_FEATURES: ViewerFeatureFlags = {
   hover: true,
   selection: true,
@@ -79,6 +89,7 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
   hidden: EMPTY_SET,
   isolated: EMPTY_SET,
   xrayed: EMPTY_SET,
+  opacityOverrides: EMPTY_MAP,
   isolationActive: false,
 
   enabled: DEFAULT_FEATURES,
@@ -138,6 +149,19 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
     }),
   clearXray: () => set({ xrayed: EMPTY_SET }),
 
+  setOpacity: (keys, opacity) =>
+    set((s) => {
+      const next = new Map(s.opacityOverrides);
+      for (const k of keys) next.set(k, opacity);
+      return { opacityOverrides: next };
+    }),
+  resetOpacity: (keys) =>
+    set((s) => {
+      const next = new Map(s.opacityOverrides);
+      for (const k of keys) next.delete(k);
+      return { opacityOverrides: next.size ? next : EMPTY_MAP };
+    }),
+
   setFeatureEnabled: (feature, on) =>
     set((s) => ({ enabled: { ...s.enabled, [feature]: on } })),
 
@@ -159,6 +183,16 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
       xrayed: new Set(xrayed),
     })),
 
+  _applyViewerOpacity: (overrides) =>
+    set((s) => {
+      const next = new Map<EntityKey, number>();
+      for (const [k, o] of overrides) next.set(k, o);
+      return {
+        _syncDepth: s._syncDepth + 1,
+        opacityOverrides: next.size ? next : EMPTY_MAP,
+      };
+    }),
+
   _applyViewerFeatureEnabled: (feature, on) =>
     set((s) => ({
       _syncDepth: s._syncDepth + 1,
@@ -173,8 +207,19 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
       hidden: EMPTY_SET,
       isolated: EMPTY_SET,
       xrayed: EMPTY_SET,
+      opacityOverrides: EMPTY_MAP,
       isolationActive: false,
       enabled: DEFAULT_FEATURES,
       _syncDepth: 0,
     }),
 }));
+
+export function getAppearance(key: EntityKey): EntityAppearance {
+  const s = useViewerEntityStore.getState();
+  return {
+    selected: s.selected.has(key),
+    visible: !s.hidden.has(key),
+    xray: s.xrayed.has(key),
+    opacity: s.opacityOverrides.get(key) ?? null,
+  };
+}

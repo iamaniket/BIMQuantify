@@ -5,6 +5,7 @@ import {
   FileText,
   Info,
   ListTree,
+  Ruler,
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
@@ -12,7 +13,7 @@ import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
-export type ViewerPanelId = 'explorer' | 'properties' | 'documents' | 'issues' | 'compliance';
+export type ViewerPanelId = 'explorer' | 'properties' | 'documents' | 'issues' | 'compliance' | 'measure';
 
 type ViewerSideRailProps = {
   activePanel: ViewerPanelId | null;
@@ -31,6 +32,7 @@ const BUTTONS: RailButton[] = [
   { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'issues', label: 'Issues', icon: AlertCircle },
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
+  { id: 'measure', label: 'Measurement', icon: Ruler },
 ];
 
 export function ViewerSideRail({

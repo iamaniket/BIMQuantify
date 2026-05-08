@@ -20,6 +20,7 @@ import { ViewerSideRail, type ViewerPanelId } from '@/components/viewer/ViewerSi
 import { ViewerStatusBar } from '@/components/viewer/ViewerStatusBar';
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
+import { MeasurementPanel } from '@/components/viewer/measurement/MeasurementPanel';
 import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
@@ -231,6 +232,9 @@ export default function ViewerPage(): JSX.Element {
                   properties={properties}
                   isLoadingProperties={isLoadingProperties}
                 />
+              }
+              measureContent={
+                <MeasurementPanel handle={viewerHandleRef.current} />
               }
             />
             <ViewerSideRail

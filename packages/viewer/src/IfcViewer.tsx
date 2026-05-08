@@ -24,6 +24,10 @@ import { viewCubePlugin } from './plugins/viewcube/index.js';
 import { visibilityPlugin } from './plugins/visibility/index.js';
 import { contextMenuPlugin } from './plugins/context-menu/index.js';
 import { xrayPlugin } from './plugins/xray/index.js';
+import { sectionPlugin } from './plugins/section/index.js';
+import { measurementPlugin } from './plugins/measurement/index.js';
+import { walkthroughPlugin } from './plugins/walkthrough/index.js';
+import { wireframePlugin } from './plugins/wireframe/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
 
 /**
@@ -109,6 +113,10 @@ function IfcViewerImpl(
         : [pivotRotatePlugin(props.pivotRotate ?? {})]),
       effectsPlugin(props.effects ?? {}),
       interactivePerformancePlugin(props.interactivePerformance ?? {}),
+      ...(props.section !== false ? [sectionPlugin(typeof props.section === 'object' ? props.section : {})] : []),
+      measurementPlugin(),
+      ...(props.walkthrough !== false ? [walkthroughPlugin(typeof props.walkthrough === 'object' ? props.walkthrough : {})] : []),
+      wireframePlugin(),
     ];
 
     const viewer = new Viewer({

@@ -188,6 +188,29 @@ export function visibilityPlugin(
     emitChange();
   };
 
+  const showItem = async (args: unknown): Promise<void> => {
+    if (!ctxRef) return;
+    const items = toItems(args);
+    if (!items.length) return;
+
+    const byModel = new Map<string, number[]>();
+    for (const it of items) {
+      let arr = byModel.get(it.modelId);
+      if (!arr) { arr = []; byModel.set(it.modelId, arr); }
+      arr.push(it.localId);
+      const k = itemKey(it);
+      hiddenSet.delete(k);
+      hiddenItemMap.delete(k);
+    }
+
+    for (const [modelId, ids] of byModel) {
+      const model = ctxRef.models().get(modelId);
+      if (model) await model.setVisible(ids, true).catch(() => undefined);
+    }
+
+    emitChange();
+  };
+
   const showAll = async (): Promise<void> => {
     if (!ctxRef) return;
 
@@ -257,6 +280,12 @@ export function visibilityPlugin(
         'visibility.isolateItem',
         (args: unknown) => isolateItem(args),
         { title: 'Show only element under cursor' },
+      );
+
+      ctx.commands.register(
+        'visibility.showItem',
+        (args: unknown) => showItem(args),
+        { title: 'Show specific hidden elements' },
       );
 
       ctx.commands.register('visibility.showAll', () => showAll(), {

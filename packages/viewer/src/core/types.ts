@@ -41,7 +41,12 @@ export interface ViewerEvents {
   'visibility:change': { hidden: ItemId[]; isolated: ItemId[]; isolationActive: boolean };
   'contextmenu:open': { position: { x: number; y: number }; item: ItemId | null; point: Vec3 | null };
   'contextmenu:close': undefined;
-  'xray:change': { xrayed: ItemId[] };
+  'xray:change': { xrayed: ItemId[]; opacityOverrides: Array<{ item: ItemId; opacity: number }> };
+  'section:change': { planes: Array<{ id: string; normal: Vec3; point: Vec3; active: boolean }> };
+  'measurement:change': { measurements: Array<{ id: string; type: string; value: number; unit: string }> };
+  'measurement:complete': { id: string; type: string; value: number };
+  'walkthrough:change': { active: boolean };
+  'wireframe:change': { active: boolean };
   'command:executed': { name: string; ok: boolean; error?: string };
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };

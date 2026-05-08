@@ -21,15 +21,17 @@ export interface XrayPluginAPI {
   hasItem(item: ItemId): boolean;
   setEnabled(enabled: boolean): void;
   isEnabled(): boolean;
+  getItemOpacity(item: ItemId): number | undefined;
 }
 
 const itemKey = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
 export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPluginAPI {
-  const opacity = options.opacity ?? 0.15;
+  const defaultOpacity = options.opacity ?? 0.15;
 
   const xrayed = new Set<string>();
   const itemMap = new Map<string, ItemId>();
+  const opacityMap = new Map<string, number>();
 
   let ctxRef: ViewerContext | null = null;
   let enabled = true;
@@ -44,19 +46,36 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     return map;
   };
 
-  // Fire-and-forget setOpacity per model. The library batches inside its
-  // MeshConnection window, so awaiting these only delays the visual.
   const applyOpacity = (items: ItemId[]): void => {
     if (!ctxRef || !items.length || !enabled) return;
     for (const [modelId, ids] of groupByModel(items)) {
       const model = ctxRef.models().get(modelId);
-      if (model) void model.setOpacity(ids, opacity).catch(() => undefined);
+      if (model) void model.setOpacity(ids, defaultOpacity).catch(() => undefined);
     }
   };
 
-  const resetOpacity = (items: ItemId[]): void => {
+  const restoreOrResetOpacity = (items: ItemId[]): void => {
     if (!ctxRef || !items.length) return;
-    for (const [modelId, ids] of groupByModel(items)) {
+    const toRestore = new Map<string, { ids: number[]; opacity: number }>();
+    const toReset = new Map<string, number[]>();
+    for (const it of items) {
+      const k = itemKey(it);
+      const custom = opacityMap.get(k);
+      if (custom !== undefined) {
+        let entry = toRestore.get(it.modelId);
+        if (!entry) { entry = { ids: [], opacity: custom }; toRestore.set(it.modelId, entry); }
+        entry.ids.push(it.localId);
+      } else {
+        let arr = toReset.get(it.modelId);
+        if (!arr) { arr = []; toReset.set(it.modelId, arr); }
+        arr.push(it.localId);
+      }
+    }
+    for (const [modelId, { ids, opacity }] of toRestore) {
+      const model = ctxRef.models().get(modelId);
+      if (model) void model.setOpacity(ids, opacity).catch(() => undefined);
+    }
+    for (const [modelId, ids] of toReset) {
       const model = ctxRef.models().get(modelId);
       if (model) void model.resetOpacity(ids).catch(() => undefined);
     }
@@ -84,12 +103,28 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
       itemMap.delete(k);
       present.push(it);
     }
-    if (present.length) resetOpacity(present);
+    if (present.length) restoreOrResetOpacity(present);
     emitChange();
   };
 
   const emitChange = (): void => {
-    ctxRef?.events.emit('xray:change', { xrayed: [...itemMap.values()] });
+    const overrides: Array<{ item: ItemId; opacity: number }> = [];
+    for (const [k, o] of opacityMap) {
+      const it = itemMap.get(k) ?? parseItemKey(k);
+      if (it) overrides.push({ item: it, opacity: o });
+    }
+    ctxRef?.events.emit('xray:change', {
+      xrayed: [...itemMap.values()],
+      opacityOverrides: overrides,
+    });
+  };
+
+  const parseItemKey = (k: string): ItemId | null => {
+    const sep = k.indexOf('::');
+    if (sep < 0) return null;
+    const localId = Number(k.slice(sep + 2));
+    if (Number.isNaN(localId)) return null;
+    return { modelId: k.slice(0, sep), localId };
   };
 
   const getSelection = async (): Promise<ItemId[]> => {
@@ -168,7 +203,7 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
   const clearXray = (): void => {
     if (!ctxRef || !xrayed.size) return;
     const all = [...itemMap.values()];
-    resetOpacity(all);
+    restoreOrResetOpacity(all);
     xrayed.clear();
     itemMap.clear();
     emitChange();
@@ -180,12 +215,11 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     if (!ctxRef) return;
     const all = [...itemMap.values()];
     if (!enabled && all.length) {
-      resetOpacity(all);
+      restoreOrResetOpacity(all);
     } else if (enabled && all.length) {
-      // Repaint without going through `applyOpacity` (which is gated).
       for (const [modelId, ids] of groupByModel(all)) {
         const model = ctxRef.models().get(modelId);
-        if (model) void model.setOpacity(ids, opacity).catch(() => undefined);
+        if (model) void model.setOpacity(ids, defaultOpacity).catch(() => undefined);
       }
     }
     ctxRef.events.emit('feature:enabled', { name: NAME, enabled });
@@ -203,6 +237,7 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     },
     setEnabled,
     isEnabled() { return enabled; },
+    getItemOpacity(item: ItemId) { return opacityMap.get(itemKey(item)); },
 
     install(ctx: ViewerContext) {
       ctxRef = ctx;
@@ -253,10 +288,59 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
       ctx.commands.register('xray.isEnabled', () => enabled, {
         title: 'Get x-ray enabled state',
       });
+
+      ctx.commands.register(
+        'xray.setItemOpacity',
+        (args: unknown) => {
+          const { items, opacity: val } = args as { items: ItemId[]; opacity: number };
+          if (!items?.length || typeof val !== 'number') return;
+          for (const it of items) opacityMap.set(itemKey(it), val);
+          if (!ctxRef) return;
+          for (const it of items) {
+            if (xrayed.has(itemKey(it))) continue;
+            const model = ctxRef.models().get(it.modelId);
+            if (model) void model.setOpacity([it.localId], val).catch(() => undefined);
+          }
+          emitChange();
+        },
+        { title: 'Set per-entity opacity' },
+      );
+
+      ctx.commands.register(
+        'xray.resetItemOpacity',
+        (args: unknown) => {
+          const items = toItems(args);
+          if (!items.length) return;
+          for (const it of items) opacityMap.delete(itemKey(it));
+          if (!ctxRef) return;
+          const toReset: ItemId[] = [];
+          for (const it of items) {
+            if (!xrayed.has(itemKey(it))) toReset.push(it);
+          }
+          if (toReset.length) {
+            for (const [modelId, ids] of groupByModel(toReset)) {
+              const model = ctxRef.models().get(modelId);
+              if (model) void model.resetOpacity(ids).catch(() => undefined);
+            }
+          }
+          emitChange();
+        },
+        { title: 'Reset per-entity opacity to default' },
+      );
+
+      ctx.commands.register('xray.getOpacityOverrides', () => {
+        const result: Array<{ item: ItemId; opacity: number }> = [];
+        for (const [k, o] of opacityMap) {
+          const it = parseItemKey(k);
+          if (it) result.push({ item: it, opacity: o });
+        }
+        return result;
+      }, { title: 'Get per-entity opacity overrides' });
     },
 
     uninstall() {
       clearXray();
+      opacityMap.clear();
       ctxRef = null;
     },
   };

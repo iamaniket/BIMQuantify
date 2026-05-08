@@ -74,8 +74,15 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
       },
     );
 
-    const offXray = handle.events.on('xray:change', ({ xrayed }) => {
+    const offXray = handle.events.on('xray:change', ({ xrayed, opacityOverrides }) => {
       store.getState()._applyViewerXray(itemsToKeys(xrayed));
+      if (opacityOverrides) {
+        const entries: [string, number][] = opacityOverrides.map((o) => [
+          toEntityKey(o.item.modelId, o.item.localId),
+          o.opacity,
+        ]);
+        store.getState()._applyViewerOpacity(entries);
+      }
       queueMicrotask(() => {
         store.setState((s) => ({ _syncDepth: Math.max(0, s._syncDepth - 1) }));
       });
@@ -108,8 +115,12 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
           void handle.commands.execute('visibility.isolateItem', keysToItems(state.isolated));
         } else if (state.hidden !== prev.hidden) {
           const added = [...state.hidden].filter((k) => !prev.hidden.has(k));
+          const removed = [...prev.hidden].filter((k) => !state.hidden.has(k));
           if (added.length > 0) {
             void handle.commands.execute('visibility.hideItem', keysToItems(new Set(added)));
+          }
+          if (removed.length > 0) {
+            void handle.commands.execute('visibility.showItem', keysToItems(new Set(removed)));
           }
         }
       }
@@ -118,11 +129,45 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
         if (state.xrayed.size === 0) {
           void handle.commands.execute('xray.clear');
         } else {
-          void handle.commands.execute('xray.set', keysToItems(state.xrayed));
+          const added = [...state.xrayed].filter((k) => !prev.xrayed.has(k));
+          const removed = [...prev.xrayed].filter((k) => !state.xrayed.has(k));
+          if (removed.length > 0) {
+            void handle.commands.execute('xray.remove', keysToItems(new Set(removed)));
+          }
+          if (added.length > 0) {
+            void handle.commands.execute('xray.set', keysToItems(new Set(added)));
+          }
         }
       }
 
-      // Forward feature toggle changes to the relevant plugins.
+      if (state.opacityOverrides !== prev.opacityOverrides) {
+        const added: [string, number][] = [];
+        const removed: string[] = [];
+        for (const [k, o] of state.opacityOverrides) {
+          if (prev.opacityOverrides.get(k) !== o) added.push([k, o]);
+        }
+        for (const k of prev.opacityOverrides.keys()) {
+          if (!state.opacityOverrides.has(k)) removed.push(k);
+        }
+        if (added.length > 0) {
+          const byOpacity = new Map<number, string[]>();
+          for (const [k, o] of added) {
+            let arr = byOpacity.get(o);
+            if (!arr) { arr = []; byOpacity.set(o, arr); }
+            arr.push(k);
+          }
+          for (const [opacity, keys] of byOpacity) {
+            void handle.commands.execute('xray.setItemOpacity', {
+              items: keysToItems(new Set(keys)),
+              opacity,
+            });
+          }
+        }
+        if (removed.length > 0) {
+          void handle.commands.execute('xray.resetItemOpacity', keysToItems(new Set(removed)));
+        }
+      }
+
       if (state.enabled !== prev.enabled) {
         for (const key of Object.keys(state.enabled) as ViewerFeature[]) {
           if (state.enabled[key] !== prev.enabled[key]) {

@@ -18,6 +18,8 @@ import type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
 import type { InteractivePerformanceOptions } from './plugins/interactive-performance/index.js';
 import type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 import type { SelectionPluginOptions } from './plugins/selection/index.js';
+import type { SectionPluginOptions } from './plugins/section/index.js';
+import type { WalkthroughPluginOptions } from './plugins/walkthrough/index.js';
 
 export type ViewerBundle = {
   fragmentsUrl: string;
@@ -101,6 +103,10 @@ export type IfcViewerProps = {
    * Every toggle defaults to off — opt in per setting.
    */
   interactivePerformance?: InteractivePerformanceOptions;
+  /** Clipping/section plane support. Pass `false` to disable. */
+  section?: SectionPluginOptions | false;
+  /** First-person walkthrough. Pass `false` to disable. */
+  walkthrough?: WalkthroughPluginOptions | false;
   ref?: Ref<ViewerHandle>;
 };
 
@@ -117,6 +123,29 @@ export type { InteractivePerformanceOptions } from './plugins/interactive-perfor
 export type { SelectionPluginOptions } from './plugins/selection/index.js';
 
 export type { XrayPluginOptions } from './plugins/xray/index.js';
+
+export type { XrayPluginAPI } from './plugins/xray/index.js';
+
+/**
+ * Snapshot of all visual overrides for a single entity.
+ * Composed from the separate plugin states — use `getAppearance()`
+ * in the portal store to build one from the Zustand state.
+ */
+export interface EntityAppearance {
+  selected: boolean;
+  visible: boolean;
+  xray: boolean;
+  /** Custom opacity (0..1), or null when using the model default. */
+  opacity: number | null;
+}
+
+export type { SectionPluginOptions, SectionPluginAPI, SectionPlane } from './plugins/section/index.js';
+
+export type { MeasurementPluginAPI, Measurement, MeasurementMode } from './plugins/measurement/index.js';
+
+export type { WalkthroughPluginOptions, WalkthroughPluginAPI } from './plugins/walkthrough/index.js';
+
+export type { WireframePluginAPI } from './plugins/wireframe/index.js';
 
 export type {
   Plugin,

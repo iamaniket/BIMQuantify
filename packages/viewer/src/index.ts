@@ -28,6 +28,17 @@ export type {
   PivotRotateOptions,
   SelectionPluginOptions,
   XrayPluginOptions,
+  XrayPluginAPI,
+  EntityAppearance,
+  SectionPluginOptions,
+  SectionPluginAPI,
+  SectionPlane,
+  MeasurementPluginAPI,
+  Measurement,
+  MeasurementMode,
+  WalkthroughPluginOptions,
+  WalkthroughPluginAPI,
+  WireframePluginAPI,
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
@@ -53,3 +64,7 @@ export { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
 export { visibilityPlugin } from './plugins/visibility/index.js';
 export { contextMenuPlugin } from './plugins/context-menu/index.js';
 export { xrayPlugin } from './plugins/xray/index.js';
+export { sectionPlugin } from './plugins/section/index.js';
+export { measurementPlugin } from './plugins/measurement/index.js';
+export { walkthroughPlugin } from './plugins/walkthrough/index.js';
+export { wireframePlugin } from './plugins/wireframe/index.js';

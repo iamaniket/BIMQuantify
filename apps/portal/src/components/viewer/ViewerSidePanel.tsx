@@ -16,6 +16,7 @@ const PANEL_TITLES: Record<ViewerPanelId, string> = {
   documents: 'Documents',
   issues: 'Issues',
   compliance: 'BBL Compliance',
+  measure: 'Measurement',
 };
 
 type ViewerSidePanelProps = {
@@ -23,6 +24,7 @@ type ViewerSidePanelProps = {
   onClose: () => void;
   explorerContent: ReactNode;
   propertiesContent: ReactNode;
+  measureContent: ReactNode;
 };
 
 function PlaceholderContent({ label }: { label: string }): JSX.Element {
@@ -43,6 +45,7 @@ export function ViewerSidePanel({
   onClose,
   explorerContent,
   propertiesContent,
+  measureContent,
 }: ViewerSidePanelProps): JSX.Element {
   const isOpen = activePanel !== null;
 
@@ -76,6 +79,7 @@ export function ViewerSidePanel({
               {activePanel === 'explorer' && explorerContent}
               {activePanel === 'properties' && propertiesContent}
               {activePanel === 'documents' && <DocumentsPanel />}
+              {activePanel === 'measure' && measureContent}
               {activePanel === 'issues' && <PlaceholderContent label="Issues" />}
               {activePanel === 'compliance' && <PlaceholderContent label="BBL Compliance" />}
             </div>
