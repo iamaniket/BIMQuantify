@@ -43,7 +43,7 @@ export interface ViewerEvents {
   'contextmenu:close': undefined;
   'xray:change': { xrayed: ItemId[]; opacityOverrides: Array<{ item: ItemId; opacity: number }> };
   'section:change': { planes: Array<{ id: string; normal: Vec3; point: Vec3; active: boolean }> };
-  'measurement:change': { measurements: Array<{ id: string; type: string; value: number; unit: string }> };
+  'measurement:change': { measurements: Array<{ id: string; type: string; value: number; unit: string; visible: boolean }> };
   'measurement:complete': { id: string; type: string; value: number };
   'walkthrough:change': { active: boolean };
   'wireframe:change': { active: boolean };
@@ -51,6 +51,8 @@ export interface ViewerEvents {
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };
   'feature:enabled': { name: string; enabled: boolean };
+  'mode:enter': { toolName: string; toolLabel: string };
+  'mode:exit': { toolName: string };
 }
 
 /**

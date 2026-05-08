@@ -24,6 +24,7 @@ export interface Measurement {
   value: number;
   unit: string;
   points: Array<{ x: number; y: number; z: number }>;
+  visible: boolean;
 }
 
 export interface MeasurementPluginAPI {
@@ -111,10 +112,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   let pendingDots: THREE.Mesh[] = [];
   let pendingLines: THREE.Line[] = [];
   let clickUnsub: (() => void) | null = null;
-  let keyUnsub: (() => void) | null = null;
-  let prevSelectionEnabled = true;
-  let prevHoverEnabled = true;
-  let prevLeftAction: number | null = null;
+  let exiting = false;
 
   const completed = new Map<string, Measurement>();
   const sceneGroups = new Map<string, THREE.Group>();
@@ -195,6 +193,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       type: 'distance',
       value: distance,
       unit: 'm',
+      visible: true,
       points: [
         { x: p1.x, y: p1.y, z: p1.z },
         { x: p2.x, y: p2.y, z: p2.z },
@@ -294,6 +293,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       type: 'angle',
       value: degrees,
       unit: 'deg',
+      visible: true,
       points: [
         { x: p1.x, y: p1.y, z: p1.z },
         { x: p2.x, y: p2.y, z: p2.z },
@@ -393,18 +393,10 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     sceneGroups.delete(id);
   };
 
-  // ----- keyboard -----
-
-  const handleKeyDown = (e: KeyboardEvent): void => {
-    if (e.key !== 'Escape' || currentMode === null) return;
-    if (pendingPoints.length > 0) {
-      clearPending();
-    } else {
-      deactivate();
-    }
-  };
-
   // ----- commands -----
+
+  const modeLabel = (mode: MeasurementMode): string =>
+    mode === 'distance' ? 'Measurement — Distance' : 'Measurement — Angle';
 
   const activate = async (args: unknown): Promise<void> => {
     if (!ctxRef) return;
@@ -417,47 +409,30 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     currentMode = mode;
     clearPending();
 
-    // Disable camera orbit on left-click so clicks place measurement points
-    const controls = ctxRef.cameraControls;
-    const ACTION = (controls.constructor as { ACTION?: Record<string, number> }).ACTION;
-    if (ACTION) {
-      prevLeftAction = controls.mouseButtons.left as number;
-      controls.mouseButtons.left = (ACTION['NONE'] ?? 0) as typeof controls.mouseButtons.left;
-    }
-
     clickUnsub = ctxRef.events.on('pointer:click', (e) => void handleClick(e));
-    document.addEventListener('keydown', handleKeyDown);
-    keyUnsub = () => document.removeEventListener('keydown', handleKeyDown);
 
-    try {
-      prevSelectionEnabled = (await ctxRef.commands.execute<undefined, boolean>('selection.isEnabled')) ?? true;
-      prevHoverEnabled = true;
-      try {
-        prevHoverEnabled = (await ctxRef.commands.execute<undefined, boolean>('hover.isEnabled')) ?? true;
-      } catch { /* hover plugin may not exist */ }
-      await ctxRef.commands.execute('selection.setEnabled', false);
-      await ctxRef.commands.execute('hover.setEnabled', false).catch(() => undefined);
-    } catch { /* selection plugin may not exist */ }
+    await ctxRef.commands.execute('mode.enter', {
+      name: `measurement.${mode}`,
+      label: modeLabel(mode),
+      cancel: () => false,
+      onExit: () => {
+        clearPending();
+        clickUnsub?.();
+        clickUnsub = null;
+        currentMode = null;
+      },
+    }).catch(() => undefined);
   };
 
   const deactivate = (): void => {
-    if (!ctxRef) return;
+    if (!ctxRef || exiting) return;
+    exiting = true;
     clearPending();
     clickUnsub?.();
     clickUnsub = null;
-    keyUnsub?.();
-    keyUnsub = null;
-
-    if (currentMode !== null) {
-      // Restore camera orbit
-      if (prevLeftAction !== null) {
-        ctxRef.cameraControls.mouseButtons.left = prevLeftAction as typeof ctxRef.cameraControls.mouseButtons.left;
-        prevLeftAction = null;
-      }
-      ctxRef.commands.execute('selection.setEnabled', prevSelectionEnabled).catch(() => undefined);
-      ctxRef.commands.execute('hover.setEnabled', prevHoverEnabled).catch(() => undefined);
-    }
     currentMode = null;
+    ctxRef.commands.execute('mode.exit').catch(() => undefined);
+    exiting = false;
   };
 
   const clear = (): void => {
@@ -477,8 +452,24 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     emitChange();
   };
 
+  const setVisibility = (args: unknown): void => {
+    const { id, visible } = args as { id?: string; visible?: boolean };
+    if (!id || visible === undefined) return;
+
+    const measurement = completed.get(id);
+    if (!measurement) return;
+
+    measurement.visible = visible;
+
+    const group = sceneGroups.get(id);
+    if (group) group.visible = visible;
+
+    emitChange();
+  };
+
   const api: Plugin & MeasurementPluginAPI = {
     name: NAME,
+    dependencies: ['mode'],
 
     isActive() { return currentMode !== null; },
     mode() { return currentMode; },
@@ -510,6 +501,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       });
       ctx.commands.register('measure.cancelPending', () => clearPending(), {
         title: 'Cancel in-progress measurement',
+      });
+      ctx.commands.register('measure.setVisible', (args: unknown) => setVisibility(args), {
+        title: 'Show or hide a measurement',
       });
     },
 

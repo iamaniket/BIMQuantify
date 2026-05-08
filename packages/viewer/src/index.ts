@@ -33,6 +33,9 @@ export type {
   SectionPluginOptions,
   SectionPluginAPI,
   SectionPlane,
+  ModePluginAPI,
+  ModeToolDescriptor,
+  ViewerMode,
   MeasurementPluginAPI,
   Measurement,
   MeasurementMode,
@@ -65,6 +68,7 @@ export { visibilityPlugin } from './plugins/visibility/index.js';
 export { contextMenuPlugin } from './plugins/context-menu/index.js';
 export { xrayPlugin } from './plugins/xray/index.js';
 export { sectionPlugin } from './plugins/section/index.js';
+export { modePlugin } from './plugins/mode/index.js';
 export { measurementPlugin } from './plugins/measurement/index.js';
 export { walkthroughPlugin } from './plugins/walkthrough/index.js';
 export { wireframePlugin } from './plugins/wireframe/index.js';

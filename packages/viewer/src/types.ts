@@ -141,6 +141,8 @@ export interface EntityAppearance {
 
 export type { SectionPluginOptions, SectionPluginAPI, SectionPlane } from './plugins/section/index.js';
 
+export type { ModePluginAPI, ModeToolDescriptor, ViewerMode } from './plugins/mode/index.js';
+
 export type { MeasurementPluginAPI, Measurement, MeasurementMode } from './plugins/measurement/index.js';
 
 export type { WalkthroughPluginOptions, WalkthroughPluginAPI } from './plugins/walkthrough/index.js';

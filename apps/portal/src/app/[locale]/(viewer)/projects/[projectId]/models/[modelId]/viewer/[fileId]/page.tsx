@@ -15,6 +15,7 @@ import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
 
 import { ViewerContextMenu } from '@/components/viewer/ViewerContextMenu';
 import { ViewerHeader } from '@/components/viewer/ViewerHeader';
+import { ViewerModeIndicator } from '@/components/viewer/ViewerModeIndicator';
 import { ViewerSidePanel } from '@/components/viewer/ViewerSidePanel';
 import { ViewerSideRail, type ViewerPanelId } from '@/components/viewer/ViewerSideRail';
 import { ViewerStatusBar } from '@/components/viewer/ViewerStatusBar';
@@ -25,6 +26,7 @@ import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel'
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
 import { useViewerBridge } from '@/features/viewer/useViewerBridge';
+import { useViewerMode } from '@/features/viewer/useViewerMode';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
@@ -85,6 +87,8 @@ export default function ViewerPage(): JSX.Element {
   }, []);
 
   useViewerBridge(viewerHandleRef.current);
+  const modeState = useViewerMode(viewerHandleRef.current);
+  const isEditMode = modeState.mode === 'edit';
 
   const metadataUrl = bundle?.metadata_url ?? null;
   const propertiesUrl = bundle?.properties_url ?? null;
@@ -244,18 +248,23 @@ export default function ViewerPage(): JSX.Element {
           </>
         ) : null}
         {viewerReady ? (
-          <ViewerToolbar
-            handle={viewerHandleRef.current}
-            selectionCount={selectionCount}
-            settings={settings}
-            onSettingsChange={setSettings}
-            onReloadViewer={() => {
-              setViewerReady(false);
-              setSceneReady(false);
-              setProgress(null);
-              setViewerEpoch((n) => n + 1);
-            }}
-          />
+          <div className={isEditMode ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
+            <ViewerToolbar
+              handle={viewerHandleRef.current}
+              selectionCount={selectionCount}
+              settings={settings}
+              onSettingsChange={setSettings}
+              onReloadViewer={() => {
+                setViewerReady(false);
+                setSceneReady(false);
+                setProgress(null);
+                setViewerEpoch((n) => n + 1);
+              }}
+            />
+          </div>
+        ) : null}
+        {isEditMode ? (
+          <ViewerModeIndicator toolLabel={modeState.toolLabel} />
         ) : null}
       </>
     );

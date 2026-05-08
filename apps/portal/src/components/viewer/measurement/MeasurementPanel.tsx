@@ -1,6 +1,6 @@
 'use client';
 
-import { Ruler, Trash2, Triangle } from 'lucide-react';
+import { DraftingCompass, Eye, EyeOff, Plus, Ruler, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
@@ -14,7 +14,7 @@ type Props = {
 
 const MODE_DEFS: Array<{ id: MeasurementMode; label: string; icon: typeof Ruler }> = [
   { id: 'distance', label: 'Distance', icon: Ruler },
-  { id: 'angle', label: 'Angle', icon: Triangle },
+  { id: 'angle', label: 'Angle', icon: DraftingCompass },
 ];
 
 function formatValue(m: Measurement): string {
@@ -63,6 +63,17 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
     return unsub;
   }, [handle]);
 
+  // Sync activeMode when edit mode exits (e.g. via ESC)
+  useEffect(() => {
+    if (!handle) return undefined;
+
+    const unsub = handle.events.on('mode:exit', () => {
+      if (mountedRef.current) setActiveMode(null);
+    });
+
+    return unsub;
+  }, [handle]);
+
   const switchMode = useCallback(
     (mode: MeasurementMode) => {
       if (!handle) return;
@@ -83,6 +94,16 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
     (id: string) => {
       if (!handle) return;
       handle.commands.execute('measure.remove', { id }).catch(() => undefined);
+    },
+    [handle],
+  );
+
+  const toggleVisibility = useCallback(
+    (id: string, currentlyVisible: boolean) => {
+      if (!handle) return;
+      handle.commands
+        .execute('measure.setVisible', { id, visible: !currentlyVisible })
+        .catch(() => undefined);
     },
     [handle],
   );
@@ -117,17 +138,6 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
         })}
       </div>
 
-      {/* Status hint */}
-      {activeMode !== null && (
-        <div className="shrink-0 border-b border-border bg-background-secondary/50 px-3 py-2">
-          <p className="text-[11px] text-foreground-secondary">
-            {activeMode === 'distance'
-              ? 'Click two points to measure distance'
-              : 'Click three points to measure angle (2nd point is the vertex)'}
-          </p>
-        </div>
-      )}
-
       {/* Measurement list */}
       <div className="min-h-0 flex-1 overflow-auto">
         {measurements.length === 0 ? (
@@ -138,16 +148,37 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
         ) : (
           <ul className="divide-y divide-border">
             {measurements.map((m) => {
-              const Icon = m.type === 'angle' ? Triangle : Ruler;
+              const Icon = m.type === 'angle' ? DraftingCompass : Ruler;
+              const isVisible = m.visible !== false;
               return (
                 <li
                   key={m.id}
-                  className="group flex items-center gap-2.5 px-3 py-2 hover:bg-background-secondary/50"
+                  className={cn(
+                    'group flex items-center gap-2.5 px-3 py-2 hover:bg-background-secondary/50',
+                    !isVisible && 'opacity-40',
+                  )}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0 text-foreground-secondary" />
                   <span className="flex-1 truncate text-xs font-medium text-foreground">
                     {formatValue(m)}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleVisibility(m.id, isVisible)}
+                    title={isVisible ? 'Hide measurement' : 'Show measurement'}
+                    className={cn(
+                      'shrink-0 rounded p-0.5 transition-colors hover:!bg-background-tertiary',
+                      isVisible
+                        ? 'text-foreground-secondary/0 group-hover:text-foreground-secondary'
+                        : 'text-foreground-secondary',
+                    )}
+                  >
+                    {isVisible ? (
+                      <Eye className="h-3.5 w-3.5" />
+                    ) : (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => remove(m.id)}
@@ -164,8 +195,15 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
       </div>
 
       {/* Footer */}
-      {measurements.length > 0 && (
-        <div className="shrink-0 border-t border-border px-3 py-2">
+      <div className="shrink-0 border-t border-border px-3 py-2">
+        {activeMode !== null && (
+          <p className="text-[11px] text-foreground-secondary">
+            {activeMode === 'distance'
+              ? 'Click two points to measure distance'
+              : 'Click three points to measure angle (2nd point is the vertex)'}
+          </p>
+        )}
+        {activeMode === null && measurements.length > 0 && (
           <button
             type="button"
             onClick={clearAll}
@@ -173,8 +211,8 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
           >
             Clear all
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

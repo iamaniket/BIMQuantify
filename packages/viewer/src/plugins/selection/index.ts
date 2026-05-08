@@ -230,7 +230,6 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
       ctx.commands.register('selection.clear', () => clear(), {
         title: 'Clear selection',
-        defaultShortcut: 'Escape',
       });
       ctx.commands.register(
         'selection.set',

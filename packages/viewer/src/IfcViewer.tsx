@@ -24,6 +24,7 @@ import { viewCubePlugin } from './plugins/viewcube/index.js';
 import { visibilityPlugin } from './plugins/visibility/index.js';
 import { contextMenuPlugin } from './plugins/context-menu/index.js';
 import { xrayPlugin } from './plugins/xray/index.js';
+import { modePlugin } from './plugins/mode/index.js';
 import { sectionPlugin } from './plugins/section/index.js';
 import { measurementPlugin } from './plugins/measurement/index.js';
 import { walkthroughPlugin } from './plugins/walkthrough/index.js';
@@ -95,6 +96,7 @@ function IfcViewerImpl(
       hoverHighlightPlugin(props.hoverHighlight ?? {}),
       selectionPlugin(props.selectionHighlight ?? {}),
       visibilityPlugin(),
+      modePlugin(),
       keyboardShortcutsPlugin(shortcuts ? { overrides: shortcuts } : {}),
       // Mouse-bindings registers AFTER selection/hover so the default
       // bindings can resolve `selection.pickSet` etc. at install time.
