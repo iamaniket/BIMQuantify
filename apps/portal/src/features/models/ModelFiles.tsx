@@ -168,6 +168,8 @@ function FileRow({
       {file.extraction_status === 'succeeded' || (file.file_type === 'pdf' && file.status === 'ready') ? (
         <Link
           href={`/projects/${projectId}/models/${modelId}/viewer/${file.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
           aria-label={`View ${file.original_filename}${file.file_type === 'ifc' ? ' in 3D' : ''}`}
           className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-caption font-medium text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
         >
@@ -468,7 +470,7 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
                   variant="ghost"
                   size="sm"
                   aria-label={`Remove ${file.original_filename}`}
-                  className="h-7 w-7 p-0"
+                  className="h-8 w-8 p-0"
                   onClick={() => { setDeleteTarget(file); }}
                 >
                   <Trash2 className="h-4 w-4" />

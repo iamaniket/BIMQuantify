@@ -69,7 +69,7 @@ export function UploadProgressItem({
           variant="ghost"
           size="sm"
           aria-label={`Remove ${filename}`}
-          className="h-7 w-7 p-0"
+          className="h-8 w-8 p-0"
           onClick={onRemove}
         >
           <X className="h-4 w-4" />

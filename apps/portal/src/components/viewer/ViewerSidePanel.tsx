@@ -70,7 +70,7 @@ export function ViewerSidePanel({
                 type="button"
                 onClick={onClose}
                 title="Close panel"
-                className="-mr-1 rounded p-1 text-foreground-secondary transition-colors hover:bg-background hover:text-foreground"
+                className="-mr-1 inline-flex h-8 w-8 items-center justify-center rounded text-foreground-secondary transition-colors hover:bg-background hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>

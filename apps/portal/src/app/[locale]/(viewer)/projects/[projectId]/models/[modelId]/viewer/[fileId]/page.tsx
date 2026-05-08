@@ -14,7 +14,6 @@ import { Skeleton } from '@bimstitch/ui';
 import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
 
 import { ViewerContextMenu } from '@/components/viewer/ViewerContextMenu';
-import { ViewerHeader } from '@/components/viewer/ViewerHeader';
 import { ViewerModeIndicator } from '@/components/viewer/ViewerModeIndicator';
 import { ViewerSidePanel } from '@/components/viewer/ViewerSidePanel';
 import { ViewerSideRail, type ViewerPanelId } from '@/components/viewer/ViewerSideRail';
@@ -30,7 +29,6 @@ import { useViewerMode } from '@/features/viewer/useViewerMode';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
-import { getProject } from '@/lib/api/projects';
 import type { ViewerBundleResponse } from '@/lib/api/schemas';
 import {
   DEFAULT_VIEWER_SETTINGS,
@@ -76,7 +74,6 @@ export default function ViewerPage(): JSX.Element {
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
   const [viewerEpoch, setViewerEpoch] = useState(0);
   const [activePanel, setActivePanel] = useState<ViewerPanelId | null>(null);
-  const [projectName, setProjectName] = useState<string | null>(null);
 
   const togglePanel = useCallback((id: ViewerPanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -136,18 +133,7 @@ export default function ViewerPage(): JSX.Element {
     };
   }, [tokens, projectId, modelId, fileId]);
 
-  useEffect(() => {
-    if (tokens === null) return undefined;
-    const cancelToken = { cancelled: false };
-    getProject(tokens.access_token, projectId)
-      .then((project) => {
-        if (!cancelToken.cancelled) setProjectName(project.name);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelToken.cancelled = true;
-    };
-  }, [tokens, projectId]);
+
 
   let viewerBody: JSX.Element;
   if (error !== null) {
@@ -272,7 +258,6 @@ export default function ViewerPage(): JSX.Element {
 
   return (
     <main className="flex min-h-0 w-full flex-1 flex-col">
-      <ViewerHeader projectId={projectId} projectName={projectName} />
       <div className="relative min-h-0 flex-1">
         {viewerBody}
         {viewerError !== null ? (

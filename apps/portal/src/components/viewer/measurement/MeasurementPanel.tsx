@@ -197,7 +197,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
       {/* Footer */}
       <div className="shrink-0 border-t border-border px-3 py-2">
         {activeMode !== null && (
-          <p className="text-[11px] text-foreground-secondary">
+          <p className="text-body3 text-foreground-secondary">
             {activeMode === 'distance'
               ? 'Click two points to measure distance'
               : 'Click three points to measure angle (2nd point is the vertex)'}

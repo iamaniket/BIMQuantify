@@ -20,11 +20,11 @@ export function PropertyRow({ name, value }: PropertyRowProps): JSX.Element {
     <div className="grid grid-cols-[110px_1fr] items-start gap-2 border-b border-background-secondary px-3 py-1.5">
       <span
         title={name}
-        className="truncate font-mono text-[10.5px] text-foreground-secondary"
+        className="truncate font-mono text-caption text-foreground-secondary"
       >
         {name}
       </span>
-      <span className="break-words text-[11.5px] font-medium text-foreground">
+      <span className="break-words text-body3 font-medium text-foreground">
         {formatValue(value)}
       </span>
     </div>

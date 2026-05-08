@@ -3,6 +3,8 @@
 import { FileText, Plus, Search } from 'lucide-react';
 import { useState, type JSX } from 'react';
 
+import { Button, Input } from '@bimstitch/ui';
+
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { PanelEmptyState } from '../PanelEmptyState';
@@ -26,22 +28,23 @@ export function DocumentsPanel(): JSX.Element {
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-2 border-b border-border bg-background px-3.5 py-3">
         <div className="min-w-0">
-          <div className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-foreground-secondary">
+          <div className="font-mono text-caption font-bold uppercase tracking-[0.1em] text-foreground-secondary">
             {hasSelection ? 'Attached to selection' : 'Project library'}
           </div>
-          <div className="mt-1 truncate text-[15px] font-medium leading-tight text-foreground">
+          <div className="mt-1 truncate text-body2 font-medium leading-tight text-foreground">
             {hasSelection ? 'Selected element' : 'All documents'}
           </div>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           disabled
           title="Attach document (coming soon)"
-          className="inline-flex h-7 shrink-0 cursor-not-allowed items-center gap-1 rounded-md bg-primary/40 px-2.5 text-[11.5px] font-semibold text-primary-foreground"
+          className="shrink-0"
         >
           <Plus className="h-3.5 w-3.5" />
           Attach
-        </button>
+        </Button>
       </div>
 
       <ViewerPanelTabs tabs={tabs} active={scope} onChange={setScope} />
@@ -49,12 +52,13 @@ export function DocumentsPanel(): JSX.Element {
       <div className="border-b border-border bg-background px-2.5 py-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-secondary" />
-          <input
+          <Input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search documents…"
-            className="h-7 w-full rounded-md border border-border bg-background pl-7 pr-2 text-[12px] text-foreground outline-none placeholder:text-foreground-secondary/60 focus:border-primary focus:ring-1 focus:ring-primary/30"
+            inputSize="sm"
+            className="pl-7"
           />
         </div>
       </div>

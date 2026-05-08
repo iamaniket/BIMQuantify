@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@bimstitch/ui';
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
 import {
@@ -43,7 +43,7 @@ const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; label: string 
   { key: 'wheel', label: 'Wheel' },
 ];
 
-const SELECT_CLS = 'h-7 rounded border border-border bg-background px-2 text-caption text-foreground focus:outline-none focus:ring-2 focus:ring-ring';
+const SELECT_CLS = 'h-8 rounded border border-border bg-background px-2 text-caption text-foreground focus:outline-none focus:ring-2 focus:ring-ring';
 
 type Props = {
   handle: ViewerHandle | null;
@@ -92,7 +92,7 @@ function Section({
       <header className="flex items-baseline justify-between">
         <h3 className="text-caption font-medium text-foreground">{title}</h3>
         {note !== undefined ? (
-          <span className="text-[10px] text-foreground-secondary">{note}</span>
+          <span className="text-caption text-foreground-secondary">{note}</span>
         ) : null}
       </header>
       <div className="space-y-2">{children}</div>
@@ -371,7 +371,7 @@ function PerformanceSection({
 
   return (
     <Section title="Performance during navigation" note="Live">
-      <p className="text-[10px] text-foreground-secondary">
+      <p className="text-caption text-foreground-secondary">
         Skip work while the camera is moving. Restored on idle.
       </p>
       <Toggle
@@ -518,7 +518,7 @@ export function ViewerSettingsPopover({
           type="button"
           onClick={onClose}
           aria-label="Close settings"
-          className="rounded p-1 text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
+          className="inline-flex h-8 w-8 items-center justify-center rounded text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
@@ -662,24 +662,26 @@ export function ViewerSettingsPopover({
       </Tabs>
 
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => {
             update(DEFAULT_VIEWER_SETTINGS);
           }}
-          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-caption text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
+          className="text-caption text-foreground-secondary"
         >
           <RotateCcw className="h-3.5 w-3.5" />
           Reset defaults
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
           onClick={onReloadViewer}
           data-testid="viewer-settings-reload"
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-caption font-medium text-primary-foreground hover:bg-primary-hover"
+          className="text-caption"
         >
           Reload viewer
-        </button>
+        </Button>
       </div>
     </div>
   );

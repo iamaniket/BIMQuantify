@@ -25,6 +25,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAPass } from 'three/examples/jsm/postprocessing/FXAAPass.js';
 
+import { LAYER_DEFAULT, LAYER_OVERLAY } from '../../core/layers.js';
 import type { Plugin, ViewerContext } from '../../core/types.js';
 import type { EffectsOptions, EffectsQuality } from './types.js';
 
@@ -257,8 +258,12 @@ export function effectsPlugin(
     renderer.setClearColor(prevClearColor, prevClearAlpha);
   };
 
-  const requestComposerFrame = (): void => {
-    if (!composer || !opts.enabled) return;
+  const renderCompositeFrame = (): void => {
+    if (!composer || !ctxRef) return;
+    const { camera, renderer, scene } = ctxRef;
+    const savedMask = camera.layers.mask;
+
+    camera.layers.set(LAYER_DEFAULT);
     setShadowLinearBlend(1.0);
     try {
       if (opts.edges) renderNormalBuffer();
@@ -267,6 +272,23 @@ export function effectsPlugin(
       // Render targets may not be ready on first frame.
     }
     setShadowLinearBlend(0.0);
+
+    camera.layers.set(LAYER_OVERLAY);
+    const prevAutoClear = renderer.autoClear;
+    const prevBg = scene.background;
+    scene.background = null;
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    renderer.render(scene, camera);
+    renderer.autoClear = prevAutoClear;
+    scene.background = prevBg;
+
+    camera.layers.mask = savedMask;
+  };
+
+  const requestComposerFrame = (): void => {
+    if (!composer || !opts.enabled) return;
+    renderCompositeFrame();
   };
 
   const api: Plugin & EffectsPluginAPI = {
@@ -377,14 +399,7 @@ export function effectsPlugin(
       const loop = (): void => {
         raf = requestAnimationFrame(loop);
         if (!opts.enabled || !isIdle || !composer) return;
-        setShadowLinearBlend(1.0);
-        try {
-          if (opts.edges) renderNormalBuffer();
-          composer.render();
-        } catch {
-          // ignore
-        }
-        setShadowLinearBlend(0.0);
+        renderCompositeFrame();
       };
       raf = requestAnimationFrame(loop);
 

@@ -12,7 +12,7 @@ export function ViewerModeIndicator({ toolLabel }: Props): JSX.Element {
         <span className="text-xs font-medium text-foreground">
           {toolLabel}
         </span>
-        <span className="text-[11px] text-foreground-secondary">
+        <span className="text-body3 text-foreground-secondary">
           Press ESC to exit
         </span>
       </div>

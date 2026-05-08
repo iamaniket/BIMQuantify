@@ -22,6 +22,7 @@ import { getWorkerUrl } from '../wasm.js';
 import { CommandRegistry } from './CommandRegistry.js';
 import { EventBus } from './EventBus.js';
 import { PluginManager } from './PluginManager.js';
+import { LAYER_OVERLAY } from './layers.js';
 import type { Plugin, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, SimpleCamera, SimpleRenderer>;
@@ -114,6 +115,7 @@ export class Viewer {
 
     components.init();
     world.camera.controls.setLookAt(15, 15, 15, 0, 0, 0);
+    world.camera.three.layers.enable(LAYER_OVERLAY);
 
     this.applyControls(world);
     this.applyBackground(world);

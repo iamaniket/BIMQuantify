@@ -38,11 +38,11 @@ export function PropertySetGroup({
         />
         <span
           title={name}
-          className="flex-1 truncate font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-foreground-secondary"
+          className="flex-1 truncate font-mono text-caption font-bold uppercase tracking-[0.1em] text-foreground-secondary"
         >
           {name}
         </span>
-        <span className="font-mono text-[10px] tabular-nums text-foreground-secondary/70">
+        <span className="font-mono text-caption tabular-nums text-foreground-secondary/70">
           {entries.length}
         </span>
       </button>

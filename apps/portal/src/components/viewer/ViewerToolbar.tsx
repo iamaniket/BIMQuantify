@@ -7,6 +7,7 @@ import {
   Grip,
   Home,
   Maximize,
+  Moon,
   MousePointer2,
   Move,
   Orbit,
@@ -14,10 +15,12 @@ import {
 
   Scan,
   Settings,
+  Sun,
   User,
   ZoomIn,
   type LucideIcon,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useState, type JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
@@ -67,6 +70,7 @@ const GROUPS: ToolButtonDef[][] = [
   ],
   [
     { id: 'settings', icon: Settings, label: 'Settings' },
+    { id: 'theme', icon: Moon, label: 'Toggle theme' },
   ],
 ];
 
@@ -79,6 +83,8 @@ export function ViewerToolbar({
 }: Props): JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTool, setActiveTool] = useState('select');
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   const run = (cmd: string, args?: unknown): void => {
     if (!handle) return;
@@ -92,6 +98,11 @@ export function ViewerToolbar({
     if (def.disabled) return;
     if (def.id === 'settings') {
       setSettingsOpen((v) => !v);
+      return;
+    }
+
+    if (def.id === 'theme') {
+      setTheme(isDark ? 'light' : 'dark');
       return;
     }
 
@@ -141,7 +152,7 @@ export function ViewerToolbar({
             )}
             <div className="flex items-center gap-0.5 px-0.5 py-0.5">
               {group.map((def) => {
-                const Icon = def.icon;
+                const Icon = def.id === 'theme' ? (isDark ? Moon : Sun) : def.icon;
                 const isActive = def.id === activeTool || (def.id === 'settings' && settingsOpen);
                 return (
                   <button
@@ -166,7 +177,7 @@ export function ViewerToolbar({
                     {def.id === 'select' && selectionCount > 0 && (
                       <span
                         data-testid="viewer-selection-badge"
-                        className="absolute -right-1 -top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-[16px] text-primary-foreground shadow-[0_2px_8px_rgba(59,130,246,0.4)]"
+                        className="absolute -right-1 -top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-caption font-bold leading-[16px] text-primary-foreground shadow-[0_2px_8px_rgba(59,130,246,0.4)]"
                       >
                         {selectionCount}
                       </span>

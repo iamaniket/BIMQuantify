@@ -51,13 +51,13 @@ export function ViewerSideRail({
             onClick={() => onTogglePanel(id)}
             title={label}
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150',
+              'flex h-8 w-8 items-center justify-center rounded-md transition-all duration-150',
               isActive
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-foreground-secondary hover:bg-primary/5 hover:text-primary',
             )}
           >
-            <Icon className="h-[18px] w-[18px]" />
+            <Icon className="h-4 w-4" />
           </button>
         );
       })}

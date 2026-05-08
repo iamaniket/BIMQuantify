@@ -45,7 +45,7 @@ export function ViewerPanelTabs<T extends string>({
             disabled={t.disabled}
             onClick={() => onChange(t.id)}
             className={cn(
-              'relative -mb-px inline-flex items-center gap-1.5 px-3 py-2.5 text-[11.5px] tracking-tight transition-colors',
+              'relative -mb-px inline-flex items-center gap-1.5 px-3 py-2.5 text-body3 tracking-tight transition-colors',
               'border-b-2 border-transparent',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               t.disabled
@@ -59,7 +59,7 @@ export function ViewerPanelTabs<T extends string>({
             {t.count !== undefined && (
               <span
                 className={cn(
-                  'text-[10px] tabular-nums',
+                  'text-caption tabular-nums',
                   isActive ? 'text-primary/70' : 'text-foreground-secondary/60',
                 )}
               >

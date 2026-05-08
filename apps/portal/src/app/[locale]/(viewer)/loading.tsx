@@ -10,12 +10,6 @@ import { Skeleton } from '@bimstitch/ui';
 export default function ViewerLoading(): JSX.Element {
   return (
     <main className="flex min-h-0 w-full flex-1 flex-col animate-viewer-fade-in">
-      {/* Header skeleton — matches ViewerHeader's 60px height + primary bg */}
-      <div className="flex h-[60px] shrink-0 items-center gap-4 bg-primary px-4">
-        <Skeleton className="h-8 w-8 rounded-md bg-white/10" />
-        <Skeleton className="h-4 w-48 rounded bg-white/10" />
-      </div>
-
       {/* Canvas area skeleton */}
       <div className="relative min-h-0 flex-1 bg-background">
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">

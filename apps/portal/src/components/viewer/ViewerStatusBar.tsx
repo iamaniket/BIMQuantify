@@ -17,7 +17,7 @@ function Separator(): JSX.Element {
 
 function Label({ children }: { children: React.ReactNode }): JSX.Element {
   return (
-    <span className="text-[8.5px] font-bold uppercase tracking-widest text-foreground/40">
+    <span className="text-caption font-bold uppercase tracking-widest text-foreground/40">
       {children}
     </span>
   );
@@ -25,7 +25,7 @@ function Label({ children }: { children: React.ReactNode }): JSX.Element {
 
 function Value({ children }: { children: React.ReactNode }): JSX.Element {
   return (
-    <span className="text-[10px] font-semibold tabular-nums tracking-tight text-foreground/80">
+    <span className="text-caption font-semibold tabular-nums tracking-tight text-foreground/80">
       {children}
     </span>
   );
@@ -66,7 +66,7 @@ export function ViewerStatusBar({ metadata, viewerReady }: ViewerStatusBarProps)
         <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
         <Label>fps</Label>
         <span>&nbsp;</span>
-        <span className="text-[10px] font-semibold tabular-nums tracking-tight text-green-600 dark:text-green-400">
+        <span className="text-caption font-semibold tabular-nums tracking-tight text-green-600 dark:text-green-400">
           {fps > 0 ? fps : '—'}
         </span>
         <Separator />

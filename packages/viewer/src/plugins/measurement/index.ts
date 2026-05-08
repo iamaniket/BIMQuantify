@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 
+import { LAYER_OVERLAY } from '../../core/layers.js';
 import type { Plugin, ViewerContext } from '../../core/types.js';
 import { pick } from '../../core/Raycaster.js';
 
@@ -76,6 +77,7 @@ function createTextSprite(text: string, modelScale: number): THREE.Sprite {
   });
   const sprite = new THREE.Sprite(mat);
   sprite.renderOrder = 1000;
+  sprite.layers.set(LAYER_OVERLAY);
 
   // Scale the sprite so it has a readable world-space size relative
   // to the model. Aim for roughly 1/15th of the model extent.
@@ -140,6 +142,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     dot.position.copy(pos);
     dot.scale.setScalar(scale / 0.05);
     dot.renderOrder = 999;
+    dot.layers.set(LAYER_OVERLAY);
     return dot;
   };
 
@@ -185,6 +188,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     label.position.addScaledVector(up, label.scale.y * 0.6);
     group.add(label);
 
+    group.traverse((child) => child.layers.set(LAYER_OVERLAY));
     ctxRef.scene.add(group);
     sceneGroups.set(id, group);
 
@@ -284,6 +288,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     label.position.copy(labelPos);
     group.add(label);
 
+    group.traverse((child) => child.layers.set(LAYER_OVERLAY));
     ctxRef.scene.add(group);
     sceneGroups.set(id, group);
 
@@ -362,6 +367,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       const lineGeo = new THREE.BufferGeometry().setFromPoints([prev, pt]);
       const line = new THREE.Line(lineGeo, LINE_MAT);
       line.renderOrder = 999;
+      line.layers.set(LAYER_OVERLAY);
       ctxRef.scene.add(line);
       pendingLines.push(line);
     }
