@@ -20,10 +20,11 @@ import {
   CSS2DObject,
 } from '../shared/css2d-overlay.js';
 import type { Css2dOverlay } from '../shared/css2d-overlay.js';
+import { Magnifier } from './magnifier.js';
 
 const NAME = 'measurement' as const;
 
-export type MeasurementMode = 'distance' | 'angle';
+export type MeasurementMode = 'distance' | 'angle' | 'area' | 'volume';
 
 export interface Measurement {
   id: string;
@@ -31,6 +32,8 @@ export interface Measurement {
   value: number;
   unit: string;
   points: Array<{ x: number; y: number; z: number }>;
+  /** Height of extrusion (volume measurements only). */
+  height?: number;
   visible: boolean;
 }
 
@@ -39,6 +42,8 @@ export interface MeasurementConfig {
   xColor: number;
   yColor: number;
   zColor: number;
+  areaColor: number;
+  areaOpacity: number;
   labelScale: number;
   dotScale: number;
   precision: number;
@@ -59,6 +64,8 @@ const DEFAULT_CONFIG: MeasurementConfig = {
   xColor: 0xe53935,
   yColor: 0x43a047,
   zColor: 0x1e88e5,
+  areaColor: 0x2196f3,
+  areaOpacity: 0.25,
   labelScale: 1.0,
   dotScale: 1.0,
   precision: 3,
@@ -110,7 +117,18 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   let moveUnsub: (() => void) | null = null;
   let exiting = false;
 
+  // Area/volume polygon preview state
+  let polygonFillMesh: THREE.Mesh | null = null;
+  let polygonEdgeLines: THREE.Line[] = [];
+  let volumePhase: 'base' | 'height' | null = null;
+  let volumeBasePoints: THREE.Vector3[] = [];
+  let volumeBaseNormal: THREE.Vector3 | null = null;
+  let volumePreviewGroup: THREE.Group | null = null;
+
   // Rubber-band preview state
+  let axisLockActive = false;
+  let magnifier: Magnifier | null = null;
+
   let previewInFlight = false;
   let previewPendingNdc: { x: number; y: number } | null = null;
   let rubberLine: THREE.Line | null = null;
@@ -195,6 +213,168 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   const formatAngle = (radians: number): string => {
     const deg = radians * (180 / Math.PI);
     return `${deg.toFixed(Math.max(config.precision - 2, 1))}°`;
+  };
+
+  const formatArea = (area: number): string => {
+    const p = config.precision;
+    if (area < 0.0001) return `${(area * 1e6).toFixed(Math.max(p - 2, 1))} mm²`;
+    if (area < 0.01) return `${(area * 1e4).toFixed(Math.max(p - 2, 1))} cm²`;
+    return `${area.toFixed(p)} m²`;
+  };
+
+  const formatVolume = (vol: number): string => {
+    const p = config.precision;
+    if (vol < 0.000001) return `${(vol * 1e9).toFixed(Math.max(p - 2, 1))} mm³`;
+    if (vol < 0.001) return `${(vol * 1e6).toFixed(Math.max(p - 2, 1))} cm³`;
+    return `${vol.toFixed(p)} m³`;
+  };
+
+  const computePolygonNormal = (pts: THREE.Vector3[]): THREE.Vector3 => {
+    const n = new THREE.Vector3();
+    for (let i = 0; i < pts.length; i++) {
+      const cur = pts[i]!;
+      const next = pts[(i + 1) % pts.length]!;
+      n.x += (cur.y - next.y) * (cur.z + next.z);
+      n.y += (cur.z - next.z) * (cur.x + next.x);
+      n.z += (cur.x - next.x) * (cur.y + next.y);
+    }
+    if (n.lengthSq() < 1e-12) n.set(0, 1, 0);
+    return n.normalize();
+  };
+
+  const computePolygonArea = (pts: THREE.Vector3[]): number => {
+    if (pts.length < 3) return 0;
+    const normal = computePolygonNormal(pts);
+    const cross = new THREE.Vector3();
+    const total = new THREE.Vector3();
+    for (let i = 0; i < pts.length; i++) {
+      const cur = pts[i]!;
+      const next = pts[(i + 1) % pts.length]!;
+      cross.crossVectors(cur, next);
+      total.add(cross);
+    }
+    return Math.abs(total.dot(normal)) * 0.5;
+  };
+
+  const computePolygonCentroid = (pts: THREE.Vector3[]): THREE.Vector3 => {
+    const c = new THREE.Vector3();
+    for (const p of pts) c.add(p);
+    c.divideScalar(pts.length);
+    return c;
+  };
+
+  const createPolygonFill = (
+    pts: THREE.Vector3[],
+    color: number,
+    opacity: number,
+    parent: THREE.Object3D,
+  ): THREE.Mesh => {
+    const normal = computePolygonNormal(pts);
+    const up = Math.abs(normal.y) > 0.99
+      ? new THREE.Vector3(1, 0, 0)
+      : new THREE.Vector3(0, 1, 0);
+    const xAxis = new THREE.Vector3().crossVectors(up, normal).normalize();
+    const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
+    const origin = pts[0]!;
+
+    const shape = new THREE.Shape();
+    const projected = pts.map((p) => {
+      const d = new THREE.Vector3().subVectors(p, origin);
+      return new THREE.Vector2(d.dot(xAxis), d.dot(yAxis));
+    });
+    shape.moveTo(projected[0]!.x, projected[0]!.y);
+    for (let i = 1; i < projected.length; i++) {
+      shape.lineTo(projected[i]!.x, projected[i]!.y);
+    }
+    shape.closePath();
+
+    const geo = new THREE.ShapeGeometry(shape);
+    const positions = geo.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < positions.count; i++) {
+      const u = positions.getX(i);
+      const v = positions.getY(i);
+      const world = origin.clone()
+        .addScaledVector(xAxis, u)
+        .addScaledVector(yAxis, v);
+      positions.setXYZ(i, world.x, world.y, world.z);
+    }
+    positions.needsUpdate = true;
+    geo.computeVertexNormals();
+
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity,
+      side: THREE.DoubleSide,
+      depthTest: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 997;
+    mesh.layers.set(LAYER_OVERLAY);
+    parent.add(mesh);
+    return mesh;
+  };
+
+  const applyAxisLock = (anchor: THREE.Vector3, target: THREE.Vector3): { point: THREE.Vector3; axis: 'x' | 'y' | 'z' } => {
+    const delta = new THREE.Vector3().subVectors(target, anchor);
+    const absX = Math.abs(delta.x);
+    const absY = Math.abs(delta.y);
+    const absZ = Math.abs(delta.z);
+
+    let axis: 'x' | 'y' | 'z';
+    const locked = anchor.clone();
+
+    if (absX >= absY && absX >= absZ) {
+      axis = 'x';
+      locked.x += delta.x;
+    } else if (absY >= absX && absY >= absZ) {
+      axis = 'y';
+      locked.y += delta.y;
+    } else {
+      axis = 'z';
+      locked.z += delta.z;
+    }
+
+    return { point: locked, axis };
+  };
+
+  let axisLockLabel: HTMLDivElement | null = null;
+
+  const showAxisLockLabel = (axis: 'x' | 'y' | 'z', screenX: number, screenY: number): void => {
+    if (!axisLockLabel) {
+      axisLockLabel = document.createElement('div');
+      axisLockLabel.style.cssText =
+        'position:fixed;pointer-events:none;user-select:none;' +
+        'font-family:system-ui,sans-serif;font-size:10px;font-weight:700;' +
+        'padding:1px 5px;border-radius:3px;white-space:nowrap;z-index:10001;' +
+        'color:#fff;letter-spacing:0.5px;';
+      document.body.appendChild(axisLockLabel);
+    }
+    const colorHex = axis === 'x' ? config.xColor : axis === 'y' ? config.yColor : config.zColor;
+    const r = (colorHex >> 16) & 0xff;
+    const g = (colorHex >> 8) & 0xff;
+    const b = colorHex & 0xff;
+    axisLockLabel.style.background = `rgba(${r},${g},${b},0.9)`;
+    axisLockLabel.textContent = `${axis.toUpperCase()}-Lock`;
+    axisLockLabel.style.left = `${screenX + 16}px`;
+    axisLockLabel.style.top = `${screenY + 16}px`;
+  };
+
+  const hideAxisLockLabel = (): void => {
+    if (axisLockLabel) {
+      axisLockLabel.remove();
+      axisLockLabel = null;
+    }
+  };
+
+  const toggleAxisLock = (): void => {
+    if (currentMode === null || pendingPoints.length === 0) return;
+    axisLockActive = !axisLockActive;
+    if (!axisLockActive) hideAxisLockLabel();
+    ctxRef?.events.emit('measurement:axisLock', {
+      active: axisLockActive,
+      axis: null,
+    });
   };
 
   const emitChange = (): void => {
@@ -426,6 +606,141 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     ctxRef.events.emit('measurement:complete', { id, type: 'angle', value: result.degrees });
   };
 
+  // ----- area / volume group builders -----
+
+  const buildAreaGroup = (pts: THREE.Vector3[]): THREE.Group => {
+    const area = computePolygonArea(pts);
+    const centroid = computePolygonCentroid(pts);
+    const group = new THREE.Group();
+    group.renderOrder = 999;
+
+    for (const p of pts) group.add(createDot(p));
+
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i]!;
+      const b = pts[(i + 1) % pts.length]!;
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([a, b]);
+      const line = new THREE.Line(lineGeo, LINE_MAT);
+      line.renderOrder = 999;
+      group.add(line);
+    }
+
+    createPolygonFill(pts, config.areaColor, config.areaOpacity, group);
+    createCssLabel(overlay!, formatArea(area), config.labelScale, group, centroid, config.areaColor);
+
+    group.traverse((child) => child.layers.set(LAYER_OVERLAY));
+    return group;
+  };
+
+  const finishArea = (pts: THREE.Vector3[]): void => {
+    if (!ctxRef || pts.length < 3) return;
+    const id = `measure-${String(++nextId)}`;
+    const area = computePolygonArea(pts);
+
+    const group = buildAreaGroup(pts);
+    group.name = `measurement-${id}`;
+    ctxRef.scene.add(group);
+    sceneGroups.set(id, group);
+    startCss2dLoop();
+
+    completed.set(id, {
+      id,
+      type: 'area',
+      value: area,
+      unit: 'm²',
+      visible: true,
+      points: pts.map((p) => ({ x: p.x, y: p.y, z: p.z })),
+    });
+
+    emitChange();
+    ctxRef.events.emit('measurement:complete', { id, type: 'area', value: area });
+  };
+
+  const buildVolumeGroup = (
+    basePts: THREE.Vector3[], height: number, normal: THREE.Vector3,
+  ): THREE.Group => {
+    const baseArea = computePolygonArea(basePts);
+    const volume = Math.abs(baseArea * height);
+    const offset = normal.clone().multiplyScalar(height);
+    const topPts = basePts.map((p) => p.clone().add(offset));
+
+    const group = new THREE.Group();
+    group.renderOrder = 999;
+
+    for (const p of basePts) group.add(createDot(p));
+    for (const p of topPts) group.add(createDot(p));
+
+    // Base edges
+    for (let i = 0; i < basePts.length; i++) {
+      const a = basePts[i]!;
+      const b = basePts[(i + 1) % basePts.length]!;
+      const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
+      const line = new THREE.Line(geo, LINE_MAT);
+      line.renderOrder = 999;
+      group.add(line);
+    }
+
+    // Top edges
+    for (let i = 0; i < topPts.length; i++) {
+      const a = topPts[i]!;
+      const b = topPts[(i + 1) % topPts.length]!;
+      const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
+      const line = new THREE.Line(geo, LINE_MAT);
+      line.renderOrder = 999;
+      group.add(line);
+    }
+
+    // Vertical edges
+    for (let i = 0; i < basePts.length; i++) {
+      const geo = new THREE.BufferGeometry().setFromPoints([basePts[i]!, topPts[i]!]);
+      const line = new THREE.Line(geo, LINE_MAT);
+      line.renderOrder = 999;
+      group.add(line);
+    }
+
+    // Translucent base + top fills
+    createPolygonFill(basePts, config.areaColor, config.areaOpacity, group);
+    createPolygonFill(topPts, config.areaColor, config.areaOpacity, group);
+
+    // Label at center of prism
+    const baseCentroid = computePolygonCentroid(basePts);
+    const labelPos = baseCentroid.clone().addScaledVector(normal, height * 0.5);
+    createCssLabel(overlay!, formatVolume(volume), config.labelScale, group, labelPos, config.areaColor);
+
+    // Height label on the first vertical edge
+    const heightMid = basePts[0]!.clone().addScaledVector(normal, height * 0.5);
+    createCssLabel(overlay!, formatDistance(Math.abs(height)), config.labelScale * 0.7, group, heightMid, config.directColor);
+
+    group.traverse((child) => child.layers.set(LAYER_OVERLAY));
+    return group;
+  };
+
+  const finishVolume = (basePts: THREE.Vector3[], height: number, normal: THREE.Vector3): void => {
+    if (!ctxRef || basePts.length < 3) return;
+    const id = `measure-${String(++nextId)}`;
+    const baseArea = computePolygonArea(basePts);
+    const volume = Math.abs(baseArea * height);
+
+    const group = buildVolumeGroup(basePts, height, normal);
+    group.name = `measurement-${id}`;
+    ctxRef.scene.add(group);
+    sceneGroups.set(id, group);
+    startCss2dLoop();
+
+    completed.set(id, {
+      id,
+      type: 'volume',
+      value: volume,
+      unit: 'm³',
+      visible: true,
+      height,
+      points: basePts.map((p) => ({ x: p.x, y: p.y, z: p.z })),
+    });
+
+    emitChange();
+    ctxRef.events.emit('measurement:complete', { id, type: 'volume', value: volume });
+  };
+
   // ---- rubber-band preview helpers ----
 
   const clearRubberBand = (): void => {
@@ -497,18 +812,77 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     if (!ctxRef) return null;
     const snapping = ctxRef.plugins.get<SnappingPluginAPI>('snapping');
     const snap = snapping?.currentSnap();
-    if (snap) return new THREE.Vector3(snap.point.x, snap.point.y, snap.point.z);
-    return pickOrGround(ctxRef, ndc);
+    let pt: THREE.Vector3 | null = null;
+    if (snap) {
+      pt = new THREE.Vector3(snap.point.x, snap.point.y, snap.point.z);
+    } else {
+      pt = await pickOrGround(ctxRef, ndc);
+    }
+    if (pt && axisLockActive && pendingPoints.length > 0) {
+      const anchor = pendingPoints[pendingPoints.length - 1]!;
+      const { point, axis } = applyAxisLock(anchor, pt);
+
+      // Project to screen for label positioning
+      const ndcPt = point.clone().project(ctxRef.camera);
+      const rect = ctxRef.canvas.getBoundingClientRect();
+      const sx = ((ndcPt.x + 1) / 2) * rect.width + rect.left;
+      const sy = ((1 - ndcPt.y) / 2) * rect.height + rect.top;
+      showAxisLockLabel(axis, sx, sy);
+
+      ctxRef.events.emit('measurement:axisLock', { active: true, axis });
+
+      // Change rubber-band color to match locked axis
+      const lockColor = axisColor(axis.toUpperCase());
+      LINE_MAT.color.setHex(lockColor);
+
+      return point;
+    }
+    if (!axisLockActive) {
+      hideAxisLockLabel();
+      LINE_MAT.color.setHex(config.directColor);
+    }
+    return pt;
+  };
+
+  const updateMagnifier = async (
+    ndc: { x: number; y: number },
+    clientX: number,
+    clientY: number,
+  ): Promise<void> => {
+    if (!ctxRef || !magnifier) return;
+    const result = await pick(ctxRef, ndc);
+    if (result) {
+      const pt = new THREE.Vector3(result.point.x, result.point.y, result.point.z);
+      magnifier.update(pt, clientX, clientY);
+    } else {
+      // Ground plane fallback
+      const camera = ctxRef.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
+      raycaster.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
+      const hit = new THREE.Vector3();
+      if (raycaster.ray.intersectPlane(groundPlane, hit)) {
+        magnifier.update(hit, clientX, clientY);
+      }
+    }
   };
 
   const processPreviewMove = async (
     ndc: { x: number; y: number },
+    clientX?: number,
+    clientY?: number,
   ): Promise<void> => {
-    if (!ctxRef || currentMode === null || pendingPoints.length === 0) return;
+    if (!ctxRef || currentMode === null) return;
+
+    // Always update magnifier, even before first point is placed
+    if (magnifier) {
+      await updateMagnifier(ndc, clientX ?? 0, clientY ?? 0);
+    }
+
+    const inVolumeHeight = currentMode === 'volume' && volumePhase === 'height';
+    if (pendingPoints.length === 0 && !inVolumeHeight) return;
     const pt = await resolvePreviewPoint(ndc);
     if (!pt) return;
 
-    updateRubberLine(pt);
+    if (!inVolumeHeight) updateRubberLine(pt);
 
     if (currentMode === 'distance') {
       const p1 = pendingPoints[0]!;
@@ -641,28 +1015,158 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
           updateRubberLabel(formatAngle(angle), labelPos);
         }
       }
+    } else if (currentMode === 'area') {
+      if (pendingPoints.length >= 2) {
+        clearPolygonPreview();
+        const previewPts = [...pendingPoints, pt];
+        // Closing line from cursor to first point
+        const closeGeo = new THREE.BufferGeometry().setFromPoints([pt, pendingPoints[0]!]);
+        const closeMat = new THREE.LineDashedMaterial({
+          color: config.areaColor, depthTest: false,
+          dashSize: getModelScale() / 80, gapSize: getModelScale() / 120,
+        });
+        const closeLine = new THREE.Line(closeGeo, closeMat);
+        closeLine.computeLineDistances();
+        closeLine.renderOrder = 998;
+        closeLine.layers.set(LAYER_OVERLAY);
+        closeLine.frustumCulled = false;
+        ctxRef.scene.add(closeLine);
+        polygonEdgeLines.push(closeLine);
+
+        if (previewPts.length >= 3) {
+          const fillMat = new THREE.MeshBasicMaterial({
+            color: config.areaColor, transparent: true, opacity: config.areaOpacity * 0.5,
+            side: THREE.DoubleSide, depthTest: false,
+          });
+          const tempGroup = new THREE.Group();
+          polygonFillMesh = createPolygonFill(previewPts, config.areaColor, config.areaOpacity * 0.5, tempGroup);
+          polygonFillMesh.material = fillMat;
+          tempGroup.remove(polygonFillMesh);
+          ctxRef.scene.add(polygonFillMesh);
+
+          const area = computePolygonArea(previewPts);
+          const centroid = computePolygonCentroid(previewPts);
+          updateRubberLabel(formatArea(area), centroid);
+        }
+      }
+    } else if (currentMode === 'volume' && volumePhase === 'height') {
+      if (volumeBasePoints.length >= 3 && volumeBaseNormal) {
+        const baseCentroid = computePolygonCentroid(volumeBasePoints);
+        const height = new THREE.Vector3().subVectors(pt, baseCentroid).dot(volumeBaseNormal);
+
+        clearPolygonPreview();
+        if (Math.abs(height) > 1e-6) {
+          const offset = volumeBaseNormal.clone().multiplyScalar(height);
+          const topPts = volumeBasePoints.map((p) => p.clone().add(offset));
+          volumePreviewGroup = new THREE.Group();
+          volumePreviewGroup.renderOrder = 999;
+
+          // Base + top edges (dashed)
+          for (const pts of [volumeBasePoints, topPts]) {
+            for (let i = 0; i < pts.length; i++) {
+              const a = pts[i]!;
+              const b = pts[(i + 1) % pts.length]!;
+              const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
+              const mat = new THREE.LineDashedMaterial({
+                color: config.areaColor, depthTest: false,
+                dashSize: getModelScale() / 80, gapSize: getModelScale() / 120,
+              });
+              const line = new THREE.Line(geo, mat);
+              line.computeLineDistances();
+              line.renderOrder = 998;
+              line.layers.set(LAYER_OVERLAY);
+              volumePreviewGroup.add(line);
+            }
+          }
+
+          // Vertical edges
+          for (let i = 0; i < volumeBasePoints.length; i++) {
+            const geo = new THREE.BufferGeometry().setFromPoints([volumeBasePoints[i]!, topPts[i]!]);
+            const mat = new THREE.LineDashedMaterial({
+              color: config.areaColor, depthTest: false,
+              dashSize: getModelScale() / 80, gapSize: getModelScale() / 120,
+            });
+            const line = new THREE.Line(geo, mat);
+            line.computeLineDistances();
+            line.renderOrder = 998;
+            line.layers.set(LAYER_OVERLAY);
+            volumePreviewGroup.add(line);
+          }
+
+          // Fills
+          createPolygonFill(volumeBasePoints, config.areaColor, config.areaOpacity * 0.4, volumePreviewGroup);
+          createPolygonFill(topPts, config.areaColor, config.areaOpacity * 0.4, volumePreviewGroup);
+
+          volumePreviewGroup.traverse((child) => child.layers.set(LAYER_OVERLAY));
+          ctxRef.scene.add(volumePreviewGroup);
+
+          const baseArea = computePolygonArea(volumeBasePoints);
+          const volume = Math.abs(baseArea * height);
+          const labelPos = baseCentroid.clone().addScaledVector(volumeBaseNormal, height * 0.5);
+          updateRubberLabel(formatVolume(volume), labelPos);
+        }
+      }
     }
   };
 
+  let previewPendingClient: { x: number; y: number } | null = null;
+
   const handlePreviewMove = async (
-    e: { ndc: { x: number; y: number } },
+    e: { ndc: { x: number; y: number }; clientX?: number; clientY?: number },
   ): Promise<void> => {
-    if (currentMode === null || pendingPoints.length === 0) return;
-    if (previewInFlight) { previewPendingNdc = e.ndc; return; }
+    if (currentMode === null) return;
+    if (previewInFlight) {
+      previewPendingNdc = e.ndc;
+      previewPendingClient = { x: e.clientX ?? 0, y: e.clientY ?? 0 };
+      return;
+    }
     previewInFlight = true;
     let ndc: { x: number; y: number } | null = e.ndc;
+    let client = { x: e.clientX ?? 0, y: e.clientY ?? 0 };
     while (ndc) {
       previewPendingNdc = null;
-      await processPreviewMove(ndc);
+      const c = previewPendingClient ?? client;
+      previewPendingClient = null;
+      await processPreviewMove(ndc, c.x, c.y);
       ndc = previewPendingNdc;
+      if (previewPendingClient) client = previewPendingClient;
     }
     previewInFlight = false;
   };
 
   // ---- end rubber-band preview ----
 
+  const clearPolygonPreview = (): void => {
+    if (polygonFillMesh) {
+      polygonFillMesh.geometry.dispose();
+      (polygonFillMesh.material as THREE.Material).dispose();
+      polygonFillMesh.removeFromParent();
+      polygonFillMesh = null;
+    }
+    for (const line of polygonEdgeLines) {
+      line.geometry.dispose();
+      line.removeFromParent();
+    }
+    polygonEdgeLines = [];
+    if (volumePreviewGroup) {
+      volumePreviewGroup.traverse((child) => {
+        const mesh = child as THREE.Mesh;
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material && mesh.material !== DOT_MAT && mesh.material !== LINE_MAT) {
+          (mesh.material as THREE.Material).dispose();
+        }
+      });
+      volumePreviewGroup.removeFromParent();
+      volumePreviewGroup = null;
+    }
+  };
+
   const clearPending = (): void => {
     clearRubberBand();
+    clearPolygonPreview();
+    axisLockActive = false;
+    hideAxisLockLabel();
+    LINE_MAT.color.setHex(config.directColor);
     for (const dot of pendingDots) dot.removeFromParent();
     for (const line of pendingLines) {
       line.geometry.dispose();
@@ -671,6 +1175,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     pendingDots = [];
     pendingLines = [];
     pendingPoints = [];
+    volumePhase = null;
+    volumeBasePoints = [];
+    volumeBaseNormal = null;
   };
 
   const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -695,21 +1202,69 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     return null;
   };
 
+  const isNearFirstPoint = (pt: THREE.Vector3): boolean => {
+    if (pendingPoints.length < 3) return false;
+    const first = pendingPoints[0]!;
+    const scale = getModelScale();
+    const threshold = scale * 0.01;
+    return pt.distanceTo(first) < threshold;
+  };
+
   const handleClick = async (payload: {
     ndc: { x: number; y: number };
     button: number;
   }): Promise<void> => {
     if (!ctxRef || currentMode === null) return;
 
-    // Right-click cancels pending
+    // Right-click: finish polygon (area/volume) if enough points, else cancel
     if (payload.button === 2) {
-      clearPending();
+      if ((currentMode === 'area' || (currentMode === 'volume' && volumePhase === 'base')) && pendingPoints.length >= 3) {
+        if (currentMode === 'area') {
+          finishArea(pendingPoints);
+          clearPending();
+        } else {
+          volumePhase = 'height';
+          volumeBasePoints = [...pendingPoints];
+          volumeBaseNormal = computePolygonNormal(volumeBasePoints);
+          clearRubberBand();
+        }
+      } else {
+        clearPending();
+      }
       return;
     }
     if (payload.button !== 0) return;
 
+    // Volume height phase: click sets the height
+    if (currentMode === 'volume' && volumePhase === 'height') {
+      const pt = await pickOrGround(ctxRef, payload.ndc);
+      if (!pt || !volumeBaseNormal || volumeBasePoints.length < 3) return;
+      const baseCentroid = computePolygonCentroid(volumeBasePoints);
+      const height = new THREE.Vector3().subVectors(pt, baseCentroid).dot(volumeBaseNormal);
+      if (Math.abs(height) > 1e-6) {
+        finishVolume(volumeBasePoints, height, volumeBaseNormal);
+      }
+      clearPending();
+      return;
+    }
+
     const pt = await pickOrGround(ctxRef, payload.ndc);
     if (!pt) return;
+
+    // Area / volume base polygon: close polygon if clicking near first point
+    if ((currentMode === 'area' || currentMode === 'volume') && isNearFirstPoint(pt)) {
+      if (currentMode === 'area') {
+        finishArea(pendingPoints);
+        clearPending();
+      } else {
+        volumePhase = 'height';
+        volumeBasePoints = [...pendingPoints];
+        volumeBaseNormal = computePolygonNormal(volumeBasePoints);
+        clearRubberBand();
+        clearPolygonPreview();
+      }
+      return;
+    }
 
     pendingPoints.push(pt);
 
@@ -730,21 +1285,28 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     }
 
     // Start or reset the rubber-band preview for the next point
-    const needed = currentMode === 'distance' ? 2 : 3;
-    if (pendingPoints.length < needed) {
-      const anchor = currentMode === 'angle' && pendingPoints.length === 2
-        ? pendingPoints[1]!   // angle phase 2: rubber-band from vertex
-        : pt;
-      createRubberLine(anchor);
-    }
-
-    if (pendingPoints.length >= needed) {
-      if (currentMode === 'distance') {
-        finishDistance(pendingPoints[0]!, pendingPoints[1]!);
-      } else {
-        finishAngle(pendingPoints[0]!, pendingPoints[1]!, pendingPoints[2]!);
+    if (currentMode === 'area' || currentMode === 'volume') {
+      createRubberLine(pt);
+    } else {
+      const needed = currentMode === 'distance' ? 2 : 3;
+      if (pendingPoints.length < needed) {
+        const anchor = currentMode === 'angle' && pendingPoints.length === 2
+          ? pendingPoints[1]!
+          : pt;
+        createRubberLine(anchor);
       }
-      clearPending();
+
+      if (pendingPoints.length >= needed) {
+        axisLockActive = false;
+        hideAxisLockLabel();
+        LINE_MAT.color.setHex(config.directColor);
+        if (currentMode === 'distance') {
+          finishDistance(pendingPoints[0]!, pendingPoints[1]!);
+        } else {
+          finishAngle(pendingPoints[0]!, pendingPoints[1]!, pendingPoints[2]!);
+        }
+        clearPending();
+      }
     }
   };
 
@@ -769,15 +1331,21 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
 
   // ----- commands -----
 
-  const modeLabel = (mode: MeasurementMode): string =>
-    mode === 'distance' ? 'Measurement — Distance' : 'Measurement — Angle';
+  const modeLabel = (mode: MeasurementMode): string => {
+    switch (mode) {
+      case 'distance': return 'Measurement — Distance';
+      case 'angle': return 'Measurement — Angle';
+      case 'area': return 'Measurement — Area';
+      case 'volume': return 'Measurement — Volume';
+    }
+  };
 
   const activate = async (args: unknown): Promise<void> => {
     if (!ctxRef) return;
     const mode = typeof args === 'string'
       ? args
       : (args as { mode?: string })?.mode;
-    if (mode !== 'distance' && mode !== 'angle') return;
+    if (mode !== 'distance' && mode !== 'angle' && mode !== 'area' && mode !== 'volume') return;
 
     if (currentMode !== null) deactivate();
     currentMode = mode;
@@ -787,6 +1355,16 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
 
     clickUnsub = ctxRef.events.on('pointer:click', (e) => void handleClick(e));
     moveUnsub = ctxRef.events.on('pointer:move', (e) => void handlePreviewMove(e));
+
+    if (!magnifier) {
+      magnifier = new Magnifier(
+        ctxRef.container,
+        ctxRef.renderer,
+        ctxRef.scene,
+        ctxRef.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera,
+      );
+    }
+    magnifier.show();
 
     startCss2dLoop();
 
@@ -801,6 +1379,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
         moveUnsub?.();
         moveUnsub = null;
         currentMode = null;
+        magnifier?.hide();
         ctxRef?.commands.execute('snapping.disable').catch(() => undefined);
         if (!needsCss2dLoop()) stopCss2dLoop();
       },
@@ -811,6 +1390,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     if (!ctxRef || exiting) return;
     exiting = true;
     clearPending();
+    magnifier?.hide();
     clickUnsub?.();
     clickUnsub = null;
     moveUnsub?.();
@@ -871,9 +1451,10 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     }
 
     const colorChanged = partial.directColor !== undefined || partial.xColor !== undefined || partial.yColor !== undefined || partial.zColor !== undefined;
+    const areaChanged = partial.areaColor !== undefined || partial.areaOpacity !== undefined;
 
     // Re-render existing measurement labels (rebuild groups)
-    if (partial.labelScale !== undefined || partial.dotScale !== undefined || partial.precision !== undefined || colorChanged || partial.showDecomposition !== undefined) {
+    if (partial.labelScale !== undefined || partial.dotScale !== undefined || partial.precision !== undefined || colorChanged || areaChanged || partial.showDecomposition !== undefined) {
       for (const [id, m] of completed) {
         disposeGroup(id);
         const pts = m.points.map((p) => new THREE.Vector3(p.x, p.y, p.z));
@@ -893,6 +1474,21 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
             startCss2dLoop();
             m.value = result.degrees;
           }
+        } else if (m.type === 'area' && pts.length >= 3) {
+          const group = buildAreaGroup(pts);
+          group.visible = m.visible;
+          ctxRef?.scene.add(group);
+          sceneGroups.set(id, group);
+          startCss2dLoop();
+          m.value = computePolygonArea(pts);
+        } else if (m.type === 'volume' && pts.length >= 3 && m.height !== undefined) {
+          const normal = computePolygonNormal(pts);
+          const group = buildVolumeGroup(pts, m.height, normal);
+          group.visible = m.visible;
+          ctxRef?.scene.add(group);
+          sceneGroups.set(id, group);
+          startCss2dLoop();
+          m.value = Math.abs(computePolygonArea(pts) * m.height);
         }
       }
     }
@@ -941,6 +1537,12 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       ctx.commands.register('measure.setVisible', (args: unknown) => setVisibility(args), {
         title: 'Show or hide a measurement',
       });
+      ctx.commands.register('measure.toggleAxisLock', () => toggleAxisLock(), {
+        title: 'Toggle axis lock',
+      });
+      ctx.commands
+        .execute('shortcuts.bind', { combo: 'A', command: 'measure.toggleAxisLock' })
+        .catch(() => undefined);
       ctx.commands.register('measure.getConfig', () => ({ ...config }), {
         title: 'Get measurement config',
       });
@@ -954,6 +1556,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     uninstall() {
       deactivate();
       clear();
+      magnifier?.dispose();
+      magnifier = null;
+      hideAxisLockLabel();
       stopCss2dLoop();
       releaseCss2dOverlay();
       overlay = null;

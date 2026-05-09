@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import * as FRAGS from '@thatopen/fragments';
 import {
   Components,
+  FragmentsManager,
   SimpleCamera,
   SimpleRenderer,
   SimpleScene,
@@ -149,6 +150,16 @@ export class Viewer {
     world.scene.setup();
 
     components.init();
+
+    // OBC built-in components (Classifier, Viewpoints, etc.) read
+    // `components.get(FragmentsManager)` in their constructors and access
+    // `.list` immediately, which throws "FragmentsManager not initialized.
+    // Call init() first." until FragmentsManager is initialized. We construct
+    // our own FRAGS.FragmentsModels below for the actual model load path,
+    // but the OBC manager still needs its own init so its dependents work.
+    const fragmentsManager = components.get(FragmentsManager);
+    fragmentsManager.init(getWorkerUrl());
+
     world.camera.controls.setLookAt(15, 15, 15, 0, 0, 0);
     world.camera.three.layers.enable(LAYER_OVERLAY);
 
@@ -209,6 +220,7 @@ export class Viewer {
         return world.renderer!.three.domElement;
       },
       container,
+      components,
       fragments: fragmentsModels,
       events: this.events,
       commands: this.commands,
@@ -314,11 +326,19 @@ export class Viewer {
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 1);
+    // Padding 1.8 matches camera plugin's default framePadding.
     const distance = maxDim * 1.8;
+
+    // Iso direction: top-front-right [1,1,1] normalised — matches camera.home.
+    const len = Math.sqrt(3);
+    const nx = 1 / len;
+    const ny = 1 / len;
+    const nz = 1 / len;
+
     world.camera.controls.setLookAt(
-      center.x + distance,
-      center.y + distance,
-      center.z + distance,
+      center.x + nx * distance,
+      center.y + ny * distance,
+      center.z + nz * distance,
       center.x,
       center.y,
       center.z,

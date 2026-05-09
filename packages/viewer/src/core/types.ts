@@ -4,7 +4,7 @@
 
 import type * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
-import type { SimpleCamera } from '@thatopen/components';
+import type { Components, SimpleCamera } from '@thatopen/components';
 
 import type { CommandRegistry } from './CommandRegistry.js';
 import type { EventBus } from './EventBus.js';
@@ -45,9 +45,17 @@ export interface ViewerEvents {
   'section:change': { planes: Array<{ id: string; normal: Vec3; point: Vec3; active: boolean }> };
   'measurement:change': { measurements: Array<{ id: string; type: string; value: number; unit: string; visible: boolean }> };
   'measurement:complete': { id: string; type: string; value: number };
+  'measurement:axisLock': { active: boolean; axis: 'x' | 'y' | 'z' | null };
   'walkthrough:change': { active: boolean };
   'wireframe:change': { active: boolean };
   'snapping:change': { enabled: boolean; snap: { point: Vec3; type: string } | null };
+  'classification:change': { groups: Record<string, ItemId[]> };
+  'finder:results': { query: Record<string, unknown>; results: ItemId[]; count: number };
+  'viewpoint:change': { viewpoints: Array<{ id: string; name: string }> };
+  'bcf:change': { topics: Array<{ guid: string; title: string; status: string }> };
+  'marker:change': { markers: Array<{ id: string; label: string; position: Vec3 }> };
+  'marker:click': { id: string; position: Vec3 };
+  'grid:change': { visible: boolean };
   'command:executed': { name: string; ok: boolean; error?: string };
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };
@@ -68,6 +76,8 @@ export interface ViewerContext {
   renderer: THREE.WebGLRenderer;
   canvas: HTMLCanvasElement;
   container: HTMLElement;
+  /** ThatOpen Components instance for accessing core BIM components (Classifier, BCFTopics, etc.). */
+  components: Components;
   fragments: FRAGS.FragmentsModels;
   events: EventBus<ViewerEvents>;
   commands: CommandRegistry;

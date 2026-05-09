@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
 
-export type SnapType = 'vertex' | 'midpoint' | 'edge';
+export type SnapType = 'vertex' | 'midpoint' | 'edge' | 'intersection';
 
 export interface SnapCandidate {
   point: THREE.Vector3;
@@ -13,15 +13,80 @@ export interface ItemSnapData {
   vertices: THREE.Vector3[];
   edges: Array<[THREE.Vector3, THREE.Vector3]>;
   midpoints: THREE.Vector3[];
+  intersections: THREE.Vector3[];
 }
 
 const DEDUP_TOLERANCE = 1e-4;
+const MAX_EDGES_FOR_INTERSECTIONS = 500;
 
 function isDuplicate(a: THREE.Vector3, list: THREE.Vector3[]): boolean {
   for (const b of list) {
     if (a.distanceToSquared(b) < DEDUP_TOLERANCE * DEDUP_TOLERANCE) return true;
   }
   return false;
+}
+
+function segmentSegmentClosest(
+  a1: THREE.Vector3, a2: THREE.Vector3,
+  b1: THREE.Vector3, b2: THREE.Vector3,
+): { point: THREE.Vector3; distSq: number } | null {
+  const d1 = new THREE.Vector3().subVectors(a2, a1);
+  const d2 = new THREE.Vector3().subVectors(b2, b1);
+  const r = new THREE.Vector3().subVectors(a1, b1);
+
+  const a = d1.dot(d1);
+  const e = d2.dot(d2);
+  const f = d2.dot(r);
+
+  if (a < 1e-10 || e < 1e-10) return null;
+
+  const b = d1.dot(d2);
+  const c = d1.dot(r);
+  const denom = a * e - b * b;
+
+  if (Math.abs(denom) < 1e-10) return null; // parallel
+
+  let s = (b * f - c * e) / denom;
+  let t = (a * f - b * c) / denom;
+
+  s = Math.max(0, Math.min(1, s));
+  t = Math.max(0, Math.min(1, t));
+
+  const pA = a1.clone().addScaledVector(d1, s);
+  const pB = b1.clone().addScaledVector(d2, t);
+  const distSq = pA.distanceToSquared(pB);
+
+  const midpoint = pA.clone().lerp(pB, 0.5);
+  return { point: midpoint, distSq };
+}
+
+function computeIntersections(edges: Array<[THREE.Vector3, THREE.Vector3]>): THREE.Vector3[] {
+  if (edges.length > MAX_EDGES_FOR_INTERSECTIONS) return [];
+
+  const intersections: THREE.Vector3[] = [];
+  const epsSq = DEDUP_TOLERANCE * DEDUP_TOLERANCE;
+
+  for (let i = 0; i < edges.length; i++) {
+    for (let j = i + 1; j < edges.length; j++) {
+      const [a1, a2] = edges[i]!;
+      const [b1, b2] = edges[j]!;
+
+      // Skip if edges share an endpoint (that's just a vertex)
+      if (a1.distanceToSquared(b1) < epsSq || a1.distanceToSquared(b2) < epsSq ||
+          a2.distanceToSquared(b1) < epsSq || a2.distanceToSquared(b2) < epsSq) {
+        continue;
+      }
+
+      const result = segmentSegmentClosest(a1, a2, b1, b2);
+      if (!result || result.distSq > epsSq) continue;
+
+      if (!isDuplicate(result.point, intersections)) {
+        intersections.push(result.point);
+      }
+    }
+  }
+
+  return intersections;
 }
 
 export async function extractSnapData(
@@ -36,7 +101,7 @@ export async function extractSnapData(
   try {
     meshDataArrays = await model.getItemsGeometry([localId]);
   } catch {
-    return { vertices, edges, midpoints };
+    return { vertices, edges, midpoints, intersections: [] };
   }
 
   for (const meshDataArr of meshDataArrays) {
@@ -78,7 +143,9 @@ export async function extractSnapData(
     }
   }
 
-  return { vertices, edges, midpoints };
+  const intersections = computeIntersections(edges);
+
+  return { vertices, edges, midpoints, intersections };
 }
 
 export function worldToScreen(
@@ -147,13 +214,25 @@ export function findBestSnap(
     }
   }
 
-  // Priority 2: midpoints (only beats vertex if strictly closer)
+  // Priority 2: intersections
+  if (allowedTypes.includes('intersection')) {
+    for (const ip of snapData.intersections) {
+      const is = worldToScreen(ip, camera, canvas);
+      const dSq = screenDistSq(cursorScreen, is);
+      if (dSq < bestDistSq && (best === null || best.type !== 'vertex')) {
+        bestDistSq = dSq;
+        best = { point: ip, type: 'intersection' };
+      }
+    }
+  }
+
+  // Priority 3: midpoints (only beats vertex/intersection if strictly closer)
   if (allowedTypes.includes('midpoint')) {
     for (let i = 0; i < snapData.midpoints.length; i++) {
       const mp = snapData.midpoints[i]!;
       const ms = worldToScreen(mp, camera, canvas);
       const dSq = screenDistSq(cursorScreen, ms);
-      if (dSq < bestDistSq && (best === null || best.type !== 'vertex')) {
+      if (dSq < bestDistSq && (best === null || (best.type !== 'vertex' && best.type !== 'intersection'))) {
         bestDistSq = dSq;
         const edge = snapData.edges[i]!;
         best = { point: mp, type: 'midpoint', edge };
@@ -161,7 +240,7 @@ export function findBestSnap(
     }
   }
 
-  // Priority 3: nearest point on edge
+  // Priority 4: nearest point on edge
   if (allowedTypes.includes('edge')) {
     for (const edge of snapData.edges) {
       const aScreen = worldToScreen(edge[0], camera, canvas);

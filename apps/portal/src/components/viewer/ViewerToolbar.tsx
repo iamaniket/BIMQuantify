@@ -5,7 +5,6 @@ import {
   Box,
   Glasses,
   Grip,
-  Home,
   Maximize,
   Moon,
   MousePointer2,
@@ -47,9 +46,6 @@ type ToolButtonDef = {
 };
 
 const GROUPS: ToolButtonDef[][] = [
-  [
-    { id: 'home', icon: Home, label: 'Home view', command: 'camera.home' },
-  ],
   [
     { id: 'select', icon: MousePointer2, label: 'Select' },
     { id: 'pan', icon: Move, label: 'Pan' },
@@ -169,8 +165,8 @@ export function ViewerToolbar({
                       def.disabled
                         ? 'cursor-not-allowed text-foreground/20'
                         : isActive
-                          ? 'bg-primary text-primary-foreground shadow-[0_0_12px_rgba(59,130,246,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]'
-                          : 'text-foreground/55 hover:bg-foreground/[0.06] hover:text-foreground/90 active:scale-[0.94]',
+                          ? 'bg-primary-lighter text-primary shadow-[inset_0_0_0_1px_var(--primary-light),0_1px_2px_rgba(0,0,0,0.06)]'
+                          : 'text-foreground/55 shadow-[inset_0_0_0_1px_var(--border),0_1px_2px_rgba(0,0,0,0.04)] hover:bg-foreground/[0.06] hover:text-foreground/90 active:scale-[0.94]',
                     )}
                   >
                     <Icon className="h-4 w-4" strokeWidth={1.75} />

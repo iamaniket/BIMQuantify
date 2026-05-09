@@ -30,6 +30,13 @@ import { measurementPlugin } from './plugins/measurement/index.js';
 import { walkthroughPlugin } from './plugins/walkthrough/index.js';
 import { snappingPlugin } from './plugins/snapping/index.js';
 import { wireframePlugin } from './plugins/wireframe/index.js';
+import { classifierPlugin } from './plugins/classifier/index.js';
+import { itemsFinderPlugin } from './plugins/items-finder/index.js';
+import { boundingBoxerPlugin } from './plugins/bounding-boxer/index.js';
+import { viewpointsPlugin } from './plugins/viewpoints/index.js';
+import { bcfPlugin } from './plugins/bcf/index.js';
+import { markerPlugin } from './plugins/marker/index.js';
+import { gridPlugin } from './plugins/grid/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
 
 /**
@@ -121,6 +128,13 @@ function IfcViewerImpl(
       measurementPlugin(),
       ...(props.walkthrough !== false ? [walkthroughPlugin(typeof props.walkthrough === 'object' ? props.walkthrough : {})] : []),
       wireframePlugin(),
+      classifierPlugin(),
+      itemsFinderPlugin(),
+      boundingBoxerPlugin(),
+      viewpointsPlugin(),
+      bcfPlugin(),
+      markerPlugin(),
+      gridPlugin(),
     ];
 
     const viewer = new Viewer({

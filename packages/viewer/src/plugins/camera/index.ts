@@ -101,38 +101,9 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         { title: 'Orbit camera by delta' },
       );
 
-      /** Animate to iso (top-front-right) direction, fit model centred on screen. */
-      const snapIsoAndFit = async (box: THREE.Box3): Promise<void> => {
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z, 1);
-
-        const dir = VIEW_DIRECTIONS['iso'];
-        const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
-        const nx = dir[0] / len;
-        const ny = dir[1] / len;
-        const nz = dir[2] / len;
-
-        // Compute a distance that fits the bounding sphere in the viewport.
-        const camera = ctx.camera as THREE.PerspectiveCamera;
-        const fov = camera.fov * (Math.PI / 180);
-        const aspect = camera.aspect;
-        const halfDiag = box.getBoundingSphere(new THREE.Sphere()).radius;
-        const halfFovV = fov / 2;
-        const halfFovH = Math.atan(aspect * Math.tan(halfFovV));
-        const fitDist = halfDiag / Math.sin(Math.min(halfFovV, halfFovH));
-        // Add padding so the model doesn't touch the edges.
-        const distance = fitDist * 1.2;
-
-        await ctx.cameraControls.setLookAt(
-          center.x + nx * distance,
-          center.y + ny * distance,
-          center.z + nz * distance,
-          center.x,
-          center.y,
-          center.z,
-          true,
-        );
+      /** Snap to iso (top-front-right) and fit — reuses the same setView logic. */
+      const snapIsoAndFit = async (_box: THREE.Box3): Promise<void> => {
+        await setView('iso');
       };
 
       commands.register(

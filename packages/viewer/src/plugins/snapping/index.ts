@@ -40,7 +40,7 @@ export function snappingPlugin(
   let threshold = options?.threshold ?? 15;
   const allowedTypes: SnapType[] = options?.types
     ? [...options.types]
-    : ['vertex', 'midpoint', 'edge'];
+    : ['vertex', 'midpoint', 'edge', 'intersection'];
 
   const cache = new Map<string, ItemSnapData>();
   let currentResult: SnapCandidate | null = null;
@@ -104,7 +104,8 @@ export function snappingPlugin(
     if (!enabled) return;
 
     if (currentResult) {
-      indicator.show(ctx.scene, currentResult, getModelScale());
+      ctx.scene.userData['__canvas'] = ctx.canvas;
+      indicator.show(ctx.scene, currentResult, getModelScale(), ctx.camera);
     } else {
       indicator.hide(ctx.scene);
     }

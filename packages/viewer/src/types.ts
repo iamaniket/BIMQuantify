@@ -154,6 +154,20 @@ export type { SnappingPluginOptions, SnappingPluginAPI, SnapType } from './plugi
 
 export type { WireframePluginAPI } from './plugins/wireframe/index.js';
 
+export type { ClassifierPluginAPI, ClassificationStrategy, ClassificationGroup } from './plugins/classifier/index.js';
+
+export type { ItemsFinderPluginAPI, FinderQuery, FinderOperator } from './plugins/items-finder/index.js';
+
+export type { BoundingBoxerPluginAPI, BboxDimensions } from './plugins/bounding-boxer/index.js';
+
+export type { ViewpointsPluginAPI, Viewpoint } from './plugins/viewpoints/index.js';
+
+export type { BcfPluginAPI, BcfTopicSummary, BcfComment } from './plugins/bcf/index.js';
+
+export type { MarkerPluginAPI, MarkerPluginOptions, MarkerData } from './plugins/marker/index.js';
+
+export type { GridPluginAPI, GridPluginOptions } from './plugins/grid/index.js';
+
 export type {
   Plugin,
   ViewerContext,

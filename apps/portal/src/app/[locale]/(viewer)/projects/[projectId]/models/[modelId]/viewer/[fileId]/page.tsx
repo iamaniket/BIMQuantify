@@ -19,8 +19,9 @@ import { ViewerSidePanel } from '@/components/viewer/ViewerSidePanel';
 import { ViewerSideRail, type ViewerPanelId } from '@/components/viewer/ViewerSideRail';
 import { ViewerStatusBar } from '@/components/viewer/ViewerStatusBar';
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
+import { BcfPanel, BcfHeaderActions } from '@/components/viewer/bcf/BcfPanel';
 import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
-import { MeasurementPanel, MeasurementSettingsButton } from '@/components/viewer/measurement/MeasurementPanel';
+import { MeasurementPanel, MeasurementHeaderActions } from '@/components/viewer/measurement/MeasurementPanel';
 import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
@@ -221,8 +222,12 @@ export default function ViewerPage(): JSX.Element {
               measureContent={
                 <MeasurementPanel handle={viewerHandleRef.current} />
               }
+              bcfContent={
+                <BcfPanel handle={viewerHandleRef.current} />
+              }
               headerActions={{
-                measure: <MeasurementSettingsButton handle={viewerHandleRef.current} />,
+                measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
+                bcf: <BcfHeaderActions handle={viewerHandleRef.current} />,
               }}
             />
             <ViewerSideRail

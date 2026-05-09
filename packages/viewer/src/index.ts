@@ -46,6 +46,24 @@ export type {
   WalkthroughPluginOptions,
   WalkthroughPluginAPI,
   WireframePluginAPI,
+  ClassifierPluginAPI,
+  ClassificationStrategy,
+  ClassificationGroup,
+  ItemsFinderPluginAPI,
+  FinderQuery,
+  FinderOperator,
+  BoundingBoxerPluginAPI,
+  BboxDimensions,
+  ViewpointsPluginAPI,
+  Viewpoint,
+  BcfPluginAPI,
+  BcfTopicSummary,
+  BcfComment,
+  MarkerPluginAPI,
+  MarkerPluginOptions,
+  MarkerData,
+  GridPluginAPI,
+  GridPluginOptions,
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
@@ -77,3 +95,10 @@ export { modePlugin } from './plugins/mode/index.js';
 export { measurementPlugin } from './plugins/measurement/index.js';
 export { walkthroughPlugin } from './plugins/walkthrough/index.js';
 export { wireframePlugin } from './plugins/wireframe/index.js';
+export { classifierPlugin } from './plugins/classifier/index.js';
+export { itemsFinderPlugin } from './plugins/items-finder/index.js';
+export { boundingBoxerPlugin } from './plugins/bounding-boxer/index.js';
+export { viewpointsPlugin } from './plugins/viewpoints/index.js';
+export { bcfPlugin } from './plugins/bcf/index.js';
+export { markerPlugin } from './plugins/marker/index.js';
+export { gridPlugin } from './plugins/grid/index.js';

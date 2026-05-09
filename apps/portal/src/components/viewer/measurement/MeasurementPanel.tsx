@@ -1,9 +1,9 @@
 'use client';
 
-import { DraftingCompass, Eye, EyeOff, Ruler, Settings, Trash2 } from 'lucide-react';
+import { Box, Crosshair, DraftingCompass, Download, Eraser, Eye, EyeOff, Ruler, Settings, Square, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
-import { AppDialog, DialogField, DialogSection, cn } from '@bimstitch/ui';
+import { AppDialog, ConfirmDialog, DialogField, DialogSection, cn } from '@bimstitch/ui';
 import type { Measurement, MeasurementConfig, MeasurementMode, ViewerHandle } from '@bimstitch/viewer';
 
 import { PanelEmptyState } from '../PanelEmptyState';
@@ -15,19 +15,60 @@ type Props = {
 const MODE_DEFS: Array<{ id: MeasurementMode; label: string; icon: typeof Ruler }> = [
   { id: 'distance', label: 'Distance', icon: Ruler },
   { id: 'angle', label: 'Angle', icon: DraftingCompass },
+  { id: 'area', label: 'Area', icon: Square },
+  { id: 'volume', label: 'Volume', icon: Box },
 ];
+
+const HELP_TEXT: Record<MeasurementMode, string> = {
+  distance: 'Click two points to measure distance',
+  angle: 'Click three points to measure angle (2nd point is the vertex)',
+  area: 'Click points to define a polygon, close near the first point or right-click to finish',
+  volume: 'Click points for base polygon, close to finish, then click to set height',
+};
+
+const AXIS_COLORS: Record<string, string> = {
+  x: 'bg-red-500',
+  y: 'bg-green-500',
+  z: 'bg-blue-500',
+};
 
 function formatValue(m: Measurement): string {
   if (m.type === 'angle') return `${m.value.toFixed(1)}°`;
+  if (m.type === 'area') {
+    if (m.value < 0.01) return `${(m.value * 1e4).toFixed(1)} cm²`;
+    return `${m.value.toFixed(3)} m²`;
+  }
+  if (m.type === 'volume') {
+    if (m.value < 0.001) return `${(m.value * 1e6).toFixed(1)} cm³`;
+    return `${m.value.toFixed(3)} m³`;
+  }
   if (m.value < 0.01) return `${(m.value * 1000).toFixed(1)} mm`;
   if (m.value < 1) return `${(m.value * 1000).toFixed(0)} mm`;
   if (m.value < 100) return `${m.value.toFixed(3)} m`;
   return `${m.value.toFixed(1)} m`;
 }
 
+function exportMeasurementsCSV(measurements: Measurement[]): void {
+  const rows = [['Type', 'Value', 'Unit', 'Points']];
+  for (const m of measurements) {
+    const pts = m.points.map((p) => `(${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)})`).join(';');
+    rows.push([m.type, String(m.value), m.unit, pts]);
+  }
+  const csv = rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `measurements-${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function MeasurementPanel({ handle }: Props): JSX.Element {
   const [activeMode, setActiveMode] = useState<MeasurementMode | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [axisLock, setAxisLock] = useState<{ active: boolean; axis: string | null }>({ active: false, axis: null });
   const mountedRef = useRef(true);
 
   // Fetch existing measurements on mount
@@ -68,7 +109,21 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
     if (!handle) return undefined;
 
     const unsub = handle.events.on('mode:exit', () => {
-      if (mountedRef.current) setActiveMode(null);
+      if (mountedRef.current) {
+        setActiveMode(null);
+        setAxisLock({ active: false, axis: null });
+      }
+    });
+
+    return unsub;
+  }, [handle]);
+
+  // Axis-lock indicator
+  useEffect(() => {
+    if (!handle) return undefined;
+
+    const unsub = handle.events.on('measurement:axisLock', (data: { active: boolean; axis: string | null }) => {
+      if (mountedRef.current) setAxisLock(data);
     });
 
     return unsub;
@@ -108,9 +163,21 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
     [handle],
   );
 
+  const cancelPending = useCallback(() => {
+    if (!handle) return;
+    handle.commands.execute('measure.cancelPending').catch(() => undefined);
+  }, [handle]);
+
+  const stopMeasuring = useCallback(() => {
+    if (!handle) return;
+    handle.commands.execute('measure.deactivate').catch(() => undefined);
+    setActiveMode(null);
+  }, [handle]);
+
   const clearAll = useCallback(() => {
     if (!handle) return;
     handle.commands.execute('measure.clear').catch(() => undefined);
+    setShowClearConfirm(false);
   }, [handle]);
 
   return (
@@ -127,8 +194,8 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
               className={cn(
                 'flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-background-secondary text-foreground-secondary hover:bg-primary/5 hover:text-primary',
+                  ? 'bg-primary-lighter text-primary border border-primary-light shadow-sm'
+                  : 'bg-background-secondary text-foreground-secondary border border-transparent shadow-sm hover:bg-primary/5 hover:text-primary hover:border-primary-light',
               )}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -143,12 +210,12 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
         {measurements.length === 0 ? (
           <PanelEmptyState
             icon={Ruler}
-            message="Click points in the viewer to measure distances or angles"
+            message="Select a mode above to measure distances, angles, areas, or volumes"
           />
         ) : (
           <ul className="divide-y divide-border">
             {measurements.map((m) => {
-              const Icon = m.type === 'angle' ? DraftingCompass : Ruler;
+              const Icon = m.type === 'angle' ? DraftingCompass : m.type === 'area' ? Square : m.type === 'volume' ? Box : Ruler;
               const isVisible = m.visible !== false;
               return (
                 <li
@@ -183,7 +250,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
                     type="button"
                     onClick={() => remove(m.id)}
                     title="Remove measurement"
-                    className="shrink-0 rounded p-1 text-foreground-secondary/0 transition-colors group-hover:text-foreground-secondary hover:!text-error"
+                    className="shrink-0 rounded p-1 text-foreground-secondary transition-colors hover:text-error"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -196,23 +263,85 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
 
       {/* Footer */}
       <div className="shrink-0 border-t border-border px-3 py-2">
-        {activeMode !== null && (
-          <p className="text-body3 text-foreground-secondary">
-            {activeMode === 'distance'
-              ? 'Click two points to measure distance'
-              : 'Click three points to measure angle (2nd point is the vertex)'}
-          </p>
-        )}
-        {activeMode === null && measurements.length > 0 && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-xs font-medium text-foreground-secondary transition-colors hover:text-error"
-          >
-            Clear all
-          </button>
-        )}
+        {activeMode !== null ? (
+          <div className="flex items-center gap-2">
+            <p className="flex-1 text-body3 text-foreground-secondary">
+              {HELP_TEXT[activeMode]}
+            </p>
+            {axisLock.active && axisLock.axis !== null && (
+              <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-white', AXIS_COLORS[axisLock.axis] ?? 'bg-foreground-secondary')}>
+                {axisLock.axis}-Lock
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={cancelPending}
+              title="Cancel pending points"
+              className="shrink-0 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={stopMeasuring}
+              title="Stop measuring"
+              className="shrink-0 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-secondary"
+            >
+              Done
+            </button>
+          </div>
+        ) : measurements.length > 0 ? (
+          <div className="flex items-center gap-3 text-xs text-foreground-secondary">
+            <span>{measurements.length} measurement{measurements.length !== 1 ? 's' : ''}</span>
+            {measurements.some((m) => m.type === 'distance') && (
+              <span className="flex items-center gap-1">
+                <Ruler className="h-3 w-3" />
+                {measurements.filter((m) => m.type === 'distance').length}
+              </span>
+            )}
+            {measurements.some((m) => m.type === 'angle') && (
+              <span className="flex items-center gap-1">
+                <DraftingCompass className="h-3 w-3" />
+                {measurements.filter((m) => m.type === 'angle').length}
+              </span>
+            )}
+            {measurements.some((m) => m.type === 'area') && (
+              <span className="flex items-center gap-1">
+                <Square className="h-3 w-3" />
+                {measurements.filter((m) => m.type === 'area').length}
+              </span>
+            )}
+            {measurements.some((m) => m.type === 'volume') && (
+              <span className="flex items-center gap-1">
+                <Box className="h-3 w-3" />
+                {measurements.filter((m) => m.type === 'volume').length}
+              </span>
+            )}
+            <span className="ml-auto" />
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              title="Clear all measurements"
+              className="shrink-0 rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
+            >
+              <Eraser className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : null}
       </div>
+
+      <ConfirmDialog
+        open={showClearConfirm}
+        onOpenChange={setShowClearConfirm}
+        title="Clear all measurements"
+        description={`This will remove all ${measurements.length} measurement${measurements.length !== 1 ? 's' : ''}. This cannot be undone.`}
+        confirmLabel="Clear all"
+        cancelLabel="Cancel"
+        onConfirm={clearAll}
+        variant="destructive"
+        isPending={false}
+        errorMessage={null}
+      />
     </div>
   );
 }
@@ -402,10 +531,25 @@ function dotSizeLabel(scale: number): string {
   return 'Extra Large';
 }
 
-// ---- settings button (for header) ----
+// ---- header actions (snapping toggle + export + settings) ----
 
-export function MeasurementSettingsButton({ handle }: { handle: ViewerHandle | null }): JSX.Element {
-  const [open, setOpen] = useState(false);
+const headerBtnClass = 'inline-flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-background hover:text-foreground';
+
+export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | null }): JSX.Element {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [snappingEnabled, setSnappingEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!handle) return undefined;
+    handle.commands.execute<boolean>('snapping.isEnabled')
+      .then((v) => setSnappingEnabled(v ?? false))
+      .catch(() => undefined);
+
+    const unsub = handle.events.on('snapping:change', (data: { enabled: boolean }) => {
+      setSnappingEnabled(data.enabled);
+    });
+    return unsub;
+  }, [handle]);
 
   if (!handle) return <></>;
 
@@ -413,13 +557,39 @@ export function MeasurementSettingsButton({ handle }: { handle: ViewerHandle | n
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { handle.commands.execute('snapping.toggle').catch(() => undefined); }}
+        title={`Snapping (S) — ${snappingEnabled ? 'on' : 'off'}`}
+        className={cn(
+          headerBtnClass,
+          snappingEnabled ? 'text-primary' : 'text-foreground-secondary',
+        )}
+      >
+        <Crosshair className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          handle.commands.execute<Measurement[]>('measure.list')
+            .then((list) => { if (list && list.length > 0) exportMeasurementsCSV(list); })
+            .catch(() => undefined);
+        }}
+        title="Export measurements as CSV"
+        className={cn(headerBtnClass, 'text-foreground-secondary')}
+      >
+        <Download className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setSettingsOpen(true)}
         title="Measurement settings"
-        className="inline-flex h-8 w-8 items-center justify-center rounded text-foreground-secondary transition-colors hover:bg-background hover:text-foreground"
+        className={cn(headerBtnClass, 'text-foreground-secondary')}
       >
         <Settings className="h-3.5 w-3.5" />
       </button>
-      <MeasurementSettingsDialog handle={handle} open={open} onClose={() => setOpen(false)} />
+      <MeasurementSettingsDialog handle={handle} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }
+
+// Keep backward compat export
+export const MeasurementSettingsButton = MeasurementHeaderActions;

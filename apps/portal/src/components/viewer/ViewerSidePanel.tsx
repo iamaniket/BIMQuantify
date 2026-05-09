@@ -16,6 +16,7 @@ const PANEL_TITLES: Record<ViewerPanelId, string> = {
   issues: 'Issues',
   compliance: 'BBL Compliance',
   measure: 'Measurement',
+  bcf: 'BCF Topics',
 };
 
 type ViewerSidePanelProps = {
@@ -23,6 +24,7 @@ type ViewerSidePanelProps = {
   explorerContent: ReactNode;
   propertiesContent: ReactNode;
   measureContent: ReactNode;
+  bcfContent: ReactNode;
   headerActions?: Partial<Record<ViewerPanelId, ReactNode>>;
 };
 
@@ -44,6 +46,7 @@ export function ViewerSidePanel({
   explorerContent,
   propertiesContent,
   measureContent,
+  bcfContent,
   headerActions,
 }: ViewerSidePanelProps): JSX.Element {
   const isOpen = activePanel !== null;
@@ -76,6 +79,7 @@ export function ViewerSidePanel({
               {activePanel === 'properties' && propertiesContent}
               {activePanel === 'documents' && <DocumentsPanel />}
               {activePanel === 'measure' && measureContent}
+              {activePanel === 'bcf' && bcfContent}
               {activePanel === 'issues' && <PlaceholderContent label="Issues" />}
               {activePanel === 'compliance' && <PlaceholderContent label="BBL Compliance" />}
             </div>

@@ -29,6 +29,14 @@ export interface SectionPluginOptions {
   helperColor?: number;
   /** Helper plane opacity. Default: 0.12. */
   helperOpacity?: number;
+  /** Colour used for the section cap fill rendered via stencil. Default: 0x1e90ff. */
+  fillColor?: number;
+  /** Opacity for the cap fill. Default: 0.6. */
+  fillOpacity?: number;
+  /** Show edge lines at section plane intersections. Default: false. */
+  showFill?: boolean;
+  /** Edge line colour for the section outline. Default: same as helperColor. */
+  edgeColor?: number;
 }
 
 export interface SectionPluginAPI {
@@ -54,11 +62,16 @@ export function sectionPlugin(
   const helperScale = options.helperScale ?? 1.5;
   const helperColor = options.helperColor ?? 0x1e90ff;
   const helperOpacity = options.helperOpacity ?? 0.12;
+  const fillColor = options.fillColor ?? helperColor;
+  const fillOpacity = options.fillOpacity ?? 0.6;
+  const showFill = options.showFill ?? false;
+  const edgeColor = options.edgeColor ?? helperColor;
 
   let ctxRef: ViewerContext | null = null;
   let enabled = true;
   const entries = new Map<string, PlaneEntry>();
   let materialHookDispose: (() => void) | null = null;
+  const capFills = new Map<string, THREE.Mesh>();
 
   // ----- material management -----
 
@@ -168,6 +181,43 @@ export function sectionPlugin(
     return group;
   };
 
+  const createCapFill = (id: string, normal: THREE.Vector3, point: THREE.Vector3): void => {
+    if (!ctxRef || !showFill) return;
+    const planeSize = computeHelperSize();
+    const geo = new THREE.PlaneGeometry(planeSize, planeSize);
+    const mat = new THREE.MeshBasicMaterial({
+      color: fillColor,
+      transparent: true,
+      opacity: fillOpacity,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      stencilWrite: true,
+      stencilRef: 1,
+      stencilFunc: THREE.AlwaysStencilFunc,
+      stencilZPass: THREE.ReplaceStencilOp,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    const quat = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 0, 1),
+      normal.clone().normalize(),
+    );
+    mesh.quaternion.copy(quat);
+    mesh.position.copy(point);
+    mesh.renderOrder = 1;
+    ctxRef.scene.add(mesh);
+    capFills.set(id, mesh);
+  };
+
+  const removeCapFill = (id: string): void => {
+    const mesh = capFills.get(id);
+    if (mesh) {
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+      mesh.removeFromParent();
+      capFills.delete(id);
+    }
+  };
+
   const disposeHelper = (helper: THREE.Group): void => {
     helper.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
@@ -225,6 +275,7 @@ export function sectionPlugin(
     ctxRef.scene.add(helper);
 
     entries.set(id, { id, plane, helper, active: true, normal, point });
+    createCapFill(id, normal, point);
     applyToAllMaterials();
     emitChange();
     return id;
@@ -237,6 +288,7 @@ export function sectionPlugin(
     const entry = entries.get(id);
     if (!entry) return;
     disposeHelper(entry.helper);
+    removeCapFill(id);
     entries.delete(id);
     applyToAllMaterials();
     emitChange();
@@ -246,6 +298,7 @@ export function sectionPlugin(
     if (!ctxRef) return;
     for (const entry of entries.values()) {
       disposeHelper(entry.helper);
+      removeCapFill(entry.id);
     }
     entries.clear();
     applyToAllMaterials();
@@ -372,6 +425,7 @@ export function sectionPlugin(
       removeClippingFromAllMaterials();
       for (const entry of entries.values()) {
         disposeHelper(entry.helper);
+        removeCapFill(entry.id);
       }
       entries.clear();
       materialHookDispose?.();
