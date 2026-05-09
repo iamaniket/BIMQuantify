@@ -3,8 +3,11 @@
 import { useRouter } from '@/i18n/navigation';
 import { useEffect, type JSX, type ReactNode } from 'react';
 
+import { AppHeaderProvider } from '@/components/header/AppHeaderContext';
+import { AppHeaderRoute } from '@/components/header/AppHeaderRoute';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { SidebarProvider } from '@/components/sidebar/SidebarContext';
+import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { useAuth } from '@/providers/AuthProvider';
 
 type Props = {
@@ -14,6 +17,7 @@ type Props = {
 export default function ViewerLayout({ children }: Props): JSX.Element {
   const router = useRouter();
   const { tokens, hasHydrated } = useAuth();
+  useNotificationSocket(tokens === null ? null : tokens.access_token);
 
   useEffect(() => {
     if (hasHydrated && tokens === null) {
@@ -26,13 +30,18 @@ export default function ViewerLayout({ children }: Props): JSX.Element {
   }
 
   return (
-    <SidebarProvider forceCollapsed>
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden animate-viewer-fade-in">
-          {children}
+    <AppHeaderProvider>
+      <SidebarProvider forceCollapsed>
+        <div className="flex h-screen overflow-hidden">
+          <Sidebar />
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <AppHeaderRoute />
+            <div className="flex min-h-0 flex-1 flex-col animate-viewer-fade-in">
+              {children}
+            </div>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </AppHeaderProvider>
   );
 }

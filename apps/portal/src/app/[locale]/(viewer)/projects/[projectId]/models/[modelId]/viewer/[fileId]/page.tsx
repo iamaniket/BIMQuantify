@@ -13,6 +13,7 @@ import {
 import { Skeleton } from '@bimstitch/ui';
 import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
 
+import { useAppHeader } from '@/components/header/AppHeaderContext';
 import { DocumentToolbar } from '@/components/viewer/DocumentToolbar';
 import { ViewerContextMenu } from '@/components/viewer/ViewerContextMenu';
 import { ViewerModeIndicator } from '@/components/viewer/ViewerModeIndicator';
@@ -87,6 +88,11 @@ export default function ViewerPage(): JSX.Element {
   const togglePanel = useCallback((id: ViewerPanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
+
+  useAppHeader({
+    statusLabel: selectionCount > 0 ? `${String(selectionCount)} selected` : null,
+    statusTone: 'warning',
+  });
 
   useViewerBridge(viewerHandleRef.current);
   const modeState = useViewerMode(viewerHandleRef.current);

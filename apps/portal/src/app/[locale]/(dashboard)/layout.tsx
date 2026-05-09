@@ -3,6 +3,8 @@
 import { useRouter } from '@/i18n/navigation';
 import { useEffect, type JSX, type ReactNode } from 'react';
 
+import { AppHeaderProvider } from '@/components/header/AppHeaderContext';
+import { AppHeaderRoute } from '@/components/header/AppHeaderRoute';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { SidebarProvider } from '@/components/sidebar/SidebarContext';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
@@ -28,13 +30,16 @@ export default function DashboardLayout({ children }: Props): JSX.Element {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          {children}
+    <AppHeaderProvider>
+      <SidebarProvider>
+        <div className="flex h-screen">
+          <Sidebar />
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <AppHeaderRoute />
+            {children}
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </AppHeaderProvider>
   );
 }

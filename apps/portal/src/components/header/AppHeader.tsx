@@ -1,0 +1,138 @@
+'use client';
+
+import { type JSX, type ReactNode } from 'react';
+
+import { ThemeToggle } from '@bimstitch/ui';
+
+import { Link } from '@/i18n/navigation';
+
+export type Crumb = {
+  label: string;
+  href: string | undefined;
+};
+
+export type StatusTone = 'success' | 'warning' | 'error' | 'info';
+
+export type AppHeaderStatus = {
+  label: string;
+  tone: StatusTone | undefined;
+};
+
+export type AppHeaderAction = {
+  label: string;
+  onClick: () => void;
+  icon: ReactNode | undefined;
+};
+
+type Props = {
+  crumbs: Crumb[];
+  status: AppHeaderStatus | null;
+  action: AppHeaderAction | null;
+  rightSlot: ReactNode;
+};
+
+const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
+  success: 'bg-[rgba(95,217,158,0.20)] text-[#9ff0bf] border-[rgba(95,217,158,0.35)]',
+  warning: 'bg-[rgba(244,196,91,0.18)] text-[#ffe2a3] border-[rgba(244,196,91,0.32)]',
+  error: 'bg-[rgba(255,141,118,0.18)] text-[#ffb3a3] border-[rgba(255,141,118,0.32)]',
+  info: 'bg-[rgba(155,188,232,0.18)] text-[#cfe1f7] border-[rgba(155,188,232,0.32)]',
+};
+
+const STATUS_DOT_CLASSES: Record<StatusTone, string> = {
+  success: 'bg-[#5fd99e]',
+  warning: 'bg-[#f4c45b]',
+  error: 'bg-[#ff8d76]',
+  info: 'bg-[#9bbce8]',
+};
+
+function StatusPill({ status }: { status: AppHeaderStatus }): JSX.Element {
+  const tone: StatusTone = status.tone ?? 'info';
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.06em] ${STATUS_TONE_CLASSES[tone]}`}
+    >
+      <span className={`h-[5px] w-[5px] rounded-full ${STATUS_DOT_CLASSES[tone]}`} />
+      {status.label}
+    </span>
+  );
+}
+
+function GridTexture(): JSX.Element {
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.08]"
+    >
+      <defs>
+        <pattern id="appheader-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+          <path d="M 32 0 L 0 0 0 32" fill="none" stroke="white" strokeWidth="0.6" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#appheader-grid)" />
+    </svg>
+  );
+}
+
+function CrumbItem({ crumb, isLast }: { crumb: Crumb; isLast: boolean }): JSX.Element {
+  const text = (
+    <span
+      className={`whitespace-nowrap ${isLast ? 'font-semibold text-white' : 'text-white/70 hover:text-white'}`}
+    >
+      {crumb.label}
+    </span>
+  );
+  if (!isLast && crumb.href !== undefined) {
+    return <Link href={{ pathname: crumb.href }}>{text}</Link>;
+  }
+  return text;
+}
+
+function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }): JSX.Element | null {
+  if (crumbs.length === 0) return null;
+  return (
+    <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] font-medium">
+      {crumbs.map((c, i) => (
+        <span key={`${String(i)}-${c.label}`} className="flex items-center gap-1.5">
+          {i > 0 ? <span className="text-[11px] text-white/55">/</span> : null}
+          <CrumbItem crumb={c} isLast={i === crumbs.length - 1} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function AppHeader({
+  crumbs, status, action, rightSlot,
+}: Props): JSX.Element {
+  return (
+    <header
+      className="relative flex h-[52px] shrink-0 items-center gap-3.5 border-b border-white/10 bg-[#2c5697] px-4 text-white dark:bg-[#1e3e72]"
+    >
+      <GridTexture />
+
+      <div className="relative flex min-w-0 flex-1 items-center gap-2.5">
+        <Breadcrumbs crumbs={crumbs} />
+        {status === null ? null : <StatusPill status={status} />}
+      </div>
+
+      <div className="relative flex shrink-0 items-center gap-1">
+        {rightSlot}
+        <ThemeToggle className="h-[30px] w-[30px] rounded-md text-white/80 hover:bg-white/10 hover:text-white" />
+        {action === null ? null : (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="ml-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-white px-3.5 text-[12.5px] font-bold text-[#2c5697] shadow-[0_2px_6px_rgba(0,0,0,0.18)] hover:bg-white/90"
+          >
+            {action.icon === undefined ? (
+              <span className="text-[13px] font-extrabold">+</span>
+            ) : (
+              action.icon
+            )}
+            {action.label}
+          </button>
+        )}
+      </div>
+    </header>
+  );
+}
