@@ -19,6 +19,7 @@ import type { InteractivePerformanceOptions } from './plugins/interactive-perfor
 import type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 import type { SelectionPluginOptions } from './plugins/selection/index.js';
 import type { SectionPluginOptions } from './plugins/section/index.js';
+import type { SnappingPluginOptions } from './plugins/snapping/index.js';
 import type { WalkthroughPluginOptions } from './plugins/walkthrough/index.js';
 
 export type ViewerBundle = {
@@ -103,6 +104,8 @@ export type IfcViewerProps = {
    * Every toggle defaults to off — opt in per setting.
    */
   interactivePerformance?: InteractivePerformanceOptions;
+  /** Geometry snapping (vertex, edge, midpoint). */
+  snapping?: SnappingPluginOptions;
   /** Clipping/section plane support. Pass `false` to disable. */
   section?: SectionPluginOptions | false;
   /** First-person walkthrough. Pass `false` to disable. */
@@ -143,9 +146,11 @@ export type { SectionPluginOptions, SectionPluginAPI, SectionPlane } from './plu
 
 export type { ModePluginAPI, ModeToolDescriptor, ViewerMode } from './plugins/mode/index.js';
 
-export type { MeasurementPluginAPI, Measurement, MeasurementMode } from './plugins/measurement/index.js';
+export type { MeasurementPluginAPI, Measurement, MeasurementMode, MeasurementConfig } from './plugins/measurement/index.js';
 
 export type { WalkthroughPluginOptions, WalkthroughPluginAPI } from './plugins/walkthrough/index.js';
+
+export type { SnappingPluginOptions, SnappingPluginAPI, SnapType } from './plugins/snapping/index.js';
 
 export type { WireframePluginAPI } from './plugins/wireframe/index.js';
 

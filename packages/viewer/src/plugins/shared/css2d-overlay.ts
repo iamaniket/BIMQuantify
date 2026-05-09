@@ -14,7 +14,7 @@ import type { ViewerContext } from '../../core/types.js';
 
 export interface Css2dOverlay {
   renderer: CSS2DRenderer;
-  createLabel(text: string, position: THREE.Vector3): CSS2DObject;
+  createLabel(text: string, position: THREE.Vector3, parent?: THREE.Object3D): CSS2DObject;
   removeLabel(obj: CSS2DObject): void;
   render(): void;
 }
@@ -53,7 +53,7 @@ export function acquireCss2dOverlay(ctx: ViewerContext): Css2dOverlay {
   const overlay: Css2dOverlay = {
     renderer: css2d,
 
-    createLabel(text: string, position: THREE.Vector3): CSS2DObject {
+    createLabel(text: string, position: THREE.Vector3, parent?: THREE.Object3D): CSS2DObject {
       const div = document.createElement('div');
       div.textContent = text;
       div.style.cssText =
@@ -62,7 +62,7 @@ export function acquireCss2dOverlay(ctx: ViewerContext): Css2dOverlay {
         'white-space: nowrap; pointer-events: none; user-select: none;';
       const obj = new CSS2DObject(div);
       obj.position.copy(position);
-      ctx.scene.add(obj);
+      (parent ?? ctx.scene).add(obj);
       return obj;
     },
 

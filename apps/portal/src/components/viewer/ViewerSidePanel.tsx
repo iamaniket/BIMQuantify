@@ -1,6 +1,5 @@
 'use client';
 
-import { X } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { cn } from '@bimstitch/ui';
@@ -21,10 +20,10 @@ const PANEL_TITLES: Record<ViewerPanelId, string> = {
 
 type ViewerSidePanelProps = {
   activePanel: ViewerPanelId | null;
-  onClose: () => void;
   explorerContent: ReactNode;
   propertiesContent: ReactNode;
   measureContent: ReactNode;
+  headerActions?: Partial<Record<ViewerPanelId, ReactNode>>;
 };
 
 function PlaceholderContent({ label }: { label: string }): JSX.Element {
@@ -42,10 +41,10 @@ function PlaceholderContent({ label }: { label: string }): JSX.Element {
 
 export function ViewerSidePanel({
   activePanel,
-  onClose,
   explorerContent,
   propertiesContent,
   measureContent,
+  headerActions,
 }: ViewerSidePanelProps): JSX.Element {
   const isOpen = activePanel !== null;
 
@@ -66,14 +65,11 @@ export function ViewerSidePanel({
               <span className="text-xs font-bold uppercase tracking-wider text-foreground-secondary">
                 {PANEL_TITLES[activePanel]}
               </span>
-              <button
-                type="button"
-                onClick={onClose}
-                title="Close panel"
-                className="-mr-1 inline-flex h-8 w-8 items-center justify-center rounded text-foreground-secondary transition-colors hover:bg-background hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              {headerActions?.[activePanel] && (
+                <div className="flex items-center gap-0.5">
+                  {headerActions[activePanel]}
+                </div>
+              )}
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
               {activePanel === 'explorer' && explorerContent}

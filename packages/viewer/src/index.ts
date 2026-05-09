@@ -39,6 +39,10 @@ export type {
   MeasurementPluginAPI,
   Measurement,
   MeasurementMode,
+  MeasurementConfig,
+  SnappingPluginAPI,
+  SnappingPluginOptions,
+  SnapType,
   WalkthroughPluginOptions,
   WalkthroughPluginAPI,
   WireframePluginAPI,
@@ -68,6 +72,7 @@ export { visibilityPlugin } from './plugins/visibility/index.js';
 export { contextMenuPlugin } from './plugins/context-menu/index.js';
 export { xrayPlugin } from './plugins/xray/index.js';
 export { sectionPlugin } from './plugins/section/index.js';
+export { snappingPlugin } from './plugins/snapping/index.js';
 export { modePlugin } from './plugins/mode/index.js';
 export { measurementPlugin } from './plugins/measurement/index.js';
 export { walkthroughPlugin } from './plugins/walkthrough/index.js';

@@ -19,7 +19,7 @@ type ModelExplorerProps = {
 type ExplorerTab = 'objects' | 'classes' | 'stories';
 
 const TABS: ViewerTabDef<ExplorerTab>[] = [
-  { id: 'objects', label: 'Objects' },
+  { id: 'objects', label: 'Model' },
   { id: 'classes', label: 'Classes' },
   { id: 'stories', label: 'Stories' },
 ];

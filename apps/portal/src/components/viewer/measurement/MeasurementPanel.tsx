@@ -1,10 +1,10 @@
 'use client';
 
-import { DraftingCompass, Eye, EyeOff, Plus, Ruler, Trash2, X } from 'lucide-react';
+import { DraftingCompass, Eye, EyeOff, Ruler, Settings, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
-import type { Measurement, MeasurementMode, ViewerHandle } from '@bimstitch/viewer';
+import { AppDialog, DialogField, DialogSection, cn } from '@bimstitch/ui';
+import type { Measurement, MeasurementConfig, MeasurementMode, ViewerHandle } from '@bimstitch/viewer';
 
 import { PanelEmptyState } from '../PanelEmptyState';
 
@@ -214,5 +214,212 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
         )}
       </div>
     </div>
+  );
+}
+
+// ---- helpers ----
+
+function hexFromNumber(n: number): string {
+  return `#${n.toString(16).padStart(6, '0')}`;
+}
+
+function numberFromHex(hex: string): number {
+  return parseInt(hex.replace('#', ''), 16);
+}
+
+const PRECISION_OPTIONS = [
+  { value: 0, label: '0 (1 m)' },
+  { value: 1, label: '1 (1.2 m)' },
+  { value: 2, label: '2 (1.23 m)' },
+  { value: 3, label: '3 (1.234 m)' },
+];
+
+// ---- settings dialog ----
+
+type SettingsDialogProps = {
+  handle: ViewerHandle;
+  open: boolean;
+  onClose: () => void;
+};
+
+function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProps): JSX.Element {
+  const [cfg, setCfg] = useState<MeasurementConfig | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    handle.commands
+      .execute<MeasurementConfig>('measure.getConfig')
+      .then((c) => setCfg(c ?? null))
+      .catch(() => undefined);
+  }, [handle, open]);
+
+  const update = useCallback(
+    (partial: Partial<MeasurementConfig>) => {
+      setCfg((prev) => (prev ? { ...prev, ...partial } : prev));
+      handle.commands.execute('measure.setConfig', partial).catch(() => undefined);
+    },
+    [handle],
+  );
+
+  if (!cfg) return <></>;
+
+  return (
+    <AppDialog
+      open={open}
+      onClose={onClose}
+      title="Measurement Settings"
+      subtitle="Configure how measurements appear in the viewer"
+      width={400}
+    >
+      <div className="flex flex-col gap-5">
+        <DialogSection title="Colors">
+          <DialogField label="Direct line">
+            <input
+              type="color"
+              value={hexFromNumber(cfg.directColor)}
+              onChange={(e) => update({ directColor: numberFromHex(e.target.value) })}
+              className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
+            />
+          </DialogField>
+          <DialogField label="X axis">
+            <input
+              type="color"
+              value={hexFromNumber(cfg.xColor)}
+              onChange={(e) => update({ xColor: numberFromHex(e.target.value) })}
+              className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
+            />
+          </DialogField>
+          <DialogField label="Y axis">
+            <input
+              type="color"
+              value={hexFromNumber(cfg.yColor)}
+              onChange={(e) => update({ yColor: numberFromHex(e.target.value) })}
+              className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
+            />
+          </DialogField>
+          <DialogField label="Z axis">
+            <input
+              type="color"
+              value={hexFromNumber(cfg.zColor)}
+              onChange={(e) => update({ zColor: numberFromHex(e.target.value) })}
+              className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
+            />
+          </DialogField>
+        </DialogSection>
+
+        <DialogSection title="Appearance">
+          <DialogField label="Show height & horizontal">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={cfg.showDecomposition}
+              onClick={() => update({ showDecomposition: !cfg.showDecomposition })}
+              className={cn(
+                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
+                cfg.showDecomposition ? 'bg-primary' : 'bg-border',
+              )}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200',
+                  cfg.showDecomposition ? 'translate-x-[18px]' : 'translate-x-0.5',
+                )}
+              />
+            </button>
+          </DialogField>
+
+          <DialogField label={`Label size — ${labelSizeLabel(cfg.labelScale)}`}>
+            <input
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.1"
+              value={cfg.labelScale}
+              onChange={(e) => update({ labelScale: parseFloat(e.target.value) })}
+              className="w-full accent-primary"
+            />
+          </DialogField>
+
+          <DialogField label={`Dot size — ${dotSizeLabel(cfg.dotScale)}`}>
+            <input
+              type="range"
+              min="0.5"
+              max="3"
+              step="0.25"
+              value={cfg.dotScale}
+              onChange={(e) => update({ dotScale: parseFloat(e.target.value) })}
+              className="w-full accent-primary"
+            />
+          </DialogField>
+        </DialogSection>
+
+        <DialogSection title="Precision">
+          <DialogField label="Decimal places">
+            <select
+              value={cfg.precision}
+              onChange={(e) => update({ precision: parseInt(e.target.value, 10) })}
+              className="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
+            >
+              {PRECISION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </DialogField>
+        </DialogSection>
+
+        <DialogSection title="Snapping">
+          <DialogField
+            label={`Snap threshold — ${String(cfg.snapThreshold)}px`}
+            hint="Pixel distance for snap detection"
+          >
+            <input
+              type="range"
+              min="5"
+              max="40"
+              step="1"
+              value={cfg.snapThreshold}
+              onChange={(e) => update({ snapThreshold: parseInt(e.target.value, 10) })}
+              className="w-full accent-primary"
+            />
+          </DialogField>
+        </DialogSection>
+      </div>
+    </AppDialog>
+  );
+}
+
+function labelSizeLabel(scale: number): string {
+  if (scale <= 0.6) return 'Small';
+  if (scale <= 1.1) return 'Medium';
+  if (scale <= 1.5) return 'Large';
+  return 'Extra Large';
+}
+
+function dotSizeLabel(scale: number): string {
+  if (scale <= 0.6) return 'Small';
+  if (scale <= 1.2) return 'Medium';
+  if (scale <= 2.0) return 'Large';
+  return 'Extra Large';
+}
+
+// ---- settings button (for header) ----
+
+export function MeasurementSettingsButton({ handle }: { handle: ViewerHandle | null }): JSX.Element {
+  const [open, setOpen] = useState(false);
+
+  if (!handle) return <></>;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Measurement settings"
+        className="inline-flex h-8 w-8 items-center justify-center rounded text-foreground-secondary transition-colors hover:bg-background hover:text-foreground"
+      >
+        <Settings className="h-3.5 w-3.5" />
+      </button>
+      <MeasurementSettingsDialog handle={handle} open={open} onClose={() => setOpen(false)} />
+    </>
   );
 }

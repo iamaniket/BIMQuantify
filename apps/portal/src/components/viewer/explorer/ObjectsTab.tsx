@@ -9,7 +9,7 @@ import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 import { PanelEmptyState } from '../PanelEmptyState';
 import { TreeContainer } from './TreeContainer';
 import { TreeNodeComponent, type TreeNodeData } from './TreeNode';
-import { elementToLeaf, groupElementsBy } from './treeBuilders';
+import { elementToLeaf, groupElementsBy, collectExpandedKeys } from './treeBuilders';
 import { useTreeExpansion } from './useTreeExpansion';
 
 type ObjectsTabProps = {
@@ -47,7 +47,13 @@ export function ObjectsTab({
   elements,
 }: ObjectsTabProps): JSX.Element {
   const modelId = useViewerEntityStore((s) => s.modelId);
-  const { expanded, toggle } = useTreeExpansion();
+
+  const initialExpanded = useMemo(() => {
+    if (!spatialTree) return [];
+    return collectExpandedKeys(spatialTree, 3);
+  }, [spatialTree]);
+
+  const { expanded, toggle } = useTreeExpansion(initialExpanded);
 
   const elementsByContainer = useMemo(
     () => groupElementsBy(elements ?? [], (el) => el.containedIn),

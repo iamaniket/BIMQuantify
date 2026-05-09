@@ -23,10 +23,9 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { FXAAPass } from 'three/examples/jsm/postprocessing/FXAAPass.js';
-
 import { LAYER_DEFAULT, LAYER_OVERLAY } from '../../core/layers.js';
 import type { Plugin, ViewerContext } from '../../core/types.js';
+import { CustomFXAAPass } from './fxaa.js';
 import type { EffectsOptions, EffectsQuality } from './types.js';
 
 const NAME = 'effects' as const;
@@ -164,7 +163,7 @@ export function effectsPlugin(
 
   let composer: EffectComposer | null = null;
   let edgesPass: ShaderPass | null = null;
-  let fxaaPass: FXAAPass | null = null;
+  let fxaaPass: CustomFXAAPass | null = null;
   let composerTarget: THREE.WebGLRenderTarget | null = null;
   let normalTarget: THREE.WebGLRenderTarget | null = null;
   let normalMaterial: THREE.ShaderMaterial | null = null;
@@ -212,6 +211,7 @@ export function effectsPlugin(
     u.uDepthScale.value = preset.ds;
     u.uEdgeLow.value = preset.lo;
     u.uEdgeHigh.value = preset.hi;
+    if (fxaaPass) fxaaPass.setQuality(q);
   };
 
   const renderNormalBuffer = (): void => {
@@ -317,16 +317,15 @@ export function effectsPlugin(
       const w = Math.round(size.x * dpr);
       const h = Math.round(size.y * dpr);
 
+      const msaaSamples = opts.quality === 'high' ? 8 : 4;
+
       composerTarget = new THREE.WebGLRenderTarget(w, h, {
-        samples: 4,
+        samples: msaaSamples,
         type: THREE.HalfFloatType,
       });
 
-      // HalfFloat for the normal+depth target so the alpha channel can carry
-      // ~16-bit linearised depth (8-bit was too coarse for the depth-Sobel
-      // second-derivative term).
       normalTarget = new THREE.WebGLRenderTarget(w, h, {
-        samples: 4,
+        samples: msaaSamples,
         type: THREE.HalfFloatType,
       });
 
@@ -375,7 +374,7 @@ export function effectsPlugin(
       eu.tNormal.value = normalTarget.texture;
       composer.addPass(edgesPass);
 
-      fxaaPass = new FXAAPass();
+      fxaaPass = new CustomFXAAPass();
       fxaaPass.setSize(w, h);
       composer.addPass(fxaaPass);
 

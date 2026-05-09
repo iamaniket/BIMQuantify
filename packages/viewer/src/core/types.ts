@@ -47,6 +47,7 @@ export interface ViewerEvents {
   'measurement:complete': { id: string; type: string; value: number };
   'walkthrough:change': { active: boolean };
   'wireframe:change': { active: boolean };
+  'snapping:change': { enabled: boolean; snap: { point: Vec3; type: string } | null };
   'command:executed': { name: string; ok: boolean; error?: string };
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };

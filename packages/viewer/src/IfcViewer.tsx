@@ -28,6 +28,7 @@ import { modePlugin } from './plugins/mode/index.js';
 import { sectionPlugin } from './plugins/section/index.js';
 import { measurementPlugin } from './plugins/measurement/index.js';
 import { walkthroughPlugin } from './plugins/walkthrough/index.js';
+import { snappingPlugin } from './plugins/snapping/index.js';
 import { wireframePlugin } from './plugins/wireframe/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
 
@@ -101,6 +102,7 @@ function IfcViewerImpl(
       // Mouse-bindings registers AFTER selection/hover so the default
       // bindings can resolve `selection.pickSet` etc. at install time.
       mouseBindingsPlugin(props.mouseBindings ? { overrides: props.mouseBindings } : {}),
+      snappingPlugin(props.snapping ?? {}),
       contextMenuPlugin(),
       xrayPlugin(),
       ...(viewCubeEnabled

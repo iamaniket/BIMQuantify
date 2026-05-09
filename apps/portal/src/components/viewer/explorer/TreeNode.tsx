@@ -1,7 +1,15 @@
 'use client';
 
-import { ChevronRight, Eye, EyeOff, Glasses } from 'lucide-react';
-import { type JSX, useCallback, memo } from 'react';
+import {
+  Building2,
+  BoxSelect,
+  ChevronRight,
+  Component,
+  FolderKanban,
+  Layers,
+  MapPin,
+} from 'lucide-react';
+import { type JSX, useCallback, useRef, useEffect, memo } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
@@ -14,6 +22,53 @@ export type TreeNodeData = {
   entityKeys: EntityKey[];
   children?: TreeNodeData[];
 };
+
+/* ── IFC-type → icon mapping ────────────────────────────── */
+
+const TYPE_ICON_MAP: Record<string, typeof Component> = {
+  IfcProject: FolderKanban,
+  IfcSite: MapPin,
+  IfcBuilding: Building2,
+  IfcBuildingStorey: Layers,
+  IfcSpace: BoxSelect,
+};
+
+function typeIcon(type: string | undefined): typeof Component | null {
+  if (!type) return null;
+  return TYPE_ICON_MAP[type] ?? null;
+}
+
+/* ── Checkbox with indeterminate support ────────────────── */
+
+type TreeCheckboxProps = {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onClick: (e: React.MouseEvent) => void;
+};
+
+function TreeCheckbox({ checked, indeterminate, onChange, onClick }: TreeCheckboxProps): JSX.Element {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      onClick={onClick}
+      className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-border accent-primary"
+    />
+  );
+}
+
+/* ── TreeNode ───────────────────────────────────────────── */
 
 type TreeNodeProps = {
   node: TreeNodeData;
@@ -34,50 +89,43 @@ function TreeNodeInner({
   const isSelected = useViewerEntityStore((s) =>
     node.entityKeys.some((k) => s.selected.has(k)),
   );
-  const isHidden = useViewerEntityStore((s) =>
-    node.entityKeys.length > 0 && node.entityKeys.every((k) => s.hidden.has(k)),
-  );
-  const isXrayed = useViewerEntityStore((s) =>
-    node.entityKeys.length > 0 && node.entityKeys.every((k) => s.xrayed.has(k)),
-  );
+
+  /* Visibility: compute checked / indeterminate */
+  const hiddenCount = useViewerEntityStore((s) => {
+    if (node.entityKeys.length === 0) return 0;
+    let count = 0;
+    for (const k of node.entityKeys) {
+      if (s.hidden.has(k)) count++;
+    }
+    return count;
+  });
+  const totalKeys = node.entityKeys.length;
+  const allHidden = totalKeys > 0 && hiddenCount === totalKeys;
+  const someHidden = hiddenCount > 0 && hiddenCount < totalKeys;
+  const isChecked = totalKeys > 0 && !allHidden;
 
   const select = useViewerEntityStore((s) => s.select);
   const hideItems = useViewerEntityStore((s) => s.hideItems);
   const showItems = useViewerEntityStore((s) => s.showItems);
-  const xrayItems = useViewerEntityStore((s) => s.xrayItems);
-  const unxrayItems = useViewerEntityStore((s) => s.unxrayItems);
 
-  const handleClick = useCallback(() => {
+  const handleRowClick = useCallback(() => {
     if (node.entityKeys.length > 0) {
       select(node.entityKeys);
     }
   }, [node.entityKeys, select]);
 
-  const handleToggleVisibility = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (node.entityKeys.length === 0) return;
-      if (isHidden) {
-        showItems(node.entityKeys);
-      } else {
-        hideItems(node.entityKeys);
-      }
-    },
-    [node.entityKeys, isHidden, showItems, hideItems],
-  );
+  const handleCheckboxChange = useCallback(() => {
+    if (node.entityKeys.length === 0) return;
+    if (allHidden || someHidden) {
+      showItems(node.entityKeys);
+    } else {
+      hideItems(node.entityKeys);
+    }
+  }, [node.entityKeys, allHidden, someHidden, showItems, hideItems]);
 
-  const handleToggleXray = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (node.entityKeys.length === 0) return;
-      if (isXrayed) {
-        unxrayItems(node.entityKeys);
-      } else {
-        xrayItems(node.entityKeys);
-      }
-    },
-    [node.entityKeys, isXrayed, xrayItems, unxrayItems],
-  );
+  const handleCheckboxClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
 
   const handleExpand = useCallback(
     (e: React.MouseEvent) => {
@@ -87,6 +135,8 @@ function TreeNodeInner({
     [node.key, onToggleExpand],
   );
 
+  const Icon = typeIcon(node.type);
+
   return (
     <div>
       <div
@@ -94,14 +144,15 @@ function TreeNodeInner({
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={isSelected}
         className={cn(
-          'group flex items-center gap-1 py-0.5 pr-1 cursor-pointer select-none',
+          'group flex items-center gap-1.5 py-1 pr-2 cursor-pointer select-none',
           'hover:bg-background-secondary rounded',
           isSelected && 'bg-primary/10',
-          isHidden && 'opacity-40',
+          allHidden && 'opacity-40',
         )}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
-        onClick={handleClick}
+        onClick={handleRowClick}
       >
+        {/* Expand / collapse chevron */}
         <button
           type="button"
           className={cn(
@@ -119,49 +170,28 @@ function TreeNodeInner({
           />
         </button>
 
+        {/* Visibility checkbox */}
+        {totalKeys > 0 && (
+          <TreeCheckbox
+            checked={isChecked}
+            indeterminate={someHidden}
+            onChange={handleCheckboxChange}
+            onClick={handleCheckboxClick}
+          />
+        )}
+
+        {/* Type icon */}
+        {Icon != null && (
+          <Icon className="h-3.5 w-3.5 shrink-0 text-foreground-secondary" />
+        )}
+
+        {/* Label */}
         <span
-          className={cn(
-            'flex-1 truncate text-caption',
-            isXrayed && 'text-blue-500',
-          )}
+          className="flex-1 truncate text-caption"
           title={node.label}
         >
           {node.label}
-          {node.type != null ? (
-            <span className="ml-1 text-foreground-tertiary">
-              ({node.type})
-            </span>
-          ) : null}
         </span>
-
-        <div className="hidden gap-0.5 group-hover:flex">
-          {node.entityKeys.length > 0 ? (
-            <>
-              <button
-                type="button"
-                className="rounded p-0.5 hover:bg-background-tertiary"
-                onClick={handleToggleVisibility}
-                title={isHidden ? 'Show' : 'Hide'}
-              >
-                {isHidden ? (
-                  <EyeOff className="h-3 w-3" />
-                ) : (
-                  <Eye className="h-3 w-3" />
-                )}
-              </button>
-              <button
-                type="button"
-                className="rounded p-0.5 hover:bg-background-tertiary"
-                onClick={handleToggleXray}
-                title={isXrayed ? 'Clear X-Ray' : 'X-Ray'}
-              >
-                <Glasses
-                  className={cn('h-3 w-3', isXrayed && 'text-blue-500')}
-                />
-              </button>
-            </>
-          ) : null}
-        </div>
       </div>
 
       {isExpanded && node.children != null

@@ -20,7 +20,7 @@ import { ViewerSideRail, type ViewerPanelId } from '@/components/viewer/ViewerSi
 import { ViewerStatusBar } from '@/components/viewer/ViewerStatusBar';
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
-import { MeasurementPanel } from '@/components/viewer/measurement/MeasurementPanel';
+import { MeasurementPanel, MeasurementSettingsButton } from '@/components/viewer/measurement/MeasurementPanel';
 import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
@@ -77,10 +77,6 @@ export default function ViewerPage(): JSX.Element {
 
   const togglePanel = useCallback((id: ViewerPanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
-  }, []);
-
-  const closePanel = useCallback(() => {
-    setActivePanel(null);
   }, []);
 
   useViewerBridge(viewerHandleRef.current);
@@ -209,7 +205,6 @@ export default function ViewerPage(): JSX.Element {
           <>
             <ViewerSidePanel
               activePanel={activePanel}
-              onClose={closePanel}
               explorerContent={
                 <ModelExplorer
                   metadata={metadata}
@@ -226,6 +221,9 @@ export default function ViewerPage(): JSX.Element {
               measureContent={
                 <MeasurementPanel handle={viewerHandleRef.current} />
               }
+              headerActions={{
+                measure: <MeasurementSettingsButton handle={viewerHandleRef.current} />,
+              }}
             />
             <ViewerSideRail
               activePanel={activePanel}
