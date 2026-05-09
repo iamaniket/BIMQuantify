@@ -6,6 +6,7 @@ import { TooltipProvider } from '@bimstitch/ui';
 
 import { StitchLogo } from '@/components/charts/StitchLogo';
 
+import { SidebarCollapseToggle } from './SidebarCollapseToggle';
 import { SidebarNav } from './SidebarNav';
 import { SidebarTenantCard } from './SidebarTenantCard';
 import { SidebarUserChip } from './SidebarUserChip';
@@ -13,7 +14,7 @@ import { SidebarWorkspaceNav } from './SidebarWorkspaceNav';
 import { useSidebar } from './SidebarContext';
 
 export function Sidebar(): JSX.Element {
-  const { collapsed } = useSidebar();
+  const { collapsed, forceCollapsed } = useSidebar();
 
   return (
     <aside
@@ -26,6 +27,9 @@ export function Sidebar(): JSX.Element {
       <TooltipProvider delayDuration={200}>
         {/* Account chip (top) with collapse toggle */}
         <SidebarUserChip />
+
+        {/* Collapse toggle on sidebar edge */}
+        {!forceCollapsed && <SidebarCollapseToggle />}
 
         {/* Tenant */}
         <SidebarTenantCard />

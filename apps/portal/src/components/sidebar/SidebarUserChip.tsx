@@ -33,7 +33,6 @@ export function SidebarUserChip(): JSX.Element {
           <div className="mt-0.5 truncate text-[10px] text-white/55">{userRole}</div>
         </div>
       )}
-      {!forceCollapsed && <SidebarCollapseToggle />}
     </div>
   );
 }
