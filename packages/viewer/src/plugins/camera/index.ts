@@ -101,7 +101,7 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         { title: 'Orbit camera by delta' },
       );
 
-      /** Snap to iso direction then fitToBox. Shared by home / zoomExtents / frameSelection. */
+      /** Animate to iso (top-front-right) direction, fit model centred on screen. */
       const snapIsoAndFit = async (box: THREE.Box3): Promise<void> => {
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
@@ -109,29 +109,30 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
 
         const dir = VIEW_DIRECTIONS['iso'];
         const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
+        const nx = dir[0] / len;
+        const ny = dir[1] / len;
+        const nz = dir[2] / len;
 
-        // Snap to iso angle instantly, then animate the fit.
-        const roughDist = maxDim * 2;
+        // Compute a distance that fits the bounding sphere in the viewport.
+        const camera = ctx.camera as THREE.PerspectiveCamera;
+        const fov = camera.fov * (Math.PI / 180);
+        const aspect = camera.aspect;
+        const halfDiag = box.getBoundingSphere(new THREE.Sphere()).radius;
+        const halfFovV = fov / 2;
+        const halfFovH = Math.atan(aspect * Math.tan(halfFovV));
+        const fitDist = halfDiag / Math.sin(Math.min(halfFovV, halfFovH));
+        // Add padding so the model doesn't touch the edges.
+        const distance = fitDist * 1.2;
+
         await ctx.cameraControls.setLookAt(
-          center.x + (dir[0] / len) * roughDist,
-          center.y + (dir[1] / len) * roughDist,
-          center.z + (dir[2] / len) * roughDist,
+          center.x + nx * distance,
+          center.y + ny * distance,
+          center.z + nz * distance,
           center.x,
           center.y,
           center.z,
-          false,
+          true,
         );
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cc = ctx.cameraControls as any;
-        if (typeof cc.fitToBox === 'function') {
-          await cc.fitToBox(box, true, {
-            paddingTop: 0.1,
-            paddingBottom: 0.1,
-            paddingLeft: 0.1,
-            paddingRight: 0.1,
-          });
-        }
       };
 
       commands.register(

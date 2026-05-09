@@ -86,9 +86,44 @@ export class Viewer {
   private shadowGround: THREE.Mesh | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private shadowsEnabled = true;
+  private baseNear = 0.01;
+  private baseFar = 2000;
+  private modelMaxDim = 1;
+  private lastAppliedNear = 0.01;
+  private lastAppliedFar = 2000;
   modelId: string | null = null;
 
   constructor(private readonly options: ViewerOptions = {}) {}
+
+  private updateDynamicNearFar(): void {
+    const world = this.world;
+    if (!world) return;
+    const cam = world.camera.three;
+    if (!(cam instanceof THREE.PerspectiveCamera)) return;
+
+    const target = new THREE.Vector3();
+    world.camera.controls.getTarget(target);
+    const distance = cam.position.distanceTo(target);
+
+    const dynamicNear = Math.min(
+      Math.max(distance * 0.001, 0.001),
+      this.baseNear,
+    );
+    const dynamicFar = Math.min(
+      Math.max(distance * 100, this.modelMaxDim * 3),
+      this.baseFar,
+    );
+
+    const nearChanged = Math.abs(dynamicNear - this.lastAppliedNear) > 1e-6;
+    const farChanged = Math.abs(dynamicFar - this.lastAppliedFar) > 1e-4;
+    if (nearChanged || farChanged) {
+      cam.near = dynamicNear;
+      cam.far = dynamicFar;
+      cam.updateProjectionMatrix();
+      this.lastAppliedNear = dynamicNear;
+      this.lastAppliedFar = dynamicFar;
+    }
+  }
 
   async mount(container: HTMLElement): Promise<void> {
     if (this.components !== null) {
@@ -199,6 +234,7 @@ export class Viewer {
         position: { x: pos.x, y: pos.y, z: pos.z },
         target: { x: target.x, y: target.y, z: target.z },
       });
+      this.updateDynamicNearFar();
       // Reset the idle countdown — fires `viewer:idle` once the camera
       // has been still for IDLE_MS so plugins (effects composer) can
       // run their expensive frame.
@@ -206,6 +242,10 @@ export class Viewer {
       this.idleTimer = setTimeout(() => {
         this.idleTimer = null;
         this.events.emit('viewer:idle', undefined);
+        // Re-apply after plugins (e.g. interactive-performance) restore
+        // their saved far on idle — ensures correct values for the final
+        // camera position.
+        this.updateDynamicNearFar();
       }, IDLE_MS);
     };
     camControls.addEventListener('update', onCamChange);
@@ -292,6 +332,11 @@ export class Viewer {
     if (cam instanceof THREE.PerspectiveCamera) {
       cam.near = Math.max(maxDim / 1000, 0.01);
       cam.far = maxDim * 100;
+      this.baseNear = cam.near;
+      this.baseFar = cam.far;
+      this.modelMaxDim = maxDim;
+      this.lastAppliedNear = cam.near;
+      this.lastAppliedFar = cam.far;
       cam.updateProjectionMatrix();
     }
   }
