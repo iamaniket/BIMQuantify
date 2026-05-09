@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ProjectFileListSchema } from './files';
+import { FileTypeEnum, ProjectFileListSchema } from './files';
 
 export const ModelDisciplineEnum = z.enum([
   'architectural',
@@ -22,6 +22,7 @@ export const ModelSchema = z.object({
   name: z.string(),
   discipline: ModelDisciplineEnum,
   status: ModelStatusEnum,
+  primary_file_type: FileTypeEnum.nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });

@@ -119,16 +119,13 @@ async def initiate_upload(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="FILE_TOO_LARGE"
         )
 
-    locked_type = await session.scalar(
-        select(ProjectFile.file_type).where(
-            ProjectFile.model_id == model.id,
-            ProjectFile.status == ProjectFileStatus.ready,
-        ).limit(1)
-    )
-    if locked_type is not None and locked_type != file_type:
+    if model.primary_file_type is not None and model.primary_file_type != file_type:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "MODEL_FILE_TYPE_LOCKED", "locked_to": locked_type.value},
+            detail={
+                "code": "MODEL_FILE_TYPE_LOCKED",
+                "locked_to": model.primary_file_type.value,
+            },
         )
 
     storage_key = f"projects/{project.id}/models/{model.id}/{uuid4()}{ext}"
@@ -228,6 +225,8 @@ async def complete_upload(
 
         row.status = ProjectFileStatus.ready
         row.extraction_status = ExtractionStatus.queued
+        if model.primary_file_type is None:
+            model.primary_file_type = row.file_type
 
         pdf_job = Job(
             organization_id=project.organization_id,
@@ -265,6 +264,8 @@ async def complete_upload(
         row.ifc_schema = result.schema
         row.status = ProjectFileStatus.ready
         row.extraction_status = ExtractionStatus.queued
+        if model.primary_file_type is None:
+            model.primary_file_type = row.file_type
 
         ifc_job = Job(
             organization_id=project.organization_id,

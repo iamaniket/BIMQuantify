@@ -133,6 +133,7 @@ async def get_model(
                 "name": model.name,
                 "discipline": model.discipline,
                 "status": model.status,
+                "primary_file_type": model.primary_file_type,
                 "created_at": model.created_at,
                 "updated_at": model.updated_at,
             },

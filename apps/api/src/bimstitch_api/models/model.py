@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import Base
 from bimstitch_api.models._mixins import TimestampMixin
+from bimstitch_api.models.project_file import FileType
 
 if TYPE_CHECKING:
     from bimstitch_api.models.project import Project
@@ -56,6 +57,15 @@ class Model(TimestampMixin, Base):
         nullable=False,
         default=ModelStatus.active,
         server_default=ModelStatus.active.value,
+    )
+    primary_file_type: Mapped[FileType | None] = mapped_column(
+        SAEnum(
+            FileType,
+            name="filetype",
+            values_callable=lambda enum: [m.value for m in enum],
+            create_type=False,
+        ),
+        nullable=True,
     )
 
     project: Mapped["Project"] = relationship(back_populates="models")

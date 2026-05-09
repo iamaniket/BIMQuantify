@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from bimstitch_api.models.model import ModelDiscipline, ModelStatus
+from bimstitch_api.models.project_file import FileType
 from bimstitch_api.schemas.project_file import ProjectFileRead
 
 
@@ -30,6 +31,7 @@ class ModelUpdate(BaseModel):
 class ModelRead(ModelBase):
     id: UUID
     project_id: UUID
+    primary_file_type: FileType | None = None
     created_at: datetime
     updated_at: datetime
 

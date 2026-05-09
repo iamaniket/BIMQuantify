@@ -43,9 +43,14 @@
     "adminConsole": "Beheerconsole",
     "settings": "Instellingen",
     "helpAndDocs": "Hulp en documentatie",
+    "userName": "Lieke Beumer",
     "userSummary": "Lieke Beumer · Wkb-inspecteur",
     "userRole": "Wkb-inspecteur · Beheerder",
-    "signOut": "Uitloggen"
+    "signOut": "Uitloggen",
+    "workspace": "Werkruimte",
+    "projects": "Projecten",
+    "bblLibrary": "BBL-bibliotheek",
+    "wkbLibrary": "Wkb-bibliotheek"
   },
   "projects": {
     "statuses": {

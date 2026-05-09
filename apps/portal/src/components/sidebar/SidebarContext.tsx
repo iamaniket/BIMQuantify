@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type JSX,
   type ReactNode,
@@ -14,19 +15,27 @@ type SidebarState = {
   collapsed: boolean;
   toggle: () => void;
   setCollapsed: (v: boolean) => void;
+  forceCollapsed: boolean;
 };
 
 const SidebarContext = createContext<SidebarState | null>(null);
 
 const STORAGE_KEY = 'bimstitch.sidebar-collapsed';
 
-export function SidebarProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [collapsed, setCollapsedRaw] = useState(false);
+type ProviderProps = {
+  children: ReactNode;
+  forceCollapsed?: boolean;
+};
+
+export function SidebarProvider({ children, forceCollapsed = false }: ProviderProps): JSX.Element {
+  const [collapsed, setCollapsedRaw] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'true') {
+    if (stored === 'false') {
+      setCollapsedRaw(false);
+    } else {
       setCollapsedRaw(true);
     }
     setHydrated(true);
@@ -38,14 +47,24 @@ export function SidebarProvider({ children }: { children: ReactNode }): JSX.Elem
   }, []);
 
   const toggle = useCallback(() => {
-    setCollapsed(!collapsed);
-  }, [collapsed, setCollapsed]);
+    setCollapsedRaw((prev) => {
+      const next = !prev;
+      localStorage.setItem(STORAGE_KEY, String(next));
+      return next;
+    });
+  }, []);
 
-  return (
-    <SidebarContext.Provider value={hydrated ? { collapsed, toggle, setCollapsed } : { collapsed: false, toggle: () => {}, setCollapsed: () => {} }}>
-      {children}
-    </SidebarContext.Provider>
-  );
+  const value = useMemo<SidebarState>(() => {
+    if (!hydrated) {
+      return { collapsed: true, toggle: () => {}, setCollapsed: () => {}, forceCollapsed };
+    }
+    if (forceCollapsed) {
+      return { collapsed: true, toggle: () => {}, setCollapsed: () => {}, forceCollapsed: true };
+    }
+    return { collapsed, toggle, setCollapsed, forceCollapsed: false };
+  }, [collapsed, forceCollapsed, hydrated, setCollapsed, toggle]);
+
+  return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }
 
 export function useSidebar(): SidebarState {

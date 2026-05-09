@@ -20,7 +20,7 @@ export const TabsList = forwardRef<
   <RadixTabs.List
     ref={ref}
     className={cn(
-      'flex gap-1 rounded-lg bg-surface-high p-1',
+      'flex gap-0.5 rounded-md bg-surface-high p-0.5',
       className,
     )}
     {...rest}
@@ -38,8 +38,8 @@ export const TabsTrigger = forwardRef<
   <RadixTabs.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center gap-2 rounded-md px-3 py-1.5',
-      'text-body3 font-semibold text-foreground-tertiary',
+      'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1',
+      'text-body3 font-medium text-foreground-tertiary',
       'transition-colors duration-fast',
       'hover:text-foreground-secondary',
       'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground',

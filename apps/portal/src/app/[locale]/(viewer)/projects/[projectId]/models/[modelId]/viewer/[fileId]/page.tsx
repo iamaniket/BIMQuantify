@@ -13,15 +13,17 @@ import {
 import { Skeleton } from '@bimstitch/ui';
 import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
 
+import { DocumentToolbar } from '@/components/viewer/DocumentToolbar';
 import { ViewerContextMenu } from '@/components/viewer/ViewerContextMenu';
 import { ViewerModeIndicator } from '@/components/viewer/ViewerModeIndicator';
 import { ViewerSidePanel } from '@/components/viewer/ViewerSidePanel';
-import { ViewerSideRail, type ViewerPanelId } from '@/components/viewer/ViewerSideRail';
+import { ViewerSideRail, type ViewerPanelId, type ViewerMode } from '@/components/viewer/ViewerSideRail';
 import { ViewerStatusBar } from '@/components/viewer/ViewerStatusBar';
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
 import { BcfPanel, BcfHeaderActions } from '@/components/viewer/bcf/BcfPanel';
 import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
 import { MeasurementPanel, MeasurementHeaderActions } from '@/components/viewer/measurement/MeasurementPanel';
+import { PagesPanel } from '@/components/viewer/pages/PagesPanel';
 import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
@@ -75,6 +77,12 @@ export default function ViewerPage(): JSX.Element {
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
   const [viewerEpoch, setViewerEpoch] = useState(0);
   const [activePanel, setActivePanel] = useState<ViewerPanelId | null>(null);
+
+  // PDF-mode state — owned here so the toolbar, pages panel, status bar, and
+  // DocumentViewer all read/write the same source of truth.
+  const [pdfCurrentPage, setPdfCurrentPage] = useState(1);
+  const [pdfNumPages, setPdfNumPages] = useState<number | null>(null);
+  const [pdfScale, setPdfScale] = useState(1);
 
   const togglePanel = useCallback((id: ViewerPanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -130,11 +138,31 @@ export default function ViewerPage(): JSX.Element {
     };
   }, [tokens, projectId, modelId, fileId]);
 
+  // Reset PDF state when switching to a different file.
+  useEffect(() => {
+    setPdfCurrentPage(1);
+    setPdfNumPages(null);
+    setPdfScale(1);
+  }, [fileId]);
 
+  const handlePdfLoaded = useCallback(({ numPages }: { numPages: number }) => {
+    setPdfNumPages(numPages);
+  }, []);
 
-  let viewerBody: JSX.Element;
+  const handlePdfError = useCallback((err: Error) => {
+    setViewerError(err.message);
+  }, []);
+
+  const mode: ViewerMode = bundle?.file_type === 'pdf' ? 'pdf' : 'ifc';
+  const isPdf = mode === 'pdf';
+  const isIfc = mode === 'ifc';
+  const shellReady = bundle !== null && error === null;
+  const ifcShellReady = shellReady && isIfc && viewerReady;
+  const pdfShellReady = shellReady && isPdf;
+
+  let canvas: JSX.Element | null = null;
   if (error !== null) {
-    viewerBody = (
+    canvas = (
       <div
         role="alert"
         className="m-6 rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body2 text-error"
@@ -143,50 +171,58 @@ export default function ViewerPage(): JSX.Element {
       </div>
     );
   } else if (bundle === null) {
-    viewerBody = <Skeleton className="absolute inset-0" />;
-  } else if (bundle.file_type === 'pdf') {
-    viewerBody = (
+    canvas = <Skeleton className="absolute inset-0" />;
+  } else if (isPdf) {
+    canvas = (
       <DocumentViewer
         fileUrl={bundle.file_url!}
+        currentPage={pdfCurrentPage}
+        scale={pdfScale}
         className="absolute inset-0"
+        onLoaded={handlePdfLoaded}
+        onError={handlePdfError}
+      />
+    );
+  } else {
+    canvas = (
+      <IfcViewer
+        key={viewerEpoch}
+        ref={viewerHandleRef}
+        bundle={buildBundle(bundle)}
+        viewCube={{
+          enabled: settings.viewCube.enabled,
+        }}
+        shadows={{
+          enabled: settings.shadows.enabled,
+        }}
+        background={{ color: settings.background.color }}
+        effects={settings.effects}
+        shortcuts={settings.shortcuts}
+        mouseBindings={settings.mouseBindings}
+        controls={settings.controls}
+        interactivePerformance={settings.interactivePerformance}
+        onSceneReady={() => {
+          setSceneReady(true);
+        }}
+        onProgress={onProgress}
+        onReady={(handle) => {
+          viewerHandleRef.current = handle;
+          setViewerReady(true);
+          setProgress(null);
+        }}
         onError={(err) => {
           setViewerError(err.message);
         }}
       />
     );
-  } else {
-    viewerBody = (
-      <>
-        <IfcViewer
-          key={viewerEpoch}
-          ref={viewerHandleRef}
-          bundle={buildBundle(bundle)}
-          viewCube={{
-            enabled: settings.viewCube.enabled,
-          }}
-          shadows={{
-            enabled: settings.shadows.enabled,
-          }}
-          background={{ color: settings.background.color }}
-          effects={settings.effects}
-          shortcuts={settings.shortcuts}
-          mouseBindings={settings.mouseBindings}
-          controls={settings.controls}
-          interactivePerformance={settings.interactivePerformance}
-          onSceneReady={() => {
-            setSceneReady(true);
-          }}
-          onProgress={onProgress}
-          onReady={(handle) => {
-            viewerHandleRef.current = handle;
-            setViewerReady(true);
-            setProgress(null);
-          }}
-          onError={(err) => {
-            setViewerError(err.message);
-          }}
-        />
-        {sceneReady && !viewerReady && progress !== null ? (
+  }
+
+  return (
+    <main className="flex min-h-0 w-full flex-1 flex-col">
+      <div className="relative min-h-0 flex-1">
+        {canvas}
+
+        {isIfc && sceneReady && !viewerReady && progress !== null ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-12">
             <div className="flex w-72 flex-col items-center gap-2 rounded-lg bg-background/80 px-4 py-3 shadow-md backdrop-blur-sm">
               <span className="text-caption text-foreground-secondary">
@@ -201,42 +237,53 @@ export default function ViewerPage(): JSX.Element {
             </div>
           </div>
         ) : null}
-        <ViewerContextMenu handle={viewerHandleRef.current} />
-        {viewerReady ? (
+
+        {isIfc ? <ViewerContextMenu handle={viewerHandleRef.current} /> : null}
+
+        {ifcShellReady || pdfShellReady ? (
           <>
             <ViewerSidePanel
               activePanel={activePanel}
-              explorerContent={
+              explorerContent={isIfc ? (
                 <ModelExplorer
                   metadata={metadata}
                   isLoading={isLoadingMetadata}
                 />
-              }
-              propertiesContent={
+              ) : undefined}
+              propertiesContent={isIfc ? (
                 <PropertiesPanel
                   metadata={metadata}
                   properties={properties}
                   isLoadingProperties={isLoadingProperties}
                 />
-              }
-              measureContent={
+              ) : undefined}
+              measureContent={isIfc ? (
                 <MeasurementPanel handle={viewerHandleRef.current} />
-              }
-              bcfContent={
+              ) : undefined}
+              bcfContent={isIfc ? (
                 <BcfPanel handle={viewerHandleRef.current} />
-              }
-              headerActions={{
+              ) : undefined}
+              pagesContent={isPdf ? (
+                <PagesPanel
+                  numPages={pdfNumPages}
+                  currentPage={pdfCurrentPage}
+                  onSelect={setPdfCurrentPage}
+                />
+              ) : undefined}
+              headerActions={isIfc ? {
                 measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
                 bcf: <BcfHeaderActions handle={viewerHandleRef.current} />,
-              }}
+              } : undefined}
             />
             <ViewerSideRail
+              mode={mode}
               activePanel={activePanel}
               onTogglePanel={togglePanel}
             />
           </>
         ) : null}
-        {viewerReady ? (
+
+        {ifcShellReady ? (
           <div className={isEditMode ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
             <ViewerToolbar
               handle={viewerHandleRef.current}
@@ -252,17 +299,21 @@ export default function ViewerPage(): JSX.Element {
             />
           </div>
         ) : null}
-        {isEditMode ? (
+
+        {pdfShellReady ? (
+          <DocumentToolbar
+            currentPage={pdfCurrentPage}
+            numPages={pdfNumPages}
+            scale={pdfScale}
+            onPageChange={setPdfCurrentPage}
+            onScaleChange={setPdfScale}
+          />
+        ) : null}
+
+        {isIfc && isEditMode ? (
           <ViewerModeIndicator toolLabel={modeState.toolLabel} />
         ) : null}
-      </>
-    );
-  }
 
-  return (
-    <main className="flex min-h-0 w-full flex-1 flex-col">
-      <div className="relative min-h-0 flex-1">
-        {viewerBody}
         {viewerError !== null ? (
           <div
             role="alert"
@@ -272,7 +323,13 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
       </div>
-      <ViewerStatusBar metadata={metadata} viewerReady={viewerReady} />
+      <ViewerStatusBar
+        mode={mode}
+        metadata={metadata}
+        viewerReady={viewerReady}
+        currentPage={pdfCurrentPage}
+        numPages={pdfNumPages}
+      />
     </main>
   );
 }

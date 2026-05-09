@@ -3,6 +3,8 @@
 import { useRouter } from '@/i18n/navigation';
 import { useEffect, type JSX, type ReactNode } from 'react';
 
+import { Sidebar } from '@/components/sidebar/Sidebar';
+import { SidebarProvider } from '@/components/sidebar/SidebarContext';
 import { useAuth } from '@/providers/AuthProvider';
 
 type Props = {
@@ -24,8 +26,13 @@ export default function ViewerLayout({ children }: Props): JSX.Element {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden animate-viewer-fade-in">
-      {children}
-    </div>
+    <SidebarProvider forceCollapsed>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden animate-viewer-fade-in">
+          {children}
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }

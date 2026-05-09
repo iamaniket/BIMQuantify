@@ -16,9 +16,6 @@ import {
   useComplianceSummary,
   useComplianceDomains,
   useComplianceArticles,
-  useComplianceIssues,
-  useProjectActivity,
-  useProjectDossier,
   useComplianceTrend,
 } from '@/features/compliance/hooks';
 import { useAuth } from '@/providers/AuthProvider';
@@ -39,9 +36,6 @@ export default function ProjectDetailPage(): JSX.Element {
   const summaryQuery = useComplianceSummary(projectId);
   const domainsQuery = useComplianceDomains(projectId);
   const articlesQuery = useComplianceArticles(projectId);
-  const issuesQuery = useComplianceIssues(projectId);
-  const activityQuery = useProjectActivity(projectId);
-  const dossierQuery = useProjectDossier(projectId);
   const trendQuery = useComplianceTrend(projectId);
 
   const [uploadModelId, setUploadModelId] = useState<string | null>(null);
@@ -103,9 +97,6 @@ export default function ProjectDetailPage(): JSX.Element {
   const summary = summaryQuery.data;
   const domains = domainsQuery.data ?? [];
   const articles = articlesQuery.data ?? [];
-  const issues = issuesQuery.data ?? [];
-  const activity = activityQuery.data ?? [];
-  const dossier = dossierQuery.data;
   const trend = trendQuery.data ?? [];
   const overallScore = summary?.overallScore ?? 0;
   const dossierPct = summary?.dossierPercentage ?? 0;
@@ -128,7 +119,11 @@ export default function ProjectDetailPage(): JSX.Element {
           </DialogHeader>
           <DialogBody>
             {uploadModelId !== null && (
-              <ModelFiles projectId={projectId} modelId={uploadModelId} />
+              <ModelFiles
+                projectId={projectId}
+                modelId={uploadModelId}
+                primaryFileType={uploadModel?.primary_file_type ?? null}
+              />
             )}
           </DialogBody>
         </DialogContent>
@@ -137,7 +132,7 @@ export default function ProjectDetailPage(): JSX.Element {
       <ProjectDetailHeader
         project={project}
         compliance={summary}
-        issueCount={issues.length}
+        issueCount={0}
         dossierPct={dossierPct}
       />
 
@@ -170,9 +165,6 @@ export default function ProjectDetailPage(): JSX.Element {
         <RightColumnTabs
           projectId={projectId}
           models={models}
-          issues={issues}
-          activity={activity}
-          dossier={dossier}
           onUpload={setUploadModelId}
         />
       </div>

@@ -42,14 +42,14 @@ function formatApiError(error: unknown): string | null {
   if (error === null || error === undefined) return null;
   if (error instanceof ApiError) {
     if (error.status === 409) {
-      return 'A model with that name already exists in this project.';
+      return 'A document with that name already exists in this project.';
     }
     if (error.status === 403) {
-      return 'You do not have permission to create models in this project.';
+      return 'You do not have permission to create documents in this project.';
     }
     return `Create failed: ${error.detail}`;
   }
-  return 'Could not create model.';
+  return 'Could not create document.';
 }
 
 type Props = {
@@ -106,10 +106,10 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
       <DialogContent>
         <form noValidate onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>New model</DialogTitle>
+            <DialogTitle>New document</DialogTitle>
             <DialogDescription>
-              Group IFC versions by discipline. You can upload an IFC into the
-              model after creating it.
+              Group file versions by discipline. You can upload a file into the
+              document after creating it.
             </DialogDescription>
           </DialogHeader>
 

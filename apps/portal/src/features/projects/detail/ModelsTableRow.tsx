@@ -79,7 +79,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
     <div className="border-b border-border">
       {/* Row */}
       <div
-        className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_56px_88px_144px] items-center gap-4 px-4 py-3 text-body3 transition-colors ${
+        className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_64px_56px_88px_144px] items-center gap-4 px-4 py-3 text-body3 transition-colors ${
           isOpen
             ? 'border-l-[3px] border-l-primary bg-primary-lighter pl-[13px] dark:bg-white/5'
             : 'border-l-[3px] border-l-transparent hover:bg-background-hover'
@@ -110,6 +110,9 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
             </div>
           </div>
         </div>
+        <span className="text-caption font-medium uppercase text-foreground-tertiary">
+          {latestFile !== undefined ? (latestFile.file_type === 'pdf' ? 'PDF' : 'IFC') : '—'}
+        </span>
         <span className="text-center font-mono text-body3 font-semibold tabular-nums">{files.length}</span>
         <span className="text-caption text-foreground-tertiary whitespace-nowrap">
           {latestFile !== undefined ? formatRelativeTime(latestFile.updated_at) : '—'}
@@ -161,7 +164,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
               ) : null}
             </>
           ) : (
-            <span className="text-caption font-semibold text-primary">▾ Open</span>
+            null
           )}
         </div>
       </div>
@@ -235,7 +238,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                 return (
                   <div
                     key={f.id}
-                    className={`grid grid-cols-[110px_1fr_90px_70px] items-center px-3 py-1.5 text-body3 ${
+                    className={`grid grid-cols-[110px_1fr] items-center px-3 py-1.5 text-body3 ${
                       i < files.length - 1 ? 'border-b border-border' : ''
                     }`}
                   >
@@ -252,17 +255,6 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                     <div className="flex items-center gap-1.5 text-caption text-foreground-tertiary">
                       <FileTypePill fileType={f.file_type} schema={f.ifc_schema} />
                       <span className="truncate">{f.original_filename} · {(f.size_bytes / 1048576).toFixed(0)} MB</span>
-                    </div>
-                    <span className="text-caption text-foreground-tertiary">
-                      {formatExtractionStatus(f.extraction_status)}
-                    </span>
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" className="px-2 text-caption">
-                        Diff
-                      </Button>
-                      <Button variant="ghost" size="sm" className="px-2 text-caption">
-                        ↓
-                      </Button>
                     </div>
                   </div>
                 );

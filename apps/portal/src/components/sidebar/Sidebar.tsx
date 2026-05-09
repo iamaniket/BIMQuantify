@@ -1,48 +1,37 @@
 'use client';
 
 import type { JSX } from 'react';
-import { usePathname } from '@/i18n/navigation';
-
-import { House } from 'lucide-react';
 
 import { TooltipProvider } from '@bimstitch/ui';
 
 import { StitchLogo } from '@/components/charts/StitchLogo';
 
-import { SidebarNavItem } from './SidebarNavItem';
-import { useSidebar } from './SidebarContext';
-import { SidebarCollapseToggle } from './SidebarCollapseToggle';
-import { SidebarNotifications } from './SidebarNotifications';
-import { SidebarTenantCard } from './SidebarTenantCard';
 import { SidebarNav } from './SidebarNav';
+import { SidebarTenantCard } from './SidebarTenantCard';
 import { SidebarUserChip } from './SidebarUserChip';
+import { SidebarWorkspaceNav } from './SidebarWorkspaceNav';
+import { useSidebar } from './SidebarContext';
 
 export function Sidebar(): JSX.Element {
   const { collapsed } = useSidebar();
-  const pathname = usePathname();
-  const isHomeActive = pathname === '/projects';
 
   return (
     <aside
-      className="relative flex shrink-0 flex-col border-r border-white/12 bg-gradient-to-b from-primary to-primary-hover text-white/80 transition-[width] duration-200 dark:from-[#1e3e72] dark:to-[#16315e]"
-      style={{ width: collapsed ? 64 : 232 }}
+      className="relative flex shrink-0 flex-col border-r border-white/12 bg-gradient-to-b from-[#2c5697] to-[#224579] text-white/[0.82] dark:from-[#1e3e72] dark:to-[#16315e]"
+      style={{
+        width: collapsed ? 51 : 232,
+        transition: 'width 220ms cubic-bezier(.4,0,.2,1)',
+      }}
     >
       <TooltipProvider delayDuration={200}>
-        <div
-          className={`relative border-b border-white/12 ${collapsed ? 'px-2 py-3.5' : 'px-3 py-3.5'}`}
-        >
-          <SidebarNavItem
-            label="Home"
-            icon={House}
-            href="/projects"
-            collapsed={collapsed}
-            active={isHomeActive}
-          />
-          <SidebarCollapseToggle />
-        </div>
+        {/* Account chip (top) with collapse toggle */}
+        <SidebarUserChip />
 
         {/* Tenant */}
         <SidebarTenantCard />
+
+        {/* Workspace nav */}
+        <SidebarWorkspaceNav />
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -52,26 +41,21 @@ export function Sidebar(): JSX.Element {
           <SidebarNav />
         </div>
 
-        {/* Notifications */}
-        <SidebarNotifications />
-
-        {/* User */}
-        <SidebarUserChip />
-
+        {/* BimStitch brand footer */}
         <div
           className={`border-t border-white/12 ${
-            collapsed ? 'flex justify-center px-0 py-3.5' : 'flex items-center gap-2.5 px-4 py-3.5'
+            collapsed ? 'flex justify-center px-0 py-3' : 'flex items-center gap-2.5 px-4 py-3'
           }`}
         >
-          <div className="grid h-8 w-8 shrink-0 place-items-center">
-            <StitchLogo size={22} color="#fff" />
+          <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-md border border-white/[0.28] bg-white/[0.16]">
+            <StitchLogo size={17} color="#fff" />
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <div className="text-body2 font-semibold leading-none tracking-tight text-white">
+              <div className="text-[14.5px] font-semibold leading-[1.1] tracking-tight text-white">
                 BimStitch
               </div>
-              <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/55">
+              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/55">
                 Wkb 2026.1
               </div>
             </div>

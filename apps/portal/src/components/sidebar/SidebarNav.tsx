@@ -27,9 +27,16 @@ export function SidebarNav(): JSX.Element {
   } as const;
 
   return (
-    <div className="flex flex-col gap-0.5 px-3 pb-1 pt-2">
+    <div
+      className={
+        collapsed
+          ? 'flex flex-col gap-0.5 px-0 pb-1 pt-2'
+          : 'flex flex-col gap-0.5 px-3 pb-1 pt-2'
+      }
+    >
       {itemDefinitions.map(({ key, icon: Icon, href }) => {
-        const isActive = href === undefined ? false : pathname === href || pathname.startsWith(`${href}/`);
+        const isActive =
+          href === undefined ? false : pathname === href || pathname.startsWith(`${href}/`);
 
         return (
           <SidebarNavItem

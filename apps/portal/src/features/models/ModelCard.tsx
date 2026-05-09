@@ -30,6 +30,12 @@ const STATUS_TONE: Record<Model['status'], string> = {
   archived: 'bg-background-tertiary text-foreground-tertiary border-border',
 };
 
+function dimensionLabel(primaryFileType: Model['primary_file_type']): string {
+  if (primaryFileType === 'ifc') return '3D';
+  if (primaryFileType === 'pdf') return '2D';
+  return 'Empty';
+}
+
 export function ModelCard({ projectId, model }: Props): JSX.Element {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const deleteMutation = useDeleteModel();
@@ -53,6 +59,9 @@ export function ModelCard({ projectId, model }: Props): JSX.Element {
             {model.name}
           </h3>
           <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="inline-flex h-5 items-center rounded-full border border-primary-light bg-primary-lighter px-2 text-caption font-medium text-primary">
+              {dimensionLabel(model.primary_file_type ?? null)}
+            </span>
             <span className="inline-flex h-5 items-center rounded-full border border-border bg-background-secondary px-2 text-caption text-foreground-secondary">
               {formatDiscipline(model.discipline)}
             </span>
@@ -84,18 +93,22 @@ export function ModelCard({ projectId, model }: Props): JSX.Element {
               }}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete model
+              Delete document
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
 
-      <ModelFiles projectId={projectId} modelId={model.id} />
+      <ModelFiles
+        projectId={projectId}
+        modelId={model.id}
+        primaryFileType={model.primary_file_type ?? null}
+      />
 
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Delete model"
+        title="Delete document"
         description={`Delete "${model.name}" and all its uploaded versions? This cannot be undone.`}
         confirmLabel="Delete"
         cancelLabel="Cancel"

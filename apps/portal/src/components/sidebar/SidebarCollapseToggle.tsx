@@ -14,9 +14,10 @@ export function SidebarCollapseToggle(): JSX.Element {
       type="button"
       onClick={toggle}
       title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      className="absolute -right-3 top-5 z-10 grid h-6 w-6 place-items-center rounded-full border border-border bg-background text-primary shadow-md transition-colors hover:bg-background-secondary"
+      aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      className="absolute -right-3 top-[18px] z-10 grid h-[22px] w-[22px] place-items-center rounded-full border border-white/12 bg-white text-primary shadow-[0_2px_6px_rgba(0,0,0,0.18)] transition-colors hover:bg-background-secondary"
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className="h-3 w-3" />
     </button>
   );
 }

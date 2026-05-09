@@ -26,8 +26,6 @@ import {
   complianceDomainsKey,
   complianceArticlesKey,
   issuesKey,
-  activityKey,
-  dossierKey,
   trendKey,
   projectReportsKey,
 } from './queryKeys';
@@ -37,14 +35,10 @@ import type {
   ComplianceDomain,
   ComplianceArticle,
   ComplianceIssue,
-  ActivityItem,
-  DossierData,
   ComplianceTrend,
 } from './types.js';
 
 import {
-  MOCK_ACTIVITY,
-  MOCK_DOSSIER,
   MOCK_TREND,
 } from './mockData';
 
@@ -173,22 +167,6 @@ export function useComplianceIssues(
       getComplianceLatest(accessToken, projectId, modelId!, fileId!),
     enabled: projectId.length > 0 && !!fileId && !!modelId,
     select: mapToIssues,
-  });
-}
-
-export function useProjectActivity(projectId: string): UseQueryResult<ActivityItem[]> {
-  return useAuthQuery({
-    queryKey: activityKey(projectId),
-    queryFn: async () => MOCK_ACTIVITY,
-    enabled: projectId.length > 0,
-  });
-}
-
-export function useProjectDossier(projectId: string): UseQueryResult<DossierData> {
-  return useAuthQuery({
-    queryKey: dossierKey(projectId),
-    queryFn: async () => MOCK_DOSSIER,
-    enabled: projectId.length > 0,
   });
 }
 

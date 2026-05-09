@@ -103,7 +103,7 @@ export function ReportsTab({ projectId, models }: Props): JSX.Element {
         <div className="rounded-lg border border-border bg-background">
           <div className="grid grid-cols-[48px_minmax(0,1fr)_52px_52px_52px_52px_80px] items-center gap-2 px-3 py-2 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
             <span>Reg.</span>
-            <span>Model / File</span>
+            <span>Document / File</span>
             <span className="text-right">Score</span>
             <span className="text-right">Pass</span>
             <span className="text-right">Warn</span>

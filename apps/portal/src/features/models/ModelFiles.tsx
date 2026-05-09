@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import {
-  useCallback, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX,
+  useCallback, useRef, useState, type ChangeEvent, type DragEvent, type JSX,
 } from 'react';
 
 import {
@@ -30,7 +30,11 @@ import {
 
 import { ApiError } from '@/lib/api/client';
 import { getDownloadUrl } from '@/lib/api/projectFiles';
-import type { ExtractionStatusValue, ProjectFile } from '@/lib/api/schemas';
+import type {
+  ExtractionStatusValue,
+  FileTypeValue,
+  ProjectFile,
+} from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
 import {
@@ -49,6 +53,7 @@ import { useUploadModelFile } from './useUploadModelFile';
 type Props = {
   projectId: string;
   modelId: string;
+  primaryFileType: FileTypeValue | null;
 };
 
 type PendingUpload = {
@@ -237,7 +242,7 @@ function FileRow({
   );
 }
 
-export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
+export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.Element {
   const filesQuery = useModelFiles(projectId, modelId, 'all');
   const uploadMutation = useUploadModelFile();
   const deleteMutation = useDeleteModelFile();
@@ -250,11 +255,7 @@ export function ModelFiles({ projectId, modelId }: Props): JSX.Element {
   const files = filesQuery.data ?? [];
   // Backend returns files ordered by version_number desc — so files[0] is the latest.
   const readyFiles = files.filter((f) => f.status === 'ready');
-  const lockedFileType = useMemo(
-    () => readyFiles[0]?.file_type ?? null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filesQuery.data],
-  );
+  const lockedFileType: FileTypeValue | null = primaryFileType;
 
   const startUpload = useCallback((file: File): void => {
     if (!isAllowedFile(file, lockedFileType)) {

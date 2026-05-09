@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { IntlWrapper } from '@/__tests__/intl-wrapper';
 
 vi.mock('@/i18n/navigation', () => ({
-  usePathname: () => '/settings',
+  usePathname: () => '/projects',
   Link: ({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
     <a href={href} {...rest}>{children}</a>
   ),
@@ -25,30 +25,32 @@ vi.mock('@bimstitch/ui', () => ({
   TooltipContent: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 
-import { SidebarNav } from './SidebarNav';
+import { SidebarWorkspaceNav } from './SidebarWorkspaceNav';
 
-describe('SidebarNav', () => {
-  it('renders English labels when locale is en', () => {
+describe('SidebarWorkspaceNav', () => {
+  it('renders English workspace items and the section label', () => {
     render(
       <IntlWrapper locale="en">
-        <SidebarNav />
+        <SidebarWorkspaceNav />
       </IntlWrapper>,
     );
 
-    expect(screen.getByText('Admin console')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-    expect(screen.getByText('Help & docs')).toBeInTheDocument();
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.getByText('Projects')).toBeInTheDocument();
+    expect(screen.getByText('BBL library')).toBeInTheDocument();
+    expect(screen.getByText('WKB library')).toBeInTheDocument();
   });
 
-  it('renders Dutch labels when locale is nl', () => {
+  it('renders Dutch workspace items', () => {
     render(
       <IntlWrapper locale="nl">
-        <SidebarNav />
+        <SidebarWorkspaceNav />
       </IntlWrapper>,
     );
 
-    expect(screen.getByText('Beheerconsole')).toBeInTheDocument();
-    expect(screen.getByText('Instellingen')).toBeInTheDocument();
-    expect(screen.getByText('Hulp en documentatie')).toBeInTheDocument();
+    expect(screen.getByText('Werkruimte')).toBeInTheDocument();
+    expect(screen.getByText('Projecten')).toBeInTheDocument();
+    expect(screen.getByText('BBL-bibliotheek')).toBeInTheDocument();
+    expect(screen.getByText('Wkb-bibliotheek')).toBeInTheDocument();
   });
 });

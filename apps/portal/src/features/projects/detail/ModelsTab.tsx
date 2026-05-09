@@ -23,8 +23,9 @@ export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
     <div className="flex flex-col gap-3">
       <Panel>
         <PanelHeader>
-          <div className="grid grid-cols-[minmax(0,1fr)_56px_88px_144px] items-center gap-4 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-            <span>Model</span>
+          <div className="grid grid-cols-[minmax(0,1fr)_64px_56px_88px_144px] items-center gap-4 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
+            <span>Document</span>
+            <span>Type</span>
             <span className="text-center">Files</span>
             <span>Sync</span>
             <div className="flex justify-end">
@@ -35,7 +36,7 @@ export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
                 onClick={() => { setNewModelOpen(true); }}
               >
                 <Plus className="h-3.5 w-3.5" />
-                New model
+                New document
               </Button>
             </div>
           </div>
@@ -44,7 +45,7 @@ export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
         <PanelBody>
           {models.length === 0 ? (
             <div className="px-4 py-10 text-center text-body3 text-foreground-tertiary">
-              No models yet. Create one to get started.
+              No documents yet. Create one to get started.
             </div>
           ) : (
             models.map((m) => (

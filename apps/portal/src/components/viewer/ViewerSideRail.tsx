@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   FileText,
+  Files,
   Info,
   ListTree,
   MessageSquare,
@@ -21,9 +22,13 @@ export type ViewerPanelId =
   | 'issues'
   | 'compliance'
   | 'measure'
-  | 'bcf';
+  | 'bcf'
+  | 'pages';
+
+export type ViewerMode = 'ifc' | 'pdf';
 
 type ViewerSideRailProps = {
+  mode: ViewerMode;
   activePanel: ViewerPanelId | null;
   onTogglePanel: (id: ViewerPanelId) => void;
 };
@@ -34,7 +39,7 @@ type RailButton = {
   icon: LucideIcon;
 };
 
-const BUTTONS: RailButton[] = [
+const IFC_BUTTONS: RailButton[] = [
   { id: 'explorer', label: 'Model Tree', icon: ListTree },
   { id: 'properties', label: 'Properties', icon: Info },
   { id: 'documents', label: 'Documents', icon: FileText },
@@ -44,13 +49,22 @@ const BUTTONS: RailButton[] = [
   { id: 'bcf', label: 'BCF Topics', icon: MessageSquare },
 ];
 
+const PDF_BUTTONS: RailButton[] = [
+  { id: 'pages', label: 'Pages', icon: Files },
+  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'issues', label: 'Issues', icon: AlertCircle },
+  { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
+];
+
 export function ViewerSideRail({
+  mode,
   activePanel,
   onTogglePanel,
 }: ViewerSideRailProps): JSX.Element {
+  const buttons = mode === 'pdf' ? PDF_BUTTONS : IFC_BUTTONS;
   return (
     <div className="absolute bottom-0 right-0 top-0 z-30 flex w-11 flex-col items-center gap-1 border-l border-border bg-background-secondary py-2">
-      {BUTTONS.map(({ id, label, icon: Icon }) => {
+      {buttons.map(({ id, label, icon: Icon }) => {
         const isActive = activePanel === id;
         return (
           <button

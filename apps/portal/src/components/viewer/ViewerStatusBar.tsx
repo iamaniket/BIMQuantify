@@ -6,9 +6,14 @@ import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useViewerFPS } from '@/features/viewer/useViewerFPS';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
+import type { ViewerMode } from './ViewerSideRail';
+
 type ViewerStatusBarProps = {
-  metadata: ModelMetadata | undefined;
-  viewerReady: boolean;
+  mode: ViewerMode;
+  metadata?: ModelMetadata | undefined;
+  viewerReady?: boolean;
+  currentPage?: number;
+  numPages?: number | null;
 };
 
 function Separator(): JSX.Element {
@@ -31,7 +36,43 @@ function Value({ children }: { children: React.ReactNode }): JSX.Element {
   );
 }
 
-export function ViewerStatusBar({ metadata, viewerReady }: ViewerStatusBarProps): JSX.Element {
+function PdfStatusBar({
+  currentPage,
+  numPages,
+}: {
+  currentPage: number;
+  numPages: number | null;
+}): JSX.Element {
+  return (
+    <div className="flex h-[22px] shrink-0 items-center overflow-hidden border-t border-border bg-background/95 px-3 font-mono backdrop-blur-sm">
+      <span className="flex min-w-0 flex-1 items-center overflow-hidden">
+        <Label>page</Label>
+        <span>&nbsp;</span>
+        <Value>
+          {currentPage}
+          {numPages !== null ? ` / ${numPages}` : ''}
+        </Value>
+        <Separator />
+        <Label>view</Label>
+        <span>&nbsp;</span>
+        <Value>document</Value>
+      </span>
+      <span className="flex shrink-0 items-center">
+        <Label>format</Label>
+        <span>&nbsp;</span>
+        <Value>PDF</Value>
+      </span>
+    </div>
+  );
+}
+
+function IfcStatusBar({
+  metadata,
+  viewerReady,
+}: {
+  metadata: ModelMetadata | undefined;
+  viewerReady: boolean;
+}): JSX.Element {
   const fps = useViewerFPS(viewerReady);
   const selectionCount = useViewerEntityStore((s) => s.selected.size);
   const hiddenCount = useViewerEntityStore((s) => s.hidden.size);
@@ -76,4 +117,17 @@ export function ViewerStatusBar({ metadata, viewerReady }: ViewerStatusBarProps)
       </span>
     </div>
   );
+}
+
+export function ViewerStatusBar({
+  mode,
+  metadata,
+  viewerReady = false,
+  currentPage = 1,
+  numPages = null,
+}: ViewerStatusBarProps): JSX.Element {
+  if (mode === 'pdf') {
+    return <PdfStatusBar currentPage={currentPage} numPages={numPages} />;
+  }
+  return <IfcStatusBar metadata={metadata} viewerReady={viewerReady} />;
 }
