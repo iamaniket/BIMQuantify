@@ -165,8 +165,8 @@ export function ViewerToolbar({
                       def.disabled
                         ? 'cursor-not-allowed text-foreground/20'
                         : isActive
-                          ? 'bg-primary-lighter text-primary shadow-[inset_0_0_0_1px_var(--primary-light),0_1px_2px_rgba(0,0,0,0.06)]'
-                          : 'text-foreground/55 shadow-[inset_0_0_0_1px_var(--border),0_1px_2px_rgba(0,0,0,0.04)] hover:bg-foreground/[0.06] hover:text-foreground/90 active:scale-[0.94]',
+                          ? 'bg-primary-lighter text-primary'
+                          : 'text-foreground/55 hover:bg-foreground/[0.06] hover:text-foreground/90 active:scale-[0.94]',
                     )}
                   >
                     <Icon className="h-4 w-4" strokeWidth={1.75} />

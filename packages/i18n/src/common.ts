@@ -2,7 +2,7 @@ export const supportedLocales = ['en', 'nl'] as const;
 
 export type Locale = (typeof supportedLocales)[number];
 
-export const defaultLocale: Locale = 'en';
+export const defaultLocale: Locale = 'nl';
 
 export const localeStorageKey = 'bimstitch.locale';
 

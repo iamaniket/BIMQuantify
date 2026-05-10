@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import type { JSX, ReactNode } from 'react';
 
 import { LocaleMigrationShim } from '@/components/LocaleMigrationShim';
+import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import { routing } from '@/i18n/routing';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -30,6 +31,7 @@ export default async function LocaleLayout({ children, params }: Props): Promise
       <body className="min-h-screen bg-background text-foreground antialiased">
         <NextIntlClientProvider>
           <LocaleMigrationShim />
+          <ServiceWorkerRegistrar />
           <ThemeProvider>
             <QueryProvider>
               <AuthProvider>{children}</AuthProvider>
