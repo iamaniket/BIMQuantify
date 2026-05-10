@@ -38,6 +38,7 @@ async def _ready_ifc(
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
                 "content_type": "application/octet-stream",
+                "content_sha256": "41e08f7cb485345a7db41df1e1b92ee96d0d45a5a82401807cf153869edc68af",
             },
             headers=_auth(org_user["access_token"]),
         )
@@ -65,6 +66,7 @@ async def _ready_pdf(
                 "filename": name,
                 "size_bytes": len(VALID_PDF_BYTES),
                 "content_type": "application/pdf",
+                "content_sha256": "908c70ee0bd3a75b5a4d7a29a2c4852bd340bc7ddcbac570ab4f98588fd58a7a",
             },
             headers=_auth(org_user["access_token"]),
         )
@@ -427,6 +429,7 @@ async def test_dispatch_failure_creates_failed_job(
                 "filename": "fail.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
                 "content_type": "application/octet-stream",
+                "content_sha256": "f0567521c7dd0ccc02664251451bf796da79da38fc7ae0a1bb4b9e7491b3181c",
             },
             headers=_auth(org_user["access_token"]),
         )

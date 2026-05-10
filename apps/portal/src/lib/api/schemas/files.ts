@@ -25,11 +25,14 @@ export type ExtractionStatusValue = z.infer<typeof ExtractionStatusEnum>;
 export const ProjectFileSchema = z.object({
   id: z.string().uuid(),
   model_id: z.string().uuid(),
+  project_id: z.string().uuid(),
   version_number: z.number().int().positive(),
   uploaded_by_user_id: z.string().uuid(),
   original_filename: z.string(),
   size_bytes: z.number().int().nonnegative(),
   content_type: z.string(),
+  content_sha256: z.union([z.string(), z.null()]),
+  ifc_project_guid: z.union([z.string(), z.null()]),
   file_type: FileTypeEnum,
   ifc_schema: z.union([IfcSchemaEnum, z.null()]),
   status: ProjectFileStatusEnum,
@@ -53,6 +56,7 @@ export const InitiateUploadRequestSchema = z.object({
   filename: z.string().min(1).max(512),
   size_bytes: z.number().int().positive(),
   content_type: z.string().min(1),
+  content_sha256: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
 export type InitiateUploadRequest = z.infer<typeof InitiateUploadRequestSchema>;

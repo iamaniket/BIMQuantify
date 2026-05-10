@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { postCallback } from '../api/callback.js';
 import { logger } from '../log.js';
 import {
-  downloadObject,
+  downloadObjectWithHash,
   fragmentsKeyFor,
   metadataKeyFor,
   propertiesKeyFor,
@@ -66,9 +66,9 @@ export async function runExtraction(job: ExtractionJob): Promise<void> {
   let modelID: number | null = null;
   try {
     logger.info({ job }, 'downloading source');
-    const bytes = await downloadObject(job.storage_key);
+    const { bytes, sha256 } = await downloadObjectWithHash(job.storage_key);
 
-    logger.info({ size: bytes.length }, 'parsing IFC');
+    logger.info({ size: bytes.length, sha256: sha256.slice(0, 16) }, 'parsing IFC');
     const opened = await openModel(bytes);
     modelID = opened.modelID;
 
@@ -111,6 +111,8 @@ export async function runExtraction(job: ExtractionJob): Promise<void> {
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       extractor_version: version,
+      content_sha256: sha256,
+      ifc_project_guid: metadata.project.globalId ?? undefined,
     });
   } catch (err) {
     const message =

@@ -295,6 +295,15 @@ async def fake_storage_client(
         yield ac, fake
 
 
+def _new_hash() -> str:
+    """Generate a unique 64-char lowercase hex SHA-256 string for tests
+    that don't care about the actual hash value but need something that
+    passes the InitiateUploadRequest validator."""
+    import secrets
+
+    return secrets.token_hex(32)
+
+
 def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 

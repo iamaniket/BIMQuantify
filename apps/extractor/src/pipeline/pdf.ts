@@ -15,7 +15,7 @@ import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mj
 
 import { postCallback } from '../api/callback.js';
 import { logger } from '../log.js';
-import { downloadObject, pdfMetadataKeyFor, uploadObject } from '../storage/s3.js';
+import { downloadObjectWithHash, pdfMetadataKeyFor, uploadObject } from '../storage/s3.js';
 import type { ExtractionJob } from './extract.js';
 
 // pdfjs-dist in Node.js doesn't use a worker thread; set to empty string to disable.
@@ -51,9 +51,9 @@ export async function runPdfExtraction(job: ExtractionJob): Promise<void> {
 
   try {
     logger.info({ job }, 'downloading PDF');
-    const bytes = await downloadObject(job.storage_key);
+    const { bytes, sha256 } = await downloadObjectWithHash(job.storage_key);
 
-    logger.info({ size: bytes.length }, 'parsing PDF');
+    logger.info({ size: bytes.length, sha256: sha256.slice(0, 16) }, 'parsing PDF');
     const doc = await getDocument({ data: bytes }).promise;
     const pageCount = doc.numPages;
     const metadataResult = await doc.getMetadata();
@@ -80,6 +80,7 @@ export async function runPdfExtraction(job: ExtractionJob): Promise<void> {
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       extractor_version: version,
+      content_sha256: sha256,
     });
   } catch (err) {
     const message =

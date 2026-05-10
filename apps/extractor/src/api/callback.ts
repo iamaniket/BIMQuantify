@@ -15,6 +15,8 @@ export type CallbackPayload = {
   extractor_version?: string;
   started_at?: string;
   finished_at?: string;
+  content_sha256?: string;
+  ifc_project_guid?: string;
 };
 
 export async function postCallback(payload: CallbackPayload): Promise<void> {

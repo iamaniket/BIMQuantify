@@ -64,13 +64,14 @@ async def two_orgs_with_files(
         await session.execute(
             text(
                 "INSERT INTO project_files "
-                "(id, model_id, version_number, uploaded_by_user_id, storage_key, "
+                "(id, project_id, model_id, version_number, uploaded_by_user_id, storage_key, "
                 "original_filename, size_bytes, content_type, status) "
-                "VALUES (:id, :mid, 1, :uid, :sk, 'a.ifc', 100, "
+                "VALUES (:id, :pid, :mid, 1, :uid, :sk, 'a.ifc', 100, "
                 "'application/octet-stream', 'ready')"
             ),
             {
                 "id": str(a_file),
+                "pid": str(a_project),
                 "mid": str(a_model),
                 "uid": str(a_user),
                 "sk": f"projects/{a_project}/models/{a_model}/{a_file}.ifc",
@@ -111,13 +112,14 @@ async def two_orgs_with_files(
         await session.execute(
             text(
                 "INSERT INTO project_files "
-                "(id, model_id, version_number, uploaded_by_user_id, storage_key, "
+                "(id, project_id, model_id, version_number, uploaded_by_user_id, storage_key, "
                 "original_filename, size_bytes, content_type, status) "
-                "VALUES (:id, :mid, 1, :uid, :sk, 'b.ifc', 200, "
+                "VALUES (:id, :pid, :mid, 1, :uid, :sk, 'b.ifc', 200, "
                 "'application/octet-stream', 'ready')"
             ),
             {
                 "id": str(b_file),
+                "pid": str(b_project),
                 "mid": str(b_model),
                 "uid": str(b_user),
                 "sk": f"projects/{b_project}/models/{b_model}/{b_file}.ifc",
@@ -174,12 +176,13 @@ async def test_with_check_blocks_cross_org_file_insert(
             await session.execute(
                 text(
                     "INSERT INTO project_files "
-                    "(id, model_id, version_number, uploaded_by_user_id, storage_key, "
+                    "(id, project_id, model_id, version_number, uploaded_by_user_id, storage_key, "
                     "original_filename, size_bytes, content_type, status) "
-                    "VALUES (:id, :mid, 99, :uid, :sk, 'sneaky.ifc', 1, 'x', 'ready')"
+                    "VALUES (:id, :pid, :mid, 99, :uid, :sk, 'sneaky.ifc', 1, 'x', 'ready')"
                 ),
                 {
                     "id": str(uuid4()),
+                    "pid": str(two_orgs_with_files["b_project"]),
                     "mid": str(two_orgs_with_files["b_model"]),
                     "uid": str(two_orgs_with_files["a_user"]),
                     "sk": f"x/{uuid4()}.ifc",

@@ -23,6 +23,7 @@ from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.extraction import ExtractionDispatchError, dispatch_extraction
 from bimstitch_api.ifc.header import parse_ifc_header
 from bimstitch_api.models.job import Job, JobStatus, JobType
+from bimstitch_api.models.model import Model
 from bimstitch_api.models.project_file import (
     ALLOWED_EXTENSIONS,
     ExtractionStatus,
@@ -128,6 +129,38 @@ async def initiate_upload(
             },
         )
 
+    # Per-project content-hash dedup. Pending and ready rows participate;
+    # rejected rows do not (their content was never accepted, by definition).
+    existing = (
+        await session.execute(
+            select(ProjectFile)
+            .join(Model, Model.id == ProjectFile.model_id)
+            .where(
+                Model.project_id == project.id,
+                ProjectFile.content_sha256 == payload.content_sha256,
+                ProjectFile.status.in_(
+                    (ProjectFileStatus.pending, ProjectFileStatus.ready)
+                ),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "DUPLICATE_FILE_CONTENT",
+                "existing_file_id": str(existing.id),
+                "existing_filename": existing.original_filename,
+                "existing_uploaded_at": existing.created_at.isoformat(),
+                "existing_model_id": str(existing.model_id),
+                "message": (
+                    f"This file is identical to '{existing.original_filename}' "
+                    "already in the project. Modify the file to upload a new version."
+                ),
+            },
+        )
+
     storage_key = f"projects/{project.id}/models/{model.id}/{uuid4()}{ext}"
 
     max_version = (
@@ -140,6 +173,7 @@ async def initiate_upload(
     new_version = int(max_version) + 1
 
     row = ProjectFile(
+        project_id=project.id,
         model_id=model.id,
         version_number=new_version,
         uploaded_by_user_id=user.id,
@@ -147,6 +181,7 @@ async def initiate_upload(
         original_filename=payload.filename,
         size_bytes=payload.size_bytes,
         content_type=payload.content_type,
+        content_sha256=payload.content_sha256,
         file_type=file_type,
         status=ProjectFileStatus.pending,
     )
@@ -154,8 +189,21 @@ async def initiate_upload(
     try:
         await session.flush()
     except IntegrityError as exc:
-        # Concurrent initiate raced us to the same version_number. The unique
-        # constraint catches it; surface as 409 so the caller can retry.
+        # Two possible races: same version_number (uq_project_files_model_version)
+        # or same content_sha256 within the project (uq_project_files_project_content_sha256).
+        # Both surface the same 409 with a code distinguishing them.
+        constraint = getattr(exc.orig, "constraint_name", None) or ""
+        if "content_sha256" in constraint or "content_sha256" in str(exc.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "DUPLICATE_FILE_CONTENT",
+                    "message": (
+                        "This file is identical to one already in the project. "
+                        "Modify the file to upload a new version."
+                    ),
+                },
+            ) from exc
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="VERSION_NUMBER_CONFLICT"
         ) from exc

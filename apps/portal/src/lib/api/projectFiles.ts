@@ -1,3 +1,4 @@
+import { computeFileSha256 } from '../upload/sha256';
 import { apiClient } from './client';
 import {
   InitiateUploadResponseSchema,
@@ -13,6 +14,11 @@ import {
   type ProjectFileStatusValue,
   type ViewerBundleResponse,
 } from './schemas';
+
+export type UploadProgressEvent =
+  | { phase: 'hashing'; fraction: number }
+  | { phase: 'uploading' }
+  | { phase: 'completing' };
 
 export async function initiateUpload(
   accessToken: string,
@@ -117,16 +123,26 @@ export async function uploadFileEnd2End(
   projectId: string,
   modelId: string,
   file: File,
+  onProgress?: (event: UploadProgressEvent) => void,
 ): Promise<ProjectFile> {
+  onProgress?.({ phase: 'hashing', fraction: 0 });
+  const contentSha256 = await computeFileSha256(file, (fraction) => {
+    onProgress?.({ phase: 'hashing', fraction });
+  });
+
+  onProgress?.({ phase: 'uploading' });
   const initiateResponse = await initiateUpload(accessToken, projectId, modelId, {
     filename: file.name,
     size_bytes: file.size,
     content_type: file.type === '' ? 'application/octet-stream' : file.type,
+    content_sha256: contentSha256,
   });
   await apiClient.putRaw(
     initiateResponse.upload_url,
     file,
     file.type === '' ? 'application/octet-stream' : file.type,
   );
+
+  onProgress?.({ phase: 'completing' });
   return completeUpload(accessToken, projectId, modelId, initiateResponse.file_id);
 }

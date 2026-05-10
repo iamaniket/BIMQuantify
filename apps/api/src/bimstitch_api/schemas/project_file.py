@@ -10,11 +10,18 @@ from bimstitch_api.models.project_file import (
     ProjectFileStatus,
 )
 
+_HEX_SHA256 = r"^[a-f0-9]{64}$"
+_IFC_GUID = r"^[0-9A-Za-z_$]{22}$"
+
 
 class InitiateUploadRequest(BaseModel):
     filename: str = Field(min_length=1, max_length=512)
     size_bytes: int = Field(ge=1)
     content_type: str = Field(min_length=1, max_length=255)
+    content_sha256: str = Field(
+        pattern=_HEX_SHA256,
+        description="Lowercase hex SHA-256 of the raw file bytes.",
+    )
 
 
 class InitiateUploadResponse(BaseModel):
@@ -29,11 +36,14 @@ class ProjectFileRead(BaseModel):
 
     id: UUID
     model_id: UUID
+    project_id: UUID
     version_number: int
     uploaded_by_user_id: UUID
     original_filename: str
     size_bytes: int
     content_type: str
+    content_sha256: str | None
+    ifc_project_guid: str | None
     file_type: FileType
     ifc_schema: IfcSchema | None
     status: ProjectFileStatus
@@ -82,3 +92,5 @@ class ExtractionCallbackRequest(BaseModel):
     extractor_version: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    content_sha256: str | None = Field(default=None, pattern=_HEX_SHA256)
+    ifc_project_guid: str | None = Field(default=None, pattern=_IFC_GUID)

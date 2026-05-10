@@ -13,6 +13,7 @@ from tests.conftest import (
     _auth,
     _create_model,
     _create_project,
+    _new_hash,
 )
 
 
@@ -208,6 +209,7 @@ async def test_get_model_includes_versions_ordered_desc(
                     "filename": "v.ifc",
                     "size_bytes": len(VALID_IFC_HEADER),
                     "content_type": "application/octet-stream",
+                    "content_sha256": _new_hash(),
                 },
                 headers=_auth(org_user["access_token"]),
             )
@@ -328,6 +330,7 @@ async def test_delete_model_cascades_files(
                 "filename": "cascade.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
                 "content_type": "application/octet-stream",
+                "content_sha256": "15a5e04f1a614d099aa75e4bece75ae16072462cef4352d590c92b9ee185db1d",
             },
             headers=_auth(org_user["access_token"]),
         )

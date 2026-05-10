@@ -9,11 +9,18 @@ export class ApiError extends Error {
 
   public readonly detail: string;
 
-  public constructor(status: number, detail: string) {
+  public readonly detailObject: Record<string, unknown> | null;
+
+  public constructor(
+    status: number,
+    detail: string,
+    detailObject: Record<string, unknown> | null = null,
+  ) {
     super(`API error ${String(status)}: ${detail}`);
     this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
+    this.detailObject = detailObject;
   }
 }
 
@@ -34,18 +41,26 @@ type NoContentRequestOptions = {
   accessToken: string | undefined;
 };
 
-async function parseErrorDetail(response: Response): Promise<string> {
+type ParsedErrorDetail = {
+  text: string;
+  object: Record<string, unknown> | null;
+};
+
+async function parseErrorDetail(response: Response): Promise<ParsedErrorDetail> {
   try {
     const raw: unknown = await response.json();
     const parsed = ApiErrorBodySchema.safeParse(raw);
     if (parsed.success) {
       const { detail } = parsed.data;
-      if (typeof detail === 'string') return detail;
-      return JSON.stringify(detail);
+      if (typeof detail === 'string') return { text: detail, object: null };
+      const object = (detail !== null && typeof detail === 'object' && !Array.isArray(detail))
+        ? (detail as Record<string, unknown>)
+        : null;
+      return { text: JSON.stringify(detail), object };
     }
-    return response.statusText;
+    return { text: response.statusText, object: null };
   } catch {
-    return response.statusText;
+    return { text: response.statusText, object: null };
   }
 }
 
@@ -90,7 +105,7 @@ async function request<TResponse, TBody>(
 
   if (!response.ok) {
     const detail = await parseErrorDetail(response);
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, detail.text, detail.object);
   }
 
   const raw: unknown = await response.json();
@@ -109,7 +124,7 @@ async function requestNoContent(options: NoContentRequestOptions): Promise<void>
 
   if (!response.ok) {
     const detail = await parseErrorDetail(response);
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, detail.text, detail.object);
   }
 }
 
@@ -194,7 +209,7 @@ export const apiClient = {
     });
     if (!response.ok) {
       const detail = await parseErrorDetail(response);
-      throw new ApiError(response.status, detail);
+      throw new ApiError(response.status, detail.text, detail.object);
     }
     const raw: unknown = await response.json();
     const parsed = responseSchema.safeParse(raw);

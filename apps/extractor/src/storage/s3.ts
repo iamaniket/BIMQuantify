@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 
 import {
@@ -27,6 +28,15 @@ export function getS3(): S3Client {
 }
 
 export async function downloadObject(key: string): Promise<Uint8Array> {
+  return (await downloadObjectWithHash(key)).bytes;
+}
+
+export type DownloadResult = {
+  bytes: Uint8Array;
+  sha256: string;
+};
+
+export async function downloadObjectWithHash(key: string): Promise<DownloadResult> {
   const cfg = getConfig();
   const response = await getS3().send(
     new GetObjectCommand({ Bucket: cfg.S3_BUCKET_IFC, Key: key }),
@@ -35,11 +45,17 @@ export async function downloadObject(key: string): Promise<Uint8Array> {
   if (!(body instanceof Readable)) {
     throw new Error(`Unexpected S3 body shape for ${key}`);
   }
+  const hasher = createHash('sha256');
   const chunks: Buffer[] = [];
   for await (const chunk of body) {
-    chunks.push(chunk as Buffer);
+    const buf = chunk as Buffer;
+    hasher.update(buf);
+    chunks.push(buf);
   }
-  return new Uint8Array(Buffer.concat(chunks));
+  return {
+    bytes: new Uint8Array(Buffer.concat(chunks)),
+    sha256: hasher.digest('hex'),
+  };
 }
 
 export async function uploadObject(

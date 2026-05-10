@@ -24,9 +24,10 @@ from bimstitch_api.db import get_async_session
 from bimstitch_api.extraction import require_extractor_secret
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimstitch_api.models.notification import NotificationEventType
-from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile
+from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile, ProjectFileStatus
 from bimstitch_api.notifications.service import create_notification, publish_notification
 from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
+from bimstitch_api.storage import StorageBackend, get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ _VALID_INCOMING = {
 async def extraction_callback(
     payload: ExtractionCallbackRequest,
     session: AsyncSession = Depends(get_async_session),
+    storage: StorageBackend = Depends(get_storage),
 ) -> ProjectFile:
     if payload.status not in _VALID_INCOMING:
         raise HTTPException(
@@ -70,17 +72,51 @@ async def extraction_callback(
             if payload.extractor_version is not None:
                 row.extractor_version = payload.extractor_version
         elif payload.status is ExtractionStatus.succeeded:
-            row.extraction_status = ExtractionStatus.succeeded
-            row.fragments_storage_key = payload.fragments_key
-            row.metadata_storage_key = payload.metadata_key
-            row.properties_storage_key = payload.properties_key
-            row.extraction_error = None
-            if payload.started_at is not None:
-                row.extraction_started_at = payload.started_at
-            if payload.finished_at is not None:
-                row.extraction_finished_at = payload.finished_at
-            if payload.extractor_version is not None:
-                row.extractor_version = payload.extractor_version
+            # Hash mismatch is a contract violation: the client claimed hash X
+            # at /initiate, but the bytes the extractor pulled hash to Y.
+            # Reject without persisting any extraction artifacts and delete
+            # the storage object — this is the only thing protecting the dedup
+            # invariant from a malicious client.
+            if (
+                payload.content_sha256 is not None
+                and row.content_sha256 is not None
+                and payload.content_sha256 != row.content_sha256
+            ):
+                row.status = ProjectFileStatus.rejected
+                row.rejection_reason = "CONTENT_HASH_MISMATCH"
+                row.extraction_status = ExtractionStatus.failed
+                row.extraction_error = (
+                    f"hash mismatch: client claimed {row.content_sha256[:16]}…, "
+                    f"extractor computed {payload.content_sha256[:16]}…"
+                )
+                if payload.started_at is not None:
+                    row.extraction_started_at = payload.started_at
+                if payload.finished_at is not None:
+                    row.extraction_finished_at = payload.finished_at
+                if payload.extractor_version is not None:
+                    row.extractor_version = payload.extractor_version
+                try:
+                    await storage.delete_object(row.storage_key)
+                except Exception:
+                    logger.warning(
+                        "Failed to delete object %s after hash mismatch; row marked rejected",
+                        row.storage_key,
+                        exc_info=True,
+                    )
+            else:
+                row.extraction_status = ExtractionStatus.succeeded
+                row.fragments_storage_key = payload.fragments_key
+                row.metadata_storage_key = payload.metadata_key
+                row.properties_storage_key = payload.properties_key
+                row.extraction_error = None
+                if payload.ifc_project_guid is not None:
+                    row.ifc_project_guid = payload.ifc_project_guid
+                if payload.started_at is not None:
+                    row.extraction_started_at = payload.started_at
+                if payload.finished_at is not None:
+                    row.extraction_finished_at = payload.finished_at
+                if payload.extractor_version is not None:
+                    row.extractor_version = payload.extractor_version
         else:  # failed
             row.extraction_status = ExtractionStatus.failed
             row.extraction_error = payload.error
@@ -152,10 +188,6 @@ async def _emit_notification(
     if event_type is None:
         return
 
-    org_id = job.organization_id if job is not None else await _resolve_org_id(session, file)
-    if org_id is None:
-        return
-
     title = _TITLE_MAP[payload.status]
     filename = file.original_filename
     if payload.status is ExtractionStatus.running:
@@ -166,17 +198,24 @@ async def _emit_notification(
         snippet = (payload.error or "unknown error")[:200]
         body = f"{filename} extraction failed: {snippet}"
 
-    async with session.begin():
-        notification = await create_notification(
-            session,
-            organization_id=org_id,
-            event_type=event_type,
-            title=title,
-            body=body,
-            project_id=job.project_id if job else None,
-            file_id=file.id,
-            job_id=job.id if job else None,
-        )
+    # Resolve the org id and create the notification inside one transaction.
+    # `_resolve_org_id` issues a SELECT which auto-begins, so we use that
+    # auto-begun transaction as the unit of work instead of an explicit
+    # `session.begin()` (which would conflict with the auto-begin).
+    org_id = job.organization_id if job is not None else await _resolve_org_id(session, file)
+    if org_id is None:
+        return
+    notification = await create_notification(
+        session,
+        organization_id=org_id,
+        event_type=event_type,
+        title=title,
+        body=body,
+        project_id=job.project_id if job else None,
+        file_id=file.id,
+        job_id=job.id if job else None,
+    )
+    await session.commit()
 
     await publish_notification(notification)
 

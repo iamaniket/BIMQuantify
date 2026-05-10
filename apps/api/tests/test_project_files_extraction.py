@@ -43,6 +43,7 @@ async def _ready_file(
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
                 "content_type": "application/octet-stream",
+                "content_sha256": "6ef80f63974c453f39da279f6ee263111ae09ac0e884a6f3a148a0da0b8583be",
             },
             headers=_auth(org_user["access_token"]),
         )

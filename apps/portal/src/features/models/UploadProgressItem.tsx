@@ -11,6 +11,7 @@ import { formatFileSize, formatRejection } from '@/lib/formatting/files';
 
 export type UploadState =
   | { kind: 'idle' }
+  | { kind: 'hashing'; fraction: number }
   | { kind: 'uploading' }
   | { kind: 'rejected'; reason: string }
   | { kind: 'error'; message: string }
@@ -24,7 +25,7 @@ type Props = {
 };
 
 function StateIcon({ state }: { state: UploadState }): JSX.Element {
-  if (state.kind === 'uploading') {
+  if (state.kind === 'hashing' || state.kind === 'uploading') {
     return <Loader2 className="h-4 w-4 animate-spin text-foreground-secondary" />;
   }
   if (state.kind === 'success') {
@@ -38,6 +39,10 @@ function StateIcon({ state }: { state: UploadState }): JSX.Element {
 
 function stateMessage(state: UploadState): string | null {
   if (state.kind === 'idle') return null;
+  if (state.kind === 'hashing') {
+    const pct = Math.min(99, Math.round(state.fraction * 100));
+    return `Checking for duplicates… ${String(pct)}%`;
+  }
   if (state.kind === 'uploading') return 'Uploading…';
   if (state.kind === 'success') return 'Uploaded';
   if (state.kind === 'rejected') return formatRejection(state.reason);

@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -62,6 +63,11 @@ class ProjectFile(TimestampMixin, Base):
     __tablename__ = "project_files"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     model_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("models.id", ondelete="CASCADE"),
@@ -77,6 +83,8 @@ class ProjectFile(TimestampMixin, Base):
     original_filename: Mapped[str] = mapped_column(String(512), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     content_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ifc_project_guid: Mapped[str | None] = mapped_column(String(22), nullable=True)
     file_type: Mapped[FileType] = mapped_column(
         SAEnum(
             FileType,
@@ -135,7 +143,18 @@ class ProjectFile(TimestampMixin, Base):
         CheckConstraint("size_bytes >= 0", name="ck_project_files_size_nonneg"),
         UniqueConstraint("model_id", "version_number", name="uq_project_files_model_version"),
         Index("ix_project_files_model_id", "model_id"),
+        Index("ix_project_files_project_id", "project_id"),
         Index("ix_project_files_status_created_at", "status", "created_at"),
         Index("ix_project_files_extraction_status", "extraction_status"),
         Index("ix_project_files_file_type", "file_type"),
+        Index("ix_project_files_ifc_project_guid", "ifc_project_guid"),
+        Index(
+            "uq_project_files_project_content_sha256",
+            "project_id",
+            "content_sha256",
+            unique=True,
+            postgresql_where=text(
+                "content_sha256 IS NOT NULL AND status IN ('pending', 'ready')"
+            ),
+        ),
     )

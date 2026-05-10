@@ -268,10 +268,23 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
     }
 
     const id = nextUploadId();
-    setPending((prev) => [...prev, { id, file, state: { kind: 'uploading' } }]);
+    setPending((prev) => [...prev, { id, file, state: { kind: 'hashing', fraction: 0 } }]);
 
     uploadMutation.mutate(
-      { projectId, modelId, file },
+      {
+        projectId,
+        modelId,
+        file,
+        onProgress: (event) => {
+          setPending((prev) => prev.map((p) => {
+            if (p.id !== id) return p;
+            if (event.phase === 'hashing') {
+              return { ...p, state: { kind: 'hashing', fraction: event.fraction } };
+            }
+            return { ...p, state: { kind: 'uploading' } };
+          }));
+        },
+      },
       {
         onSuccess: (result) => {
           if (result.status === 'rejected') {
@@ -291,9 +304,20 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
           setPending((prev) => prev.filter((p) => p.id !== id));
         },
         onError: (error) => {
-          const message = error instanceof ApiError
-            ? error.detail
-            : 'Upload failed.';
+          let message: string;
+          if (error instanceof ApiError) {
+            const obj = error.detailObject;
+            if (obj !== null && obj['code'] === 'DUPLICATE_FILE_CONTENT') {
+              const msg = obj['message'];
+              message = typeof msg === 'string'
+                ? msg
+                : 'This file already exists in this project.';
+            } else {
+              message = error.detail;
+            }
+          } else {
+            message = 'Upload failed.';
+          }
           setPending((prev) => prev.map((p) => (
             p.id === id ? { ...p, state: { kind: 'error', message } } : p
           )));
@@ -393,7 +417,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
               filename={p.file.name}
               sizeBytes={p.file.size}
               state={p.state}
-              onRemove={p.state.kind === 'uploading' ? undefined : () => { dismissPending(p.id); }}
+              onRemove={p.state.kind === 'uploading' || p.state.kind === 'hashing' ? undefined : () => { dismissPending(p.id); }}
             />
           ))}
         </div>
