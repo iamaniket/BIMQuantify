@@ -11,7 +11,13 @@ import {
 } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
-import type { ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
+import type {
+  DocumentActiveTool,
+  DocumentRotation,
+  DocumentViewerHandle,
+  ViewerBundle,
+  ViewerHandle,
+} from '@bimstitch/viewer';
 
 import { useAppHeader } from '@/components/header/AppHeaderContext';
 import { DocumentToolbar } from '@/components/viewer/DocumentToolbar';
@@ -26,6 +32,7 @@ import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
 import { MeasurementPanel, MeasurementHeaderActions } from '@/components/viewer/measurement/MeasurementPanel';
 import { PagesPanel } from '@/components/viewer/pages/PagesPanel';
 import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
+import { useDocumentShortcuts } from '@/features/viewer/useDocumentShortcuts';
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
 import { useViewerBridge } from '@/features/viewer/useViewerBridge';
@@ -34,6 +41,11 @@ import { useViewerMode } from '@/features/viewer/useViewerMode';
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import type { ViewerBundleResponse } from '@/lib/api/schemas';
+import {
+  DEFAULT_DOCUMENT_SETTINGS,
+  loadDocumentSettings,
+  type DocumentSettings,
+} from '@/lib/documentSettings';
 import {
   DEFAULT_VIEWER_SETTINGS,
   loadViewerSettings,
@@ -84,6 +96,10 @@ export default function ViewerPage(): JSX.Element {
   const [pdfCurrentPage, setPdfCurrentPage] = useState(1);
   const [pdfNumPages, setPdfNumPages] = useState<number | null>(null);
   const [pdfScale, setPdfScale] = useState(1);
+  const [pdfActiveTool, setPdfActiveTool] = useState<DocumentActiveTool>('select');
+  const [pdfRotation, setPdfRotation] = useState<DocumentRotation>(0);
+  const [pdfSettings, setPdfSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
+  const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
 
   const togglePanel = useCallback((id: ViewerPanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -115,6 +131,7 @@ export default function ViewerPage(): JSX.Element {
 
   useEffect(() => {
     setSettings(loadViewerSettings());
+    setPdfSettings(loadDocumentSettings());
   }, []);
 
   useEffect(() => {
@@ -149,6 +166,8 @@ export default function ViewerPage(): JSX.Element {
     setPdfCurrentPage(1);
     setPdfNumPages(null);
     setPdfScale(1);
+    setPdfRotation(0);
+    setPdfActiveTool('select');
   }, [fileId]);
 
   const handlePdfLoaded = useCallback(({ numPages }: { numPages: number }) => {
@@ -166,6 +185,36 @@ export default function ViewerPage(): JSX.Element {
   const ifcShellReady = shellReady && isIfc && viewerReady;
   const pdfShellReady = shellReady && isPdf;
 
+  useDocumentShortcuts({
+    enabled: isPdf && documentHandle !== null,
+    shortcuts: pdfSettings.shortcuts,
+    handlers: {
+      zoomIn: () => documentHandle?.zoomIn(),
+      zoomOut: () => documentHandle?.zoomOut(),
+      fitPage: () => documentHandle?.fitPage(),
+      fitWidth: () => documentHandle?.fitWidth(),
+      actualSize: () => documentHandle?.actualSize(),
+      rotateRight: () => documentHandle?.rotateBy(90),
+      rotateLeft: () => documentHandle?.rotateBy(-90),
+      nextPage: () => {
+        setPdfCurrentPage((p) => {
+          if (pdfNumPages === null) return p;
+          return Math.min(p + 1, pdfNumPages);
+        });
+      },
+      prevPage: () => {
+        setPdfCurrentPage((p) => Math.max(1, p - 1));
+      },
+      firstPage: () => setPdfCurrentPage(1),
+      lastPage: () => {
+        if (pdfNumPages !== null) setPdfCurrentPage(pdfNumPages);
+      },
+      toolSelect: () => setPdfActiveTool('select'),
+      toolPan: () => setPdfActiveTool('pan'),
+      toolZoom: () => setPdfActiveTool('zoom'),
+    },
+  });
+
   let canvas: JSX.Element | null = null;
   if (error !== null) {
     canvas = (
@@ -181,12 +230,17 @@ export default function ViewerPage(): JSX.Element {
   } else if (isPdf) {
     canvas = (
       <DocumentViewer
+        ref={setDocumentHandle}
         fileUrl={bundle.file_url!}
         currentPage={pdfCurrentPage}
         scale={pdfScale}
+        rotation={pdfRotation}
+        activeTool={pdfActiveTool}
         className="absolute inset-0"
         onLoaded={handlePdfLoaded}
         onError={handlePdfError}
+        onScaleChange={setPdfScale}
+        onRotationChange={setPdfRotation}
       />
     );
   } else {
@@ -311,8 +365,13 @@ export default function ViewerPage(): JSX.Element {
             currentPage={pdfCurrentPage}
             numPages={pdfNumPages}
             scale={pdfScale}
+            activeTool={pdfActiveTool}
+            documentHandle={documentHandle}
+            settings={pdfSettings}
             onPageChange={setPdfCurrentPage}
             onScaleChange={setPdfScale}
+            onActiveToolChange={setPdfActiveTool}
+            onSettingsChange={setPdfSettings}
           />
         ) : null}
 

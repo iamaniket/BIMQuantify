@@ -12,5 +12,8 @@ export function useLogin(): UseMutationResult<TokenPair, Error, LoginRequest> {
       { username: credentials.username, password: credentials.password },
       TokenPairSchema,
     ),
+    // LoginForm displays errors inline — suppress the QueryClient default toast.
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    onError: () => {},
   });
 }

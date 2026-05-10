@@ -19,7 +19,6 @@ import {
 } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
-
 import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/lib/formatting/models';
 import {
   ModelFormSchema,
@@ -96,7 +95,6 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
     );
   };
 
-  const apiErrorMessage = formatApiError(createMutation.error);
   const nameFieldError = form.formState.errors.name;
   const nameError = nameFieldError === undefined ? undefined : nameFieldError.message;
   const isSubmitting = createMutation.isPending;
@@ -171,14 +169,6 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
               </select>
             </div>
 
-            {apiErrorMessage === null ? null : (
-              <div
-                role="alert"
-                className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-body3 text-error"
-              >
-                {apiErrorMessage}
-              </div>
-            )}
           </DialogBody>
 
           <DialogFooter>

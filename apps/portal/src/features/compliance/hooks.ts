@@ -1,8 +1,6 @@
 'use client';
 
 import {
-  useMutation,
-  useQueryClient,
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
@@ -17,8 +15,7 @@ import type {
   ComplianceSummaryResponse,
   ProjectComplianceReportItem,
 } from '@/lib/api/schemas';
-import { useAuthQuery } from '@/lib/query/useAuthQuery';
-import { useAuth } from '@/providers/AuthProvider';
+import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import {
   complianceDataKey,
@@ -108,8 +105,7 @@ function useComplianceData(
 ) {
   return useAuthQuery({
     queryKey: complianceDataKey(projectId, fileId, modelId),
-    queryFn: (accessToken) =>
-      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    queryFn: (accessToken) => getComplianceLatest(accessToken, projectId, modelId!, fileId!),
     enabled: projectId.length > 0 && !!fileId && !!modelId,
   });
 }
@@ -121,8 +117,7 @@ export function useComplianceSummary(
 ): UseQueryResult<ComplianceSummary> {
   return useAuthQuery({
     queryKey: complianceDataKey(projectId, fileId, modelId),
-    queryFn: (accessToken) =>
-      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    queryFn: (accessToken) => getComplianceLatest(accessToken, projectId, modelId!, fileId!),
     enabled: projectId.length > 0 && !!fileId && !!modelId,
     select: mapToComplianceSummary,
   });
@@ -135,8 +130,7 @@ export function useComplianceDomains(
 ): UseQueryResult<ComplianceDomain[]> {
   return useAuthQuery({
     queryKey: complianceDataKey(projectId, fileId, modelId),
-    queryFn: (accessToken) =>
-      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    queryFn: (accessToken) => getComplianceLatest(accessToken, projectId, modelId!, fileId!),
     enabled: projectId.length > 0 && !!fileId && !!modelId,
     select: mapToDomains,
   });
@@ -149,8 +143,7 @@ export function useComplianceArticles(
 ): UseQueryResult<ComplianceArticle[]> {
   return useAuthQuery({
     queryKey: complianceDataKey(projectId, fileId, modelId),
-    queryFn: (accessToken) =>
-      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    queryFn: (accessToken) => getComplianceLatest(accessToken, projectId, modelId!, fileId!),
     enabled: projectId.length > 0 && !!fileId && !!modelId,
     select: mapToArticles,
   });
@@ -163,8 +156,7 @@ export function useComplianceIssues(
 ): UseQueryResult<ComplianceIssue[]> {
   return useAuthQuery({
     queryKey: complianceDataKey(projectId, fileId, modelId),
-    queryFn: (accessToken) =>
-      getComplianceLatest(accessToken, projectId, modelId!, fileId!),
+    queryFn: (accessToken) => getComplianceLatest(accessToken, projectId, modelId!, fileId!),
     enabled: projectId.length > 0 && !!fileId && !!modelId,
     select: mapToIssues,
   });
@@ -211,27 +203,14 @@ export function useCheckCompliance(
   projectId: string,
   modelId: string,
 ): UseMutationResult<ComplianceCheckResponse, Error, { fileId: string; buildingType?: string }> {
-  const { tokens } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ fileId, buildingType }) => {
-      if (!tokens) throw new Error('Not authenticated');
-      return triggerComplianceCheck(
-        tokens.access_token,
-        projectId,
-        modelId,
-        fileId,
-        buildingType,
-      );
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: complianceSummaryKey(projectId) });
-      void queryClient.invalidateQueries({ queryKey: complianceDomainsKey(projectId) });
-      void queryClient.invalidateQueries({ queryKey: complianceArticlesKey(projectId) });
-      void queryClient.invalidateQueries({ queryKey: issuesKey(projectId) });
-      void queryClient.invalidateQueries({
-        queryKey: ['projects', projectId, 'compliance'],
-      });
-    },
+  return useAuthMutation({
+    mutationFn: (accessToken, { fileId, buildingType }) => triggerComplianceCheck(accessToken, projectId, modelId, fileId, buildingType),
+    invalidateKeys: [
+      complianceSummaryKey(projectId),
+      complianceDomainsKey(projectId),
+      complianceArticlesKey(projectId),
+      issuesKey(projectId),
+      ['projects', projectId, 'compliance'],
+    ],
   });
 }

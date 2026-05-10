@@ -10,7 +10,11 @@ import {
   type UseQueryOptions,
   type UseQueryResult,
 } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
+import { ApiError } from '@/lib/api/client';
+import { getErrorMessage } from '@/lib/api/errorMessages';
 import { useAuth } from '@/providers/AuthProvider';
 
 type AuthQueryOptions<
@@ -25,7 +29,7 @@ export function useAuthQuery<
   TData,
   TSelect = TData,
   TKey extends QueryKey = QueryKey,
->(options: AuthQueryOptions<TData, TSelect, TKey>): UseQueryResult<TSelect, Error> {
+>(options: AuthQueryOptions<TData, TSelect, TKey>): UseQueryResult<TSelect> {
   const { tokens } = useAuth();
   const accessToken = tokens === null ? null : tokens.access_token;
 
@@ -47,16 +51,20 @@ type AuthMutationOptions<TData, TVariables> = Omit<
 > & {
   mutationFn: (accessToken: string, variables: TVariables) => Promise<TData>;
   invalidateKeys?: QueryKey[] | ((variables: TVariables, data: TData) => QueryKey[]);
+  suppressToast: boolean | undefined;
 };
 
 export function useAuthMutation<TData, TVariables>(
   options: AuthMutationOptions<TData, TVariables>,
 ): UseMutationResult<TData, Error, TVariables> {
-  const { tokens } = useAuth();
+  const { tokens, setTokens } = useAuth();
   const accessToken = tokens === null ? null : tokens.access_token;
   const queryClient = useQueryClient();
+  const router = useRouter();
 
-  const { mutationFn, invalidateKeys, ...rest } = options;
+  const {
+    mutationFn, invalidateKeys, suppressToast, onError, ...rest
+  } = options;
 
   return useMutation<TData, Error, TVariables>({
     ...rest,
@@ -74,6 +82,22 @@ export function useAuthMutation<TData, TVariables>(
         );
       }
       await rest.onSuccess?.(...args);
+    },
+    onError: (...args) => {
+      const [error] = args;
+
+      if (!suppressToast) {
+        toast.error(getErrorMessage(error));
+      }
+
+      if (error instanceof ApiError && error.status === 401) {
+        setTokens(null);
+        router.push('/login');
+      }
+
+      if (onError !== undefined) {
+        onError(...args);
+      }
     },
   });
 }

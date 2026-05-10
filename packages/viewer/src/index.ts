@@ -1,5 +1,11 @@
 export { DocumentViewer } from './DocumentViewer.js';
-export type { DocumentViewerProps, DocumentLoadedInfo } from './DocumentViewer.js';
+export type {
+  DocumentViewerProps,
+  DocumentViewerHandle,
+  DocumentLoadedInfo,
+  DocumentActiveTool,
+  DocumentRotation,
+} from './DocumentViewer.js';
 export { IfcViewer } from './IfcViewer.js';
 export {
   getWasmPath,

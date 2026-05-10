@@ -2,6 +2,7 @@ import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { JSX, ReactNode } from 'react';
+import { Toaster } from 'sonner';
 
 import { LocaleMigrationShim } from '@/components/LocaleMigrationShim';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
@@ -34,7 +35,10 @@ export default async function LocaleLayout({ children, params }: Props): Promise
           <ServiceWorkerRegistrar />
           <ThemeProvider>
             <QueryProvider>
-              <AuthProvider>{children}</AuthProvider>
+              <AuthProvider>
+                {children}
+                <Toaster richColors closeButton position="top-right" />
+              </AuthProvider>
             </QueryProvider>
           </ThemeProvider>
         </NextIntlClientProvider>

@@ -23,13 +23,13 @@ import {
 import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';
 
-import { formatAddress } from '@/lib/formatting/projects';
+import { formatAddress, isProjectArchived } from '@/lib/formatting/projects';
+import { useContractors } from '@/features/contractors/useContractors';
+import { useCreateContractor } from '@/features/contractors/useCreateContractor';
 import {
   ProjectFormSchema,
   type ProjectFormValues,
 } from './projectFormSchema';
-import { useContractors } from '@/features/contractors/useContractors';
-import { useCreateContractor } from '@/features/contractors/useCreateContractor';
 import { useCreateProject } from './useCreateProject';
 import { useUpdateProject } from './useUpdateProject';
 import {
@@ -40,7 +40,6 @@ import { StepAddress } from './wizard/StepAddress';
 import { StepBasics } from './wizard/StepBasics';
 import { StepContractor } from './wizard/StepContractor';
 import { StepDetails } from './wizard/StepDetails';
-import { isProjectArchived } from '@/lib/formatting/projects';
 
 const THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const THUMBNAIL_MAX_DIM = 800;
@@ -130,24 +129,6 @@ function nullableTrim(value: string | undefined): string | null {
   if (value === undefined) return null;
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
-}
-
-function formatApiError(error: unknown, mode: 'create' | 'edit'): string | null {
-  if (error === null || error === undefined) return null;
-  if (error instanceof ApiError) {
-    if (error.status === 409) {
-      return 'A project with that name or reference code already exists.';
-    }
-    if (error.status === 403) {
-      return 'You do not have permission to modify this project.';
-    }
-    if (error.status === 404) {
-      return 'Project not found. It may have been deleted.';
-    }
-    const verb = mode === 'create' ? 'Create' : 'Save';
-    return `${verb} failed: ${error.detail}`;
-  }
-  return mode === 'create' ? 'Could not create project.' : 'Could not save changes.';
 }
 
 const LAST_STEP = PROJECT_WIZARD_STEPS.length - 1;
@@ -387,8 +368,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, isReadOnly, onOpenChange]);
 
-  const apiErrorMessage = formatApiError(mutation.error, mode);
-
   const title = mode === 'create' ? 'New project' : 'Edit project';
   const description = mode === 'create'
     ? 'Walk through a few quick steps. You can edit any of these later.'
@@ -411,15 +390,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
 
   const activeStepDef = PROJECT_WIZARD_STEPS[currentStep];
   const activeStepId = activeStepDef === undefined ? 'basics' : activeStepDef.id;
-
-  const errorSlot = apiErrorMessage === null ? null : (
-    <div
-      role="alert"
-      className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-body3 text-error"
-    >
-      {apiErrorMessage}
-    </div>
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -449,7 +419,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                   </Button>
                 </DialogClose>
               )}
-              errorSlot={errorSlot}
+              errorSlot={null}
             >
               <div ref={panelRef} className="flex flex-col gap-4">
                 {activeStepId === 'basics' && (
