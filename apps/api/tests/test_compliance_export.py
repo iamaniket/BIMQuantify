@@ -37,6 +37,51 @@ EXPECTED_HEADERS = [
     "message",
 ]
 
+EXPECTED_RULES_HEADERS = [
+    "rule_id",
+    "article",
+    "title",
+    "title_nl",
+    "category",
+    "severity",
+    "total_checked",
+    "passed",
+    "warned",
+    "failed",
+    "skipped",
+    "errors",
+]
+
+
+def _rule_summary(
+    rule_id: str = "R-1",
+    article: str = "BBL-2.1",
+    title: str = "Fire safety",
+    title_nl: str = "Brandveiligheid",
+    category: str = "fire_safety",
+    severity: str = "high",
+    total_checked: int = 4,
+    passed: int = 3,
+    warned: int = 0,
+    failed: int = 1,
+    skipped: int = 0,
+    errors: int = 0,
+) -> dict:
+    return {
+        "rule_id": rule_id,
+        "article": article,
+        "title": title,
+        "title_nl": title_nl,
+        "category": category,
+        "severity": severity,
+        "total_checked": total_checked,
+        "passed": passed,
+        "warned": warned,
+        "failed": failed,
+        "skipped": skipped,
+        "errors": errors,
+    }
+
 
 def _detail(
     rule_id: str = "R-1",
@@ -105,16 +150,19 @@ async def _seed_compliance_job(
     file_id: UUID,
     *,
     job_type: str = "bbl_compliance_check",
-    details: list[dict],
+    details: list[dict] | None = None,
+    rules_summary: list[dict] | None = None,
 ) -> UUID:
     """Insert a succeeded compliance Job for a specific file via raw SQL (bypass RLS)."""
+    details = details or []
+    rules_summary = rules_summary or []
     job_id = uuid4()
     result = {
         "checked_at": "2026-05-12T09:00:00Z",
         "framework": "bbl" if job_type == "bbl_compliance_check" else "wkb",
-        "total_rules": len({d["rule_id"] for d in details}),
+        "total_rules": len({d["rule_id"] for d in details}) or len(rules_summary),
         "total_elements_checked": len(details),
-        "rules_summary": [],
+        "rules_summary": rules_summary,
         "category_summary": [],
         "details": details,
     }
@@ -290,3 +338,126 @@ async def test_export_csv_framework_filter_returns_only_matching_job(
     assert bbl.status_code == 200
     bbl_rows = list(csv.DictReader(io.StringIO(bbl.text)))
     assert [r["rule_id"] for r in bbl_rows] == ["BBL-ONLY"]
+
+
+# ---------------------------------------------------------------------------
+# /export-rules.csv (per-rule summary)
+# ---------------------------------------------------------------------------
+
+
+async def test_export_rules_csv_returns_rule_summary_rows(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id, file_id = await _ready_file(
+        client, fake, org_user, name="rules.ifc"
+    )
+
+    rules = [
+        _rule_summary(rule_id="R-1", title="Fire safety", passed=10, failed=2),
+        _rule_summary(
+            rule_id="R-2",
+            title="Egress width",
+            category="usability",
+            passed=5,
+            warned=1,
+            failed=0,
+            total_checked=6,
+        ),
+        _rule_summary(
+            rule_id="R-3", title="Insulation", category="health", passed=0, skipped=3
+        ),
+    ]
+    await _seed_compliance_job(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(project_id),
+        UUID(file_id),
+        rules_summary=rules,
+    )
+
+    resp = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{file_id}"
+        "/compliance/export-rules.csv",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"].startswith("text/csv")
+    assert (
+        f'filename="compliance-rules-bbl-{file_id}.csv"'
+        in resp.headers["content-disposition"]
+    )
+
+    reader = csv.DictReader(io.StringIO(resp.text))
+    assert reader.fieldnames == EXPECTED_RULES_HEADERS
+    rows = list(reader)
+    assert [r["rule_id"] for r in rows] == ["R-1", "R-2", "R-3"]
+    assert rows[0]["title"] == "Fire safety"
+    assert rows[0]["passed"] == "10"
+    assert rows[0]["failed"] == "2"
+    assert rows[1]["warned"] == "1"
+    assert rows[2]["skipped"] == "3"
+
+
+async def test_export_rules_csv_404_when_no_succeeded_job(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id, file_id = await _ready_file(
+        client, fake, org_user, name="rules-empty.ifc"
+    )
+
+    resp = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{file_id}"
+        "/compliance/export-rules.csv",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "NO_COMPLIANCE_RESULTS"
+
+
+async def test_export_rules_csv_framework_filter(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id, file_id = await _ready_file(
+        client, fake, org_user, name="rules-frmk.ifc"
+    )
+
+    await _seed_compliance_job(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(project_id),
+        UUID(file_id),
+        job_type="bbl_compliance_check",
+        rules_summary=[_rule_summary(rule_id="BBL-1")],
+    )
+    await _seed_compliance_job(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(project_id),
+        UUID(file_id),
+        job_type="wkb_compliance_check",
+        rules_summary=[_rule_summary(rule_id="WKB-1")],
+    )
+
+    wkb = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{file_id}"
+        "/compliance/export-rules.csv?framework=wkb",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert wkb.status_code == 200
+    rows = list(csv.DictReader(io.StringIO(wkb.text)))
+    assert [r["rule_id"] for r in rows] == ["WKB-1"]
+    assert (
+        f'filename="compliance-rules-wkb-{file_id}.csv"'
+        in wkb.headers["content-disposition"]
+    )

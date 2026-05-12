@@ -84,7 +84,9 @@
       "ruleBreakdownTitle": "Rule breakdown",
       "elementsAndChecks": "{elements} elements · {checks} checks",
       "loadingRules": "Loading rule details…",
-      "issuesTitle": "Issues ({count})"
+      "issuesTitle": "Issues ({count})",
+      "downloadRulesCsv": "Download rules CSV",
+      "downloadCsvError": "Download failed"
     },
     "health": {
       "eyebrow": "Compliance health",

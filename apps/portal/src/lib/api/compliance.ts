@@ -53,3 +53,14 @@ export async function downloadComplianceCsv(
   const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/export.csv?framework=${framework}`;
   return apiClient.getBlob(path, accessToken);
 }
+
+export async function downloadComplianceRulesCsv(
+  accessToken: string,
+  projectId: string,
+  modelId: string,
+  fileId: string,
+  framework: 'bbl' | 'wkb' = 'bbl',
+): Promise<{ blob: Blob; filename: string | null }> {
+  const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/export-rules.csv?framework=${framework}`;
+  return apiClient.getBlob(path, accessToken);
+}

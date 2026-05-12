@@ -275,6 +275,61 @@ async def export_compliance_csv(
     )
 
 
+_RULES_CSV_COLUMNS: tuple[str, ...] = (
+    "rule_id",
+    "article",
+    "title",
+    "title_nl",
+    "category",
+    "severity",
+    "total_checked",
+    "passed",
+    "warned",
+    "failed",
+    "skipped",
+    "errors",
+)
+
+
+@router.get(
+    "/export-rules.csv",
+    response_class=Response,
+)
+async def export_compliance_rules_csv(
+    project_id: UUID,
+    model_id: UUID,
+    file_id: UUID,
+    framework: str = Query(default="bbl", description="Regulation framework (bbl, wkb)"),
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+) -> Response:
+    """Stream the per-rule summary from the latest compliance results as CSV.
+
+    One row per rule with pass/warn/fail/skip/error counts — useful for
+    portfolio-level reporting where individual element failures are too noisy.
+    """
+    project = await _load_project_or_404(session, project_id)
+    await _require_membership(session, project.id, user.id)
+
+    job = await _load_latest_compliance_job(session, file_id, framework)
+    rules = (job.result or {}).get("rules_summary", []) or []
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=list(_RULES_CSV_COLUMNS), extrasaction="ignore")
+    writer.writeheader()
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        writer.writerow({col: rule.get(col, "") for col in _RULES_CSV_COLUMNS})
+
+    filename = f"compliance-rules-{framework}-{file_id}.csv"
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @project_router.get(
     "/reports",
     response_model=ProjectComplianceReportList,

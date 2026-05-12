@@ -1,10 +1,10 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useMemo, type JSX } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 
 import { Badge, Button, Skeleton } from '@bimstitch/ui';
 
@@ -22,7 +22,8 @@ import {
 } from '@/features/compliance/hooks';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
-import { downloadComplianceCsv } from '@/lib/api/compliance';
+import { triggerBrowserDownload } from '@/lib/api/client';
+import { downloadComplianceCsv, downloadComplianceRulesCsv } from '@/lib/api/compliance';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function ReportDetailPage(): JSX.Element {
@@ -49,6 +50,29 @@ export default function ReportDetailPage(): JSX.Element {
   const articlesQuery = useComplianceArticles(projectId, fileId, modelId);
   const issuesQuery = useComplianceIssues(projectId, fileId, modelId);
   const latestQuery = useComplianceLatest(projectId, fileId, modelId, framework);
+
+  const [rulesDownloading, setRulesDownloading] = useState(false);
+  const [rulesDownloadError, setRulesDownloadError] = useState<string | null>(null);
+
+  const handleDownloadRulesCsv = async (): Promise<void> => {
+    if (tokens === null || modelId === undefined) return;
+    setRulesDownloadError(null);
+    setRulesDownloading(true);
+    try {
+      const { blob, filename } = await downloadComplianceRulesCsv(
+        tokens.access_token,
+        projectId,
+        modelId,
+        fileId,
+        framework,
+      );
+      triggerBrowserDownload(blob, filename ?? `compliance-rules-${framework}-${fileId}.csv`);
+    } catch {
+      setRulesDownloadError(t('downloadCsvError'));
+    } finally {
+      setRulesDownloading(false);
+    }
+  };
 
   const reportMeta = reportsQuery.data?.find(
     (r) => r.file_id === fileId && r.framework === framework,
@@ -143,16 +167,41 @@ export default function ReportDetailPage(): JSX.Element {
       </div>
 
       <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
             {t('ruleBreakdownTitle')}
           </div>
-          {latestQuery.data !== undefined && (
-            <span className="text-caption text-foreground-tertiary">
-              {t('elementsAndChecks', { elements: latestQuery.data.total_elements_checked, checks: latestQuery.data.details.length })}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {latestQuery.data !== undefined && (
+              <span className="text-caption text-foreground-tertiary">
+                {t('elementsAndChecks', { elements: latestQuery.data.total_elements_checked, checks: latestQuery.data.details.length })}
+              </span>
+            )}
+            {tokens !== null && modelId !== undefined && (
+              <Button
+                variant="border"
+                size="sm"
+                onClick={() => { void handleDownloadRulesCsv(); }}
+                disabled={
+                  rulesDownloading
+                  || latestQuery.data === undefined
+                  || latestQuery.data.rules_summary.length === 0
+                }
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                {t('downloadRulesCsv')}
+              </Button>
+            )}
+          </div>
         </div>
+        {rulesDownloadError !== null && (
+          <div
+            role="alert"
+            className="mb-2 rounded-md border border-error-light bg-error-lighter px-3 py-1.5 text-caption text-error"
+          >
+            {rulesDownloadError}
+          </div>
+        )}
         {latestQuery.data !== undefined ? (
           <RulesBreakdown
             rules={latestQuery.data.rules_summary}
@@ -182,14 +231,7 @@ export default function ReportDetailPage(): JSX.Element {
                 fileId,
                 framework,
               );
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = filename ?? `compliance-${framework}-${fileId}.csv`;
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-              URL.revokeObjectURL(url);
+              triggerBrowserDownload(blob, filename ?? `compliance-${framework}-${fileId}.csv`);
             }}
           />
         )}

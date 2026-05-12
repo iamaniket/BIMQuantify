@@ -84,7 +84,9 @@
       "ruleBreakdownTitle": "Regeloverzicht",
       "elementsAndChecks": "{elements} elementen · {checks} controles",
       "loadingRules": "Regeldetails laden…",
-      "issuesTitle": "Bevindingen ({count})"
+      "issuesTitle": "Bevindingen ({count})",
+      "downloadRulesCsv": "Regels-CSV downloaden",
+      "downloadCsvError": "Downloaden mislukt"
     },
     "health": {
       "eyebrow": "Nalevingsstatus",

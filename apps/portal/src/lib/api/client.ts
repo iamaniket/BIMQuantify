@@ -81,6 +81,18 @@ function parseFilenameFromDisposition(header: string | null): string | null {
   return null;
 }
 
+// Save a Blob to disk via a synthetic anchor click. Only runs in the browser.
+export function triggerBrowserDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function buildHeaders(accessToken: string | undefined): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
