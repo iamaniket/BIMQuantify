@@ -1,6 +1,6 @@
 'use client';
 
-import { BookMarked, BookText, LayoutGrid } from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
 import { usePathname } from '@/i18n/navigation';
 import type { JSX } from 'react';
 
@@ -11,8 +11,6 @@ import { SidebarNavItem } from './SidebarNavItem';
 
 const itemDefinitions = [
   { key: 'projects', icon: LayoutGrid, href: '/projects', badge: '12' as string | undefined },
-  { key: 'bblLibrary', icon: BookText, href: '/libraries/bbl', badge: undefined },
-  { key: 'wkbLibrary', icon: BookMarked, href: '/libraries/wkb', badge: undefined },
 ] as const;
 
 export function SidebarWorkspaceNav(): JSX.Element {
@@ -22,8 +20,6 @@ export function SidebarWorkspaceNav(): JSX.Element {
 
   const labels = {
     projects: t('projects'),
-    bblLibrary: t('bblLibrary'),
-    wkbLibrary: t('wkbLibrary'),
   } as const;
 
   return (
