@@ -25,9 +25,9 @@
       "autoPort": false
     },
     {
-      "name": "extractor",
+      "name": "import-export",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "apps/extractor", "run", "dev"],
+      "runtimeArgs": ["--prefix", "apps/import-export", "run", "dev"],
       "port": 8088,
       "autoPort": false
     }

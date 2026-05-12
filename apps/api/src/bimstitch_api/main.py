@@ -18,13 +18,14 @@ from bimstitch_api.routers.compliance import (
     router as compliance_router,
 )
 from bimstitch_api.routers.contractors import router as contractors_router
-from bimstitch_api.routers.extraction_internal import router as extraction_internal_router
+from bimstitch_api.routers.jobs_internal import router as jobs_internal_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.jobs import router as jobs_router
 from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.notifications import router as notifications_router
 from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
+from bimstitch_api.routers.reports import router as reports_router
 from bimstitch_api.routers.ws_notifications import router as ws_notifications_router
 from bimstitch_api.storage import get_storage
 
@@ -72,10 +73,11 @@ def create_app() -> FastAPI:
     app.include_router(contractors_router)
     app.include_router(models_router)
     app.include_router(project_files_router)
-    app.include_router(extraction_internal_router)
+    app.include_router(jobs_internal_router)
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
     app.include_router(jobs_router)
+    app.include_router(reports_router)
     app.include_router(notifications_router)
     app.include_router(ws_notifications_router)
     return app

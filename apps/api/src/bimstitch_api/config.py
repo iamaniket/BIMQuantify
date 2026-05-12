@@ -52,12 +52,12 @@ class Settings(BaseSettings):
         default="image/jpeg,image/png,image/webp", alias="THUMBNAIL_ALLOWED_CONTENT_TYPES"
     )
 
-    extractor_url: str = Field(default="http://localhost:8088", alias="EXTRACTOR_URL")
-    extractor_shared_secret: str = Field(
-        default="dev-shared-secret-change-me", alias="EXTRACTOR_SHARED_SECRET"
+    import_export_url: str = Field(default="http://localhost:8088", alias="IMPORT_EXPORT_URL")
+    import_export_shared_secret: str = Field(
+        default="dev-shared-secret-change-me", alias="IMPORT_EXPORT_SHARED_SECRET"
     )
-    extractor_dispatch_timeout_seconds: float = Field(
-        default=5.0, alias="EXTRACTOR_DISPATCH_TIMEOUT_SECONDS"
+    import_export_dispatch_timeout_seconds: float = Field(
+        default=5.0, alias="IMPORT_EXPORT_DISPATCH_TIMEOUT_SECONDS"
     )
 
     sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")

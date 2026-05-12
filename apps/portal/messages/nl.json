@@ -160,6 +160,25 @@
       "health": "Gezondheid",
       "accessibility": "Toegankelijkheid",
       "sustainability": "Duurzaamheid"
+    },
+    "downloadable": {
+      "downloadableTitle": "Downloadbare rapporten",
+      "downloadableDescription": "Genereer een PDF-versie van het laatste nalevingsrapport, klaar om te delen.",
+      "generate": "Genereer nalevingsrapport",
+      "generating": "Bezig met genereren…",
+      "loading": "Laden…",
+      "view": "Bekijk",
+      "download": "Download",
+      "noReports": "Nog geen rapporten gegenereerd",
+      "noComplianceData": "Geen nalevingsgegevens beschikbaar — voer eerst een controle uit op een verwerkt IFC-bestand.",
+      "errorGenerating": "Genereren van het rapport is mislukt.",
+      "noPreview": "Geen preview beschikbaar.",
+      "status": {
+        "queued": "In wachtrij",
+        "running": "Wordt gegenereerd",
+        "ready": "Gereed",
+        "failed": "Mislukt"
+      }
     }
   },
   "legal": {

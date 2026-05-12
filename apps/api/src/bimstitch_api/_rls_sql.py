@@ -36,6 +36,7 @@ RLS_TABLES = (
     "jobs",
     "notifications",
     "notification_reads",
+    "reports",
 )
 
 # Tables the app role needs DML privileges on (broader than RLS_TABLES because
@@ -51,6 +52,7 @@ APP_GRANT_TABLES = (
     "jobs",
     "notifications",
     "notification_reads",
+    "reports",
 )
 
 # Subquery snippet reused by tables that scope through `projects.organization_id`.
@@ -200,6 +202,16 @@ def enable_rls_statements() -> list[str]:
         """
     )
 
+    # reports: straight org match (same shape as jobs/notifications).
+    stmts.append("DROP POLICY IF EXISTS reports_tenant_isolation ON reports;")
+    stmts.append(
+        f"""
+        CREATE POLICY reports_tenant_isolation ON reports
+        USING ({org_match})
+        WITH CHECK ({org_match});
+        """
+    )
+
     # notification_reads: user_id match — each user manages their own read state.
     user_match = "user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid"
     stmts.append(
@@ -222,6 +234,7 @@ def disable_rls_statements() -> list[str]:
     stmts.append(
         "DROP POLICY IF EXISTS notification_reads_user_isolation ON notification_reads;"
     )
+    stmts.append("DROP POLICY IF EXISTS reports_tenant_isolation ON reports;")
     stmts.append("DROP POLICY IF EXISTS notifications_tenant_isolation ON notifications;")
     stmts.append("DROP POLICY IF EXISTS jobs_tenant_isolation ON jobs;")
     stmts.append("DROP POLICY IF EXISTS contractors_tenant_isolation ON contractors;")

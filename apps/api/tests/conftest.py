@@ -50,6 +50,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         Project,
         ProjectFile,
         ProjectMember,
+        Report,
         User,
     )
 
@@ -76,6 +77,8 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectlifecyclestate")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS jobtype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS jobstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS reporttype")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS reportstatus")
         await conn.run_sync(Base.metadata.create_all)
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
@@ -102,6 +105,8 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS projectlifecyclestate")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS jobtype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS jobstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS reporttype")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS reportstatus")
     await eng.dispose()
 
 
@@ -128,8 +133,8 @@ async def _clean_tables(
         # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
         await session.execute(
             text(
-                "TRUNCATE TABLE jobs, project_files, models, project_members, projects, "
-                "contractors, users, organizations RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE reports, jobs, project_files, models, project_members, "
+                "projects, contractors, users, organizations RESTART IDENTITY CASCADE"
             )
         )
         await session.commit()
@@ -142,53 +147,57 @@ async def _flush_redis(redis_client: Redis) -> AsyncGenerator[None, None]:
 
 
 @pytest.fixture(autouse=True)
-def _stub_extraction_dispatcher() -> Generator[list[dict[str, str]], None, None]:
-    """Default: no-op extractor dispatcher that records calls.
+def _stub_job_dispatcher() -> Generator[list[dict[str, object]], None, None]:
+    """Default: no-op job dispatcher that records calls.
 
-    Tests that need to assert extractor dispatch was called can pull this
-    fixture in by name (`extraction_calls`) — it's the same list. Tests that
-    want to simulate dispatch failure use `extraction_dispatch_failure`.
+    Tests that need to assert dispatch was called can pull this fixture in by
+    name (`job_dispatch_calls`) — it's the same list. The recorded shape
+    mirrors the new generic Job dispatcher: each entry is
+    `{"job_id": ..., "job_type": ..., "payload": ...}`. For callers that
+    still use the old `extraction_calls` field-flattened shape, a few
+    convenience keys (file_id, project_id, storage_key) are also copied up.
     """
-    from uuid import UUID
-
     from bimstitch_api.config import Settings
-    from bimstitch_api.extraction import (
-        reset_extraction_dispatcher,
-        set_extraction_dispatcher,
-    )
+    from bimstitch_api.jobs import reset_job_dispatcher, set_job_dispatcher
+    from bimstitch_api.models.job import Job
 
-    calls: list[dict[str, str]] = []
+    calls: list[dict[str, object]] = []
 
-    async def _record(
-        file_id: UUID,
-        project_id: UUID,
-        storage_key: str,
-        settings: Settings,
-        job_id: UUID | None = None,
-        job_type: str = "ifc_extraction",
-    ) -> None:
-        calls.append(
-            {
-                "file_id": str(file_id),
-                "project_id": str(project_id),
-                "storage_key": storage_key,
-                "job_type": job_type,
-            }
-        )
+    async def _record(job: Job, _settings: Settings) -> None:
+        payload = dict(job.payload or {})
+        entry: dict[str, object] = {
+            "job_id": str(job.id),
+            "job_type": job.job_type.value,
+            "payload": payload,
+        }
+        # Convenience flat keys for tests that read e.g. calls[0]["file_id"].
+        for k in ("file_id", "project_id", "storage_key"):
+            if k in payload:
+                entry[k] = payload[k]
+        calls.append(entry)
 
-    set_extraction_dispatcher(_record)
+    set_job_dispatcher(_record)
     try:
         yield calls
     finally:
-        reset_extraction_dispatcher()
+        reset_job_dispatcher()
 
 
 @pytest.fixture
-def extraction_calls(
-    _stub_extraction_dispatcher: list[dict[str, str]],
-) -> list[dict[str, str]]:
+def job_dispatch_calls(
+    _stub_job_dispatcher: list[dict[str, object]],
+) -> list[dict[str, object]]:
     """Alias so test signatures read naturally."""
-    return _stub_extraction_dispatcher
+    return _stub_job_dispatcher
+
+
+# Back-compat alias — many older tests reference `extraction_calls`. Prefer
+# `job_dispatch_calls` in new code.
+@pytest.fixture
+def extraction_calls(
+    _stub_job_dispatcher: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    return _stub_job_dispatcher
 
 
 @pytest.fixture

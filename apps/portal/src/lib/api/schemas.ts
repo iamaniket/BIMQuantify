@@ -6,3 +6,4 @@ export * from './schemas/files';
 export * from './schemas/models';
 export * from './schemas/compliance';
 export * from './schemas/notifications';
+export * from './schemas/reports';

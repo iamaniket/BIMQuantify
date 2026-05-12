@@ -160,6 +160,25 @@
       "health": "Health",
       "accessibility": "Accessibility",
       "sustainability": "Sustainability"
+    },
+    "downloadable": {
+      "downloadableTitle": "Downloadable reports",
+      "downloadableDescription": "Generate a PDF version of the latest compliance report, ready to share.",
+      "generate": "Generate compliance report",
+      "generating": "Generating…",
+      "loading": "Loading…",
+      "view": "View",
+      "download": "Download",
+      "noReports": "No reports generated yet",
+      "noComplianceData": "No compliance data available — run a check on a processed IFC first.",
+      "errorGenerating": "Failed to generate the report.",
+      "noPreview": "No preview available.",
+      "status": {
+        "queued": "Queued",
+        "running": "Running",
+        "ready": "Ready",
+        "failed": "Failed"
+      }
     }
   },
   "legal": {

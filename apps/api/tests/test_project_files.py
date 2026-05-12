@@ -1339,7 +1339,7 @@ async def test_complete_callback_persists_ifc_project_guid(
     )
 
     callback = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": init["file_id"],
             "status": "succeeded",
@@ -1386,7 +1386,7 @@ async def test_complete_callback_rejects_on_hash_mismatch(
     )
 
     callback = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": init["file_id"],
             "status": "succeeded",

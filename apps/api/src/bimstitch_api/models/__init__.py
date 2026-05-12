@@ -20,6 +20,7 @@ from bimstitch_api.models.project_file import (
     ProjectFileStatus,
 )
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
+from bimstitch_api.models.report import Report, ReportStatus, ReportType, _REPORT_TERMINAL
 from bimstitch_api.models.user import User
 
 __all__ = [
@@ -45,5 +46,9 @@ __all__ = [
     "ProjectPhase",
     "ProjectRole",
     "ProjectStatus",
+    "Report",
+    "ReportStatus",
+    "ReportType",
+    "_REPORT_TERMINAL",
     "User",
 ]

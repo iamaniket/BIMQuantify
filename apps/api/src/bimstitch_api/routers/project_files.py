@@ -20,8 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
-from bimstitch_api.extraction import ExtractionDispatchError, dispatch_extraction
 from bimstitch_api.ifc.header import parse_ifc_header
+from bimstitch_api.jobs import DispatchJobError, dispatch_job
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.model import Model
 from bimstitch_api.models.project_file import (
@@ -282,22 +282,24 @@ async def complete_upload(
             file_id=row.id,
             job_type=JobType.pdf_extraction,
             status=JobStatus.pending,
-            payload={"storage_key": row.storage_key},
+            payload={
+                "file_id": str(row.id),
+                "project_id": str(project.id),
+                "storage_key": row.storage_key,
+            },
             created_by_user_id=user.id,
         )
         session.add(pdf_job)
         await session.flush()
 
         try:
-            await dispatch_extraction(
-                row.id, project.id, row.storage_key, settings, pdf_job.id, "pdf_extraction"
-            )
-        except ExtractionDispatchError as exc:
+            await dispatch_job(pdf_job, settings)
+        except DispatchJobError as exc:
             row.extraction_status = ExtractionStatus.failed
             row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
             pdf_job.status = JobStatus.failed
             pdf_job.error = f"DISPATCH_FAILED: {exc}"[:500]
-            logger.warning("Extractor dispatch failed for %s: %s", row.storage_key, exc)
+            logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
             await session.flush()
 
         await session.refresh(row)
@@ -321,22 +323,24 @@ async def complete_upload(
             file_id=row.id,
             job_type=JobType.ifc_extraction,
             status=JobStatus.pending,
-            payload={"storage_key": row.storage_key},
+            payload={
+                "file_id": str(row.id),
+                "project_id": str(project.id),
+                "storage_key": row.storage_key,
+            },
             created_by_user_id=user.id,
         )
         session.add(ifc_job)
         await session.flush()
 
         try:
-            await dispatch_extraction(
-                row.id, project.id, row.storage_key, settings, ifc_job.id, "ifc_extraction"
-            )
-        except ExtractionDispatchError as exc:
+            await dispatch_job(ifc_job, settings)
+        except DispatchJobError as exc:
             row.extraction_status = ExtractionStatus.failed
             row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
             ifc_job.status = JobStatus.failed
             ifc_job.error = f"DISPATCH_FAILED: {exc}"[:500]
-            logger.warning("Extractor dispatch failed for %s: %s", row.storage_key, exc)
+            logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
             await session.flush()
 
         await session.refresh(row)
@@ -411,8 +415,9 @@ async def retry_extraction(
     """Re-dispatch extraction for a file whose previous attempt failed.
 
     Only valid when the row is `status=ready` and `extraction_status=failed`.
-    Resets the extraction fields to `queued` and posts to the extractor;
-    the same DISPATCH_FAILED guard applies if the extractor is unreachable.
+    Resets the extraction fields to `queued` and posts to the import-export
+    worker; the same DISPATCH_FAILED guard applies if the worker is
+    unreachable.
     """
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
@@ -441,22 +446,25 @@ async def retry_extraction(
         file_id=row.id,
         job_type=retry_job_type,
         status=JobStatus.pending,
-        payload={"storage_key": row.storage_key, "retry": True},
+        payload={
+            "file_id": str(row.id),
+            "project_id": str(project.id),
+            "storage_key": row.storage_key,
+            "retry": True,
+        },
         created_by_user_id=user.id,
     )
     session.add(retry_job)
     await session.flush()
 
     try:
-        await dispatch_extraction(
-            row.id, project.id, row.storage_key, settings, retry_job.id, retry_job_type.value
-        )
-    except ExtractionDispatchError as exc:
+        await dispatch_job(retry_job, settings)
+    except DispatchJobError as exc:
         row.extraction_status = ExtractionStatus.failed
         row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
         retry_job.status = JobStatus.failed
         retry_job.error = f"DISPATCH_FAILED: {exc}"[:500]
-        logger.warning("Extractor re-dispatch failed for %s: %s", row.storage_key, exc)
+        logger.warning("Worker re-dispatch failed for %s: %s", row.storage_key, exc)
         await session.flush()
 
     await session.refresh(row)

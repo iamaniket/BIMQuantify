@@ -20,6 +20,7 @@ class JobType(StrEnum):
     bbl_compliance_check = "bbl_compliance_check"
     wkb_compliance_check = "wkb_compliance_check"
     compliance_check = "compliance_check"
+    compliance_report = "compliance_report"
 
 
 class JobStatus(StrEnum):

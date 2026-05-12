@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from httpx import AsyncClient
 
-from bimstitch_api.extraction import ExtractionDispatchError, set_extraction_dispatcher
+from bimstitch_api.jobs import DispatchJobError, set_job_dispatcher
 from tests.conftest import (
     VALID_IFC_HEADER,
     FakeStorage,
@@ -179,7 +179,7 @@ async def test_callback_updates_job_to_running(
     job_id = list_resp.json()["items"][0]["id"]
 
     cb = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "job_id": job_id,
@@ -211,7 +211,7 @@ async def test_callback_updates_job_to_succeeded(
     fragments_key = f"projects/{project_id}/{file_id}.frag"
     metadata_key = f"projects/{project_id}/{file_id}.metadata.json"
     cb = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "job_id": job_id,
@@ -246,7 +246,7 @@ async def test_callback_updates_job_to_failed(
     job_id = list_resp.json()["items"][0]["id"]
 
     cb = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "job_id": job_id,
@@ -276,7 +276,7 @@ async def test_callback_without_job_id_still_updates_file(
     )
 
     cb = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={"file_id": file_id, "status": "running"},
         headers=_bearer(),
     )
@@ -298,7 +298,7 @@ async def test_callback_terminal_job_is_idempotent(
     job_id = list_resp.json()["items"][0]["id"]
 
     await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "job_id": job_id,
@@ -310,7 +310,7 @@ async def test_callback_terminal_job_is_idempotent(
 
     # Second terminal callback should not change status.
     await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "job_id": job_id,
@@ -415,9 +415,9 @@ async def test_dispatch_failure_creates_failed_job(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     async def _boom(*_args: object, **_kwargs: object) -> None:
-        raise ExtractionDispatchError("unreachable")
+        raise DispatchJobError("unreachable")
 
-    set_extraction_dispatcher(_boom)
+    set_job_dispatcher(_boom)
 
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"], name="fail-dispatch-p")

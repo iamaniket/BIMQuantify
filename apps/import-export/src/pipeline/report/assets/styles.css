@@ -1,0 +1,129 @@
+/* PDF print styles — A4, Dutch typography. Hand-written; mirrors
+ * @bimstitch/design-tokens (color names + spacing scale) without pulling in
+ * the Tailwind toolchain. Print-only — no responsive, no dark mode. */
+
+@page {
+  size: A4;
+  margin: 22mm 18mm 24mm 18mm;
+}
+
+:root {
+  --c-text: #111827;
+  --c-muted: #6b7280;
+  --c-border: #e5e7eb;
+  --c-bg-soft: #f9fafb;
+  --c-pass: #166534;
+  --c-pass-bg: #dcfce7;
+  --c-warn: #854d0e;
+  --c-warn-bg: #fef3c7;
+  --c-fail: #991b1b;
+  --c-fail-bg: #fee2e2;
+  --c-primary: #1d4ed8;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Liberation Sans', 'Noto Sans', system-ui, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: var(--c-text);
+}
+
+main { display: block; }
+
+/* Cover */
+.cover { padding-bottom: 8mm; border-bottom: 1px solid var(--c-border); margin-bottom: 8mm; }
+.kicker {
+  font-size: 9pt; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--c-muted); margin: 0 0 4mm 0;
+}
+.cover h1 {
+  font-size: 22pt; line-height: 1.1; margin: 0 0 6mm 0; font-weight: 700;
+  color: var(--c-text);
+}
+.meta {
+  display: grid;
+  grid-template-columns: 38mm 1fr;
+  gap: 1.6mm 4mm;
+  margin: 0 0 6mm 0;
+}
+.meta dt { color: var(--c-muted); font-weight: 500; }
+.meta dd { margin: 0; }
+
+/* Score card */
+.score-card {
+  margin-top: 4mm;
+  padding: 6mm 8mm;
+  border: 1px solid var(--c-border);
+  border-radius: 4mm;
+  background: var(--c-bg-soft);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4mm 8mm;
+}
+.score-number {
+  font-size: 36pt; font-weight: 800; line-height: 1; color: var(--c-primary);
+}
+.score-unit { font-size: 14pt; color: var(--c-muted); margin-left: 2mm; }
+.score-label {
+  font-size: 9pt; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--c-muted);
+}
+.score-counts { font-size: 11pt; }
+.score-counts span { margin-right: 5mm; font-weight: 600; }
+.score-totals {
+  grid-column: 1 / -1; font-size: 9pt; color: var(--c-muted); margin-top: -2mm;
+}
+
+/* Section */
+.page { margin-top: 6mm; page-break-inside: auto; }
+.page h2 {
+  font-size: 13pt; margin: 0 0 3mm 0; padding-bottom: 1mm;
+  border-bottom: 1px solid var(--c-border);
+}
+.muted { color: var(--c-muted); font-size: 10pt; }
+
+/* Tables */
+table.grid {
+  width: 100%; border-collapse: collapse; font-size: 9.5pt;
+  page-break-inside: auto;
+}
+table.grid thead {
+  display: table-header-group; /* repeat header on each page */
+}
+table.grid th, table.grid td {
+  text-align: left; padding: 1.6mm 2mm; border-bottom: 1px solid var(--c-border);
+  vertical-align: top;
+}
+table.grid th {
+  background: var(--c-bg-soft);
+  font-weight: 600; color: var(--c-muted);
+  text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.04em;
+}
+table.grid td.num, table.grid th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.grid tbody tr { page-break-inside: avoid; }
+
+td.pass, .pass { color: var(--c-pass); font-weight: 600; }
+td.fail, .fail { color: var(--c-fail); font-weight: 600; }
+td.warn, .warn { color: var(--c-warn); font-weight: 600; }
+
+/* Status pills */
+.pill {
+  display: inline-block; font-size: 8.5pt; padding: 0.4mm 2mm;
+  border-radius: 2mm; background: var(--c-bg-soft); color: var(--c-muted);
+  text-transform: lowercase;
+}
+.pill-fail { background: var(--c-fail-bg); color: var(--c-fail); }
+.pill-warn { background: var(--c-warn-bg); color: var(--c-warn); }
+
+.page-footer {
+  /* Visible only inside the html shell — Puppeteer's own
+   * displayHeaderFooter footer is what actually appears in the PDF page
+   * margin. This is a fallback so HTML preview also makes sense. */
+  position: fixed;
+  bottom: 4mm; left: 18mm; right: 18mm;
+  font-size: 8pt; color: var(--c-muted);
+  text-align: right;
+}

@@ -6,9 +6,9 @@ from uuid import uuid4
 
 from httpx import AsyncClient
 
-from bimstitch_api.extraction import (
-    ExtractionDispatchError,
-    set_extraction_dispatcher,
+from bimstitch_api.jobs import (
+    DispatchJobError,
+    set_job_dispatcher,
 )
 from tests.conftest import (
     VALID_IFC_HEADER,
@@ -90,9 +90,9 @@ async def test_complete_marks_failed_when_dispatch_raises(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     async def _boom(*_args: object, **_kwargs: object) -> None:
-        raise ExtractionDispatchError("connection refused")
+        raise DispatchJobError("connection refused")
 
-    set_extraction_dispatcher(_boom)
+    set_job_dispatcher(_boom)
 
     client, fake = fake_storage_client
     project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="boom.ifc")
@@ -121,13 +121,13 @@ async def test_callback_requires_bearer_token(
     _, _, file_id = await _ready_file(client, fake, org_user, name="auth.ifc")
 
     no_auth = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={"file_id": file_id, "status": "succeeded"},
     )
     assert no_auth.status_code == 401
 
     bad_auth = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={"file_id": file_id, "status": "succeeded"},
         headers=_bearer("not-the-secret"),
     )
@@ -141,7 +141,7 @@ async def test_callback_unknown_file_returns_404(
 ) -> None:
     client, _fake = fake_storage_client
     resp = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={"file_id": str(uuid4()), "status": "succeeded"},
         headers=_bearer(),
     )
@@ -159,7 +159,7 @@ async def test_callback_running_then_succeeded(
 
     # Move to running.
     running = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "status": "running",
@@ -174,7 +174,7 @@ async def test_callback_running_then_succeeded(
 
     # Move to succeeded with storage keys.
     succeeded = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -201,7 +201,7 @@ async def test_callback_is_idempotent_after_terminal(
     _project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="idem.ifc")
 
     first = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -214,7 +214,7 @@ async def test_callback_is_idempotent_after_terminal(
 
     # Second call should be a no-op (e.g. retried delivery).
     second = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "status": "failed",
@@ -237,7 +237,7 @@ async def test_callback_rejects_invalid_incoming_status(
     _, _, file_id = await _ready_file(client, fake, org_user, name="bad.ifc")
 
     resp = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={"file_id": file_id, "status": "queued"},
         headers=_bearer(),
     )
@@ -254,7 +254,7 @@ async def test_callback_records_failure(
     _project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="fail.ifc")
 
     resp = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "status": "failed",
@@ -281,9 +281,9 @@ async def test_retry_requeues_failed_extraction(
     extraction_calls: list[dict[str, str]],
 ) -> None:
     async def _boom(*_args: object, **_kwargs: object) -> None:
-        raise ExtractionDispatchError("connection refused")
+        raise DispatchJobError("connection refused")
 
-    set_extraction_dispatcher(_boom)
+    set_job_dispatcher(_boom)
     client, fake = fake_storage_client
     project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="retry.ifc")
 
@@ -297,16 +297,19 @@ async def test_retry_requeues_failed_extraction(
     # Replace dispatcher with a recording stub so the retry succeeds.
     extraction_calls.clear()
 
-    async def _record(file_id_arg, project_id_arg, storage_key, _settings, _job_id=None, _job_type="ifc_extraction") -> None:
-        extraction_calls.append(
-            {
-                "file_id": str(file_id_arg),
-                "project_id": str(project_id_arg),
-                "storage_key": storage_key,
-            }
-        )
+    async def _record(job, _settings) -> None:
+        payload = dict(job.payload or {})
+        entry = {
+            "job_id": str(job.id),
+            "job_type": job.job_type.value,
+            "payload": payload,
+        }
+        for k in ("file_id", "project_id", "storage_key"):
+            if k in payload:
+                entry[k] = payload[k]
+        extraction_calls.append(entry)
 
-    set_extraction_dispatcher(_record)
+    set_job_dispatcher(_record)
 
     resp = await client.post(
         f"/projects/{project_id}/models/{model_id}/files/{file_id}/retry-extraction",
@@ -374,7 +377,7 @@ async def test_viewer_bundle_returns_presigned_urls_after_extraction(
     fake.objects[properties_key] = b"{}"
 
     cb = await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -410,7 +413,7 @@ async def test_viewer_bundle_cross_org_returns_404(
 
     # Mark succeeded so the only thing standing between us and a 200 is auth.
     await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -446,7 +449,7 @@ async def test_viewer_role_can_get_viewer_bundle(
     fragments_key = f"projects/{project_id}/{file_id}.frag"
     fake.objects[fragments_key] = b"frag-bytes"
     await client.post(
-        "/internal/extraction/callback",
+        "/internal/jobs/callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
