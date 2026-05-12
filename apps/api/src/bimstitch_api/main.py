@@ -10,6 +10,7 @@ from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
 from bimstitch_api.notifications.manager import get_manager
+from bimstitch_api.observability import init_sentry
 from bimstitch_api.routers.compliance import (
     project_router as compliance_project_router,
 )
@@ -53,6 +54,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    init_sentry()
     app = FastAPI(title="BIMstitch API", version="0.0.1", lifespan=lifespan)
 
     app.add_middleware(

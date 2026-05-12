@@ -19,6 +19,7 @@ dependencies = [
     "redis>=5.0.0",
     "fastapi-limiter>=0.1.6,<0.2",
     "aioboto3>=13.0.0",
+    "sentry-sdk[fastapi]>=2.0",
 ]
 
 [dependency-groups]

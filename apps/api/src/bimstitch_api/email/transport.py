@@ -5,6 +5,7 @@ from email.message import EmailMessage
 from typing import Protocol
 
 import aiosmtplib
+import httpx
 
 from bimstitch_api.config import get_settings
 
@@ -37,6 +38,39 @@ class SMTPEmailTransport:
         )
 
 
+class PostmarkEmailTransport:
+    """Send transactional email via Postmark's HTTPS API.
+
+    Why: compliance reminders MUST land in inbox; Postmark handles deliverability
+    (SPF/DKIM/DMARC alignment, dedicated transactional IP pools) better than raw SMTP.
+    """
+
+    POSTMARK_URL = "https://api.postmarkapp.com/email"
+
+    async def send(self, to: str, subject: str, body: str) -> None:
+        settings = get_settings()
+        token = settings.postmark_server_token
+        if not token:
+            raise RuntimeError(
+                "PostmarkEmailTransport selected but POSTMARK_SERVER_TOKEN is unset"
+            )
+        payload = {
+            "From": settings.smtp_from,
+            "To": to,
+            "Subject": subject,
+            "TextBody": body,
+            "MessageStream": settings.postmark_message_stream,
+        }
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Postmark-Server-Token": token,
+        }
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(self.POSTMARK_URL, json=payload, headers=headers)
+            response.raise_for_status()
+
+
 class InMemoryEmailTransport:
     def __init__(self) -> None:
         self.sent: list[SentEmail] = []
@@ -54,7 +88,14 @@ class InMemoryEmailTransport:
         self.sent.clear()
 
 
-_transport: EmailTransport = SMTPEmailTransport()
+def _build_default_transport() -> EmailTransport:
+    settings = get_settings()
+    if settings.email_transport == "postmark":
+        return PostmarkEmailTransport()
+    return SMTPEmailTransport()
+
+
+_transport: EmailTransport = _build_default_transport()
 
 
 def get_email_transport() -> EmailTransport:

@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=1025, alias="SMTP_PORT")
     smtp_from: EmailStr = Field(default="no-reply@bimstitch.dev", alias="SMTP_FROM")
 
+    email_transport: str = Field(default="smtp", alias="EMAIL_TRANSPORT")
+    postmark_server_token: str | None = Field(default=None, alias="POSTMARK_SERVER_TOKEN")
+    postmark_message_stream: str = Field(default="outbound", alias="POSTMARK_MESSAGE_STREAM")
+
     frontend_verify_url: str = Field(
         default="http://localhost:3000/auth/verify", alias="FRONTEND_VERIFY_URL"
     )
@@ -55,6 +59,11 @@ class Settings(BaseSettings):
     extractor_dispatch_timeout_seconds: float = Field(
         default=5.0, alias="EXTRACTOR_DISPATCH_TIMEOUT_SECONDS"
     )
+
+    sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
+    sentry_environment: str | None = Field(default=None, alias="SENTRY_ENVIRONMENT")
+    sentry_traces_sample_rate: float = Field(default=0.1, alias="SENTRY_TRACES_SAMPLE_RATE")
+    sentry_release: str | None = Field(default=None, alias="SENTRY_RELEASE")
 
     compliance_checker_url: str = Field(
         default="http://localhost:8090",
