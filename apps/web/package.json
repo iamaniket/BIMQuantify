@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@bimstitch/design-tokens": "workspace:*",
+    "@bimstitch/map": "workspace:*",
     "@bimstitch/ui": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",

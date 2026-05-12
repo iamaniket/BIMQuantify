@@ -1,8 +1,18 @@
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
+import { Fraunces } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import type { JSX, ReactNode } from 'react';
 import { Toaster } from 'sonner';
+
+// Brand display face — used on hero copy in the login / request-access
+// pages. Variable font, optical-size axis, kept to weights 400/500/600.
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['400', '500', '600'],
+  display: 'swap',
+});
 
 import { LocaleMigrationShim } from '@/components/LocaleMigrationShim';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
@@ -28,7 +38,7 @@ export default async function LocaleLayout({ children, params }: Props): Promise
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} className={fraunces.variable} suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <NextIntlClientProvider>
           <LocaleMigrationShim />

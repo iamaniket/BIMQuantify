@@ -18,6 +18,12 @@ export function Header(): JSX.Element {
 
         <nav className="flex items-center gap-2">
           <ThemeToggle />
+          <Link
+            href="/request-access"
+            className="hidden text-body2 font-semibold text-foreground-secondary hover:text-primary sm:inline-block"
+          >
+            Request access
+          </Link>
           <a href={portalUrl}>
             <Button variant="primary" size="sm">
               Log in

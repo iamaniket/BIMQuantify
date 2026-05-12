@@ -43,6 +43,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
     )
     from bimstitch_api.db import Base
     from bimstitch_api.models import (  # noqa: F401
+        AccessRequest,
         Contractor,
         Job,
         Model,
@@ -79,6 +80,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS jobstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS reporttype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS reportstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS accessrequeststatus")
         await conn.run_sync(Base.metadata.create_all)
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
@@ -107,6 +109,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS jobstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS reporttype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS reportstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS accessrequeststatus")
     await eng.dispose()
 
 
@@ -133,8 +136,9 @@ async def _clean_tables(
         # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
         await session.execute(
             text(
-                "TRUNCATE TABLE reports, jobs, project_files, models, project_members, "
-                "projects, contractors, users, organizations RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE access_requests, reports, jobs, project_files, models, "
+                "project_members, projects, contractors, users, organizations "
+                "RESTART IDENTITY CASCADE"
             )
         )
         await session.commit()
@@ -282,6 +286,7 @@ async def fake_storage_client(
     )
     from bimstitch_api.cache import client as cache_module
     from bimstitch_api.main import create_app
+    from bimstitch_api.routers.access_requests import ACCESS_REQUEST_RATE_LIMITER
     from bimstitch_api.storage import get_storage
 
     db_module._engine = engine
@@ -296,6 +301,7 @@ async def fake_storage_client(
         REGISTER_RATE_LIMITER,
         FORGOT_RATE_LIMITER,
         REFRESH_RATE_LIMITER,
+        ACCESS_REQUEST_RATE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 
@@ -386,6 +392,7 @@ async def client(
     )
     from bimstitch_api.cache import client as cache_module
     from bimstitch_api.main import create_app
+    from bimstitch_api.routers.access_requests import ACCESS_REQUEST_RATE_LIMITER
 
     db_module._engine = engine
     db_module._session_maker = session_maker
@@ -398,6 +405,7 @@ async def client(
         REGISTER_RATE_LIMITER,
         FORGOT_RATE_LIMITER,
         REFRESH_RATE_LIMITER,
+        ACCESS_REQUEST_RATE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 

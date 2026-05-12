@@ -11,6 +11,7 @@ from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
 from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.observability import init_sentry
+from bimstitch_api.routers.access_requests import router as access_requests_router
 from bimstitch_api.routers.compliance import (
     project_router as compliance_project_router,
 )
@@ -25,6 +26,7 @@ from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.notifications import router as notifications_router
 from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
+from bimstitch_api.routers.public import router as public_router
 from bimstitch_api.routers.reports import router as reports_router
 from bimstitch_api.routers.ws_notifications import router as ws_notifications_router
 from bimstitch_api.storage import get_storage
@@ -69,6 +71,8 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health_router)
+    app.include_router(public_router)
+    app.include_router(access_requests_router)
     app.include_router(build_auth_router())
     app.include_router(projects_router)
     app.include_router(contractors_router)

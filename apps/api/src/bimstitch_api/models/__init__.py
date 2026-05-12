@@ -1,3 +1,4 @@
+from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.job import Job, JobStatus, JobType, _JOB_TERMINAL
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
@@ -24,6 +25,8 @@ from bimstitch_api.models.report import Report, ReportStatus, ReportType, _REPOR
 from bimstitch_api.models.user import User
 
 __all__ = [
+    "AccessRequest",
+    "AccessRequestStatus",
     "Contractor",
     "ExtractionStatus",
     "IfcSchema",

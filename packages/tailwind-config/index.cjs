@@ -80,6 +80,10 @@ const preset = {
       fontFamily: {
         sans: ['Geist', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        // Brand display face for hero copy on auth/marketing pages.
+        // Falls back to a serif so the page still looks correct if the
+        // webfont hasn't loaded.
+        display: ['var(--font-display)', 'Fraunces', 'Georgia', '"Times New Roman"', 'serif'],
       },
       borderRadius: {
         xs: '2px',

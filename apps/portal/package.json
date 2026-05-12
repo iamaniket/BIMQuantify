@@ -17,6 +17,7 @@
   "dependencies": {
     "@bimstitch/design-tokens": "workspace:*",
     "@bimstitch/i18n": "workspace:*",
+    "@bimstitch/map": "workspace:*",
     "@bimstitch/ui": "workspace:*",
     "@bimstitch/viewer": "workspace:*",
     "@hookform/resolvers": "^3.9.1",

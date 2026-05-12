@@ -1,0 +1,217 @@
+'use client';
+
+import { NetherlandsMap, type MapMarker } from '@bimstitch/map';
+import {
+  AuthShell,
+  BrandMark,
+  HeroGrid,
+  LegalFooter,
+  RequestAccessForm,
+  RequestAccessSuccess,
+  SystemStatusBadge,
+  type RequestAccessValues,
+} from '@bimstitch/ui';
+import { useEffect, useState, type JSX } from 'react';
+
+import { fetchProjectsMap, submitAccessRequest, WebApiError } from '@/lib/api';
+import { env } from '@/lib/env';
+
+interface SubmittedState {
+  name: string;
+  email: string;
+  company: string;
+}
+
+export function RequestAccessClient(): JSX.Element {
+  const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
+  const [submitError, setSubmitError] = useState<string | undefined>(undefined);
+  const [markers, setMarkers] = useState<readonly MapMarker[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchProjectsMap()
+      .then((points) => {
+        if (cancelled) return;
+        setMarkers(points.map((p): MapMarker => ({
+          lat: p.lat,
+          lng: p.lng,
+          label: p.city,
+          count: p.count,
+        })));
+      })
+      .catch(() => {
+        // Marketing page tolerates a missing API — just render an empty map.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onSubmit = async (values: RequestAccessValues): Promise<void> => {
+    setSubmitError(undefined);
+    try {
+      await submitAccessRequest({
+        name: values.name,
+        work_email: values.work_email,
+        company: values.company,
+        role: values.role,
+        company_size: values.company_size,
+        country: values.country,
+        notes: values.notes === '' ? undefined : values.notes,
+        terms_accepted: values.terms_accepted,
+      });
+      setSubmitted({ name: values.name, email: values.work_email, company: values.company });
+    } catch (err) {
+      if (err instanceof WebApiError) {
+        if (err.status === 422) {
+          setSubmitError(err.detail);
+        } else if (err.status === 429) {
+          setSubmitError('Too many requests from your network — please try again in an hour.');
+        } else {
+          setSubmitError(`We couldn't submit your request: ${err.detail}`);
+        }
+      } else {
+        setSubmitError('We couldn’t reach the BimStitch API. Please try again in a moment.');
+      }
+    }
+  };
+
+  const totalProjects = markers.reduce((sum, m) => sum + (m.count ?? 1), 0);
+  const signInHref = `${env.NEXT_PUBLIC_PORTAL_URL.replace(/\/$/, '')}/login`;
+
+  return (
+    <AuthShell
+      brandPaneWidth="44%"
+      brand={(
+        <>
+          <HeroGrid opacity={0.1} stroke="#ffffff" step={36} />
+
+          <div className="relative flex items-center gap-3">
+            <BrandMark size={38} tone="on-dark" />
+            <div>
+              <div className="font-display text-[18px] font-semibold leading-tight tracking-tight text-white">
+                BimStitch
+              </div>
+              <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
+                Wkb-compliant BIM platform
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mt-10 flex flex-1 flex-col items-stretch gap-8">
+            <div>
+              <div
+                className="mb-3.5 inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em]"
+                style={{
+                  color: '#9ff0bf',
+                  background: 'rgba(95,217,158,0.16)',
+                  borderColor: 'rgba(95,217,158,0.32)',
+                }}
+              >
+                <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: '#5fd99e' }} />
+                Request a guided demo
+              </div>
+
+              <h1
+                className="m-0 max-w-md font-display text-[36px] font-medium leading-[1.06] tracking-tight text-white"
+                style={{ textWrap: 'pretty' }}
+              >
+                See your <span className="italic" style={{ color: '#9bbce8' }}>models</span>,{' '}
+                <span className="italic" style={{ color: '#9bbce8' }}>issues</span> and{' '}
+                <span className="italic" style={{ color: '#9bbce8' }}>dossier</span> stitched into one Wkb record.
+              </h1>
+              <p className="mt-3.5 max-w-md text-[13.5px] leading-snug text-white/70">
+                Tell us a little about your team and we&rsquo;ll spin up a sandbox preloaded with sample
+                Wkb projects, BBL libraries and a representative consumentendossier.
+              </p>
+
+              <ul className="mt-5 flex list-none flex-col gap-2.5 p-0">
+                {[
+                  'Federated IFC review with real Bouwbesluit checks',
+                  'Wkb-1 risk dossier from kickoff to oplevering',
+                  'Sandbox stays live for 14 days, no card required',
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-2.5 text-[13px] leading-snug text-white/82">
+                    <span
+                      aria-hidden
+                      className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full"
+                      style={{ background: 'rgba(95,217,158,0.22)', color: '#9ff0bf' }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                    </span>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Live NL map — height-driven so it scales with the viewport */}
+            <div className="relative flex flex-1 items-center justify-end">
+              <div className="relative">
+                <NetherlandsMap
+                  responsiveHeight="min(60vh, 600px)"
+                  fill="var(--color-primary-light, #e5ecf6)"
+                  markers={markers}
+                  animatePulse
+                  labelTone="light"
+                  ariaLabel="Live BimStitch project locations across the Netherlands"
+                  className="drop-shadow-[0_24px_48px_rgba(0,0,0,0.25)]"
+                />
+                {markers.length > 0 ? (
+                  <div className="mt-2 text-center font-mono text-[10.5px] uppercase tracking-[0.10em] text-white/55">
+                    {totalProjects} projects · {markers.length} cities live
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mt-6">
+            <LegalFooter tone="on-dark" />
+          </div>
+        </>
+      )}
+      topRight={(
+        <>
+          <SystemStatusBadge status="normal" region="Onboarding · EU-WEST · AMS01" tone="on-light" />
+          <a href={signInHref} className="font-mono text-[11.5px] text-foreground-tertiary no-underline">
+            ‹ Back to sign in
+          </a>
+        </>
+      )}
+      form={(
+        submitted === null ? (
+          <>
+            <div className="mb-4">
+              <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">
+                Request access
+              </div>
+              <h2 className="m-0 font-display text-[28px] font-medium leading-tight tracking-tight text-foreground">
+                Get your BimStitch demo.
+              </h2>
+              <p className="mt-2 text-[13px] leading-snug text-foreground-tertiary">
+                Fill in the form with your work details — we&rsquo;ll review your request and send a
+                personalised invite shortly.
+              </p>
+            </div>
+            <RequestAccessForm
+              onSubmit={onSubmit}
+              submitError={submitError}
+              defaultCountry="NL"
+              signInHref={signInHref}
+            />
+          </>
+        ) : (
+          <RequestAccessSuccess
+            name={submitted.name}
+            email={submitted.email}
+            company={submitted.company}
+            onReset={() => setSubmitted(null)}
+          />
+        )
+      )}
+    />
+  );
+}
