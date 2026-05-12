@@ -38,7 +38,6 @@ function resolveCrumbs(
       { label: 'Projects', href: projectsHref },
       { label: projectName ?? 'Project', href: projectHref },
       { label: modelName ?? 'Model', href: projectHref },
-      { label: 'Viewer', href: undefined },
     ];
   }
   if (REPORT_RE.test(pathname)) {

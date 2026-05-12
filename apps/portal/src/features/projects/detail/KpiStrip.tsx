@@ -21,7 +21,7 @@ export function KpiStrip({ items }: Props): JSX.Element {
             i === 0 ? 'border-l' : ''
           } border-r border-white/20`}
         >
-          <div className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-white/65">
+          <div className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-white/85">
             {item.label}
           </div>
           <div
@@ -30,7 +30,7 @@ export function KpiStrip({ items }: Props): JSX.Element {
           >
             {item.value}
           </div>
-          <div className="mt-0.5 text-caption text-white/65">{item.sub}</div>
+          <div className="mt-0.5 text-caption text-white/80">{item.sub}</div>
         </div>
       ))}
     </div>

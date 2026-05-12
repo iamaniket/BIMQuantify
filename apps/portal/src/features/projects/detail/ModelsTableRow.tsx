@@ -2,8 +2,8 @@
 
 import { Eye, Loader2, ShieldCheck, Upload, Trash2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { useRouter } from '@/i18n/navigation';
-import { useState, type JSX } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useState, type JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';
 
@@ -11,6 +11,9 @@ import type { Model, ProjectFile } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
 import { formatExtractionStatus } from '@/lib/formatting/files';
 import { useModelFiles } from '@/features/models/useModelFiles';
+import { viewerKeys } from '@/features/viewer/queryKeys';
+import { getViewerBundle } from '@/lib/api/projectFiles';
+import { useAuth } from '@/providers/AuthProvider';
 
 const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
   architectural: { bg: '#ede8f7', fg: '#5a3fa6' },
@@ -61,10 +64,11 @@ type Props = {
 };
 
 export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Element {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const filesQuery = useModelFiles(projectId, model.id);
   const complianceMutation = useCheckCompliance(projectId, model.id);
+  const queryClient = useQueryClient();
+  const { tokens } = useAuth();
   const files = filesQuery.data ?? [];
   const colors = DISC_COLORS[model.discipline] ?? DISC_COLORS['other']!;
   const latestFile = files.length > 0 ? files[0] : undefined;
@@ -74,6 +78,25 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
       : latestFile.extraction_status === 'succeeded'
   );
   const canCheckBbl = latestFile?.file_type === 'ifc' && latestFile.extraction_status === 'succeeded';
+
+  const viewHref = latestFile !== undefined
+    ? `/projects/${projectId}/models/${model.id}/viewer/${latestFile.id}`
+    : '';
+
+  const prewarmViewer = useCallback(() => {
+    if (!isViewable || latestFile === undefined || tokens === null) return;
+    const accessToken = tokens.access_token;
+    const fileId = latestFile.id;
+    queryClient
+      .prefetchQuery({
+        queryKey: viewerKeys.bundle(projectId, model.id, fileId),
+        queryFn: () => getViewerBundle(accessToken, projectId, model.id, fileId),
+        staleTime: 60_000,
+      })
+      .catch(() => undefined);
+    // Start downloading the viewer JS chunk so it's hot by the time the page mounts.
+    import('@bimstitch/viewer').catch(() => undefined);
+  }, [isViewable, latestFile, tokens, queryClient, projectId, model.id]);
 
   return (
     <div className="border-b border-border">
@@ -120,20 +143,29 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
         <div className="flex justify-end gap-1.5">
           {!isOpen ? (
             <>
-              <button
-                type="button"
-                disabled={!isViewable}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (latestFile !== undefined) {
-                    router.push(`/projects/${projectId}/models/${model.id}/viewer/${latestFile.id}`);
-                  }
-                }}
-                title={isViewable ? 'View file' : 'No viewable file yet'}
-                className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </button>
+              {isViewable && latestFile !== undefined ? (
+                <Link
+                  href={viewHref}
+                  onClick={(e) => { e.stopPropagation(); }}
+                  onMouseEnter={prewarmViewer}
+                  onFocus={prewarmViewer}
+                  title="View file"
+                  className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  onClick={(e) => { e.stopPropagation(); }}
+                  title="No viewable file yet"
+                  className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
@@ -179,8 +211,10 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
             <div className="flex flex-wrap gap-1.5">
               {isViewable && latestFile !== undefined ? (
                 <Link
-                  href={`/projects/${projectId}/models/${model.id}/viewer/${latestFile.id}`}
+                  href={viewHref}
                   onClick={(e) => { e.stopPropagation(); }}
+                  onMouseEnter={prewarmViewer}
+                  onFocus={prewarmViewer}
                 >
                   <Button variant="border" size="sm">
                     <Eye className="mr-1.5 h-3 w-3" />

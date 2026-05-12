@@ -1,5 +1,6 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import {
@@ -35,6 +36,7 @@ import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel'
 import { useDocumentShortcuts } from '@/features/viewer/useDocumentShortcuts';
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
+import { viewerKeys } from '@/features/viewer/queryKeys';
 import { useViewerBridge } from '@/features/viewer/useViewerBridge';
 import { useViewerMode } from '@/features/viewer/useViewerMode';
 
@@ -76,13 +78,34 @@ function formatMB(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1);
 }
 
+function bundleErrorMessage(err: Error | null): string | null {
+  if (err === null) return null;
+  if (err instanceof ApiError) {
+    if (err.status === 404) {
+      return 'This file has not been processed yet, or extraction failed.';
+    }
+    return err.detail;
+  }
+  return 'Failed to load viewer bundle.';
+}
+
 export default function ViewerPage(): JSX.Element {
   const params = useParams<{ projectId: string; modelId: string; fileId: string }>();
   const { projectId, modelId, fileId } = params;
   const { tokens } = useAuth();
 
-  const [bundle, setBundle] = useState<ViewerBundleResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const accessToken = tokens === null ? null : tokens.access_token;
+  const bundleQuery = useQuery({
+    queryKey: viewerKeys.bundle(projectId, modelId, fileId),
+    queryFn: () => {
+      if (accessToken === null) throw new Error('Not authenticated');
+      return getViewerBundle(accessToken, projectId, modelId, fileId);
+    },
+    enabled: accessToken !== null,
+    staleTime: 60_000,
+  });
+  const bundle: ViewerBundleResponse | null = bundleQuery.data ?? null;
+  const error: string | null = bundleErrorMessage(bundleQuery.error);
   const [viewerError, setViewerError] = useState<string | null>(null);
   const viewerHandleRef = useRef<ViewerHandle | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
@@ -134,33 +157,6 @@ export default function ViewerPage(): JSX.Element {
     setPdfSettings(loadDocumentSettings());
   }, []);
 
-  useEffect(() => {
-    if (tokens === null) return undefined;
-    const accessToken = tokens.access_token;
-    const cancelToken = { cancelled: false };
-    (async () => {
-      try {
-        const result = await getViewerBundle(accessToken, projectId, modelId, fileId);
-        if (cancelToken.cancelled) return;
-        setBundle(result);
-      } catch (err) {
-        if (cancelToken.cancelled) return;
-        if (err instanceof ApiError) {
-          setError(
-            err.status === 404
-              ? 'This file has not been processed yet, or extraction failed.'
-              : err.detail,
-          );
-        } else {
-          setError('Failed to load viewer bundle.');
-        }
-      }
-    })().catch(() => undefined);
-    return () => {
-      cancelToken.cancelled = true;
-    };
-  }, [tokens, projectId, modelId, fileId]);
-
   // Reset PDF state when switching to a different file.
   useEffect(() => {
     setPdfCurrentPage(1);
@@ -184,6 +180,12 @@ export default function ViewerPage(): JSX.Element {
   const shellReady = bundle !== null && error === null;
   const ifcShellReady = shellReady && isIfc && viewerReady;
   const pdfShellReady = shellReady && isPdf;
+  // Render the chrome (side rail, side panel, toolbar placeholder) as soon
+  // as the page mounts — the only thing we wait for is the bundle URL, and
+  // even that is usually prefetched on hover. The canvas area shows its own
+  // skeleton/progress UI underneath while the file loads.
+  const showChrome = error === null;
+  const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady;
 
   useDocumentShortcuts({
     enabled: isPdf && documentHandle !== null,
@@ -300,7 +302,7 @@ export default function ViewerPage(): JSX.Element {
 
         {isIfc ? <ViewerContextMenu handle={viewerHandleRef.current} /> : null}
 
-        {ifcShellReady || pdfShellReady ? (
+        {showChrome ? (
           <>
             <ViewerSidePanel
               activePanel={activePanel}
@@ -341,6 +343,13 @@ export default function ViewerPage(): JSX.Element {
               onTogglePanel={togglePanel}
             />
           </>
+        ) : null}
+
+        {showToolbarPlaceholder ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-0 right-11 top-0 h-12 border-b border-border bg-background/95 backdrop-blur-sm"
+          />
         ) : null}
 
         {ifcShellReady ? (

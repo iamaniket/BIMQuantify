@@ -4,15 +4,31 @@ import { Skeleton } from '@bimstitch/ui';
 
 /**
  * Shown instantly by Next.js during the route transition from dashboard → viewer.
- * Mirrors the viewer chrome (header, canvas area, status bar) so the layout
- * swap doesn't feel like a jarring "jump".
+ * Mirrors the viewer chrome (toolbar strip, side rail, status bar) so the swap
+ * into the mounted viewer page is visually seamless.
  */
 export default function ViewerLoading(): JSX.Element {
   return (
     <main className="flex min-h-0 w-full flex-1 flex-col animate-viewer-fade-in">
-      {/* Canvas area skeleton */}
+      {/* Canvas area with chrome placeholders */}
       <div className="relative min-h-0 flex-1 bg-background">
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+        {/* Canvas skeleton */}
+        <Skeleton className="absolute inset-0" />
+
+        {/* Toolbar placeholder (matches showToolbarPlaceholder strip in the viewer page) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-0 right-11 top-0 h-12 border-b border-border bg-background/95 backdrop-blur-sm"
+        />
+
+        {/* Side rail placeholder — matches w-11 right-aligned rail */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 right-0 top-0 w-11 border-l border-border bg-background-secondary"
+        />
+
+        {/* Centered "Preparing viewer…" spinner */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-primary" />
           <span className="text-body3 text-foreground-secondary">
             Preparing viewer…

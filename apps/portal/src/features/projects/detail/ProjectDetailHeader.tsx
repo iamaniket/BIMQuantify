@@ -103,7 +103,7 @@ export function ProjectDetailHeader({
                 {refLabel}
               </span>
               <span className="text-[10.5px] text-white/55">·</span>
-              <span className="text-[10.5px] font-medium text-white/75">
+              <span className="text-[10.5px] font-medium text-white/90">
                 {stageLabel}
               </span>
               <span
@@ -124,16 +124,16 @@ export function ProjectDetailHeader({
             <h1 className="text-[30px] font-medium leading-tight tracking-tight text-white">
               {project.name}
             </h1>
-            <div className="mt-1 flex flex-wrap gap-3.5 text-body3 text-white/70">
+            <div className="mt-1 flex flex-wrap gap-3.5 text-body3 text-white/85">
               <span>
-                <span className="text-white/45">◉</span>{' '}
+                <span className="text-white/70">◉</span>{' '}
                 {address ?? 'No address set'}
               </span>
               {project.contractor_name !== null && (
                 <>
-                  <span className="text-white/35">·</span>
+                  <span className="text-white/60">·</span>
                   <span>
-                    <span className="text-white/45">⚒</span>{' '}
+                    <span className="text-white/70">⚒</span>{' '}
                     {project.contractor_name}
                   </span>
                 </>
