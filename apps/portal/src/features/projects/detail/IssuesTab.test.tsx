@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { IntlWrapper } from '@/__tests__/intl-wrapper';
@@ -7,6 +7,19 @@ import type { ComplianceIssue } from '@/features/compliance/types';
 
 vi.mock('@bimstitch/ui', () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  Button: ({
+    children,
+    onClick,
+    disabled,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => (
+    <button type="button" onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
 
@@ -100,5 +113,54 @@ describe('IssuesTab', () => {
     );
 
     expect(screen.getByText('Geen bevindingen komen overeen met uw filter.')).toBeInTheDocument();
+  });
+
+  it('omits the Download CSV button when no callback is provided', () => {
+    render(
+      <IntlWrapper locale="en">
+        <IssuesTab issues={issues} />
+      </IntlWrapper>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Download CSV' })).not.toBeInTheDocument();
+  });
+
+  it('renders Download CSV button and invokes callback on click (English)', async () => {
+    const onDownloadCsv = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <IntlWrapper locale="en">
+        <IssuesTab issues={issues} onDownloadCsv={onDownloadCsv} />
+      </IntlWrapper>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Download CSV' });
+    expect(button).toBeInTheDocument();
+    fireEvent.click(button);
+    await waitFor(() => { expect(onDownloadCsv).toHaveBeenCalledTimes(1); });
+  });
+
+  it('renders Dutch button label and disables it when issues list is empty', () => {
+    render(
+      <IntlWrapper locale="nl">
+        <IssuesTab issues={[]} onDownloadCsv={vi.fn()} />
+      </IntlWrapper>,
+    );
+
+    const button = screen.getByRole('button', { name: 'CSV downloaden' });
+    expect(button).toBeDisabled();
+  });
+
+  it('shows download error message when callback rejects', async () => {
+    const onDownloadCsv = vi.fn().mockRejectedValue(new Error('boom'));
+
+    render(
+      <IntlWrapper locale="en">
+        <IssuesTab issues={issues} onDownloadCsv={onDownloadCsv} />
+      </IntlWrapper>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Download failed');
   });
 });

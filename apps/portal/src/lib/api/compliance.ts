@@ -42,3 +42,14 @@ export async function listProjectReports(
   const resp = await apiClient.get(path, ProjectComplianceReportListSchema, accessToken);
   return resp.items;
 }
+
+export async function downloadComplianceCsv(
+  accessToken: string,
+  projectId: string,
+  modelId: string,
+  fileId: string,
+  framework: 'bbl' | 'wkb' = 'bbl',
+): Promise<{ blob: Blob; filename: string | null }> {
+  const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/export.csv?framework=${framework}`;
+  return apiClient.getBlob(path, accessToken);
+}

@@ -72,6 +72,15 @@ function encodeFormBody(body: Record<string, string>): string {
   return params.toString();
 }
 
+function parseFilenameFromDisposition(header: string | null): string | null {
+  if (header === null) return null;
+  const quoted = /filename="([^"]+)"/.exec(header);
+  if (quoted !== null && quoted[1] !== undefined) return quoted[1];
+  const bare = /filename=([^;]+)/.exec(header);
+  if (bare !== null && bare[1] !== undefined) return bare[1].trim();
+  return null;
+}
+
 function buildHeaders(accessToken: string | undefined): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -217,6 +226,26 @@ export const apiClient = {
       throw new ApiError(500, `Response validation failed: ${parsed.error.message}`);
     }
     return parsed.data;
+  },
+  // Authenticated GET that returns the raw response body as a Blob plus the
+  // filename parsed from Content-Disposition (when present). Used for binary
+  // or non-JSON downloads (CSV, PDF) that bypass Zod validation.
+  getBlob: async (
+    path: string,
+    accessToken: string,
+  ): Promise<{ blob: Blob; filename: string | null }> => {
+    const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
+      method: 'GET',
+      headers: buildHeaders(accessToken),
+    });
+    if (!response.ok) {
+      const detail = await parseErrorDetail(response);
+      throw new ApiError(response.status, detail.text, detail.object);
+    }
+    return {
+      blob: await response.blob(),
+      filename: parseFilenameFromDisposition(response.headers.get('Content-Disposition')),
+    };
   },
   // Raw PUT to a presigned URL. Bypasses the JSON request helper because
   // (a) we need to send a Blob, not stringified JSON, and

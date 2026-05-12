@@ -151,7 +151,9 @@
       "badges": {
         "fail": "FOUT",
         "warn": "WRSCH"
-      }
+      },
+      "downloadCsv": "CSV downloaden",
+      "downloadCsvError": "Downloaden mislukt"
     },
     "categories": {
       "fire_safety": "Brandveiligheid",

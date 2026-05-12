@@ -151,7 +151,9 @@
       "badges": {
         "fail": "FAIL",
         "warn": "WARN"
-      }
+      },
+      "downloadCsv": "Download CSV",
+      "downloadCsvError": "Download failed"
     },
     "categories": {
       "fire_safety": "Fire safety",

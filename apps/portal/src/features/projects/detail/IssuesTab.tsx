@@ -1,10 +1,10 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, useMemo, type JSX } from 'react';
 
-import { Badge, Input } from '@bimstitch/ui';
+import { Badge, Button, Input } from '@bimstitch/ui';
 
 import type { ComplianceIssue } from '@/features/compliance/types';
 
@@ -12,6 +12,7 @@ import { IssueDetailModal } from './IssueDetailModal';
 
 type Props = {
   issues: ComplianceIssue[];
+  onDownloadCsv?: () => Promise<void> | void;
 };
 
 const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -27,11 +28,26 @@ type FilterValue = 'all' | 'fail' | 'warn';
 
 const FILTER_VALUES: FilterValue[] = ['all', 'fail', 'warn'];
 
-export function IssuesTab({ issues }: Props): JSX.Element {
+export function IssuesTab({ issues, onDownloadCsv }: Props): JSX.Element {
   const t = useTranslations('reports.issues');
   const [filter, setFilter] = useState<FilterValue>('all');
   const [search, setSearch] = useState('');
   const [selectedIssue, setSelectedIssue] = useState<ComplianceIssue | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const handleDownload = async (): Promise<void> => {
+    if (onDownloadCsv === undefined || downloading) return;
+    setDownloadError(null);
+    setDownloading(true);
+    try {
+      await onDownloadCsv();
+    } catch {
+      setDownloadError(t('downloadCsvError'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     let result = issues;
@@ -80,7 +96,26 @@ export function IssuesTab({ issues }: Props): JSX.Element {
             className="pl-8"
           />
         </div>
+        {onDownloadCsv !== undefined && (
+          <Button
+            variant="border"
+            size="sm"
+            onClick={() => { void handleDownload(); }}
+            disabled={downloading || issues.length === 0}
+          >
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            {t('downloadCsv')}
+          </Button>
+        )}
       </div>
+      {downloadError !== null && (
+        <div
+          role="alert"
+          className="rounded-md border border-error-light bg-error-lighter px-3 py-1.5 text-caption text-error"
+        >
+          {downloadError}
+        </div>
+      )}
 
       <div className="rounded-lg border border-border bg-background">
         <div className="grid grid-cols-[50px_80px_1fr_80px_80px_60px] items-center px-3 py-2 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">

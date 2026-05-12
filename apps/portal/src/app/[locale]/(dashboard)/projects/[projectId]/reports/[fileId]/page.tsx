@@ -22,6 +22,8 @@ import {
 } from '@/features/compliance/hooks';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
+import { downloadComplianceCsv } from '@/lib/api/compliance';
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function ReportDetailPage(): JSX.Element {
   const t = useTranslations('reports.page');
@@ -33,6 +35,7 @@ export default function ReportDetailPage(): JSX.Element {
   const projectQuery = useProject(projectId);
   const modelsQuery = useModels(projectId);
   const reportsQuery = useProjectReports(projectId, framework);
+  const { tokens } = useAuth();
 
   // Fall back to looking up modelId from the reports list if it wasn't passed in.
   const modelId = useMemo(() => {
@@ -166,7 +169,30 @@ export default function ReportDetailPage(): JSX.Element {
         <div className="mb-3 text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
           {t('issuesTitle', { count: issues.length })}
         </div>
-        <IssuesTab issues={issues} />
+        {tokens === null ? (
+          <IssuesTab issues={issues} />
+        ) : (
+          <IssuesTab
+            issues={issues}
+            onDownloadCsv={async () => {
+              const { blob, filename } = await downloadComplianceCsv(
+                tokens.access_token,
+                projectId,
+                modelId,
+                fileId,
+                framework,
+              );
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = filename ?? `compliance-${framework}-${fileId}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            }}
+          />
+        )}
       </div>
     </main>
   );

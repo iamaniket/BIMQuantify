@@ -4,11 +4,13 @@ Connects to the compliance checker MCP server to evaluate IFC model data
 against Dutch building regulation rules (BBL, WKB).
 """
 
+import csv
+import io
 import logging
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -161,6 +163,36 @@ async def check_compliance(
     )
 
 
+async def _load_latest_compliance_job(
+    session: AsyncSession,
+    file_id: UUID,
+    framework: str,
+) -> Job:
+    """Return the most recent succeeded compliance job for (file, framework).
+
+    Raises 404 NO_COMPLIANCE_RESULTS if none exists or the job has no result.
+    """
+    job_type = _FRAMEWORK_JOB_TYPE.get(framework, JobType.compliance_check)
+    job = (
+        await session.execute(
+            select(Job)
+            .where(
+                Job.file_id == file_id,
+                Job.job_type == job_type,
+                Job.status == JobStatus.succeeded,
+            )
+            .order_by(Job.finished_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if job is None or job.result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="NO_COMPLIANCE_RESULTS",
+        )
+    return job
+
+
 @router.get(
     "/latest",
     response_model=ComplianceCheckResponse,
@@ -177,37 +209,69 @@ async def get_latest_compliance(
     project = await _load_project_or_404(session, project_id)
     await _require_membership(session, project.id, user.id)
 
-    job_type = _FRAMEWORK_JOB_TYPE.get(framework, JobType.compliance_check)
-
-    job = (
-        await session.execute(
-            select(Job)
-            .where(
-                Job.file_id == file_id,
-                Job.job_type == job_type,
-                Job.status == JobStatus.succeeded,
-            )
-            .order_by(Job.finished_at.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-
-    if job is None or job.result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="NO_COMPLIANCE_RESULTS",
-        )
+    job = await _load_latest_compliance_job(session, file_id, framework)
+    result = job.result or {}
 
     return ComplianceCheckResponse(
         file_id=str(file_id),
         job_id=job.id,
         framework=framework,
-        checked_at=job.result.get("checked_at", ""),
-        total_rules=job.result.get("total_rules", 0),
-        total_elements_checked=job.result.get("total_elements_checked", 0),
-        rules_summary=job.result.get("rules_summary", []),
-        category_summary=job.result.get("category_summary", []),
-        details=job.result.get("details", []),
+        checked_at=result.get("checked_at", ""),
+        total_rules=result.get("total_rules", 0),
+        total_elements_checked=result.get("total_elements_checked", 0),
+        rules_summary=result.get("rules_summary", []),
+        category_summary=result.get("category_summary", []),
+        details=result.get("details", []),
+    )
+
+
+_CSV_COLUMNS: tuple[str, ...] = (
+    "rule_id",
+    "article",
+    "status",
+    "severity",
+    "element_type",
+    "element_name",
+    "element_global_id",
+    "property_path",
+    "expected_value",
+    "actual_value",
+    "message",
+)
+
+
+@router.get(
+    "/export.csv",
+    response_class=Response,
+)
+async def export_compliance_csv(
+    project_id: UUID,
+    model_id: UUID,
+    file_id: UUID,
+    framework: str = Query(default="bbl", description="Regulation framework (bbl, wkb)"),
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+) -> Response:
+    """Stream the latest compliance results for a file as CSV (one row per detail item)."""
+    project = await _load_project_or_404(session, project_id)
+    await _require_membership(session, project.id, user.id)
+
+    job = await _load_latest_compliance_job(session, file_id, framework)
+    details = (job.result or {}).get("details", []) or []
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=list(_CSV_COLUMNS), extrasaction="ignore")
+    writer.writeheader()
+    for item in details:
+        if not isinstance(item, dict):
+            continue
+        writer.writerow({col: item.get(col, "") for col in _CSV_COLUMNS})
+
+    filename = f"compliance-{framework}-{file_id}.csv"
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
