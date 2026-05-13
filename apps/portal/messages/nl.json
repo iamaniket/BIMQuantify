@@ -63,12 +63,12 @@
       "on_hold": "On hold"
     },
     "phases": {
-      "ontwerp": "Ontwerp",
-      "bestek": "Bestek",
-      "werkvoorbereiding": "Werkvoorbereiding",
-      "ruwbouw": "Ruwbouw",
-      "afbouw": "Afbouw",
-      "oplevering": "Oplevering"
+      "design": "Ontwerp",
+      "tender": "Bestek",
+      "work_prep": "Werkvoorbereiding",
+      "shell": "Ruwbouw",
+      "finishing": "Afbouw",
+      "handover": "Oplevering"
     },
     "card": {
       "phaseLabel": "Fase:",

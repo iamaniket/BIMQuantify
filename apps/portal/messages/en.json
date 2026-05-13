@@ -63,12 +63,12 @@
       "on_hold": "On hold"
     },
     "phases": {
-      "ontwerp": "Design",
-      "bestek": "Specification",
-      "werkvoorbereiding": "Work preparation",
-      "ruwbouw": "Shell construction",
-      "afbouw": "Finishing",
-      "oplevering": "Delivery"
+      "design": "Design",
+      "tender": "Specification",
+      "work_prep": "Work preparation",
+      "shell": "Shell construction",
+      "finishing": "Finishing",
+      "handover": "Delivery"
     },
     "card": {
       "phaseLabel": "Phase:",
