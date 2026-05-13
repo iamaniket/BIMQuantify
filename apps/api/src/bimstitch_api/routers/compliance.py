@@ -1,6 +1,6 @@
 """Endpoints for compliance checking on project files.
 
-Connects to the compliance checker MCP server to evaluate IFC model data
+Connects to the Arbiter MCP server to evaluate IFC model data
 against jurisdiction-specific regulation rules. NL today (BBL, WKB);
 additional jurisdictions register via `bimstitch_api.jurisdictions`.
 """

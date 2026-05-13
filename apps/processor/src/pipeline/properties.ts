@@ -3,7 +3,7 @@
  *
  * Walks IfcRelDefinesByProperties and translates raw (psetName, propName)
  * pairs into the canonical "domain.property" shape that the rule engine
- * (apps/compliance-checker) operates on. Each element also carries
+ * (apps/arbiter) operates on. Each element also carries
  * `_element_type` (canonical type string) so rules can filter by element.
  *
  * Output shape per element:

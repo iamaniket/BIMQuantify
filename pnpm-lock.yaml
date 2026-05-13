@@ -20,7 +20,7 @@ importers:
 
   apps/api: {}
 
-  apps/compliance-checker: {}
+  apps/arbiter: {}
 
   apps/portal:
     dependencies:

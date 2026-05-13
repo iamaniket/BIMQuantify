@@ -34,20 +34,21 @@ def upgrade() -> None:
     op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'compliance_report';")
 
     # New enums for reports.
-    report_type_enum = sa.Enum(
-        "compliance_report",
-        name="reporttype",
-    )
-    report_type_enum.create(op.get_bind(), checkfirst=True)
-
-    report_status_enum = sa.Enum(
-        "queued",
-        "running",
-        "ready",
-        "failed",
-        name="reportstatus",
-    )
-    report_status_enum.create(op.get_bind(), checkfirst=True)
+    # Use raw SQL DO blocks — op.get_bind() + checkfirst=True is unreliable
+    # with asyncpg; the driver's has_type() prepare-fetch path can race or
+    # report false positives, producing a spurious DuplicateObjectError.
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE reporttype AS ENUM ('compliance_report');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE reportstatus AS ENUM ('queued', 'running', 'ready', 'failed');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
 
     op.create_table(
         "reports",
@@ -151,8 +152,8 @@ def downgrade() -> None:
     op.drop_index("ix_reports_organization_id", table_name="reports")
     op.drop_table("reports")
 
-    sa.Enum(name="reportstatus").drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name="reporttype").drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS reportstatus;")
+    op.execute("DROP TYPE IF EXISTS reporttype;")
 
     # Note: removing an enum value from JobType requires recreating the enum.
     # We don't reverse it on downgrade — leaving 'compliance_report' in the

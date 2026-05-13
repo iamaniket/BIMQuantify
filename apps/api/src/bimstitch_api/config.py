@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import AliasChoices, EmailStr, Field
+from pydantic import EmailStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -65,14 +65,8 @@ class Settings(BaseSettings):
     sentry_traces_sample_rate: float = Field(default=0.1, alias="SENTRY_TRACES_SAMPLE_RATE")
     sentry_release: str | None = Field(default=None, alias="SENTRY_RELEASE")
 
-    compliance_checker_url: str = Field(
-        default="http://localhost:8090",
-        validation_alias=AliasChoices("COMPLIANCE_CHECKER_URL", "BBL_CHECKER_URL"),
-    )
-    compliance_checker_timeout_seconds: float = Field(
-        default=30.0,
-        validation_alias=AliasChoices("COMPLIANCE_CHECKER_TIMEOUT_SECONDS", "BBL_CHECKER_TIMEOUT_SECONDS"),
-    )
+    arbiter_url: str = Field(default="http://localhost:8090", alias="ARBITER_URL")
+    arbiter_timeout_seconds: float = Field(default=30.0, alias="ARBITER_TIMEOUT_SECONDS")
 
     @property
     def cors_origin_list(self) -> list[str]:

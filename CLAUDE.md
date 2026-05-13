@@ -118,7 +118,7 @@ FastAPI Users handles registration, verification, password reset, and the `/user
 `GET /jurisdictions` exposes the registry to the portal so the country/framework dropdowns are runtime-discoverable.
 
 **Sibling folders**:
-- `apps/compliance-checker/rules/nl/{bbl,wkb}/` — rule packs. New countries get sibling folders (`rules/de/...`); the loader infers `(jurisdiction, framework)` from the path.
+- `apps/arbiter/rules/nl/{bbl,wkb}/` — rule packs. New countries get sibling folders (`rules/de/...`); the loader infers `(jurisdiction, framework)` from the path.
 - `apps/processor/src/pipeline/report/templates/jurisdictions/nl/labels.ts` — PDF labels for the compliance report. Template resolves labels via `LABELS_BY_JURISDICTION[country]`, NL by default.
 - `apps/portal/src/features/jurisdictions/nl/` — `addressLookup.ts` (PDOK Locatieserver) and `mapThumbnail.ts` (PDOK WMS + `isWithinNetherlands`).
 - `packages/map/src/nl/` — `NetherlandsMap` component + RD-aligned projection. `packages/map/src/core/types.ts` holds the country-agnostic `ProjectionConfig` interface.
@@ -142,7 +142,7 @@ Cross-service flow spanning API and the `processor` worker. Same shape for every
 
 1. API creates a `Job` row with `job_type` + `payload` (JSONB), then calls `dispatch_job(job, settings)` which POSTs `{job_id, job_type, payload}` to `{PROCESSOR_URL}/jobs` with shared-secret bearer auth.
 2. Worker enqueues a BullMQ job on Redis queue `jobs` (single queue, dispatched by `job_type`).
-3. BullMQ worker picks up the job: callbacks `running` status to API, runs the type-specific pipeline (IFC → web-ifc + fragments; PDF metadata → pdfjs-dist; compliance check → MCP compliance-checker; compliance report → puppeteer + HTML template), uploads artifacts to MinIO.
+3. BullMQ worker picks up the job: callbacks `running` status to API, runs the type-specific pipeline (IFC → web-ifc + fragments; PDF metadata → pdfjs-dist; compliance check → MCP arbiter; compliance report → puppeteer + HTML template), uploads artifacts to MinIO.
 4. Worker callbacks `succeeded` (with type-specific result keys) or `failed` (with error) to API at `/internal/jobs/callback`.
 5. API's `jobs_internal.py` receives the callback and updates the relevant row (ProjectFile for extraction, Report for compliance) plus the Job. Terminal states are idempotent.
 

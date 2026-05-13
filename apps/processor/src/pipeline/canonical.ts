@@ -1,7 +1,7 @@
 /**
  * Canonical building element taxonomy and property namespace.
  *
- * Mirrors the Python canonical module in the compliance-checker service.
+ * Mirrors the Python canonical module in the arbiter service.
  * Every file-format extractor maps its native types/properties into these
  * canonical names so the rule engine is format-agnostic.
  */

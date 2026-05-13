@@ -1,6 +1,6 @@
 """Compliance checking — MCP client code.
 
-Connects to the compliance checker MCP server and dispatches checks
+Connects to the Arbiter MCP server and dispatches checks
 for any supported framework (BBL, WKB).
 """
 
@@ -30,7 +30,7 @@ def _parse_mcp_response(response: httpx.Response) -> dict[str, Any]:
                 payload = line[5:].strip()
                 if payload:
                     return json.loads(payload)  # type: ignore[no-any-return]
-        raise ComplianceCheckError("Empty SSE response from compliance checker")
+        raise ComplianceCheckError("Empty SSE response from arbiter")
     return response.json()  # type: ignore[no-any-return]
 
 
@@ -44,9 +44,9 @@ async def run_compliance_check(
     categories: list[str] | None = None,
     framework: str = "bbl",
 ) -> dict[str, Any]:
-    """Call the compliance checker MCP server's check_compliance tool."""
-    url = f"{settings.compliance_checker_url}/mcp"
-    timeout = settings.compliance_checker_timeout_seconds
+    """Call the Arbiter MCP server's check_compliance tool."""
+    url = f"{settings.arbiter_url}/mcp"
+    timeout = settings.arbiter_timeout_seconds
 
     tool_args: dict[str, Any] = {
         "metadata_key": metadata_key,
@@ -80,18 +80,18 @@ async def run_compliance_check(
             )
             response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.error("Compliance checker request failed: %s", exc)
-        raise ComplianceCheckError(f"Compliance checker unreachable: {exc}") from exc
+        logger.error("Arbiter request failed: %s", exc)
+        raise ComplianceCheckError(f"Arbiter unreachable: {exc}") from exc
 
     data = _parse_mcp_response(response)
 
     if "error" in data:
         error_msg = data["error"].get("message", "Unknown MCP error")
-        raise ComplianceCheckError(f"Compliance checker error: {error_msg}")
+        raise ComplianceCheckError(f"Arbiter error: {error_msg}")
 
     result = data.get("result")
     if result is None:
-        raise ComplianceCheckError("Compliance checker returned empty result")
+        raise ComplianceCheckError("Arbiter returned empty result")
 
     if isinstance(result, list) and len(result) > 0:
         content = result[0].get("text", "{}")
