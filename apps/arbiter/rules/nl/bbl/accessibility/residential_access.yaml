@@ -1,0 +1,32 @@
+rules:
+- id: bbl_4_101_residential_door_width
+  article: BBL Afd. 4.6, Art. 4.101
+  article_number: '4.101'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.6&artikel=4.101
+  legal_text_nl: Een woonfunctie is vanaf het aansluitende terrein bereikbaar via een route waarvan alle deuren ten minste
+    0,85 m vrije doorgang bieden.
+  legal_text_en: A residential function must be reachable from adjoining land via a route where all doors have at least
+    0.85 m clear passage.
+  requirement_summary: All doors must have clear width >= 850 mm
+  category: accessibility
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - door
+  min_source_format: ifc
+  checks:
+  - property: common.clear_width
+    operator: gte
+    threshold: 850
+    unit: mm
+    description: Door clear width must be >= 850 mm for residential accessibility
+  implementation_status: implemented
+  titles:
+    en: Residential function door accessibility
+    nl: Toegankelijkheid woonfunctie - deurbreedte
+  descriptions:
+    en: Doors providing access to residential functions must have a clear passage width of at least 850 mm.
+    nl: Deuren in de toegangsroute van een woonfunctie moeten een vrije doorgang van ten minste 0,85 m bieden.
+  notes: Per-element door width check. Full route verification from public road requires spatial analysis (out of scope).

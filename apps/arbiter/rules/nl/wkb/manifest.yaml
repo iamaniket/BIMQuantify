@@ -1,0 +1,75 @@
+summary:
+  total_rules_identified: 15
+  implemented: 8
+  partial: 0
+  planned: 5
+  not_automatable: 2
+
+categories:
+  completeness:
+    description: "Required IFC properties must exist on elements for quality assurance"
+    total: 5
+    rules:
+      - article: "2.1"
+        title_nl: "LoadBearing eigenschap verplicht"
+        status: implemented
+      - article: "2.2"
+        title_nl: "IsExternal eigenschap verplicht"
+        status: implemented
+      - article: "2.3"
+        title_nl: "Thermische eigenschappen buitenwand"
+        status: implemented
+      - article: "2.4"
+        title_nl: "Akoestische eigenschappen verplicht"
+        status: planned
+        notes: "Requires acoustic property definitions"
+      - article: "2.5"
+        title_nl: "Ruimteclassificatie verplicht"
+        status: planned
+
+  documentation:
+    description: "Fire ratings, thermal values etc. must be explicitly documented"
+    total: 5
+    rules:
+      - article: "3.1"
+        title_nl: "Brandwerendheid wand gedocumenteerd"
+        status: implemented
+      - article: "3.2"
+        title_nl: "Brandwerendheid vloer gedocumenteerd"
+        status: implemented
+      - article: "3.3"
+        title_nl: "Brandwerendheid deur gedocumenteerd"
+        status: implemented
+      - article: "3.4"
+        title_nl: "Brandklasse materiaal gedocumenteerd"
+        status: planned
+        notes: "Requires SurfaceSpreadOfFlame property"
+      - article: "3.5"
+        title_nl: "Thermische weerstand gedocumenteerd"
+        status: planned
+
+  traceability:
+    description: "Classification references must be present for quality traceability"
+    total: 3
+    rules:
+      - article: "4.1"
+        title_nl: "Referentieclassificatie wand"
+        status: implemented
+      - article: "4.2"
+        title_nl: "Referentieclassificatie deur"
+        status: implemented
+      - article: "4.3"
+        title_nl: "Referentieclassificatie raam"
+        status: implemented
+
+  risk_assessment:
+    description: "Elements in risk categories must have appropriate properties"
+    total: 2
+    rules:
+      - article: "5.1"
+        title_nl: "Risicoclassificatie constructief"
+        status: not_automatable
+        notes: "Requires structural engineering assessment"
+      - article: "5.2"
+        title_nl: "Risicoclassificatie brandveiligheid"
+        status: planned

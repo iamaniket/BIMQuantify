@@ -1,0 +1,33 @@
+rules:
+- id: bbl_4_135_combustion_air_supply
+  article: BBL Afd. 4.3, Art. 4.135
+  article_number: '4.135'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.3&artikel=4.135
+  legal_text_nl: Een ruimte met een open verbrandingstoestel heeft een voorziening voor de toevoer van verbrandingslucht.
+  legal_text_en: A space with an open combustion appliance must have a combustion air supply provision.
+  requirement_summary: Pset_BBL_CombustionAir.CombustionAirSupplyRate >= 0.8 (l/s per kW)
+  category: health
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - space
+  min_source_format: ifc
+  applicability_filters:
+  - property: health.has_combustion_appliance
+    operator: eq
+    value: true
+  checks:
+  - property: health.combustion_air_supply_rate
+    operator: gte
+    threshold: 0.8
+    description: Combustion air supply rate must be >= 0.8 l/s per kW
+  implementation_status: implemented
+  titles:
+    en: Combustion air supply
+    nl: Toevoer verbrandingslucht
+  descriptions:
+    en: Spaces with open combustion appliances must provide adequate combustion air supply (>= 0.8 l/s per kW).
+    nl: Een ruimte met een open verbrandingstoestel heeft een voorziening voor de toevoer van verbrandingslucht.
+  notes: Requires custom Pset_BBL_CombustionAir properties to be authored on IfcSpace elements.

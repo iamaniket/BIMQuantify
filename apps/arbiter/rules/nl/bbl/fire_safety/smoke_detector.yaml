@@ -1,0 +1,33 @@
+rules:
+- id: bbl_4_45_smoke_detector_present
+  article: BBL Afd. 4.2, Art. 4.45
+  article_number: '4.45'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.2&artikel=4.45
+  legal_text_nl: Een woonfunctie heeft op iedere bouwlaag met een verblijfsruimte een rookmelder.
+  legal_text_en: A residential occupancy must have a smoke detector on every storey containing a habitable room.
+  requirement_summary: Habitable IfcSpace.Pset_BBL_FireSafety.SmokeDetectorPresent must exist
+  category: fire_safety
+  chapter: '4'
+  severity: warning
+  applicable_building_types:
+  - residential
+  applicability_filters:
+  - operator: contains
+    value: Living
+    property: common.occupancy_type
+  checks:
+  - operator: exists
+    description: Smoke detector flag must be authored on habitable spaces
+    property: fire_safety.smoke_detector_present
+  implementation_status: implemented
+  notes: Requires custom Pset_BBL_FireSafety.SmokeDetectorPresent boolean on habitable IfcSpace elements (or per-storey aggregation).
+    Skips silently when the property is absent.
+  titles:
+    en: Smoke detector presence in residential spaces
+    nl: Rookmelders woonfunctie
+  descriptions:
+    en: Residential habitable spaces must declare a smoke detector via Pset_BBL_FireSafety.SmokeDetectorPresent.
+    nl: Een woonfunctie heeft op iedere bouwlaag met een verblijfsruimte een rookmelder.
+  applicable_element_types:
+  - space
+  min_source_format: ifc

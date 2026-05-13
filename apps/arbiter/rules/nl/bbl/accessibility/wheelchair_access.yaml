@@ -1,0 +1,41 @@
+rules:
+- id: bbl_4_103_wheelchair_door_clear_width
+  article: BBL Afd. 4.6, Art. 4.103
+  article_number: '4.103'
+  source_url: https://wetten.overheid.nl/jci1.3:c:BWBR0046225&hoofdstuk=4&afdeling=4.6&artikel=4.103
+  legal_text_nl: In een rolstoeltoegankelijk gedeelte bieden alle deuren ten minste 0,9 m vrije doorgang en is de drempelhoogte
+    ten hoogste 20 mm.
+  legal_text_en: In a wheelchair-accessible section, all doors must offer at least 0.9 m clear passage and threshold
+    height must be at most 20 mm.
+  requirement_summary: Wheelchair-zone doors must have clear width >= 900 mm and threshold <= 20 mm
+  category: accessibility
+  chapter: '4'
+  severity: error
+  applicable_building_types:
+  - all
+  applicable_element_types:
+  - door
+  min_source_format: ifc
+  applicability_filters:
+  - property: accessibility.wheelchair_accessible
+    operator: eq
+    value: true
+  checks:
+  - property: common.clear_width
+    operator: gte
+    threshold: 900
+    unit: mm
+    description: Wheelchair-zone door clear width must be >= 900 mm
+  - property: common.threshold_height
+    operator: lte
+    threshold: 20
+    unit: mm
+    description: Wheelchair-zone door threshold must be <= 20 mm
+  implementation_status: implemented
+  titles:
+    en: Wheelchair accessibility door requirements
+    nl: Rolstoeltoegankelijkheid - deureisen
+  descriptions:
+    en: Doors in wheelchair-accessible zones must have clear width >= 900 mm and threshold height <= 20 mm.
+    nl: Deuren in rolstoeltoegankelijke gedeelten moeten ten minste 0,9 m vrije doorgang bieden met een drempel van ten hoogste 20 mm.
+  notes: Per-element property check on doors tagged as wheelchair-accessible. Full spatial wheelchair route verification is out of scope.
