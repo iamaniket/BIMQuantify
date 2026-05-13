@@ -90,7 +90,7 @@ const EMPTY_DEFAULTS: ProjectFormValues = {
   description: '',
   reference_code: '',
   status: 'planning',
-  phase: 'ontwerp',
+  phase: 'design',
   delivery_date: '',
   street: '',
   house_number: '',

@@ -322,22 +322,45 @@ async def report_callback(
         "failed": NotificationEventType.job_failed,
     }.get(payload.status)
     if event_type is not None:
-        title_map = {
-            "running": "Rapport wordt gegenereerd",
-            "ready": "Rapport gereed",
-            "failed": "Genereren van rapport mislukt",
+        # NL stays the default locale; English is the fallback for any other
+        # locale until the Phase 4 i18n migration moves these into the shared
+        # message catalog.
+        locale = report.locale or "nl"
+        report_title = report.title
+        unknown_error_by_locale = {"nl": "onbekende fout", "en": "unknown error"}
+        title_map: dict[str, dict[str, str]] = {
+            "nl": {
+                "running": "Rapport wordt gegenereerd",
+                "ready": "Rapport gereed",
+                "failed": "Genereren van rapport mislukt",
+            },
+            "en": {
+                "running": "Report is being generated",
+                "ready": "Report ready",
+                "failed": "Report generation failed",
+            },
         }
-        body_map = {
-            "running": f"{report.title} wordt gegenereerd…",
-            "ready": f"{report.title} is gereed om te bekijken",
-            "failed": f"{report.title}: {(payload.error or 'onbekende fout')[:200]}",
+        unknown_error = unknown_error_by_locale.get(locale, unknown_error_by_locale["en"])
+        body_map: dict[str, dict[str, str]] = {
+            "nl": {
+                "running": f"{report_title} wordt gegenereerd…",
+                "ready": f"{report_title} is gereed om te bekijken",
+                "failed": f"{report_title}: {(payload.error or unknown_error)[:200]}",
+            },
+            "en": {
+                "running": f"{report_title} is being generated…",
+                "ready": f"{report_title} is ready to view",
+                "failed": f"{report_title}: {(payload.error or unknown_error)[:200]}",
+            },
         }
+        titles = title_map.get(locale, title_map["en"])
+        bodies = body_map.get(locale, body_map["en"])
         notification = await create_notification(
             session,
             organization_id=report.organization_id,
             event_type=event_type,
-            title=title_map[payload.status],
-            body=body_map[payload.status],
+            title=titles[payload.status],
+            body=bodies[payload.status],
             project_id=report.project_id,
             file_id=None,
             job_id=payload.job_id,

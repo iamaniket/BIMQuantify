@@ -91,7 +91,7 @@ class ProjectComplianceReportItem(BaseModel):
     model_discipline: str
     file_name: str
     file_version: int
-    framework: Literal["bbl", "wkb"]
+    framework: str
     checked_at: str
     finished_at: datetime
     pass_count: int

@@ -9,7 +9,7 @@ import { Input, Label } from '@bimstitch/ui';
 
 import {
   lookupAddress, suggestAddresses, type AddressSuggestion, type ResolvedAddress,
-} from '@/lib/api/pdok';
+} from '@/features/jurisdictions/nl/addressLookup';
 
 const DEBOUNCE_MS = 220;
 const MIN_QUERY_LEN = 3;

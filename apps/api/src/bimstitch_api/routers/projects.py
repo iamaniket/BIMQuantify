@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.jurisdictions import supported_countries
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.project import Project, ProjectLifecycleState
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
@@ -51,6 +52,19 @@ async def _project_to_read(project: Project, storage: StorageBackend) -> dict[st
     data["thumbnail_url"] = await _resolve_thumbnail_url(project.thumbnail_url, storage)
     data["contractor_name"] = project.contractor.name if project.contractor is not None else None
     return data
+
+
+def _validate_country(country: str | None) -> None:
+    """422 if the country has no registered jurisdiction. The data layer
+    accepts any 2-letter code; this check enforces that the app can actually
+    serve the project (compliance, locale, address-format) before persisting."""
+    if country is None:
+        return
+    if country.upper() not in supported_countries():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"UNSUPPORTED_COUNTRY: '{country}' is not a registered jurisdiction",
+        )
 
 
 async def _validate_contractor_belongs_to_org(
@@ -136,6 +150,7 @@ async def create_project(
     user: User = Depends(current_verified_user),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
+    _validate_country(payload.country)
     await _validate_contractor_belongs_to_org(
         session, payload.contractor_id, user.organization_id
     )
@@ -266,6 +281,8 @@ async def update_project(
     _require_project_writable(project)
 
     updates = payload.model_dump(exclude_unset=True)
+    if "country" in updates:
+        _validate_country(updates["country"])
     if "contractor_id" in updates:
         await _validate_contractor_belongs_to_org(
             session, updates["contractor_id"], project.organization_id

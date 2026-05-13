@@ -19,7 +19,7 @@ import { useLocale, useTranslations } from 'next-intl';
 
 import type { Locale } from '@bimstitch/i18n';
 
-import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/lib/mapThumbnail';
+import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 
 import { KpiStrip } from './KpiStrip';
 

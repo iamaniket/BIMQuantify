@@ -5,7 +5,7 @@ import { useFormContext, useWatch } from 'react-hook-form';
 
 import { Input, Label } from '@bimstitch/ui';
 
-import type { ResolvedAddress } from '@/lib/api/pdok';
+import type { ResolvedAddress } from '@/features/jurisdictions/nl/addressLookup';
 
 import { AddressLookup } from '../AddressLookup';
 import type { ProjectFormValues } from '../projectFormSchema';

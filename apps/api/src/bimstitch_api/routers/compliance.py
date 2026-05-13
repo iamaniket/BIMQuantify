@@ -1,7 +1,8 @@
 """Endpoints for compliance checking on project files.
 
 Connects to the compliance checker MCP server to evaluate IFC model data
-against Dutch building regulation rules (BBL, WKB).
+against jurisdiction-specific regulation rules. NL today (BBL, WKB);
+additional jurisdictions register via `bimstitch_api.jurisdictions`.
 """
 
 import csv
@@ -17,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.compliance import ComplianceCheckError, run_compliance_check
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.jurisdictions import is_supported_framework
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile
 from bimstitch_api.models.user import User
@@ -47,12 +49,9 @@ project_router = APIRouter(
     tags=["compliance"],
 )
 
-_FRAMEWORK_JOB_TYPE: dict[str, JobType] = {
-    "bbl": JobType.bbl_compliance_check,
-    "wkb": JobType.wkb_compliance_check,
-}
-
-_JOB_TYPE_FRAMEWORK: dict[JobType, str] = {v: k for k, v in _FRAMEWORK_JOB_TYPE.items()}
+# All compliance checks share a single JobType — the regulation framework
+# (bbl, wkb, …) lives in the job payload. The processor worker dispatches on
+# `payload.framework` against its registered rule packs.
 
 
 @router.post(
@@ -103,14 +102,21 @@ async def check_compliance(
             detail="MISSING_ARTIFACTS",
         )
 
-    job_type = _FRAMEWORK_JOB_TYPE.get(payload.framework, JobType.compliance_check)
+    if not is_supported_framework(project.country, payload.framework):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"FRAMEWORK_NOT_REGISTERED: '{payload.framework}' is not "
+                f"registered for country '{project.country}'"
+            ),
+        )
 
     job = Job(
         id=uuid4(),
         organization_id=project.organization_id,
         project_id=project.id,
         file_id=pf.id,
-        job_type=job_type,
+        job_type=JobType.compliance_check,
         status=JobStatus.pending,
         payload={
             "metadata_key": pf.metadata_storage_key,
@@ -118,6 +124,7 @@ async def check_compliance(
             "building_type": payload.building_type,
             "categories": payload.categories,
             "framework": payload.framework,
+            "jurisdiction": project.country,
         },
         created_by_user_id=user.id,
     )
@@ -170,16 +177,19 @@ async def _load_latest_compliance_job(
 ) -> Job:
     """Return the most recent succeeded compliance job for (file, framework).
 
+    Filters on `payload->>'framework'` since the framework now lives in the
+    job payload, not the job_type column.
+
     Raises 404 NO_COMPLIANCE_RESULTS if none exists or the job has no result.
     """
-    job_type = _FRAMEWORK_JOB_TYPE.get(framework, JobType.compliance_check)
     job = (
         await session.execute(
             select(Job)
             .where(
                 Job.file_id == file_id,
-                Job.job_type == job_type,
+                Job.job_type == JobType.compliance_check,
                 Job.status == JobStatus.succeeded,
+                Job.payload["framework"].astext == framework,
             )
             .order_by(Job.finished_at.desc())
             .limit(1)
@@ -346,32 +356,36 @@ async def list_project_reports(
     project = await _load_project_or_404(session, project_id)
     await _require_membership(session, project.id, user.id)
 
-    job_types: list[JobType] = (
-        [_FRAMEWORK_JOB_TYPE[framework]]
-        if framework in _FRAMEWORK_JOB_TYPE
-        else list(_FRAMEWORK_JOB_TYPE.values())
+    stmt = (
+        select(Job, ProjectFile, Model)
+        .join(ProjectFile, ProjectFile.id == Job.file_id)
+        .join(Model, Model.id == ProjectFile.model_id)
+        .where(
+            Job.project_id == project.id,
+            Job.job_type == JobType.compliance_check,
+            Job.status == JobStatus.succeeded,
+        )
+    )
+    if framework is not None:
+        stmt = stmt.where(Job.payload["framework"].astext == framework)
+
+    stmt = stmt.order_by(
+        Job.file_id,
+        Job.payload["framework"].astext,
+        Job.finished_at.desc(),
     )
 
-    rows = (
-        await session.execute(
-            select(Job, ProjectFile, Model)
-            .join(ProjectFile, ProjectFile.id == Job.file_id)
-            .join(Model, Model.id == ProjectFile.model_id)
-            .where(
-                Job.project_id == project.id,
-                Job.job_type.in_(job_types),
-                Job.status == JobStatus.succeeded,
-            )
-            .order_by(Job.file_id, Job.job_type, Job.finished_at.desc())
-        )
-    ).all()
+    rows = (await session.execute(stmt)).all()
 
-    # Keep latest job per (file_id, job_type). Rows are sorted by finished_at desc,
-    # so the first occurrence of each (file_id, job_type) pair is the latest.
-    seen: set[tuple[UUID, JobType]] = set()
+    # Keep latest job per (file_id, framework). Rows are sorted by finished_at desc,
+    # so the first occurrence of each (file_id, framework) pair is the latest.
+    seen: set[tuple[UUID, str]] = set()
     items: list[ProjectComplianceReportItem] = []
     for job, pf, mdl in rows:
-        key = (pf.id, job.job_type)
+        job_framework = str((job.payload or {}).get("framework") or "")
+        if not job_framework:
+            continue
+        key = (pf.id, job_framework)
         if key in seen:
             continue
         seen.add(key)
@@ -393,7 +407,7 @@ async def list_project_reports(
                 model_discipline=mdl.discipline.value,
                 file_name=pf.original_filename,
                 file_version=pf.version_number,
-                framework=_JOB_TYPE_FRAMEWORK.get(job.job_type, "bbl"),  # type: ignore[arg-type]
+                framework=job_framework,  # type: ignore[arg-type]
                 checked_at=result.get("checked_at", ""),
                 finished_at=job.finished_at,
                 pass_count=pass_count,

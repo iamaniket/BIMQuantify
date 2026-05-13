@@ -25,7 +25,8 @@ async def test_create_project_defaults_status_and_phase(
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["status"] == "planning"
-    assert body["phase"] == "ontwerp"
+    assert body["phase"] == "design"
+    assert body["country"] == "NL"
     # Optional fields default to None.
     for field in (
         "reference_code",
@@ -55,8 +56,8 @@ async def test_create_project_with_all_new_fields(
         "name": "Roof Plan",
         "description": "Townhouses",
         "reference_code": "WKB-2026-0411",
-        "status": "uitvoering",
-        "phase": "ruwbouw",
+        "status": "construction",
+        "phase": "shell",
         "delivery_date": "2026-08-12",
         "street": "Hoofdstraat",
         "house_number": "12A",
@@ -91,11 +92,11 @@ async def test_patch_project_status(
 
     response = await client.patch(
         f"/projects/{created['id']}",
-        json={"status": "uitvoering"},
+        json={"status": "construction"},
         headers=_auth(org_user["access_token"]),
     )
     assert response.status_code == 200, response.text
-    assert response.json()["status"] == "uitvoering"
+    assert response.json()["status"] == "construction"
 
 
 async def test_patch_project_address_fields(

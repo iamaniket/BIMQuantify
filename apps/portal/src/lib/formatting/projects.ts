@@ -8,22 +8,22 @@ import type { Locale } from '@bimstitch/i18n';
 // Tailwind classes for the colored dot + badge per status.
 const STATUS_BADGE_CLASSES: Record<ProjectStatusValue, string> = {
   planning: 'border-slate-400/35 bg-slate-400/20 text-slate-200',
-  ontwerp: 'border-sky-400/35 bg-sky-400/20 text-sky-200',
-  vergunning: 'border-amber-400/35 bg-amber-400/20 text-amber-200',
-  uitvoering: 'border-green-400/35 bg-green-400/20 text-green-300',
-  oplevering: 'border-violet-400/35 bg-violet-400/20 text-violet-200',
-  gereed: 'border-blue-400/35 bg-blue-400/20 text-blue-200',
+  design: 'border-sky-400/35 bg-sky-400/20 text-sky-200',
+  permit_review: 'border-amber-400/35 bg-amber-400/20 text-amber-200',
+  construction: 'border-green-400/35 bg-green-400/20 text-green-300',
+  handover: 'border-violet-400/35 bg-violet-400/20 text-violet-200',
+  complete: 'border-blue-400/35 bg-blue-400/20 text-blue-200',
   on_hold: 'border-rose-400/35 bg-rose-400/20 text-rose-300',
 };
 
 // Light-background dot color for project cards.
 const STATUS_DOT_CLASSES: Record<ProjectStatusValue, string> = {
   planning: 'bg-slate-400',
-  ontwerp: 'bg-sky-500',
-  vergunning: 'bg-amber-500',
-  uitvoering: 'bg-green-500',
-  oplevering: 'bg-violet-500',
-  gereed: 'bg-blue-500',
+  design: 'bg-sky-500',
+  permit_review: 'bg-amber-500',
+  construction: 'bg-green-500',
+  handover: 'bg-violet-500',
+  complete: 'bg-blue-500',
   on_hold: 'bg-rose-500',
 };
 

@@ -69,6 +69,5 @@ export function useGenerateReport(
       reportsListKey(projectId),
       reportKey(projectId, data.id),
     ],
-    suppressToast: undefined,
   });
 }

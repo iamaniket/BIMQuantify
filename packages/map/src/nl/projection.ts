@@ -1,4 +1,4 @@
-import type { GeoBounds, ScreenPoint } from './types.js';
+import type { GeoBounds, ScreenPoint } from '../types.js';
 
 /**
  * Geographic extents covered by the bundled NL silhouette. Calibrated so

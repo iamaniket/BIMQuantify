@@ -39,24 +39,24 @@ describe('isProjectArchived', () => {
 
 describe('projectBadgeClasses', () => {
   it('returns status classes for active projects', () => {
-    const result = projectBadgeClasses({ status: 'ontwerp', lifecycle_state: 'active' });
+    const result = projectBadgeClasses({ status: 'design', lifecycle_state: 'active' });
     expect(result).toContain('sky');
   });
 
   it('returns lifecycle classes for archived projects', () => {
-    const result = projectBadgeClasses({ status: 'ontwerp', lifecycle_state: 'archived' });
+    const result = projectBadgeClasses({ status: 'design', lifecycle_state: 'archived' });
     expect(result).toContain('white');
   });
 });
 
 describe('projectDotClasses', () => {
   it('returns status dot for active projects', () => {
-    const result = projectDotClasses({ status: 'uitvoering', lifecycle_state: 'active' });
+    const result = projectDotClasses({ status: 'construction', lifecycle_state: 'active' });
     expect(result).toContain('green');
   });
 
   it('returns lifecycle dot for archived projects', () => {
-    const result = projectDotClasses({ status: 'uitvoering', lifecycle_state: 'archived' });
+    const result = projectDotClasses({ status: 'construction', lifecycle_state: 'archived' });
     expect(result).toBe('bg-white');
   });
 });
@@ -64,7 +64,7 @@ describe('projectDotClasses', () => {
 describe('formatProjectBadgeLabel', () => {
   it('returns statusLabel for active projects', () => {
     const result = formatProjectBadgeLabel(
-      { status: 'ontwerp', lifecycle_state: 'active' },
+      { status: 'design', lifecycle_state: 'active' },
       'Design',
     );
     expect(result).toBe('Design');
@@ -72,7 +72,7 @@ describe('formatProjectBadgeLabel', () => {
 
   it('returns lifecycle label for non-active projects', () => {
     const result = formatProjectBadgeLabel(
-      { status: 'ontwerp', lifecycle_state: 'archived' },
+      { status: 'design', lifecycle_state: 'archived' },
       'Design',
     );
     expect(result).toBe('Archived');

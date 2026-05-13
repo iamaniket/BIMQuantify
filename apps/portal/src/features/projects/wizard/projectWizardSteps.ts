@@ -4,23 +4,26 @@ import type { ProjectPhaseValue, ProjectStatusValue } from '@/lib/api/schemas';
 
 import type { ProjectFormValues } from '../projectFormSchema';
 
+// Labels are the Dutch construction-industry terms — kept as the only
+// locale for NL projects today. Other jurisdictions will ship their own
+// translations once i18n message catalogs cover the wizard.
 export const STATUS_OPTIONS: readonly { value: ProjectStatusValue; label: string }[] = [
   { value: 'planning', label: 'Planning' },
-  { value: 'ontwerp', label: 'Ontwerp (Design)' },
-  { value: 'vergunning', label: 'Vergunning (Permit)' },
-  { value: 'uitvoering', label: 'Uitvoering (Execution)' },
-  { value: 'oplevering', label: 'Oplevering (Delivery)' },
-  { value: 'gereed', label: 'Gereed (Completed)' },
+  { value: 'design', label: 'Ontwerp (Design)' },
+  { value: 'permit_review', label: 'Vergunning (Permit)' },
+  { value: 'construction', label: 'Uitvoering (Execution)' },
+  { value: 'handover', label: 'Oplevering (Delivery)' },
+  { value: 'complete', label: 'Gereed (Completed)' },
   { value: 'on_hold', label: 'On hold' },
 ];
 
 export const PHASE_OPTIONS: readonly { value: ProjectPhaseValue; label: string }[] = [
-  { value: 'ontwerp', label: 'Ontwerp' },
-  { value: 'bestek', label: 'Bestek' },
-  { value: 'werkvoorbereiding', label: 'Werkvoorbereiding' },
-  { value: 'ruwbouw', label: 'Ruwbouw' },
-  { value: 'afbouw', label: 'Afbouw' },
-  { value: 'oplevering', label: 'Oplevering' },
+  { value: 'design', label: 'Ontwerp' },
+  { value: 'tender', label: 'Bestek' },
+  { value: 'work_prep', label: 'Werkvoorbereiding' },
+  { value: 'shell', label: 'Ruwbouw' },
+  { value: 'finishing', label: 'Afbouw' },
+  { value: 'handover', label: 'Oplevering' },
 ];
 
 /** Stable step identifiers — used for React keys and step lookup. */

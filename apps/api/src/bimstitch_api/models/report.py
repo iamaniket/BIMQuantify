@@ -91,8 +91,9 @@ class Report(TimestampMixin, Base):
         nullable=True,
     )
 
-    # Pointer to the data source. For compliance_report this is the BBL/WKB
-    # compliance Job whose `result` JSONB was rendered.
+    # Pointer to the data source. For compliance_report this is the
+    # compliance Job whose `result` JSONB was rendered (framework lives
+    # in the source job's payload, not on the report row).
     source_job_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("jobs.id", ondelete="SET NULL"),
@@ -106,9 +107,7 @@ class Report(TimestampMixin, Base):
 
     # User-facing.
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    locale: Mapped[str] = mapped_column(
-        String(8), nullable=False, default="nl", server_default="nl"
-    )
+    locale: Mapped[str] = mapped_column(String(8), nullable=False)
 
     # Snapshot of the request params (filters, options) — useful for audit.
     params: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")

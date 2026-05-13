@@ -6,47 +6,45 @@
  * dependencies tight makes the worker image leaner.
  *
  * The compliance JSON shape is the API's `ComplianceCheckResponse` (see
- * `apps/api/src/bimstitch_api/schemas/compliance.py`). Where Dutch text is
- * available (`title_nl`), we prefer it.
+ * `apps/api/src/bimstitch_api/schemas/compliance.py`). Labels come from a
+ * per-jurisdiction module under `jurisdictions/<country>/labels.ts` — NL
+ * is the default. Adding a second jurisdiction = sibling folder + a
+ * registry entry below.
  */
 
 import { layout } from './_layout.js';
+import { NL_COMPLIANCE_LABELS, type ComplianceReportLabels } from './jurisdictions/nl/labels.js';
 
-const NL_LABELS = {
-  passed: 'Geslaagd',
-  failed: 'Mislukt',
-  warned: 'Waarschuwing',
-  totalRules: 'Totaal regels',
-  totalChecks: 'Totaal controles',
-  totalElements: 'Gecontroleerde elementen',
-  rule: 'Regel',
-  article: 'Artikel',
-  category: 'Categorie',
-  severity: 'Ernst',
-  status: 'Status',
-  noResults: 'Geen controleresultaten beschikbaar.',
-  generatedAt: 'Gegenereerd op',
-  project: 'Project',
-  contractor: 'Aannemer',
-  address: 'Adres',
-  permit: 'Vergunning',
-  delivery: 'Opleverdatum',
-  reference: 'Projectkenmerk',
-  framework: 'Kader',
-  overallScore: 'Naleving',
-} as const;
+const LABELS_BY_JURISDICTION: Record<string, ComplianceReportLabels> = {
+  NL: NL_COMPLIANCE_LABELS,
+};
+
+function resolveLabels(jurisdiction: string | undefined | null): ComplianceReportLabels {
+  if (jurisdiction) {
+    const found = LABELS_BY_JURISDICTION[jurisdiction.toUpperCase()];
+    if (found) return found;
+  }
+  return NL_COMPLIANCE_LABELS;
+}
 
 export type ComplianceReportData = {
   report_id: string;
   generated_at: string;
   locale: string;
+  /**
+   * ISO 3166-1 alpha-2 country code controlling label selection.
+   * Omitted on legacy callers — those default to 'NL'.
+   */
+  jurisdiction?: string;
   project: {
     id: string;
     name: string;
+    country?: string | null;
     reference_code?: string | null;
     status?: string | null;
     phase?: string | null;
     address?: {
+      country?: string | null;
       street?: string | null;
       house_number?: string | null;
       postal_code?: string | null;
@@ -157,10 +155,10 @@ function statusPill(severity: string | null | undefined): string {
   return `<span class="${cls}">${escapeHtml(sev || 'normal')}</span>`;
 }
 
-function renderCategoryTable(data: ComplianceReportData): string {
+function renderCategoryTable(data: ComplianceReportData, labels: ComplianceReportLabels): string {
   const cats = data.compliance.category_summary ?? [];
   if (cats.length === 0) {
-    return `<p class="muted">${NL_LABELS.noResults}</p>`;
+    return `<p class="muted">${labels.noResults}</p>`;
   }
   const rows = cats
     .map(
@@ -179,22 +177,22 @@ function renderCategoryTable(data: ComplianceReportData): string {
     <table class="grid">
       <thead>
         <tr>
-          <th>${NL_LABELS.category}</th>
-          <th class="num">${NL_LABELS.totalRules}</th>
-          <th class="num">${NL_LABELS.totalChecks}</th>
-          <th class="num">${NL_LABELS.passed}</th>
-          <th class="num">${NL_LABELS.warned}</th>
-          <th class="num">${NL_LABELS.failed}</th>
+          <th>${labels.category}</th>
+          <th class="num">${labels.totalRules}</th>
+          <th class="num">${labels.totalChecks}</th>
+          <th class="num">${labels.passed}</th>
+          <th class="num">${labels.warned}</th>
+          <th class="num">${labels.failed}</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
 
-function renderRulesTable(data: ComplianceReportData): string {
+function renderRulesTable(data: ComplianceReportData, labels: ComplianceReportLabels): string {
   const rules = data.compliance.rules_summary ?? [];
   if (rules.length === 0) {
-    return `<p class="muted">${NL_LABELS.noResults}</p>`;
+    return `<p class="muted">${labels.noResults}</p>`;
   }
   const rows = rules
     .map(
@@ -214,13 +212,13 @@ function renderRulesTable(data: ComplianceReportData): string {
     <table class="grid">
       <thead>
         <tr>
-          <th>${NL_LABELS.rule}</th>
-          <th>${NL_LABELS.article}</th>
-          <th>${NL_LABELS.category}</th>
-          <th>${NL_LABELS.severity}</th>
-          <th class="num">${NL_LABELS.passed}</th>
-          <th class="num">${NL_LABELS.warned}</th>
-          <th class="num">${NL_LABELS.failed}</th>
+          <th>${labels.rule}</th>
+          <th>${labels.article}</th>
+          <th>${labels.category}</th>
+          <th>${labels.severity}</th>
+          <th class="num">${labels.passed}</th>
+          <th class="num">${labels.warned}</th>
+          <th class="num">${labels.failed}</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -229,48 +227,49 @@ function renderRulesTable(data: ComplianceReportData): string {
 
 export function renderHtml(data: ComplianceReportData): string {
   const score = overallScore(data);
+  const labels = resolveLabels(data.jurisdiction ?? data.project.country ?? 'NL');
   const cover = `
     <header class="cover">
-      <p class="kicker">Nalevingsrapport</p>
+      <p class="kicker">${labels.reportTitle}</p>
       <h1>${or(data.project.name)}</h1>
       <dl class="meta">
-        <dt>${NL_LABELS.reference}</dt><dd>${or(data.project.reference_code)}</dd>
-        <dt>${NL_LABELS.framework}</dt><dd>${or(data.compliance.framework?.toUpperCase())}</dd>
-        <dt>${NL_LABELS.address}</dt><dd>${addressLine(data.project.address)}</dd>
-        <dt>${NL_LABELS.contractor}</dt><dd>${or(data.project.contractor?.name)}</dd>
-        <dt>${NL_LABELS.permit}</dt><dd>${or(data.project.permit_number)}</dd>
-        <dt>${NL_LABELS.delivery}</dt><dd>${or(data.project.delivery_date)}</dd>
-        <dt>${NL_LABELS.generatedAt}</dt><dd>${fmtDate(data.generated_at)}</dd>
+        <dt>${labels.reference}</dt><dd>${or(data.project.reference_code)}</dd>
+        <dt>${labels.framework}</dt><dd>${or(data.compliance.framework?.toUpperCase())}</dd>
+        <dt>${labels.address}</dt><dd>${addressLine(data.project.address)}</dd>
+        <dt>${labels.contractor}</dt><dd>${or(data.project.contractor?.name)}</dd>
+        <dt>${labels.permit}</dt><dd>${or(data.project.permit_number)}</dd>
+        <dt>${labels.delivery}</dt><dd>${or(data.project.delivery_date)}</dd>
+        <dt>${labels.generatedAt}</dt><dd>${fmtDate(data.generated_at)}</dd>
       </dl>
 
       <section class="score-card">
         <div class="score-number">${score.percent}<span class="score-unit">%</span></div>
-        <div class="score-label">${NL_LABELS.overallScore}</div>
+        <div class="score-label">${labels.overallScore}</div>
         <div class="score-counts">
-          <span class="pass">${score.pass} ${NL_LABELS.passed.toLowerCase()}</span>
-          <span class="warn">${score.warn} ${NL_LABELS.warned.toLowerCase()}</span>
-          <span class="fail">${score.fail} ${NL_LABELS.failed.toLowerCase()}</span>
+          <span class="pass">${score.pass} ${labels.passed.toLowerCase()}</span>
+          <span class="warn">${score.warn} ${labels.warned.toLowerCase()}</span>
+          <span class="fail">${score.fail} ${labels.failed.toLowerCase()}</span>
         </div>
         <div class="score-totals">
-          ${data.compliance.total_rules ?? 0} ${NL_LABELS.totalRules.toLowerCase()},
-          ${data.compliance.total_elements_checked ?? 0} ${NL_LABELS.totalElements.toLowerCase()}
+          ${data.compliance.total_rules ?? 0} ${labels.totalRules.toLowerCase()},
+          ${data.compliance.total_elements_checked ?? 0} ${labels.totalElements.toLowerCase()}
         </div>
       </section>
     </header>`;
 
   const body = `
     <section class="page">
-      <h2>Per categorie</h2>
-      ${renderCategoryTable(data)}
+      <h2>${labels.sectionByCategory}</h2>
+      ${renderCategoryTable(data, labels)}
     </section>
 
     <section class="page">
-      <h2>Per regel</h2>
-      ${renderRulesTable(data)}
+      <h2>${labels.sectionByRule}</h2>
+      ${renderRulesTable(data, labels)}
     </section>`;
 
   return layout({
-    title: `Nalevingsrapport — ${or(data.project.name)}`,
+    title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
   });

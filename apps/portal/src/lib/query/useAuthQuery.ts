@@ -51,7 +51,7 @@ type AuthMutationOptions<TData, TVariables> = Omit<
 > & {
   mutationFn: (accessToken: string, variables: TVariables) => Promise<TData>;
   invalidateKeys?: QueryKey[] | ((variables: TVariables, data: TData) => QueryKey[]);
-  suppressToast: boolean | undefined;
+  suppressToast?: boolean;
 };
 
 export function useAuthMutation<TData, TVariables>(

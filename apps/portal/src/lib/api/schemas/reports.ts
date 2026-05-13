@@ -33,7 +33,9 @@ export type ReportList = z.infer<typeof ReportListSchema>;
 
 export const CreateReportRequestSchema = z.object({
   report_type: ReportTypeSchema.default('compliance_report'),
-  locale: z.enum(['nl', 'en']).default('nl'),
+  // BCP47 locale tag. Omit (or pass null) to let the server resolve from
+  // the project's jurisdiction (NL → 'nl').
+  locale: z.string().nullable().optional(),
   params: z.record(z.unknown()).default({}),
 });
 export type CreateReportRequest = z.infer<typeof CreateReportRequestSchema>;

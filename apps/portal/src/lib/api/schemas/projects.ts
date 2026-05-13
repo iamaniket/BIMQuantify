@@ -2,11 +2,11 @@ import { z } from 'zod';
 
 export const ProjectStatusEnum = z.enum([
   'planning',
-  'ontwerp',
-  'vergunning',
-  'uitvoering',
-  'oplevering',
-  'gereed',
+  'design',
+  'permit_review',
+  'construction',
+  'handover',
+  'complete',
   'on_hold',
 ]);
 
@@ -17,12 +17,12 @@ export const ProjectLifecycleStateEnum = z.enum(['active', 'archived', 'removed'
 export type ProjectLifecycleStateValue = z.infer<typeof ProjectLifecycleStateEnum>;
 
 export const ProjectPhaseEnum = z.enum([
-  'ontwerp',
-  'bestek',
-  'werkvoorbereiding',
-  'ruwbouw',
-  'afbouw',
-  'oplevering',
+  'design',
+  'tender',
+  'work_prep',
+  'shell',
+  'finishing',
+  'handover',
 ]);
 
 export type ProjectPhaseValue = z.infer<typeof ProjectPhaseEnum>;
@@ -41,6 +41,8 @@ export const ProjectSchema = z.object({
   status: ProjectStatusEnum,
   lifecycle_state: ProjectLifecycleStateEnum,
   phase: ProjectPhaseEnum,
+  // ISO 3166-1 alpha-2. NL today; widens as more jurisdictions register.
+  country: z.string().length(2),
   delivery_date: z.union([z.string(), z.null()]),
 
   street: z.union([z.string(), z.null()]),
@@ -70,6 +72,7 @@ export const ProjectCreateSchema = z.object({
   reference_code: z.union([z.string().max(50), z.null()]).optional(),
   status: ProjectStatusEnum.optional(),
   phase: ProjectPhaseEnum.optional(),
+  country: z.string().length(2).optional(),
   delivery_date: z.union([z.string(), z.null()]).optional(),
   street: z.union([z.string().max(255), z.null()]).optional(),
   house_number: z.union([z.string().max(20), z.null()]).optional(),

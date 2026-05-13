@@ -67,29 +67,32 @@ async def _seed_succeeded_compliance_job(
     organization_id: UUID,
     project_id: UUID,
     *,
-    job_type: str = "bbl_compliance_check",
+    framework: str = "bbl",
     result: dict | None = None,
 ) -> UUID:
     """Insert a succeeded compliance Job directly via raw SQL so the report
     endpoint has something to render. Bypasses RLS — the seed runs as the
-    superuser session."""
+    superuser session. Framework lives in payload after the jurisdiction
+    foundation migration; the helper signature mirrors that."""
     from uuid import uuid4
+    import json as _json
 
     job_id = uuid4()
+    payload = {"framework": framework}
     async with session_maker() as session, session.begin():
         await session.execute(
             text(
                 "INSERT INTO jobs (id, organization_id, project_id, job_type, "
                 "status, payload, result, finished_at) "
-                "VALUES (:id, :org, :p, :jt, 'succeeded', '{}'::jsonb, "
-                "CAST(:r AS jsonb), now())"
+                "VALUES (:id, :org, :p, 'compliance_check', 'succeeded', "
+                "CAST(:pl AS jsonb), CAST(:r AS jsonb), now())"
             ),
             {
                 "id": str(job_id),
                 "org": str(organization_id),
                 "p": str(project_id),
-                "jt": job_type,
-                "r": __import__("json").dumps(result or _DEFAULT_COMPLIANCE_RESULT),
+                "pl": _json.dumps(payload),
+                "r": _json.dumps(result or _DEFAULT_COMPLIANCE_RESULT),
             },
         )
     return job_id

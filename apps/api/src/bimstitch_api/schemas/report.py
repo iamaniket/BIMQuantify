@@ -23,7 +23,9 @@ class ReportCreateRequest(BaseModel):
     report_type: Literal[ReportType.compliance_report.value] = Field(
         default=ReportType.compliance_report.value
     )
-    locale: Literal["nl", "en"] = "nl"
+    # If omitted, server resolves from the project's jurisdiction registry
+    # entry (NL → 'nl'). Pass an explicit BCP47 code (e.g. 'en') to override.
+    locale: str | None = Field(default=None, max_length=8)
     # Optional input filters — for compliance_report you can scope to specific
     # files; omit for project-wide. Snapshotted into Report.params.
     params: dict = Field(default_factory=dict)

@@ -20,11 +20,11 @@ if TYPE_CHECKING:
 
 class ProjectStatus(StrEnum):
     planning = "planning"
-    ontwerp = "ontwerp"
-    vergunning = "vergunning"
-    uitvoering = "uitvoering"
-    oplevering = "oplevering"
-    gereed = "gereed"
+    design = "design"
+    permit_review = "permit_review"
+    construction = "construction"
+    handover = "handover"
+    complete = "complete"
     on_hold = "on_hold"
 
 
@@ -35,12 +35,12 @@ class ProjectLifecycleState(StrEnum):
 
 
 class ProjectPhase(StrEnum):
-    ontwerp = "ontwerp"
-    bestek = "bestek"
-    werkvoorbereiding = "werkvoorbereiding"
-    ruwbouw = "ruwbouw"
-    afbouw = "afbouw"
-    oplevering = "oplevering"
+    design = "design"
+    tender = "tender"
+    work_prep = "work_prep"
+    shell = "shell"
+    finishing = "finishing"
+    handover = "handover"
 
 
 class Project(TimestampMixin, Base):
@@ -73,6 +73,9 @@ class Project(TimestampMixin, Base):
         default=ProjectStatus.planning,
         server_default=ProjectStatus.planning.value,
     )
+    country: Mapped[str] = mapped_column(
+        String(2), nullable=False, default="NL", server_default="NL"
+    )
     lifecycle_state: Mapped[ProjectLifecycleState] = mapped_column(
         SAEnum(
             ProjectLifecycleState,
@@ -90,8 +93,8 @@ class Project(TimestampMixin, Base):
             values_callable=lambda enum: [m.value for m in enum],
         ),
         nullable=False,
-        default=ProjectPhase.ontwerp,
-        server_default=ProjectPhase.ontwerp.value,
+        default=ProjectPhase.design,
+        server_default=ProjectPhase.design.value,
     )
     delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 

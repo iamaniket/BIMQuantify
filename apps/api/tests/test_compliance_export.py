@@ -149,37 +149,43 @@ async def _seed_compliance_job(
     project_id: UUID,
     file_id: UUID,
     *,
-    job_type: str = "bbl_compliance_check",
+    framework: str = "bbl",
     details: list[dict] | None = None,
     rules_summary: list[dict] | None = None,
 ) -> UUID:
-    """Insert a succeeded compliance Job for a specific file via raw SQL (bypass RLS)."""
+    """Insert a succeeded compliance Job for a specific file via raw SQL (bypass RLS).
+
+    All compliance jobs share the single `compliance_check` JobType — the
+    framework lives in `payload.framework` (and is mirrored into `result.framework`
+    for the test helpers to read back).
+    """
     details = details or []
     rules_summary = rules_summary or []
     job_id = uuid4()
     result = {
         "checked_at": "2026-05-12T09:00:00Z",
-        "framework": "bbl" if job_type == "bbl_compliance_check" else "wkb",
+        "framework": framework,
         "total_rules": len({d["rule_id"] for d in details}) or len(rules_summary),
         "total_elements_checked": len(details),
         "rules_summary": rules_summary,
         "category_summary": [],
         "details": details,
     }
+    payload = {"framework": framework}
     async with session_maker() as session, session.begin():
         await session.execute(
             text(
                 "INSERT INTO jobs (id, organization_id, project_id, file_id, job_type, "
                 "status, payload, result, finished_at) "
-                "VALUES (:id, :org, :p, :f, :jt, 'succeeded', '{}'::jsonb, "
-                "CAST(:r AS jsonb), now())"
+                "VALUES (:id, :org, :p, :f, 'compliance_check', 'succeeded', "
+                "CAST(:pl AS jsonb), CAST(:r AS jsonb), now())"
             ),
             {
                 "id": str(job_id),
                 "org": str(organization_id),
                 "p": str(project_id),
                 "f": str(file_id),
-                "jt": job_type,
+                "pl": json.dumps(payload),
                 "r": json.dumps(result),
             },
         )
@@ -308,7 +314,7 @@ async def test_export_csv_framework_filter_returns_only_matching_job(
         UUID(org_user["organization_id"]),
         UUID(project_id),
         UUID(file_id),
-        job_type="bbl_compliance_check",
+        framework="bbl",
         details=[_detail(rule_id="BBL-ONLY")],
     )
     await _seed_compliance_job(
@@ -316,7 +322,7 @@ async def test_export_csv_framework_filter_returns_only_matching_job(
         UUID(org_user["organization_id"]),
         UUID(project_id),
         UUID(file_id),
-        job_type="wkb_compliance_check",
+        framework="wkb",
         details=[_detail(rule_id="WKB-ONLY")],
     )
 
@@ -437,7 +443,7 @@ async def test_export_rules_csv_framework_filter(
         UUID(org_user["organization_id"]),
         UUID(project_id),
         UUID(file_id),
-        job_type="bbl_compliance_check",
+        framework="bbl",
         rules_summary=[_rule_summary(rule_id="BBL-1")],
     )
     await _seed_compliance_job(
@@ -445,7 +451,7 @@ async def test_export_rules_csv_framework_filter(
         UUID(org_user["organization_id"]),
         UUID(project_id),
         UUID(file_id),
-        job_type="wkb_compliance_check",
+        framework="wkb",
         rules_summary=[_rule_summary(rule_id="WKB-1")],
     )
 

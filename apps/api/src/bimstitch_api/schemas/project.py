@@ -20,7 +20,11 @@ class ProjectBase(BaseModel):
 
     reference_code: str | None = Field(default=None, max_length=50)
     status: ProjectStatus = ProjectStatus.planning
-    phase: ProjectPhase = ProjectPhase.ontwerp
+    phase: ProjectPhase = ProjectPhase.design
+    # ISO 3166-1 alpha-2. NL is the only registered jurisdiction today.
+    # The server validates this against the jurisdictions registry; an
+    # unregistered country is rejected with 422.
+    country: str = Field(default="NL", min_length=2, max_length=2)
     delivery_date: date | None = None
 
     street: str | None = Field(default=None, max_length=255)
@@ -51,6 +55,7 @@ class ProjectUpdate(BaseModel):
     reference_code: str | None = Field(default=None, max_length=50)
     status: ProjectStatus | None = None
     phase: ProjectPhase | None = None
+    country: str | None = Field(default=None, min_length=2, max_length=2)
     delivery_date: date | None = None
 
     street: str | None = Field(default=None, max_length=255)

@@ -3,7 +3,7 @@
 import { MapPin } from 'lucide-react';
 import { useMemo, useState, type JSX } from 'react';
 
-import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/lib/mapThumbnail';
+import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 
 export type AddressMapPreviewProps = {
   latitude: number | undefined;

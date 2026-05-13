@@ -12,7 +12,7 @@ import {
 
 import { BlueprintTexture } from '@/components/BlueprintTexture';
 import type { Project } from '@/lib/api/schemas';
-import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/lib/mapThumbnail';
+import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { ProjectCardMenu } from './ProjectCardMenu';

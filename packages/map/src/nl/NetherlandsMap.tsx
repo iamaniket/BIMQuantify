@@ -2,7 +2,7 @@ import { useId, useMemo, type CSSProperties, type JSX } from 'react';
 
 import { NL_PROVINCE_PATHS } from './data/nl-province-paths.js';
 import { NL_VIEWBOX, createNlProjection } from './projection.js';
-import type { MapMarker } from './types.js';
+import type { MapMarker } from '../types.js';
 
 export interface NetherlandsMapProps {
   /**

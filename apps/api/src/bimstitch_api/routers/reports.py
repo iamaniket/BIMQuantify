@@ -1,10 +1,10 @@
 """Endpoints for generated reports (PDF artifacts).
 
 The first report type — `compliance_report` — renders the latest succeeded
-BBL/WKB compliance Job for a project as a Dutch PDF. Future report types
-(borgingsplan / verklaring / dossier per backlog #31/#32/#33) plug into
-this same router by adding values to `ReportType` and a render branch in
-the worker.
+compliance Job for a project as a PDF in the project's jurisdictional
+default locale (NL → Dutch). Future report types (borgingsplan / verklaring
+/ dossier per backlog #31/#32/#33) plug into this same router by adding
+values to `ReportType` and a render branch in the worker.
 
 Flow:
     POST /projects/{p}/reports
@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jobs import DispatchJobError, dispatch_job
+from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.notification import NotificationEventType
@@ -49,16 +50,39 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/reports", tags=["reports"])
 
 
-_COMPLIANCE_JOB_TYPES = (
-    JobType.bbl_compliance_check,
-    JobType.wkb_compliance_check,
-    JobType.compliance_check,
-)
+_COMPLIANCE_JOB_TYPES = (JobType.compliance_check,)
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+# Locale-specific labels for the compliance report title. NL stays the
+# committed default; adding a locale is a one-line entry here. Phase 4 will
+# migrate these into the shared i18n message catalog.
+_COMPLIANCE_REPORT_TITLE_BY_LOCALE: dict[str, str] = {
+    "nl": "Nalevingsrapport — {name}",
+    "en": "Compliance report — {name}",
+}
+
+_COMPLIANCE_REPORT_NOTIFICATION_BY_LOCALE: dict[str, str] = {
+    "nl": "Nalevingsrapport wordt gegenereerd…",
+    "en": "Compliance report is being generated…",
+}
+
+
+def _compliance_report_title(project_name: str, locale: str) -> str:
+    template = _COMPLIANCE_REPORT_TITLE_BY_LOCALE.get(
+        locale, _COMPLIANCE_REPORT_TITLE_BY_LOCALE["en"]
+    )
+    return template.format(name=project_name)
+
+
+def _compliance_report_notification_body(locale: str) -> str:
+    return _COMPLIANCE_REPORT_NOTIFICATION_BY_LOCALE.get(
+        locale, _COMPLIANCE_REPORT_NOTIFICATION_BY_LOCALE["en"]
+    )
 
 
 def _project_payload(project: Project, contractor: Contractor | None) -> dict[str, object]:
@@ -67,10 +91,12 @@ def _project_payload(project: Project, contractor: Contractor | None) -> dict[st
     return {
         "id": str(project.id),
         "name": project.name,
+        "country": project.country,
         "reference_code": project.reference_code,
         "status": project.status.value,
         "phase": project.phase.value if project.phase is not None else None,
         "address": {
+            "country": project.country,
             "street": project.street,
             "house_number": project.house_number,
             "postal_code": project.postal_code,
@@ -164,7 +190,14 @@ async def create_report(
             )
         ).scalar_one_or_none()
 
-    title = f"Nalevingsrapport — {project.name}"
+    # Resolve locale: explicit request value wins, otherwise the
+    # jurisdiction's default (NL → 'nl'). Falls back to 'en' if no
+    # jurisdiction is registered for the project's country.
+    jurisdiction = get_jurisdiction(project.country)
+    fallback_locale = jurisdiction.default_locale if jurisdiction else "en"
+    locale = payload.locale or fallback_locale
+
+    title = _compliance_report_title(project.name, locale)
     generated_at = datetime.now(timezone.utc)
 
     # Create Report first so we have its ID for the worker's storage key.
@@ -174,7 +207,7 @@ async def create_report(
         report_type=ReportType.compliance_report,
         status=ReportStatus.queued,
         title=title,
-        locale=payload.locale,
+        locale=locale,
         params=payload.params or {},
         source_job_id=source_job.id,
         created_by_user_id=user.id,
@@ -191,7 +224,8 @@ async def create_report(
         "project": _project_payload(project, contractor),
         "compliance": source_job.result or {},
         "generated_at": generated_at.isoformat(),
-        "locale": payload.locale,
+        "locale": locale,
+        "jurisdiction": project.country,
     }
 
     job = Job(
@@ -232,7 +266,7 @@ async def create_report(
             organization_id=project.organization_id,
             event_type=NotificationEventType.job_started,
             title=title,
-            body="Nalevingsrapport wordt gegenereerd…",
+            body=_compliance_report_notification_body(locale),
             project_id=project.id,
             file_id=None,
             job_id=job.id,

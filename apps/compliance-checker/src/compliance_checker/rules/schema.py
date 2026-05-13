@@ -7,6 +7,11 @@ from pydantic import BaseModel, model_validator
 from compliance_checker.rules.canonical import SourceFormat
 
 
+# `framework` was a closed enum; now an open string so additional
+# jurisdictions can ship their own framework identifiers without code
+# changes here. The kept enum is for backwards-compatibility (loader
+# still uses `RegulationFramework` values when inferring framework
+# from directory names), but `RuleDefinition.framework` accepts any str.
 class RegulationFramework(StrEnum):
     bbl = "bbl"
     wkb = "wkb"
@@ -86,7 +91,14 @@ class MetadataFilter(BaseModel):
 
 class RuleDefinition(BaseModel):
     id: str
-    framework: RegulationFramework = RegulationFramework.bbl
+    # ISO 3166-1 alpha-2 country code. Defaults to 'NL' because all rule
+    # packs shipped today are Dutch (BBL + WKB). Adding a German rule pack
+    # means dropping YAML files with `jurisdiction: 'DE'` — no schema change.
+    jurisdiction: str = "NL"
+    # Open string. Was a closed StrEnum (`bbl` / `wkb`); now jurisdictions
+    # can register additional framework identifiers (e.g. DE's `geg`) by
+    # shipping their own rule packs.
+    framework: str = "bbl"
     article: str
     article_number: str
     source_url: str | None = None
@@ -98,6 +110,10 @@ class RuleDefinition(BaseModel):
     title_nl: str | None = None
     description: str | None = None
     description_nl: str | None = None
+    # Locale-keyed dict mirroring the titles/descriptions pattern. The
+    # legacy flat fields (legal_text_nl / legal_text_en) are still accepted
+    # for back-compat and promoted into the dict by _migrate_flat_titles.
+    legal_texts: dict[str, str] = {}
     legal_text_nl: str | None = None
     legal_text_en: str | None = None
     requirement_summary: str | None = None
@@ -115,7 +131,7 @@ class RuleDefinition(BaseModel):
 
     @model_validator(mode="after")
     def _migrate_flat_titles(self) -> RuleDefinition:
-        """Promote legacy title/title_nl into the titles map."""
+        """Promote legacy title/title_nl + legal_text_* into the dict maps."""
         if not self.titles:
             self.titles = {}
             if self.title is not None:
@@ -128,15 +144,28 @@ class RuleDefinition(BaseModel):
                 self.descriptions["en"] = self.description
             if self.description_nl is not None:
                 self.descriptions["nl"] = self.description_nl
+        if not self.legal_texts:
+            self.legal_texts = {}
+            if self.legal_text_nl is not None:
+                self.legal_texts["nl"] = self.legal_text_nl
+            if self.legal_text_en is not None:
+                self.legal_texts["en"] = self.legal_text_en
         self.title = self.titles.get("en")
         self.title_nl = self.titles.get("nl")
         self.description = self.descriptions.get("en")
         self.description_nl = self.descriptions.get("nl")
+        self.legal_text_nl = self.legal_texts.get("nl")
+        self.legal_text_en = self.legal_texts.get("en")
         return self
 
 
 class RuleFile(BaseModel):
-    framework: RegulationFramework = RegulationFramework.bbl
+    # Open string identifier (was StrEnum). Loaders that walk
+    # `rules/<framework>/...` keep working; adding jurisdictions just
+    # registers new identifiers.
+    framework: str = "bbl"
+    # ISO 3166-1 alpha-2; rules inherit this when not set at rule level.
+    jurisdiction: str = "NL"
     rules: list[RuleDefinition]
 
     @model_validator(mode="after")
@@ -144,4 +173,6 @@ class RuleFile(BaseModel):
         for rule in self.rules:
             if "framework" not in (rule.model_fields_set or set()):
                 rule.framework = self.framework
+            if "jurisdiction" not in (rule.model_fields_set or set()):
+                rule.jurisdiction = self.jurisdiction
         return self

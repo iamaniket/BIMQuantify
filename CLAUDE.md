@@ -105,9 +105,25 @@ FastAPI Users handles registration, verification, password reset, and the `/user
 
 ### Data model and routers
 
-**Model hierarchy**: `Organization` -> `Project` -> `Model` -> `ProjectFile`. Projects also have a `ProjectMember` join table (user + role: owner/editor/viewer).
+**Model hierarchy**: `Organization` -> `Project` -> `Model` -> `ProjectFile`. Projects also have a `ProjectMember` join table (user + role: owner/editor/viewer). Each `Project` carries a `country` (ISO 3166-1 alpha-2, defaults to `NL`) that anchors it to a jurisdiction.
 
-**Routers**: `health`, auth (built by `build_auth_router()`), `projects`, `models`, `project_files`, `jobs_internal`, `reports`.
+**Routers**: `health`, auth (built by `build_auth_router()`), `projects`, `models`, `project_files`, `jobs_internal`, `reports`, `compliance`, `jurisdictions`.
+
+### Jurisdictions (NL-first, EU-ready)
+
+`bimstitch_api/jurisdictions/` is the single source of truth for what countries the app can serve. Each jurisdiction registers a `Jurisdiction` dataclass with its frameworks (e.g. NL → `bbl`, `wkb`), default + supported locales, address-format hints. NL is registered in `jurisdictions/nl.py`; adding DE = sibling module that calls `register(...)` — no schema changes.
+
+**Hard rule**: `Project.country` and `Job.payload["framework"]` are the only places jurisdiction/framework live. The `JobType` enum collapsed `bbl_compliance_check` and `wkb_compliance_check` into a single `compliance_check` — framework is data, not schema. Adding a third country never touches a Postgres enum.
+
+`GET /jurisdictions` exposes the registry to the portal so the country/framework dropdowns are runtime-discoverable.
+
+**Sibling folders**:
+- `apps/compliance-checker/rules/nl/{bbl,wkb}/` — rule packs. New countries get sibling folders (`rules/de/...`); the loader infers `(jurisdiction, framework)` from the path.
+- `apps/processor/src/pipeline/report/templates/jurisdictions/nl/labels.ts` — PDF labels for the compliance report. Template resolves labels via `LABELS_BY_JURISDICTION[country]`, NL by default.
+- `apps/portal/src/features/jurisdictions/nl/` — `addressLookup.ts` (PDOK Locatieserver) and `mapThumbnail.ts` (PDOK WMS + `isWithinNetherlands`).
+- `packages/map/src/nl/` — `NetherlandsMap` component + RD-aligned projection. `packages/map/src/core/types.ts` holds the country-agnostic `ProjectionConfig` interface.
+
+**`ProjectStatus` / `ProjectPhase` enum values are language-neutral** (`design`, `permit_review`, `construction`, `handover`, `complete` for status; `design`, `tender`, `work_prep`, `shell`, `finishing`, `handover` for phase). Display strings (Dutch terms in the wizard) live in the portal's i18n catalog and the wizard step option labels — DB values stay neutral so a German project can render German labels for the same codes.
 
 **Rate limiting**: Redis-backed via `fastapi-limiter`. Defaults in `config.py`: login 5/min, register 3/hour, refresh 10/min, forgot-password 3/hour.
 
@@ -122,13 +138,15 @@ FastAPI Users handles registration, verification, password reset, and the `/user
 
 ### Job dispatch flow
 
-Cross-service flow spanning API and the `processor` worker. Same shape for every job type (IFC extraction, PDF extraction, compliance-report PDF generation):
+Cross-service flow spanning API and the `processor` worker. Same shape for every job type (IFC extraction, PDF extraction, compliance check, compliance-report PDF generation):
 
 1. API creates a `Job` row with `job_type` + `payload` (JSONB), then calls `dispatch_job(job, settings)` which POSTs `{job_id, job_type, payload}` to `{PROCESSOR_URL}/jobs` with shared-secret bearer auth.
 2. Worker enqueues a BullMQ job on Redis queue `jobs` (single queue, dispatched by `job_type`).
-3. BullMQ worker picks up the job: callbacks `running` status to API, runs the type-specific pipeline (IFC → web-ifc + fragments; PDF metadata → pdfjs-dist; compliance report → puppeteer + HTML template), uploads artifacts to MinIO.
+3. BullMQ worker picks up the job: callbacks `running` status to API, runs the type-specific pipeline (IFC → web-ifc + fragments; PDF metadata → pdfjs-dist; compliance check → MCP compliance-checker; compliance report → puppeteer + HTML template), uploads artifacts to MinIO.
 4. Worker callbacks `succeeded` (with type-specific result keys) or `failed` (with error) to API at `/internal/jobs/callback`.
 5. API's `jobs_internal.py` receives the callback and updates the relevant row (ProjectFile for extraction, Report for compliance) plus the Job. Terminal states are idempotent.
+
+**JobType is jurisdiction-blind**: `compliance_check` is the single value for all building-code checks; the regulation framework (`bbl`, `wkb`, future `geg`/`mbo`) lives in `payload.framework`. Lookups by framework use `Job.payload["framework"].astext == "bbl"` rather than a `job_type` filter — see `routers/compliance.py::_load_latest_compliance_job`.
 
 Tests stub the dispatcher via `set_job_dispatcher()` in `jobs/dispatcher.py`. The autouse `_stub_job_dispatcher` fixture in `tests/conftest.py` records every dispatch as `{job_id, job_type, payload}`; tests pull the `job_dispatch_calls` (or alias `extraction_calls`) fixture to assert on the calls.
 
@@ -172,7 +190,7 @@ Shared base: `packages/tsconfig/base.json` — `module: NodeNext`, `strict`, `no
 
 ## TDD rule
 
-Every new auth/API endpoint lands with a failing test first. The 18 test files in `apps/api/tests/` are the spec; extend them (or add new ones) before implementing. `uv run pytest` must stay green on every commit.
+Every new auth/API endpoint lands with a failing test first. The test files in `apps/api/tests/` are the spec; extend them (or add new ones) before implementing. `uv run pytest` must stay green on every commit (currently 253 tests).
 
 ## Environment variables
 
