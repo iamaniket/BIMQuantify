@@ -1,16 +1,15 @@
-# import-export
+# processor
 
 Generic Node.js worker that handles all of BIMstitch's heavy / async work
 queued out of the API: IFC parsing, PDF metadata extraction, and (added in
-the PDF Generation milestone) PDF report generation. Originally landed as
-"extractor" — renamed when scope grew beyond IFC. The same Fastify producer
+the PDF Generation milestone) PDF report generation. The same Fastify producer
 + BullMQ worker shape is reused for every job type; the worker dispatches
 on `job.data.job_type`.
 
 ## Architecture
 
 ```
-apps/api ──HTTP POST /jobs──▶ import-export ──BullMQ──▶ worker
+apps/api ──HTTP POST /jobs──▶ processor ──BullMQ──▶ worker
                                                           │
                                                           ▼
                             ┌─────────────────────────────┴───┐
@@ -23,7 +22,7 @@ apps/api ──HTTP POST /jobs──▶ import-export ──BullMQ──▶ work
                                            MinIO
                                               │
                                               ▼
-                  import-export ──HTTP POST /internal/jobs/callback──▶ apps/api
+                  processor ──HTTP POST /internal/jobs/callback──▶ apps/api
 ```
 
 Producer (`POST /jobs`) and consumer (BullMQ Worker) run in the same Node
@@ -40,18 +39,18 @@ by the `job_type` field on the payload. BullMQ retry/backoff config in
 docker compose up -d postgres redis minio mailhog
 
 # Install + run.
-cd apps/import-export
+cd apps/processor
 npm install
 npm run dev   # tsx watch on src/index.ts
 ```
 
 The service listens on `PORT` (default `8080`). The API talks to it via
-`IMPORT_EXPORT_URL` (defaults to `http://localhost:8088` in api/.env.example —
+`PROCESSOR_URL` (defaults to `http://localhost:8088` in api/.env.example —
 that's the published port from docker-compose; map accordingly when running
 the worker outside Docker).
 
 The worker calls back to `${API_BASE_URL}/internal/jobs/callback`
-with `Authorization: Bearer ${IMPORT_EXPORT_SHARED_SECRET}`. When running
+with `Authorization: Bearer ${PROCESSOR_SHARED_SECRET}`. When running
 this service inside Docker but the API on the host, set
 `API_BASE_URL=http://host.docker.internal:8000`.
 

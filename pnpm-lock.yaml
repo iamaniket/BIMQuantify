@@ -22,67 +22,6 @@ importers:
 
   apps/compliance-checker: {}
 
-  apps/import-export:
-    dependencies:
-      '@aws-sdk/client-s3':
-        specifier: ^3.658.1
-        version: 3.1038.0
-      '@aws-sdk/s3-request-presigner':
-        specifier: ^3.658.1
-        version: 3.1038.0
-      '@fastify/sensible':
-        specifier: ^6.0.1
-        version: 6.0.4
-      '@thatopen/fragments':
-        specifier: ~3.4.0
-        version: 3.4.3(three@0.184.0)(web-ifc@0.0.77)
-      bullmq:
-        specifier: ^5.21.2
-        version: 5.76.3
-      fastify:
-        specifier: ^5.0.0
-        version: 5.8.5
-      ioredis:
-        specifier: ^5.4.1
-        version: 5.10.1
-      pdf-lib:
-        specifier: ^1.17.1
-        version: 1.17.1
-      pdfjs-dist:
-        specifier: ^4.9.155
-        version: 4.10.38
-      pino:
-        specifier: ^9.5.0
-        version: 9.14.0
-      pino-pretty:
-        specifier: ^11.3.0
-        version: 11.3.0
-      puppeteer-core:
-        specifier: ^23.7.0
-        version: 23.11.1
-      web-ifc:
-        specifier: 0.0.77
-        version: 0.0.77
-      zod:
-        specifier: ^3.24.1
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^22.10.1
-        version: 22.19.17
-      rimraf:
-        specifier: ^5.0.10
-        version: 5.0.10
-      tsx:
-        specifier: ^4.19.2
-        version: 4.21.0
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.6
-        version: 2.1.9(@types/node@22.19.17)(happy-dom@20.9.0)(jsdom@29.1.1)(terser@5.47.1)
-
   apps/portal:
     dependencies:
       '@bimstitch/design-tokens':
@@ -253,6 +192,67 @@ importers:
         version: 8.59.0(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
       vitest:
         specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.19.17)(happy-dom@20.9.0)(jsdom@29.1.1)(terser@5.47.1)
+
+  apps/processor:
+    dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.658.1
+        version: 3.1038.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.658.1
+        version: 3.1038.0
+      '@fastify/sensible':
+        specifier: ^6.0.1
+        version: 6.0.4
+      '@thatopen/fragments':
+        specifier: ~3.4.0
+        version: 3.4.3(three@0.184.0)(web-ifc@0.0.77)
+      bullmq:
+        specifier: ^5.21.2
+        version: 5.76.3
+      fastify:
+        specifier: ^5.0.0
+        version: 5.8.5
+      ioredis:
+        specifier: ^5.4.1
+        version: 5.10.1
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
+      pdfjs-dist:
+        specifier: ^4.9.155
+        version: 4.10.38
+      pino:
+        specifier: ^9.5.0
+        version: 9.14.0
+      pino-pretty:
+        specifier: ^11.3.0
+        version: 11.3.0
+      puppeteer-core:
+        specifier: ^23.7.0
+        version: 23.11.1
+      web-ifc:
+        specifier: 0.0.77
+        version: 0.0.77
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.19.17
+      rimraf:
+        specifier: ^5.0.10
+        version: 5.0.10
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.6
         version: 2.1.9(@types/node@22.19.17)(happy-dom@20.9.0)(jsdom@29.1.1)(terser@5.47.1)
 
   apps/web:

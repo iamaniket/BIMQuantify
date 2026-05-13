@@ -13,7 +13,7 @@ const Schema = z.object({
   S3_BUCKET_IFC: z.string().default('ifc-files'),
 
   API_BASE_URL: z.string().default('http://localhost:8000'),
-  IMPORT_EXPORT_SHARED_SECRET: z.string().default('dev-shared-secret-change-me'),
+  PROCESSOR_SHARED_SECRET: z.string().default('dev-shared-secret-change-me'),
 
   JOB_TIMEOUT_MS: z
     .string()

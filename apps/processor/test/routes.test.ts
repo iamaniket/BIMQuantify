@@ -20,7 +20,7 @@ const SECRET = 'dev-shared-secret-change-me';
 
 beforeEach(() => {
   enqueueMock.mockReset();
-  process.env.IMPORT_EXPORT_SHARED_SECRET = SECRET;
+  process.env.PROCESSOR_SHARED_SECRET = SECRET;
 });
 
 afterEach(() => {

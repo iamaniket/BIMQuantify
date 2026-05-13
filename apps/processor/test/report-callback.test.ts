@@ -11,7 +11,7 @@ const SECRET = 'test-secret-for-callback';
 const BASE_URL = 'http://api.test:8000';
 
 beforeEach(() => {
-  process.env.IMPORT_EXPORT_SHARED_SECRET = SECRET;
+  process.env.PROCESSOR_SHARED_SECRET = SECRET;
   process.env.API_BASE_URL = BASE_URL;
   resetConfig();
 });

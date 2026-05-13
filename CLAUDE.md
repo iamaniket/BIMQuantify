@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Polyglot monorepo:
 - **Node/TypeScript workspaces** (`apps/web`, `apps/portal`, `packages/*`) coordinated by pnpm + Turborepo.
-- **Node.js microservice** (`apps/import-export`) — Fastify + BullMQ. Generic worker for IFC extraction, PDF metadata extraction, and PDF report generation (dispatched by `job_type`). In the pnpm workspace but uses `npm` internally and runs in Docker or standalone.
+- **Node.js microservice** (`apps/processor`) — Fastify + BullMQ. Generic worker for IFC extraction, PDF metadata extraction, and PDF report generation (dispatched by `job_type`). In the pnpm workspace but uses `npm` internally and runs in Docker or standalone.
 - **Python FastAPI backend** (`apps/api/`) — managed by `uv`. Has a minimal `package.json` (just a `dev` script) so pnpm sees it, but all real tooling goes through `uv`.
 
 ## Commands
@@ -21,17 +21,17 @@ Requires Node >=20 and pnpm >=9 (`engines` in `package.json`). Package manager p
 - `pnpm --filter=@bimstitch/<pkg> build` — build a single package. Apps use bare names (`web`, `portal`); internal packages use the `@bimstitch/*` scope.
 - `pnpm build` / `pnpm lint` / `pnpm type-check` / `pnpm test` — turbo-coordinated across the TS graph.
 
-### Import-export worker
+### Processor worker
 
 ```bash
 # Standalone (requires redis + minio running)
-cd apps/import-export && npm run dev   # Fastify on port 8080 + BullMQ worker
+cd apps/processor && npm run dev   # Fastify on port 8080 + BullMQ worker
 
 # Docker (preferred)
-docker compose up -d import-export     # exposed on host port 8088
+docker compose up -d processor     # exposed on host port 8088
 
 # Tests (Vitest)
-cd apps/import-export && npm test
+cd apps/processor && npm test
 ```
 
 ### Python side (API)
@@ -40,7 +40,7 @@ All commands run from `apps/api/`. Requires Python 3.12 and `uv`.
 
 ```bash
 # one-time
-docker compose up -d                 # all services (postgres, mailhog, redis, minio, import-export)
+docker compose up -d                 # all services (postgres, mailhog, redis, minio, processor)
 cp .env.example .env
 uv sync
 uv run alembic upgrade head
@@ -101,7 +101,7 @@ FastAPI Users handles registration, verification, password reset, and the `/user
 
 **Why `bim_app` role**: the docker-compose `bim` user is a superuser. Postgres bypasses RLS for superusers even with FORCE. `SET LOCAL ROLE bim_app` drops to a non-bypass role for the duration of the transaction.
 
-**Exception**: `jobs_internal.py` uses `get_async_session` (not `get_tenant_session`) because the import-export worker has no tenant context. The superuser role bypasses RLS, which is correct — the callback must update any file row regardless of org.
+**Exception**: `jobs_internal.py` uses `get_async_session` (not `get_tenant_session`) because the processor worker has no tenant context. The superuser role bypasses RLS, which is correct — the callback must update any file row regardless of org.
 
 ### Data model and routers
 
@@ -118,13 +118,13 @@ FastAPI Users handles registration, verification, password reset, and the `/user
 **File upload flow** (two-phase):
 1. `POST .../files/initiate` — validates extension/size, creates a `pending` ProjectFile row, returns a presigned PUT URL.
 2. Client PUTs bytes directly to MinIO using the presigned URL.
-3. `POST .../files/{file_id}/complete` — HEAD-checks the object in MinIO, reads first 2 KB to parse the IFC STEP header (`ifc/header.py`), flips status to `ready` or `rejected`, dispatches extraction to the import-export worker.
+3. `POST .../files/{file_id}/complete` — HEAD-checks the object in MinIO, reads first 2 KB to parse the IFC STEP header (`ifc/header.py`), flips status to `ready` or `rejected`, dispatches extraction to the processor worker.
 
 ### Job dispatch flow
 
-Cross-service flow spanning API and the `import-export` worker. Same shape for every job type (IFC extraction, PDF extraction, compliance-report PDF generation):
+Cross-service flow spanning API and the `processor` worker. Same shape for every job type (IFC extraction, PDF extraction, compliance-report PDF generation):
 
-1. API creates a `Job` row with `job_type` + `payload` (JSONB), then calls `dispatch_job(job, settings)` which POSTs `{job_id, job_type, payload}` to `{IMPORT_EXPORT_URL}/jobs` with shared-secret bearer auth.
+1. API creates a `Job` row with `job_type` + `payload` (JSONB), then calls `dispatch_job(job, settings)` which POSTs `{job_id, job_type, payload}` to `{PROCESSOR_URL}/jobs` with shared-secret bearer auth.
 2. Worker enqueues a BullMQ job on Redis queue `jobs` (single queue, dispatched by `job_type`).
 3. BullMQ worker picks up the job: callbacks `running` status to API, runs the type-specific pipeline (IFC → web-ifc + fragments; PDF metadata → pdfjs-dist; compliance report → puppeteer + HTML template), uploads artifacts to MinIO.
 4. Worker callbacks `succeeded` (with type-specific result keys) or `failed` (with error) to API at `/internal/jobs/callback`.
@@ -187,7 +187,7 @@ Python API reads from `apps/api/.env.example` (see that file for the complete li
 - **Redis**: `REDIS_URL`, `TEST_REDIS_URL`
 - **Rate limits**: `RATE_LIMIT_LOGIN_PER_MIN`, `RATE_LIMIT_REGISTER_PER_HOUR`, `RATE_LIMIT_REFRESH_PER_MIN`, `RATE_LIMIT_FORGOT_PER_HOUR`
 - **S3/MinIO**: `S3_ENDPOINT_URL`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_IFC`, `S3_PRESIGN_TTL_SECONDS`, `UPLOAD_MAX_BYTES`
-- **Import-export worker**: `IMPORT_EXPORT_URL`, `IMPORT_EXPORT_SHARED_SECRET`, `IMPORT_EXPORT_DISPATCH_TIMEOUT_SECONDS`
+- **Processor worker**: `PROCESSOR_URL`, `PROCESSOR_SHARED_SECRET`, `PROCESSOR_DISPATCH_TIMEOUT_SECONDS`
 
 Portal reads: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 
@@ -199,4 +199,4 @@ Portal reads: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 - `mailhog` — SMTP on 1025, web UI at http://localhost:8025.
 - `redis` — Redis 7, host port **6380**. Used for rate limiting, JWT blocklist, and BullMQ job queue.
 - `minio` — S3-compatible storage, API on port **9000**, console at **9001**. Creds: `bimstitch` / `bimstitch-secret`.
-- `import-export` — built from `apps/import-export/Dockerfile`, host port **8088**. Reaches API via `host.docker.internal:8000`. Auth: `IMPORT_EXPORT_SHARED_SECRET`. Generic Node.js worker for all background jobs (IFC extraction, PDF extraction, PDF report generation).
+- `processor` — built from `apps/processor/Dockerfile`, host port **8088**. Reaches API via `host.docker.internal:8000`. Auth: `PROCESSOR_SHARED_SECRET`. Generic Node.js worker for all background jobs (IFC extraction, PDF extraction, PDF report generation).

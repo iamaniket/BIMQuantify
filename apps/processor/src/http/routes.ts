@@ -21,7 +21,7 @@ export function registerRoutes(app: FastifyInstance): void {
   app.post('/jobs', async (request, reply) => {
     const cfg = getConfig();
     const auth = request.headers.authorization;
-    if (auth !== `Bearer ${cfg.IMPORT_EXPORT_SHARED_SECRET}`) {
+    if (auth !== `Bearer ${cfg.PROCESSOR_SHARED_SECRET}`) {
       return reply.code(401).send({ error: 'UNAUTHORIZED' });
     }
 

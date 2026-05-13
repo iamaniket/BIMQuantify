@@ -55,11 +55,11 @@ services:
       timeout: 5s
       retries: 10
 
-  import-export:
+  processor:
     build:
-      context: ./apps/import-export
+      context: ./apps/processor
       dockerfile: Dockerfile
-    container_name: bimstitch-import-export
+    container_name: bimstitch-processor
     environment:
       NODE_ENV: development
       PORT: "8080"
@@ -73,7 +73,7 @@ services:
       # it via host.docker.internal. Override to http://api:8000 if/when the
       # API is containerised.
       API_BASE_URL: http://host.docker.internal:8000
-      IMPORT_EXPORT_SHARED_SECRET: ${IMPORT_EXPORT_SHARED_SECRET:-dev-shared-secret-change-me}
+      PROCESSOR_SHARED_SECRET: ${PROCESSOR_SHARED_SECRET:-dev-shared-secret-change-me}
     depends_on:
       redis:
         condition: service_healthy

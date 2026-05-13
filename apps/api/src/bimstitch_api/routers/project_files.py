@@ -415,7 +415,7 @@ async def retry_extraction(
     """Re-dispatch extraction for a file whose previous attempt failed.
 
     Only valid when the row is `status=ready` and `extraction_status=failed`.
-    Resets the extraction fields to `queued` and posts to the import-export
+    Resets the extraction fields to `queued` and posts to the processor
     worker; the same DISPATCH_FAILED guard applies if the worker is
     unreachable.
     """

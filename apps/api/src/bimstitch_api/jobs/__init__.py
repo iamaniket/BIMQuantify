@@ -1,4 +1,4 @@
-"""Job orchestration: outbound dispatch to the import-export worker, plus the
+"""Job orchestration: outbound dispatch to the processor worker, plus the
 inbound shared-secret guard for callbacks. Replaces the older `bimstitch_api.extraction`
 package, which was over-fitted to IFC."""
 

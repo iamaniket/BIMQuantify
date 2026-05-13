@@ -44,8 +44,8 @@ export async function htmlToPdf(html: string, opts: PdfOptions): Promise<Uint8Ar
       doc.setCreationDate(at);
       doc.setModificationDate(at);
     }
-    doc.setProducer('BIMstitch import-export');
-    doc.setCreator('BIMstitch import-export');
+    doc.setProducer('BIMstitch processor');
+    doc.setCreator('BIMstitch processor');
     return await doc.save({ useObjectStreams: false });
   } finally {
     await page.close();

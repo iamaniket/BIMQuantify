@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   const worker = startWorker();
 
   await server.listen({ host: '0.0.0.0', port: cfg.PORT });
-  logger.info({ port: cfg.PORT }, 'import-export service listening');
+  logger.info({ port: cfg.PORT }, 'processor service listening');
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'shutting down');

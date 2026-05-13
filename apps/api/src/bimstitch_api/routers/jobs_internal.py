@@ -1,4 +1,4 @@
-"""Internal endpoint the import-export worker calls back into when a job finishes.
+"""Internal endpoint the processor worker calls back into when a job finishes.
 
 Auth: shared bearer token via `require_worker_secret`. No user auth.
 

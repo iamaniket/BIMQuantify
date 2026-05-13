@@ -52,12 +52,12 @@ class Settings(BaseSettings):
         default="image/jpeg,image/png,image/webp", alias="THUMBNAIL_ALLOWED_CONTENT_TYPES"
     )
 
-    import_export_url: str = Field(default="http://localhost:8088", alias="IMPORT_EXPORT_URL")
-    import_export_shared_secret: str = Field(
-        default="dev-shared-secret-change-me", alias="IMPORT_EXPORT_SHARED_SECRET"
+    processor_url: str = Field(default="http://localhost:8088", alias="PROCESSOR_URL")
+    processor_shared_secret: str = Field(
+        default="dev-shared-secret-change-me", alias="PROCESSOR_SHARED_SECRET"
     )
-    import_export_dispatch_timeout_seconds: float = Field(
-        default=5.0, alias="IMPORT_EXPORT_DISPATCH_TIMEOUT_SECONDS"
+    processor_dispatch_timeout_seconds: float = Field(
+        default=5.0, alias="PROCESSOR_DISPATCH_TIMEOUT_SECONDS"
     )
 
     sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")

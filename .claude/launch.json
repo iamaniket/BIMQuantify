@@ -32,9 +32,9 @@
       "autoPort": false
     },
     {
-      "name": "import-export",
+      "name": "processor",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "apps/import-export", "run", "dev"],
+      "runtimeArgs": ["--prefix", "apps/processor", "run", "dev"],
       "port": 8088,
       "autoPort": false
     }

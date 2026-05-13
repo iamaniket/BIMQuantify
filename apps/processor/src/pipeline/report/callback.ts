@@ -30,7 +30,7 @@ export async function postReportCallback(payload: ReportCallbackPayload): Promis
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${cfg.IMPORT_EXPORT_SHARED_SECRET}`,
+      Authorization: `Bearer ${cfg.PROCESSOR_SHARED_SECRET}`,
     },
     body: JSON.stringify(payload),
   });

@@ -1,6 +1,6 @@
 """Generated reports (compliance PDF, future borgingsplan/verklaring/dossier).
 
-A `Report` is a derived artifact: produced by the import-export worker from
+A `Report` is a derived artifact: produced by the processor worker from
 data already in the system (e.g. a compliance Job's `result` JSONB) and
 stored in S3 as a PDF. Distinct from `ProjectFile` because:
 

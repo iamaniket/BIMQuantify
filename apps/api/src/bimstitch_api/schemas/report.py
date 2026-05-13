@@ -64,7 +64,7 @@ class ReportListResponse(BaseModel):
 class ReportCallbackRequest(BaseModel):
     """Body of POST /internal/jobs/reports/callback.
 
-    Sent by the import-export worker when a `compliance_report` job finishes.
+    Sent by the processor worker when a `compliance_report` job finishes.
     The worker has already uploaded the PDF to S3; this hands the resulting
     storage key + integrity metadata back to the API so the Report row can
     transition to `ready` (or `failed`).
