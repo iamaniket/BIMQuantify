@@ -243,13 +243,12 @@ async def list_projects(
     user: User = Depends(current_verified_user),
     storage: StorageBackend = Depends(get_storage),
 ) -> list[dict[str, object]]:
-    stmt = (
-        select(Project)
-        .join(ProjectMember, ProjectMember.project_id == Project.id)
-        .where(Project.lifecycle_state != ProjectLifecycleState.removed)
-        .where(ProjectMember.user_id == user.id)
-        .order_by(Project.created_at)
-    )
+    stmt = select(Project).where(Project.lifecycle_state != ProjectLifecycleState.removed)
+    if not user.is_superuser:
+        stmt = stmt.join(ProjectMember, ProjectMember.project_id == Project.id).where(
+            ProjectMember.user_id == user.id
+        )
+    stmt = stmt.order_by(Project.created_at)
     result = await session.execute(stmt)
     projects = list(result.scalars().all())
     return [await _project_to_read(p, storage) for p in projects]
