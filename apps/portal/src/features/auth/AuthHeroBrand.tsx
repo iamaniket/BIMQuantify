@@ -6,6 +6,7 @@ import {
   HeroGrid,
   KpiStrip,
   LegalFooter,
+  SystemStatusBadge,
   type LegalFooterLink,
   type SystemStatusValue,
 } from '@bimstitch/ui';
@@ -194,18 +195,22 @@ export interface AuthTopRightProps {
  * plus a configurable trailing element (defaults to the region label).
  * Shares its data with `AuthHeroBrand` via React Query's cache.
  */
-export function AuthTopRight({ trailing }: AuthTopRightProps = {}): JSX.Element | null {
+export function AuthTopRight({ trailing }: AuthTopRightProps = {}): JSX.Element {
   const statusQuery = useSystemStatus();
   const live = statusQuery.data;
+  const status: SystemStatusValue = statusQuery.isLoading
+    ? 'loading'
+    : live?.status ?? 'loading';
   const region = live ? `${live.region} · ${live.node}` : undefined;
 
-  if (trailing !== undefined) {
-    return <>{trailing}</>;
-  }
-  if (!region) {
-    return null;
-  }
   return (
-    <div className="ml-auto font-mono text-[11px] text-foreground-tertiary">{region}</div>
+    <>
+      <SystemStatusBadge status={status} tone="on-light" />
+      {trailing !== undefined ? (
+        trailing
+      ) : region ? (
+        <div className="font-mono text-[11px] text-foreground-tertiary">{region}</div>
+      ) : null}
+    </>
   );
 }
