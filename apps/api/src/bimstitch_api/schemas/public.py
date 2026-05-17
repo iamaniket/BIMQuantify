@@ -11,13 +11,15 @@ class ProjectsMapPoint(BaseModel):
     """A single anonymized location marker for the pre-login NL map.
 
     Aggregated across all organizations. No org or project names are exposed
-    — just city, average lat/lng, and count of projects in that city.
+    — just city, average lat/lng, and an approximate count of projects in
+    that city. `count` is floored to one significant figure (e.g. 14 -> 10,
+    121 -> 100) for values >= 10; below 10 it is exact.
     """
 
     city: str
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
-    count: int = Field(ge=1)
+    count: int = Field(ge=0)
 
 
 class SystemStatusResponse(BaseModel):

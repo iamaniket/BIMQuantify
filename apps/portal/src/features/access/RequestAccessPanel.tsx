@@ -16,6 +16,7 @@ import { useState, type JSX } from 'react';
 import { useProjectsMap } from '@/features/auth/useProjectsMap';
 import { ApiError } from '@/lib/api/client';
 import { env } from '@/lib/env';
+import { formatApproxCount } from '@/lib/formatting/numbers';
 import { submitAccessRequest } from '@/lib/api/accessRequests';
 
 interface SubmittedState {
@@ -142,15 +143,21 @@ export function RequestAccessPanel(): JSX.Element {
                   fill="var(--color-primary-light, #e5ecf6)"
                   markers={markers}
                   animatePulse
-                  labelTone="light"
                   ariaLabel="Live BimStitch project locations across the Netherlands"
                   className="drop-shadow-[0_24px_48px_rgba(0,0,0,0.25)]"
                 />
-                {markersQuery.isSuccess && markers.length > 0 ? (
-                  <div className="mt-2 text-center font-mono text-[10.5px] uppercase tracking-[0.10em] text-white/55">
-                    {totalProjects} projects · {markers.length} cities live
-                  </div>
-                ) : null}
+                {/* Always rendered with reserved space — visibility-toggled
+                    so the map doesn't jump when the API call resolves. */}
+                <div
+                  className="mt-5 whitespace-nowrap text-right font-mono text-[12.5px] uppercase tracking-[0.10em] text-white/55"
+                  style={{
+                    visibility:
+                      markersQuery.isSuccess && markers.length > 0 ? 'visible' : 'hidden',
+                  }}
+                  aria-hidden={!(markersQuery.isSuccess && markers.length > 0)}
+                >
+                  {formatApproxCount(totalProjects)} projects · {formatApproxCount(markers.length)} cities live
+                </div>
               </div>
             </div>
           </div>

@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api.approx import approx_count_floor
 from bimstitch_api.cache.client import get_redis
 from bimstitch_api.db import get_async_session
 from bimstitch_api.models.project import Project, ProjectLifecycleState
@@ -43,7 +44,9 @@ async def projects_map(
 
     Uses `get_async_session` (superuser, RLS-bypass) intentionally — there
     is no tenant context on this endpoint and we only return anonymized
-    counts. Cached for one minute at the CDN edge.
+    counts. Per-city counts are floored to one significant figure via
+    `approx_count_floor` so exact tenant numbers never leak on the wire.
+    Cached for one minute at the CDN edge.
     """
     stmt = (
         select(
@@ -67,7 +70,7 @@ async def projects_map(
             city=row.city,
             lat=float(row.lat),
             lng=float(row.lng),
-            count=int(row.count),
+            count=approx_count_floor(int(row.count)),
         )
         for row in rows
     ]

@@ -128,6 +128,33 @@ async def test_projects_map_ignores_projects_without_coordinates(
 
 
 @pytest.mark.asyncio
+async def test_projects_map_floors_count_to_one_significant_figure(
+    client: "AsyncClient", session: "AsyncSession"
+) -> None:
+    """Per-city counts must be anonymized — exact tenant numbers never leak."""
+    org_id, owner_id = await _seed_org_and_user(session)
+
+    # 14 projects in Amsterdam — should floor to 10.
+    for i in range(14):
+        await _insert_project(
+            session, org_id=org_id, owner_id=owner_id, name=f"AMS-{i}",
+            city="Amsterdam", lat=52.38, lng=4.89,
+        )
+    # 3 projects in Rotterdam — below the rounding threshold, stays exact.
+    for i in range(3):
+        await _insert_project(
+            session, org_id=org_id, owner_id=owner_id, name=f"RTM-{i}",
+            city="Rotterdam", lat=51.92, lng=4.48,
+        )
+
+    response = await client.get("/public/projects-map")
+    assert response.status_code == 200
+    rows = {r["city"]: r for r in response.json()}
+    assert rows["Amsterdam"]["count"] == 10
+    assert rows["Rotterdam"]["count"] == 3
+
+
+@pytest.mark.asyncio
 async def test_projects_map_aggregates_across_orgs(
     client: "AsyncClient", session: "AsyncSession"
 ) -> None:

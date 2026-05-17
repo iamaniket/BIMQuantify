@@ -1,4 +1,4 @@
-"""Generated reports (compliance PDF, future borgingsplan/verklaring/dossier).
+"""Generated reports (compliance PDF, future assurance_plan/completion_declaration/dossier).
 
 A `Report` is a derived artifact: produced by the processor worker from
 data already in the system (e.g. a compliance Job's `result` JSONB) and
@@ -8,7 +8,7 @@ stored in S3 as a PDF. Distinct from `ProjectFile` because:
 * Multiple reports per project per type are normal (regenerate is the
   expected mental model; no upsert).
 * `report_type` is polymorphic — today only `compliance_report`; the same
-  table will host borgingsplan / verklaring / dossier when those land.
+  table will host assurance_plan / completion_declaration / dossier when those land.
 * The lifecycle (queued → running → ready → failed) is independent of
   job-row retention.
 
@@ -34,8 +34,8 @@ from bimstitch_api.models._mixins import TimestampMixin
 class ReportType(StrEnum):
     compliance_report = "compliance_report"
     # Reserved for later milestones (#31/#32/#33):
-    # borgingsplan = "borgingsplan"
-    # verklaring = "verklaring"
+    # assurance_plan = "assurance_plan"              # NL: borgingsplan
+    # completion_declaration = "completion_declaration"  # NL: verklaring
     # dossier = "dossier"
 
 

@@ -259,8 +259,8 @@ async def report_callback(
     payload: ReportCallbackRequest,
     session: AsyncSession = Depends(get_async_session),
 ) -> Report:
-    """Worker → API callback for `compliance_report` (and later borgingsplan /
-    verklaring / dossier) jobs.
+    """Worker → API callback for `compliance_report` (and later assurance_plan /
+    completion_declaration / dossier) jobs.
 
     Same auth + RLS-bypass as the extraction callback (the worker has no
     tenant context). Idempotent on terminal statuses.

@@ -18,6 +18,9 @@ class ProjectRole(StrEnum):
     owner = "owner"
     editor = "editor"
     viewer = "viewer"
+    inspector = "inspector"
+    contractor = "contractor"
+    client = "client"
 
 
 class ProjectMember(Base):

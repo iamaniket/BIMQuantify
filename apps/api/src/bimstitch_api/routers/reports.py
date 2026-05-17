@@ -2,8 +2,8 @@
 
 The first report type — `compliance_report` — renders the latest succeeded
 compliance Job for a project as a PDF in the project's jurisdictional
-default locale (NL → Dutch). Future report types (borgingsplan / verklaring
-/ dossier per backlog #31/#32/#33) plug into this same router by adding
+default locale (NL → Dutch). Future report types (assurance_plan /
+completion_declaration / dossier per backlog #31/#32/#33) plug into this same router by adding
 values to `ReportType` and a render branch in the worker.
 
 Flow:

@@ -25,7 +25,8 @@
       "Bash(curl -s -i -X OPTIONS http://localhost:8000/projects/abc -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: DELETE' -H 'Access-Control-Request-Headers: authorization')",
       "Bash(uv sync *)",
       "Bash(pnpm --filter portal lint)",
-      "Bash(pnpm --filter portal lint --fix)"
+      "Bash(pnpm --filter portal lint --fix)",
+      "Bash(pnpm --filter=@bimstitch/map build)"
     ]
   }
 }

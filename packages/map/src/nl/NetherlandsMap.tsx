@@ -1,4 +1,4 @@
-import { useId, useMemo, type CSSProperties, type JSX } from 'react';
+import { useMemo, useState, type CSSProperties, type JSX } from 'react';
 
 import { NL_PROVINCE_PATHS } from './data/nl-province-paths.js';
 import { NL_VIEWBOX, createNlProjection } from './projection.js';
@@ -31,10 +31,12 @@ export interface NetherlandsMapProps {
   seamStrokeWidth?: number;
   /** Markers to overlay on the country. Empty/undefined → no markers. */
   markers?: readonly MapMarker[];
-  /** Disable the pulse animation around each marker. */
+  /**
+   * Whether the hovered marker shows a radial pulse animation. Defaults to
+   * `true`. Set to `false` to honor reduced-motion preferences or to keep
+   * the map purely static.
+   */
   animatePulse?: boolean;
-  /** Tone of marker labels — dark for light backgrounds, light for dark. */
-  labelTone?: 'dark' | 'light';
   /** Optional aria-label. Defaults to "Netherlands". */
   ariaLabel?: string;
   /** Additional inline style on the wrapping `<svg>`. */
@@ -50,9 +52,13 @@ const DEFAULT_ACCENT = '#2c5697';
  * markers. Markers project via Mercator so they align with the geometry by
  * construction.
  *
- * The component is presentational: it reads no environment, has no side
- * effects, and works the same on the server and in the browser. Drop it on
- * a login page, a marketing landing, or a dashboard tile.
+ * Markers render as small static dots by default. Hovering one reveals a
+ * pill labelled with `marker.label` plus an optional pulse halo; the pill
+ * is rendered in a second pass so it always paints on top of neighboring
+ * markers (e.g. Den Haag's label is not clipped by Rotterdam's dot).
+ *
+ * The component reads no environment and works the same on server and
+ * client (hover state is purely client-side via React state).
  */
 export function NetherlandsMap({
   width,
@@ -63,7 +69,6 @@ export function NetherlandsMap({
   seamStrokeWidth = 0.6,
   markers,
   animatePulse = true,
-  labelTone = 'dark',
   ariaLabel = 'Netherlands',
   style,
   className,
@@ -84,8 +89,7 @@ export function NetherlandsMap({
     [],
   );
 
-  const reactId = useId();
-  const pulseId = `nl-pulse-${reactId.replace(/:/g, '')}`;
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // When `responsiveHeight` is in play, the SVG fills its container vertically
   // and computes its width from the viewBox aspect — perfect for vh-based
@@ -123,70 +127,85 @@ export function NetherlandsMap({
           {markers.map((m, i) => {
             const [x, y] = project(m.lat, m.lng);
             const accent = m.accent ?? DEFAULT_ACCENT;
+            const isHovered = hoveredIndex === i;
             return (
-              <g key={`${m.lat}-${m.lng}-${i}`} transform={`translate(${x}, ${y})`}>
-                {animatePulse ? (
+              <g
+                key={`${m.lat}-${m.lng}-${i}`}
+                transform={`translate(${x}, ${y})`}
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex((prev) => (prev === i ? null : prev))}
+                style={{ cursor: m.label ? 'pointer' : 'default' }}
+              >
+                {animatePulse && isHovered ? (
                   <circle r={14} fill={accent} opacity={0.18}>
                     <animate
                       attributeName="r"
                       values="14;26;14"
-                      dur="3.2s"
-                      begin={`${i * 0.35}s`}
+                      dur="1.6s"
                       repeatCount="indefinite"
                     />
                     <animate
                       attributeName="opacity"
-                      values="0.28;0;0.28"
-                      dur="3.2s"
-                      begin={`${i * 0.35}s`}
+                      values="0.32;0;0.32"
+                      dur="1.6s"
                       repeatCount="indefinite"
                     />
                   </circle>
                 ) : null}
-                <circle r={7} fill="#fff" stroke={accent} strokeWidth={2.2} />
-                <circle r={3} fill={accent} />
-                {m.label ? (
-                  <text
-                    x={11}
-                    y={3.5}
-                    fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-                    fontSize={10}
-                    fontWeight={600}
-                    fill={labelTone === 'dark' ? '#1f2937' : '#ffffff'}
-                  >
-                    {m.label}
-                    {typeof m.count === 'number' ? ` · ${m.count}` : ''}
-                  </text>
-                ) : null}
-                {m.label === undefined && typeof m.count === 'number' ? (
-                  <g transform="translate(10, -10)">
-                    <rect
-                      x={-2}
-                      y={-9}
-                      rx={9}
-                      ry={9}
-                      width={Math.max(20, 12 + String(m.count).length * 5)}
-                      height={18}
-                      fill={accent}
-                    />
-                    <text
-                      x={8}
-                      y={4}
-                      textAnchor="middle"
-                      fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-                      fontSize={11}
-                      fontWeight={700}
-                      fill="#fff"
-                    >
-                      {m.count}
-                    </text>
-                  </g>
-                ) : null}
+                {/*
+                  Transparent hit circle sized larger than the visible dot
+                  so the hover target is comfortable on small screens. The
+                  dot + bullseye sit on top with pointer-events disabled
+                  so they never swallow the hover.
+                */}
+                <circle r={14} fill="transparent" pointerEvents="all" />
+                <circle r={7} fill="#fff" stroke={accent} strokeWidth={2.2} pointerEvents="none" />
+                <circle r={3} fill={accent} pointerEvents="none" />
               </g>
             );
           })}
-          {/* Reserve the id so styling tooling can find it; not currently used. */}
-          <desc id={pulseId}>Project markers</desc>
+          {/*
+            Hover label rendered in a second pass after all marker dots so
+            it always paints above neighboring markers (otherwise an earlier
+            marker's pill would be clipped by a later marker drawn on top).
+          */}
+          {(() => {
+            if (hoveredIndex === null) return null;
+            const m = markers[hoveredIndex];
+            if (!m || !m.label) return null;
+            const [hx, hy] = project(m.lat, m.lng);
+            const pw = 10 + m.label.length * 6;
+            return (
+              <g
+                transform={`translate(${hx}, ${hy})`}
+                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }}
+                pointerEvents="none"
+              >
+                <rect
+                  x={11}
+                  y={-7}
+                  rx={3}
+                  ry={3}
+                  width={pw}
+                  height={14}
+                  fill={DEFAULT_ACCENT}
+                  stroke="#ffffff"
+                  strokeWidth={1.2}
+                />
+                <text
+                  x={11 + pw / 2}
+                  y={3}
+                  textAnchor="middle"
+                  fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                  fontSize={9.5}
+                  fontWeight={600}
+                  fill="#ffffff"
+                >
+                  {m.label}
+                </text>
+              </g>
+            );
+          })()}
         </g>
       ) : null}
     </svg>

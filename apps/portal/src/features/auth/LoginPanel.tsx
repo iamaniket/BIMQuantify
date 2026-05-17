@@ -17,6 +17,7 @@ import { LoginForm } from '@/features/auth/LoginForm';
 import { useProjectsMap } from '@/features/auth/useProjectsMap';
 import { useSystemStatus } from '@/features/auth/useSystemStatus';
 import { env } from '@/lib/env';
+import { formatApproxCount } from '@/lib/formatting/numbers';
 
 interface LoginPanelProps {
   legalLinks: readonly LegalFooterLink[];
@@ -150,33 +151,50 @@ export function LoginPanel({ legalLinks }: LoginPanelProps): JSX.Element {
                 row; text occupies the remaining left space, never under it.
             */}
             <div className="flex shrink-0 flex-col items-center justify-center">
+              {/* Inner flex-col is pinned to the map's COMPUTED width so the
+                  stats strip below right-aligns against the map's right
+                  edge — even when the strip's natural text width would
+                  otherwise exceed the map. Width = mapHeight × aspectRatio. */}
               <div
+                className="flex flex-col"
                 style={{
-                  // Target 70% of viewport HEIGHT. The width cap (45vw)
-                  // only kicks in on portrait/narrow viewports where 70vh
-                  // would overflow the brand pane. On standard 16:9 and
-                  // 16:10 desktops 70vh wins, giving the map true 70% of
-                  // the screen height. `aspect-ratio` shapes the box; the
-                  // SVG fills it.
-                  height: 'min(70vh, 45vw)',
-                  aspectRatio: `${612.54211} / ${723.61865}`,
+                  width: `calc(min(70vh, 45vw) * (${612.54211} / ${723.61865}))`,
                 }}
               >
-                <NetherlandsMap
-                  responsiveHeight="100%"
-                  fill="var(--color-primary-light, #e5ecf6)"
-                  markers={markers}
-                  animatePulse
-                  labelTone="light"
-                  ariaLabel="Live BimStitch project locations across the Netherlands"
-                  className="drop-shadow-[0_24px_48px_rgba(0,0,0,0.30)]"
-                />
-              </div>
-              {markersQuery.isSuccess && markers.length > 0 ? (
-                <div className="mt-2 text-center font-mono text-[10.5px] uppercase tracking-[0.10em] text-white/55">
-                  {totalProjects} projects · {markers.length} cities live
+                <div
+                  style={{
+                    // Target 70% of viewport HEIGHT. The width cap (45vw)
+                    // only kicks in on portrait/narrow viewports where 70vh
+                    // would overflow the brand pane. On standard 16:9 and
+                    // 16:10 desktops 70vh wins, giving the map true 70% of
+                    // the screen height. `aspect-ratio` shapes the box; the
+                    // SVG fills it.
+                    height: 'min(70vh, 45vw)',
+                    aspectRatio: `${612.54211} / ${723.61865}`,
+                  }}
+                >
+                  <NetherlandsMap
+                    responsiveHeight="100%"
+                    fill="var(--color-primary-light, #e5ecf6)"
+                    markers={markers}
+                    animatePulse
+                    ariaLabel="Live BimStitch project locations across the Netherlands"
+                    className="drop-shadow-[0_24px_48px_rgba(0,0,0,0.30)]"
+                  />
                 </div>
-              ) : null}
+                {/* Always rendered with reserved space — visibility-toggled
+                    so the map doesn't jump when the API call resolves. */}
+                <div
+                  className="mt-5 whitespace-nowrap text-right font-mono text-[12.5px] uppercase tracking-[0.10em] text-white/55"
+                  style={{
+                    visibility:
+                      markersQuery.isSuccess && markers.length > 0 ? 'visible' : 'hidden',
+                  }}
+                  aria-hidden={!(markersQuery.isSuccess && markers.length > 0)}
+                >
+                  {formatApproxCount(totalProjects)} projects · {formatApproxCount(markers.length)} cities live
+                </div>
+              </div>
             </div>
           </div>
 

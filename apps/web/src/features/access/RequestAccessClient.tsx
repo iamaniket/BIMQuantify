@@ -15,6 +15,7 @@ import { useEffect, useState, type JSX } from 'react';
 
 import { fetchProjectsMap, submitAccessRequest, WebApiError } from '@/lib/api';
 import { env } from '@/lib/env';
+import { formatApproxCount } from '@/lib/formatting/numbers';
 
 interface SubmittedState {
   name: string;
@@ -155,15 +156,18 @@ export function RequestAccessClient(): JSX.Element {
                   fill="var(--color-primary-light, #e5ecf6)"
                   markers={markers}
                   animatePulse
-                  labelTone="light"
                   ariaLabel="Live BimStitch project locations across the Netherlands"
                   className="drop-shadow-[0_24px_48px_rgba(0,0,0,0.25)]"
                 />
-                {markers.length > 0 ? (
-                  <div className="mt-2 text-center font-mono text-[10.5px] uppercase tracking-[0.10em] text-white/55">
-                    {totalProjects} projects · {markers.length} cities live
-                  </div>
-                ) : null}
+                {/* Always rendered with reserved space — visibility-toggled
+                    so the map doesn't jump when the API call resolves. */}
+                <div
+                  className="mt-5 whitespace-nowrap text-right font-mono text-[15px] uppercase tracking-[0.10em] text-white/55"
+                  style={{ visibility: markers.length > 0 ? 'visible' : 'hidden' }}
+                  aria-hidden={markers.length === 0}
+                >
+                  {formatApproxCount(totalProjects)} projects , {formatApproxCount(markers.length)} cities
+                </div>
               </div>
             </div>
           </div>
