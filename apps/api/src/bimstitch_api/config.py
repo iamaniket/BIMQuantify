@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     arbiter_url: str = Field(default="http://localhost:8090", alias="ARBITER_URL")
     arbiter_timeout_seconds: float = Field(default=30.0, alias="ARBITER_TIMEOUT_SECONDS")
 
+    deploy_region: str = Field(default="dev", alias="DEPLOY_REGION")
+    deploy_node: str = Field(default="local", alias="DEPLOY_NODE")
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

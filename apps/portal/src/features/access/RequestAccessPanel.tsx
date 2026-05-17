@@ -1,22 +1,18 @@
 'use client';
 
-import { NetherlandsMap, type MapMarker } from '@bimstitch/map';
 import {
   AuthShell,
-  BrandMark,
-  HeroGrid,
-  LegalFooter,
   RequestAccessForm,
   RequestAccessSuccess,
-  SystemStatusBadge,
+  type LegalFooterLink,
   type RequestAccessValues,
 } from '@bimstitch/ui';
+import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { useProjectsMap } from '@/features/auth/useProjectsMap';
+import { AuthHeroBrand } from '@/features/auth/AuthHeroBrand';
+import { Link } from '@/i18n/navigation';
 import { ApiError } from '@/lib/api/client';
-import { env } from '@/lib/env';
-import { formatApproxCount } from '@/lib/formatting/numbers';
 import { submitAccessRequest } from '@/lib/api/accessRequests';
 
 interface SubmittedState {
@@ -25,13 +21,14 @@ interface SubmittedState {
   company: string;
 }
 
-export function RequestAccessPanel(): JSX.Element {
-  const markersQuery = useProjectsMap();
+interface RequestAccessPanelProps {
+  legalLinks: readonly LegalFooterLink[];
+}
+
+export function RequestAccessPanel({ legalLinks }: RequestAccessPanelProps): JSX.Element {
+  const t = useTranslations('legal');
   const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
   const [submitError, setSubmitError] = useState<string | undefined>(undefined);
-
-  const markers: readonly MapMarker[] = markersQuery.data ?? [];
-  const totalProjects = markers.reduce((sum, m) => sum + (m.count ?? 1), 0);
 
   const onSubmit = async (values: RequestAccessValues): Promise<void> => {
     setSubmitError(undefined);
@@ -62,118 +59,17 @@ export function RequestAccessPanel(): JSX.Element {
     }
   };
 
-  // Marketing site link if configured; otherwise the marketing home page on
-  // the portal's own host falls back to /.
-  const marketingHome = env.NEXT_PUBLIC_MARKETING_URL
-    ? env.NEXT_PUBLIC_MARKETING_URL.replace(/\/$/, '')
-    : '';
-
   return (
     <AuthShell
-      brandPaneWidth="44%"
-      brand={(
-        <>
-          <HeroGrid opacity={0.1} stroke="#ffffff" step={36} />
-
-          <div className="relative flex items-center gap-3">
-            <BrandMark size={38} tone="on-dark" />
-            <div>
-              <div className="font-display text-[18px] font-semibold leading-tight tracking-tight text-white">
-                BimStitch
-              </div>
-              <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
-                Wkb-compliant BIM platform
-              </div>
-            </div>
-          </div>
-
-          <div className="relative mt-10 flex flex-1 flex-col items-stretch gap-8">
-            <div>
-              <div
-                className="mb-3.5 inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em]"
-                style={{
-                  color: '#9ff0bf',
-                  background: 'rgba(95,217,158,0.16)',
-                  borderColor: 'rgba(95,217,158,0.32)',
-                }}
-              >
-                <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: '#5fd99e' }} />
-                Request a guided demo
-              </div>
-
-              <h1
-                className="m-0 max-w-md font-display text-[36px] font-medium leading-[1.06] tracking-tight text-white"
-                style={{ textWrap: 'pretty' }}
-              >
-                See your <span className="italic" style={{ color: '#9bbce8' }}>models</span>,{' '}
-                <span className="italic" style={{ color: '#9bbce8' }}>issues</span> and{' '}
-                <span className="italic" style={{ color: '#9bbce8' }}>dossier</span> stitched into one Wkb record.
-              </h1>
-              <p className="mt-3.5 max-w-md text-[13.5px] leading-snug text-white/70">
-                Tell us a little about your team and we&rsquo;ll spin up a sandbox preloaded with sample
-                Wkb projects, BBL libraries and a representative consumentendossier.
-              </p>
-
-              <ul className="mt-5 flex list-none flex-col gap-2.5 p-0">
-                {[
-                  'Federated IFC review with real Bouwbesluit checks',
-                  'Wkb-1 risk dossier from kickoff to oplevering',
-                  'Sandbox stays live for 14 days, no card required',
-                ].map((line) => (
-                  <li key={line} className="flex items-start gap-2.5 text-[13px] leading-snug text-white/82">
-                    <span
-                      aria-hidden
-                      className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full"
-                      style={{ background: 'rgba(95,217,158,0.22)', color: '#9ff0bf' }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12l5 5L20 7" />
-                      </svg>
-                    </span>
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="relative flex flex-1 items-center justify-end">
-              <div className="relative">
-                <NetherlandsMap
-                  responsiveHeight="min(60vh, 600px)"
-                  fill="var(--color-primary-light, #e5ecf6)"
-                  markers={markers}
-                  animatePulse
-                  ariaLabel="Live BimStitch project locations across the Netherlands"
-                  className="drop-shadow-[0_24px_48px_rgba(0,0,0,0.25)]"
-                />
-                {/* Always rendered with reserved space — visibility-toggled
-                    so the map doesn't jump when the API call resolves. */}
-                <div
-                  className="mt-5 whitespace-nowrap text-right font-mono text-[12.5px] uppercase tracking-[0.10em] text-white/55"
-                  style={{
-                    visibility:
-                      markersQuery.isSuccess && markers.length > 0 ? 'visible' : 'hidden',
-                  }}
-                  aria-hidden={!(markersQuery.isSuccess && markers.length > 0)}
-                >
-                  {formatApproxCount(totalProjects)} projects · {formatApproxCount(markers.length)} cities live
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative mt-6">
-            <LegalFooter tone="on-dark" />
-          </div>
-        </>
-      )}
+      brand={<AuthHeroBrand legalLinks={legalLinks} />}
       topRight={(
-        <>
-          <SystemStatusBadge status="normal" region="Onboarding · EU-WEST · AMS01" tone="on-light" />
-          <a href={`${marketingHome}/login`} className="font-mono text-[11.5px] text-foreground-tertiary no-underline">
-            ‹ Back to sign in
-          </a>
-        </>
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 font-mono text-[11.5px] tracking-[0.02em] text-foreground-tertiary no-underline hover:text-foreground"
+        >
+          <span aria-hidden>←</span>
+          {t('backToSignIn')}
+        </Link>
       )}
       form={(
         submitted === null ? (

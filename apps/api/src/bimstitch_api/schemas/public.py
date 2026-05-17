@@ -24,8 +24,8 @@ class ProjectsMapPoint(BaseModel):
 
 class SystemStatusResponse(BaseModel):
     status: SystemStatus
-    region: str = "EU-WEST"
-    node: str = "AMS01"
+    region: str
+    node: str
     wkb_version: str = "2026.1"
     bbl_version: str = "v2026.04"
     ifc_version: str = "4.3"

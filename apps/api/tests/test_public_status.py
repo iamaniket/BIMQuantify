@@ -18,9 +18,31 @@ async def test_system_status_returns_normal_when_healthy(
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "normal"
-    assert body["region"] == "EU-WEST"
+    assert body["region"] == "dev"
+    assert body["node"] == "local"
     assert body["wkb_version"] == "2026.1"
     assert body["checks"] == {"db": True, "redis": True, "storage": True}
+
+
+@pytest.mark.asyncio
+async def test_system_status_reflects_deploy_env_overrides(
+    client: "AsyncClient", monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DEPLOY_REGION", "EU-WEST")
+    monkeypatch.setenv("DEPLOY_NODE", "AMS01")
+    from bimstitch_api.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        response = await client.get("/public/system-status")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["region"] == "EU-WEST"
+        assert body["node"] == "AMS01"
+    finally:
+        monkeypatch.delenv("DEPLOY_REGION", raising=False)
+        monkeypatch.delenv("DEPLOY_NODE", raising=False)
+        get_settings.cache_clear()
 
 
 @pytest.mark.asyncio

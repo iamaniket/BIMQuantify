@@ -1,6 +1,5 @@
 import { AuthShell } from '@bimstitch/ui';
-import { setRequestLocale } from 'next-intl/server';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { JSX, ReactNode } from 'react';
 
 import { AuthHeroBrand } from '@/features/auth/AuthHeroBrand';
@@ -31,7 +30,7 @@ export default async function LegalLayout({ children, params }: Props): Promise<
           className="inline-flex items-center gap-1.5 font-mono text-[11.5px] tracking-[0.02em] text-foreground-tertiary no-underline hover:text-foreground"
         >
           <span aria-hidden>←</span>
-          Back to login
+          {t('backToSignIn')}
         </Link>
       )}
       formContentMaxWidth="640px"

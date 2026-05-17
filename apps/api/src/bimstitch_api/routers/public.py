@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.approx import approx_count_floor
 from bimstitch_api.cache.client import get_redis
+from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.db import get_async_session
 from bimstitch_api.models.project import Project, ProjectLifecycleState
 from bimstitch_api.schemas.public import (
@@ -106,6 +107,7 @@ async def _check_storage() -> bool:
 @router.get("/system-status", response_model=SystemStatusResponse)
 async def system_status(
     session: AsyncSession = Depends(get_async_session),
+    settings: Settings = Depends(get_settings),
 ) -> SystemStatusResponse:
     checks = {
         "db": await _check_db(session),
@@ -119,4 +121,9 @@ async def system_status(
         status_value = "down"
     else:
         status_value = "degraded"
-    return SystemStatusResponse(status=status_value, checks=checks)
+    return SystemStatusResponse(
+        status=status_value,
+        region=settings.deploy_region,
+        node=settings.deploy_node,
+        checks=checks,
+    )
