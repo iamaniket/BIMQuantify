@@ -43,6 +43,22 @@ class ProjectPhase(StrEnum):
     handover = "handover"
 
 
+class BuildingType(StrEnum):
+    # Neutral building-type codes. Localized labels live in the jurisdiction
+    # registry (e.g. NL: 'dwelling' -> 'Woning').
+    dwelling = "dwelling"
+    commercial = "commercial"
+    other = "other"
+
+
+class ConsequenceClass(StrEnum):
+    # Eurocode EN 1990 consequence classes (pan-EU). NL Gevolgklasse
+    # GK1/GK2/GK3 maps directly to CC1/CC2/CC3.
+    cc1 = "cc1"
+    cc2 = "cc2"
+    cc3 = "cc3"
+
+
 class Project(TimestampMixin, Base):
     __tablename__ = "projects"
 
@@ -97,6 +113,27 @@ class Project(TimestampMixin, Base):
         server_default=ProjectPhase.design.value,
     )
     delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    planned_start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Building classification. Neutral codes; Dutch/German/etc labels are
+    # provided by the jurisdiction registry so the portal renders the right
+    # language for the project's country.
+    building_type: Mapped[BuildingType | None] = mapped_column(
+        SAEnum(
+            BuildingType,
+            name="buildingtype",
+            values_callable=lambda enum: [m.value for m in enum],
+        ),
+        nullable=True,
+    )
+    consequence_class: Mapped[ConsequenceClass | None] = mapped_column(
+        SAEnum(
+            ConsequenceClass,
+            name="consequenceclass",
+            values_callable=lambda enum: [m.value for m in enum],
+        ),
+        nullable=True,
+    )
 
     # Site address (BAG-aligned for future Dutch address-service integration).
     street: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -133,6 +170,7 @@ class Project(TimestampMixin, Base):
         Index("ix_projects_status", "status"),
         Index("ix_projects_lifecycle_state", "lifecycle_state"),
         Index("ix_projects_contractor_id", "contractor_id"),
+        Index("ix_projects_planned_start_date", "planned_start_date"),
         Index(
             "uq_projects_org_reference_code",
             "organization_id",

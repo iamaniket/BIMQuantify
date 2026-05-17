@@ -20,6 +20,18 @@ NL = Jurisdiction(
         "bbl": "Bouwbesluit Leefomgeving (Dutch building decree)",
         "wkb": "Wet kwaliteitsborging voor het bouwen",
     },
+    building_type_labels={
+        "dwelling": "Woning",
+        "commercial": "Bedrijfspand",
+        "other": "Anders",
+    },
+    consequence_class_labels={
+        "cc1": "Gevolgklasse 1 (GK1)",
+        "cc2": "Gevolgklasse 2 (GK2)",
+        "cc3": "Gevolgklasse 3 (GK3)",
+    },
+    # NL Wkb today: only Gk1 is in scope. GK2/GK3 are roadmap.
+    allowed_consequence_classes=("cc1",),
 )
 
 register(NL)

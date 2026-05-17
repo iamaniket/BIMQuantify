@@ -1,7 +1,9 @@
+import { AuthShell } from '@bimstitch/ui';
 import { setRequestLocale } from 'next-intl/server';
 import { getTranslations } from 'next-intl/server';
 import type { JSX, ReactNode } from 'react';
 
+import { AuthHeroBrand } from '@/features/auth/AuthHeroBrand';
 import { Link } from '@/i18n/navigation';
 
 type Props = {
@@ -14,29 +16,36 @@ export default async function LegalLayout({ children, params }: Props): Promise<
   setRequestLocale(locale);
   const t = await getTranslations('legal');
 
+  const legalLinks = [
+    { href: '/legal/privacy', label: t('navPrivacy') },
+    { href: '/legal/terms', label: t('navTerms') },
+    { href: '/legal/dpa', label: t('navDpa') },
+  ];
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 py-10">
-      <nav className="flex flex-wrap items-center gap-3 text-sm">
-        <Link href="/" className="text-foreground-secondary hover:text-foreground">
-          {t('backHome')}
+    <AuthShell
+      brand={<AuthHeroBrand legalLinks={legalLinks} />}
+      topRight={(
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 font-mono text-[11.5px] tracking-[0.02em] text-foreground-tertiary no-underline hover:text-foreground"
+        >
+          <span aria-hidden>←</span>
+          Back to login
         </Link>
-        <span className="text-foreground-secondary/50">·</span>
-        <Link href="/legal/privacy" className="text-foreground hover:text-primary">
-          {t('navPrivacy')}
-        </Link>
-        <Link href="/legal/terms" className="text-foreground hover:text-primary">
-          {t('navTerms')}
-        </Link>
-        <Link href="/legal/dpa" className="text-foreground hover:text-primary">
-          {t('navDpa')}
-        </Link>
-      </nav>
+      )}
+      formContentMaxWidth="640px"
+      formContentAlign="start"
+      brandSticky
+      form={(
+        <div className="flex flex-col gap-6 py-1">
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+            {t('draftBanner')}
+          </div>
 
-      <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-        {t('draftBanner')}
-      </div>
-
-      {children}
-    </main>
+          {children}
+        </div>
+      )}
+    />
   );
 }

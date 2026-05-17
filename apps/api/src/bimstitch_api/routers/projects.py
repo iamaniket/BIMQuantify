@@ -8,9 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.jurisdictions import supported_countries
 from bimstitch_api.models.contractor import Contractor
-from bimstitch_api.models.project import Project, ProjectLifecycleState
+from bimstitch_api.models.project import (
+    ConsequenceClass,
+    Project,
+    ProjectLifecycleState,
+)
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.project import (
@@ -64,6 +69,27 @@ def _validate_country(country: str | None) -> None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"UNSUPPORTED_COUNTRY: '{country}' is not a registered jurisdiction",
+        )
+
+
+def _validate_consequence_class(
+    consequence_class: ConsequenceClass | None, country: str | None
+) -> None:
+    """422 if the consequence class is not in the country's allowed scope.
+    NL Wkb only certifies Gk1 (CC1) today; declaring CC2/CC3 for an NL
+    project is a domain error, not a UI quirk."""
+    if consequence_class is None or country is None:
+        return
+    jurisdiction = get_jurisdiction(country)
+    if jurisdiction is None:
+        return  # _validate_country surfaces this case separately
+    if consequence_class.value not in jurisdiction.allowed_consequence_classes:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"CONSEQUENCE_CLASS_OUT_OF_SCOPE: '{consequence_class.value}' is "
+                f"not in scope for country '{country}'"
+            ),
         )
 
 
@@ -151,6 +177,7 @@ async def create_project(
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
     _validate_country(payload.country)
+    _validate_consequence_class(payload.consequence_class, payload.country)
     await _validate_contractor_belongs_to_org(
         session, payload.contractor_id, user.organization_id
     )
@@ -282,6 +309,13 @@ async def update_project(
     updates = payload.model_dump(exclude_unset=True)
     if "country" in updates:
         _validate_country(updates["country"])
+    if "consequence_class" in updates:
+        # Re-validate against the (possibly new) country; falls back to the
+        # existing project.country if the patch doesn't touch it.
+        target_country = updates.get("country", project.country)
+        _validate_consequence_class(
+            payload.consequence_class, target_country
+        )
     if "contractor_id" in updates:
         await _validate_contractor_belongs_to_org(
             session, updates["contractor_id"], project.organization_id

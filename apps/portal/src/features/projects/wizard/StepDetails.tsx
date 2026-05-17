@@ -8,7 +8,7 @@ import { Input, Label } from '@bimstitch/ui';
 import type { ProjectFormValues } from '../projectFormSchema';
 
 import {
-  PHASE_OPTIONS, STATUS_OPTIONS,
+  BUILDING_TYPE_OPTIONS, CONSEQUENCE_CLASS_OPTIONS, PHASE_OPTIONS, STATUS_OPTIONS,
 } from './projectWizardSteps';
 import {
   fieldErrorClass, fieldLabelClass, getFieldErrorMessage, selectClass,
@@ -25,11 +25,15 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
   const statusId = useId();
   const phaseId = useId();
   const deliveryId = useId();
+  const buildingTypeId = useId();
+  const consequenceClassId = useId();
+  const plannedStartId = useId();
 
   const { errors } = form.formState;
   const refCodeError = getFieldErrorMessage(errors, 'reference_code');
   const permitError = getFieldErrorMessage(errors, 'permit_number');
   const deliveryError = getFieldErrorMessage(errors, 'delivery_date');
+  const plannedStartError = getFieldErrorMessage(errors, 'planned_start_date');
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,6 +99,54 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
           />
           {deliveryError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{deliveryError}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={buildingTypeId} className={fieldLabelClass}>Type bouwwerk</Label>
+          <select
+            id={buildingTypeId}
+            className={selectClass}
+            disabled={isReadOnly}
+            {...form.register('building_type')}
+          >
+            <option value="">—</option>
+            {BUILDING_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={consequenceClassId} className={fieldLabelClass}>Gevolgklasse</Label>
+          <select
+            id={consequenceClassId}
+            className={selectClass}
+            disabled={isReadOnly}
+            {...form.register('consequence_class')}
+          >
+            <option value="">—</option>
+            {CONSEQUENCE_CLASS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={plannedStartId} className={fieldLabelClass}>Geplande startdatum</Label>
+          <Input
+            id={plannedStartId}
+            type="date"
+            invalid={plannedStartError !== undefined}
+            disabled={isReadOnly}
+            {...form.register('planned_start_date')}
+          />
+          {plannedStartError !== undefined && (
+            <span role="alert" className={fieldErrorClass}>{plannedStartError}</span>
           )}
         </div>
       </div>

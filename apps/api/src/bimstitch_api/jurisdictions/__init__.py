@@ -24,6 +24,15 @@ class Jurisdiction:
     postcode_pattern: str | None = None
     address_id_label: str | None = None  # e.g. "BAG ID", "Kataster"
     notes: dict[str, str] = field(default_factory=dict)
+    # Localized labels for the neutral BuildingType / ConsequenceClass codes
+    # stored on Project. The portal pulls these via GET /jurisdictions so
+    # NL renders "Woning", DE "Wohngebäude", etc. without touching schema.
+    building_type_labels: dict[str, str] = field(default_factory=dict)
+    consequence_class_labels: dict[str, str] = field(default_factory=dict)
+    # Subset of ConsequenceClass values valid for this country's current
+    # framework scope. NL Wkb today only certifies Gk1 (= CC1) work;
+    # the API rejects projects that try to declare CC2/CC3.
+    allowed_consequence_classes: tuple[str, ...] = ("cc1", "cc2", "cc3")
 
 
 _REGISTRY: dict[str, Jurisdiction] = {}

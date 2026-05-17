@@ -1,6 +1,11 @@
 import type { WizardStep } from '@bimstitch/ui';
 
-import type { ProjectPhaseValue, ProjectStatusValue } from '@/lib/api/schemas';
+import type {
+  BuildingTypeValue,
+  ConsequenceClassValue,
+  ProjectPhaseValue,
+  ProjectStatusValue,
+} from '@/lib/api/schemas';
 
 import type { ProjectFormValues } from '../projectFormSchema';
 
@@ -26,6 +31,31 @@ export const PHASE_OPTIONS: readonly { value: ProjectPhaseValue; label: string }
   { value: 'handover', label: 'Oplevering' },
 ];
 
+// NL labels for the neutral BuildingType codes. When the portal grows past
+// NL these dropdowns will be driven by GET /jurisdictions (already exposes
+// building_type_labels per country).
+export const BUILDING_TYPE_OPTIONS: readonly {
+  value: BuildingTypeValue;
+  label: string;
+}[] = [
+  { value: 'dwelling', label: 'Woning' },
+  { value: 'commercial', label: 'Bedrijfspand' },
+  { value: 'other', label: 'Anders' },
+];
+
+// Eurocode CC1/CC2/CC3 = NL GK1/GK2/GK3. The `disabled` flag mirrors the
+// API's allowed_consequence_classes for the NL jurisdiction (today: CC1
+// only — CC2/CC3 are roadmap and the server would reject them).
+export const CONSEQUENCE_CLASS_OPTIONS: readonly {
+  value: ConsequenceClassValue;
+  label: string;
+  disabled: boolean;
+}[] = [
+  { value: 'cc1', label: 'Gevolgklasse 1 (GK1)', disabled: false },
+  { value: 'cc2', label: 'Gevolgklasse 2 (GK2) — buiten huidige scope', disabled: true },
+  { value: 'cc3', label: 'Gevolgklasse 3 (GK3) — buiten huidige scope', disabled: true },
+];
+
 /** Stable step identifiers — used for React keys and step lookup. */
 export type ProjectWizardStepId = 'basics' | 'details' | 'address' | 'contractor';
 
@@ -35,7 +65,16 @@ export const PROJECT_WIZARD_STEP_FIELDS: Record<
   readonly (keyof ProjectFormValues)[]
 > = {
   basics: ['name', 'description'],
-  details: ['reference_code', 'status', 'phase', 'delivery_date', 'permit_number'],
+  details: [
+    'reference_code',
+    'status',
+    'phase',
+    'building_type',
+    'consequence_class',
+    'planned_start_date',
+    'delivery_date',
+    'permit_number',
+  ],
   address: [
     'street',
     'house_number',

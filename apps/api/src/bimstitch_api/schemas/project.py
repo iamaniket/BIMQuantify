@@ -4,6 +4,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from bimstitch_api.models.project import (
+    BuildingType,
+    ConsequenceClass,
     ProjectLifecycleState,
     ProjectPhase,
     ProjectStatus,
@@ -26,6 +28,12 @@ class ProjectBase(BaseModel):
     # unregistered country is rejected with 422.
     country: str = Field(default="NL", min_length=2, max_length=2)
     delivery_date: date | None = None
+    planned_start_date: date | None = None
+
+    # Building classification. Codes are jurisdiction-neutral; the portal
+    # renders localized labels via the /jurisdictions endpoint.
+    building_type: BuildingType | None = None
+    consequence_class: ConsequenceClass | None = None
 
     street: str | None = Field(default=None, max_length=255)
     house_number: str | None = Field(default=None, max_length=20)
@@ -57,6 +65,10 @@ class ProjectUpdate(BaseModel):
     phase: ProjectPhase | None = None
     country: str | None = Field(default=None, min_length=2, max_length=2)
     delivery_date: date | None = None
+    planned_start_date: date | None = None
+
+    building_type: BuildingType | None = None
+    consequence_class: ConsequenceClass | None = None
 
     street: str | None = Field(default=None, max_length=255)
     house_number: str | None = Field(default=None, max_length=20)

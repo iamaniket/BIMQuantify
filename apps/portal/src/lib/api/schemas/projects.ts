@@ -27,6 +27,16 @@ export const ProjectPhaseEnum = z.enum([
 
 export type ProjectPhaseValue = z.infer<typeof ProjectPhaseEnum>;
 
+// Neutral building-type codes. Localized labels are registered per
+// jurisdiction on the API (e.g. NL: 'dwelling' -> 'Woning').
+export const BuildingTypeEnum = z.enum(['dwelling', 'commercial', 'other']);
+export type BuildingTypeValue = z.infer<typeof BuildingTypeEnum>;
+
+// Eurocode EN 1990 consequence classes (pan-EU). NL Gevolgklasse
+// GK1/GK2/GK3 maps directly to CC1/CC2/CC3.
+export const ConsequenceClassEnum = z.enum(['cc1', 'cc2', 'cc3']);
+export type ConsequenceClassValue = z.infer<typeof ConsequenceClassEnum>;
+
 export const ProjectSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -44,6 +54,9 @@ export const ProjectSchema = z.object({
   // ISO 3166-1 alpha-2. NL today; widens as more jurisdictions register.
   country: z.string().length(2),
   delivery_date: z.union([z.string(), z.null()]),
+  planned_start_date: z.union([z.string(), z.null()]),
+  building_type: z.union([BuildingTypeEnum, z.null()]),
+  consequence_class: z.union([ConsequenceClassEnum, z.null()]),
 
   street: z.union([z.string(), z.null()]),
   house_number: z.union([z.string(), z.null()]),
@@ -74,6 +87,9 @@ export const ProjectCreateSchema = z.object({
   phase: ProjectPhaseEnum.optional(),
   country: z.string().length(2).optional(),
   delivery_date: z.union([z.string(), z.null()]).optional(),
+  planned_start_date: z.union([z.string(), z.null()]).optional(),
+  building_type: z.union([BuildingTypeEnum, z.null()]).optional(),
+  consequence_class: z.union([ConsequenceClassEnum, z.null()]).optional(),
   street: z.union([z.string().max(255), z.null()]).optional(),
   house_number: z.union([z.string().max(20), z.null()]).optional(),
   postal_code: z.union([z.string().max(7), z.null()]).optional(),

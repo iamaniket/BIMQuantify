@@ -15,6 +15,24 @@ export interface AuthShellProps {
   brandPaneWidth?: string;
   /** Background of the form pane. Defaults to the page surface token. */
   formBackground?: string;
+  /**
+   * Max-width (CSS value) of the inner form column. Defaults to "420px"
+   * which suits a sign-in / request-access form. Long-form content
+   * (legal, settings) should bump this to ~560–640px.
+   */
+  formContentMaxWidth?: string;
+  /**
+   * Vertical alignment of the inner form column. "center" suits short
+   * forms (default); "start" suits long content that should scroll
+   * naturally from the top.
+   */
+  formContentAlign?: 'center' | 'start';
+  /**
+   * When true the brand pane sticks to the top of the viewport on
+   * desktop so it remains visible while the form column scrolls. Useful
+   * for long-form content alongside the same brand canvas.
+   */
+  brandSticky?: boolean;
   className?: string;
   style?: CSSProperties;
 }
@@ -37,19 +55,29 @@ export function AuthShell({
   footer,
   brandPaneWidth = '54%',
   formBackground = 'var(--surface-page, #ffffff)',
+  formContentMaxWidth = '420px',
+  formContentAlign = 'center',
+  brandSticky = false,
   className,
   style,
 }: AuthShellProps): JSX.Element {
   return (
     <div
       className={cn(
-        'flex min-h-screen w-full flex-col overflow-hidden bg-surface-page text-foreground lg:flex-row',
+        'flex min-h-screen w-full flex-col bg-surface-page text-foreground lg:flex-row',
+        // overflow-hidden is fine for short shells (login) but clips
+        // sticky positioning, so we only apply it when the brand isn't
+        // sticky. With sticky brand, the parent must allow overflow.
+        brandSticky ? '' : 'overflow-hidden',
         className,
       )}
       style={style}
     >
       <div
-        className="relative flex flex-col overflow-hidden px-9 py-9 text-white"
+        className={cn(
+          'relative flex flex-col overflow-hidden px-9 py-9 text-white',
+          brandSticky ? 'lg:sticky lg:top-0 lg:h-screen' : '',
+        )}
         style={{
           flex: `0 0 ${brandPaneWidth}`,
           background: 'linear-gradient(180deg, #2c5697 0%, #1e3e72 100%)',
@@ -67,8 +95,18 @@ export function AuthShell({
           <div className="flex items-center justify-between">{topRight}</div>
         ) : null}
 
-        <div className="flex flex-1 flex-col justify-center">
-          <div className="mx-auto flex w-full max-w-[420px] flex-col">{form}</div>
+        <div
+          className={cn(
+            'flex flex-1 flex-col',
+            formContentAlign === 'center' ? 'justify-center' : 'justify-start',
+          )}
+        >
+          <div
+            className="mx-auto flex w-full flex-col"
+            style={{ maxWidth: formContentMaxWidth }}
+          >
+            {form}
+          </div>
         </div>
 
         {footer !== undefined ? <div className="mt-6">{footer}</div> : null}

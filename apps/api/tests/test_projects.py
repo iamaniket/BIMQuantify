@@ -256,6 +256,64 @@ async def test_patch_project_empty_body_leaves_unchanged(
     assert response.json()["name"] == "Stable"
 
 
+async def test_create_project_with_classification_fields_round_trips(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    response = await client.post(
+        "/projects",
+        json={
+            "name": "Classified",
+            "building_type": "dwelling",
+            "consequence_class": "cc1",
+            "planned_start_date": "2026-09-01",
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["building_type"] == "dwelling"
+    assert body["consequence_class"] == "cc1"
+    assert body["planned_start_date"] == "2026-09-01"
+
+    fetched = await client.get(
+        f"/projects/{body['id']}", headers=_auth(org_user["access_token"])
+    )
+    assert fetched.status_code == 200
+    fetched_body = fetched.json()
+    assert fetched_body["building_type"] == "dwelling"
+    assert fetched_body["consequence_class"] == "cc1"
+    assert fetched_body["planned_start_date"] == "2026-09-01"
+
+
+async def test_create_project_rejects_invalid_building_type(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    response = await client.post(
+        "/projects",
+        json={"name": "Bad type", "building_type": "warehouse"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 422
+
+
+async def test_create_project_rejects_consequence_class_out_of_country_scope(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    # NL jurisdiction has allowed_consequence_classes=('cc1',); cc2 is out of
+    # scope and the API must surface the domain rule, not silently accept it.
+    response = await client.post(
+        "/projects",
+        json={
+            "name": "Out of scope",
+            "country": "NL",
+            "consequence_class": "cc2",
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 422
+    assert "CONSEQUENCE_CLASS_OUT_OF_SCOPE" in response.text
+
+
 async def test_archive_project_owner_makes_project_read_only(
     client: AsyncClient,
     org_user: dict[str, str],

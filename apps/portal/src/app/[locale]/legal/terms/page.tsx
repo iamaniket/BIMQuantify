@@ -19,17 +19,23 @@ export default async function TermsPage({ params }: Props): Promise<JSX.Element>
   ];
 
   return (
-    <article className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold text-foreground">{t('terms.title')}</h1>
-        <p className="text-xs text-foreground-secondary">{t('lastUpdated', { date: '2026-05-10' })}</p>
-        <p className="text-base text-foreground-secondary">{t('terms.intro')}</p>
+    <article className="space-y-8">
+      <header className="space-y-3">
+        <h1 className="m-0 font-display text-[32px] font-medium leading-tight tracking-tight text-foreground">
+          {t('terms.title')}
+        </h1>
+        <p className="font-mono text-[11px] uppercase tracking-[0.10em] text-foreground-tertiary">
+          {t('lastUpdated', { date: '2026-05-10' })}
+        </p>
+        <p className="text-[15px] leading-relaxed text-foreground-secondary">{t('terms.intro')}</p>
       </header>
 
       {sections.map(({ title, body }) => (
         <section key={title} className="space-y-2">
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          <p className="text-sm text-foreground-secondary">{body}</p>
+          <h2 className="font-display text-[18px] font-semibold leading-tight tracking-tight text-foreground">
+            {title}
+          </h2>
+          <p className="text-[14.5px] leading-relaxed text-foreground-secondary">{body}</p>
         </section>
       ))}
     </article>

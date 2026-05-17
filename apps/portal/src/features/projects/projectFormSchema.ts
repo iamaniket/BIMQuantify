@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { ProjectPhaseEnum, ProjectStatusEnum } from '@/lib/api/schemas';
+import {
+  BuildingTypeEnum,
+  ConsequenceClassEnum,
+  ProjectPhaseEnum,
+  ProjectStatusEnum,
+} from '@/lib/api/schemas';
 
 const optionalTrimmedString = (max: number): z.ZodOptional<z.ZodString> =>
   z.string().trim().max(max).optional();
@@ -27,6 +32,14 @@ export const ProjectFormSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Use YYYY-MM-DD' })
     .optional()
     .or(z.literal('')),
+  planned_start_date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Use YYYY-MM-DD' })
+    .optional()
+    .or(z.literal('')),
+  building_type: BuildingTypeEnum.optional(),
+  consequence_class: ConsequenceClassEnum.optional(),
 
   // Address
   street: optionalTrimmedString(255),
