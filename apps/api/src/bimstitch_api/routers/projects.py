@@ -8,9 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
-from bimstitch_api.jurisdictions import find_instrument
+from bimstitch_api.jurisdictions import find_instrument, supported_countries
 from bimstitch_api.jurisdictions import get as get_jurisdiction
-from bimstitch_api.jurisdictions import supported_countries
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.project import (
     ConsequenceClass,

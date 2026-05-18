@@ -1,25 +1,20 @@
 'use client';
 
-import { ClipboardList } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Button, EmptyState } from '@bimstitch/ui';
+import { BorgingsplanSection } from './BorgingsplanSection';
+import { RiskAssessmentSection } from './RiskAssessmentSection';
 
-export function BorgingsplanTab(): JSX.Element {
-  const t = useTranslations('projectDetail.tabs.borgingsplan');
+type Props = {
+  projectId: string;
+  country: string;
+};
 
+export function BorgingsplanTab({ projectId, country }: Props): JSX.Element {
   return (
-    <EmptyState
-      icon={ClipboardList}
-      title={t('title')}
-      description={t('description')}
-      action={(
-        <Button variant="border" size="sm" disabled aria-disabled="true">
-          {t('ctaLabel')}
-        </Button>
-      )}
-      className={undefined}
-    />
+    <div className="flex flex-col gap-4">
+      <RiskAssessmentSection projectId={projectId} country={country} />
+      <BorgingsplanSection projectId={projectId} country={country} />
+    </div>
   );
 }

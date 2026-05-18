@@ -18,7 +18,7 @@ Flow:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -198,7 +198,7 @@ async def create_report(
     locale = payload.locale or fallback_locale
 
     title = _compliance_report_title(project.name, locale)
-    generated_at = datetime.now(timezone.utc)
+    generated_at = datetime.now(UTC)
 
     # Create Report first so we have its ID for the worker's storage key.
     report = Report(
@@ -249,7 +249,7 @@ async def create_report(
         msg = f"DISPATCH_FAILED: {exc}"[:500]
         report.status = ReportStatus.failed
         report.error = msg
-        report.finished_at = datetime.now(timezone.utc)
+        report.finished_at = datetime.now(UTC)
         job.status = JobStatus.failed
         job.error = msg
         job.finished_at = report.finished_at

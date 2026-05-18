@@ -164,6 +164,7 @@ export default function ProjectDetailPage(): JSX.Element {
         {/* Right column */}
         <RightColumnTabs
           projectId={projectId}
+          projectCountry={project.country}
           models={models}
           onUpload={setUploadModelId}
         />

@@ -203,7 +203,7 @@ async def delete_model(
             await storage.delete_object(key)
         except ObjectNotFoundError:
             pass
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning(
                 "Failed to delete object %s during model delete; row was removed",
                 key,

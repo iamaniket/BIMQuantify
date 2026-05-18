@@ -7,3 +7,5 @@ export * from './schemas/models';
 export * from './schemas/compliance';
 export * from './schemas/notifications';
 export * from './schemas/reports';
+export * from './schemas/risks';
+export * from './schemas/borgingsplan';

@@ -21,6 +21,29 @@ class InstrumentResponse(BaseModel):
     methodology_url: str | None
 
 
+class RiskTemplateResponse(BaseModel):
+    code: str
+    title: str
+    description: str
+    default_bbl_article: str | None
+
+
+class ChecklistItemTemplateResponse(BaseModel):
+    code: str
+    description: str
+    evidence_type: str
+    bbl_article_ref: str | None
+    pass_fail_criteria: str | None
+
+
+class BorgingsmomentTemplateResponse(BaseModel):
+    code: str
+    name: str
+    phase: str
+    default_offset_days: int
+    checklist: list[ChecklistItemTemplateResponse]
+
+
 class JurisdictionResponse(BaseModel):
     country: str
     name: str
@@ -33,6 +56,11 @@ class JurisdictionResponse(BaseModel):
     consequence_class_labels: dict[str, str]
     allowed_consequence_classes: list[str]
     instruments: list[InstrumentResponse]
+    bbl_risk_category_labels: dict[str, str]
+    risk_templates: dict[str, list[RiskTemplateResponse]]
+    borgingsmoment_phase_labels: dict[str, str]
+    borgingsmoment_templates: list[BorgingsmomentTemplateResponse]
+    risk_category_to_phases: dict[str, list[str]]
 
 
 class JurisdictionListResponse(BaseModel):
@@ -62,6 +90,43 @@ async def list_jurisdictions() -> JurisdictionListResponse:
                 )
                 for inst in j.instruments
             ],
+            bbl_risk_category_labels=dict(j.bbl_risk_category_labels),
+            risk_templates={
+                category: [
+                    RiskTemplateResponse(
+                        code=tpl.code,
+                        title=tpl.title,
+                        description=tpl.description,
+                        default_bbl_article=tpl.default_bbl_article,
+                    )
+                    for tpl in templates
+                ]
+                for category, templates in j.risk_templates.items()
+            },
+            borgingsmoment_phase_labels=dict(j.borgingsmoment_phase_labels),
+            borgingsmoment_templates=[
+                BorgingsmomentTemplateResponse(
+                    code=mt.code,
+                    name=mt.name,
+                    phase=mt.phase,
+                    default_offset_days=mt.default_offset_days,
+                    checklist=[
+                        ChecklistItemTemplateResponse(
+                            code=it.code,
+                            description=it.description,
+                            evidence_type=it.evidence_type,
+                            bbl_article_ref=it.bbl_article_ref,
+                            pass_fail_criteria=it.pass_fail_criteria,
+                        )
+                        for it in mt.checklist
+                    ],
+                )
+                for mt in j.borgingsmoment_templates
+            ],
+            risk_category_to_phases={
+                category: list(phases)
+                for category, phases in j.risk_category_to_phases.items()
+            },
         )
         for j in all_jurisdictions()
     ]

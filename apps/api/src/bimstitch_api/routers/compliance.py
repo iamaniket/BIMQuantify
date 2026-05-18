@@ -8,7 +8,7 @@ additional jurisdictions register via `bimstitch_api.jurisdictions`.
 import csv
 import io
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -20,6 +20,7 @@ from bimstitch_api.compliance import ComplianceCheckError, run_compliance_check
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jurisdictions import is_supported_framework
 from bimstitch_api.models.job import Job, JobStatus, JobType
+from bimstitch_api.models.model import Model
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.models import _load_model_or_404
@@ -27,11 +28,9 @@ from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
 )
-from bimstitch_api.models.model import Model
 from bimstitch_api.schemas.compliance import (
     ComplianceCheckRequest,
     ComplianceCheckResponse,
-    ComplianceSummaryResponse,
     ProjectComplianceReportItem,
     ProjectComplianceReportList,
 )
@@ -132,7 +131,7 @@ async def check_compliance(
 
     try:
         job.status = JobStatus.running
-        job.started_at = datetime.now(timezone.utc)
+        job.started_at = datetime.now(UTC)
 
         result = await run_compliance_check(
             metadata_key=pf.metadata_storage_key,
@@ -145,12 +144,12 @@ async def check_compliance(
         )
 
         job.status = JobStatus.succeeded
-        job.finished_at = datetime.now(timezone.utc)
+        job.finished_at = datetime.now(UTC)
         job.result = result
 
     except ComplianceCheckError as exc:
         job.status = JobStatus.failed
-        job.finished_at = datetime.now(timezone.utc)
+        job.finished_at = datetime.now(UTC)
         job.error = str(exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

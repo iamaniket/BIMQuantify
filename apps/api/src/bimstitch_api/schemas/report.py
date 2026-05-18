@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from bimstitch_api.models.report import ReportStatus, ReportType
 
-
 # ---------------------------------------------------------------------------
 # User-facing
 # ---------------------------------------------------------------------------

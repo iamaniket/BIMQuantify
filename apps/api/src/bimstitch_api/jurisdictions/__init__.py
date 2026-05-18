@@ -31,6 +31,53 @@ class Instrument:
 
 
 @dataclass(frozen=True)
+class RiskTemplate:
+    """A seed risk for a Bbl risk-assessment category.
+
+    Drives the "Voeg toe uit sjabloon" pickers on the portal Risicobeoordeling
+    section. The portal uses (country, category, code) to determine which
+    templates have already been adopted on a given project.
+    """
+
+    code: str
+    title: str
+    description: str
+    default_bbl_article: str | None = None
+
+
+@dataclass(frozen=True)
+class ChecklistItemTemplate:
+    """A seed checklist item for a Borgingsmoment template.
+
+    Drives the items that pre-populate a generated borgingsplan. `code` is a
+    stable slug per (moment, country) so re-generation can keep user-added
+    items distinct from template-derived ones in the future.
+    """
+
+    code: str
+    description: str
+    evidence_type: str  # one of EvidenceType (photo / certificate / measurement / document / signature)
+    bbl_article_ref: str | None = None
+    pass_fail_criteria: str | None = None
+
+
+@dataclass(frozen=True)
+class BorgingsmomentTemplate:
+    """A seed borgingsmoment (planned inspection event) for a phase.
+
+    `default_offset_days` is added to Project.planned_start_date to produce
+    the suggested `planned_date`; if the project has no planned start, the
+    server falls back to today() + offset.
+    """
+
+    code: str
+    name: str
+    phase: str  # one of BorgingsmomentPhase (foundation / shell / roof / finishing / handover / other)
+    default_offset_days: int
+    checklist: tuple[ChecklistItemTemplate, ...] = ()
+
+
+@dataclass(frozen=True)
 class Jurisdiction:
     country: str  # ISO 3166-1 alpha-2
     name: str
@@ -53,6 +100,25 @@ class Jurisdiction:
     # (NL: TloKB register). The portal renders the dropdown from this list;
     # the API rejects Project.instrument_id values that aren't here.
     instruments: tuple[Instrument, ...] = ()
+    # Localized labels for the neutral RiskCategory codes stored on Risk
+    # (`structural_safety`, `fire_safety`, …). Country-specific because the
+    # Bbl categories don't align 1:1 with other building-code regimes.
+    bbl_risk_category_labels: dict[str, str] = field(default_factory=dict)
+    # Hand-curated seed risks per RiskCategory code. The portal renders these
+    # as a "Voeg toe uit sjabloon" picker.
+    risk_templates: dict[str, tuple[RiskTemplate, ...]] = field(default_factory=dict)
+    # Localized labels for the neutral BorgingsmomentPhase codes stored on
+    # Borgingsmoment. NL renders Fundering/Ruwbouw/Dak/Afbouw/Oplevering/Overig.
+    borgingsmoment_phase_labels: dict[str, str] = field(default_factory=dict)
+    # Seed moments (ordered by (phase, default_offset_days)) used by the
+    # "Genereer borgingsplan vanuit sjabloon" action. Each carries its own
+    # initial checklist items.
+    borgingsmoment_templates: tuple[BorgingsmomentTemplate, ...] = ()
+    # Maps a RiskCategory code to the phases whose generated moments should
+    # receive an extra "Beheersmaatregel" checklist item derived from each
+    # project risk in that category. Lets fire_safety risks attach to shell,
+    # roof and finishing inspections, etc.
+    risk_category_to_phases: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 def find_instrument(country: str, instrument_id: str) -> Instrument | None:

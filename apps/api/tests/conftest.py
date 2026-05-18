@@ -44,6 +44,9 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
     from bimstitch_api.db import Base
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
+        Borgingsmoment,
+        Borgingsplan,
+        ChecklistItem,
         Contractor,
         Job,
         Model,
@@ -52,6 +55,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         ProjectFile,
         ProjectMember,
         Report,
+        Risk,
         User,
     )
 
@@ -81,7 +85,21 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS reporttype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS reportstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS accessrequeststatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS riskcategory")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS risklevel")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS evidencetype")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS checklistitemtype")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsmomentstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsmomentphase")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsplanstatus")
         await conn.run_sync(Base.metadata.create_all)
+        # Partial unique index for "one active borgingsplan per project" — not
+        # expressible in __table_args__, so mirror the migration here.
+        await conn.exec_driver_sql(
+            "CREATE UNIQUE INDEX ux_borgingsplans_one_active "
+            "ON borgingsplans(project_id) "
+            "WHERE status IN ('draft', 'published')"
+        )
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
         for stmt in enable_rls_statements():
@@ -110,6 +128,13 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS reporttype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS reportstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS accessrequeststatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS riskcategory")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS risklevel")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS evidencetype")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS checklistitemtype")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsmomentstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsmomentphase")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsplanstatus")
     await eng.dispose()
 
 
@@ -136,7 +161,8 @@ async def _clean_tables(
         # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
         await session.execute(
             text(
-                "TRUNCATE TABLE access_requests, reports, jobs, project_files, models, "
+                "TRUNCATE TABLE checklist_items, borgingsmomenten, borgingsplans, "
+                "risks, access_requests, reports, jobs, project_files, models, "
                 "project_members, projects, contractors, users, organizations "
                 "RESTART IDENTITY CASCADE"
             )

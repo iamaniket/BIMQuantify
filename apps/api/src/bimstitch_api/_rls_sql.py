@@ -37,6 +37,10 @@ RLS_TABLES = (
     "notifications",
     "notification_reads",
     "reports",
+    "risks",
+    "borgingsplans",
+    "borgingsmomenten",
+    "checklist_items",
 )
 
 # Tables the app role needs DML privileges on (broader than RLS_TABLES because
@@ -53,6 +57,10 @@ APP_GRANT_TABLES = (
     "notifications",
     "notification_reads",
     "reports",
+    "risks",
+    "borgingsplans",
+    "borgingsmomenten",
+    "checklist_items",
 )
 
 # Subquery snippet reused by tables that scope through `projects.organization_id`.
@@ -212,6 +220,50 @@ def enable_rls_statements() -> list[str]:
         """
     )
 
+    # risks: scope through projects.organization_id (same shape as models).
+    stmts.append("DROP POLICY IF EXISTS risks_tenant_isolation ON risks;")
+    stmts.append(
+        f"""
+        CREATE POLICY risks_tenant_isolation ON risks
+        USING ({project_id_in_org})
+        WITH CHECK ({project_id_in_org});
+        """
+    )
+
+    # borgingsplans: same shape as risks (project_id → org).
+    stmts.append("DROP POLICY IF EXISTS borgingsplans_tenant_isolation ON borgingsplans;")
+    stmts.append(
+        f"""
+        CREATE POLICY borgingsplans_tenant_isolation ON borgingsplans
+        USING ({project_id_in_org})
+        WITH CHECK ({project_id_in_org});
+        """
+    )
+
+    # borgingsmomenten: project_id denormalized for single-column scoping.
+    stmts.append(
+        "DROP POLICY IF EXISTS borgingsmomenten_tenant_isolation ON borgingsmomenten;"
+    )
+    stmts.append(
+        f"""
+        CREATE POLICY borgingsmomenten_tenant_isolation ON borgingsmomenten
+        USING ({project_id_in_org})
+        WITH CHECK ({project_id_in_org});
+        """
+    )
+
+    # checklist_items: project_id denormalized.
+    stmts.append(
+        "DROP POLICY IF EXISTS checklist_items_tenant_isolation ON checklist_items;"
+    )
+    stmts.append(
+        f"""
+        CREATE POLICY checklist_items_tenant_isolation ON checklist_items
+        USING ({project_id_in_org})
+        WITH CHECK ({project_id_in_org});
+        """
+    )
+
     # notification_reads: user_id match — each user manages their own read state.
     user_match = "user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid"
     stmts.append(
@@ -234,6 +286,14 @@ def disable_rls_statements() -> list[str]:
     stmts.append(
         "DROP POLICY IF EXISTS notification_reads_user_isolation ON notification_reads;"
     )
+    stmts.append(
+        "DROP POLICY IF EXISTS checklist_items_tenant_isolation ON checklist_items;"
+    )
+    stmts.append(
+        "DROP POLICY IF EXISTS borgingsmomenten_tenant_isolation ON borgingsmomenten;"
+    )
+    stmts.append("DROP POLICY IF EXISTS borgingsplans_tenant_isolation ON borgingsplans;")
+    stmts.append("DROP POLICY IF EXISTS risks_tenant_isolation ON risks;")
     stmts.append("DROP POLICY IF EXISTS reports_tenant_isolation ON reports;")
     stmts.append("DROP POLICY IF EXISTS notifications_tenant_isolation ON notifications;")
     stmts.append("DROP POLICY IF EXISTS jobs_tenant_isolation ON jobs;")

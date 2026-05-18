@@ -56,7 +56,7 @@ async def create_contractor(
 @router.get("", response_model=list[ContractorRead])
 async def list_contractors(
     session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),  # noqa: ARG001 (auth gate)
+    user: User = Depends(current_verified_user),
 ) -> list[Contractor]:
     result = await session.execute(select(Contractor).order_by(Contractor.name))
     return list(result.scalars().all())
@@ -66,7 +66,7 @@ async def list_contractors(
 async def get_contractor(
     contractor_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),  # noqa: ARG001 (auth gate)
+    user: User = Depends(current_verified_user),
 ) -> Contractor:
     return await _load_contractor_or_404(session, contractor_id)
 
@@ -76,7 +76,7 @@ async def update_contractor(
     contractor_id: UUID,
     payload: ContractorUpdate,
     session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),  # noqa: ARG001 (auth gate)
+    user: User = Depends(current_verified_user),
 ) -> Contractor:
     contractor = await _load_contractor_or_404(session, contractor_id)
     updates = payload.model_dump(exclude_unset=True)
@@ -96,7 +96,7 @@ async def update_contractor(
 async def delete_contractor(
     contractor_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),  # noqa: ARG001 (auth gate)
+    user: User = Depends(current_verified_user),
 ) -> Response:
     contractor = await _load_contractor_or_404(session, contractor_id)
     await session.delete(contractor)
