@@ -125,6 +125,19 @@ FastAPI Users handles registration, verification, password reset, and the `/user
 
 **`ProjectStatus` / `ProjectPhase` enum values are language-neutral** (`design`, `permit_review`, `construction`, `handover`, `complete` for status; `design`, `tender`, `work_prep`, `shell`, `finishing`, `handover` for phase). Display strings (Dutch terms in the wizard) live in the portal's i18n catalog and the wizard step option labels — DB values stay neutral so a German project can render German labels for the same codes.
 
+### Bilingual (NL + EN) rule
+
+**Hard rule**: every user-visible string the portal can render in either Dutch or English MUST exist in both languages. The portal supports two locales today (`nl`, `en`, declared in `packages/i18n/src/common.ts`). Mixed Dutch-in-English or English-in-Dutch screens are bugs.
+
+Where each kind of string lives:
+
+- **Static UI chrome** (button labels, headings, tab names, table columns, placeholders, error messages, validation messages): add the key to **both** `apps/portal/messages/en.json` and `apps/portal/messages/nl.json` and read it with `useTranslations()`. Never hardcode a Dutch placeholder like `"bv. 4.51"` in a `.tsx` file — that's the smell that started this rule. Whenever you add a new key to one file, add it to the other in the same commit; the two files must stay structurally identical.
+- **Jurisdiction-stored labels** (anything on `Jurisdiction`, `RiskTemplate`, `BorgingsmomentTemplate`, `ChecklistItemTemplate` in `apps/api/src/bimstitch_api/jurisdictions/`): every label is a `LocaleMap = dict[str, str]` (locale → label). Provide **both** `"nl"` and `"en"` entries. The `/jurisdictions?locale=` endpoint flattens these via `pick_label()` / `localize_map()`; the portal passes its current `useLocale()` to the query so EN and NL cached separately. Adding a new label field to a Jurisdiction means also bumping the response model in `routers/jurisdictions.py` and threading it through `useWizardOptions.ts` / consumers if it drives UI.
+- **DB rows seeded from jurisdiction templates** (`borgingsmomenten.name`, `checklist_items.description`, etc., populated by `_build_plan_from_templates`): pick the locale at seed time from the project's jurisdiction `default_locale`. These rows are single-language by design — regeneration is the way to switch a plan's content language. Don't add bilingual columns to these tables.
+- **User-entered content** (custom risks, custom moments, project name/description, notes): single-language. Whatever the user typed.
+
+When you add a new label, template field, or jurisdiction entry: write the `nl` and `en` values in the same edit, never as a follow-up TODO. Same goes for adding any new `t('...')` key in the portal — the en.json and nl.json edits ship together.
+
 **Rate limiting**: Redis-backed via `fastapi-limiter`. Defaults in `config.py`: login 5/min, register 3/hour, refresh 10/min, forgot-password 3/hour.
 
 ### Storage

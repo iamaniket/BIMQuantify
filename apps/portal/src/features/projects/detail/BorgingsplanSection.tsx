@@ -881,7 +881,7 @@ function AddChecklistItemForm({
             type="text"
             value={bblArticleRef}
             onChange={(e) => setBblArticleRef(e.target.value)}
-            placeholder="bv. 4.51"
+            placeholder={t('bblArticlePlaceholder')}
             maxLength={50}
           />
         </div>

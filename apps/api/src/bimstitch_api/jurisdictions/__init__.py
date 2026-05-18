@@ -13,6 +13,45 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+# Locale -> human-readable label. Every user-facing label that lives on a
+# Jurisdiction is stored as a LocaleMap so the portal can render either NL
+# or EN copy without hitting the server for translations. Keep at least
+# {"nl": ..., "en": ...} entries; a missing locale falls back to the
+# jurisdiction's default_locale via `pick_label()`.
+LocaleMap = dict[str, str]
+
+
+def pick_label(
+    label_map: LocaleMap | None,
+    locale: str,
+    default_locale: str,
+) -> str:
+    """Pick the best label from a LocaleMap.
+
+    Tries `locale` first, then `default_locale`, then any remaining value
+    in the map. Returns an empty string if `label_map` is empty/None so
+    callers don't have to guard against missing keys.
+    """
+    if not label_map:
+        return ""
+    if locale in label_map:
+        return label_map[locale]
+    if default_locale in label_map:
+        return label_map[default_locale]
+    return next(iter(label_map.values()), "")
+
+
+def localize_map(
+    map_of_locale_maps: dict[str, LocaleMap],
+    locale: str,
+    default_locale: str,
+) -> dict[str, str]:
+    """Flatten `dict[code, LocaleMap]` to `dict[code, str]` for one locale."""
+    return {
+        code: pick_label(loc_map, locale, default_locale)
+        for code, loc_map in map_of_locale_maps.items()
+    }
+
 
 @dataclass(frozen=True)
 class Instrument:
@@ -40,8 +79,8 @@ class RiskTemplate:
     """
 
     code: str
-    title: str
-    description: str
+    title: LocaleMap
+    description: LocaleMap
     default_bbl_article: str | None = None
 
 
@@ -55,10 +94,10 @@ class ChecklistItemTemplate:
     """
 
     code: str
-    description: str
+    description: LocaleMap
     evidence_type: str  # one of EvidenceType (photo / certificate / measurement / document / signature)
     bbl_article_ref: str | None = None
-    pass_fail_criteria: str | None = None
+    pass_fail_criteria: LocaleMap | None = None
 
 
 @dataclass(frozen=True)
@@ -71,7 +110,7 @@ class BorgingsmomentTemplate:
     """
 
     code: str
-    name: str
+    name: LocaleMap
     phase: str  # one of BorgingsmomentPhase (foundation / shell / roof / finishing / handover / other)
     default_offset_days: int
     checklist: tuple[ChecklistItemTemplate, ...] = ()
@@ -86,12 +125,17 @@ class Jurisdiction:
     frameworks: tuple[str, ...]  # compliance regulation identifiers
     postcode_pattern: str | None = None
     address_id_label: str | None = None  # e.g. "BAG ID", "Kataster"
-    notes: dict[str, str] = field(default_factory=dict)
+    # Per-framework descriptive note keyed by locale.
+    notes: dict[str, LocaleMap] = field(default_factory=dict)
     # Localized labels for the neutral BuildingType / ConsequenceClass codes
     # stored on Project. The portal pulls these via GET /jurisdictions so
     # NL renders "Woning", DE "Wohngebäude", etc. without touching schema.
-    building_type_labels: dict[str, str] = field(default_factory=dict)
-    consequence_class_labels: dict[str, str] = field(default_factory=dict)
+    building_type_labels: dict[str, LocaleMap] = field(default_factory=dict)
+    consequence_class_labels: dict[str, LocaleMap] = field(default_factory=dict)
+    # Localized labels for ProjectStatus / ProjectPhase codes (neutral DB
+    # enums). The wizard overlays these on its English fallback list.
+    status_labels: dict[str, LocaleMap] = field(default_factory=dict)
+    phase_labels: dict[str, LocaleMap] = field(default_factory=dict)
     # Subset of ConsequenceClass values valid for this country's current
     # framework scope. NL Wkb today only certifies Gk1 (= CC1) work;
     # the API rejects projects that try to declare CC2/CC3.
@@ -103,13 +147,13 @@ class Jurisdiction:
     # Localized labels for the neutral RiskCategory codes stored on Risk
     # (`structural_safety`, `fire_safety`, …). Country-specific because the
     # Bbl categories don't align 1:1 with other building-code regimes.
-    bbl_risk_category_labels: dict[str, str] = field(default_factory=dict)
+    bbl_risk_category_labels: dict[str, LocaleMap] = field(default_factory=dict)
     # Hand-curated seed risks per RiskCategory code. The portal renders these
     # as a "Voeg toe uit sjabloon" picker.
     risk_templates: dict[str, tuple[RiskTemplate, ...]] = field(default_factory=dict)
     # Localized labels for the neutral BorgingsmomentPhase codes stored on
     # Borgingsmoment. NL renders Fundering/Ruwbouw/Dak/Afbouw/Oplevering/Overig.
-    borgingsmoment_phase_labels: dict[str, str] = field(default_factory=dict)
+    borgingsmoment_phase_labels: dict[str, LocaleMap] = field(default_factory=dict)
     # Seed moments (ordered by (phase, default_offset_days)) used by the
     # "Genereer borgingsplan vanuit sjabloon" action. Each carries its own
     # initial checklist items.

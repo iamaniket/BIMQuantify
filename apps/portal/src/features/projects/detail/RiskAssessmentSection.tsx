@@ -344,7 +344,7 @@ function RiskEditForm({ projectId, risk, onDone }: RiskEditFormProps): JSX.Eleme
             type="text"
             value={bblArticle}
             onChange={(e) => setBblArticle(e.target.value)}
-            placeholder="bv. 4.51"
+            placeholder={t('bblArticlePlaceholder')}
             maxLength={50}
           />
         </div>
@@ -514,7 +514,7 @@ function CustomRiskForm({ projectId, category, onDone }: CustomRiskFormProps): J
             type="text"
             value={bblArticle}
             onChange={(e) => setBblArticle(e.target.value)}
-            placeholder="bv. 4.51"
+            placeholder={t('bblArticlePlaceholder')}
             maxLength={50}
           />
         </div>

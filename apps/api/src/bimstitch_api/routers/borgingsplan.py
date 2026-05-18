@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.jurisdictions import pick_label
 from bimstitch_api.jurisdictions import require as require_jurisdiction
 from bimstitch_api.models.borgingsmoment import Borgingsmoment, BorgingsmomentPhase
 from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
@@ -261,6 +262,11 @@ async def _build_plan_from_templates(
     jurisdiction = require_jurisdiction(project.country)
     risks = await _project_risks(session, project.id)
     risk_to_phases = jurisdiction.risk_category_to_phases
+    # Template strings are LocaleMaps; seed each new row in the country's
+    # default locale so existing portals (which today display NL projects in
+    # Dutch by default) keep their behavior. Re-generating from a different
+    # locale will be a separate ?locale= toggle on the generate endpoint.
+    locale = jurisdiction.default_locale
 
     base_date = project.planned_start_date or date.today()
 
@@ -285,7 +291,7 @@ async def _build_plan_from_templates(
             borgingsplan_id=plan.id,
             project_id=project.id,
             phase=BorgingsmomentPhase(phase_str),
-            name=mt.name,
+            name=pick_label(mt.name, locale, locale),
             planned_date=base_date.fromordinal(
                 base_date.toordinal() + mt.default_offset_days
             ),
@@ -301,10 +307,14 @@ async def _build_plan_from_templates(
                     borgingsmoment_id=moment.id,
                     project_id=project.id,
                     item_type=ChecklistItemType.text,
-                    description=it.description,
+                    description=pick_label(it.description, locale, locale),
                     evidence_type=EvidenceType(it.evidence_type),
                     bbl_article_ref=it.bbl_article_ref,
-                    pass_fail_criteria=it.pass_fail_criteria,
+                    pass_fail_criteria=(
+                        pick_label(it.pass_fail_criteria, locale, locale)
+                        if it.pass_fail_criteria is not None
+                        else None
+                    ),
                     sequence=item_seq,
                 )
             )

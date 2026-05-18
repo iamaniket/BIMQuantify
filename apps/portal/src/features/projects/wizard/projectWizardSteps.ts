@@ -9,38 +9,38 @@ import type {
 
 import type { ProjectFormValues } from '../projectFormSchema';
 
-// Labels are the Dutch construction-industry terms — kept as the only
-// locale for NL projects today. Other jurisdictions will ship their own
-// translations once i18n message catalogs cover the wizard.
+// Neutral English fallback labels. The wizard overlays jurisdiction
+// labels via `useWizardOptions.ts` once `GET /jurisdictions?locale=` has
+// returned — so an NL project displayed in `/nl/...` ends up reading
+// "Ontwerp" / "Ruwbouw" / etc. instead of these defaults.
 export const STATUS_OPTIONS: readonly { value: ProjectStatusValue; label: string }[] = [
   { value: 'planning', label: 'Planning' },
-  { value: 'design', label: 'Ontwerp (Design)' },
-  { value: 'permit_review', label: 'Vergunning (Permit)' },
-  { value: 'construction', label: 'Uitvoering (Execution)' },
-  { value: 'handover', label: 'Oplevering (Delivery)' },
-  { value: 'complete', label: 'Gereed (Completed)' },
+  { value: 'design', label: 'Design' },
+  { value: 'permit_review', label: 'Permit review' },
+  { value: 'construction', label: 'Construction' },
+  { value: 'handover', label: 'Handover' },
+  { value: 'complete', label: 'Completed' },
   { value: 'on_hold', label: 'On hold' },
 ];
 
 export const PHASE_OPTIONS: readonly { value: ProjectPhaseValue; label: string }[] = [
-  { value: 'design', label: 'Ontwerp' },
-  { value: 'tender', label: 'Bestek' },
-  { value: 'work_prep', label: 'Werkvoorbereiding' },
-  { value: 'shell', label: 'Ruwbouw' },
-  { value: 'finishing', label: 'Afbouw' },
-  { value: 'handover', label: 'Oplevering' },
+  { value: 'design', label: 'Design' },
+  { value: 'tender', label: 'Tender' },
+  { value: 'work_prep', label: 'Work preparation' },
+  { value: 'shell', label: 'Shell' },
+  { value: 'finishing', label: 'Finishing' },
+  { value: 'handover', label: 'Handover' },
 ];
 
-// NL labels for the neutral BuildingType codes. When the portal grows past
-// NL these dropdowns will be driven by GET /jurisdictions (already exposes
-// building_type_labels per country).
+// Neutral English fallback labels. Overlaid by `useWizardOptions.ts`
+// with the country/locale-specific labels from GET /jurisdictions.
 export const BUILDING_TYPE_OPTIONS: readonly {
   value: BuildingTypeValue;
   label: string;
 }[] = [
-  { value: 'dwelling', label: 'Woning' },
-  { value: 'commercial', label: 'Bedrijfspand' },
-  { value: 'other', label: 'Anders' },
+  { value: 'dwelling', label: 'Dwelling' },
+  { value: 'commercial', label: 'Commercial building' },
+  { value: 'other', label: 'Other' },
 ];
 
 // Eurocode CC1/CC2/CC3 = NL GK1/GK2/GK3. The `disabled` flag mirrors the
@@ -51,9 +51,9 @@ export const CONSEQUENCE_CLASS_OPTIONS: readonly {
   label: string;
   disabled: boolean;
 }[] = [
-  { value: 'cc1', label: 'Gevolgklasse 1 (GK1)', disabled: false },
-  { value: 'cc2', label: 'Gevolgklasse 2 (GK2) — buiten huidige scope', disabled: true },
-  { value: 'cc3', label: 'Gevolgklasse 3 (GK3) — buiten huidige scope', disabled: true },
+  { value: 'cc1', label: 'Consequence class 1 (CC1)', disabled: false },
+  { value: 'cc2', label: 'Consequence class 2 (CC2) — out of scope', disabled: true },
+  { value: 'cc3', label: 'Consequence class 3 (CC3) — out of scope', disabled: true },
 ];
 
 // Toegelaten instrumenten mirror of the API's NL_INSTRUMENTS list

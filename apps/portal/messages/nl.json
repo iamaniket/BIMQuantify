@@ -110,6 +110,7 @@
           "responsiblePlaceholder": "Bijv. hoofdaannemer",
           "bblArticleLabel": "Bbl-artikel (optioneel)",
           "bblArticlePrefix": "Bbl",
+          "bblArticlePlaceholder": "bv. 4.51",
           "levels": {
             "low": "Laag",
             "medium": "Midden",
@@ -157,6 +158,7 @@
           "evidenceTypeLabel": "Type bewijs",
           "bblArticleLabel": "Bbl-artikel",
           "bblArticlePrefix": "Bbl",
+          "bblArticlePlaceholder": "bv. 4.51",
           "passFailLabel": "Goedkeuringscriterium",
           "evidenceTypes": {
             "photo": "Foto",

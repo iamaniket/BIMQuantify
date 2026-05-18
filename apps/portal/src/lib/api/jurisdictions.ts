@@ -69,9 +69,15 @@ const JurisdictionListResponseSchema = z.object({
 
 export type JurisdictionList = Jurisdiction[];
 
-export async function listJurisdictions(): Promise<JurisdictionList> {
+export async function listJurisdictions(
+  locale?: string,
+): Promise<JurisdictionList> {
+  const path =
+    locale === undefined
+      ? '/jurisdictions'
+      : `/jurisdictions?locale=${encodeURIComponent(locale)}`;
   const body = await apiClient.get(
-    '/jurisdictions',
+    path,
     JurisdictionListResponseSchema,
     undefined,
   );

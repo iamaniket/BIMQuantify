@@ -110,6 +110,7 @@
           "responsiblePlaceholder": "e.g. main contractor",
           "bblArticleLabel": "Bbl article (optional)",
           "bblArticlePrefix": "Bbl",
+          "bblArticlePlaceholder": "e.g. 4.51",
           "levels": {
             "low": "Low",
             "medium": "Medium",
@@ -157,6 +158,7 @@
           "evidenceTypeLabel": "Evidence type",
           "bblArticleLabel": "Bbl article",
           "bblArticlePrefix": "Bbl",
+          "bblArticlePlaceholder": "e.g. 4.51",
           "passFailLabel": "Pass/fail criteria",
           "evidenceTypes": {
             "photo": "Photo",
