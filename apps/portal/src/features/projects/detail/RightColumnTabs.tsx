@@ -1,11 +1,16 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@bimstitch/ui';
+import { Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
 
 import type { Model } from '@/lib/api/schemas';
 
+import { BevindingenTab } from './BevindingenTab';
+import { BorgingsplanTab } from './BorgingsplanTab';
+import { DocumentenTab } from './DocumentenTab';
+import { InspectiesTab } from './InspectiesTab';
 import { ModelsTab } from './ModelsTab';
 import { ReportsTab } from './ReportsTab';
 
@@ -20,6 +25,7 @@ export function RightColumnTabs({
   models,
   onUpload,
 }: Props): JSX.Element {
+  const t = useTranslations('projectDetail.tabs');
   const [tab, setTab] = useState('models');
 
   return (
@@ -28,12 +34,16 @@ export function RightColumnTabs({
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="inline-flex w-auto">
             <TabsTrigger value="models">
-              Documents
+              {t('models.label')}
               <span className="ml-1 rounded-full bg-background-secondary px-1.5 text-caption tabular-nums text-foreground-secondary">
                 {models.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="borgingsplan">{t('borgingsplan.label')}</TabsTrigger>
+            <TabsTrigger value="inspecties">{t('inspecties.label')}</TabsTrigger>
+            <TabsTrigger value="bevindingen">{t('bevindingen.label')}</TabsTrigger>
+            <TabsTrigger value="documenten">{t('documenten.label')}</TabsTrigger>
+            <TabsTrigger value="rapporten">{t('rapporten.label')}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -42,7 +52,11 @@ export function RightColumnTabs({
         {tab === 'models' && (
           <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />
         )}
-        {tab === 'reports' && <ReportsTab projectId={projectId} models={models} />}
+        {tab === 'borgingsplan' && <BorgingsplanTab />}
+        {tab === 'inspecties' && <InspectiesTab />}
+        {tab === 'bevindingen' && <BevindingenTab />}
+        {tab === 'documenten' && <DocumentenTab />}
+        {tab === 'rapporten' && <ReportsTab projectId={projectId} models={models} />}
       </div>
     </div>
   );

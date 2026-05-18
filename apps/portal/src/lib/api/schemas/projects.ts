@@ -57,6 +57,7 @@ export const ProjectSchema = z.object({
   planned_start_date: z.union([z.string(), z.null()]),
   building_type: z.union([BuildingTypeEnum, z.null()]),
   consequence_class: z.union([ConsequenceClassEnum, z.null()]),
+  instrument_id: z.union([z.string(), z.null()]),
 
   street: z.union([z.string(), z.null()]),
   house_number: z.union([z.string(), z.null()]),
@@ -90,6 +91,7 @@ export const ProjectCreateSchema = z.object({
   planned_start_date: z.union([z.string(), z.null()]).optional(),
   building_type: z.union([BuildingTypeEnum, z.null()]).optional(),
   consequence_class: z.union([ConsequenceClassEnum, z.null()]).optional(),
+  instrument_id: z.union([z.string().max(64), z.null()]).optional(),
   street: z.union([z.string().max(255), z.null()]).optional(),
   house_number: z.union([z.string().max(20), z.null()]).optional(),
   postal_code: z.union([z.string().max(7), z.null()]).optional(),

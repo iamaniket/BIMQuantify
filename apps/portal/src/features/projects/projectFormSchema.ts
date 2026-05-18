@@ -40,6 +40,7 @@ export const ProjectFormSchema = z.object({
     .or(z.literal('')),
   building_type: BuildingTypeEnum.optional(),
   consequence_class: ConsequenceClassEnum.optional(),
+  instrument_id: optionalTrimmedString(64),
 
   // Address
   street: optionalTrimmedString(255),

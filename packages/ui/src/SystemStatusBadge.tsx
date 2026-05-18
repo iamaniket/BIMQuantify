@@ -11,6 +11,11 @@ export interface SystemStatusBadgeProps {
   /** Light-text variant for coloured backgrounds. */
   tone?: 'on-dark' | 'on-light';
   className?: string;
+  /**
+   * Override the displayed status text. Lets locale-aware consumers inject
+   * translated labels without dragging an i18n library into this package.
+   */
+  labels?: Record<SystemStatusValue, string>;
 }
 
 const dotColor: Record<SystemStatusValue, string> = {
@@ -37,8 +42,10 @@ export function SystemStatusBadge({
   region,
   tone = 'on-light',
   className,
+  labels,
 }: SystemStatusBadgeProps): JSX.Element {
   const fg = tone === 'on-dark' ? 'rgba(255,255,255,0.85)' : 'var(--color-foreground-tertiary, #4b5563)';
+  const label = labels?.[status] ?? labelText[status];
   return (
     <div
       role="status"
@@ -55,7 +62,7 @@ export function SystemStatusBadge({
           boxShadow: status === 'normal' ? '0 0 0 2px rgba(63,143,101,0.12)' : undefined,
         }}
       />
-      <span>{labelText[status]}</span>
+      <span>{label}</span>
       {region ? (
         <>
           <span aria-hidden>·</span>

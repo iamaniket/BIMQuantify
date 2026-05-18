@@ -10,6 +10,7 @@ import {
   type LegalFooterLink,
   type SystemStatusValue,
 } from '@bimstitch/ui';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import type { ReactNode } from 'react';
@@ -33,6 +34,7 @@ export interface AuthHeroBrandProps {
  * it depends on portal-specific data hooks (system status, projects map).
  */
 export function AuthHeroBrand({ legalLinks }: AuthHeroBrandProps): JSX.Element {
+  const t = useTranslations('auth');
   const statusQuery = useSystemStatus();
   const markersQuery = useProjectsMap();
 
@@ -47,6 +49,12 @@ export function AuthHeroBrand({ legalLinks }: AuthHeroBrandProps): JSX.Element {
   const markers: readonly MapMarker[] = markersQuery.data ?? [];
   const totalProjects = markers.reduce((sum, m) => sum + (m.count ?? 1), 0);
 
+  const statusLabel =
+    status === 'normal' ? t('kpi.statusNormal')
+    : status === 'degraded' ? t('kpi.statusDegraded')
+    : status === 'down' ? t('kpi.statusDown')
+    : t('kpi.statusUnknown');
+
   return (
     <>
       <HeroGrid opacity={0.1} stroke="#ffffff" step={36} />
@@ -59,7 +67,7 @@ export function AuthHeroBrand({ legalLinks }: AuthHeroBrandProps): JSX.Element {
             BimStitch
           </div>
           <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
-            Wkb-compliant BIM platform
+            {t('brand.tagline')}
           </div>
         </div>
       </div>
@@ -79,7 +87,7 @@ export function AuthHeroBrand({ legalLinks }: AuthHeroBrandProps): JSX.Element {
             }}
           >
             <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: '#5fd99e' }} />
-            Wkb {wkb} ready
+            {t('hero.readyBadge', { version: wkb })}
           </div>
 
           <h1
@@ -92,32 +100,29 @@ export function AuthHeroBrand({ legalLinks }: AuthHeroBrandProps): JSX.Element {
               textWrap: 'pretty',
             }}
           >
-            Stitch your <span className="italic" style={{ color: '#9bbce8' }}>models</span>,{' '}
-            <span className="italic" style={{ color: '#9bbce8' }}>issues</span> and{' '}
-            <span className="italic" style={{ color: '#9bbce8' }}>dossier</span> into one Wkb record.
+            {t.rich('hero.headlineTemplate', {
+              em: (chunks) => (
+                <span className="italic" style={{ color: '#9bbce8' }}>{chunks}</span>
+              ),
+            })}
           </h1>
 
           <p
             className="leading-snug text-white/70"
             style={{ fontSize: 'clamp(12.5px, 1vw, 15px)' }}
           >
-            Federated IFC review, automated Bouwbesluit checks and a delivery-ready
-            consumentendossier — for builders working under the Wet Kwaliteits&shy;borging.
+            {t('hero.subhead')}
           </p>
 
           <KpiStrip
             tone="on-dark"
             items={[
-              { label: 'Wkb', value: wkb },
-              { label: 'BBL', value: bbl, valueColor: '#9bbce8' },
-              { label: 'IFC', value: ifc, valueColor: '#9bbce8' },
+              { label: t('kpi.wkb'), value: wkb },
+              { label: t('kpi.bbl'), value: bbl, valueColor: '#9bbce8' },
+              { label: t('kpi.ifc'), value: ifc, valueColor: '#9bbce8' },
               {
-                label: 'Status',
-                value:
-                  status === 'normal' ? 'Normal'
-                  : status === 'degraded' ? 'Degraded'
-                  : status === 'down' ? 'Outage'
-                  : '—',
+                label: t('kpi.status'),
+                value: statusLabel,
                 valueColor:
                   status === 'normal' ? '#9ff0bf'
                   : status === 'degraded' ? '#f4c45b'
@@ -163,7 +168,10 @@ export function AuthHeroBrand({ legalLinks }: AuthHeroBrandProps): JSX.Element {
               }}
               aria-hidden={!(markersQuery.isSuccess && markers.length > 0)}
             >
-              {formatApproxCount(totalProjects)} projects · {formatApproxCount(markers.length)} cities live
+              {t('map.liveCaption', {
+                projects: formatApproxCount(totalProjects),
+                cities: formatApproxCount(markers.length),
+              })}
             </div>
           </div>
         </div>
@@ -196,6 +204,7 @@ export interface AuthTopRightProps {
  * Shares its data with `AuthHeroBrand` via React Query's cache.
  */
 export function AuthTopRight({ trailing }: AuthTopRightProps = {}): JSX.Element {
+  const t = useTranslations('auth.systemStatus');
   const statusQuery = useSystemStatus();
   const live = statusQuery.data;
   const status: SystemStatusValue = statusQuery.isLoading
@@ -203,9 +212,16 @@ export function AuthTopRight({ trailing }: AuthTopRightProps = {}): JSX.Element 
     : live?.status ?? 'loading';
   const region = live ? `${live.region} · ${live.node}` : undefined;
 
+  const statusLabels: Record<SystemStatusValue, string> = {
+    normal: t('normal'),
+    degraded: t('degraded'),
+    down: t('down'),
+    loading: t('loading'),
+  };
+
   return (
     <>
-      <SystemStatusBadge status={status} tone="on-light" />
+      <SystemStatusBadge status={status} tone="on-light" labels={statusLabels} />
       {trailing !== undefined ? (
         trailing
       ) : region ? (

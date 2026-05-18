@@ -15,6 +15,22 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
+class Instrument:
+    """A "toegelaten instrument" entry from a country's instrument register.
+
+    NL: the TloKB register (toegelaten instrumenten Wkb). Each country maps
+    a stable `id` (used as Project.instrument_id) to a human name, the
+    instrumentaanbieder (provider), and a URL pointing at the official
+    methodology. The list changes ~twice a year and is hand-maintained.
+    """
+
+    id: str
+    name: str
+    provider: str
+    methodology_url: str | None = None
+
+
+@dataclass(frozen=True)
 class Jurisdiction:
     country: str  # ISO 3166-1 alpha-2
     name: str
@@ -33,6 +49,20 @@ class Jurisdiction:
     # framework scope. NL Wkb today only certifies Gk1 (= CC1) work;
     # the API rejects projects that try to declare CC2/CC3.
     allowed_consequence_classes: tuple[str, ...] = ("cc1", "cc2", "cc3")
+    # Toegelaten instrumenten for this country's quality-assurance regime
+    # (NL: TloKB register). The portal renders the dropdown from this list;
+    # the API rejects Project.instrument_id values that aren't here.
+    instruments: tuple[Instrument, ...] = ()
+
+
+def find_instrument(country: str, instrument_id: str) -> Instrument | None:
+    j = _REGISTRY.get(country.upper())
+    if j is None:
+        return None
+    for inst in j.instruments:
+        if inst.id == instrument_id:
+            return inst
+    return None
 
 
 _REGISTRY: dict[str, Jurisdiction] = {}

@@ -8,7 +8,11 @@ import { Input, Label } from '@bimstitch/ui';
 import type { ProjectFormValues } from '../projectFormSchema';
 
 import {
-  BUILDING_TYPE_OPTIONS, CONSEQUENCE_CLASS_OPTIONS, PHASE_OPTIONS, STATUS_OPTIONS,
+  BUILDING_TYPE_OPTIONS,
+  CONSEQUENCE_CLASS_OPTIONS,
+  INSTRUMENT_OPTIONS,
+  PHASE_OPTIONS,
+  STATUS_OPTIONS,
 } from './projectWizardSteps';
 import {
   fieldErrorClass, fieldLabelClass, getFieldErrorMessage, selectClass,
@@ -27,6 +31,7 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
   const deliveryId = useId();
   const buildingTypeId = useId();
   const consequenceClassId = useId();
+  const instrumentId = useId();
   const plannedStartId = useId();
 
   const { errors } = form.formState;
@@ -148,6 +153,37 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
           {plannedStartError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{plannedStartError}</span>
           )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={instrumentId} className={fieldLabelClass}>Toegelaten instrument (Wkb)</Label>
+          <select
+            id={instrumentId}
+            className={selectClass}
+            disabled={isReadOnly}
+            {...form.register('instrument_id')}
+          >
+            <option value="">—</option>
+            {INSTRUMENT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label} · {opt.provider}
+              </option>
+            ))}
+          </select>
+          <span className="text-caption text-foreground-tertiary">
+            Bron: TloKB-register (
+            <a
+              href="https://www.tlokb.nl/register"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline hover:text-foreground-secondary"
+            >
+              tlokb.nl
+            </a>
+            )
+          </span>
         </div>
       </div>
     </div>

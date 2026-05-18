@@ -14,6 +14,13 @@ from bimstitch_api.jurisdictions import all_jurisdictions
 router = APIRouter(prefix="/jurisdictions", tags=["jurisdictions"])
 
 
+class InstrumentResponse(BaseModel):
+    id: str
+    name: str
+    provider: str
+    methodology_url: str | None
+
+
 class JurisdictionResponse(BaseModel):
     country: str
     name: str
@@ -25,6 +32,7 @@ class JurisdictionResponse(BaseModel):
     building_type_labels: dict[str, str]
     consequence_class_labels: dict[str, str]
     allowed_consequence_classes: list[str]
+    instruments: list[InstrumentResponse]
 
 
 class JurisdictionListResponse(BaseModel):
@@ -45,6 +53,15 @@ async def list_jurisdictions() -> JurisdictionListResponse:
             building_type_labels=dict(j.building_type_labels),
             consequence_class_labels=dict(j.consequence_class_labels),
             allowed_consequence_classes=list(j.allowed_consequence_classes),
+            instruments=[
+                InstrumentResponse(
+                    id=inst.id,
+                    name=inst.name,
+                    provider=inst.provider,
+                    methodology_url=inst.methodology_url,
+                )
+                for inst in j.instruments
+            ],
         )
         for j in all_jurisdictions()
     ]

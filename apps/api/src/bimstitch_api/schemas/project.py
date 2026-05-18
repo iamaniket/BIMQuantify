@@ -35,6 +35,10 @@ class ProjectBase(BaseModel):
     building_type: BuildingType | None = None
     consequence_class: ConsequenceClass | None = None
 
+    # Toegelaten instrument id (NL: TloKB register slug). The router
+    # validates it belongs to the project's country jurisdiction.
+    instrument_id: str | None = Field(default=None, max_length=64)
+
     street: str | None = Field(default=None, max_length=255)
     house_number: str | None = Field(default=None, max_length=20)
     postal_code: str | None = Field(default=None, max_length=7)
@@ -69,6 +73,7 @@ class ProjectUpdate(BaseModel):
 
     building_type: BuildingType | None = None
     consequence_class: ConsequenceClass | None = None
+    instrument_id: str | None = Field(default=None, max_length=64)
 
     street: str | None = Field(default=None, max_length=255)
     house_number: str | None = Field(default=None, max_length=20)

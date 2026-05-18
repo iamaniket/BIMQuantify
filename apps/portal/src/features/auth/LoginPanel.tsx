@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthShell, type LegalFooterLink } from '@bimstitch/ui';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { AuthHeroBrand, AuthTopRight } from '@/features/auth/AuthHeroBrand';
@@ -12,6 +13,7 @@ interface LoginPanelProps {
 }
 
 export function LoginPanel({ legalLinks }: LoginPanelProps): JSX.Element {
+  const t = useTranslations('auth.login');
   const requestAccessHref = env.NEXT_PUBLIC_MARKETING_URL
     ? `${env.NEXT_PUBLIC_MARKETING_URL.replace(/\/$/, '')}/request-access`
     : '/request-access';
@@ -24,17 +26,17 @@ export function LoginPanel({ legalLinks }: LoginPanelProps): JSX.Element {
         <>
           <div className="mb-5">
             <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">
-              Sign in
+              {t('eyebrow')}
             </div>
             <h2 className="m-0 font-display text-[30px] font-medium leading-tight tracking-tight text-foreground">
-              Welcome back.
+              {t('heading')}
             </h2>
             <p className="mt-2 text-[13px] leading-snug text-foreground-tertiary">
-              Sign in to continue.{' '}
+              {t('intro')}{' '}
               <span className="whitespace-nowrap">
-                New here?{' '}
+                {t('newHere')}{' '}
                 <a href={requestAccessHref} className="font-semibold text-primary no-underline">
-                  Request access →
+                  {t('requestAccessCta')}
                 </a>
               </span>
             </p>

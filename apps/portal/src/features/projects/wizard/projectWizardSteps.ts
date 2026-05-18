@@ -56,6 +56,43 @@ export const CONSEQUENCE_CLASS_OPTIONS: readonly {
   { value: 'cc3', label: 'Gevolgklasse 3 (GK3) — buiten huidige scope', disabled: true },
 ];
 
+// Toegelaten instrumenten mirror of the API's NL_INSTRUMENTS list
+// (apps/api/src/bimstitch_api/jurisdictions/nl.py). To update: edit both
+// sides in lockstep — server validates the id against its own copy, so a
+// portal-only entry would 422 on submit. See README ("Updating toegelaten
+// instrumenten") for the cadence.
+export const INSTRUMENT_OPTIONS: readonly {
+  value: string;
+  label: string;
+  provider: string;
+  methodology_url: string;
+}[] = [
+  {
+    value: 'kik',
+    label: 'KiK',
+    provider: 'Stichting Kwaliteitsborging in de Bouw',
+    methodology_url: 'https://www.tlokb.nl/register',
+  },
+  {
+    value: 'tis-kwaliteitsborger-wkb',
+    label: 'TIS Kwaliteitsborger Wkb',
+    provider: 'SWK',
+    methodology_url: 'https://www.tlokb.nl/register',
+  },
+  {
+    value: 'wki-gk1',
+    label: 'WKI-GK1',
+    provider: 'Stichting Wkb-instrumenten',
+    methodology_url: 'https://www.tlokb.nl/register',
+  },
+  {
+    value: 'adp-bouwkwaliteit',
+    label: 'ADP-Bouwkwaliteit',
+    provider: 'ADP Bouwkwaliteit',
+    methodology_url: 'https://www.tlokb.nl/register',
+  },
+];
+
 /** Stable step identifiers — used for React keys and step lookup. */
 export type ProjectWizardStepId = 'basics' | 'details' | 'address' | 'contractor';
 
@@ -71,6 +108,7 @@ export const PROJECT_WIZARD_STEP_FIELDS: Record<
     'phase',
     'building_type',
     'consequence_class',
+    'instrument_id',
     'planned_start_date',
     'delivery_date',
     'permit_number',

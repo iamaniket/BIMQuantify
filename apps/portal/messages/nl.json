@@ -75,6 +75,36 @@
       "permitLabel": "Vergunning:"
     }
   },
+  "projectDetail": {
+    "tabs": {
+      "models": { "label": "Modellen" },
+      "borgingsplan": {
+        "label": "Borgingsplan",
+        "title": "Nog geen borgingsplan",
+        "description": "Genereer een borgingsplan vanuit de risicobeoordeling om borgingsmomenten over de bouwfasen in te plannen.",
+        "ctaLabel": "Genereer vanuit sjabloon"
+      },
+      "inspecties": {
+        "label": "Inspecties",
+        "title": "Nog geen inspecties gepland",
+        "description": "Plan borgingsmomenten per fase en leg ze vast vanaf het mobiele inspectiescherm.",
+        "ctaLabel": "Eerste inspectie plannen"
+      },
+      "bevindingen": {
+        "label": "Bevindingen",
+        "title": "Nog geen bevindingen vastgelegd",
+        "description": "Bevindingen uit afgekeurde checklistitems verschijnen hier met hun afhandeling en verificatie.",
+        "ctaLabel": "Bevinding vastleggen"
+      },
+      "documenten": {
+        "label": "Documenten",
+        "title": "Nog geen projectdocumenten",
+        "description": "Upload tekeningen, certificaten en overige documenten zodat je ze kunt koppelen aan inspecties en bevindingen.",
+        "ctaLabel": "Document uploaden"
+      },
+      "rapporten": { "label": "Rapporten" }
+    }
+  },
   "reports": {
     "page": {
       "backToProject": "Project",
@@ -182,6 +212,60 @@
         "running": "Wordt gegenereerd",
         "ready": "Gereed",
         "failed": "Mislukt"
+      }
+    }
+  },
+  "auth": {
+    "brand": {
+      "tagline": "Wkb-conform BIM-platform"
+    },
+    "hero": {
+      "readyBadge": "Klaar voor Wkb {version}",
+      "headlineTemplate": "Breng je <em>modellen</em>, <em>bevindingen</em> en <em>dossier</em> samen in één Wkb-dossier.",
+      "subhead": "Gefedereerde IFC-review, geautomatiseerde Bouwbesluit-controles en een opleveringsklaar consumentendossier — voor bouwers onder de Wet kwaliteits­borging."
+    },
+    "kpi": {
+      "wkb": "Wkb",
+      "bbl": "BBL",
+      "ifc": "IFC",
+      "status": "Status",
+      "statusNormal": "Normaal",
+      "statusDegraded": "Verstoord",
+      "statusDown": "Storing",
+      "statusUnknown": "—"
+    },
+    "map": {
+      "liveCaption": "{projects} projecten · {cities} steden live"
+    },
+    "systemStatus": {
+      "normal": "Alle systemen normaal",
+      "degraded": "Sommige systemen verstoord",
+      "down": "Servicestoring",
+      "loading": "Status controleren…"
+    },
+    "login": {
+      "eyebrow": "Aanmelden",
+      "heading": "Welkom terug.",
+      "intro": "Meld je aan om verder te gaan.",
+      "newHere": "Nieuw hier?",
+      "requestAccessCta": "Toegang aanvragen →",
+      "emailLabel": "Werk-e-mail",
+      "emailPlaceholder": "jij@bedrijf.nl",
+      "passwordLabel": "Wachtwoord",
+      "passwordPlaceholder": "••••••••",
+      "forgot": "Vergeten?",
+      "showPassword": "Wachtwoord tonen",
+      "hidePassword": "Wachtwoord verbergen",
+      "rememberMe": "Aangemeld blijven op dit apparaat",
+      "submit": "Aanmelden",
+      "submitting": "Aanmelden…",
+      "errors": {
+        "emailRequired": "E-mailadres is verplicht",
+        "emailInvalid": "E-mailadres is ongeldig",
+        "passwordRequired": "Wachtwoord is verplicht",
+        "invalidCredentials": "Onjuist e-mailadres of wachtwoord",
+        "loginFailedDetail": "Aanmelden mislukt: {detail}",
+        "loginFailedGeneric": "Aanmelden mislukt. Probeer het opnieuw."
       }
     }
   },

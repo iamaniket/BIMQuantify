@@ -20,6 +20,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import type { Locale } from '@bimstitch/i18n';
 
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
+import { INSTRUMENT_OPTIONS } from '@/features/projects/wizard/projectWizardSteps';
 
 import { KpiStrip } from './KpiStrip';
 
@@ -45,6 +46,9 @@ export function ProjectDetailHeader({
   const refLabel = project.reference_code ?? '—';
   const statusBadgeClass = projectBadgeClasses(project);
   const stageLabel = `${tStatuses(project.status)} · ${tPhases(project.phase)}`;
+  const instrument = project.instrument_id === null
+    ? undefined
+    : INSTRUMENT_OPTIONS.find((opt) => opt.value === project.instrument_id);
   const aerialUrl = (
     project.thumbnail_url === null
     && project.latitude !== null
@@ -138,6 +142,22 @@ export function ProjectDetailHeader({
                   <span>
                     <span className="text-black/40 dark:text-white/70">⚒</span>{' '}
                     {project.contractor_name}
+                  </span>
+                </>
+              )}
+              {instrument !== undefined && (
+                <>
+                  <span className="text-black/30 dark:text-white/60">·</span>
+                  <span title={`Toegelaten instrument · ${instrument.provider}`}>
+                    <span className="text-black/40 dark:text-white/70">⚖</span>{' '}
+                    <a
+                      href={instrument.methodology_url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="underline-offset-2 hover:underline"
+                    >
+                      {instrument.label}
+                    </a>
                   </span>
                 </>
               )}

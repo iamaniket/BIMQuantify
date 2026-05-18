@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.jurisdictions import find_instrument
 from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.jurisdictions import supported_countries
 from bimstitch_api.models.contractor import Contractor
@@ -89,6 +90,21 @@ def _validate_consequence_class(
             detail=(
                 f"CONSEQUENCE_CLASS_OUT_OF_SCOPE: '{consequence_class.value}' is "
                 f"not in scope for country '{country}'"
+            ),
+        )
+
+
+def _validate_instrument(instrument_id: str | None, country: str | None) -> None:
+    """422 if the instrument id isn't registered for the project's country.
+    The instrument list is hand-maintained per jurisdiction (NL: TloKB)."""
+    if instrument_id is None or country is None:
+        return
+    if find_instrument(country, instrument_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"INSTRUMENT_NOT_REGISTERED: '{instrument_id}' is not a "
+                f"toegelaten instrument for country '{country}'"
             ),
         )
 
@@ -178,6 +194,7 @@ async def create_project(
 ) -> dict[str, object]:
     _validate_country(payload.country)
     _validate_consequence_class(payload.consequence_class, payload.country)
+    _validate_instrument(payload.instrument_id, payload.country)
     await _validate_contractor_belongs_to_org(
         session, payload.contractor_id, user.organization_id
     )
@@ -316,6 +333,9 @@ async def update_project(
         _validate_consequence_class(
             payload.consequence_class, target_country
         )
+    if "instrument_id" in updates:
+        target_country = updates.get("country", project.country)
+        _validate_instrument(updates["instrument_id"], target_country)
     if "contractor_id" in updates:
         await _validate_contractor_belongs_to_org(
             session, updates["contractor_id"], project.organization_id

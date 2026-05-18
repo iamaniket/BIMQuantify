@@ -75,6 +75,36 @@
       "permitLabel": "Permit:"
     }
   },
+  "projectDetail": {
+    "tabs": {
+      "models": { "label": "Models" },
+      "borgingsplan": {
+        "label": "Assurance plan",
+        "title": "No assurance plan yet",
+        "description": "Generate a borgingsplan from your risk assessment to schedule inspections across every build phase.",
+        "ctaLabel": "Generate from template"
+      },
+      "inspecties": {
+        "label": "Inspections",
+        "title": "No inspections planned",
+        "description": "Schedule borgingsmomenten across the project phases and log them from the mobile inspection screen.",
+        "ctaLabel": "Schedule first inspection"
+      },
+      "bevindingen": {
+        "label": "Findings",
+        "title": "No findings logged",
+        "description": "Findings from failed checklist items will show up here with their resolution and verification trail.",
+        "ctaLabel": "Log finding"
+      },
+      "documenten": {
+        "label": "Documents",
+        "title": "No project documents yet",
+        "description": "Upload drawings, certificates and other supporting documents to reference them from inspections and findings.",
+        "ctaLabel": "Upload document"
+      },
+      "rapporten": { "label": "Reports" }
+    }
+  },
   "reports": {
     "page": {
       "backToProject": "Project",
@@ -182,6 +212,60 @@
         "running": "Running",
         "ready": "Ready",
         "failed": "Failed"
+      }
+    }
+  },
+  "auth": {
+    "brand": {
+      "tagline": "Wkb-compliant BIM platform"
+    },
+    "hero": {
+      "readyBadge": "Wkb {version} ready",
+      "headlineTemplate": "Stitch your <em>models</em>, <em>issues</em> and <em>dossier</em> into one Wkb record.",
+      "subhead": "Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Wet Kwaliteits­borging."
+    },
+    "kpi": {
+      "wkb": "Wkb",
+      "bbl": "BBL",
+      "ifc": "IFC",
+      "status": "Status",
+      "statusNormal": "Normal",
+      "statusDegraded": "Degraded",
+      "statusDown": "Outage",
+      "statusUnknown": "—"
+    },
+    "map": {
+      "liveCaption": "{projects} projects · {cities} cities live"
+    },
+    "systemStatus": {
+      "normal": "All systems normal",
+      "degraded": "Some systems degraded",
+      "down": "Service interruption",
+      "loading": "Checking status…"
+    },
+    "login": {
+      "eyebrow": "Sign in",
+      "heading": "Welcome back.",
+      "intro": "Sign in to continue.",
+      "newHere": "New here?",
+      "requestAccessCta": "Request access →",
+      "emailLabel": "Work email",
+      "emailPlaceholder": "you@company.nl",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "forgot": "Forgot?",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "rememberMe": "Keep me signed in on this device",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "errors": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Email is invalid",
+        "passwordRequired": "Password is required",
+        "invalidCredentials": "Invalid email or password",
+        "loginFailedDetail": "Login failed: {detail}",
+        "loginFailedGeneric": "Login failed. Please try again."
       }
     }
   },

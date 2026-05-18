@@ -135,6 +135,12 @@ class Project(TimestampMixin, Base):
         nullable=True,
     )
 
+    # Toegelaten instrument id from the project's jurisdiction registry
+    # (NL: TloKB). Stored as a free string so the list can be hand-updated
+    # without an enum migration twice a year. Validation lives in the
+    # router via jurisdictions.find_instrument().
+    instrument_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     # Site address (BAG-aligned for future Dutch address-service integration).
     street: Mapped[str | None] = mapped_column(String(255), nullable=True)
     house_number: Mapped[str | None] = mapped_column(String(20), nullable=True)

@@ -314,6 +314,82 @@ async def test_create_project_rejects_consequence_class_out_of_country_scope(
     assert "CONSEQUENCE_CLASS_OUT_OF_SCOPE" in response.text
 
 
+async def test_create_project_with_instrument_id_round_trips(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    response = await client.post(
+        "/projects",
+        json={"name": "Has instrument", "instrument_id": "kik"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["instrument_id"] == "kik"
+
+    fetched = await client.get(
+        f"/projects/{body['id']}", headers=_auth(org_user["access_token"])
+    )
+    assert fetched.status_code == 200
+    assert fetched.json()["instrument_id"] == "kik"
+
+
+async def test_create_project_rejects_unknown_instrument_id(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    response = await client.post(
+        "/projects",
+        json={"name": "Bogus instrument", "instrument_id": "made-up-instrument"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 422
+    assert "INSTRUMENT_NOT_REGISTERED" in response.text
+
+
+async def test_patch_project_instrument_id_validated(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "Patch instrument"},
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+
+    bad = await client.patch(
+        f"/projects/{p['id']}",
+        json={"instrument_id": "not-a-real-id"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert bad.status_code == 422
+    assert "INSTRUMENT_NOT_REGISTERED" in bad.text
+
+    ok = await client.patch(
+        f"/projects/{p['id']}",
+        json={"instrument_id": "wki-gk1"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert ok.status_code == 200
+    assert ok.json()["instrument_id"] == "wki-gk1"
+
+
+async def test_jurisdictions_endpoint_exposes_nl_instruments(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/jurisdictions")
+    assert response.status_code == 200
+    items = response.json()["items"]
+    nl = next(j for j in items if j["country"] == "NL")
+    instrument_ids = {inst["id"] for inst in nl["instruments"]}
+    assert {"kik", "tis-kwaliteitsborger-wkb", "wki-gk1", "adp-bouwkwaliteit"}.issubset(
+        instrument_ids
+    )
+    kik = next(inst for inst in nl["instruments"] if inst["id"] == "kik")
+    assert kik["name"] == "KiK"
+    assert kik["provider"]
+    assert kik["methodology_url"]
+
+
 async def test_archive_project_owner_makes_project_read_only(
     client: AsyncClient,
     org_user: dict[str, str],
