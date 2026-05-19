@@ -1,10 +1,13 @@
 'use client';
 
-import { HelpCircle, Settings, Shield } from 'lucide-react';
-import { usePathname } from '@/i18n/navigation';
-import type { JSX } from 'react';
+import { HelpCircle, LogOut, Settings, Shield } from 'lucide-react';
+import { usePathname, useRouter } from '@/i18n/navigation';
+import { useCallback, type JSX } from 'react';
 
 import { useTranslations } from 'next-intl';
+
+import { env } from '@/lib/env';
+import { useAuth } from '@/providers/AuthProvider';
 
 import { useSidebar } from './SidebarContext';
 import { SidebarNavItem } from './SidebarNavItem';
@@ -18,13 +21,38 @@ const itemDefinitions = [
 export function SidebarNav(): JSX.Element {
   const { collapsed } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
+  const { tokens, setTokens } = useAuth();
   const t = useTranslations('sidebar');
 
   const labels = {
     admin: t('adminConsole'),
     settings: t('settings'),
     help: t('helpAndDocs'),
+    signOut: t('signOut'),
   } as const;
+
+  const handleSignOut = useCallback(() => {
+    const accessToken = tokens?.access_token;
+    const refreshToken = tokens?.refresh_token;
+
+    if (accessToken !== undefined) {
+      void fetch(`${env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ refresh_token: refreshToken ?? null }),
+      }).catch(() => {
+        // Best-effort: token revocation is server-side hygiene; UI logout must still proceed.
+      });
+    }
+
+    setTokens(null);
+    router.replace('/login');
+  }, [tokens, setTokens, router]);
 
   return (
     <div
@@ -49,6 +77,12 @@ export function SidebarNav(): JSX.Element {
           />
         );
       })}
+      <SidebarNavItem
+        label={labels.signOut}
+        icon={LogOut}
+        collapsed={collapsed}
+        onClick={handleSignOut}
+      />
     </div>
   );
 }

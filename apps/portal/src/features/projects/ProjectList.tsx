@@ -16,7 +16,7 @@ import { useProjects } from './useProjects';
 
 const SKELETON_COUNT = 6;
 
-const GRID_CLASS = 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6';
+const GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4';
 
 function ProjectSkeleton(): JSX.Element {
   return (

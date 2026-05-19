@@ -71,7 +71,7 @@ export function ProjectCard({ project }: Props): JSX.Element {
     <Card className="group relative overflow-hidden border-border bg-background transition-all duration-200 hover:-translate-y-1 hover:border-primary-light hover:shadow-xl hover:shadow-primary/15">
       <Link
         href={`/projects/${project.id}`}
-        className="flex flex-col gap-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex flex-1 flex-col gap-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="relative bg-background-secondary">
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 py-3">
