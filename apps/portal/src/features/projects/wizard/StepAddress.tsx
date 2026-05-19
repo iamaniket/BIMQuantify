@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, type JSX } from 'react';
+import { useTranslations } from 'next-intl';
 import { useFormContext, useWatch } from 'react-hook-form';
 
 import { Input, Label } from '@bimstitch/ui';
@@ -22,6 +23,7 @@ export type StepAddressProps = {
 };
 
 export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps): JSX.Element {
+  const t = useTranslations('projects.wizard.address.fields');
   const form = useFormContext<ProjectFormValues>();
   const streetId = useId();
   const houseId = useId();
@@ -73,21 +75,21 @@ export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps
 
       <div className="grid grid-cols-[1fr_140px] gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={streetId} className={fieldLabelClass}>Street</Label>
+          <Label htmlFor={streetId} className={fieldLabelClass}>{t('street')}</Label>
           <Input
             id={streetId}
             type="text"
-            placeholder="Hoofdstraat"
+            placeholder={t('streetPlaceholder')}
             disabled={isReadOnly}
             {...form.register('street')}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={houseId} className={fieldLabelClass}>House number</Label>
+          <Label htmlFor={houseId} className={fieldLabelClass}>{t('houseNumber')}</Label>
           <Input
             id={houseId}
             type="text"
-            placeholder="12A"
+            placeholder={t('houseNumberPlaceholder')}
             disabled={isReadOnly}
             {...form.register('house_number')}
           />
@@ -96,11 +98,11 @@ export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={postalId} className={fieldLabelClass}>Postal code</Label>
+          <Label htmlFor={postalId} className={fieldLabelClass}>{t('postalCode')}</Label>
           <Input
             id={postalId}
             type="text"
-            placeholder="1234 AB"
+            placeholder={t('postalCodePlaceholder')}
             invalid={postalError !== undefined}
             disabled={isReadOnly}
             {...form.register('postal_code')}
@@ -110,21 +112,21 @@ export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={cityId} className={fieldLabelClass}>City</Label>
+          <Label htmlFor={cityId} className={fieldLabelClass}>{t('city')}</Label>
           <Input
             id={cityId}
             type="text"
-            placeholder="Amsterdam"
+            placeholder={t('cityPlaceholder')}
             disabled={isReadOnly}
             {...form.register('city')}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={municipalityId} className={fieldLabelClass}>Municipality</Label>
+          <Label htmlFor={municipalityId} className={fieldLabelClass}>{t('municipality')}</Label>
           <Input
             id={municipalityId}
             type="text"
-            placeholder="Amsterdam"
+            placeholder={t('municipalityPlaceholder')}
             disabled={isReadOnly}
             {...form.register('municipality')}
           />

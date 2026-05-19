@@ -4,6 +4,7 @@ import { Loader2, MapPin, Search } from 'lucide-react';
 import {
   useEffect, useId, useRef, useState, type JSX,
 } from 'react';
+import { useTranslations } from 'next-intl';
 
 import { Input, Label } from '@bimstitch/ui';
 
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export function AddressLookup({ onSelect, initialLabel, disabled = false }: Props): JSX.Element {
+  const t = useTranslations('projects.wizard.address.lookup');
   const inputId = useId();
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -54,7 +56,7 @@ export function AddressLookup({ onSelect, initialLabel, disabled = false }: Prop
         .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           setSuggestions([]);
-          setErrorMessage('Address lookup is currently unavailable.');
+          setErrorMessage(t('errors.lookupUnavailable'));
         })
         .finally(() => setIsLoading(false));
     }, DEBOUNCE_MS);
@@ -84,14 +86,14 @@ export function AddressLookup({ onSelect, initialLabel, disabled = false }: Prop
     lookupAddress(suggestion.id)
       .then((addr) => {
         if (addr === null) {
-          setErrorMessage('Could not resolve the selected address.');
+          setErrorMessage(t('errors.resolveFailed'));
           return;
         }
         setErrorMessage(null);
         onSelect(addr);
       })
       .catch(() => {
-        setErrorMessage('Could not resolve the selected address.');
+        setErrorMessage(t('errors.resolveFailed'));
       })
       .finally(() => setIsLoading(false));
   };
@@ -116,7 +118,7 @@ export function AddressLookup({ onSelect, initialLabel, disabled = false }: Prop
   return (
     <div ref={containerRef} className="relative flex flex-col gap-1.5">
       <Label htmlFor={inputId} className="text-body3 font-medium text-foreground-secondary">
-        Find Dutch address
+        {t('label')}
       </Label>
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" />
@@ -128,7 +130,7 @@ export function AddressLookup({ onSelect, initialLabel, disabled = false }: Prop
           aria-expanded={open}
           aria-controls={listboxId}
           aria-autocomplete="list"
-          placeholder="Start typing street + city, e.g. Damrak 70 Amsterdam"
+          placeholder={t('placeholder')}
           disabled={disabled}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -172,7 +174,7 @@ export function AddressLookup({ onSelect, initialLabel, disabled = false }: Prop
         <span role="alert" className="text-body3 text-error">{errorMessage}</span>
       )}
       <p className="text-caption text-foreground-tertiary">
-        Powered by PDOK Locatieserver — Dutch addresses only.
+        {t('poweredBy')}
       </p>
     </div>
   );

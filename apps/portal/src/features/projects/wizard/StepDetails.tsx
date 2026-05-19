@@ -2,28 +2,25 @@
 
 import { useId, type JSX } from 'react';
 import { useFormContext } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 
 import { Input, Label } from '@bimstitch/ui';
 
 import type { ProjectFormValues } from '../projectFormSchema';
 
 import {
-  BUILDING_TYPE_OPTIONS,
-  CONSEQUENCE_CLASS_OPTIONS,
-  INSTRUMENT_OPTIONS,
-  PHASE_OPTIONS,
-  STATUS_OPTIONS,
-} from './projectWizardSteps';
-import {
   fieldErrorClass, fieldLabelClass, getFieldErrorMessage, selectClass,
 } from './stepStyles';
+import { useWizardOptions } from './useWizardOptions';
 
 type Props = {
   isReadOnly: boolean;
+  country: string;
 };
 
-export function StepDetails({ isReadOnly }: Props): JSX.Element {
+export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
   const form = useFormContext<ProjectFormValues>();
+  const t = useTranslations('projects.wizard.details');
   const refCodeId = useId();
   const permitId = useId();
   const statusId = useId();
@@ -39,16 +36,23 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
   const permitError = getFieldErrorMessage(errors, 'permit_number');
   const deliveryError = getFieldErrorMessage(errors, 'delivery_date');
   const plannedStartError = getFieldErrorMessage(errors, 'planned_start_date');
+  const {
+    statusOptions,
+    phaseOptions,
+    buildingTypeOptions,
+    consequenceClassOptions,
+    instrumentOptions,
+  } = useWizardOptions(country);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={refCodeId} className={fieldLabelClass}>Reference code</Label>
+          <Label htmlFor={refCodeId} className={fieldLabelClass}>{t('fields.referenceCode')}</Label>
           <Input
             id={refCodeId}
             type="text"
-            placeholder="WKB-2026-0411"
+            placeholder={t('fields.referenceCodePlaceholder')}
             invalid={refCodeError !== undefined}
             disabled={isReadOnly}
             {...form.register('reference_code')}
@@ -59,11 +63,11 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={permitId} className={fieldLabelClass}>Permit number</Label>
+          <Label htmlFor={permitId} className={fieldLabelClass}>{t('fields.permitNumber')}</Label>
           <Input
             id={permitId}
             type="text"
-            placeholder="OV-2026-0099"
+            placeholder={t('fields.permitNumberPlaceholder')}
             invalid={permitError !== undefined}
             disabled={isReadOnly}
             {...form.register('permit_number')}
@@ -76,25 +80,25 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={statusId} className={fieldLabelClass}>Status</Label>
+          <Label htmlFor={statusId} className={fieldLabelClass}>{t('fields.status')}</Label>
           <select id={statusId} className={selectClass} disabled={isReadOnly} {...form.register('status')}>
-            {STATUS_OPTIONS.map((opt) => (
+            {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={phaseId} className={fieldLabelClass}>Phase</Label>
+          <Label htmlFor={phaseId} className={fieldLabelClass}>{t('fields.phase')}</Label>
           <select id={phaseId} className={selectClass} disabled={isReadOnly} {...form.register('phase')}>
-            {PHASE_OPTIONS.map((opt) => (
+            {phaseOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={deliveryId} className={fieldLabelClass}>Delivery date</Label>
+          <Label htmlFor={deliveryId} className={fieldLabelClass}>{t('fields.deliveryDate')}</Label>
           <Input
             id={deliveryId}
             type="date"
@@ -110,7 +114,7 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={buildingTypeId} className={fieldLabelClass}>Type bouwwerk</Label>
+          <Label htmlFor={buildingTypeId} className={fieldLabelClass}>{t('fields.buildingType')}</Label>
           <select
             id={buildingTypeId}
             className={selectClass}
@@ -118,14 +122,14 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
             {...form.register('building_type')}
           >
             <option value="">—</option>
-            {BUILDING_TYPE_OPTIONS.map((opt) => (
+            {buildingTypeOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={consequenceClassId} className={fieldLabelClass}>Gevolgklasse</Label>
+          <Label htmlFor={consequenceClassId} className={fieldLabelClass}>{t('fields.consequenceClass')}</Label>
           <select
             id={consequenceClassId}
             className={selectClass}
@@ -133,7 +137,7 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
             {...form.register('consequence_class')}
           >
             <option value="">—</option>
-            {CONSEQUENCE_CLASS_OPTIONS.map((opt) => (
+            {consequenceClassOptions.map((opt) => (
               <option key={opt.value} value={opt.value} disabled={opt.disabled}>
                 {opt.label}
               </option>
@@ -142,7 +146,7 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={plannedStartId} className={fieldLabelClass}>Geplande startdatum</Label>
+          <Label htmlFor={plannedStartId} className={fieldLabelClass}>{t('fields.plannedStartDate')}</Label>
           <Input
             id={plannedStartId}
             type="date"
@@ -158,7 +162,7 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
 
       <div className="grid grid-cols-1 gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={instrumentId} className={fieldLabelClass}>Toegelaten instrument (Wkb)</Label>
+          <Label htmlFor={instrumentId} className={fieldLabelClass}>{t('fields.instrument')}</Label>
           <select
             id={instrumentId}
             className={selectClass}
@@ -166,23 +170,23 @@ export function StepDetails({ isReadOnly }: Props): JSX.Element {
             {...form.register('instrument_id')}
           >
             <option value="">—</option>
-            {INSTRUMENT_OPTIONS.map((opt) => (
+            {instrumentOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label} · {opt.provider}
               </option>
             ))}
           </select>
           <span className="text-caption text-foreground-tertiary">
-            Bron: TloKB-register (
+            {t('source.prefix')}
             <a
               href="https://www.tlokb.nl/register"
               target="_blank"
               rel="noreferrer noopener"
               className="underline hover:text-foreground-secondary"
             >
-              tlokb.nl
+              {t('source.linkLabel')}
             </a>
-            )
+            {t('source.suffix')}
           </span>
         </div>
       </div>

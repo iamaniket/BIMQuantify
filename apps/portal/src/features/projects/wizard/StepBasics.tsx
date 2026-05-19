@@ -8,6 +8,7 @@ import {
   type JSX,
   type RefObject,
 } from 'react';
+import { useTranslations } from 'next-intl';
 import { useFormContext } from 'react-hook-form';
 
 import {
@@ -47,6 +48,7 @@ export function StepBasics({
   isReadOnly,
   firstFieldRef,
 }: StepBasicsProps): JSX.Element {
+  const t = useTranslations('projects.wizard.basics');
   const form = useFormContext<ProjectFormValues>();
   const nameId = useId();
   const descriptionId = useId();
@@ -72,7 +74,7 @@ export function StepBasics({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={nameId} className={fieldLabelClass}>Name</Label>
+        <Label htmlFor={nameId} className={fieldLabelClass}>{t('fields.name')}</Label>
         <Input
           id={nameId}
           type="text"
@@ -94,7 +96,7 @@ export function StepBasics({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={descriptionId} className={fieldLabelClass}>Description</Label>
+        <Label htmlFor={descriptionId} className={fieldLabelClass}>{t('fields.description')}</Label>
         <Textarea
           id={descriptionId}
           rows={3}
@@ -110,8 +112,8 @@ export function StepBasics({
       {showThumbnail && (
         <div className="flex flex-col gap-2">
           <Label className={fieldLabelClass}>
-            Cover image{' '}
-            <span className="text-foreground-tertiary font-normal">(optional)</span>
+            {t('fields.coverImage')}{' '}
+            <span className="text-foreground-tertiary font-normal">({t('fields.optional')})</span>
           </Label>
           <input
             ref={thumbnailInputRef}
@@ -126,7 +128,7 @@ export function StepBasics({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={thumbnailPreviewUrl}
-                alt="Cover preview"
+                alt={t('fields.coverPreviewAlt')}
                 className="h-32 w-full object-cover"
               />
               <Button
@@ -134,7 +136,7 @@ export function StepBasics({
                 variant="ghost"
                 size="sm"
                 className="absolute right-2 top-2 h-7 w-7 bg-background/80 p-0 backdrop-blur-sm"
-                aria-label="Remove cover image"
+                aria-label={t('actions.removeCoverImage')}
                 disabled={isSubmitting}
                 onClick={onClearThumbnail}
               >
@@ -151,14 +153,14 @@ export function StepBasics({
               onClick={handleOpenFilePicker}
             >
               <ImagePlus className="h-4 w-4" />
-              Add cover image
+              {t('actions.addCoverImage')}
             </Button>
           )}
           {thumbnailError !== null && (
             <span role="alert" className={fieldErrorClass}>{thumbnailError}</span>
           )}
           <p className="text-caption text-foreground-tertiary">
-            JPEG, PNG or WebP · max 2 MB · auto-resized to 800 px
+            {t('fields.coverHint')}
           </p>
         </div>
       )}

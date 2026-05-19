@@ -100,6 +100,129 @@
       "all": "All",
       "archived": "Archived",
       "ariaLabel": "Filter projects by status"
+    },
+    "wizard": {
+      "steps": {
+        "basics": {
+          "title": "Basics",
+          "description": "Name and description"
+        },
+        "details": {
+          "title": "Details",
+          "description": "Status, phase, dates"
+        },
+        "address": {
+          "title": "Address",
+          "description": "Site location"
+        },
+        "contractor": {
+          "title": "Contractor",
+          "description": "Assign a company"
+        }
+      },
+      "dialog": {
+        "createTitle": "New project",
+        "editTitle": "Edit project",
+        "createDescription": "Walk through a few quick steps. You can edit any of these later.",
+        "editDescription": "Jump to any step to update the project.",
+        "archivedDescription": "This project is archived. You can review the fields, but editing is disabled until it is reactivated."
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "close": "Close",
+        "createProject": "Create project",
+        "saveChanges": "Save changes",
+        "creating": "Creating…",
+        "saving": "Saving…"
+      },
+      "errors": {
+        "thumbnailType": "Only JPEG, PNG, or WebP images are allowed.",
+        "thumbnailSize": "Image must be 2 MB or smaller.",
+        "thumbnailProcess": "Could not process image. Please try another file.",
+        "contractorNameRequired": "Name is required",
+        "contractorAlreadyExists": "A contractor with that name already exists.",
+        "contractorCreateFailed": "Could not create contractor.",
+        "nameTaken": "This name is taken"
+      },
+      "basics": {
+        "fields": {
+          "name": "Name",
+          "description": "Description",
+          "coverImage": "Cover image",
+          "optional": "optional",
+          "coverPreviewAlt": "Cover preview",
+          "coverHint": "JPEG, PNG or WebP · max 2 MB · auto-resized to 800 px"
+        },
+        "actions": {
+          "removeCoverImage": "Remove cover image",
+          "addCoverImage": "Add cover image"
+        }
+      },
+      "details": {
+        "fields": {
+          "referenceCode": "Reference code",
+          "referenceCodePlaceholder": "WKB-2026-0411",
+          "permitNumber": "Permit number",
+          "permitNumberPlaceholder": "OV-2026-0099",
+          "status": "Status",
+          "phase": "Phase",
+          "deliveryDate": "Delivery date",
+          "buildingType": "Building type",
+          "consequenceClass": "Consequence class",
+          "plannedStartDate": "Planned start date",
+          "instrument": "Approved instrument (Wkb)"
+        },
+        "source": {
+          "prefix": "Source: TloKB register (",
+          "linkLabel": "tlokb.nl",
+          "suffix": ")"
+        }
+      },
+      "address": {
+        "fields": {
+          "street": "Street",
+          "streetPlaceholder": "Main Street",
+          "houseNumber": "House number",
+          "houseNumberPlaceholder": "12A",
+          "postalCode": "Postal code",
+          "postalCodePlaceholder": "1234 AB",
+          "city": "City",
+          "cityPlaceholder": "Amsterdam",
+          "municipality": "Municipality",
+          "municipalityPlaceholder": "Amsterdam"
+        },
+        "lookup": {
+          "label": "Find Dutch address",
+          "placeholder": "Start typing street + city, e.g. Damrak 70 Amsterdam",
+          "poweredBy": "Powered by PDOK Locatieserver — Dutch addresses only.",
+          "errors": {
+            "lookupUnavailable": "Address lookup is currently unavailable.",
+            "resolveFailed": "Could not resolve the selected address."
+          }
+        },
+        "mapPreview": {
+          "pickAddress": "Pick an address to see an aerial preview.",
+          "outsideNlAria": "Map preview unavailable outside the Netherlands",
+          "outsideNl": "Aerial preview unavailable outside the Netherlands.",
+          "failedAria": "Map preview failed to load",
+          "unavailable": "Map preview is currently unavailable.",
+          "imageAlt": "Aerial view at {latitude}, {longitude}"
+        }
+      },
+      "contractor": {
+        "fields": {
+          "contractor": "Contractor",
+          "noneOption": "— None —",
+          "newContractorName": "New contractor name",
+          "newContractorPlaceholder": "Builder LLC"
+        },
+        "actions": {
+          "addNewContractor": "+ Add new contractor",
+          "adding": "Adding…",
+          "add": "Add",
+          "cancel": "Cancel"
+        }
+      }
     }
   },
   "projectDetail": {

@@ -100,6 +100,129 @@
       "all": "Alle",
       "archived": "Gearchiveerd",
       "ariaLabel": "Filter projecten op status"
+    },
+    "wizard": {
+      "steps": {
+        "basics": {
+          "title": "Basis",
+          "description": "Naam en beschrijving"
+        },
+        "details": {
+          "title": "Details",
+          "description": "Status, fase, datums"
+        },
+        "address": {
+          "title": "Adres",
+          "description": "Locatie"
+        },
+        "contractor": {
+          "title": "Aannemer",
+          "description": "Koppel een bedrijf"
+        }
+      },
+      "dialog": {
+        "createTitle": "Nieuw project",
+        "editTitle": "Project bewerken",
+        "createDescription": "Doorloop een paar snelle stappen. Je kunt dit later altijd aanpassen.",
+        "editDescription": "Spring naar elke stap om het project bij te werken.",
+        "archivedDescription": "Dit project is gearchiveerd. Je kunt de velden bekijken, maar bewerken is uitgeschakeld totdat het project opnieuw is geactiveerd."
+      },
+      "actions": {
+        "cancel": "Annuleren",
+        "close": "Sluiten",
+        "createProject": "Project maken",
+        "saveChanges": "Wijzigingen opslaan",
+        "creating": "Bezig met maken…",
+        "saving": "Bezig met opslaan…"
+      },
+      "errors": {
+        "thumbnailType": "Alleen JPEG-, PNG- of WebP-afbeeldingen zijn toegestaan.",
+        "thumbnailSize": "Afbeelding moet 2 MB of kleiner zijn.",
+        "thumbnailProcess": "Afbeelding kon niet worden verwerkt. Probeer een ander bestand.",
+        "contractorNameRequired": "Naam is verplicht",
+        "contractorAlreadyExists": "Er bestaat al een aannemer met die naam.",
+        "contractorCreateFailed": "Aannemer kon niet worden aangemaakt.",
+        "nameTaken": "Deze naam is al in gebruik"
+      },
+      "basics": {
+        "fields": {
+          "name": "Naam",
+          "description": "Beschrijving",
+          "coverImage": "Omslagafbeelding",
+          "optional": "optioneel",
+          "coverPreviewAlt": "Voorbeeld van omslagafbeelding",
+          "coverHint": "JPEG, PNG of WebP · max 2 MB · automatisch verkleind naar 800 px"
+        },
+        "actions": {
+          "removeCoverImage": "Omslagafbeelding verwijderen",
+          "addCoverImage": "Omslagafbeelding toevoegen"
+        }
+      },
+      "details": {
+        "fields": {
+          "referenceCode": "Referentiecode",
+          "referenceCodePlaceholder": "WKB-2026-0411",
+          "permitNumber": "Vergunningnummer",
+          "permitNumberPlaceholder": "OV-2026-0099",
+          "status": "Status",
+          "phase": "Fase",
+          "deliveryDate": "Opleverdatum",
+          "buildingType": "Type bouwwerk",
+          "consequenceClass": "Gevolgklasse",
+          "plannedStartDate": "Geplande startdatum",
+          "instrument": "Toegelaten instrument (Wkb)"
+        },
+        "source": {
+          "prefix": "Bron: TloKB-register (",
+          "linkLabel": "tlokb.nl",
+          "suffix": ")"
+        }
+      },
+      "address": {
+        "fields": {
+          "street": "Straat",
+          "streetPlaceholder": "Hoofdstraat",
+          "houseNumber": "Huisnummer",
+          "houseNumberPlaceholder": "12A",
+          "postalCode": "Postcode",
+          "postalCodePlaceholder": "1234 AB",
+          "city": "Plaats",
+          "cityPlaceholder": "Amsterdam",
+          "municipality": "Gemeente",
+          "municipalityPlaceholder": "Amsterdam"
+        },
+        "lookup": {
+          "label": "Vind Nederlands adres",
+          "placeholder": "Begin met typen van straat + plaats, bv. Damrak 70 Amsterdam",
+          "poweredBy": "Mogelijk gemaakt door PDOK Locatieserver — alleen Nederlandse adressen.",
+          "errors": {
+            "lookupUnavailable": "Adreszoekfunctie is momenteel niet beschikbaar.",
+            "resolveFailed": "Geselecteerd adres kon niet worden opgehaald."
+          }
+        },
+        "mapPreview": {
+          "pickAddress": "Kies een adres om een luchtfoto te tonen.",
+          "outsideNlAria": "Kaartvoorbeeld niet beschikbaar buiten Nederland",
+          "outsideNl": "Luchtfoto niet beschikbaar buiten Nederland.",
+          "failedAria": "Kaartvoorbeeld kon niet worden geladen",
+          "unavailable": "Kaartvoorbeeld is momenteel niet beschikbaar.",
+          "imageAlt": "Luchtfoto op {latitude}, {longitude}"
+        }
+      },
+      "contractor": {
+        "fields": {
+          "contractor": "Aannemer",
+          "noneOption": "— Geen —",
+          "newContractorName": "Naam nieuwe aannemer",
+          "newContractorPlaceholder": "Bouw BV"
+        },
+        "actions": {
+          "addNewContractor": "+ Nieuwe aannemer toevoegen",
+          "adding": "Bezig met toevoegen…",
+          "add": "Toevoegen",
+          "cancel": "Annuleren"
+        }
+      }
     }
   },
   "projectDetail": {

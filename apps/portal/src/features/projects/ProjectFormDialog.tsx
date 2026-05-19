@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useRef, useState,
   type ChangeEvent, type JSX,
@@ -142,6 +143,7 @@ function nullableTrim(value: string | undefined): string | null {
 const LAST_STEP = PROJECT_WIZARD_STEPS.length - 1;
 
 export function ProjectFormDialog(props: Props): JSX.Element {
+  const tWizard = useTranslations('projects.wizard');
   const { mode, open, onOpenChange } = props;
   const project = mode === 'edit' ? props.project : null;
   const isReadOnly = project !== null && isProjectArchived(project);
@@ -222,11 +224,11 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     input.value = '';
     if (file === undefined) return;
     if (!THUMBNAIL_ACCEPT.split(',').includes(file.type)) {
-      setThumbnailError('Only JPEG, PNG, or WebP images are allowed.');
+      setThumbnailError(tWizard('errors.thumbnailType'));
       return;
     }
     if (file.size > THUMBNAIL_MAX_BYTES) {
-      setThumbnailError('Image must be 2 MB or smaller.');
+      setThumbnailError(tWizard('errors.thumbnailSize'));
       return;
     }
     setThumbnailError(null);
@@ -240,7 +242,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
         setThumbnailFile(compressed);
       })
       .catch(() => {
-        setThumbnailError('Could not process image. Please try another file.');
+        setThumbnailError(tWizard('errors.thumbnailProcess'));
       });
   };
 
@@ -255,7 +257,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   const handleAddContractor = useCallback((): void => {
     const trimmed = newContractorName.trim();
     if (trimmed.length === 0) {
-      setContractorError('Name is required');
+      setContractorError(tWizard('errors.contractorNameRequired'));
       return;
     }
     setContractorError(null);
@@ -273,14 +275,14 @@ export function ProjectFormDialog(props: Props): JSX.Element {
         },
         onError: (error) => {
           if (error instanceof ApiError && error.status === 409) {
-            setContractorError('A contractor with that name already exists.');
+            setContractorError(tWizard('errors.contractorAlreadyExists'));
           } else {
-            setContractorError('Could not create contractor.');
+            setContractorError(tWizard('errors.contractorCreateFailed'));
           }
         },
       },
     );
-  }, [createContractorMutation, form, newContractorName]);
+  }, [createContractorMutation, form, newContractorName, tWizard]);
 
   const onSubmitImpl: SubmitHandler<ProjectFormValues> = (values) => {
     const description = nullableTrim(values.description);
@@ -321,7 +323,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
           },
           onError: (error) => {
             if (error instanceof ApiError && error.status === 409) {
-              form.setError('name', { type: 'server', message: 'This name is taken' });
+              form.setError('name', { type: 'server', message: tWizard('errors.nameTaken') });
               setCurrentStep(0); // surface the error on the field that owns it
             }
           },
@@ -341,7 +343,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
         },
         onError: (error) => {
           if (error instanceof ApiError && error.status === 409) {
-            form.setError('name', { type: 'server', message: 'This name is taken' });
+            form.setError('name', { type: 'server', message: tWizard('errors.nameTaken') });
             setCurrentStep(0);
           }
         },
@@ -380,14 +382,26 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, isReadOnly, onOpenChange]);
 
-  const title = mode === 'create' ? 'New project' : 'Edit project';
+  const wizardSteps = PROJECT_WIZARD_STEPS.map((step) => ({
+    ...step,
+    title: tWizard(`steps.${step.id}.title`),
+    description: tWizard(`steps.${step.id}.description`),
+  }));
+
+  const title = mode === 'create' ? tWizard('dialog.createTitle') : tWizard('dialog.editTitle');
   const description = mode === 'create'
-    ? 'Walk through a few quick steps. You can edit any of these later.'
+    ? tWizard('dialog.createDescription')
     : isReadOnly
-      ? 'This project is archived. You can review the fields, but editing is disabled until it is reactivated.'
-      : 'Jump to any step to update the project.';
-  const submitLabel = isReadOnly ? 'Close' : mode === 'create' ? 'Create project' : 'Save changes';
-  const submitPendingLabel = mode === 'create' ? 'Creating…' : 'Saving…';
+      ? tWizard('dialog.archivedDescription')
+      : tWizard('dialog.editDescription');
+  const submitLabel = isReadOnly
+    ? tWizard('actions.close')
+    : mode === 'create'
+      ? tWizard('actions.createProject')
+      : tWizard('actions.saveChanges');
+  const submitPendingLabel = mode === 'create'
+    ? tWizard('actions.creating')
+    : tWizard('actions.saving');
   const isSubmitting = mutation.isPending;
   const contractors = contractorsQuery.data ?? [];
 
@@ -414,7 +428,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
 
           <DialogBody className="min-h-[460px]">
             <Wizard
-              steps={PROJECT_WIZARD_STEPS}
+              steps={wizardSteps}
               currentStep={currentStep}
               highestVisited={highestVisited}
               onStepChange={handleStepChange}
@@ -427,7 +441,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
               cancelSlot={(
                 <DialogClose asChild>
                   <Button type="button" variant="border" size="md" disabled={isSubmitting}>
-                    Cancel
+                    {tWizard('actions.cancel')}
                   </Button>
                 </DialogClose>
               )}
@@ -447,7 +461,9 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                     firstFieldRef={firstFieldRef}
                   />
                 )}
-                {activeStepId === 'details' && <StepDetails isReadOnly={isReadOnly} />}
+                {activeStepId === 'details' && (
+                  <StepDetails isReadOnly={isReadOnly} country={project?.country ?? 'NL'} />
+                )}
                 {activeStepId === 'address' && (
                   <StepAddress initialLookupLabel={initialAddressLabel} isReadOnly={isReadOnly} />
                 )}

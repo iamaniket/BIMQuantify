@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, type JSX } from 'react';
+import { useTranslations } from 'next-intl';
 import { useFormContext } from 'react-hook-form';
 
 import { Button, Input, Label } from '@bimstitch/ui';
@@ -40,6 +41,7 @@ export function StepContractor({
   onChangeNewContractorName,
   onSubmitNewContractor,
 }: StepContractorProps): JSX.Element {
+  const t = useTranslations('projects.wizard.contractor');
   const form = useFormContext<ProjectFormValues>();
   const contractorId = useId();
   const newContractorId = useId();
@@ -47,14 +49,14 @@ export function StepContractor({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={contractorId} className={fieldLabelClass}>Contractor</Label>
+        <Label htmlFor={contractorId} className={fieldLabelClass}>{t('fields.contractor')}</Label>
         <select
           id={contractorId}
           className={selectClass}
           disabled={contractorsLoading || isReadOnly}
           {...form.register('contractor_id')}
         >
-          <option value="">— None —</option>
+          <option value="">{t('fields.noneOption')}</option>
           {contractors.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
@@ -67,7 +69,7 @@ export function StepContractor({
             className="self-start px-0 text-primary hover:bg-transparent hover:underline"
             onClick={onShowAddContractor}
           >
-            + Add new contractor
+            {t('actions.addNewContractor')}
           </Button>
         )}
       </div>
@@ -75,13 +77,13 @@ export function StepContractor({
       {showAddContractor && (
         <div className="flex flex-col gap-2 rounded-md border border-border bg-background-secondary p-3">
           <Label htmlFor={newContractorId} className={fieldLabelClass}>
-            New contractor name
+            {t('fields.newContractorName')}
           </Label>
           <div className="flex gap-2">
             <Input
               id={newContractorId}
               type="text"
-              placeholder="Bouw BV"
+              placeholder={t('fields.newContractorPlaceholder')}
               value={newContractorName}
               disabled={isReadOnly}
               onChange={(e) => { onChangeNewContractorName(e.target.value); }}
@@ -100,7 +102,7 @@ export function StepContractor({
               disabled={isAddingContractor || isReadOnly}
               onClick={onSubmitNewContractor}
             >
-              {isAddingContractor ? 'Adding…' : 'Add'}
+              {isAddingContractor ? t('actions.adding') : t('actions.add')}
             </Button>
             <Button
               type="button"
@@ -109,7 +111,7 @@ export function StepContractor({
               disabled={isReadOnly}
               onClick={onCancelAddContractor}
             >
-              Cancel
+              {t('actions.cancel')}
             </Button>
           </div>
           {contractorError !== null && (

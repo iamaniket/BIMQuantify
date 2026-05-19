@@ -2,6 +2,7 @@
 
 import { MapPin } from 'lucide-react';
 import { useMemo, useState, type JSX } from 'react';
+import { useTranslations } from 'next-intl';
 
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 
@@ -26,6 +27,7 @@ export function AddressMapPreview({
   latitude,
   longitude,
 }: AddressMapPreviewProps): JSX.Element {
+  const t = useTranslations('projects.wizard.address.mapPreview');
   const [hasError, setHasError] = useState(false);
 
   const url = useMemo(() => {
@@ -41,7 +43,7 @@ export function AddressMapPreview({
       <div className={wrapperClass} aria-hidden="true">
         <div className={placeholderInnerClass}>
           <MapPin className="h-5 w-5" />
-          <span>Pick an address to see an aerial preview.</span>
+          <span>{t('pickAddress')}</span>
         </div>
       </div>
     );
@@ -52,11 +54,11 @@ export function AddressMapPreview({
       <div
         className={wrapperClass}
         role="img"
-        aria-label="Map preview unavailable outside the Netherlands"
+        aria-label={t('outsideNlAria')}
       >
         <div className={placeholderInnerClass}>
           <MapPin className="h-5 w-5" />
-          <span>Aerial preview unavailable outside the Netherlands.</span>
+          <span>{t('outsideNl')}</span>
         </div>
       </div>
     );
@@ -64,10 +66,10 @@ export function AddressMapPreview({
 
   if (hasError || url === null) {
     return (
-      <div className={wrapperClass} role="img" aria-label="Map preview failed to load">
+      <div className={wrapperClass} role="img" aria-label={t('failedAria')}>
         <div className={placeholderInnerClass}>
           <MapPin className="h-5 w-5" />
-          <span>Map preview is currently unavailable.</span>
+          <span>{t('unavailable')}</span>
         </div>
       </div>
     );
@@ -78,7 +80,7 @@ export function AddressMapPreview({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
-        alt={`Aerial view at ${String(latitude)}, ${String(longitude)}`}
+        alt={t('imageAlt', { latitude: String(latitude), longitude: String(longitude) })}
         loading="lazy"
         decoding="async"
         className="h-full w-full object-cover"
