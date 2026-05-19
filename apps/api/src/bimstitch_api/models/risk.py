@@ -7,7 +7,7 @@ from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class RiskLevel(StrEnum):
     high = "high"
 
 
-class Risk(TimestampMixin, Base):
+class Risk(TimestampMixin, TenantBase):
     __tablename__ = "risks"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)

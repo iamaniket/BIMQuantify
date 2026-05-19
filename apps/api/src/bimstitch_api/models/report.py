@@ -27,7 +27,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 
@@ -51,15 +51,13 @@ _REPORT_TERMINAL: frozenset[ReportStatus] = frozenset(
 )
 
 
-class Report(TimestampMixin, Base):
+class Report(TimestampMixin, TenantBase):
+    """Generated report (compliance PDF, future assurance_plan/dossier).
+    Lives in `org_<hex>.reports`. No `organization_id` column."""
+
     __tablename__ = "reports"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    organization_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="CASCADE"),
-        nullable=False,
-    )
     project_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="CASCADE"),
@@ -115,13 +113,12 @@ class Report(TimestampMixin, Base):
 
     created_by_user_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("public.users.id", ondelete="SET NULL"),
         nullable=True,
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        Index("ix_reports_organization_id", "organization_id"),
         Index(
             "ix_reports_project_created_at",
             "project_id",

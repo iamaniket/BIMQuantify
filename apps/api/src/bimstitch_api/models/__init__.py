@@ -1,4 +1,5 @@
 from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
+from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.borgingsmoment import (
     Borgingsmoment,
     BorgingsmomentPhase,
@@ -18,7 +19,11 @@ from bimstitch_api.models.notification import (
     NotificationEventType,
     NotificationRead,
 )
-from bimstitch_api.models.organization import Organization
+from bimstitch_api.models.organization import Organization, OrganizationStatus
+from bimstitch_api.models.organization_member import (
+    OrganizationMember,
+    OrganizationMemberStatus,
+)
 from bimstitch_api.models.project import (
     Project,
     ProjectLifecycleState,
@@ -41,6 +46,7 @@ __all__ = [
     "_REPORT_TERMINAL",
     "AccessRequest",
     "AccessRequestStatus",
+    "AuditLog",
     "Borgingsmoment",
     "BorgingsmomentPhase",
     "BorgingsmomentStatus",
@@ -62,6 +68,9 @@ __all__ = [
     "NotificationEventType",
     "NotificationRead",
     "Organization",
+    "OrganizationMember",
+    "OrganizationMemberStatus",
+    "OrganizationStatus",
     "Project",
     "ProjectFile",
     "ProjectFileStatus",

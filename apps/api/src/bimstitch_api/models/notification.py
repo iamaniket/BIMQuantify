@@ -7,7 +7,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 
 
 class NotificationEventType(StrEnum):
@@ -33,15 +33,10 @@ class NotificationEventType(StrEnum):
     invitation_accepted = "invitation_accepted"
 
 
-class Notification(Base):
+class Notification(TenantBase):
     __tablename__ = "notifications"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    organization_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="CASCADE"),
-        nullable=False,
-    )
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="SET NULL"),
@@ -72,12 +67,11 @@ class Notification(Base):
     )
 
     __table_args__ = (
-        Index("ix_notifications_organization_id", "organization_id"),
-        Index("ix_notifications_org_created_at", "organization_id", text("created_at DESC")),
+        Index("ix_notifications_created_at", text("created_at DESC")),
     )
 
 
-class NotificationRead(Base):
+class NotificationRead(TenantBase):
     __tablename__ = "notification_reads"
 
     notification_id: Mapped[UUID] = mapped_column(
@@ -87,7 +81,7 @@ class NotificationRead(Base):
     )
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("public.users.id", ondelete="CASCADE"),
         primary_key=True,
     )
     read_at: Mapped[datetime] = mapped_column(

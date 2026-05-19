@@ -52,6 +52,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       return (
         <input
           ref={ref}
+          suppressHydrationWarning
           aria-invalid={invalid || undefined}
           className={cn(plainBase, sizeStyles[inputSize], sizePadding[inputSize].plain, borderClass, className)}
           {...rest}
@@ -74,6 +75,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         ) : null}
         <input
           ref={ref}
+          suppressHydrationWarning
           aria-invalid={invalid || undefined}
           className={cn(inputBase, paddingClass)}
           {...rest}

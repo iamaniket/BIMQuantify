@@ -8,7 +8,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ class BorgingsplanStatus(StrEnum):
     superseded = "superseded"
 
 
-class Borgingsplan(TimestampMixin, Base):
+class Borgingsplan(TimestampMixin, TenantBase):
     __tablename__ = "borgingsplans"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -48,7 +48,7 @@ class Borgingsplan(TimestampMixin, Base):
     )
     created_by_user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="RESTRICT"),
+        ForeignKey("public.users.id", ondelete="RESTRICT"),
         nullable=False,
     )
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

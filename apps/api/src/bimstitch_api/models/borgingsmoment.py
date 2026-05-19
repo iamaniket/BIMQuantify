@@ -8,7 +8,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ class BorgingsmomentStatus(StrEnum):
     skipped = "skipped"
 
 
-class Borgingsmoment(TimestampMixin, Base):
+class Borgingsmoment(TimestampMixin, TenantBase):
     __tablename__ = "borgingsmomenten"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -70,7 +70,7 @@ class Borgingsmoment(TimestampMixin, Base):
     actual_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     responsible_user_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("public.users.id", ondelete="SET NULL"),
         nullable=True,
     )
     status: Mapped[BorgingsmomentStatus] = mapped_column(

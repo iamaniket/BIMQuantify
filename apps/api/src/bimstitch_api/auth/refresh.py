@@ -4,11 +4,17 @@ from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
 from bimstitch_api.auth.tokens import TokenError, create_token, decode_token_full
 from bimstitch_api.cache import get_redis_dep
 from bimstitch_api.cache.blocklist import is_revoked
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_async_session
+from bimstitch_api.models.organization_member import (
+    OrganizationMember,
+    OrganizationMemberStatus,
+)
 from bimstitch_api.models.user import User
 
 router = APIRouter(prefix="/auth/jwt", tags=["auth"])
@@ -57,4 +63,21 @@ async def refresh_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="user no longer active"
         )
 
-    return AccessToken(access_token=create_token(user.id, "access"))
+    # Propagate active_organization_id from the refresh token but verify the
+    # membership is still active. If the user's membership was suspended or
+    # removed since the refresh was issued, drop the claim — the portal will
+    # surface the missing org via /auth/me and prompt for a switch.
+    active_org_id = decoded.active_organization_id
+    if active_org_id is not None:
+        stmt = select(OrganizationMember).where(
+            OrganizationMember.user_id == user.id,
+            OrganizationMember.organization_id == active_org_id,
+            OrganizationMember.status == OrganizationMemberStatus.active,
+        )
+        result = await session.execute(stmt)
+        if result.scalar_one_or_none() is None:
+            active_org_id = None
+
+    return AccessToken(
+        access_token=create_token(user.id, "access", active_organization_id=active_org_id),
+    )

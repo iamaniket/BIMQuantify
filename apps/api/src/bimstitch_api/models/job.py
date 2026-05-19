@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 
@@ -32,15 +32,16 @@ class JobStatus(StrEnum):
 _JOB_TERMINAL: frozenset[JobStatus] = frozenset({JobStatus.succeeded, JobStatus.failed})
 
 
-class Job(TimestampMixin, Base):
+class Job(TimestampMixin, TenantBase):
+    """Background job — lives in `org_<hex>.jobs`. No `organization_id`
+    column; the schema name IS the organization. The processor worker
+    receives `organization_id` separately in the dispatch envelope and
+    echoes it back in the callback so the API can resolve the schema.
+    """
+
     __tablename__ = "jobs"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    organization_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="CASCADE"),
-        nullable=False,
-    )
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="SET NULL"),
@@ -76,15 +77,14 @@ class Job(TimestampMixin, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("public.users.id", ondelete="SET NULL"),
         nullable=True,
     )
 
     __table_args__ = (
-        Index("ix_jobs_organization_id", "organization_id"),
         Index("ix_jobs_project_id", "project_id", postgresql_where=text("project_id IS NOT NULL")),
         Index("ix_jobs_file_id", "file_id", postgresql_where=text("file_id IS NOT NULL")),
         Index("ix_jobs_status", "status"),
         Index("ix_jobs_job_type", "job_type"),
-        Index("ix_jobs_org_created_at", "organization_id", text("created_at DESC")),
+        Index("ix_jobs_created_at", text("created_at DESC")),
     )

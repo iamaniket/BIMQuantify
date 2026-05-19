@@ -49,16 +49,22 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         disable_rls_statements,
         enable_rls_statements,
     )
-    from bimstitch_api.db import Base
+    from sqlalchemy import MetaData as _MetaData
+
+    from bimstitch_api.db import MasterBase, TenantBase
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
+        AuditLog,
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
         Contractor,
         Job,
         Model,
+        Notification,
+        NotificationRead,
         Organization,
+        OrganizationMember,
         Project,
         ProjectFile,
         ProjectMember,
@@ -66,6 +72,21 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         Risk,
         User,
     )
+
+    # The conftest legacy creates EVERY table in `public`. With schema-per-tenant
+    # this is no longer correct — tenant tables belong in per-org schemas — but
+    # rebuilding the test fixtures is a follow-up. As a stopgap, compose both
+    # metadatas into a single one so existing tests can still create-all in
+    # public until conftest is properly reworked for the new layout.
+    _combined = _MetaData()
+    for src in (MasterBase.metadata, TenantBase.metadata):
+        for table in src.tables.values():
+            table.to_metadata(_combined)
+
+    class _BaseShim:
+        metadata = _combined
+
+    Base = _BaseShim  # type: ignore[assignment, misc]
 
     eng = create_async_engine(_TEST_DB_URL, future=True)
 
@@ -100,6 +121,9 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsmomentstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsmomentphase")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsplanstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS organizationmemberstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS organizationstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS notificationeventtype")
         await conn.run_sync(Base.metadata.create_all)
         # Partial unique index for "one active borgingsplan per project" — not
         # expressible in __table_args__, so mirror the migration here.
@@ -143,6 +167,9 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsmomentstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsmomentphase")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS borgingsplanstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS organizationmemberstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS organizationstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS notificationeventtype")
     await eng.dispose()
 
 
@@ -171,8 +198,9 @@ async def _clean_tables(
             text(
                 "TRUNCATE TABLE checklist_items, borgingsmomenten, borgingsplans, "
                 "risks, access_requests, reports, jobs, project_files, models, "
-                "project_members, projects, contractors, users, organizations "
-                "RESTART IDENTITY CASCADE"
+                "project_members, projects, contractors, notification_reads, "
+                "notifications, audit_log, organization_members, users, "
+                "organizations RESTART IDENTITY CASCADE"
             )
         )
         await session.commit()

@@ -9,17 +9,40 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from bimstitch_api.config import get_settings
-from bimstitch_api.db import Base
-from bimstitch_api.models import (  # noqa: F401 — ensure models are imported
+from bimstitch_api.db import MasterBase, TenantBase
+from bimstitch_api.models import (  # noqa: F401 — ensure all models register
+    AccessRequest,
+    AuditLog,
+    Borgingsmoment,
+    Borgingsplan,
+    ChecklistItem,
     Contractor,
     Job,
     Model,
+    Notification,
+    NotificationRead,
     Organization,
+    OrganizationMember,
     Project,
     ProjectFile,
     ProjectMember,
+    Report,
+    Risk,
     User,
 )
+
+# NOTE — this alembic env.py points at the legacy single-chain layout that
+# is being replaced by separate master/ and tenant/ chains in a follow-up.
+# As a stopgap during the in-flight refactor it composes both metadatas so
+# the existing migrations directory still has something to autogenerate
+# against; do NOT generate new revisions from this file. The replacement
+# chains will live under apps/api/alembic/master/ and apps/api/alembic/tenant/.
+from sqlalchemy import MetaData as _MetaData
+
+target_metadata = _MetaData()
+for src in (MasterBase.metadata, TenantBase.metadata):
+    for table in src.tables.values():
+        table.to_metadata(target_metadata)
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Connection
@@ -31,9 +54,6 @@ if config.config_file_name is not None:
 
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.database_url)
-
-target_metadata = Base.metadata
-
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")

@@ -1,47 +1,140 @@
-"""Per-request tenant scoping for RLS.
+"""Per-request tenant scoping for schema-per-tenant isolation.
 
-`get_tenant_session` opens a session, begins a transaction, and sets two
-session-local GUCs (`app.current_org_id`, `app.current_user_id`) that the
-Postgres RLS policies key off. Endpoint code under this dependency MUST NOT
-call `session.commit()` itself — committing closes the txn and drops the
-GUCs, breaking RLS for any subsequent query in the same request. The wrapping
+`get_tenant_session` opens a session, begins a transaction, sets:
+
+  1. `SET LOCAL ROLE bim_app`                — drops to the non-bypass role so
+                                                master-table RLS actually
+                                                enforces.
+  2. `SET LOCAL search_path = "<schema>", public`
+                                              — tenant tables resolve to the
+                                                active org's schema; master
+                                                tables fall through to public.
+  3. `app.current_org_id`, `app.current_user_id` GUCs
+                                              — fed into the surviving RLS
+                                                policies on `users`,
+                                                `organization_members`, and
+                                                `audit_log`.
+
+Endpoint code under this dependency MUST NOT call `session.commit()` itself
+— committing closes the txn and drops the GUCs + search_path, breaking
+isolation for any subsequent query in the same request. The wrapping
 `async with session.begin():` handles commit/rollback automatically.
+
+The active organization id comes from the JWT `org` claim — never from
+request path, query string, or body. If a request reaches here with no org
+claim (e.g. fresh super-admin token), the dep returns 409
+`NO_ACTIVE_ORGANIZATION` so the portal can prompt for tenant selection.
 """
 
 from collections.abc import AsyncGenerator
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api.auth.dependencies import get_active_organization_id
 from bimstitch_api.auth.fastapi_users import current_verified_user
-from bimstitch_api.db import get_session_maker
+from bimstitch_api.db import get_async_session, get_session_maker
+from bimstitch_api.models.organization import Organization, OrganizationStatus
+from bimstitch_api.models.organization_member import (
+    OrganizationMember,
+    OrganizationMemberStatus,
+)
 from bimstitch_api.models.user import User
 
 
-async def require_org_user(user: User = Depends(current_verified_user)) -> User:
-    if user.organization_id is None:
+def schema_name_for(organization_id: UUID) -> str:
+    """Canonical schema name for an org. Postgres identifier (no quoting
+    needed) — lowercase, underscore, hex only. Length: 36 chars; well
+    inside Postgres' 63-byte identifier limit.
+    """
+    return f"org_{organization_id.hex}"
+
+
+async def require_active_organization(
+    org_id: UUID | None = Depends(get_active_organization_id),
+) -> UUID:
+    """Pull the active org id out of the JWT. 409 if absent — the portal
+    surfaces this as "pick a workspace" and routes to the switcher."""
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="NO_ACTIVE_ORGANIZATION",
+        )
+    return org_id
+
+
+async def _verify_membership(
+    session: AsyncSession, user_id: UUID, organization_id: UUID
+) -> tuple[OrganizationMember, Organization]:
+    """Check the user has an active membership in the org AND the org is
+    in a usable state. Returns both rows so callers can read schema_name
+    without a second roundtrip.
+    """
+    stmt = (
+        select(OrganizationMember, Organization)
+        .join(Organization, Organization.id == OrganizationMember.organization_id)
+        .where(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.organization_id == organization_id,
+            OrganizationMember.status == OrganizationMemberStatus.active,
+        )
+    )
+    result = await session.execute(stmt)
+    row = result.first()
+    if row is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="USER_HAS_NO_ORGANIZATION",
+            detail="ORG_MEMBERSHIP_REQUIRED",
         )
-    return user
+    membership, org = row
+    if org.status not in (OrganizationStatus.active, OrganizationStatus.suspended):
+        # provisioning / deleted — tenant schema is not safe to use
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="ORG_NOT_AVAILABLE",
+        )
+    return membership, org
 
 
 async def get_tenant_session(
-    user: User = Depends(require_org_user),
+    organization_id: UUID = Depends(require_active_organization),
+    user: User = Depends(current_verified_user),
+    master_session: AsyncSession = Depends(get_async_session),
 ) -> AsyncGenerator[AsyncSession, None]:
+    """Yield a session scoped to the active org's schema. Verifies the
+    user actually has an active membership before any tenant query runs.
+
+    The membership check uses a separate `master_session` (public schema,
+    no search_path tweaks) so the verification query can hit
+    `organization_members` directly. Once verified, a fresh session is
+    opened for the tenant work — keeping the two responsibilities cleanly
+    separated and avoiding any leakage of search_path between the check
+    and the work.
+    """
+    _, org = await _verify_membership(master_session, user.id, organization_id)
+    schema = org.schema_name
+
     session_maker = get_session_maker()
     async with session_maker() as session, session.begin():
-        # Drop into the non-bypass app role so RLS actually enforces.
-        # See bimstitch_api/_rls_sql.py for why this is necessary.
         await session.execute(text("SET LOCAL ROLE bim_app"))
+        # Tenant tables → org schema; master tables fall through to public.
+        await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
+        # Set GUCs for the surviving master-table RLS policies.
         await session.execute(
             text("SELECT set_config('app.current_org_id', :org, true)"),
-            {"org": str(user.organization_id)},
+            {"org": str(organization_id)},
         )
         await session.execute(
             text("SELECT set_config('app.current_user_id', :uid, true)"),
             {"uid": str(user.id)},
         )
         yield session
+
+
+# Backwards-compat shim: pre-refactor code imported `require_org_user` which
+# returned the `User` after verifying they had an org_id. The semantics now
+# live in `require_active_organization` (returns the org id from JWT), but
+# leaving this stub here would mask import errors. Removing it intentionally
+# — callers should migrate to the new dep family.

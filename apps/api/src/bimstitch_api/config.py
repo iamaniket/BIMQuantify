@@ -8,11 +8,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     database_url: str = Field(alias="DATABASE_URL")
+    admin_database_url: str | None = Field(default=None, alias="BIMSTITCH_ADMIN_DATABASE_URL")
     test_database_url: str | None = Field(default=None, alias="TEST_DATABASE_URL")
 
     jwt_secret: str = Field(alias="JWT_SECRET")
     jwt_access_ttl_seconds: int = Field(default=900, alias="JWT_ACCESS_TTL_SECONDS")
     jwt_refresh_ttl_seconds: int = Field(default=604800, alias="JWT_REFRESH_TTL_SECONDS")
+    invite_token_ttl_seconds: int = Field(default=604800, alias="INVITE_TOKEN_TTL_SECONDS")
 
     smtp_host: str = Field(default="localhost", alias="SMTP_HOST")
     smtp_port: int = Field(default=1025, alias="SMTP_PORT")
@@ -27,6 +29,9 @@ class Settings(BaseSettings):
     )
     frontend_reset_password_url: str = Field(
         default="http://localhost:3000/auth/reset-password", alias="FRONTEND_RESET_PASSWORD_URL"
+    )
+    frontend_activate_url: str = Field(
+        default="http://localhost:3001/activate", alias="FRONTEND_ACTIVATE_URL"
     )
 
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")

@@ -52,6 +52,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       type={type ?? 'button'}
+      suppressHydrationWarning
       className={cn(baseStyles, variantStyles[variant], sizeStyles[size], className)}
       {...rest}
     />

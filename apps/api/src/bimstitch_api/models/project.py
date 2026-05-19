@@ -8,7 +8,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 if TYPE_CHECKING:
@@ -58,21 +58,20 @@ class ConsequenceClass(StrEnum):
     cc3 = "cc3"
 
 
-class Project(TimestampMixin, Base):
+class Project(TimestampMixin, TenantBase):
+    """Project — lives in `org_<hex>.projects`. No `organization_id` column
+    because the schema name IS the organization. FK to `users` is qualified
+    as `public.users` (master schema)."""
+
     __tablename__ = "projects"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    organization_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="CASCADE"),
-        nullable=False,
-    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     thumbnail_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     owner_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="RESTRICT"),
+        ForeignKey("public.users.id", ondelete="RESTRICT"),
         nullable=False,
     )
 
@@ -170,15 +169,13 @@ class Project(TimestampMixin, Base):
     contractor: Mapped["Contractor | None"] = relationship(lazy="joined")
 
     __table_args__ = (
-        UniqueConstraint("organization_id", "name", name="uq_projects_org_name"),
-        Index("ix_projects_organization_id", "organization_id"),
+        UniqueConstraint("name", name="uq_projects_name"),
         Index("ix_projects_status", "status"),
         Index("ix_projects_lifecycle_state", "lifecycle_state"),
         Index("ix_projects_contractor_id", "contractor_id"),
         Index("ix_projects_planned_start_date", "planned_start_date"),
         Index(
-            "uq_projects_org_reference_code",
-            "organization_id",
+            "uq_projects_reference_code",
             "reference_code",
             unique=True,
             postgresql_where="reference_code IS NOT NULL",

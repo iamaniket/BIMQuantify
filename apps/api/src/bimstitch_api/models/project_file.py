@@ -19,7 +19,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ class ExtractionStatus(StrEnum):
     failed = "failed"
 
 
-class ProjectFile(TimestampMixin, SoftDeleteMixin, Base):
+class ProjectFile(TimestampMixin, SoftDeleteMixin, TenantBase):
     __tablename__ = "project_files"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -76,7 +76,7 @@ class ProjectFile(TimestampMixin, SoftDeleteMixin, Base):
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     uploaded_by_user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="RESTRICT"),
+        ForeignKey("public.users.id", ondelete="RESTRICT"),
         nullable=False,
     )
     storage_key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)

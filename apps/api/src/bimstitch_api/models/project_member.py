@@ -8,7 +8,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import TenantBase
 
 if TYPE_CHECKING:
     from bimstitch_api.models.project import Project
@@ -23,7 +23,7 @@ class ProjectRole(StrEnum):
     client = "client"
 
 
-class ProjectMember(Base):
+class ProjectMember(TenantBase):
     __tablename__ = "project_members"
 
     project_id: Mapped[UUID] = mapped_column(
@@ -33,7 +33,7 @@ class ProjectMember(Base):
     )
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("public.users.id", ondelete="CASCADE"),
         primary_key=True,
     )
     role: Mapped[ProjectRole] = mapped_column(

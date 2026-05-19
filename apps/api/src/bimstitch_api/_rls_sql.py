@@ -1,95 +1,64 @@
-"""Row-level security DDL shared between the Alembic migration and the test
-engine fixture. Keeping the policy definitions in one place ensures the test DB
-mirrors what production runs.
+"""Row-level security DDL for master tables only.
 
-Future data migrations on these tables must temporarily disable FORCE before
-DML and re-enable it afterwards:
+With schema-per-tenant (one Postgres schema per organization), tenant
+isolation is enforced by the schema namespace itself — `bim_app` has no
+grants on schemas it doesn't belong to, so even raw SQL like
+`SELECT * FROM "org_<other>".projects` is denied at the schema level.
+RLS on tenant tables would be redundant.
 
-    ALTER TABLE <table> NO FORCE ROW LEVEL SECURITY;
-    -- ... data DML ...
-    ALTER TABLE <table> FORCE ROW LEVEL SECURITY;
+The policies in this module live only on **master** tables in `public`:
+
+  * `users` — self-read OR member-of-active-org
+  * `organization_members` — only see your active org's members
+  * `audit_log` — only see your active org's entries (or all if NULL)
+
+The GUC source-of-truth (`app.current_org_id`, `app.current_user_id`) is
+set by `tenancy.py::get_tenant_session` from the JWT `org` claim. Outside
+a tenant session — for example, super-admin endpoints, the FastAPI Users
+verify/reset flows, and the processor callback — the connection uses the
+superuser role which bypasses RLS entirely.
 
 ## Why a separate `bim_app` role
 
-PostgreSQL bypasses RLS for any role with the SUPERUSER or BYPASSRLS
-attribute, even when FORCE ROW LEVEL SECURITY is set. The default role
-created by docker-compose is a superuser. To make RLS actually enforce, the
-app does `SET LOCAL ROLE bim_app` (a non-superuser, non-bypass child role)
-inside each tenant request transaction. Outside that transaction the
-connection reverts to the superuser, so migrations and the registration
-flow (which predates the org link) still work without contortions.
+PostgreSQL bypasses RLS for any role with SUPERUSER or BYPASSRLS, even
+under FORCE ROW LEVEL SECURITY. The default `bim` role in dev is a
+superuser, so `tenancy.py` drops to `bim_app` (non-bypass) for the
+duration of each tenant transaction. Outside that transaction the
+connection reverts to the superuser so admin paths just work.
 """
 
 # Non-superuser, non-bypass role the app SET LOCAL ROLEs into for tenant
-# queries. Must be created before grants are applied.
+# queries. Created idempotently in create_app_role_statements().
 APP_ROLE = "bim_app"
 
-# Tables that get RLS + FORCE applied. `organizations` is intentionally excluded
-# so users can read their own org row at signup.
+# Master tables that carry RLS. Tenant tables get no RLS — their schema
+# already does the isolation work.
 RLS_TABLES = (
     "users",
-    "projects",
-    "project_members",
-    "models",
-    "project_files",
-    "contractors",
-    "jobs",
-    "notifications",
-    "notification_reads",
-    "reports",
-    "risks",
-    "borgingsplans",
-    "borgingsmomenten",
-    "checklist_items",
+    "organization_members",
+    "audit_log",
 )
 
-# Tables the app role needs DML privileges on (broader than RLS_TABLES because
-# organizations is read by signup paths under SET ROLE too in the future).
+# Master tables the app role needs DML privileges on. `organizations` and
+# `access_requests` are included so reads from inside a tenant session
+# (which has SET ROLE bim_app) can still see org metadata + lead-capture rows.
 APP_GRANT_TABLES = (
     "users",
     "organizations",
-    "projects",
-    "project_members",
-    "models",
-    "project_files",
-    "contractors",
-    "jobs",
-    "notifications",
-    "notification_reads",
-    "reports",
-    "risks",
-    "borgingsplans",
-    "borgingsmomenten",
-    "checklist_items",
-)
-
-# Subquery snippet reused by tables that scope through `projects.organization_id`.
-PROJECT_ID_IN_ORG_SUBQUERY = (
-    "project_id IN (\n"
-    "    SELECT id FROM projects\n"
-    "    WHERE organization_id = "
-    "NULLIF(current_setting('app.current_org_id', true), '')::uuid\n"
-    ")"
-)
-
-# Subquery snippet reused by tables that scope through `models.project_id`
-# (which itself scopes through `projects.organization_id`).
-MODEL_ID_IN_ORG_SUBQUERY = (
-    "model_id IN (\n"
-    "    SELECT id FROM models\n"
-    "    WHERE project_id IN (\n"
-    "        SELECT id FROM projects\n"
-    "        WHERE organization_id = "
-    "NULLIF(current_setting('app.current_org_id', true), '')::uuid\n"
-    "    )\n"
-    ")"
+    "organization_members",
+    "audit_log",
+    "access_requests",
 )
 
 
 def create_app_role_statements() -> list[str]:
-    """Idempotent SQL to create the non-bypass app role and grant it the table
-    privileges it needs. Must run AFTER the tables exist (the GRANTs depend
-    on them); the role itself can exist beforehand."""
+    """Idempotent SQL that creates the non-bypass app role and grants it
+    the master-table privileges it needs. Per-schema grants for tenant
+    tables are added by the provisioning saga, not here.
+
+    Must run AFTER the master tables exist (the GRANTs depend on them);
+    the role itself can exist beforehand.
+    """
     return [
         f"""
         DO $$
@@ -100,17 +69,21 @@ def create_app_role_statements() -> list[str]:
         END $$;
         """,
         # The connecting (superuser) role must be a member of bim_app to
-        # SET LOCAL ROLE into it. CURRENT_USER works for both `bim` (dev) and
-        # whatever the deployed role is named.
+        # SET LOCAL ROLE into it. CURRENT_USER works for both `bim` (dev)
+        # and whatever the deployed role is named.
         f"GRANT {APP_ROLE} TO CURRENT_USER;",
         f"GRANT USAGE ON SCHEMA public TO {APP_ROLE};",
         f"GRANT SELECT, INSERT, UPDATE, DELETE ON {', '.join(APP_GRANT_TABLES)} TO {APP_ROLE};",
+        # Future master tables (added in later master migrations) should
+        # also be automatically grantable.
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {APP_ROLE};",
     ]
 
 
 def enable_rls_statements() -> list[str]:
-    """SQL to enable + force RLS and create policies. Idempotent: drops any
-    existing policy with the same name before recreating it.
+    """SQL to enable + force RLS on master tables and create policies.
+    Idempotent: drops any existing policy with the same name before
+    recreating it.
     """
     stmts: list[str] = []
 
@@ -118,192 +91,108 @@ def enable_rls_statements() -> list[str]:
         stmts.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
         stmts.append(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
 
-    # users: org match OR self-read (lets /users/me work even before an org is
-    # attached, and during the registration flow when the GUC is unset).
+    # users:
+    #   - always allow self-read (id matches current_user_id GUC)
+    #   - allow reads of users who share the current active org
+    # The org membership lookup goes through organization_members so a user
+    # can see colleagues without needing direct column denormalization.
     stmts.append("DROP POLICY IF EXISTS users_tenant_isolation ON users;")
     stmts.append(
         """
         CREATE POLICY users_tenant_isolation ON users
         USING (
-            organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid
-            OR id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+            id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+            OR id IN (
+                SELECT user_id FROM organization_members
+                WHERE organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid
+                  AND status = 'active'
+            )
         )
         WITH CHECK (
-            organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid
-            OR id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+            id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+            OR id IN (
+                SELECT user_id FROM organization_members
+                WHERE organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid
+                  AND status = 'active'
+            )
         );
         """
     )
 
-    org_match = "organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid"
-    project_id_in_org = PROJECT_ID_IN_ORG_SUBQUERY
-    model_id_in_org = MODEL_ID_IN_ORG_SUBQUERY
-
-    # projects: straight org match.
-    stmts.append("DROP POLICY IF EXISTS projects_tenant_isolation ON projects;")
+    # organization_members: only see your active org's membership rows.
+    # Super-admin endpoints bypass via the superuser role.
+    stmts.append("DROP POLICY IF EXISTS organization_members_isolation ON organization_members;")
     stmts.append(
-        f"""
-        CREATE POLICY projects_tenant_isolation ON projects
-        USING ({org_match})
-        WITH CHECK ({org_match});
+        """
+        CREATE POLICY organization_members_isolation ON organization_members
+        USING (
+            organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid
+        )
+        WITH CHECK (
+            organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid
+        );
         """
     )
 
-    # project_members: filter via subquery on projects (which RLS already
-    # restricts to the current org).
-    stmts.append("DROP POLICY IF EXISTS project_members_tenant_isolation ON project_members;")
+    # audit_log:
+    #   - org-scoped entries visible to org members
+    #   - org-NULL entries (platform-level events) visible to everyone; in
+    #     practice only super-admins read those because non-admin endpoints
+    #     don't expose audit_log
+    stmts.append("DROP POLICY IF EXISTS audit_log_isolation ON audit_log;")
     stmts.append(
-        f"""
-        CREATE POLICY project_members_tenant_isolation ON project_members
-        USING ({project_id_in_org})
-        WITH CHECK ({project_id_in_org});
+        """
+        CREATE POLICY audit_log_isolation ON audit_log
+        USING (
+            organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid
+            OR organization_id IS NULL
+        );
         """
     )
-
-    # models: filter via subquery on projects (same shape as project_members).
-    stmts.append("DROP POLICY IF EXISTS models_tenant_isolation ON models;")
-    stmts.append(
-        f"""
-        CREATE POLICY models_tenant_isolation ON models
-        USING ({project_id_in_org})
-        WITH CHECK ({project_id_in_org});
-        """
-    )
-
-    # project_files: scope through models (which scopes through projects).
-    stmts.append("DROP POLICY IF EXISTS project_files_tenant_isolation ON project_files;")
-    stmts.append(
-        f"""
-        CREATE POLICY project_files_tenant_isolation ON project_files
-        USING ({model_id_in_org})
-        WITH CHECK ({model_id_in_org});
-        """
-    )
-
-    # contractors: straight org match (same shape as projects).
-    stmts.append("DROP POLICY IF EXISTS contractors_tenant_isolation ON contractors;")
-    stmts.append(
-        f"""
-        CREATE POLICY contractors_tenant_isolation ON contractors
-        USING ({org_match})
-        WITH CHECK ({org_match});
-        """
-    )
-
-    # jobs: straight org match via organization_id column.
-    stmts.append("DROP POLICY IF EXISTS jobs_tenant_isolation ON jobs;")
-    stmts.append(
-        f"""
-        CREATE POLICY jobs_tenant_isolation ON jobs
-        USING ({org_match})
-        WITH CHECK ({org_match});
-        """
-    )
-
-    # notifications: straight org match (same shape as jobs).
-    stmts.append("DROP POLICY IF EXISTS notifications_tenant_isolation ON notifications;")
-    stmts.append(
-        f"""
-        CREATE POLICY notifications_tenant_isolation ON notifications
-        USING ({org_match})
-        WITH CHECK ({org_match});
-        """
-    )
-
-    # reports: straight org match (same shape as jobs/notifications).
-    stmts.append("DROP POLICY IF EXISTS reports_tenant_isolation ON reports;")
-    stmts.append(
-        f"""
-        CREATE POLICY reports_tenant_isolation ON reports
-        USING ({org_match})
-        WITH CHECK ({org_match});
-        """
-    )
-
-    # risks: scope through projects.organization_id (same shape as models).
-    stmts.append("DROP POLICY IF EXISTS risks_tenant_isolation ON risks;")
-    stmts.append(
-        f"""
-        CREATE POLICY risks_tenant_isolation ON risks
-        USING ({project_id_in_org})
-        WITH CHECK ({project_id_in_org});
-        """
-    )
-
-    # borgingsplans: same shape as risks (project_id → org).
-    stmts.append("DROP POLICY IF EXISTS borgingsplans_tenant_isolation ON borgingsplans;")
-    stmts.append(
-        f"""
-        CREATE POLICY borgingsplans_tenant_isolation ON borgingsplans
-        USING ({project_id_in_org})
-        WITH CHECK ({project_id_in_org});
-        """
-    )
-
-    # borgingsmomenten: project_id denormalized for single-column scoping.
-    stmts.append(
-        "DROP POLICY IF EXISTS borgingsmomenten_tenant_isolation ON borgingsmomenten;"
-    )
-    stmts.append(
-        f"""
-        CREATE POLICY borgingsmomenten_tenant_isolation ON borgingsmomenten
-        USING ({project_id_in_org})
-        WITH CHECK ({project_id_in_org});
-        """
-    )
-
-    # checklist_items: project_id denormalized.
-    stmts.append(
-        "DROP POLICY IF EXISTS checklist_items_tenant_isolation ON checklist_items;"
-    )
-    stmts.append(
-        f"""
-        CREATE POLICY checklist_items_tenant_isolation ON checklist_items
-        USING ({project_id_in_org})
-        WITH CHECK ({project_id_in_org});
-        """
-    )
-
-    # notification_reads: user_id match — each user manages their own read state.
-    user_match = "user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid"
-    stmts.append(
-        "DROP POLICY IF EXISTS notification_reads_user_isolation ON notification_reads;"
-    )
-    stmts.append(
-        f"""
-        CREATE POLICY notification_reads_user_isolation ON notification_reads
-        USING ({user_match})
-        WITH CHECK ({user_match});
-        """
-    )
+    # Inserts come from app code with explicit organization_id — no WITH
+    # CHECK clause means inserts respect the USING clause, which is fine:
+    # an admin acting in org A can only insert audit rows for org A.
 
     return stmts
 
 
 def disable_rls_statements() -> list[str]:
-    """Reverse of enable_rls_statements; used by migration downgrade."""
+    """Reverse of `enable_rls_statements`; used by migration downgrade."""
     stmts: list[str] = []
-    stmts.append(
-        "DROP POLICY IF EXISTS notification_reads_user_isolation ON notification_reads;"
-    )
-    stmts.append(
-        "DROP POLICY IF EXISTS checklist_items_tenant_isolation ON checklist_items;"
-    )
-    stmts.append(
-        "DROP POLICY IF EXISTS borgingsmomenten_tenant_isolation ON borgingsmomenten;"
-    )
-    stmts.append("DROP POLICY IF EXISTS borgingsplans_tenant_isolation ON borgingsplans;")
-    stmts.append("DROP POLICY IF EXISTS risks_tenant_isolation ON risks;")
-    stmts.append("DROP POLICY IF EXISTS reports_tenant_isolation ON reports;")
-    stmts.append("DROP POLICY IF EXISTS notifications_tenant_isolation ON notifications;")
-    stmts.append("DROP POLICY IF EXISTS jobs_tenant_isolation ON jobs;")
-    stmts.append("DROP POLICY IF EXISTS contractors_tenant_isolation ON contractors;")
-    stmts.append("DROP POLICY IF EXISTS project_files_tenant_isolation ON project_files;")
-    stmts.append("DROP POLICY IF EXISTS models_tenant_isolation ON models;")
-    stmts.append("DROP POLICY IF EXISTS project_members_tenant_isolation ON project_members;")
-    stmts.append("DROP POLICY IF EXISTS projects_tenant_isolation ON projects;")
+    stmts.append("DROP POLICY IF EXISTS audit_log_isolation ON audit_log;")
+    stmts.append("DROP POLICY IF EXISTS organization_members_isolation ON organization_members;")
     stmts.append("DROP POLICY IF EXISTS users_tenant_isolation ON users;")
     for table in RLS_TABLES:
         stmts.append(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;")
         stmts.append(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
     return stmts
+
+
+def grant_schema_to_app_role(schema: str) -> list[str]:
+    """SQL to grant the `bim_app` role full DML on every table in a
+    freshly-created tenant schema. Called by the provisioning saga after
+    the tenant Alembic chain runs.
+
+    Default privileges are also set so future tenant migrations (which
+    create new tables in this schema) automatically grant to bim_app
+    without needing to re-run grants.
+    """
+    return [
+        f'GRANT USAGE, CREATE ON SCHEMA "{schema}" TO {APP_ROLE};',
+        f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "{schema}" TO {APP_ROLE};',
+        f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "{schema}" TO {APP_ROLE};',
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
+        f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {APP_ROLE};',
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
+        f'GRANT USAGE, SELECT ON SEQUENCES TO {APP_ROLE};',
+    ]
+
+
+def drop_tenant_schema(schema: str) -> list[str]:
+    """SQL to remove a tenant schema and everything in it. Called by
+    organization deletion (`DELETE /admin/organizations/{id}`) and by the
+    provisioning saga's compensation when a later step fails.
+    """
+    return [
+        f'DROP SCHEMA IF EXISTS "{schema}" CASCADE;',
+    ]

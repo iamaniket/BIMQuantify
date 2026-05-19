@@ -108,6 +108,7 @@ export function LoginForm(): JSX.Element {
             <button
               type="button"
               onClick={() => setShowPassword((s) => !s)}
+              suppressHydrationWarning
               aria-label={showPassword ? t('hidePassword') : t('showPassword')}
               className="grid size-7 cursor-pointer place-items-center rounded text-foreground-tertiary hover:text-foreground"
             >
@@ -123,6 +124,7 @@ export function LoginForm(): JSX.Element {
           type="checkbox"
           checked={remember}
           onChange={(e) => setRemember(e.target.checked)}
+          suppressHydrationWarning
           className="size-4 cursor-pointer accent-primary"
         />
         <span className="text-[12.5px] text-foreground-secondary">{t('rememberMe')}</span>

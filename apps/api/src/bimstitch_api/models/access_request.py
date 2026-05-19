@@ -8,7 +8,7 @@ from sqlalchemy import Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bimstitch_api.db import Base
+from bimstitch_api.db import MasterBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 
@@ -18,7 +18,7 @@ class AccessRequestStatus(str, enum.Enum):
     rejected = "rejected"
 
 
-class AccessRequest(TimestampMixin, Base):
+class AccessRequest(TimestampMixin, MasterBase):
     """Lead-capture row for prospects requesting a BimStitch demo.
 
     Lives outside the tenant tree — no organization_id — because the row
