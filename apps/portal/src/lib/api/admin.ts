@@ -115,6 +115,24 @@ export async function listAdminUsers(
   );
 }
 
+/**
+ * Look up a user by exact (case-insensitive) email. Returns null if no user
+ * matches. Used by the create-tenant flow to detect when the proposed admin
+ * is an existing account, so the form can pre-fill their name and warn the
+ * super-admin that they're attaching rather than creating.
+ */
+export async function lookupUserByEmail(
+  accessToken: string,
+  email: string,
+): Promise<AdminUserRead | null> {
+  const trimmed = email.trim().toLowerCase();
+  if (trimmed.length === 0) return null;
+  // The list endpoint searches with case-insensitive LIKE — we filter the
+  // results for an exact match locally so partial matches don't pollute.
+  const results = await listAdminUsers(accessToken, { q: trimmed, limit: 5 });
+  return results.find((u) => u.email.toLowerCase() === trimmed) ?? null;
+}
+
 export async function promoteUser(
   accessToken: string,
   userId: string,

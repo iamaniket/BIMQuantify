@@ -1,14 +1,21 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, type JSX } from 'react';
+import {
+  useEffect, useRef, useState, type JSX,
+} from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AppDialog, Input, Label } from '@bimstitch/ui';
 
+import { lookupUserByEmail } from '@/lib/api/admin';
 import { ApiError } from '@/lib/api/client';
+import type { AdminUserRead } from '@/lib/api/schemas';
+import { useAuth } from '@/providers/AuthProvider';
+
 import { useCreateOrganization } from './useCreateOrganization';
 
 const FormSchema = z.object({
@@ -27,6 +34,9 @@ const EMPTY: FormValues = {
   seat_limit: '',
 };
 
+// Quick check before we burn an API round-trip on every keystroke.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +46,8 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
   const t = useTranslations('admin.organizations.create');
   const tCommon = useTranslations('admin.common');
   const mutation = useCreateOrganization();
+  const { tokens } = useAuth();
+  const accessToken = tokens?.access_token;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -44,12 +56,68 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
 
   const { reset: resetForm } = form;
   const { reset: resetMutation } = mutation;
+
+  // Tracks the user found by the email lookup. When set, the form shows a
+  // banner explaining the existing user will be attached as admin.
+  const [existingUser, setExistingUser] = useState<AdminUserRead | null>(null);
+  const [lookupPending, setLookupPending] = useState(false);
+  // Whether the operator has manually typed in the full-name field. We only
+  // auto-fill if they haven't, so we never clobber their input.
+  const fullNameTouchedRef = useRef(false);
+
   useEffect(() => {
     if (open) {
       resetForm(EMPTY);
       resetMutation();
+      setExistingUser(null);
+      setLookupPending(false);
+      fullNameTouchedRef.current = false;
     }
   }, [open, resetForm, resetMutation]);
+
+  // Debounced lookup whenever the email field stabilises on a syntactically
+  // valid email. We accept the result only if the email hasn't changed in
+  // the meantime (handles fast typing).
+  const emailValue = form.watch('admin_email').trim().toLowerCase();
+  useEffect(() => {
+    if (accessToken === undefined) return undefined;
+    if (!open) return undefined;
+    if (!EMAIL_RE.test(emailValue)) {
+      setExistingUser(null);
+      setLookupPending(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setLookupPending(true);
+    const handle = setTimeout(() => {
+      lookupUserByEmail(accessToken, emailValue)
+        .then((found) => {
+          if (cancelled) return;
+          setExistingUser(found);
+          // Only pre-fill if the operator hasn't typed anything yet.
+          if (found !== null && !fullNameTouchedRef.current) {
+            if (found.full_name !== null && found.full_name.length > 0) {
+              form.setValue('admin_full_name', found.full_name, {
+                shouldDirty: false,
+                shouldTouch: false,
+                shouldValidate: false,
+              });
+            }
+          }
+        })
+        .catch(() => {
+          // Swallow — failing the lookup must not break the create flow.
+          // The operator can still submit.
+        })
+        .finally(() => {
+          if (!cancelled) setLookupPending(false);
+        });
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [accessToken, emailValue, form, open]);
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     const parsedLimit = values.seat_limit === '' || values.seat_limit === undefined
@@ -119,13 +187,43 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
               {form.formState.errors.admin_email.message}
             </p>
           )}
+          {lookupPending && (
+            <p className="text-caption text-foreground-tertiary">
+              {t('existingUser.checking')}
+            </p>
+          )}
+          {existingUser !== null && (
+            <div
+              role="status"
+              className="flex items-start gap-2 rounded-md border border-info-light bg-info-lighter px-3 py-2 text-body3 text-info"
+            >
+              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>
+                {t('existingUser.banner', {
+                  name: existingUser.full_name ?? existingUser.email,
+                })}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="org-admin-name">{t('fields.adminFullName')}</Label>
+          <Label htmlFor="org-admin-name">
+            {t('fields.adminFullName')}
+            {existingUser !== null && (
+              <span className="ml-2 text-caption font-normal text-foreground-tertiary">
+                {t('existingUser.nameLocked')}
+              </span>
+            )}
+          </Label>
           <Input
             id="org-admin-name"
             placeholder={t('placeholders.adminFullName')}
-            {...form.register('admin_full_name')}
+            readOnly={existingUser !== null}
+            {...form.register('admin_full_name', {
+              onChange: () => {
+                fullNameTouchedRef.current = true;
+              },
+            })}
           />
         </div>
         <div className="flex flex-col gap-1.5">

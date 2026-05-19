@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { IntlWrapper } from '@/__tests__/intl-wrapper';
 
+vi.mock('@/features/projects/useProjects', () => ({
+  useProjects: () => ({
+    data: [{ id: '1' }, { id: '2' }, { id: '3' }],
+  }),
+}));
+
 vi.mock('@/i18n/navigation', () => ({
   usePathname: () => '/projects',
   Link: ({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
@@ -28,7 +34,7 @@ vi.mock('@bimstitch/ui', () => ({
 import { SidebarWorkspaceNav } from './SidebarWorkspaceNav';
 
 describe('SidebarWorkspaceNav', () => {
-  it('renders English workspace items and the section label', () => {
+  it('renders English workspace item, section label, and API-backed project count', () => {
     render(
       <IntlWrapper locale="en">
         <SidebarWorkspaceNav />
@@ -37,11 +43,10 @@ describe('SidebarWorkspaceNav', () => {
 
     expect(screen.getByText('Workspace')).toBeInTheDocument();
     expect(screen.getByText('Projects')).toBeInTheDocument();
-    expect(screen.getByText('BBL library')).toBeInTheDocument();
-    expect(screen.getByText('WKB library')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
   });
 
-  it('renders Dutch workspace items', () => {
+  it('renders Dutch workspace item and section label', () => {
     render(
       <IntlWrapper locale="nl">
         <SidebarWorkspaceNav />
@@ -50,7 +55,5 @@ describe('SidebarWorkspaceNav', () => {
 
     expect(screen.getByText('Werkruimte')).toBeInTheDocument();
     expect(screen.getByText('Projecten')).toBeInTheDocument();
-    expect(screen.getByText('BBL-bibliotheek')).toBeInTheDocument();
-    expect(screen.getByText('Wkb-bibliotheek')).toBeInTheDocument();
   });
 });

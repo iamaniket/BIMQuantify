@@ -1,8 +1,9 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { JSX } from 'react';
+import { useState, type JSX } from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';
 
@@ -31,16 +32,40 @@ function seatLabel(used: number, limit: number | null): string {
 
 export function SidebarTenantCard(): JSX.Element | null {
   const { collapsed } = useSidebar();
-  const { activeMembership } = useAuth();
+  const { me, activeMembership, switchOrganization } = useAuth();
+  const queryClient = useQueryClient();
   const t = useTranslations('sidebar.tenant');
+  const tOrgSwitcher = useTranslations('org.switcher');
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
 
   if (activeMembership === null) return null;
+
+  const memberships = (me?.memberships ?? []).filter(
+    (membership) => membership.member_status === 'active',
+  );
+  const canSwitch = memberships.length > 1;
 
   const name = activeMembership.organization_name;
   const used = activeMembership.seat_count_used;
   const limit = activeMembership.seat_limit;
   const acronym = initials(name);
   const ariaLabel = `${name} — ${seatLabel(used, limit)} ${t('seats')}`;
+
+  const onSelect = async (organizationId: string): Promise<void> => {
+    if (organizationId === me?.active_organization_id) {
+      setOpen(false);
+      return;
+    }
+    setPending(organizationId);
+    try {
+      await switchOrganization(organizationId);
+      await queryClient.invalidateQueries();
+    } finally {
+      setPending(null);
+      setOpen(false);
+    }
+  };
 
   if (collapsed) {
     return (
@@ -66,22 +91,65 @@ export function SidebarTenantCard(): JSX.Element | null {
       <div className="mb-1.5 px-2.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-white/55">
         {t('label')}
       </div>
-      <button
-        type="button"
-        className="flex w-full items-center gap-2.5 rounded-md border border-white/12 bg-white/[0.04] px-2.5 py-2 text-left transition-colors hover:bg-white/10"
-        aria-label={ariaLabel}
-      >
-        <div className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[5px] bg-gradient-to-br from-[#5fa8ff] to-[#2c5697] text-[10px] font-extrabold text-white">
-          {acronym}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[12.5px] font-semibold text-white">{name}</div>
-          <div className="mt-px text-[10px] font-medium text-white/55">
-            {seatLabel(used, limit)} {t('seats')}
+      <div className="relative">
+        <button
+          type="button"
+          className="flex w-full items-center gap-2.5 rounded-md border border-white/12 bg-white/[0.04] px-2.5 py-2 text-left transition-colors hover:bg-white/10"
+          aria-label={ariaLabel}
+          aria-haspopup={canSwitch ? 'listbox' : undefined}
+          aria-expanded={canSwitch ? open : undefined}
+          onClick={() => {
+            if (canSwitch) {
+              setOpen((value) => !value);
+            }
+          }}
+        >
+          <div className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[5px] bg-gradient-to-br from-[#5fa8ff] to-[#2c5697] text-[10px] font-extrabold text-white">
+            {acronym}
           </div>
-        </div>
-        <ChevronDown className="h-3 w-3 shrink-0 text-white/55" />
-      </button>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12.5px] font-semibold text-white">{name}</div>
+            <div className="mt-px text-[10px] font-medium text-white/55">
+              {seatLabel(used, limit)} {t('seats')}
+            </div>
+          </div>
+          <ChevronDown className="h-3 w-3 shrink-0 text-white/55" />
+        </button>
+        {canSwitch && open && (
+          <ul
+            role="listbox"
+            className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-auto rounded-md border border-white/12 bg-[#254a82] py-1 shadow-lg"
+          >
+            {memberships.map((membership) => {
+              const isActive = membership.organization_id === me?.active_organization_id;
+              const isPending = pending === membership.organization_id;
+              return (
+                <li key={membership.organization_id} role="option" aria-selected={isActive}>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      void onSelect(membership.organization_id);
+                    }}
+                    className={`block w-full px-3 py-2 text-left text-xs hover:bg-white/10 disabled:opacity-50 ${
+                      isActive ? 'font-semibold text-white' : 'text-white/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate">{membership.organization_name}</span>
+                      {membership.is_org_admin && (
+                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
+                          {tOrgSwitcher('adminBadge')}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

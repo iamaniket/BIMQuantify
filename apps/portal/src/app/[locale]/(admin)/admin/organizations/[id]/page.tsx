@@ -1,11 +1,11 @@
 'use client';
 
 import {
-  ArrowLeft, Pause, Pencil, Play, Plus, Trash2,
+  Pause, Pencil, Play, Plus, Trash2,
 } from 'lucide-react';
-import { Link, useRouter } from '@/i18n/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { use, useState, type JSX } from 'react';
+import { use, useMemo, useState, type JSX } from 'react';
 
 import {
   Button,
@@ -20,6 +20,8 @@ import {
   TabsList,
   TabsTrigger,
 } from '@bimstitch/ui';
+
+import { useHeaderCrumbsOverride } from '@/components/header/AppHeaderContext';
 
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
 import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
@@ -47,6 +49,21 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
   const auditQuery = useOrgAuditLog(id, { limit: 50 });
   const deleteMutation = useDeleteOrganization();
   const statusMutation = useUpdateOrganization();
+
+  // Render breadcrumb with the real tenant name. Falls back to the static
+  // "Tenant" crumb from AppHeaderRoute while the org is loading.
+  const orgName = orgQuery.data?.name;
+  const crumbs = useMemo(
+    () => (orgName === undefined
+      ? null
+      : [
+        { label: 'Admin', href: '/admin/organizations' },
+        { label: 'Tenants', href: '/admin/organizations' },
+        { label: orgName, href: undefined },
+      ]),
+    [orgName],
+  );
+  useHeaderCrumbsOverride(crumbs);
 
   const [editOpen, setEditOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -95,16 +112,6 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
 
   return (
     <main className="px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-4">
-        <Link
-          href="/admin/organizations"
-          className="inline-flex items-center gap-1.5 text-body3 text-foreground-tertiary hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t('back')}
-        </Link>
-      </div>
-
       <PageHeader
         title={org.name}
         subtitle={org.schema_name}

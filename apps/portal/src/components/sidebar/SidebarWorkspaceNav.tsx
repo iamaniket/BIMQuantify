@@ -6,17 +6,21 @@ import type { JSX } from 'react';
 
 import { useTranslations } from 'next-intl';
 
+import { useProjects } from '@/features/projects/useProjects';
+
 import { useSidebar } from './SidebarContext';
 import { SidebarNavItem } from './SidebarNavItem';
 
 const itemDefinitions = [
-  { key: 'projects', icon: LayoutGrid, href: '/projects', badge: '12' as string | undefined },
+  { key: 'projects', icon: LayoutGrid, href: '/projects' },
 ] as const;
 
 export function SidebarWorkspaceNav(): JSX.Element {
   const { collapsed } = useSidebar();
   const pathname = usePathname();
   const t = useTranslations('sidebar');
+  const { data: projects } = useProjects();
+  const projectsCountBadge = projects?.length;
 
   const labels = {
     projects: t('projects'),
@@ -29,8 +33,9 @@ export function SidebarWorkspaceNav(): JSX.Element {
           {t('workspace')}
         </div>
       )}
-      {itemDefinitions.map(({ key, icon: Icon, href, badge }) => {
+      {itemDefinitions.map(({ key, icon: Icon, href }) => {
         const isActive = pathname === href || pathname.startsWith(`${href}/`);
+        const badge = key === 'projects' ? projectsCountBadge : undefined;
         return (
           <SidebarNavItem
             key={key}

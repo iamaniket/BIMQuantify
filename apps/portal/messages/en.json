@@ -637,6 +637,11 @@
         "hints": {
           "seatLimit": "Leave empty for unlimited seats. The first admin counts as one seat."
         },
+        "existingUser": {
+          "checking": "Checking if this email is already in use…",
+          "banner": "{name} already has an account. They'll be added as admin of this tenant — no new account is created.",
+          "nameLocked": "from existing account"
+        },
         "errors": {
           "nameTaken": "A tenant with this name already exists.",
           "seatLimitInvalid": "Seat limit must be a positive integer."

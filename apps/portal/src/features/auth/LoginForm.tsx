@@ -8,11 +8,12 @@ import { useId, useMemo, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { Button, FormField, Input } from '@bimstitch/ui';
+import { Button, FormField, Input, Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from '@bimstitch/ui';
 
 import { useLogin } from '@/features/auth/useLogin';
 import { ApiError } from '@/lib/api/client';
 import { useAuth } from '@/providers/AuthProvider';
+import { getAuthMe } from '@/lib/api/organizations';
 
 const EMPTY_DEFAULTS = { username: '', password: '' };
 const DEV_DEFAULTS = {
@@ -25,12 +26,15 @@ type LoginFormValues = { username: string; password: string };
 export function LoginForm(): JSX.Element {
   const t = useTranslations('auth.login');
   const router = useRouter();
-  const { setTokens } = useAuth();
+  const { setTokens, switchOrganization } = useAuth();
   const login = useLogin();
   const emailId = useId();
   const passwordId = useId();
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [showTenantModal, setShowTenantModal] = useState(false);
+  const [memberships, setMemberships] = useState<null | { organization_id: string; organization_name: string }[]>(null);
+  const [switching, setSwitching] = useState<string | null>(null);
 
   const schema = useMemo(
     () =>
@@ -52,9 +56,20 @@ export function LoginForm(): JSX.Element {
 
   const onSubmit: SubmitHandler<LoginFormValues> = (values) => {
     login.mutate(values, {
-      onSuccess: (tokens) => {
+      onSuccess: async (tokens) => {
         setTokens(tokens);
-        router.push('/projects');
+        // Fetch memberships directly with the new access token
+        try {
+          const me = await getAuthMe(tokens.access_token);
+          if (me && me.memberships && me.memberships.length > 1) {
+            setMemberships(me.memberships.map(m => ({ organization_id: m.organization_id, organization_name: m.organization_name })));
+            setShowTenantModal(true);
+          } else {
+            router.push('/projects');
+          }
+        } catch {
+          router.push('/projects');
+        }
       },
     });
   };
@@ -77,7 +92,8 @@ export function LoginForm(): JSX.Element {
   const passwordError = passwordField === undefined ? undefined : passwordField.message;
 
   return (
-    <form noValidate onSubmit={form.handleSubmit(onSubmit)} className="flex w-full flex-col gap-3.5">
+    <>
+      <form noValidate onSubmit={form.handleSubmit(onSubmit)} className="flex w-full flex-col gap-3.5">
       <FormField label={t('emailLabel')} htmlFor={emailId} error={usernameError}>
         <Input
           id={emailId}
@@ -157,5 +173,37 @@ export function LoginForm(): JSX.Element {
         )}
       </Button>
     </form>
+
+    <Dialog open={showTenantModal}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Select your organization</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <ul className="space-y-2">
+            {memberships?.map((m) => (
+              <li key={m.organization_id}>
+                <button
+                  className={`w-full rounded border px-4 py-2 text-left hover:bg-gray-100 ${switching === m.organization_id ? 'opacity-60 pointer-events-none' : ''}`}
+                  disabled={!!switching}
+                  onClick={async () => {
+                    setSwitching(m.organization_id);
+                    await switchOrganization(m.organization_id);
+                    setShowTenantModal(false);
+                    router.push('/projects');
+                  }}
+                >
+                  {m.organization_name}
+                  {switching === m.organization_id && (
+                    <span className="ml-2 text-xs">Switching...</span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

@@ -637,6 +637,11 @@
         "hints": {
           "seatLimit": "Laat leeg voor onbeperkt aantal zetels. De eerste beheerder telt als één zetel."
         },
+        "existingUser": {
+          "checking": "Controleren of dit e-mailadres al bestaat…",
+          "banner": "{name} heeft al een account. Deze gebruiker wordt als beheerder aan deze tenant toegevoegd — er wordt geen nieuw account aangemaakt.",
+          "nameLocked": "uit bestaand account"
+        },
         "errors": {
           "nameTaken": "Er bestaat al een tenant met deze naam.",
           "seatLimitInvalid": "Zetellimiet moet een positief geheel getal zijn."
