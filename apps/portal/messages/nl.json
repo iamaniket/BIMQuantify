@@ -666,8 +666,22 @@
       "detail": {
         "back": "Terug naar tenants",
         "editButton": "Bewerken",
+        "suspendButton": "Schorsen",
+        "reactivateButton": "Heractiveren",
         "deleteButton": "Tenant verwijderen",
         "confirmDelete": "Tenant \"{name}\" verwijderen? De data en het schema worden onomkeerbaar verwijderd.",
+        "suspend": {
+          "title": "Tenant schorsen?",
+          "body": "Door \"{name}\" te schorsen kunnen leden niet meer inloggen op de werkruimte of acties uitvoeren op tenantdata. Superbeheerders houden volledige toegang. Je kunt altijd weer heractiveren.",
+          "confirm": "Tenant schorsen",
+          "cancel": "Annuleren"
+        },
+        "reactivate": {
+          "title": "Tenant heractiveren?",
+          "body": "Door \"{name}\" te heractiveren krijgen de leden weer toegang.",
+          "confirm": "Tenant heractiveren",
+          "cancel": "Annuleren"
+        },
         "loadError": "Tenant kon niet worden geladen.",
         "tabs": {
           "overview": "Overzicht",
@@ -735,20 +749,25 @@
     },
     "users": {
       "pageTitle": "Gebruikers",
-      "pageSubtitle": "Zoek over alle gebruikers in het platform en wissel superbeheerderrechten.",
+      "pageSubtitle": "Zoek over alle gebruikers in het platform, schakel toegang in/uit en wissel superbeheerderrechten.",
       "searchPlaceholder": "Zoek op e-mail of naam…",
       "searchAria": "Gebruikers zoeken",
       "loadError": "Gebruikers konden niet worden geladen.",
       "table": {
         "user": "Gebruiker",
+        "access": "Toegang",
         "verified": "Geverifieerd",
         "superuser": "Superbeheerder",
         "actions": "Acties",
         "empty": "Geen gebruikers gevonden.",
+        "accessActive": "Ingeschakeld",
+        "accessDisabled": "Uitgeschakeld",
         "verifiedYes": "Geverifieerd",
         "verifiedNo": "In afwachting",
         "superuserYes": "Superbeheerder",
         "superuserNo": "Standaard",
+        "activate": "Inschakelen",
+        "deactivate": "Uitschakelen",
         "promote": "Promoveren",
         "demote": "Degraderen"
       }

@@ -749,20 +749,25 @@
     },
     "users": {
       "pageTitle": "Users",
-      "pageSubtitle": "Search across all users in the platform and toggle super-admin rights.",
+      "pageSubtitle": "Search across all users in the platform, toggle access, and grant super-admin rights.",
       "searchPlaceholder": "Search by email or name…",
       "searchAria": "Search users",
       "loadError": "Could not load users.",
       "table": {
         "user": "User",
+        "access": "Access",
         "verified": "Verified",
         "superuser": "Super admin",
         "actions": "Actions",
         "empty": "No users found.",
+        "accessActive": "Enabled",
+        "accessDisabled": "Disabled",
         "verifiedYes": "Verified",
         "verifiedNo": "Pending",
         "superuserYes": "Super admin",
         "superuserNo": "Standard",
+        "activate": "Enable",
+        "deactivate": "Disable",
         "promote": "Promote",
         "demote": "Demote"
       }
