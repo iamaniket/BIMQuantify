@@ -5,8 +5,12 @@ Creates:
   * Two demo orgs (Acme Construction, Beta Builders) with the full
     provisioning saga so the dev DB exercises the saga code path on every
     `--reset`.
-  * One cross-org user (`cross@dev.local`) belonging to BOTH demo orgs to
-    demonstrate the org switcher.
+  * One cross-org user belonging to BOTH demo orgs to demonstrate the org
+    switcher.
+
+All credentials are sourced from the SEED_* env vars (see `.env.example`).
+The script fails fast with a clear error if any are missing — no values are
+ever hardcoded in source.
 
 Usage:
     uv run python -m bimstitch_api.seed             # idempotent — skips existing
@@ -22,6 +26,8 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi_users.password import PasswordHelper
+from pydantic import EmailStr, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import select, text
 
 from bimstitch_api._rls_sql import grant_schema_to_app_role
@@ -43,28 +49,60 @@ DEMO_ORG_A_NAME = "Acme Construction"
 DEMO_ORG_B_NAME = "Beta Builders"
 
 
-SUPER_ADMIN = {
-    "email": "super@bimstitch.dev",
-    "password": "SuperAdmin123!",
-    "full_name": "Super Admin",
-    "is_superuser": True,
-}
+class SeedSettings(BaseSettings):
+    """Credentials for the seed script. All fields are required — a missing
+    env var aborts the seed with a clear `pydantic_core.ValidationError`
+    rather than silently inserting a stale default."""
 
-ACME_USERS = [
-    {"email": "admin@acme.dev", "password": "Admin123!", "full_name": "Acme Admin", "is_org_admin": True},
-    {"email": "editor@acme.dev", "password": "Editor123!", "full_name": "Acme Editor", "is_org_admin": False},
-    {"email": "viewer@acme.dev", "password": "Viewer123!", "full_name": "Acme Viewer", "is_org_admin": False},
-]
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
-BETA_USERS = [
-    {"email": "admin@beta.dev", "password": "Admin123!", "full_name": "Beta Admin", "is_org_admin": True},
-]
+    superadmin_email: EmailStr = Field(alias="SEED_SUPERADMIN_EMAIL")
+    superadmin_password: str = Field(alias="SEED_SUPERADMIN_PASSWORD")
 
-CROSS_USER = {
-    "email": "cross@dev.local",
-    "password": "Cross123!",
-    "full_name": "Cross-Org Demo",
-}
+    acme_admin_email: EmailStr = Field(alias="SEED_ACME_ADMIN_EMAIL")
+    acme_admin_password: str = Field(alias="SEED_ACME_ADMIN_PASSWORD")
+    acme_editor_email: EmailStr = Field(alias="SEED_ACME_EDITOR_EMAIL")
+    acme_editor_password: str = Field(alias="SEED_ACME_EDITOR_PASSWORD")
+    acme_viewer_email: EmailStr = Field(alias="SEED_ACME_VIEWER_EMAIL")
+    acme_viewer_password: str = Field(alias="SEED_ACME_VIEWER_PASSWORD")
+
+    beta_admin_email: EmailStr = Field(alias="SEED_BETA_ADMIN_EMAIL")
+    beta_admin_password: str = Field(alias="SEED_BETA_ADMIN_PASSWORD")
+
+    cross_email: EmailStr = Field(alias="SEED_CROSS_EMAIL")
+    cross_password: str = Field(alias="SEED_CROSS_PASSWORD")
+
+
+def _build_user_plan(cfg: SeedSettings) -> tuple[dict, list[dict], list[dict], dict]:
+    """Map env-sourced credentials onto the structural role/membership graph.
+    Display names are derived from the role — those are structure, not
+    credentials, so they stay in code."""
+    super_admin = {
+        "email": cfg.superadmin_email,
+        "password": cfg.superadmin_password,
+        "full_name": "Super Admin",
+        "is_superuser": True,
+    }
+    acme_users = [
+        {"email": cfg.acme_admin_email, "password": cfg.acme_admin_password,
+         "full_name": "Acme Admin", "is_org_admin": True},
+        {"email": cfg.acme_editor_email, "password": cfg.acme_editor_password,
+         "full_name": "Acme Editor", "is_org_admin": False},
+        {"email": cfg.acme_viewer_email, "password": cfg.acme_viewer_password,
+         "full_name": "Acme Viewer", "is_org_admin": False},
+    ]
+    beta_users = [
+        {"email": cfg.beta_admin_email, "password": cfg.beta_admin_password,
+         "full_name": "Beta Admin", "is_org_admin": True},
+    ]
+    cross_user = {
+        "email": cfg.cross_email,
+        "password": cfg.cross_password,
+        "full_name": "Cross-Org Demo",
+    }
+    return super_admin, acme_users, beta_users, cross_user
 
 
 async def _find_or_create_user(session, *, email, password, full_name, is_superuser=False):
@@ -187,6 +225,9 @@ async def reset_all() -> None:
 
 
 async def seed() -> None:
+    cfg = SeedSettings()
+    super_admin, acme_users, beta_users, cross_user = _build_user_plan(cfg)
+
     get_engine()
     session_maker = get_session_maker()
 
@@ -228,9 +269,9 @@ async def seed() -> None:
         async with s.begin():
             super_user, created = await _find_or_create_user(
                 s,
-                email=SUPER_ADMIN["email"],
-                password=SUPER_ADMIN["password"],
-                full_name=SUPER_ADMIN["full_name"],
+                email=super_admin["email"],
+                password=super_admin["password"],
+                full_name=super_admin["full_name"],
                 is_superuser=True,
             )
             await _attach_member(
@@ -246,7 +287,7 @@ async def seed() -> None:
     # 3. Org users + memberships
     async with session_maker() as s:
         async with s.begin():
-            for u in ACME_USERS:
+            for u in acme_users:
                 user, created = await _find_or_create_user(
                     s, email=u["email"], password=u["password"], full_name=u["full_name"]
                 )
@@ -257,7 +298,7 @@ async def seed() -> None:
                     user.active_organization_id = acme.id
                 print(("  Created" if created else "  Existing") + f": {user.email}")
 
-            for u in BETA_USERS:
+            for u in beta_users:
                 user, created = await _find_or_create_user(
                     s, email=u["email"], password=u["password"], full_name=u["full_name"]
                 )
@@ -270,9 +311,9 @@ async def seed() -> None:
 
             cross, created = await _find_or_create_user(
                 s,
-                email=CROSS_USER["email"],
-                password=CROSS_USER["password"],
-                full_name=CROSS_USER["full_name"],
+                email=cross_user["email"],
+                password=cross_user["password"],
+                full_name=cross_user["full_name"],
             )
             await _attach_member(s, user=cross, organization_id=acme.id, is_org_admin=False)
             await _attach_member(s, user=cross, organization_id=beta.id, is_org_admin=False)

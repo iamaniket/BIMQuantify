@@ -14,8 +14,11 @@ import { useLogin } from '@/features/auth/useLogin';
 import { ApiError } from '@/lib/api/client';
 import { useAuth } from '@/providers/AuthProvider';
 
-const DEV_DEFAULTS = { username: 'superadmin@bimstitch.dev', password: 'SuperAdmin123!' };
 const EMPTY_DEFAULTS = { username: '', password: '' };
+const DEV_DEFAULTS = {
+  username: process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL ?? '',
+  password: process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ?? '',
+};
 
 type LoginFormValues = { username: string; password: string };
 

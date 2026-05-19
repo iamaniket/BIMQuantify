@@ -43,8 +43,12 @@ All commands run from `apps/api/`. Requires Python 3.12 and `uv`.
 docker compose up -d                 # all services (postgres, mailhog, redis, minio, processor)
 cp .env.example .env
 uv sync
-uv run alembic upgrade head
-uv run python -m bimstitch_api.seed   # creates 3 default dev users (superadmin / admin / user)
+uv run alembic -c alembic.master.ini upgrade head   # master chain → public schema
+uv run python -m bimstitch_api.seed                 # platform + Acme + Beta orgs, dev users
+                                                    # (provisions per-org schemas via the tenant chain)
+# Seed user credentials live in apps/api/.env (template in .env.example, keys
+# SEED_SUPERADMIN_*, SEED_ACME_*, SEED_BETA_*, SEED_CROSS_*). The script fails
+# with a pydantic ValidationError if any of those env vars are missing.
 
 # dev server
 uv run uvicorn bimstitch_api.main:app --reload --port 8000
@@ -229,5 +233,5 @@ Portal reads: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 - `postgres` — Postgres 16, host port **5434**. User `bim`, password `bim`, database `bimstitch`.
 - `mailhog` — SMTP on 1025, web UI at http://localhost:8025.
 - `redis` — Redis 7, host port **6380**. Used for rate limiting, JWT blocklist, and BullMQ job queue.
-- `minio` — S3-compatible storage, API on port **9000**, console at **9001**. Creds: `bimstitch` / `bimstitch-secret`.
+- `minio` — S3-compatible storage, API on port **9000**, console at **9001**. Root credentials are defined in `docker-compose.yml` (`MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`); copy them into your local `.env` files for the API/arbiter/processor.
 - `processor` — built from `apps/processor/Dockerfile`, host port **8088**. Reaches API via `host.docker.internal:8000`. Auth: `PROCESSOR_SHARED_SECRET`. Generic Node.js worker for all background jobs (IFC extraction, PDF extraction, PDF report generation).

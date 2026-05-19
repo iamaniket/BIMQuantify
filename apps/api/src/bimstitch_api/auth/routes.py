@@ -10,10 +10,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
-from bimstitch_api.auth.dependencies import (
-    get_active_organization_id,
-    require_active_org_membership,
-)
+from bimstitch_api.auth.dependencies import get_active_organization_id
 from bimstitch_api.auth.fastapi_users import current_active_user, fastapi_users
 from bimstitch_api.auth.logout import router as logout_router
 from bimstitch_api.auth.manager import UserManager, get_user_manager
@@ -242,10 +239,22 @@ def build_auth_router() -> APIRouter:
         request: Request,
         payload: SwitchOrgRequest,
         user: User = Depends(current_active_user),
-        membership: OrganizationMember = Depends(require_active_org_membership),
         session: AsyncSession = Depends(get_async_session),
         redis: Any = Depends(get_redis_dep),
     ) -> TokenPair:
+        # Verify the requested org is one the user actually belongs to with
+        # an active membership. Checked inline (rather than via a
+        # dependency) because the org id arrives in the body, not the path.
+        stmt = select(OrganizationMember).where(
+            OrganizationMember.user_id == user.id,
+            OrganizationMember.organization_id == payload.organization_id,
+            OrganizationMember.status == OrganizationMemberStatus.active,
+        )
+        if (await session.execute(stmt)).scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="ORG_MEMBERSHIP_REQUIRED",
+            )
         # Revoke the current access token if we can decode it from the
         # request headers — keeps a switched-from token from continuing
         # to act in the old org until its natural expiry.

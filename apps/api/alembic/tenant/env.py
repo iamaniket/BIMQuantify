@@ -88,10 +88,6 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     schema = _target_schema()
-    # All DDL emitted by this run resolves unqualified names to the target
-    # schema. Master tables referenced via `public.users.id` FKs are still
-    # resolvable because `public` is on the search path.
-    connection.execute(text(f'SET search_path TO "{schema}", public'))
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -101,7 +97,13 @@ def do_run_migrations(connection: Connection) -> None:
         # state is tracked independently.
         version_table_schema=schema,
     )
+    # `SET search_path` MUST live inside the same transaction Alembic owns.
+    # Setting it before `begin_transaction()` runs in SA's auto-begun implicit
+    # txn, which is rolled back when the outer `connect()` context exits — that
+    # rolls the DDL back with it and the migration silently no-ops. Inside the
+    # block, `begin_transaction()` commits both the search_path and the DDL.
     with context.begin_transaction():
+        connection.execute(text(f'SET search_path TO "{schema}", public'))
         context.run_migrations()
 
 
