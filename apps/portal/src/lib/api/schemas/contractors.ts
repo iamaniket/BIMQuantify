@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export const ContractorSchema = z.object({
   id: z.string().uuid(),
-  organization_id: z.string().uuid(),
   name: z.string(),
   kvk_number: z.union([z.string(), z.null()]),
   contact_email: z.union([z.string(), z.null()]),

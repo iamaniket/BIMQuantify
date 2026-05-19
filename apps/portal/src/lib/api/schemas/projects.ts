@@ -43,7 +43,6 @@ export const ProjectSchema = z.object({
   description: z.union([z.string(), z.null()]),
   thumbnail_url: z.union([z.string(), z.null()]),
   owner_id: z.string().uuid(),
-  organization_id: z.string().uuid(),
   created_at: z.string(),
   updated_at: z.string(),
 
