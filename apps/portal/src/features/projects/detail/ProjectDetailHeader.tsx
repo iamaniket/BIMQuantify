@@ -73,11 +73,11 @@ export function ProjectDetailHeader({
   }
 
   return (
-    <div className="relative shrink-0 overflow-hidden bg-white px-4 py-4 text-black dark:bg-black dark:text-white sm:px-6 sm:py-5">
+    <div className="relative shrink-0 overflow-hidden bg-transparent px-4 pb-4 pt-[18px] text-foreground sm:px-5">
       <BlueprintTexture />
 
-      <div className="relative z-10 grid gap-4 xl:grid-cols-[15rem_minmax(0,1fr)_minmax(22rem,38rem)] xl:items-center">
-        <div className="h-28 w-full overflow-hidden rounded-2xl border border-black/10 bg-black/5 shadow-[0_22px_56px_rgba(0,0,0,0.18)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_24px_60px_rgba(0,0,0,0.38)] sm:h-32 xl:h-36 xl:w-60">
+      <div className="relative z-10 grid gap-5 xl:grid-cols-[156px_minmax(0,1fr)_auto] xl:items-center">
+        <div className="h-28 w-full overflow-hidden rounded-[10px] border border-black/10 bg-black/5 shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)] sm:h-32 xl:h-[156px] xl:w-[156px]">
           {project.thumbnail_url !== null ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -128,7 +128,7 @@ export function ProjectDetailHeader({
                 </>
               )}
             </div>
-            <h1 className="text-[28px] font-medium leading-tight tracking-tight text-black dark:text-white sm:text-[30px]">
+            <h1 className="truncate font-display text-[28px] font-medium leading-[1.05] tracking-[-0.022em] text-black dark:text-white sm:text-[32px]">
               {project.name}
             </h1>
             <div className="mt-1 flex flex-wrap gap-3.5 text-body3 text-black/70 dark:text-white/85">
@@ -165,27 +165,26 @@ export function ProjectDetailHeader({
           </div>
         </div>
 
-        {/* KPIs */}
-        <div className="relative w-full pr-10 xl:max-w-none xl:pr-0">
+        {/* KPIs + share */}
+        <div className="relative flex w-full items-center gap-2 pr-10 xl:max-w-none xl:pr-0">
           <KpiStrip
             items={[
-              { label: 'Wkb score', value: `${overall}%`, color: '#2f7a4b', sub: wkbSub },
-              { label: 'Issues open', value: String(issueCount), color: '#ffb3a3', sub: `${compliance?.failCount ?? 0} fail · ${compliance?.warnCount ?? 0} warn` },
+              { label: 'Wkb score', value: `${overall}%`, color: 'var(--success)', sub: wkbSub },
+              { label: 'Issues open', value: String(issueCount), color: 'var(--error)', sub: `${compliance?.failCount ?? 0} fail · ${compliance?.warnCount ?? 0} warn` },
               { label: 'Holdback', value: '—', sub: `${dossierPct}% dossier ready` },
               { label: 'Delivery', value: opleveringValue, sub: opleveringSub },
             ]}
           />
+          <button
+            type="button"
+            title="Share project"
+            aria-label="Share project"
+            className="absolute right-6 top-1/2 grid h-8 w-8 -translate-y-1/2 shrink-0 place-items-center rounded-lg border-0 bg-transparent text-foreground-secondary transition-colors hover:bg-surface-low hover:text-primary xl:static xl:ml-3.5 xl:translate-y-0"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
-
-      {/* Share */}
-      <button
-        type="button"
-        title="Share project"
-        className="absolute right-6 top-1/2 z-20 grid h-8 w-8 -translate-y-1/2 shrink-0 place-items-center rounded-full border border-black/15 bg-black/5 text-black transition-colors hover:bg-black/10 dark:border-white/20 dark:bg-white/12 dark:text-white dark:hover:bg-white/20"
-      >
-        <Share2 className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }

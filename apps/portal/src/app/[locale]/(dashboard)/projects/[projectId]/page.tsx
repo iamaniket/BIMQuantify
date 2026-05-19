@@ -21,9 +21,9 @@ import {
 import { useAuth } from '@/providers/AuthProvider';
 
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
-import { ComplianceHealthCard } from '@/features/projects/detail/ComplianceHealthCard';
 import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
+import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
 
 export default function ProjectDetailPage(): JSX.Element {
   const router = useRouter();
@@ -136,38 +136,28 @@ export default function ProjectDetailPage(): JSX.Element {
         dossierPct={dossierPct}
       />
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-y-auto p-3.5 xl:grid-cols-2">
-        {/* Left column */}
-        <div className="flex flex-col gap-3.5">
-          <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-            {summary !== undefined && (
-              <ComplianceHealthCard
-                summary={summary}
-                holdbackAmount="—"
-                embedded
-              />
-            )}
-            <div className="border-t border-border" />
-            <ComplianceByDomainCard
-              domains={domains}
-              articles={articles}
-              models={models}
-              trend={trend}
-              overallScore={overallScore}
-              totalChecks={summary !== undefined ? summary.passCount + summary.warnCount + summary.failCount : 0}
-              failCount={summary?.failCount ?? 0}
-              embedded
-            />
-          </div>
-        </div>
-
-        {/* Right column */}
-        <RightColumnTabs
-          projectId={projectId}
-          projectCountry={project.country}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-y-auto px-3.5 pb-3.5 xl:grid-cols-2">
+        {/* Left column — single merged compliance card */}
+        <ComplianceByDomainCard
+          domains={domains}
+          articles={articles}
           models={models}
-          onUpload={setUploadModelId}
+          trend={trend}
+          overallScore={overallScore}
+          totalChecks={summary !== undefined ? summary.passCount + summary.warnCount + summary.failCount : 0}
+          failCount={summary?.failCount ?? 0}
         />
+
+        {/* Right column — 60/40 vertical split: tabs on top, activity below */}
+        <div className="grid min-h-0 grid-rows-[3fr_2fr] gap-3.5">
+          <RightColumnTabs
+            projectId={projectId}
+            projectCountry={project.country}
+            models={models}
+            onUpload={setUploadModelId}
+          />
+          <ActivityPanel />
+        </div>
       </div>
     </div>
   );

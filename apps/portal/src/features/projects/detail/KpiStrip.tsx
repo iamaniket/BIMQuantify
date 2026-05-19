@@ -13,22 +13,28 @@ type Props = {
 
 export function KpiStrip({ items }: Props): JSX.Element {
   return (
-    <div className="grid w-full grid-cols-2 gap-2 xl:grid-cols-4 xl:gap-0">
+    <div className="grid w-full grid-cols-2 gap-2 xl:flex xl:items-stretch xl:gap-0">
       {items.map((item, i) => (
         <div
           key={item.label}
-          className="min-w-0 rounded-lg border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-white/15 dark:bg-black/35 xl:rounded-none xl:border-y-0 xl:border-l-0 xl:border-r xl:bg-transparent xl:px-4 xl:py-1 first:xl:border-l"
+          className={`flex min-w-0 flex-col justify-center rounded-lg border border-border bg-surface-low px-3 py-2 dark:bg-black/30 xl:min-w-[124px] xl:rounded-none xl:border-0 xl:bg-transparent xl:px-[22px] xl:py-1 ${
+            i === 0 ? '' : 'xl:border-l xl:border-border'
+          }`}
         >
-          <div className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-black/70 dark:text-white/85">
+          <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-foreground-tertiary">
             {item.label}
           </div>
           <div
-            className="mt-0.5 text-title2 font-semibold tracking-tight"
+            className="mt-[3px] font-display text-[22px] font-semibold leading-[1.05] tracking-[-0.015em] tabular-nums"
             style={{ color: item.color ?? 'currentColor' }}
           >
             {item.value}
           </div>
-          <div className="mt-0.5 text-caption text-black/60 dark:text-white/80">{item.sub}</div>
+          {item.sub && (
+            <div className="mt-[3px] whitespace-nowrap text-[10.5px] text-foreground-tertiary">
+              {item.sub}
+            </div>
+          )}
         </div>
       ))}
     </div>
