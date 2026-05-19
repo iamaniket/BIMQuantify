@@ -72,7 +72,11 @@
     "workspace": "Workspace",
     "projects": "Projects",
     "bblLibrary": "BBL library",
-    "wkbLibrary": "WKB library"
+    "wkbLibrary": "WKB library",
+    "tenant": {
+      "label": "Tenant",
+      "seats": "seats"
+    }
   },
   "projects": {
     "statuses": {
@@ -582,5 +586,202 @@
     "install": "Install",
     "dismiss": "Not now",
     "iosHint": "On iOS, tap the share icon and choose “Add to Home Screen”."
+  },
+  "admin": {
+    "common": {
+      "eyebrowSuperAdmin": "Super admin"
+    },
+    "organizations": {
+      "pageTitle": "Tenants",
+      "pageSubtitle": "Provision new tenants, allocate seats, and manage their lifecycle.",
+      "searchPlaceholder": "Search tenants…",
+      "searchAria": "Search tenants",
+      "statusFilterAria": "Filter tenants by status",
+      "statusFilters": {
+        "all": "All statuses",
+        "active": "Active",
+        "suspended": "Suspended",
+        "provisioning": "Provisioning"
+      },
+      "createButton": "New tenant",
+      "loadError": "Could not load tenants.",
+      "status": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "deleted": "Deleted",
+        "provisioning": "Provisioning"
+      },
+      "table": {
+        "name": "Tenant",
+        "status": "Status",
+        "seats": "Seats",
+        "created": "Created",
+        "empty": "No tenants match your filters."
+      },
+      "create": {
+        "title": "Create tenant",
+        "subtitle": "Provisions a new tenant with its own Postgres schema and sends the first admin an activation email.",
+        "submit": "Create tenant",
+        "fields": {
+          "name": "Tenant name",
+          "adminEmail": "First admin email",
+          "adminFullName": "First admin full name",
+          "seatLimit": "Seat limit"
+        },
+        "placeholders": {
+          "name": "Acme Construction",
+          "adminEmail": "owner@acme.example",
+          "adminFullName": "Jane Doe",
+          "seatLimit": "e.g. 25"
+        },
+        "hints": {
+          "seatLimit": "Leave empty for unlimited seats. The first admin counts as one seat."
+        },
+        "errors": {
+          "nameTaken": "A tenant with this name already exists.",
+          "seatLimitInvalid": "Seat limit must be a positive integer."
+        }
+      },
+      "edit": {
+        "title": "Edit tenant",
+        "subtitle": "Rename the tenant, change its status, or adjust the seat cap.",
+        "submit": "Save changes",
+        "fields": {
+          "name": "Tenant name",
+          "status": "Status",
+          "seatLimit": "Seat limit"
+        },
+        "statuses": {
+          "active": "Active",
+          "suspended": "Suspended"
+        },
+        "hints": {
+          "seatLimit": "Current usage: {used}. Leave empty for unlimited seats."
+        },
+        "errors": {
+          "seatLimitInvalid": "Seat limit must be a positive integer.",
+          "seatLimitBelowUsage": "Seat limit cannot be lower than the current usage of {used}."
+        }
+      },
+      "detail": {
+        "back": "Back to tenants",
+        "editButton": "Edit",
+        "suspendButton": "Suspend",
+        "reactivateButton": "Reactivate",
+        "deleteButton": "Delete tenant",
+        "confirmDelete": "Delete tenant \"{name}\"? Its data and schema will be dropped. This cannot be undone.",
+        "suspend": {
+          "title": "Suspend tenant?",
+          "body": "Suspending \"{name}\" blocks all of its members from logging into the workspace and acting on tenant data. Super-admins keep full access. You can reactivate any time.",
+          "confirm": "Suspend tenant",
+          "cancel": "Cancel"
+        },
+        "reactivate": {
+          "title": "Reactivate tenant?",
+          "body": "Reactivating \"{name}\" restores access for its members.",
+          "confirm": "Reactivate tenant",
+          "cancel": "Cancel"
+        },
+        "loadError": "Could not load tenant.",
+        "tabs": {
+          "overview": "Overview",
+          "members": "Members",
+          "audit": "Audit log"
+        },
+        "overview": {
+          "title": "Overview",
+          "created": "Created",
+          "provisioned": "Provisioned",
+          "seatLimit": "Seat limit",
+          "seatUsed": "Seats in use",
+          "unlimited": "Unlimited"
+        },
+        "members": {
+          "inviteButton": "Invite member",
+          "loadError": "Could not load members."
+        },
+        "audit": {
+          "loadError": "Could not load audit log."
+        }
+      }
+    },
+    "members": {
+      "invite": {
+        "title": "Invite member",
+        "subtitle": "Sends an activation email if the user does not yet have an account.",
+        "submit": "Send invite",
+        "fields": {
+          "email": "Email",
+          "fullName": "Full name",
+          "isOrgAdmin": "Make this user a tenant admin"
+        },
+        "placeholders": {
+          "email": "name@example.com",
+          "fullName": "Jane Doe"
+        },
+        "errors": {
+          "seatLimitExceeded": "The tenant has no available seats. Raise the seat limit before inviting more members.",
+          "alreadyMember": "This user is already a member of the tenant."
+        }
+      },
+      "table": {
+        "user": "User",
+        "role": "Role",
+        "status": "Status",
+        "invited": "Invited",
+        "actions": "Actions",
+        "empty": "No members yet.",
+        "roleAdmin": "Admin",
+        "roleMember": "Member",
+        "statuses": {
+          "active": "Active",
+          "pending": "Pending",
+          "suspended": "Suspended",
+          "removed": "Removed"
+        },
+        "resendInvite": "Resend invite",
+        "promote": "Make admin",
+        "demote": "Revoke admin",
+        "suspend": "Suspend",
+        "reactivate": "Reactivate",
+        "remove": "Remove from tenant"
+      }
+    },
+    "users": {
+      "pageTitle": "Users",
+      "pageSubtitle": "Search across all users in the platform and toggle super-admin rights.",
+      "searchPlaceholder": "Search by email or name…",
+      "searchAria": "Search users",
+      "loadError": "Could not load users.",
+      "table": {
+        "user": "User",
+        "verified": "Verified",
+        "superuser": "Super admin",
+        "actions": "Actions",
+        "empty": "No users found.",
+        "verifiedYes": "Verified",
+        "verifiedNo": "Pending",
+        "superuserYes": "Super admin",
+        "superuserNo": "Standard",
+        "promote": "Promote",
+        "demote": "Demote"
+      }
+    },
+    "audit": {
+      "pageTitle": "Audit log",
+      "pageSubtitle": "Global audit trail across every tenant.",
+      "filterActionPlaceholder": "Filter by action…",
+      "filterActionAria": "Filter audit entries by action",
+      "filterResourcePlaceholder": "Filter by resource type…",
+      "filterResourceAria": "Filter audit entries by resource type",
+      "loadError": "Could not load audit log.",
+      "table": {
+        "when": "When",
+        "action": "Action",
+        "resource": "Resource",
+        "change": "Change",
+        "empty": "No audit entries match your filters."
+      }
+    }
   }
 }

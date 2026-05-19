@@ -13,17 +13,18 @@ import { useSidebar } from './SidebarContext';
 import { SidebarNavItem } from './SidebarNavItem';
 
 const itemDefinitions = [
-  { key: 'admin', icon: Shield, href: undefined },
-  { key: 'settings', icon: Settings, href: '/settings' },
-  { key: 'help', icon: HelpCircle, href: undefined },
+  { key: 'admin', icon: Shield, href: '/admin/organizations', requiresSuperuser: true },
+  { key: 'settings', icon: Settings, href: '/settings', requiresSuperuser: false },
+  { key: 'help', icon: HelpCircle, href: undefined, requiresSuperuser: false },
 ] as const;
 
 export function SidebarNav(): JSX.Element {
   const { collapsed } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
-  const { tokens, setTokens } = useAuth();
+  const { tokens, setTokens, me } = useAuth();
   const t = useTranslations('sidebar');
+  const isSuperuser = me?.user.is_superuser === true;
 
   const labels = {
     admin: t('adminConsole'),
@@ -62,9 +63,17 @@ export function SidebarNav(): JSX.Element {
           : 'flex flex-col gap-0.5 px-3 pb-1 pt-2'
       }
     >
-      {itemDefinitions.map(({ key, icon: Icon, href }) => {
+      {itemDefinitions.map(({ key, icon: Icon, href, requiresSuperuser }) => {
+        if (requiresSuperuser && !isSuperuser) return null;
+        // The admin link points at /admin/organizations but we want the whole
+        // /admin/* tree to show as active.
+        const adminPrefix = '/admin';
         const isActive =
-          href === undefined ? false : pathname === href || pathname.startsWith(`${href}/`);
+          href === undefined
+            ? false
+            : key === 'admin'
+              ? pathname === adminPrefix || pathname.startsWith(`${adminPrefix}/`)
+              : pathname === href || pathname.startsWith(`${href}/`);
 
         return (
           <SidebarNavItem

@@ -15,6 +15,7 @@ export function useNotificationSocket(accessToken: string | null): void {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldReconnect = useRef(false);
   const qc = useQueryClient();
 
   const invalidate = useCallback(() => {
@@ -24,11 +25,25 @@ export function useNotificationSocket(accessToken: string | null): void {
 
   useEffect(() => {
     if (accessToken === null) {
+      shouldReconnect.current = false;
+      reconnectAttempt.current = 0;
+      if (reconnectTimer.current !== null) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+      if (wsRef.current !== null) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
       return undefined;
     }
     const token: string = accessToken;
+    shouldReconnect.current = true;
 
     function openSocket(): void {
+      if (!shouldReconnect.current) {
+        return;
+      }
       const httpUrl = env.NEXT_PUBLIC_API_URL;
       const wsUrl = httpUrl.replace(/^http/, 'ws');
       const ws = new WebSocket(`${wsUrl}/ws/notifications?token=${token}`);
@@ -43,6 +58,9 @@ export function useNotificationSocket(accessToken: string | null): void {
       });
 
       ws.addEventListener('close', () => {
+        if (!shouldReconnect.current) {
+          return;
+        }
         const delay = Math.min(
           1000 * 2 ** reconnectAttempt.current,
           MAX_RECONNECT_DELAY,
@@ -59,6 +77,8 @@ export function useNotificationSocket(accessToken: string | null): void {
     openSocket();
 
     return () => {
+      shouldReconnect.current = false;
+      reconnectAttempt.current = 0;
       if (reconnectTimer.current !== null) {
         clearTimeout(reconnectTimer.current);
         reconnectTimer.current = null;

@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.cache import cache_response, CACHE_TTL_MODELS_LIST, CACHE_TTL_MODEL_DETAIL
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.project_file import ProjectFile
 from bimstitch_api.models.project_member import ProjectRole
@@ -87,6 +88,7 @@ async def create_model(
 @router.get("", response_model=list[ModelRead])
 async def list_models(
     project_id: UUID,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     status_filter: ModelStatus | None = Query(default=None, alias="status"),
@@ -102,6 +104,7 @@ async def list_models(
         stmt = stmt.where(Model.discipline == discipline)
     stmt = stmt.order_by(Model.created_at)
     result = await session.execute(stmt)
+    cache_response(response, CACHE_TTL_MODELS_LIST)
     return list(result.scalars().all())
 
 
@@ -109,6 +112,7 @@ async def list_models(
 async def get_model(
     project_id: UUID,
     model_id: UUID,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
 ) -> dict[str, object]:
@@ -125,6 +129,7 @@ async def get_model(
     if model is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MODEL_NOT_FOUND")
 
+    cache_response(response, CACHE_TTL_MODEL_DETAIL)
     data: dict[str, object] = ModelWithVersions.model_validate(
         {
             **{

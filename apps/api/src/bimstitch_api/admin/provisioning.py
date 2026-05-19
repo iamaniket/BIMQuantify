@@ -108,6 +108,7 @@ async def provision_organization(
     name: str,
     admin_email: str,
     admin_full_name: str | None,
+    seat_limit: int | None = None,
     requester: User,
     request: Request | None = None,
 ) -> ProvisionResult:
@@ -143,6 +144,7 @@ async def provision_organization(
                     name=name.strip(),
                     schema_name=schema,
                     status=OrganizationStatus.provisioning,
+                    seat_limit=seat_limit,
                 )
                 s.add(org)
         completed.add("master_row")
@@ -211,6 +213,7 @@ async def provision_organization(
                         "name": name,
                         "schema_name": schema,
                         "admin_email": admin_email,
+                        "seat_limit": seat_limit,
                     },
                     actor_user_id=requester.id,
                     organization_id=org_id,

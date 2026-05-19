@@ -6,6 +6,11 @@ const KNOWN_DETAILS: Record<string, string> = {
   LOGIN_USER_NOT_VERIFIED: 'Please verify your email before logging in.',
   VERIFY_USER_BAD_TOKEN: 'The verification link is invalid or has expired.',
   RESET_PASSWORD_BAD_TOKEN: 'The password-reset link is invalid or has expired.',
+  SEAT_LIMIT_EXCEEDED: 'Seat limit reached. Raise the limit or remove a member before inviting.',
+  SEAT_LIMIT_BELOW_USAGE: 'New seat limit is below the current usage.',
+  ORG_SUSPENDED: 'This workspace is suspended. Contact a super-admin to restore access.',
+  ORG_MEMBER_ALREADY_EXISTS: 'That user is already a member of this workspace.',
+  CANNOT_DEACTIVATE_SELF: 'You cannot deactivate your own account.',
 };
 
 const STATUS_MESSAGES: Record<number, string> = {

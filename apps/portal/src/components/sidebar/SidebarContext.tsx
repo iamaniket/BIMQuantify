@@ -16,6 +16,8 @@ type SidebarState = {
   toggle: () => void;
   setCollapsed: (v: boolean) => void;
   forceCollapsed: boolean;
+  hydrated: boolean;
+  transitionsReady: boolean;
 };
 
 const SidebarContext = createContext<SidebarState | null>(null);
@@ -30,6 +32,7 @@ type ProviderProps = {
 export function SidebarProvider({ children, forceCollapsed = false }: ProviderProps): JSX.Element {
   const [collapsed, setCollapsedRaw] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+  const [transitionsReady, setTransitionsReady] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -40,6 +43,17 @@ export function SidebarProvider({ children, forceCollapsed = false }: ProviderPr
     }
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    // Let the persisted width apply first, then enable transitions.
+    const frame = requestAnimationFrame(() => {
+      setTransitionsReady(true);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [hydrated]);
 
   const setCollapsed = useCallback((v: boolean) => {
     setCollapsedRaw(v);
@@ -56,13 +70,34 @@ export function SidebarProvider({ children, forceCollapsed = false }: ProviderPr
 
   const value = useMemo<SidebarState>(() => {
     if (!hydrated) {
-      return { collapsed: true, toggle: () => {}, setCollapsed: () => {}, forceCollapsed };
+      return {
+        collapsed: true,
+        toggle: () => {},
+        setCollapsed: () => {},
+        forceCollapsed,
+        hydrated: false,
+        transitionsReady: false,
+      };
     }
     if (forceCollapsed) {
-      return { collapsed: true, toggle: () => {}, setCollapsed: () => {}, forceCollapsed: true };
+      return {
+        collapsed: true,
+        toggle: () => {},
+        setCollapsed: () => {},
+        forceCollapsed: true,
+        hydrated: true,
+        transitionsReady: false,
+      };
     }
-    return { collapsed, toggle, setCollapsed, forceCollapsed: false };
-  }, [collapsed, forceCollapsed, hydrated, setCollapsed, toggle]);
+    return {
+      collapsed,
+      toggle,
+      setCollapsed,
+      forceCollapsed: false,
+      hydrated: true,
+      transitionsReady,
+    };
+  }, [collapsed, forceCollapsed, hydrated, setCollapsed, toggle, transitionsReady]);
 
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }

@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.cache import cache_response, CACHE_TTL_PROJECT_LIST, CACHE_TTL_PROJECT_DETAIL
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jurisdictions import find_instrument, supported_countries
 from bimstitch_api.jurisdictions import get as get_jurisdiction
@@ -281,6 +282,7 @@ async def create_project_with_thumbnail(
 
 @router.get("", response_model=list[ProjectRead])
 async def list_projects(
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     storage: StorageBackend = Depends(get_storage),
@@ -293,18 +295,21 @@ async def list_projects(
     stmt = stmt.order_by(Project.created_at)
     result = await session.execute(stmt)
     projects = list(result.scalars().all())
+    cache_response(response, CACHE_TTL_PROJECT_LIST)
     return [await _project_to_read(p, storage) for p in projects]
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
 async def get_project(
     project_id: UUID,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
     await _require_membership(session, project.id, user.id)
+    cache_response(response, CACHE_TTL_PROJECT_DETAIL)
     return await _project_to_read(project, storage)
 
 

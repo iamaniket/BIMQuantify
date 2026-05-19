@@ -21,7 +21,7 @@ from bimstitch_api.cache import get_redis_dep
 from bimstitch_api.cache.blocklist import revoke_jti
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_async_session
-from bimstitch_api.models.organization import Organization
+from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
@@ -31,6 +31,10 @@ from bimstitch_api.schemas.user import UserRead, UserUpdate
 
 LOGIN_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_login_per_min, seconds=60)
 FORGOT_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_forgot_per_hour, seconds=3600)
+# Kept for back-compat with conftest fixtures that disable rate limiters wholesale
+# even though the public /auth/register route is gone — admin invite still wants
+# a knob if we ever expose it.
+REGISTER_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_register_per_hour, seconds=3600)
 
 
 # ---------------------------------------------------------------------------
@@ -44,6 +48,8 @@ class OrgMembershipBrief(BaseModel):
     organization_status: str
     is_org_admin: bool
     member_status: str
+    seat_limit: int | None
+    seat_count_used: int
 
 
 class AuthMeResponse(BaseModel):
@@ -81,26 +87,39 @@ async def _ensure_active_organization(
     session: AsyncSession, user: User
 ) -> UUID | None:
     """If `users.active_organization_id` is unset (or points at a
-    no-longer-active membership), pick the user's earliest active
-    membership and set it as the default. Returns the chosen id.
+    no-longer-usable membership), pick the user's earliest active
+    membership in a non-suspended, non-deleted org. Returns the chosen id,
+    or None when the user has no usable org (all suspended/deleted).
     """
+    # Validate the current pointer: membership must be active AND the org
+    # must be available (not suspended, not deleted). This is the same
+    # check as `_verify_membership` in tenancy.py, kept inline here to
+    # avoid a circular import.
     if user.active_organization_id is not None:
-        # Verify the link is still valid.
-        stmt = select(OrganizationMember).where(
-            OrganizationMember.user_id == user.id,
-            OrganizationMember.organization_id == user.active_organization_id,
-            OrganizationMember.status == OrganizationMemberStatus.active,
+        stmt = (
+            select(OrganizationMember, Organization)
+            .join(Organization, Organization.id == OrganizationMember.organization_id)
+            .where(
+                OrganizationMember.user_id == user.id,
+                OrganizationMember.organization_id == user.active_organization_id,
+                OrganizationMember.status == OrganizationMemberStatus.active,
+                Organization.status == OrganizationStatus.active,
+                Organization.deleted_at.is_(None),
+            )
         )
         result = await session.execute(stmt)
-        if result.scalar_one_or_none() is not None:
+        if result.first() is not None:
             return user.active_organization_id
 
-    # Fall back to the earliest active membership.
+    # Fall back to the earliest membership in an available org.
     stmt = (
         select(OrganizationMember.organization_id)
+        .join(Organization, Organization.id == OrganizationMember.organization_id)
         .where(
             OrganizationMember.user_id == user.id,
             OrganizationMember.status == OrganizationMemberStatus.active,
+            Organization.status == OrganizationStatus.active,
+            Organization.deleted_at.is_(None),
         )
         .order_by(OrganizationMember.accepted_at.asc().nulls_last())
         .limit(1)
@@ -216,8 +235,31 @@ def build_auth_router() -> APIRouter:
             .order_by(Organization.name.asc())
         )
         result = await session.execute(stmt)
+        rows = result.all()
+
+        # Bulk seat-usage lookup so the sidebar can render "used / limit"
+        # without an extra round-trip per membership.
+        from sqlalchemy import func as _func
+
+        org_ids = [org.id for _m, org in rows]
+        seat_counts: dict[UUID, int] = {}
+        if org_ids:
+            seat_stmt = (
+                select(
+                    OrganizationMember.organization_id,
+                    _func.count(OrganizationMember.id),
+                )
+                .where(
+                    OrganizationMember.organization_id.in_(org_ids),
+                    OrganizationMember.status != OrganizationMemberStatus.removed,
+                )
+                .group_by(OrganizationMember.organization_id)
+            )
+            seat_result = await session.execute(seat_stmt)
+            seat_counts = {row[0]: int(row[1]) for row in seat_result.all()}
+
         memberships: list[OrgMembershipBrief] = []
-        for m, org in result.all():
+        for m, org in rows:
             memberships.append(
                 OrgMembershipBrief(
                     organization_id=org.id,
@@ -225,6 +267,8 @@ def build_auth_router() -> APIRouter:
                     organization_status=org.status.value,
                     is_org_admin=m.is_org_admin,
                     member_status=m.status.value,
+                    seat_limit=org.seat_limit,
+                    seat_count_used=seat_counts.get(org.id, 0),
                 )
             )
 
@@ -243,14 +287,27 @@ def build_auth_router() -> APIRouter:
         redis: Any = Depends(get_redis_dep),
     ) -> TokenPair:
         # Verify the requested org is one the user actually belongs to with
-        # an active membership. Checked inline (rather than via a
-        # dependency) because the org id arrives in the body, not the path.
-        stmt = select(OrganizationMember).where(
-            OrganizationMember.user_id == user.id,
-            OrganizationMember.organization_id == payload.organization_id,
-            OrganizationMember.status == OrganizationMemberStatus.active,
+        # an active membership AND the org is in a usable state. Checked
+        # inline (rather than via a dependency) because the org id arrives
+        # in the body, not the path.
+        stmt = (
+            select(OrganizationMember, Organization)
+            .join(Organization, Organization.id == OrganizationMember.organization_id)
+            .where(
+                OrganizationMember.user_id == user.id,
+                OrganizationMember.organization_id == payload.organization_id,
+                OrganizationMember.status == OrganizationMemberStatus.active,
+            )
         )
-        if (await session.execute(stmt)).scalar_one_or_none() is None:
+        row = (await session.execute(stmt)).first()
+        if row is not None:
+            _, target_org = row
+            if target_org.status == OrganizationStatus.suspended or target_org.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="ORG_SUSPENDED",
+                )
+        if row is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="ORG_MEMBERSHIP_REQUIRED",

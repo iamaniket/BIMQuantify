@@ -14,15 +14,17 @@ import { SidebarWorkspaceNav } from './SidebarWorkspaceNav';
 import { useSidebar } from './SidebarContext';
 
 export function Sidebar(): JSX.Element {
-  const { collapsed, forceCollapsed } = useSidebar();
+  const { collapsed, forceCollapsed, hydrated, transitionsReady } = useSidebar();
 
   return (
     <aside
       className="relative flex shrink-0 flex-col border-r border-white/12 bg-gradient-to-b from-[#2c5697] to-[#224579] text-white/[0.82] dark:from-[#1e3e72] dark:to-[#16315e]"
       style={{
         width: collapsed ? 51 : 232,
-        transition: 'width 220ms cubic-bezier(.4,0,.2,1)',
+        transition: transitionsReady ? 'width 220ms cubic-bezier(.4,0,.2,1)' : 'none',
+        // Disable animation during hydration to prevent unwanted opening/closing
       }}
+      data-hydrated={hydrated}
     >
       <TooltipProvider delayDuration={200}>
         {/* Account chip (top) with collapse toggle */}

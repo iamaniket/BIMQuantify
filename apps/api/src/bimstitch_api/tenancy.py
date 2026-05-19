@@ -89,8 +89,18 @@ async def _verify_membership(
             detail="ORG_MEMBERSHIP_REQUIRED",
         )
     membership, org = row
-    if org.status not in (OrganizationStatus.active, OrganizationStatus.suspended):
-        # provisioning / deleted — tenant schema is not safe to use
+    if org.status == OrganizationStatus.suspended or org.deleted_at is not None:
+        # Suspended (admin-paused) or soft-deleted — block all tenant access.
+        # The user can still hit /auth/me and /admin/* (super-admins only),
+        # but no tenant-scoped endpoint will resolve. Surfaced to the portal
+        # as a 403 with a distinct detail so the UI can render a banner
+        # rather than a generic "no membership" error.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="ORG_SUSPENDED",
+        )
+    if org.status != OrganizationStatus.active:
+        # provisioning, or any future non-usable status
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="ORG_NOT_AVAILABLE",

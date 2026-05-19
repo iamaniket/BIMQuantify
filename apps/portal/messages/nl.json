@@ -72,7 +72,11 @@
     "workspace": "Werkruimte",
     "projects": "Projecten",
     "bblLibrary": "BBL-bibliotheek",
-    "wkbLibrary": "Wkb-bibliotheek"
+    "wkbLibrary": "Wkb-bibliotheek",
+    "tenant": {
+      "label": "Tenant",
+      "seats": "seats"
+    }
   },
   "projects": {
     "statuses": {
@@ -582,5 +586,188 @@
     "install": "Installeren",
     "dismiss": "Niet nu",
     "iosHint": "Tik op iOS op het deel-icoon en kies “Zet op beginscherm”."
+  },
+  "admin": {
+    "common": {
+      "eyebrowSuperAdmin": "Superbeheerder"
+    },
+    "organizations": {
+      "pageTitle": "Tenants",
+      "pageSubtitle": "Maak nieuwe tenants aan, wijs zetels toe en beheer hun levenscyclus.",
+      "searchPlaceholder": "Tenants zoeken…",
+      "searchAria": "Tenants zoeken",
+      "statusFilterAria": "Filter tenants op status",
+      "statusFilters": {
+        "all": "Alle statussen",
+        "active": "Actief",
+        "suspended": "Geschorst",
+        "provisioning": "In opbouw"
+      },
+      "createButton": "Nieuwe tenant",
+      "loadError": "Tenants konden niet worden geladen.",
+      "status": {
+        "active": "Actief",
+        "suspended": "Geschorst",
+        "deleted": "Verwijderd",
+        "provisioning": "In opbouw"
+      },
+      "table": {
+        "name": "Tenant",
+        "status": "Status",
+        "seats": "Zetels",
+        "created": "Aangemaakt",
+        "empty": "Geen tenants gevonden voor deze filters."
+      },
+      "create": {
+        "title": "Tenant aanmaken",
+        "subtitle": "Maakt een nieuwe tenant aan met eigen Postgres-schema en stuurt de eerste beheerder een activatiemail.",
+        "submit": "Tenant aanmaken",
+        "fields": {
+          "name": "Tenantnaam",
+          "adminEmail": "E-mail eerste beheerder",
+          "adminFullName": "Volledige naam eerste beheerder",
+          "seatLimit": "Zetellimiet"
+        },
+        "placeholders": {
+          "name": "Acme Bouw",
+          "adminEmail": "owner@acme.example",
+          "adminFullName": "Jan Jansen",
+          "seatLimit": "bv. 25"
+        },
+        "hints": {
+          "seatLimit": "Laat leeg voor onbeperkt aantal zetels. De eerste beheerder telt als één zetel."
+        },
+        "errors": {
+          "nameTaken": "Er bestaat al een tenant met deze naam.",
+          "seatLimitInvalid": "Zetellimiet moet een positief geheel getal zijn."
+        }
+      },
+      "edit": {
+        "title": "Tenant bewerken",
+        "subtitle": "Hernoem de tenant, wijzig de status of pas de zetellimiet aan.",
+        "submit": "Wijzigingen opslaan",
+        "fields": {
+          "name": "Tenantnaam",
+          "status": "Status",
+          "seatLimit": "Zetellimiet"
+        },
+        "statuses": {
+          "active": "Actief",
+          "suspended": "Geschorst"
+        },
+        "hints": {
+          "seatLimit": "Huidig gebruik: {used}. Laat leeg voor onbeperkt aantal zetels."
+        },
+        "errors": {
+          "seatLimitInvalid": "Zetellimiet moet een positief geheel getal zijn.",
+          "seatLimitBelowUsage": "Zetellimiet kan niet lager zijn dan het huidige gebruik van {used}."
+        }
+      },
+      "detail": {
+        "back": "Terug naar tenants",
+        "editButton": "Bewerken",
+        "deleteButton": "Tenant verwijderen",
+        "confirmDelete": "Tenant \"{name}\" verwijderen? De data en het schema worden onomkeerbaar verwijderd.",
+        "loadError": "Tenant kon niet worden geladen.",
+        "tabs": {
+          "overview": "Overzicht",
+          "members": "Leden",
+          "audit": "Audit-log"
+        },
+        "overview": {
+          "title": "Overzicht",
+          "created": "Aangemaakt",
+          "provisioned": "Opgeleverd",
+          "seatLimit": "Zetellimiet",
+          "seatUsed": "Zetels in gebruik",
+          "unlimited": "Onbeperkt"
+        },
+        "members": {
+          "inviteButton": "Lid uitnodigen",
+          "loadError": "Leden konden niet worden geladen."
+        },
+        "audit": {
+          "loadError": "Audit-log kon niet worden geladen."
+        }
+      }
+    },
+    "members": {
+      "invite": {
+        "title": "Lid uitnodigen",
+        "subtitle": "Stuurt een activatiemail als de gebruiker nog geen account heeft.",
+        "submit": "Uitnodiging versturen",
+        "fields": {
+          "email": "E-mail",
+          "fullName": "Volledige naam",
+          "isOrgAdmin": "Maak deze gebruiker tenantbeheerder"
+        },
+        "placeholders": {
+          "email": "naam@voorbeeld.nl",
+          "fullName": "Jan Jansen"
+        },
+        "errors": {
+          "seatLimitExceeded": "De tenant heeft geen vrije zetels meer. Verhoog de zetellimiet voordat je nieuwe leden uitnodigt.",
+          "alreadyMember": "Deze gebruiker is al lid van de tenant."
+        }
+      },
+      "table": {
+        "user": "Gebruiker",
+        "role": "Rol",
+        "status": "Status",
+        "invited": "Uitgenodigd",
+        "actions": "Acties",
+        "empty": "Nog geen leden.",
+        "roleAdmin": "Beheerder",
+        "roleMember": "Lid",
+        "statuses": {
+          "active": "Actief",
+          "pending": "In afwachting",
+          "suspended": "Geschorst",
+          "removed": "Verwijderd"
+        },
+        "resendInvite": "Uitnodiging opnieuw versturen",
+        "promote": "Beheerder maken",
+        "demote": "Beheerderrechten intrekken",
+        "suspend": "Schorsen",
+        "reactivate": "Heractiveren",
+        "remove": "Uit tenant verwijderen"
+      }
+    },
+    "users": {
+      "pageTitle": "Gebruikers",
+      "pageSubtitle": "Zoek over alle gebruikers in het platform en wissel superbeheerderrechten.",
+      "searchPlaceholder": "Zoek op e-mail of naam…",
+      "searchAria": "Gebruikers zoeken",
+      "loadError": "Gebruikers konden niet worden geladen.",
+      "table": {
+        "user": "Gebruiker",
+        "verified": "Geverifieerd",
+        "superuser": "Superbeheerder",
+        "actions": "Acties",
+        "empty": "Geen gebruikers gevonden.",
+        "verifiedYes": "Geverifieerd",
+        "verifiedNo": "In afwachting",
+        "superuserYes": "Superbeheerder",
+        "superuserNo": "Standaard",
+        "promote": "Promoveren",
+        "demote": "Degraderen"
+      }
+    },
+    "audit": {
+      "pageTitle": "Audit-log",
+      "pageSubtitle": "Globaal audit-spoor over alle tenants.",
+      "filterActionPlaceholder": "Filter op actie…",
+      "filterActionAria": "Audit-regels filteren op actie",
+      "filterResourcePlaceholder": "Filter op resource type…",
+      "filterResourceAria": "Audit-regels filteren op resource type",
+      "loadError": "Audit-log kon niet worden geladen.",
+      "table": {
+        "when": "Wanneer",
+        "action": "Actie",
+        "resource": "Resource",
+        "change": "Verandering",
+        "empty": "Geen audit-regels gevonden voor deze filters."
+      }
+    }
   }
 }

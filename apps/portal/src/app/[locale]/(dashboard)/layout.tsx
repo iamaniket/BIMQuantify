@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from '@/i18n/navigation';
+import { usePathname, useRouter } from '@/i18n/navigation';
 import { useEffect, type JSX, type ReactNode } from 'react';
 
 import { AppHeaderProvider } from '@/components/header/AppHeaderContext';
@@ -17,8 +17,10 @@ type Props = {
 
 export default function DashboardLayout({ children }: Props): JSX.Element {
   const router = useRouter();
+  const pathname = usePathname();
   const { tokens, hasHydrated } = useAuth();
   useNotificationSocket(tokens === null ? null : tokens.access_token);
+  const hideFooterOnProjects = pathname === '/projects' || pathname.startsWith('/projects/');
 
   useEffect(() => {
     if (hasHydrated && tokens === null) {
@@ -39,7 +41,7 @@ export default function DashboardLayout({ children }: Props): JSX.Element {
             <AppHeaderRoute />
             <div className="flex min-h-0 flex-1 flex-col">
               <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
-              <DashboardFooter />
+              {hideFooterOnProjects ? null : <DashboardFooter />}
             </div>
           </div>
         </div>

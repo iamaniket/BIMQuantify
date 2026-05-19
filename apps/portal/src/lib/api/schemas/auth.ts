@@ -37,6 +37,8 @@ export const OrgMembershipBriefSchema = z.object({
   organization_status: z.string(),
   is_org_admin: z.boolean(),
   member_status: z.string(),
+  seat_limit: z.union([z.number().int(), z.null()]),
+  seat_count_used: z.number().int(),
 });
 
 export type OrgMembershipBrief = z.infer<typeof OrgMembershipBriefSchema>;

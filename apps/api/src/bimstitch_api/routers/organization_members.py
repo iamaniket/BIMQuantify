@@ -16,6 +16,7 @@ from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.admin.seats import assert_seat_available
 from bimstitch_api.auth.dependencies import require_org_admin
 from bimstitch_api.auth.manager import UserManager, get_user_manager
 from bimstitch_api.db import get_async_session
@@ -110,6 +111,28 @@ async def invite_member(
     stmt = select(User).where(func.lower(User.email) == normalized)
     existing = (await session.execute(stmt)).scalar_one_or_none()
 
+    # Look up an existing membership (if any) BEFORE creating the user, so we
+    # can short-circuit on duplicates without leaving an orphan user row.
+    existing_m = None
+    if existing is not None:
+        existing_member_q = await session.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.user_id == existing.id,
+                OrganizationMember.organization_id == organization_id,
+            )
+        )
+        existing_m = existing_member_q.scalar_one_or_none()
+        if existing_m is not None and existing_m.status != OrganizationMemberStatus.removed:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="ORG_MEMBER_ALREADY_EXISTS",
+            )
+
+    # Seat-cap check. A fresh invite or a re-activation of a `removed` member
+    # would consume a seat; the count excludes removed rows so the check is
+    # accurate at this point.
+    await assert_seat_available(session, org)
+
     activation_required = False
     if existing is None:
         # Fresh user — create via UserManager so the verify-email side
@@ -132,20 +155,6 @@ async def invite_member(
         activation_required = True
     else:
         target_user = existing
-
-    # Check we're not re-inviting an already-active member
-    existing_member = await session.execute(
-        select(OrganizationMember).where(
-            OrganizationMember.user_id == target_user.id,
-            OrganizationMember.organization_id == organization_id,
-        )
-    )
-    existing_m = existing_member.scalar_one_or_none()
-    if existing_m is not None and existing_m.status != OrganizationMemberStatus.removed:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="ORG_MEMBER_ALREADY_EXISTS",
-        )
 
     # Re-use a removed row if present; else insert fresh
     if existing_m is not None:
