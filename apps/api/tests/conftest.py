@@ -49,9 +49,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         disable_rls_statements,
         enable_rls_statements,
     )
-    from sqlalchemy import MetaData as _MetaData
-
-    from bimstitch_api.db import MasterBase, TenantBase
+    from bimstitch_api.db import Base
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
@@ -72,21 +70,6 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         Risk,
         User,
     )
-
-    # The conftest legacy creates EVERY table in `public`. With schema-per-tenant
-    # this is no longer correct — tenant tables belong in per-org schemas — but
-    # rebuilding the test fixtures is a follow-up. As a stopgap, compose both
-    # metadatas into a single one so existing tests can still create-all in
-    # public until conftest is properly reworked for the new layout.
-    _combined = _MetaData()
-    for src in (MasterBase.metadata, TenantBase.metadata):
-        for table in src.tables.values():
-            table.to_metadata(_combined)
-
-    class _BaseShim:
-        metadata = _combined
-
-    Base = _BaseShim  # type: ignore[assignment, misc]
 
     eng = create_async_engine(_TEST_DB_URL, future=True)
 
@@ -229,11 +212,12 @@ def _stub_job_dispatcher() -> Generator[list[dict[str, object]], None, None]:
 
     calls: list[dict[str, object]] = []
 
-    async def _record(job: Job, _settings: Settings) -> None:
+    async def _record(job: Job, _settings: Settings, organization_id) -> None:
         payload = dict(job.payload or {})
         entry: dict[str, object] = {
             "job_id": str(job.id),
             "job_type": job.job_type.value,
+            "organization_id": str(organization_id),
             "payload": payload,
         }
         # Convenience flat keys for tests that read e.g. calls[0]["file_id"].

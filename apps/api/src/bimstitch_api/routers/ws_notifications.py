@@ -33,11 +33,15 @@ async def ws_notifications(ws: WebSocket, token: str = Query(...)) -> None:
             await session.execute(select(User).where(User.id == decoded.user_id))
         ).scalar_one_or_none()
 
-    if user is None or user.organization_id is None:
+    if user is None:
         await ws.close(code=4001, reason="user_not_found")
         return
 
-    org_id = user.organization_id
+    # Active org for the WS subscription comes from the JWT, not the user row.
+    if decoded.active_organization_id is None:
+        await ws.close(code=4001, reason="no_active_organization")
+        return
+    org_id = decoded.active_organization_id
     manager = get_manager()
     await manager.connect(ws, org_id)
 

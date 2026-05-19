@@ -10,6 +10,8 @@ import { getConfig, QUEUE_NAME } from '../config.js';
 export type WorkerJob = {
   job_id: string;
   job_type: 'ifc_extraction' | 'pdf_extraction' | 'compliance_report';
+  // Routing key for the API's schema-per-tenant layout — echoed back in callbacks.
+  organization_id: string;
   payload: Record<string, unknown>;
 };
 

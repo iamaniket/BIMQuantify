@@ -13,6 +13,10 @@ export type ReportCallbackStatus = 'running' | 'ready' | 'failed';
 
 export type ReportCallbackPayload = {
   report_id: string;
+  // Schema-per-tenant routing key. The worker receives it on the dispatch
+  // envelope from the API and echoes it back so the API can resolve the
+  // tenant schema for the write.
+  organization_id: string;
   job_id: string;
   status: ReportCallbackStatus;
   storage_key?: string;

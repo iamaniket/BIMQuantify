@@ -49,7 +49,7 @@ from bimstitch_api.schemas.project_file import (
 )
 from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.storage.minio import ObjectNotFoundError
-from bimstitch_api.tenancy import get_tenant_session
+from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +227,7 @@ async def complete_upload(
     file_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> ProjectFile:
@@ -277,7 +278,6 @@ async def complete_upload(
             model.primary_file_type = row.file_type
 
         pdf_job = Job(
-            organization_id=project.organization_id,
             project_id=project.id,
             file_id=row.id,
             job_type=JobType.pdf_extraction,
@@ -293,7 +293,7 @@ async def complete_upload(
         await session.flush()
 
         try:
-            await dispatch_job(pdf_job, settings)
+            await dispatch_job(pdf_job, settings, active_org_id)
         except DispatchJobError as exc:
             row.extraction_status = ExtractionStatus.failed
             row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
@@ -318,7 +318,6 @@ async def complete_upload(
             model.primary_file_type = row.file_type
 
         ifc_job = Job(
-            organization_id=project.organization_id,
             project_id=project.id,
             file_id=row.id,
             job_type=JobType.ifc_extraction,
@@ -334,7 +333,7 @@ async def complete_upload(
         await session.flush()
 
         try:
-            await dispatch_job(ifc_job, settings)
+            await dispatch_job(ifc_job, settings, active_org_id)
         except DispatchJobError as exc:
             row.extraction_status = ExtractionStatus.failed
             row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
@@ -410,6 +409,7 @@ async def retry_extraction(
     file_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     settings: Settings = Depends(get_settings),
 ) -> ProjectFile:
     """Re-dispatch extraction for a file whose previous attempt failed.
@@ -441,7 +441,6 @@ async def retry_extraction(
     row.extraction_finished_at = None
 
     retry_job = Job(
-        organization_id=project.organization_id,
         project_id=project.id,
         file_id=row.id,
         job_type=retry_job_type,
@@ -458,7 +457,7 @@ async def retry_extraction(
     await session.flush()
 
     try:
-        await dispatch_job(retry_job, settings)
+        await dispatch_job(retry_job, settings, active_org_id)
     except DispatchJobError as exc:
         row.extraction_status = ExtractionStatus.failed
         row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]

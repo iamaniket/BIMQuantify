@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { type JSX } from 'react';
 
 import { useModels } from '@/features/models/useModels';
+import { OrgSwitcher } from '@/features/organizations/OrgSwitcher';
 import { useProject } from '@/features/projects/useProject';
 import { usePathname } from '@/i18n/navigation';
 
@@ -89,7 +90,12 @@ export function AppHeaderRoute(): JSX.Element {
       crumbs={crumbs}
       status={status}
       action={null}
-      rightSlot={<NotificationsBell />}
+      rightSlot={
+        <>
+          <OrgSwitcher />
+          <NotificationsBell />
+        </>
+      }
     />
   );
 }

@@ -17,19 +17,21 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.db import get_async_session
 from bimstitch_api.jobs import require_worker_secret
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimstitch_api.models.notification import NotificationEventType
+from bimstitch_api.models.organization import Organization
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile, ProjectFileStatus
 from bimstitch_api.models.report import _REPORT_TERMINAL, Report, ReportStatus
 from bimstitch_api.notifications.service import create_notification, publish_notification
 from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
 from bimstitch_api.schemas.report import ReportCallbackRequest, ReportResponse
 from bimstitch_api.storage import StorageBackend, get_storage
+from bimstitch_api.tenancy import schema_name_for
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,29 @@ _VALID_INCOMING = {
 }
 
 
+async def _set_tenant_schema(session: AsyncSession, organization_id: UUID) -> str:
+    """Verify the org id from a worker callback exists, then set search_path
+    so subsequent tenant-table operations resolve in that org's schema.
+
+    The worker is trusted (shared-secret auth), but we still check the org
+    exists to avoid silently writing to a non-existent schema if the worker
+    sends a bogus id.
+    """
+    schema = schema_name_for(organization_id)
+    # Sanity-check the schema name maps to an existing org row.
+    exists = (
+        await session.execute(
+            select(Organization.id).where(Organization.id == organization_id)
+        )
+    ).scalar_one_or_none()
+    if exists is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND"
+        )
+    await session.execute(text(f'SET search_path TO "{schema}", public'))
+    return schema
+
+
 @router.post("/callback", response_model=ProjectFileRead)
 async def extraction_callback(
     payload: ExtractionCallbackRequest,
@@ -61,6 +86,7 @@ async def extraction_callback(
         )
 
     async with session.begin():
+        await _set_tenant_schema(session, payload.organization_id)
         row = await _load_file(session, payload.file_id)
 
         if row.extraction_status in _TERMINAL:
@@ -200,16 +226,10 @@ async def _emit_notification(
         snippet = (payload.error or "unknown error")[:200]
         body = f"{filename} extraction failed: {snippet}"
 
-    # Resolve the org id and create the notification inside one transaction.
-    # `_resolve_org_id` issues a SELECT which auto-begins, so we use that
-    # auto-begun transaction as the unit of work instead of an explicit
-    # `session.begin()` (which would conflict with the auto-begin).
-    org_id = job.organization_id if job is not None else await _resolve_org_id(session, file)
-    if org_id is None:
-        return
+    # search_path is already set by the outer callback to the tenant
+    # schema, so the notification insert lands in the right place.
     notification = await create_notification(
         session,
-        organization_id=org_id,
         event_type=event_type,
         title=title,
         body=body,
@@ -219,21 +239,7 @@ async def _emit_notification(
     )
     await session.commit()
 
-    await publish_notification(notification)
-
-
-async def _resolve_org_id(session: AsyncSession, file: ProjectFile) -> UUID | None:
-    from bimstitch_api.models.model import Model
-    from bimstitch_api.models.project import Project
-
-    row = (
-        await session.execute(
-            select(Project.organization_id)
-            .join(Model, Model.project_id == Project.id)
-            .where(Model.id == file.model_id)
-        )
-    ).scalar_one_or_none()
-    return row
+    await publish_notification(notification, organization_id=payload.organization_id)
 
 
 async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
@@ -266,6 +272,7 @@ async def report_callback(
     tenant context). Idempotent on terminal statuses.
     """
     async with session.begin():
+        await _set_tenant_schema(session, payload.organization_id)
         report = (
             await session.execute(select(Report).where(Report.id == payload.report_id))
         ).scalar_one_or_none()
@@ -357,7 +364,6 @@ async def report_callback(
         bodies = body_map.get(locale, body_map["en"])
         notification = await create_notification(
             session,
-            organization_id=report.organization_id,
             event_type=event_type,
             title=titles[payload.status],
             body=bodies[payload.status],
@@ -366,7 +372,7 @@ async def report_callback(
             job_id=payload.job_id,
         )
         await session.commit()
-        await publish_notification(notification)
+        await publish_notification(notification, organization_id=payload.organization_id)
 
     await session.refresh(report)
     return report

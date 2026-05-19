@@ -51,4 +51,5 @@ class AccessRequest(TimestampMixin, MasterBase):
         Index("ix_access_requests_work_email", "work_email"),
         Index("ix_access_requests_status", "status"),
         Index("ix_access_requests_created_at", "created_at"),
+        {"schema": "public"},
     )

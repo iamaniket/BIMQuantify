@@ -1,4 +1,26 @@
 {
+  "org": {
+    "switcher": {
+      "label": "Wissel van organisatie",
+      "empty": "Geen actieve organisatie",
+      "adminBadge": "Beheerder"
+    }
+  },
+  "activate": {
+    "title": "Activeer uw account",
+    "subtitle": "Stel een wachtwoord in om uw BimStitch-account te activeren.",
+    "field": {
+      "password": "Nieuw wachtwoord",
+      "passwordConfirm": "Bevestig wachtwoord"
+    },
+    "cta": "Account activeren",
+    "errors": {
+      "tokenMissing": "Activatielink mist het token. Gebruik de link uit uw uitnodigingsmail.",
+      "passwordMismatch": "Wachtwoorden komen niet overeen.",
+      "activationFailed": "Activatie mislukt. De link is mogelijk verlopen — vraag uw beheerder de uitnodiging opnieuw te versturen."
+    },
+    "success": "Account geactiveerd. U kunt nu inloggen."
+  },
   "settings": {
     "pageTitle": "Instellingen",
     "pageSubtitle": "Beheer hier nu het uiterlijk en houd een vaste plek vrij voor persoonlijke voorkeuren terwijl het portaal groeit.",

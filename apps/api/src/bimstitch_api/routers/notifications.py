@@ -12,7 +12,7 @@ from bimstitch_api.schemas.notification import (
     NotificationOut,
     UnreadCountResponse,
 )
-from bimstitch_api.tenancy import get_tenant_session
+from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -23,6 +23,7 @@ async def list_notifications(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> NotificationListResponse:
     is_read_expr = exists(
         select(NotificationRead.notification_id).where(
@@ -51,7 +52,7 @@ async def list_notifications(
     items = [
         NotificationOut(
             id=row.Notification.id,
-            organization_id=row.Notification.organization_id,
+            organization_id=active_org_id,
             project_id=row.Notification.project_id,
             file_id=row.Notification.file_id,
             job_id=row.Notification.job_id,

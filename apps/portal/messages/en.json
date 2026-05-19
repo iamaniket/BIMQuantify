@@ -1,4 +1,26 @@
 {
+  "org": {
+    "switcher": {
+      "label": "Switch organization",
+      "empty": "No active organization",
+      "adminBadge": "Admin"
+    }
+  },
+  "activate": {
+    "title": "Activate your account",
+    "subtitle": "Set a password to finish activating your BimStitch account.",
+    "field": {
+      "password": "New password",
+      "passwordConfirm": "Confirm password"
+    },
+    "cta": "Activate account",
+    "errors": {
+      "tokenMissing": "Activation link is missing the token. Please use the link from your invitation email.",
+      "passwordMismatch": "Passwords do not match.",
+      "activationFailed": "Activation failed. The link may have expired — ask your admin to resend the invite."
+    },
+    "success": "Account activated. You can sign in now."
+  },
   "settings": {
     "pageTitle": "Settings",
     "pageSubtitle": "Manage appearance now and keep a dedicated place for personal preferences as the portal grows.",

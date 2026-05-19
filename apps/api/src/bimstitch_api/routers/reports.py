@@ -43,7 +43,7 @@ from bimstitch_api.schemas.report import (
     ReportResponse,
 )
 from bimstitch_api.storage import StorageBackend, get_storage
-from bimstitch_api.tenancy import get_tenant_session
+from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +166,7 @@ async def create_report(
     payload: ReportCreateRequest,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> ReportResponse:
@@ -202,7 +203,6 @@ async def create_report(
 
     # Create Report first so we have its ID for the worker's storage key.
     report = Report(
-        organization_id=project.organization_id,
         project_id=project.id,
         report_type=ReportType.compliance_report,
         status=ReportStatus.queued,
@@ -217,7 +217,7 @@ async def create_report(
 
     # Compose the worker payload. Stateless: everything the worker needs to
     # render lives here, no API roundtrip required from the worker.
-    storage_key = f"reports/{project.organization_id}/{project.id}/{report.id}.pdf"
+    storage_key = f"reports/{active_org_id}/{project.id}/{report.id}.pdf"
     worker_payload: dict[str, object] = {
         "report_id": str(report.id),
         "storage_key": storage_key,
@@ -229,7 +229,6 @@ async def create_report(
     }
 
     job = Job(
-        organization_id=project.organization_id,
         project_id=project.id,
         job_type=JobType.compliance_report,
         status=JobStatus.pending,
@@ -244,7 +243,7 @@ async def create_report(
     # Dispatch — keep within the tenant transaction so partial state never
     # ships. On failure mark both rows failed; the transaction commits cleanly.
     try:
-        await dispatch_job(job, settings)
+        await dispatch_job(job, settings, active_org_id)
     except DispatchJobError as exc:
         msg = f"DISPATCH_FAILED: {exc}"[:500]
         report.status = ReportStatus.failed
@@ -263,7 +262,6 @@ async def create_report(
         # after `get_tenant_session` commits.
         notification = await create_notification(
             session,
-            organization_id=project.organization_id,
             event_type=NotificationEventType.job_started,
             title=title,
             body=_compliance_report_notification_body(locale),
@@ -278,7 +276,7 @@ async def create_report(
         # don't depend on Redis being live; the production path will see the
         # notification in DB regardless of whether the publish lands.
         try:
-            await publish_notification(notification)
+            await publish_notification(notification, organization_id=active_org_id)
         except Exception:
             logger.warning(
                 "Failed to publish job_started notification for report %s",

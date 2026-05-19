@@ -12,6 +12,9 @@ import { enqueueJob } from '../queue/queue.js';
 const JobBody = z.object({
   job_id: z.string().uuid(),
   job_type: z.enum(['ifc_extraction', 'pdf_extraction', 'compliance_report']),
+  // Schema-per-tenant routing key — the worker echoes it back in callbacks
+  // so the API can resolve which `org_<hex>` schema to write to.
+  organization_id: z.string().uuid(),
   payload: z.record(z.unknown()),
 });
 

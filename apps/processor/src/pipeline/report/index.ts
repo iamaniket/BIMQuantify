@@ -70,6 +70,7 @@ export async function runComplianceReport(job: WorkerJob): Promise<void> {
     logger.error({ jobId: job.job_id, issues: parsed.error.issues }, 'invalid report payload');
     await postReportCallback({
       report_id: typeof job.payload['report_id'] === 'string' ? job.payload['report_id'] : '',
+      organization_id: job.organization_id,
       job_id: job.job_id,
       status: 'failed',
       error: msg,
@@ -83,6 +84,7 @@ export async function runComplianceReport(job: WorkerJob): Promise<void> {
 
   await postReportCallback({
     report_id: payload.report_id,
+    organization_id: job.organization_id,
     job_id: job.job_id,
     status: 'running',
     started_at: startedAt,
@@ -105,6 +107,7 @@ export async function runComplianceReport(job: WorkerJob): Promise<void> {
 
     await postReportCallback({
       report_id: payload.report_id,
+      organization_id: job.organization_id,
       job_id: job.job_id,
       status: 'ready',
       storage_key: payload.storage_key,
@@ -118,6 +121,7 @@ export async function runComplianceReport(job: WorkerJob): Promise<void> {
     logger.error({ err, reportId: payload.report_id }, 'compliance report generation failed');
     await postReportCallback({
       report_id: payload.report_id,
+      organization_id: job.organization_id,
       job_id: job.job_id,
       status: 'failed',
       error: message.slice(0, 500),

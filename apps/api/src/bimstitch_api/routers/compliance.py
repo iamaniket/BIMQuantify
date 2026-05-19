@@ -112,7 +112,6 @@ async def check_compliance(
 
     job = Job(
         id=uuid4(),
-        organization_id=project.organization_id,
         project_id=project.id,
         file_id=pf.id,
         job_type=JobType.compliance_check,

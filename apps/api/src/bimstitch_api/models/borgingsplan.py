@@ -10,11 +10,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
+# `User` lives in MasterBase's registry; cross-registry relationships must
+# pass the class directly (string lookup is per-registry).
+from bimstitch_api.models.user import User
 
 if TYPE_CHECKING:
     from bimstitch_api.models.borgingsmoment import Borgingsmoment
     from bimstitch_api.models.project import Project
-    from bimstitch_api.models.user import User
 
 
 class BorgingsplanStatus(StrEnum):
@@ -56,7 +58,7 @@ class Borgingsplan(TimestampMixin, TenantBase):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     project: Mapped["Project"] = relationship()
-    created_by: Mapped["User"] = relationship(foreign_keys=[created_by_user_id])
+    created_by: Mapped[User] = relationship(User, foreign_keys=[created_by_user_id])
     moments: Mapped[list["Borgingsmoment"]] = relationship(
         "Borgingsmoment",
         back_populates="plan",

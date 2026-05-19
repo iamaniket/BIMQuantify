@@ -79,6 +79,10 @@ class ViewerBundleResponse(BaseModel):
 
 class ExtractionCallbackRequest(BaseModel):
     file_id: UUID
+    # `organization_id` is the schema-per-tenant routing key — the worker
+    # echoes it from the dispatch envelope so the API knows which tenant
+    # schema to write to.
+    organization_id: UUID
     # Allow `running` so the extractor can announce it has started, plus the
     # two terminal states. `queued` and `not_started` are not valid here — the
     # API owns those transitions.

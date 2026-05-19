@@ -18,6 +18,7 @@ class User(SQLAlchemyBaseUserTableUUID, MasterBase):
     """
 
     __tablename__ = "users"
+    __table_args__ = {"schema": "public"}
 
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
@@ -27,7 +28,7 @@ class User(SQLAlchemyBaseUserTableUUID, MasterBase):
     # active membership if currently NULL.
     active_organization_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="SET NULL"),
+        ForeignKey("public.organizations.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

@@ -36,7 +36,6 @@ async def create_contractor(
     user: User = Depends(current_verified_user),
 ) -> Contractor:
     contractor = Contractor(
-        organization_id=user.organization_id,
         name=payload.name,
         kvk_number=payload.kvk_number,
         contact_email=payload.contact_email,

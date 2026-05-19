@@ -10,12 +10,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
+# `User` lives in MasterBase's registry; cross-registry relationships must
+# pass the class directly (string lookup is per-registry).
+from bimstitch_api.models.user import User
 
 if TYPE_CHECKING:
     from bimstitch_api.models.borgingsplan import Borgingsplan
     from bimstitch_api.models.checklist_item import ChecklistItem
     from bimstitch_api.models.project import Project
-    from bimstitch_api.models.user import User
 
 
 class BorgingsmomentPhase(StrEnum):
@@ -87,7 +89,7 @@ class Borgingsmoment(TimestampMixin, TenantBase):
 
     plan: Mapped["Borgingsplan"] = relationship(back_populates="moments")
     project: Mapped["Project"] = relationship()
-    responsible: Mapped["User | None"] = relationship(foreign_keys=[responsible_user_id])
+    responsible: Mapped[User | None] = relationship(User, foreign_keys=[responsible_user_id])
     checklist_items: Mapped[list["ChecklistItem"]] = relationship(
         "ChecklistItem",
         back_populates="moment",

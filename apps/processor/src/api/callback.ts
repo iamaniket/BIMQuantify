@@ -5,6 +5,10 @@ export type CallbackStatus = 'running' | 'succeeded' | 'failed';
 
 export type CallbackPayload = {
   file_id: string;
+  // Schema-per-tenant routing key. The worker receives it on the dispatch
+  // envelope from the API and echoes it back so the API can resolve the
+  // tenant schema for the write.
+  organization_id: string;
   job_id?: string;
   status: CallbackStatus;
   fragments_key?: string;

@@ -24,6 +24,7 @@ class Organization(MasterBase):
     """
 
     __tablename__ = "organizations"
+    __table_args__ = {"schema": "public"}
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)

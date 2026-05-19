@@ -11,6 +11,10 @@ from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jurisdictions import find_instrument, supported_countries
 from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.models.contractor import Contractor
+from bimstitch_api.models.organization_member import (
+    OrganizationMember,
+    OrganizationMemberStatus,
+)
 from bimstitch_api.models.project import (
     ConsequenceClass,
     Project,
@@ -27,7 +31,7 @@ from bimstitch_api.schemas.project import (
     ProjectUpdate,
 )
 from bimstitch_api.storage import StorageBackend, get_storage
-from bimstitch_api.tenancy import get_tenant_session
+from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -108,20 +112,19 @@ def _validate_instrument(instrument_id: str | None, country: str | None) -> None
         )
 
 
-async def _validate_contractor_belongs_to_org(
-    session: AsyncSession, contractor_id: UUID | None, organization_id: UUID
+async def _validate_contractor_exists(
+    session: AsyncSession, contractor_id: UUID | None
 ) -> None:
-    """RLS already filters across orgs, but a non-matching contractor_id resolves
-    to None — surface that as a 400 with a clear error so the caller knows the
-    FK is invalid in their tenant context."""
+    """Surface a 400 if the contractor isn't in the current tenant schema.
+    Cross-tenant isolation is enforced by the schema namespace itself —
+    contractors in another org's schema are inaccessible to this session,
+    so a non-matching id just returns nothing.
+    """
     if contractor_id is None:
         return
     found = (
         await session.execute(
-            select(Contractor.id).where(
-                Contractor.id == contractor_id,
-                Contractor.organization_id == organization_id,
-            )
+            select(Contractor.id).where(Contractor.id == contractor_id)
         )
     ).scalar_one_or_none()
     if found is None:
@@ -194,12 +197,9 @@ async def create_project(
     _validate_country(payload.country)
     _validate_consequence_class(payload.consequence_class, payload.country)
     _validate_instrument(payload.instrument_id, payload.country)
-    await _validate_contractor_belongs_to_org(
-        session, payload.contractor_id, user.organization_id
-    )
+    await _validate_contractor_exists(session, payload.contractor_id)
 
     project = Project(
-        organization_id=user.organization_id,
         owner_id=user.id,
         **payload.model_dump(),
     )
@@ -260,7 +260,6 @@ async def create_project_with_thumbnail(
         await storage.put_object(thumbnail_key, content_type, data)
 
     project = Project(
-        organization_id=user.organization_id,
         name=name,
         description=description if description else None,
         thumbnail_url=thumbnail_key,
@@ -336,9 +335,7 @@ async def update_project(
         target_country = updates.get("country", project.country)
         _validate_instrument(updates["instrument_id"], target_country)
     if "contractor_id" in updates:
-        await _validate_contractor_belongs_to_org(
-            session, updates["contractor_id"], project.organization_id
-        )
+        await _validate_contractor_exists(session, updates["contractor_id"])
     for field, value in updates.items():
         setattr(project, field, value)
     try:
@@ -425,6 +422,7 @@ async def add_member(
     payload: ProjectMemberCreate,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> ProjectMember:
     project = await _load_project_or_404(session, project_id)
     caller = await _require_membership(session, project.id, user.id)
@@ -438,13 +436,21 @@ async def add_member(
             status_code=status.HTTP_400_BAD_REQUEST, detail="OWNER_ROLE_NOT_ASSIGNABLE"
         )
 
-    # Same-org invariant. RLS prevents reading users from other orgs, so a
-    # cross-org user_id resolves to None here — surface as a 400, not 404, so
-    # the caller knows the user exists conceptually but not in their tenant.
-    target_org = (
-        await session.execute(select(User.organization_id).where(User.id == payload.user_id))
+    # Same-org invariant: the target user must have an active membership in
+    # the current org. We can read `organization_members` even from a tenant
+    # session because master tables fall through search_path to `public`,
+    # and RLS on `organization_members` is scoped via `app.current_org_id`
+    # which `get_tenant_session` already set.
+    membership_exists = (
+        await session.execute(
+            select(OrganizationMember.id).where(
+                OrganizationMember.user_id == payload.user_id,
+                OrganizationMember.organization_id == active_org_id,
+                OrganizationMember.status == OrganizationMemberStatus.active,
+            )
+        )
     ).scalar_one_or_none()
-    if target_org is None or target_org != project.organization_id:
+    if membership_exists is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="USER_NOT_IN_PROJECT_ORG"
         )

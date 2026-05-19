@@ -2,7 +2,6 @@ from collections.abc import AsyncGenerator
 
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyUserDatabase
-from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -10,33 +9,44 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.schema import Table
 
 from bimstitch_api.config import get_settings
 
+MASTER_SCHEMA = "public"
 
-class MasterBase(DeclarativeBase):
-    """Declarative base for identity/master tables that always live in the
-    `public` schema.
 
-    Members: User, Organization, OrganizationMember, AccessRequest, AuditLog.
+class Base(DeclarativeBase):
+    """Single declarative base shared between master and tenant tables.
+
+    Two reasons for sharing rather than splitting into two bases:
+    - Cross-registry `relationship()` resolution doesn't work: a tenant
+      table cannot easily refer to a master table (like User) by string
+      or class when the two live in separate `MetaData` registries.
+    - Alembic can still keep separate chains for master vs tenant by
+      filtering on `Table.schema` in each env's `include_object` callback;
+      see `alembic/master/env.py` and `alembic/tenant/env.py`.
+
+    Convention:
+    - Master tables (identity layer) set `__table_args__ = {"schema":
+      "public"}` (or `(*existing, {"schema": "public"})` when other
+      args are present).
+    - Tenant tables leave `__table_args__` schema-less. At runtime
+      `get_tenant_session` sets `search_path = "org_<hex>", public` so
+      unqualified tenant tables resolve to the active org's schema.
     """
 
-    metadata = MetaData(schema="public")
 
-
-class TenantBase(DeclarativeBase):
-    """Declarative base for tenant-scoped tables.
-
-    These tables exist in every per-org schema (`org_<uuid_hex>`). The base
-    intentionally has NO `schema` on its metadata: at runtime the tables are
-    resolved through Postgres `search_path` set by `get_tenant_session`.
-
-    Members: Project, ProjectMember, Model, ProjectFile, Job, Report,
-    Contractor, Notification, NotificationRead, Risk, Borgingsplan,
-    Borgingsmoment, ChecklistItem.
+def is_master_table(table: Table) -> bool:
+    """Master tables live in the `public` schema. Tenant tables have no schema
+    set on their Table object — they get materialised into per-org schemas at
+    runtime. Used by both Alembic envs to filter the metadata they manage.
     """
+    return table.schema == MASTER_SCHEMA
 
-    metadata = MetaData()
+
+def is_tenant_table(table: Table) -> bool:
+    return table.schema is None
 
 
 _engine: AsyncEngine | None = None
@@ -67,15 +77,14 @@ def get_admin_engine() -> AsyncEngine:
     """Elevated engine used only for `CREATE SCHEMA` / `DROP SCHEMA` and
     per-tenant Alembic runs. Falls back to the regular `database_url` when
     `admin_database_url` is unset (dev convenience — `bim` is already a
-    superuser there)."""
+    superuser there).
+    """
     global _admin_engine
     if _admin_engine is None:
         settings = get_settings()
         url = settings.admin_database_url or settings.database_url
-        # `isolation_level='AUTOCOMMIT'` is required because CREATE SCHEMA /
-        # DROP SCHEMA must not run inside a transaction block when also
-        # invoking `command.upgrade(...)` against the new schema in the same
-        # connection.
+        # AUTOCOMMIT so `CREATE SCHEMA` / `DROP SCHEMA` don't deadlock with
+        # the synchronous Alembic command that follows in the saga.
         _admin_engine = create_async_engine(url, future=True, isolation_level="AUTOCOMMIT")
     return _admin_engine
 
@@ -100,3 +109,9 @@ async def get_user_db(
     from bimstitch_api.models.user import User
 
     yield SQLAlchemyUserDatabase(session, User)
+
+
+# Back-compat exports: keep MasterBase/TenantBase as aliases so any code that
+# already imported them keeps working. New code can use `Base` directly.
+MasterBase = Base
+TenantBase = Base

@@ -91,7 +91,6 @@ class ProjectUpdate(BaseModel):
 
 class ProjectRead(ProjectBase):
     id: UUID
-    organization_id: UUID
     owner_id: UUID
     lifecycle_state: ProjectLifecycleState
     created_at: datetime

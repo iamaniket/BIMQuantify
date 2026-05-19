@@ -44,12 +44,12 @@ class OrganizationMember(MasterBase):
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("public.users.id", ondelete="CASCADE"),
         nullable=False,
     )
     organization_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("public.organizations.id", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -70,7 +70,7 @@ class OrganizationMember(MasterBase):
 
     invited_by: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("public.users.id", ondelete="SET NULL"),
         nullable=True,
     )
     invited_at: Mapped[datetime] = mapped_column(
@@ -106,4 +106,5 @@ class OrganizationMember(MasterBase):
             "status",
             postgresql_where=text("status = 'active'"),
         ),
+        {"schema": "public"},
     )

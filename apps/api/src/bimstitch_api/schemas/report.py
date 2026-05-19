@@ -72,6 +72,10 @@ class ReportCallbackRequest(BaseModel):
     """
 
     report_id: UUID
+    # `organization_id` is the schema-per-tenant routing key — the worker
+    # echoes it from the dispatch envelope so the API knows which tenant
+    # schema the Report row lives in.
+    organization_id: UUID
     job_id: UUID
     status: Literal["running", "ready", "failed"]
     storage_key: str | None = None

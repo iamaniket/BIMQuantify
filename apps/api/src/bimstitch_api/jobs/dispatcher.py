@@ -17,6 +17,7 @@ import hmac
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Annotated
+from uuid import UUID
 
 import httpx
 from fastapi import Depends, Header, HTTPException, status
@@ -36,13 +37,16 @@ class DispatchJobError(Exception):
     """Raised when the API cannot reach (or post to) the processor worker."""
 
 
-JobDispatcher = Callable[[Job, Settings], Awaitable[None]]
+JobDispatcher = Callable[[Job, Settings, UUID], Awaitable[None]]
 
 
-async def _http_dispatch(job: Job, settings: Settings) -> None:
+async def _http_dispatch(job: Job, settings: Settings, organization_id: UUID) -> None:
+    # `organization_id` is on the envelope, not inside `payload`, so the
+    # worker knows which tenant schema to address in its callback.
     body = {
         "job_id": str(job.id),
         "job_type": job.job_type.value,
+        "organization_id": str(organization_id),
         "payload": dict(job.payload or {}),
     }
     headers = {"Authorization": f"Bearer {settings.processor_shared_secret}"}
@@ -81,13 +85,18 @@ def get_job_dispatcher() -> JobDispatcher:
     return _dispatcher
 
 
-async def dispatch_job(job: Job, settings: Settings) -> None:
+async def dispatch_job(
+    job: Job,
+    settings: Settings,
+    organization_id: UUID,
+) -> None:
     """Hand a Job off to the processor worker. Raises DispatchJobError on failure.
 
-    The Job's `payload` JSONB is the contract with the worker; the worker
-    dispatches on `job.job_type` and validates `payload` per type.
+    The Job's `payload` JSONB is the type-specific contract; `organization_id`
+    is the tenant-schema routing key that the worker echoes back in its
+    callback so the API can resolve which `org_<hex>` schema to write to.
     """
-    await _dispatcher(job, settings)
+    await _dispatcher(job, settings, organization_id)
 
 
 # ---------------------------------------------------------------------------

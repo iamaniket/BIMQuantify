@@ -31,14 +31,14 @@ class AuditLog(MasterBase):
     # Actor — null for anonymous events (e.g. failed login with unknown email).
     user_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("public.users.id", ondelete="SET NULL"),
         nullable=True,
     )
 
     # Org context — null for cross-org / platform events.
     organization_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="SET NULL"),
+        ForeignKey("public.organizations.id", ondelete="SET NULL"),
         nullable=True,
     )
 
@@ -74,4 +74,5 @@ class AuditLog(MasterBase):
         Index("ix_audit_user_time", "user_id", "created_at"),
         Index("ix_audit_resource", "resource_type", "resource_id"),
         Index("ix_audit_action_time", "action", "created_at"),
+        {"schema": "public"},
     )

@@ -4,17 +4,23 @@ from uuid import UUID
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
 from fastapi_users.db import SQLAlchemyUserDatabase
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from bimstitch_api.config import get_settings
-from bimstitch_api.db import get_session_maker, get_user_db
+from bimstitch_api.db import get_user_db
 from bimstitch_api.email.transport import get_email_transport
-from bimstitch_api.models.organization import Organization
 from bimstitch_api.models.user import User
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
+    """User manager hooks.
+
+    Public signup is gone — `on_after_register` is no longer wired to
+    `/auth/register` (the route is removed). It is still used by the
+    admin invite flow, which calls `user_manager.create(...)` directly:
+    when a fresh user is created via invite, we trigger
+    `request_verify()` so they receive an activation email.
+    """
+
     reset_password_token_secret = ""
     verification_token_secret = ""
 
@@ -23,25 +29,34 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         settings = get_settings()
         self.reset_password_token_secret = settings.jwt_secret
         self.verification_token_secret = settings.jwt_secret
+        # Bump verify-token lifetime for admin invites — the default 1h
+        # is too short when an admin invites a colleague.
+        self.verification_token_lifetime_seconds = settings.invite_token_ttl_seconds
 
     async def on_after_register(self, user: User, request: Request | None = None) -> None:
-        organization_name = self._pop_organization_name(request)
-        if organization_name:
-            await self._link_to_organization(user, organization_name)
+        # Admin-invite flow: send activation email so the invited user can
+        # set a password. The /auth/register HTTP route is gone, so this
+        # only fires from explicit user_manager.create() calls inside
+        # admin endpoints.
         await self.request_verify(user, request)
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Request | None = None
     ) -> None:
         settings = get_settings()
-        verify_url = f"{settings.frontend_verify_url}?token={token}"
+        # Admin invites go to the activate URL (set-password page); the
+        # legacy verify URL is kept as a fallback for the existing email
+        # template when the user already had a verified account.
+        activate_url = f"{settings.frontend_activate_url}?token={token}"
         body = (
             f"Hi {user.full_name or user.email},\n\n"
-            f"Confirm your BIMstitch account: {verify_url}\n\n"
+            f"Activate your BIMstitch account and set your password: {activate_url}\n\n"
             f"Token: {token}\n"
         )
         await get_email_transport().send(
-            to=user.email, subject="Verify your BIMstitch account", body=body
+            to=user.email,
+            subject="Activate your BIMstitch account",
+            body=body,
         )
 
     async def on_after_forgot_password(
@@ -54,39 +69,10 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             f"Reset link: {reset_url}\n\nToken: {token}\n"
         )
         await get_email_transport().send(
-            to=user.email, subject="Reset your BIMstitch password", body=body
+            to=user.email,
+            subject="Reset your BIMstitch password",
+            body=body,
         )
-
-    @staticmethod
-    def _pop_organization_name(request: Request | None) -> str | None:
-        if request is None:
-            return None
-        raw = getattr(request.state, "organization_name", None)
-        if isinstance(raw, str) and raw.strip():
-            return raw.strip()
-        return None
-
-    async def _link_to_organization(self, user: User, name: str) -> None:
-        async with get_session_maker()() as session:
-            result = await session.execute(select(Organization).where(Organization.name == name))
-            organization = result.scalar_one_or_none()
-            if organization is None:
-                organization = Organization(name=name)
-                session.add(organization)
-                try:
-                    await session.flush()
-                except IntegrityError:
-                    await session.rollback()
-                    result = await session.execute(
-                        select(Organization).where(Organization.name == name)
-                    )
-                    organization = result.scalar_one()
-
-            db_user = await session.get(User, user.id)
-            if db_user is not None:
-                db_user.organization_id = organization.id
-            user.organization_id = organization.id
-            await session.commit()
 
 
 async def get_user_manager(

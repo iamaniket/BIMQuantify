@@ -63,6 +63,7 @@ export async function runPdfExtraction(job: WorkerJob): Promise<void> {
 
   await postCallback({
     file_id: payload.file_id,
+    organization_id: job.organization_id,
     job_id: job.job_id,
     status: 'running',
     started_at: startedAt,
@@ -93,6 +94,7 @@ export async function runPdfExtraction(job: WorkerJob): Promise<void> {
 
     await postCallback({
       file_id: payload.file_id,
+      organization_id: job.organization_id,
       job_id: job.job_id,
       status: 'succeeded',
       metadata_key: metadataKey,
@@ -108,6 +110,7 @@ export async function runPdfExtraction(job: WorkerJob): Promise<void> {
     logger.error({ err, payload }, 'PDF extraction failed');
     await postCallback({
       file_id: payload.file_id,
+      organization_id: job.organization_id,
       job_id: job.job_id,
       status: 'failed',
       error: message.slice(0, 500),

@@ -71,6 +71,7 @@ export async function runExtraction(job: WorkerJob): Promise<void> {
 
   await postCallback({
     file_id: payload.file_id,
+    organization_id: job.organization_id,
     job_id: job.job_id,
     status: 'running',
     started_at: startedAt,
@@ -117,6 +118,7 @@ export async function runExtraction(job: WorkerJob): Promise<void> {
 
     await postCallback({
       file_id: payload.file_id,
+      organization_id: job.organization_id,
       job_id: job.job_id,
       status: 'succeeded',
       fragments_key: fragmentsKey,
@@ -138,6 +140,7 @@ export async function runExtraction(job: WorkerJob): Promise<void> {
     logger.error({ err, payload }, 'extraction failed');
     await postCallback({
       file_id: payload.file_id,
+      organization_id: job.organization_id,
       job_id: job.job_id,
       status: 'failed',
       error: message.slice(0, 500),
