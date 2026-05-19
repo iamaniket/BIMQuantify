@@ -12,6 +12,7 @@ import { ApiError } from '@/lib/api/client';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { ProjectCard } from './ProjectCard';
+import type { StatusFilter } from './ProjectStatusFilter';
 import { useProjects } from './useProjects';
 
 const SKELETON_COUNT = 6;
@@ -36,9 +37,10 @@ function ProjectSkeleton(): JSX.Element {
 
 type ProjectListProps = {
   search: string;
+  statusFilter: StatusFilter;
 };
 
-export function ProjectList({ search }: ProjectListProps): JSX.Element {
+export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Element {
   const router = useRouter();
   const { setTokens } = useAuth();
   const query = useProjects();
@@ -95,7 +97,7 @@ export function ProjectList({ search }: ProjectListProps): JSX.Element {
   }
 
   const term = search.trim().toLowerCase();
-  const filtered = term.length === 0
+  const searchFiltered = term.length === 0
     ? projects
     : projects.filter((p) => {
       const haystacks: (string | null)[] = [
@@ -107,12 +109,24 @@ export function ProjectList({ search }: ProjectListProps): JSX.Element {
       );
     });
 
+  const filtered = statusFilter === 'all'
+    ? searchFiltered
+    : statusFilter === 'archived'
+      ? searchFiltered.filter((p) => p.lifecycle_state === 'archived')
+      : searchFiltered.filter(
+        (p) => p.lifecycle_state === 'active' && p.status === statusFilter,
+      );
+
   if (filtered.length === 0) {
     return (
       <EmptyState
         icon={Search}
         title="No matching projects"
-        description={`No projects match "${search}". Try a different search.`}
+        description={
+          term.length === 0
+            ? 'No projects match the selected filter.'
+            : `No projects match "${search}". Try a different search.`
+        }
         action={undefined}
         className={undefined}
       />

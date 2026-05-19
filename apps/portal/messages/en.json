@@ -55,11 +55,11 @@
   "projects": {
     "statuses": {
       "planning": "Planning",
-      "ontwerp": "Design",
-      "vergunning": "Permit",
-      "uitvoering": "Execution",
-      "oplevering": "Delivery",
-      "gereed": "Completed",
+      "design": "Design",
+      "permit_review": "Permit review",
+      "construction": "Construction",
+      "handover": "Handover",
+      "complete": "Completed",
       "on_hold": "On hold"
     },
     "phases": {
@@ -73,6 +73,11 @@
     "card": {
       "phaseLabel": "Phase:",
       "permitLabel": "Permit:"
+    },
+    "filters": {
+      "all": "All",
+      "archived": "Archived",
+      "ariaLabel": "Filter projects by status"
     }
   },
   "projectDetail": {
