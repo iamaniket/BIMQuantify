@@ -73,37 +73,37 @@ export function ProjectDetailHeader({
   }
 
   return (
-    <div className="relative flex min-h-[11.5rem] shrink-0 flex-col gap-5 overflow-hidden bg-white px-6 py-6 text-black dark:bg-black dark:text-white xl:flex-row xl:items-center xl:gap-6">
+    <div className="relative shrink-0 overflow-hidden bg-white px-4 py-4 text-black dark:bg-black dark:text-white sm:px-6 sm:py-5">
       <BlueprintTexture />
 
-      <div className="relative z-10 h-32 w-full overflow-hidden rounded-2xl border border-black/10 bg-black/5 shadow-[0_16px_40px_rgba(0,0,0,0.10)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_16px_40px_rgba(0,0,0,0.22)] xl:h-36 xl:w-60 xl:shrink-0">
-        {project.thumbnail_url !== null ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={project.thumbnail_url}
-            alt={`${project.name} thumbnail`}
-            className="h-full w-full object-cover"
-          />
-        ) : aerialUrl !== null ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={aerialUrl}
-            alt={`${project.name} map preview`}
-            className="h-full w-full object-cover"
-            onError={() => setAerialFailed(true)}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center gap-3 bg-gradient-to-br from-black/5 via-black/2 to-black/10 dark:from-white/12 dark:via-white/6 dark:to-black/10">
-            <Building2 className="h-10 w-10 text-black/40 dark:text-white/70" />
-            <Layers className="h-7 w-7 text-black/20 dark:text-white/40" />
-            <Ruler className="h-6 w-6 text-black/20 dark:text-white/40" />
-          </div>
-        )}
-      </div>
+      <div className="relative z-10 grid gap-4 xl:grid-cols-[15rem_minmax(0,1fr)_minmax(22rem,38rem)] xl:items-center">
+        <div className="h-28 w-full overflow-hidden rounded-2xl border border-black/10 bg-black/5 shadow-[0_22px_56px_rgba(0,0,0,0.18)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_24px_60px_rgba(0,0,0,0.38)] sm:h-32 xl:h-36 xl:w-60">
+          {project.thumbnail_url !== null ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={project.thumbnail_url}
+              alt={`${project.name} thumbnail`}
+              className="h-full w-full object-cover"
+            />
+          ) : aerialUrl !== null ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={aerialUrl}
+              alt={`${project.name} map preview`}
+              className="h-full w-full object-cover"
+              onError={() => setAerialFailed(true)}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center gap-3 bg-gradient-to-br from-black/5 via-black/2 to-black/10 dark:from-white/12 dark:via-white/6 dark:to-black/10">
+              <Building2 className="h-10 w-10 text-black/40 dark:text-white/70" />
+              <Layers className="h-7 w-7 text-black/20 dark:text-white/40" />
+              <Ruler className="h-6 w-6 text-black/20 dark:text-white/40" />
+            </div>
+          )}
+        </div>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
         {/* Project identity */}
-        <div className="flex min-w-0 flex-1 items-center pr-12 xl:pr-0">
+        <div className="flex min-w-0 items-center pr-10 xl:pr-0">
           <div className="min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-black dark:text-white">
@@ -128,7 +128,7 @@ export function ProjectDetailHeader({
                 </>
               )}
             </div>
-            <h1 className="text-[30px] font-medium leading-tight tracking-tight text-black dark:text-white">
+            <h1 className="text-[28px] font-medium leading-tight tracking-tight text-black dark:text-white sm:text-[30px]">
               {project.name}
             </h1>
             <div className="mt-1 flex flex-wrap gap-3.5 text-body3 text-black/70 dark:text-white/85">
@@ -166,7 +166,7 @@ export function ProjectDetailHeader({
         </div>
 
         {/* KPIs */}
-        <div className="relative w-full pr-12 xl:max-w-[44rem] xl:-translate-x-[10%] xl:pr-0">
+        <div className="relative w-full pr-10 xl:max-w-none xl:pr-0">
           <KpiStrip
             items={[
               { label: 'Wkb score', value: `${overall}%`, color: '#2f7a4b', sub: wkbSub },

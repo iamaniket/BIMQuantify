@@ -408,5 +408,29 @@
       "returnTitle": "Teruggave en verwijdering",
       "returnBody": "Na beëindiging van de hoofdovereenkomst worden persoonsgegevens op verzoek teruggegeven of veilig verwijderd, behoudens wettelijke bewaarplichten zoals de 10-jaarsbewaring voor Wkb-dossiers."
     }
+  },
+  "documentToolbar": {
+    "searchPlaceholder": "Zoeken in document…",
+    "searchLabel": "Zoeken in document",
+    "searchEmpty": "Geen resultaten",
+    "searchRunning": "Zoeken…",
+    "searchMatchCount": "{matches} matches op {pages} pagina's",
+    "searchMatchCountOne": "1 match op 1 pagina",
+    "searchPrev": "Vorige match",
+    "searchNext": "Volgende match",
+    "searchClose": "Zoekopdracht wissen"
+  },
+  "dashboardFooter": {
+    "privacy": "Privacy",
+    "terms": "Voorwaarden",
+    "dpa": "Verwerkersovereenkomst",
+    "copyright": "© {year} BIMstitch"
+  },
+  "pwaInstall": {
+    "promptTitle": "BIMstitch installeren",
+    "promptBody": "Voeg toe aan je beginscherm voor full-screen inspecties, offline gebruik en sneller starten.",
+    "install": "Installeren",
+    "dismiss": "Niet nu",
+    "iosHint": "Tik op iOS op het deel-icoon en kies “Zet op beginscherm”."
   }
 }

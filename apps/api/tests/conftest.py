@@ -32,6 +32,14 @@ os.environ.setdefault("SMTP_PORT", "1025")
 _TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6380/1")
 os.environ["REDIS_URL"] = _TEST_REDIS_URL
 
+# Pin the processor shared secret to the value hardcoded in the internal-callback
+# tests (test_jobs.py, test_project_files.py, test_project_files_extraction.py,
+# test_reports_endpoint.py all send `Bearer dev-shared-secret-change-me`).
+# Without this, a developer `.env` that sets PROCESSOR_SHARED_SECRET to anything
+# else causes all internal callback tests to 401. Env vars win over `.env` in
+# pydantic-settings, so this is enough to make the suite reproducible.
+os.environ["PROCESSOR_SHARED_SECRET"] = "dev-shared-secret-change-me"
+
 
 @pytest.fixture(scope="session")
 async def engine() -> AsyncGenerator[AsyncEngine, None]:

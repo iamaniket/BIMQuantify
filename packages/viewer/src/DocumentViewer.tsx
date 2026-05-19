@@ -27,6 +27,11 @@ export type DocumentLoadedInfo = {
 export type DocumentActiveTool = 'select' | 'pan' | 'zoom';
 export type DocumentRotation = 0 | 90 | 180 | 270;
 
+export type DocumentSearchHit = {
+  pageIndex: number; // 1-indexed
+  matchesOnPage: number;
+};
+
 export type DocumentViewerHandle = {
   zoomIn(): void;
   zoomOut(): void;
@@ -40,6 +45,13 @@ export type DocumentViewerHandle = {
   actualSize(): void;
   /** Rotate by ±90°. */
   rotateBy(deg: 90 | -90): void;
+  /**
+   * Case-insensitive search across all pages. Returns the list of pages that
+   * contain the query, with match counts. Empty / whitespace query returns [].
+   * Note: returns page hits only — no in-page highlight rendering (text-layer
+   * highlighting is a separate, expensive pipeline we haven't built yet).
+   */
+  searchText(query: string): Promise<DocumentSearchHit[]>;
 };
 
 export type DocumentViewerProps = {
@@ -89,6 +101,10 @@ function DocumentViewerInner(
   const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
   const pageRef = useRef<pdfjsLib.PDFPageProxy | null>(null);
   const [doc, setDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  // Mirror of `doc` for imperative handle access without stale closures.
+  const docRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+  // Per-document text cache so repeated searches don't re-fetch text content.
+  const pageTextCacheRef = useRef<Map<number, string>>(new Map());
   const [unscaledViewport, setUnscaledViewport] = useState<{
     width: number;
     height: number;
@@ -125,6 +141,13 @@ function DocumentViewerInner(
     | null
   >(null);
 
+  // Active touch pointers, used to detect two-finger pinch. We only track
+  // pointerType === 'touch' here; mouse pan/drag stays on dragRef.
+  const touchPointsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  // Baseline pinch distance + scale captured when the gesture started.
+  // Null whenever fewer than 2 touch pointers are active.
+  const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
+
   // ---- Load the PDF ----
   useEffect(() => {
     let cancelled = false;
@@ -143,6 +166,8 @@ function DocumentViewerInner(
           return;
         }
         loaded = newDoc;
+        docRef.current = newDoc;
+        pageTextCacheRef.current.clear();
         setDoc(newDoc);
         onLoadedRef.current?.({ numPages: newDoc.numPages });
       } catch (err) {
@@ -164,10 +189,50 @@ function DocumentViewerInner(
       if (loaded !== null) {
         loaded.destroy().catch(() => undefined);
       }
+      docRef.current = null;
+      pageTextCacheRef.current.clear();
       setDoc(null);
       setUnscaledViewport(null);
     };
   }, [fileUrl]);
+
+  // ---- Imperative full-text search across all pages ----
+  const searchText = useCallback(async (query: string): Promise<DocumentSearchHit[]> => {
+    const trimmed = query.trim();
+    const d = docRef.current;
+    if (trimmed.length === 0 || d === null) return [];
+    const needle = trimmed.toLowerCase();
+    const hits: DocumentSearchHit[] = [];
+
+    for (let i = 1; i <= d.numPages; i += 1) {
+      let pageText = pageTextCacheRef.current.get(i);
+      if (pageText === undefined) {
+        try {
+          const page = await d.getPage(i);
+          const content = await page.getTextContent();
+          // pdf.js TextItem has `str`; ignore TextMarkedContent items.
+          pageText = content.items
+            .map((item) => ('str' in item ? item.str : ''))
+            .join(' ')
+            .toLowerCase();
+          pageTextCacheRef.current.set(i, pageText);
+        } catch {
+          pageText = '';
+          pageTextCacheRef.current.set(i, pageText);
+        }
+      }
+      // Count overlapping-free occurrences.
+      if (pageText.length === 0) continue;
+      let count = 0;
+      let idx = pageText.indexOf(needle);
+      while (idx !== -1) {
+        count += 1;
+        idx = pageText.indexOf(needle, idx + needle.length);
+      }
+      if (count > 0) hits.push({ pageIndex: i, matchesOnPage: count });
+    }
+    return hits;
+  }, []);
 
   // ---- Render the active page when page/scale/rotation/doc change ----
   useEffect(() => {
@@ -311,8 +376,9 @@ function DocumentViewerInner(
         const next = rotateDelta(rotationRef.current, deg);
         onRotationChangeRef.current?.(next);
       },
+      searchText: (query) => searchText(query),
     }),
-    [setScalePreserveOrigin, fitToViewport],
+    [setScalePreserveOrigin, fitToViewport, searchText],
   );
 
   // ---- Wheel: Ctrl/Meta zooms toward cursor; otherwise default scroll. ----
@@ -372,6 +438,21 @@ function DocumentViewerInner(
 
   const handlePointerDown = useCallback(
     (ev: ReactPointerEvent<HTMLDivElement>): void => {
+      if (ev.pointerType === 'touch') {
+        touchPointsRef.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        if (touchPointsRef.current.size === 2) {
+          const [a, b] = Array.from(touchPointsRef.current.values());
+          // Non-null: size === 2 guarantees both exist, but the compiler
+          // doesn't track that. Hoist the assertions so the math is readable.
+          if (a !== undefined && b !== undefined) {
+            const dist = Math.hypot(b.x - a.x, b.y - a.y);
+            pinchRef.current = { startDistance: dist, startScale: scaleRef.current };
+            // Cancel any in-flight pan-drag the first touch may have started.
+            dragRef.current = null;
+          }
+        }
+        return;
+      }
       const isMiddle = ev.button === 1;
       const isLeftPanTool = ev.button === 0 && activeTool === 'pan';
       if (!isMiddle && !isLeftPanTool) return;
@@ -383,6 +464,22 @@ function DocumentViewerInner(
 
   const handlePointerMove = useCallback(
     (ev: ReactPointerEvent<HTMLDivElement>): void => {
+      if (ev.pointerType === 'touch' && touchPointsRef.current.has(ev.pointerId)) {
+        touchPointsRef.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        const pinch = pinchRef.current;
+        if (pinch !== null && touchPointsRef.current.size >= 2) {
+          const [a, b] = Array.from(touchPointsRef.current.values());
+          if (a !== undefined && b !== undefined) {
+            const dist = Math.hypot(b.x - a.x, b.y - a.y);
+            if (dist > 0 && pinch.startDistance > 0) {
+              const next = clampScale(pinch.startScale * (dist / pinch.startDistance));
+              const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+              setScalePreserveOrigin(next, mid);
+            }
+          }
+          return;
+        }
+      }
       const drag = dragRef.current;
       const el = containerRef.current;
       if (!drag || !drag.active || !el) return;
@@ -391,10 +488,16 @@ function DocumentViewerInner(
       el.scrollLeft = drag.scrollLeft - dx;
       el.scrollTop = drag.scrollTop - dy;
     },
-    [],
+    [setScalePreserveOrigin],
   );
 
   const endDrag = useCallback((ev: ReactPointerEvent<HTMLDivElement>): void => {
+    if (ev.pointerType === 'touch') {
+      touchPointsRef.current.delete(ev.pointerId);
+      if (touchPointsRef.current.size < 2) {
+        pinchRef.current = null;
+      }
+    }
     const drag = dragRef.current;
     const el = containerRef.current;
     if (!drag || !el) return;
@@ -404,7 +507,6 @@ function DocumentViewerInner(
       // ignore
     }
     dragRef.current = null;
-    void ev;
   }, []);
 
   // ---- Click-zoom (Zoom tool) ----

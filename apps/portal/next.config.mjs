@@ -35,9 +35,20 @@ const nextConfig = {
   },
 };
 
+// Pin the release to the same SHA used at runtime so uploaded source maps
+// match the events Sentry receives. Fall back through common CI env vars
+// (Vercel, GitHub Actions) so deploys "just work" without extra wiring.
+const sentryRelease =
+  process.env.SENTRY_RELEASE
+  ?? process.env.VERCEL_GIT_COMMIT_SHA
+  ?? process.env.GITHUB_SHA
+  ?? process.env.GIT_SHA;
+
 const sentryWebpackOptions = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  release: sentryRelease ? { name: sentryRelease } : undefined,
   silent: !process.env.CI,
   widenClientFileUpload: true,
   disableLogger: true,

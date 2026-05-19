@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import Base
-from bimstitch_api.models._mixins import TimestampMixin
+from bimstitch_api.models._mixins import SoftDeleteMixin, TimestampMixin
 from bimstitch_api.models.project_file import FileType
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class ModelStatus(StrEnum):
     archived = "archived"
 
 
-class Model(TimestampMixin, Base):
+class Model(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "models"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)

@@ -7,13 +7,13 @@ import type { Locale } from '@bimstitch/i18n';
 
 // Tailwind classes for the colored dot + badge per status.
 const STATUS_BADGE_CLASSES: Record<ProjectStatusValue, string> = {
-  planning: 'border-slate-400/35 bg-slate-400/20 text-slate-200',
-  design: 'border-sky-400/35 bg-sky-400/20 text-sky-200',
-  permit_review: 'border-amber-400/35 bg-amber-400/20 text-amber-200',
-  construction: 'border-green-400/35 bg-green-400/20 text-green-300',
-  handover: 'border-violet-400/35 bg-violet-400/20 text-violet-200',
-  complete: 'border-blue-400/35 bg-blue-400/20 text-blue-200',
-  on_hold: 'border-rose-400/35 bg-rose-400/20 text-rose-300',
+  planning: 'border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-400/35 dark:bg-slate-400/20 dark:text-slate-200',
+  design: 'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-400/35 dark:bg-sky-400/20 dark:text-sky-200',
+  permit_review: 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/35 dark:bg-amber-400/20 dark:text-amber-200',
+  construction: 'border-green-300 bg-green-100 text-green-800 dark:border-green-400/35 dark:bg-green-400/20 dark:text-green-300',
+  handover: 'border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-400/35 dark:bg-violet-400/20 dark:text-violet-200',
+  complete: 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-400/35 dark:bg-blue-400/20 dark:text-blue-200',
+  on_hold: 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-400/35 dark:bg-rose-400/20 dark:text-rose-300',
 };
 
 // Light-background dot color for project cards.
@@ -28,9 +28,9 @@ const STATUS_DOT_CLASSES: Record<ProjectStatusValue, string> = {
 };
 
 const LIFECYCLE_BADGE_CLASSES: Record<ProjectLifecycleStateValue, string> = {
-  active: 'border-slate-400/35 bg-slate-400/20 text-slate-200',
-  archived: 'border-white/30 bg-white/16 text-white',
-  removed: 'border-rose-400/35 bg-rose-400/20 text-rose-200',
+  active: 'border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-400/35 dark:bg-slate-400/20 dark:text-slate-200',
+  archived: 'border-slate-300 bg-slate-100 text-slate-800 dark:border-white/30 dark:bg-white/16 dark:text-white',
+  removed: 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-400/35 dark:bg-rose-400/20 dark:text-rose-200',
 };
 
 const LIFECYCLE_DOT_CLASSES: Record<ProjectLifecycleStateValue, string> = {

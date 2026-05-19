@@ -187,4 +187,28 @@ def has_permission(role: ProjectRole, resource: Resource, action: Action) -> boo
     return action in _MATRIX[role][resource]
 
 
-__all__ = ["Action", "Resource", "has_permission"]
+def require_permission(role: ProjectRole, resource: Resource, action: Action) -> None:
+    """Raise HTTPException(403) if the role lacks the permission.
+
+    Thin wrapper around `has_permission` for use as the last line of a
+    router endpoint after `_require_membership(...)`. New code should prefer
+    this over scattering `_require_role(membership, ProjectRole.x, ...)`
+    calls so the matrix in this module stays the single source of truth.
+    """
+    if has_permission(role, resource, action):
+        return
+    # Imported lazily so this module stays FastAPI-free for unit tests.
+    from fastapi import HTTPException
+
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "PERMISSION_DENIED",
+            "role": role.value,
+            "resource": resource.value,
+            "action": action.value,
+        },
+    )
+
+
+__all__ = ["Action", "Resource", "has_permission", "require_permission"]

@@ -12,16 +12,27 @@ import {
   Plus,
   RotateCcw,
   RotateCw,
+  Search as SearchIcon,
   Settings,
   Sun,
+  X as XIcon,
   ZoomIn,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import {
-  useEffect, useState, type FormEvent, type JSX,
+  useCallback,
+  useEffect,
+  useState,
+  type FormEvent,
+  type JSX,
 } from 'react';
 
-import type { DocumentActiveTool, DocumentViewerHandle } from '@bimstitch/viewer';
+import type {
+  DocumentActiveTool,
+  DocumentSearchHit,
+  DocumentViewerHandle,
+} from '@bimstitch/viewer';
 
 import type { DocumentSettings } from '@/lib/documentSettings';
 
@@ -67,14 +78,67 @@ export function DocumentToolbar({
   onActiveToolChange,
   onSettingsChange,
 }: Props): JSX.Element {
+  const t = useTranslations('documentToolbar');
   const [pageInput, setPageInput] = useState(String(currentPage));
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchHits, setSearchHits] = useState<DocumentSearchHit[]>([]);
+  const [searchIndex, setSearchIndex] = useState(0);
+  const [searchPending, setSearchPending] = useState(false);
+  const [searchPerformed, setSearchPerformed] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
   useEffect(() => {
     setPageInput(String(currentPage));
   }, [currentPage]);
+
+  // If the file changes (handle replaced) wipe the search state.
+  useEffect(() => {
+    setSearchHits([]);
+    setSearchIndex(0);
+    setSearchPerformed(false);
+  }, [documentHandle]);
+
+  const runSearch = useCallback(
+    async (query: string): Promise<void> => {
+      if (documentHandle === null) return;
+      if (query.trim().length === 0) {
+        setSearchHits([]);
+        setSearchIndex(0);
+        setSearchPerformed(false);
+        return;
+      }
+      setSearchPending(true);
+      try {
+        const hits = await documentHandle.searchText(query);
+        setSearchHits(hits);
+        setSearchIndex(0);
+        setSearchPerformed(true);
+        if (hits.length > 0) {
+          const first = hits[0];
+          if (first !== undefined) onPageChange(first.pageIndex);
+        }
+      } finally {
+        setSearchPending(false);
+      }
+    },
+    [documentHandle, onPageChange],
+  );
+
+  const stepSearch = useCallback(
+    (delta: 1 | -1): void => {
+      if (searchHits.length === 0) return;
+      const next = (searchIndex + delta + searchHits.length) % searchHits.length;
+      setSearchIndex(next);
+      const hit = searchHits[next];
+      if (hit !== undefined) onPageChange(hit.pageIndex);
+    },
+    [searchHits, searchIndex, onPageChange],
+  );
+
+  const totalMatches = searchHits.reduce((sum, h) => sum + h.matchesOnPage, 0);
 
   const handlePageSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -249,6 +313,90 @@ export function DocumentToolbar({
         >
           <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
         </ToolButton>
+      </ToolbarGroup>
+
+      {/* Group 5b: Search */}
+      <ToolbarGroup>
+        {searchOpen ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void runSearch(searchQuery);
+            }}
+            className="flex items-center gap-1 px-1"
+            role="search"
+          >
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); }}
+              placeholder={t('searchPlaceholder')}
+              aria-label={t('searchLabel')}
+              autoFocus
+              data-testid="document-search-input"
+              className="h-7 w-44 rounded-md border border-border bg-background px-2 text-caption text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            />
+            <ToolbarReadout className="min-w-[64px]">
+              {searchPending
+                ? t('searchRunning')
+                : searchPerformed
+                  ? searchHits.length === 0
+                    ? t('searchEmpty')
+                    : totalMatches === 1 && searchHits.length === 1
+                      ? t('searchMatchCountOne')
+                      : t('searchMatchCount', {
+                          matches: totalMatches,
+                          pages: searchHits.length,
+                        })
+                  : ''}
+            </ToolbarReadout>
+            <ToolButton
+              type="button"
+              onClick={() => { stepSearch(-1); }}
+              disabled={searchHits.length === 0}
+              title={t('searchPrev')}
+              aria-label={t('searchPrev')}
+              data-testid="document-search-prev"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
+            </ToolButton>
+            <ToolButton
+              type="button"
+              onClick={() => { stepSearch(1); }}
+              disabled={searchHits.length === 0}
+              title={t('searchNext')}
+              aria-label={t('searchNext')}
+              data-testid="document-search-next"
+            >
+              <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
+            </ToolButton>
+            <ToolButton
+              type="button"
+              onClick={() => {
+                setSearchOpen(false);
+                setSearchQuery('');
+                setSearchHits([]);
+                setSearchIndex(0);
+                setSearchPerformed(false);
+              }}
+              title={t('searchClose')}
+              aria-label={t('searchClose')}
+              data-testid="document-search-close"
+            >
+              <XIcon className="h-4 w-4" strokeWidth={1.75} />
+            </ToolButton>
+          </form>
+        ) : (
+          <ToolButton
+            onClick={() => { setSearchOpen(true); }}
+            disabled={documentHandle === null}
+            title={t('searchLabel')}
+            aria-label={t('searchLabel')}
+            data-testid="document-tool-search"
+          >
+            <SearchIcon className="h-4 w-4" strokeWidth={1.75} />
+          </ToolButton>
+        )}
       </ToolbarGroup>
 
       {/* Group 6: Settings + theme */}

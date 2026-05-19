@@ -408,5 +408,29 @@
       "returnTitle": "Return and deletion",
       "returnBody": "Upon termination of the main agreement, personal data is returned or securely deleted on request, subject to statutory retention obligations such as the 10-year Wkb dossier retention."
     }
+  },
+  "documentToolbar": {
+    "searchPlaceholder": "Search in document…",
+    "searchLabel": "Search in document",
+    "searchEmpty": "No matches",
+    "searchRunning": "Searching…",
+    "searchMatchCount": "{matches} matches on {pages} pages",
+    "searchMatchCountOne": "1 match on 1 page",
+    "searchPrev": "Previous match",
+    "searchNext": "Next match",
+    "searchClose": "Clear search"
+  },
+  "dashboardFooter": {
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "dpa": "DPA",
+    "copyright": "© {year} BIMstitch"
+  },
+  "pwaInstall": {
+    "promptTitle": "Install BIMstitch",
+    "promptBody": "Add to your home screen for full-screen inspections, offline access and faster launches.",
+    "install": "Install",
+    "dismiss": "Not now",
+    "iosHint": "On iOS, tap the share icon and choose “Add to Home Screen”."
   }
 }

@@ -5,6 +5,7 @@ import { useEffect, type JSX, type ReactNode } from 'react';
 
 import { AppHeaderProvider } from '@/components/header/AppHeaderContext';
 import { AppHeaderRoute } from '@/components/header/AppHeaderRoute';
+import { DashboardFooter } from '@/components/DashboardFooter';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { SidebarProvider } from '@/components/sidebar/SidebarContext';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
@@ -36,7 +37,10 @@ export default function DashboardLayout({ children }: Props): JSX.Element {
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <AppHeaderRoute />
-            {children}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+              <DashboardFooter />
+            </div>
           </div>
         </div>
       </SidebarProvider>

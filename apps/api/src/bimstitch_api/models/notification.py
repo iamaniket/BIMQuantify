@@ -11,10 +11,26 @@ from bimstitch_api.db import Base
 
 
 class NotificationEventType(StrEnum):
+    # Job-pipeline events (existing — emitted by extraction, compliance,
+    # PDF generation).
     job_started = "job_started"
     job_succeeded = "job_succeeded"
     job_failed = "job_failed"
     job_progress = "job_progress"
+
+    # Wkb-deadline events (backlog #28 / #29). The producer side ships with
+    # the deadline tracker; the enum values are extended ahead of producers
+    # so the notification feed UI can ship its filtering chrome first.
+    deadline_upcoming = "deadline_upcoming"
+    deadline_missed = "deadline_missed"
+
+    # Bevinding lifecycle events (backlog #25 / #26).
+    finding_created = "finding_created"
+    finding_resolved = "finding_resolved"
+
+    # Project-scoped invitations (backlog #8 / #11).
+    invitation_sent = "invitation_sent"
+    invitation_accepted = "invitation_accepted"
 
 
 class Notification(Base):

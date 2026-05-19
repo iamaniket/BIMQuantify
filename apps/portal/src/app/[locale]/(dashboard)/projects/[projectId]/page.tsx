@@ -136,14 +136,14 @@ export default function ProjectDetailPage(): JSX.Element {
         dossierPct={dossierPct}
       />
 
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-3.5 overflow-y-auto p-3.5">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-y-auto p-3.5 xl:grid-cols-2">
         {/* Left column */}
         <div className="flex flex-col gap-3.5">
           <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
             {summary !== undefined && (
               <ComplianceHealthCard
                 summary={summary}
-                holdbackAmount={dossier?.holdbackAmount ?? '—'}
+                holdbackAmount="—"
                 embedded
               />
             )}

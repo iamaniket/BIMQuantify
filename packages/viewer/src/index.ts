@@ -5,6 +5,7 @@ export type {
   DocumentLoadedInfo,
   DocumentActiveTool,
   DocumentRotation,
+  DocumentSearchHit,
 } from './DocumentViewer.js';
 export { IfcViewer } from './IfcViewer.js';
 export {
