@@ -46,7 +46,7 @@ def upgrade() -> None:
     )
     bind.execute(
         text(
-            f'CREATE UNIQUE INDEX uq_projects_name_active '
+            f'CREATE UNIQUE INDEX IF NOT EXISTS uq_projects_name_active '
             f'ON "{schema}".projects(name) '
             f"WHERE lifecycle_state != 'removed'"
         )
@@ -58,7 +58,7 @@ def upgrade() -> None:
     )
     bind.execute(
         text(
-            f'CREATE UNIQUE INDEX uq_projects_reference_code '
+            f'CREATE UNIQUE INDEX IF NOT EXISTS uq_projects_reference_code '
             f'ON "{schema}".projects(reference_code) '
             f"WHERE reference_code IS NOT NULL AND lifecycle_state != 'removed'"
         )
