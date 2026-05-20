@@ -544,7 +544,7 @@ async def test_delete_project_frees_name_for_reuse(
 async def test_delete_project_editor_forbidden(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     p = (
         await client.post(
@@ -553,11 +553,11 @@ async def test_delete_project_editor_forbidden(
     ).json()
     await client.post(
         f"/projects/{p['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
     response = await client.delete(
-        f"/projects/{p['id']}", headers=_auth(same_org_user["access_token"])
+        f"/projects/{p['id']}", headers=_auth(same_org_non_admin_user["access_token"])
     )
     assert response.status_code == 403
 
@@ -565,7 +565,7 @@ async def test_delete_project_editor_forbidden(
 async def test_archive_project_editor_forbidden(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     p = (
         await client.post(
@@ -574,13 +574,13 @@ async def test_archive_project_editor_forbidden(
     ).json()
     await client.post(
         f"/projects/{p['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
 
     response = await client.post(
         f"/projects/{p['id']}/archive",
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert response.status_code == 403
 
@@ -830,3 +830,109 @@ async def test_non_admin_non_member_still_gets_404(
         f"/projects/{p['id']}", headers=_auth(same_org_non_admin_user["access_token"])
     )
     assert resp.status_code == 404
+
+
+async def test_superuser_patch_project_without_membership(
+    client: AsyncClient,
+    same_org_non_admin_user: dict[str, str],
+    superuser_in_org: dict[str, str],
+) -> None:
+    """Superuser can edit a project they are not a member of."""
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "SuperEdit"},
+            headers=_auth(same_org_non_admin_user["access_token"]),
+        )
+    ).json()
+    resp = await client.patch(
+        f"/projects/{p['id']}",
+        json={"description": "by superuser"},
+        headers=_auth(superuser_in_org["access_token"]),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["description"] == "by superuser"
+
+
+async def test_org_admin_patch_project_without_membership(
+    client: AsyncClient,
+    same_org_non_admin_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+) -> None:
+    """Org admin can edit a project they are not a member of."""
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "AdminEdit"},
+            headers=_auth(same_org_non_admin_user["access_token"]),
+        )
+    ).json()
+    resp = await client.patch(
+        f"/projects/{p['id']}",
+        json={"description": "by org admin"},
+        headers=_auth(same_org_admin_user["access_token"]),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["description"] == "by org admin"
+
+
+async def test_superuser_delete_project_without_membership(
+    client: AsyncClient,
+    same_org_non_admin_user: dict[str, str],
+    superuser_in_org: dict[str, str],
+) -> None:
+    """Superuser can delete a project they are not a member of."""
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "SuperDel"},
+            headers=_auth(same_org_non_admin_user["access_token"]),
+        )
+    ).json()
+    resp = await client.delete(
+        f"/projects/{p['id']}", headers=_auth(superuser_in_org["access_token"])
+    )
+    assert resp.status_code == 204
+
+
+async def test_org_admin_archive_project_without_membership(
+    client: AsyncClient,
+    same_org_non_admin_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+) -> None:
+    """Org admin can archive a project they are not a member of."""
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "AdminArchive"},
+            headers=_auth(same_org_non_admin_user["access_token"]),
+        )
+    ).json()
+    resp = await client.post(
+        f"/projects/{p['id']}/archive", headers=_auth(same_org_admin_user["access_token"])
+    )
+    assert resp.status_code == 200
+    assert resp.json()["lifecycle_state"] == "archived"
+
+
+async def test_superuser_reactivate_project_without_membership(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    superuser_in_org: dict[str, str],
+) -> None:
+    """Superuser can reactivate an archived project they are not a member of."""
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "SuperReact"},
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    await client.post(
+        f"/projects/{p['id']}/archive", headers=_auth(org_user["access_token"])
+    )
+    resp = await client.post(
+        f"/projects/{p['id']}/reactivate", headers=_auth(superuser_in_org["access_token"])
+    )
+    assert resp.status_code == 200
+    assert resp.json()["lifecycle_state"] == "active"

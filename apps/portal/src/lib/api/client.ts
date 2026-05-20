@@ -111,6 +111,7 @@ async function request<TResponse, TBody>(
   const init: RequestInit = {
     method: options.method,
     headers,
+    cache: 'no-store',
   };
   if (options.body !== undefined) {
     if (options.formEncoded) {
@@ -262,6 +263,7 @@ export const apiClient = {
     const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
       method: 'GET',
       headers: buildHeaders(accessToken),
+      cache: 'no-store',
     });
     if (!response.ok) {
       const detail = await parseErrorDetail(response);

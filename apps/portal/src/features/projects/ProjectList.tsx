@@ -21,7 +21,7 @@ import { useProjects } from './useProjects';
 
 const SKELETON_COUNT = 6;
 
-const GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4';
+const GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-4';
 
 function ProjectSkeleton(): JSX.Element {
   return (

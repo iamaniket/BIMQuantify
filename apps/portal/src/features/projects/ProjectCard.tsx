@@ -114,7 +114,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
     : null;
 
   return (
-    <Card className="group relative overflow-hidden border-border bg-background transition-all duration-200 hover:-translate-y-1 hover:border-primary-light hover:shadow-xl hover:shadow-primary/15">
+    <Card className="group relative min-w-[340px] overflow-hidden border-border bg-background transition-all duration-200 hover:-translate-y-1 hover:border-primary-light hover:shadow-xl hover:shadow-primary/15">
       <Link
         href={`/projects/${project.id}`}
         className="flex flex-1 flex-col gap-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -153,7 +153,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
 
         <CardBody className="relative gap-4 border-t border-primary bg-primary text-primary-foreground transition-colors duration-200 group-hover:bg-primary-hover">
           <BlueprintTexture className="opacity-[0.14]" toneClassName="text-white" />
-          <div className="relative grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="relative grid min-w-0 gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
             <div className="min-w-0 space-y-3">
               <div className="space-y-1.5">
                 {project.lifecycle_state === 'archived' && (
@@ -162,11 +162,11 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                     Archived · read only
                   </span>
                 )}
-                <h3 className="text-title3 font-semibold text-primary-foreground">
+                <h3 className="line-clamp-2 break-all text-title3 font-semibold text-primary-foreground">
                   {project.name}
                 </h3>
                 {project.reference_code !== null && (
-                  <p className="text-caption font-mono text-primary-foreground/75">
+                  <p className="line-clamp-1 break-all text-caption font-mono text-primary-foreground/75">
                     {project.reference_code}
                   </p>
                 )}
@@ -178,7 +178,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                   {tPhases(project.phase)}
                 </p>
                 {project.permit_number !== null && (
-                  <p className="inline-flex items-center gap-1.5 line-clamp-1">
+                  <p className="inline-flex min-w-0 items-center gap-1.5 line-clamp-1 break-all">
                     <Icon icon={FileText} size="sm" className="text-white/80" />
                     {project.permit_number}
                   </p>
@@ -216,13 +216,13 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
               {(cityLine !== null || contractorName !== null) && (
                 <div className="flex flex-col gap-0.5">
                   {cityLine !== null && (
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex min-w-0 items-center gap-1">
                       <Icon icon={MapPin} size="xs" className="text-white/80" />
-                      {cityLine}
+                      <span className="line-clamp-1 break-all">{cityLine}</span>
                     </span>
                   )}
                   {contractorName !== null && (
-                    <span className="line-clamp-2 text-primary-foreground/75">
+                    <span className="line-clamp-2 break-all text-primary-foreground/75">
                       {contractorName}
                     </span>
                   )}
@@ -230,7 +230,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
               )}
 
               {project.description !== null && project.description.length > 0 && (
-                <p className="line-clamp-3 text-body2 text-primary-foreground/85">
+                <p className="line-clamp-3 break-words text-body2 text-primary-foreground/85">
                   {project.description}
                 </p>
               )}
@@ -239,18 +239,18 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
         </CardBody>
 
         <CardFooter className="relative border-primary-dark bg-primary-hover transition-colors duration-200 group-hover:bg-primary-dark">
-          <div className="relative flex w-full items-center justify-between gap-3 text-caption text-primary-foreground/85">
-            <span className="inline-flex items-center gap-1.5">
+          <div className="relative grid w-full grid-cols-3 gap-3 text-caption text-primary-foreground/85">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
               <Icon icon={CalendarDays} size="sm" className="text-white/80" />
-              <span className="font-semibold text-white">{createdLabel === '' ? '-' : createdLabel}</span>
+              <span className="min-w-0 truncate font-semibold text-white">{createdLabel === '' ? '-' : createdLabel}</span>
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
               <Icon icon={RefreshCw} size="sm" className="text-white/80" />
-              <span className="font-semibold text-white">{updatedLabel === '' ? '-' : updatedLabel}</span>
+              <span className="min-w-0 truncate font-semibold text-white">{updatedLabel === '' ? '-' : updatedLabel}</span>
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
               <Icon icon={Truck} size="sm" className="text-white/80" />
-              <span className="font-semibold text-white">{deliveryLabel === '' ? '-' : deliveryLabel}</span>
+              <span className="min-w-0 truncate font-semibold text-white">{deliveryLabel === '' ? '-' : deliveryLabel}</span>
             </span>
           </div>
         </CardFooter>

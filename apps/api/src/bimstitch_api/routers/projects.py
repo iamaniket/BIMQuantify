@@ -242,6 +242,47 @@ async def _require_project_read_access(
     return await _require_membership(session, project_id, user.id)
 
 
+async def _require_project_write_access(
+    session: AsyncSession,
+    project_id: UUID,
+    user: User,
+    organization_id: UUID,
+) -> None:
+    """Gate for updating project data (PATCH).
+
+    Allowed: platform super-admin, org admin in the active org, or a
+    project member with owner/editor role.  Non-member non-admins get 404
+    to keep existence-leakage closed.
+    """
+    if user.is_superuser:
+        return
+    if await _is_org_admin(session, user.id, organization_id):
+        return
+    membership = await _require_membership(session, project_id, user.id)
+    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+
+
+async def _require_project_owner_or_admin(
+    session: AsyncSession,
+    project_id: UUID,
+    user: User,
+    organization_id: UUID,
+) -> None:
+    """Gate for destructive / lifecycle project mutations (delete, archive,
+    reactivate).
+
+    Allowed: platform super-admin, org admin in the active org, or the
+    project owner.  Editors are excluded — these are heavyweight actions.
+    Non-member non-admins get 404.
+    """
+    if user.is_superuser:
+        return
+    if await _is_org_admin(session, user.id, organization_id):
+        return
+    membership = await _require_membership(session, project_id, user.id)
+    _require_role(membership, ProjectRole.owner)
+
+
 async def _require_member_viewer(
     session: AsyncSession,
     project_id: UUID,
@@ -359,8 +400,6 @@ async def create_project(
     try:
         await session.flush()
     except IntegrityError as exc:
-        # Could be name OR reference_code uniqueness; surface both via shared
-        # CONFLICT code — clients distinguish by inspecting which field they sent.
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="PROJECT_NAME_CONFLICT"
         ) from exc
@@ -478,11 +517,11 @@ async def update_project(
     payload: ProjectUpdate,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    await _require_project_write_access(session, project.id, user, active_org_id)
     _require_project_writable(project)
 
     updates = payload.model_dump(exclude_unset=True)
@@ -517,10 +556,10 @@ async def delete_project(
     project_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
     project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner)
+    await _require_project_owner_or_admin(session, project.id, user, active_org_id)
 
     project.lifecycle_state = ProjectLifecycleState.removed
     await session.flush()
@@ -533,11 +572,11 @@ async def archive_project(
     project_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner)
+    await _require_project_owner_or_admin(session, project.id, user, active_org_id)
 
     if project.lifecycle_state is ProjectLifecycleState.archived:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="PROJECT_ARCHIVED")
@@ -553,11 +592,11 @@ async def reactivate_project(
     project_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner)
+    await _require_project_owner_or_admin(session, project.id, user, active_org_id)
 
     if project.lifecycle_state is not ProjectLifecycleState.archived:
         raise HTTPException(
