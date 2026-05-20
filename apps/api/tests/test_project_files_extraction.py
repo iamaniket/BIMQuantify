@@ -443,7 +443,7 @@ async def test_viewer_bundle_cross_org_returns_404(
 
 async def test_viewer_role_can_get_viewer_bundle(
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
     email_transport: object,
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
@@ -451,7 +451,7 @@ async def test_viewer_role_can_get_viewer_bundle(
     project_id, model_id, file_id = await _ready_file(
         client, fake, org_user, name="viewer-role.ifc"
     )
-    await _add_member(client, org_user["access_token"], project_id, same_org_user["id"], "viewer")
+    await _add_member(client, org_user["access_token"], project_id, same_org_non_admin_user["id"], "viewer")
 
     fragments_key = f"projects/{project_id}/{file_id}.frag"
     fake.objects[fragments_key] = b"frag-bytes"
@@ -468,6 +468,6 @@ async def test_viewer_role_can_get_viewer_bundle(
 
     resp = await client.get(
         f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 200

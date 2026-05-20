@@ -23,17 +23,13 @@ function toInitials(nameOrEmail: string): string {
 export function SidebarUserChip(): JSX.Element {
   const { collapsed } = useSidebar();
   const { me, activeMembership } = useAuth();
-  const tOrgSwitcher = useTranslations('org.switcher');
-
   const fallbackName = me?.user.email ?? 'User';
   const userName = me?.user.full_name?.trim() || fallbackName;
-  const userRole =
-    activeMembership === null
-      ? fallbackName
-      : activeMembership.is_org_admin
-        ? `${activeMembership.organization_name} · ${tOrgSwitcher('adminBadge')}`
-        : activeMembership.organization_name;
   const initials = toInitials(userName);
+  let roleLabel = '';
+  if (activeMembership) {
+    roleLabel = activeMembership.is_org_admin ? 'Admin' : 'Member';
+  }
 
   return (
     <div
@@ -43,7 +39,7 @@ export function SidebarUserChip(): JSX.Element {
     >
       <div
         className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-primary-light text-[11px] font-extrabold text-primary"
-        title={`${userName} · ${userRole}`}
+        title={userName}
       >
         {initials}
       </div>
@@ -52,7 +48,9 @@ export function SidebarUserChip(): JSX.Element {
           <div className="truncate text-[12.5px] font-semibold leading-[1.15] text-white">
             {userName}
           </div>
-          <div className="mt-0.5 truncate text-[10px] text-white/55">{userRole}</div>
+          {roleLabel && (
+            <div className="mt-0.5 truncate text-[10px] text-white/55">{roleLabel}</div>
+          )}
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Date, Float, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import Date, Float, ForeignKey, Index, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -169,7 +169,12 @@ class Project(TimestampMixin, TenantBase):
     contractor: Mapped["Contractor | None"] = relationship(lazy="joined")
 
     __table_args__ = (
-        UniqueConstraint("name", name="uq_projects_name"),
+        Index(
+            "uq_projects_name_active",
+            "name",
+            unique=True,
+            postgresql_where="lifecycle_state != 'removed'",
+        ),
         Index("ix_projects_status", "status"),
         Index("ix_projects_lifecycle_state", "lifecycle_state"),
         Index("ix_projects_contractor_id", "contractor_id"),
@@ -178,6 +183,6 @@ class Project(TimestampMixin, TenantBase):
             "uq_projects_reference_code",
             "reference_code",
             unique=True,
-            postgresql_where="reference_code IS NOT NULL",
+            postgresql_where="reference_code IS NOT NULL AND lifecycle_state != 'removed'",
         ),
     )

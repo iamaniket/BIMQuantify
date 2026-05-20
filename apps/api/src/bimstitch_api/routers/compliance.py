@@ -27,6 +27,7 @@ from bimstitch_api.routers.models import _load_model_or_404
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
+    _require_project_read_access,
 )
 from bimstitch_api.schemas.compliance import (
     ComplianceCheckRequest,
@@ -34,7 +35,7 @@ from bimstitch_api.schemas.compliance import (
     ProjectComplianceReportItem,
     ProjectComplianceReportList,
 )
-from bimstitch_api.tenancy import get_tenant_session
+from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
 
@@ -212,10 +213,11 @@ async def get_latest_compliance(
     framework: str = Query(default="bbl", description="Regulation framework (bbl, wkb)"),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> ComplianceCheckResponse:
     """Get the most recent compliance check results for a file, including per-element details."""
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     job = await _load_latest_compliance_job(session, file_id, framework)
     result = job.result or {}
@@ -259,10 +261,11 @@ async def export_compliance_csv(
     framework: str = Query(default="bbl", description="Regulation framework (bbl, wkb)"),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
     """Stream the latest compliance results for a file as CSV (one row per detail item)."""
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     job = await _load_latest_compliance_job(session, file_id, framework)
     details = (job.result or {}).get("details", []) or []
@@ -310,6 +313,7 @@ async def export_compliance_rules_csv(
     framework: str = Query(default="bbl", description="Regulation framework (bbl, wkb)"),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
     """Stream the per-rule summary from the latest compliance results as CSV.
 
@@ -317,7 +321,7 @@ async def export_compliance_rules_csv(
     portfolio-level reporting where individual element failures are too noisy.
     """
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     job = await _load_latest_compliance_job(session, file_id, framework)
     rules = (job.result or {}).get("rules_summary", []) or []
@@ -349,10 +353,11 @@ async def list_project_reports(
     ),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> ProjectComplianceReportList:
     """List the latest succeeded compliance report per (file, framework) for a project."""
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     stmt = (
         select(Job, ProjectFile, Model)

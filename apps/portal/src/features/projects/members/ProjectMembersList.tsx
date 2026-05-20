@@ -20,7 +20,7 @@ import {
 } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
-import type { ProjectMember, ProjectRoleValue } from '@/lib/api/schemas';
+import type { ProjectMember, ProjectRole } from '@/lib/api/schemas';
 
 import { useRemoveProjectMember } from './useRemoveProjectMember';
 import { useUpdateProjectMemberRole } from './useUpdateProjectMemberRole';
@@ -33,7 +33,7 @@ type Props = {
 
 // Roles that can be assigned/changed via the UI. Owner is excluded — it's
 // set once at project creation and isn't transferable in this iteration.
-const ASSIGNABLE_ROLES: ProjectRoleValue[] = [
+const ASSIGNABLE_ROLES: ProjectRole[] = [
   'editor',
   'viewer',
   'inspector',

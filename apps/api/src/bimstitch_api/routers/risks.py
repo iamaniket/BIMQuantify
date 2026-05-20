@@ -23,11 +23,12 @@ from bimstitch_api.models.user import User
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
+    _require_project_read_access,
     _require_project_writable,
     _require_role,
 )
 from bimstitch_api.schemas.risk import RiskCreate, RiskRead, RiskUpdate
-from bimstitch_api.tenancy import get_tenant_session
+from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 router = APIRouter(prefix="/projects/{project_id}/risks", tags=["risks"])
 
@@ -68,9 +69,10 @@ async def list_risks(
     project_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> list[Risk]:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     result = await session.execute(
         select(Risk)
@@ -86,9 +88,10 @@ async def get_risk(
     risk_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Risk:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
     return await _load_risk_or_404(session, project.id, risk_id)
 
 

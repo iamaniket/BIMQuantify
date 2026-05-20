@@ -3,16 +3,20 @@
 import { FolderOpen, Search } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { useEffect, type JSX } from 'react';
+import { useQueries } from '@tanstack/react-query';
 
 import {
   Card, CardBody, CardFooter, EmptyState, Skeleton,
 } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
+import { listProjectMembers } from '@/lib/api/projectMembers';
+import type { ProjectMemberList } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { ProjectCard } from './ProjectCard';
 import type { StatusFilter } from './ProjectStatusFilter';
+import { projectMembersKey } from './queryKeys';
 import { useProjects } from './useProjects';
 
 const SKELETON_COUNT = 6;
@@ -42,8 +46,58 @@ type ProjectListProps = {
 
 export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Element {
   const router = useRouter();
-  const { setTokens } = useAuth();
+  const { setTokens, tokens } = useAuth();
   const query = useProjects();
+  const accessToken = tokens === null ? null : tokens.access_token;
+
+  const projects = query.data ?? [];
+  const term = search.trim().toLowerCase();
+  const searchFiltered = term.length === 0
+    ? projects
+    : projects.filter((p) => {
+      const haystacks: (string | null)[] = [
+        p.name, p.description, p.reference_code,
+        p.city, p.contractor_name,
+      ];
+      return haystacks.some((s) => {
+        if (s === null) {
+          return false;
+        }
+        return s.toLowerCase().includes(term);
+      });
+    });
+
+  let filtered = searchFiltered;
+  if (statusFilter === 'archived') {
+    filtered = searchFiltered.filter((p) => p.lifecycle_state === 'archived');
+  } else if (statusFilter !== 'all') {
+    filtered = searchFiltered.filter(
+      (p) => p.lifecycle_state === 'active' && p.status === statusFilter,
+    );
+  }
+
+  const memberQueryProjects = query.isSuccess ? filtered : [];
+  const projectMembersQueries = useQueries({
+    queries: memberQueryProjects.map((project) => ({
+      queryKey: projectMembersKey(project.id),
+      queryFn: () => {
+        if (accessToken === null) {
+          throw new Error('Not authenticated');
+        }
+        return listProjectMembers(accessToken, project.id);
+      },
+      enabled: accessToken !== null,
+      staleTime: 60_000,
+    })),
+  });
+
+  const membersByProjectId = new Map<string, ProjectMemberList>();
+  memberQueryProjects.forEach((project, index) => {
+    const members = projectMembersQueries[index]?.data;
+    if (members !== undefined) {
+      membersByProjectId.set(project.id, members);
+    }
+  });
 
   const isUnauthorized = query.isError && query.error instanceof ApiError
     && (query.error.status === 401 || query.error.status === 403);
@@ -83,8 +137,7 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
     );
   }
 
-  const projects = query.data;
-  if (projects === undefined || projects.length === 0) {
+  if (projects.length === 0) {
     return (
       <EmptyState
         icon={FolderOpen}
@@ -93,31 +146,6 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
         action={undefined}
         className={undefined}
       />
-    );
-  }
-
-  const term = search.trim().toLowerCase();
-  const searchFiltered = term.length === 0
-    ? projects
-    : projects.filter((p) => {
-      const haystacks: (string | null)[] = [
-        p.name, p.description, p.reference_code,
-        p.city, p.contractor_name,
-      ];
-      return haystacks.some((s) => {
-        if (s === null) {
-          return false;
-        }
-        return s.toLowerCase().includes(term);
-      });
-    });
-
-  let filtered = searchFiltered;
-  if (statusFilter === 'archived') {
-    filtered = searchFiltered.filter((p) => p.lifecycle_state === 'archived');
-  } else if (statusFilter !== 'all') {
-    filtered = searchFiltered.filter(
-      (p) => p.lifecycle_state === 'active' && p.status === statusFilter,
     );
   }
 
@@ -140,7 +168,11 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
   return (
     <div className={GRID_CLASS}>
       {filtered.map((project) => (
-        <ProjectCard key={project.id} project={project} />
+        <ProjectCard
+          key={project.id}
+          project={project}
+          members={membersByProjectId.get(project.id) ?? []}
+        />
       ))}
     </div>
   );

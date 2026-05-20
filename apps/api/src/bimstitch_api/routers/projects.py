@@ -223,6 +223,25 @@ async def _require_member_manager(
     )
 
 
+async def _require_project_read_access(
+    session: AsyncSession,
+    project_id: UUID,
+    user: User,
+    organization_id: UUID,
+) -> ProjectMember | None:
+    """Gate for reading project data (detail view, sub-resources).
+
+    Returns the ProjectMember row when the caller is a member, or None
+    when access is granted via an admin bypass (superuser or org admin).
+    Non-member non-admins get 404 to keep existence-leakage closed.
+    """
+    if user.is_superuser:
+        return None
+    if await _is_org_admin(session, user.id, organization_id):
+        return None
+    return await _require_membership(session, project_id, user.id)
+
+
 async def _require_member_viewer(
     session: AsyncSession,
     project_id: UUID,
@@ -423,10 +442,11 @@ async def list_projects(
     response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> list[dict[str, object]]:
     stmt = select(Project).where(Project.lifecycle_state != ProjectLifecycleState.removed)
-    if not user.is_superuser:
+    if not user.is_superuser and not await _is_org_admin(session, user.id, active_org_id):
         stmt = stmt.join(ProjectMember, ProjectMember.project_id == Project.id).where(
             ProjectMember.user_id == user.id
         )
@@ -443,10 +463,11 @@ async def get_project(
     response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
     cache_response(response, CACHE_TTL_PROJECT_DETAIL)
     return await _project_to_read(project, storage)
 

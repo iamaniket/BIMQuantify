@@ -18,17 +18,17 @@ async def _create_project(
 async def test_owner_can_add_same_org_user_as_editor(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user)
     response = await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
     assert response.status_code == 201, response.text
     body = response.json()
-    assert body["user_id"] == same_org_user["id"]
+    assert body["user_id"] == same_org_non_admin_user["id"]
     assert body["role"] == "editor"
 
 
@@ -70,17 +70,17 @@ async def test_non_admin_editor_cannot_add_member(
 async def test_duplicate_member_add_returns_409(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user)
     await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "viewer"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
         headers=_auth(org_user["access_token"]),
     )
     response = await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
     assert response.status_code == 409
@@ -89,12 +89,12 @@ async def test_duplicate_member_add_returns_409(
 async def test_cannot_add_second_owner(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user)
     response = await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "owner"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "owner"},
         headers=_auth(org_user["access_token"]),
     )
     assert response.status_code == 400
@@ -103,16 +103,16 @@ async def test_cannot_add_second_owner(
 async def test_remove_non_owner_member(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user)
     await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
     response = await client.delete(
-        f"/projects/{project['id']}/members/{same_org_user['id']}",
+        f"/projects/{project['id']}/members/{same_org_non_admin_user['id']}",
         headers=_auth(org_user["access_token"]),
     )
     assert response.status_code == 204
@@ -130,11 +130,11 @@ async def test_cannot_remove_owner(client: AsyncClient, org_user: dict[str, str]
 async def test_remove_non_member_returns_404(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user)
     response = await client.delete(
-        f"/projects/{project['id']}/members/{same_org_user['id']}",
+        f"/projects/{project['id']}/members/{same_org_non_admin_user['id']}",
         headers=_auth(org_user["access_token"]),
     )
     assert response.status_code == 404
@@ -143,16 +143,16 @@ async def test_remove_non_member_returns_404(
 async def test_change_role_viewer_to_editor(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user)
     await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "viewer"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
         headers=_auth(org_user["access_token"]),
     )
     response = await client.patch(
-        f"/projects/{project['id']}/members/{same_org_user['id']}",
+        f"/projects/{project['id']}/members/{same_org_non_admin_user['id']}",
         json={"role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
@@ -173,16 +173,16 @@ async def test_cannot_change_owner_role(client: AsyncClient, org_user: dict[str,
 async def test_cannot_promote_to_owner(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user)
     await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
     response = await client.patch(
-        f"/projects/{project['id']}/members/{same_org_user['id']}",
+        f"/projects/{project['id']}/members/{same_org_non_admin_user['id']}",
         json={"role": "owner"},
         headers=_auth(org_user["access_token"]),
     )
@@ -336,3 +336,74 @@ async def test_list_members_404_for_cross_org_user(
     )
     # Cross-tenant: schema isolation means project doesn't resolve at all → 404.
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Archived project rejects member mutations
+# ---------------------------------------------------------------------------
+
+
+async def test_add_member_to_archived_project_returns_409(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    await client.post(
+        f"/projects/{project['id']}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    response = await client.post(
+        f"/projects/{project['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "PROJECT_ARCHIVED"
+
+
+async def test_remove_member_from_archived_project_returns_409(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    await client.post(
+        f"/projects/{project['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
+        headers=_auth(org_user["access_token"]),
+    )
+    await client.post(
+        f"/projects/{project['id']}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    response = await client.delete(
+        f"/projects/{project['id']}/members/{same_org_non_admin_user['id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "PROJECT_ARCHIVED"
+
+
+async def test_update_role_on_archived_project_returns_409(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    await client.post(
+        f"/projects/{project['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
+        headers=_auth(org_user["access_token"]),
+    )
+    await client.post(
+        f"/projects/{project['id']}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    response = await client.patch(
+        f"/projects/{project['id']}/members/{same_org_non_admin_user['id']}",
+        json={"role": "editor"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "PROJECT_ARCHIVED"

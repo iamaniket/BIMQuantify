@@ -164,7 +164,7 @@ async def test_list_projects_excludes_other_org_projects(
 async def test_get_project_404_for_non_member_same_org(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     p = (
         await client.post(
@@ -172,7 +172,7 @@ async def test_get_project_404_for_non_member_same_org(
         )
     ).json()
     response = await client.get(
-        f"/projects/{p['id']}", headers=_auth(same_org_user["access_token"])
+        f"/projects/{p['id']}", headers=_auth(same_org_non_admin_user["access_token"])
     )
     assert response.status_code == 404
 
@@ -235,7 +235,7 @@ async def test_patch_project_editor_succeeds(
 async def test_patch_project_viewer_forbidden(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     p = (
         await client.post(
@@ -244,13 +244,13 @@ async def test_patch_project_viewer_forbidden(
     ).json()
     await client.post(
         f"/projects/{p['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "viewer"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
         headers=_auth(org_user["access_token"]),
     )
     response = await client.patch(
         f"/projects/{p['id']}",
         json={"description": "nope"},
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert response.status_code == 403
 
@@ -258,7 +258,7 @@ async def test_patch_project_viewer_forbidden(
 async def test_patch_project_non_member_returns_404(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     p = (
         await client.post(
@@ -268,7 +268,7 @@ async def test_patch_project_non_member_returns_404(
     response = await client.patch(
         f"/projects/{p['id']}",
         json={"description": "x"},
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert response.status_code == 404
 
@@ -518,6 +518,29 @@ async def test_delete_project_owner_soft_removes_and_hides_from_reads(
     assert members == 2
 
 
+async def test_delete_project_frees_name_for_reuse(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """Soft-deleting a project should allow creating a new project with the
+    same name — the partial unique index excludes removed rows."""
+    first = await client.post(
+        "/projects", json={"name": "Reusable"}, headers=_auth(org_user["access_token"])
+    )
+    assert first.status_code == 201
+    pid = first.json()["id"]
+
+    delete = await client.delete(f"/projects/{pid}", headers=_auth(org_user["access_token"]))
+    assert delete.status_code == 204
+
+    second = await client.post(
+        "/projects", json={"name": "Reusable"}, headers=_auth(org_user["access_token"])
+    )
+    assert second.status_code == 201, second.text
+    assert second.json()["name"] == "Reusable"
+    assert second.json()["id"] != pid
+
+
 async def test_delete_project_editor_forbidden(
     client: AsyncClient,
     org_user: dict[str, str],
@@ -705,3 +728,105 @@ async def test_create_project_thumbnail_unsupported_mime_returns_415(
     )
     assert response.status_code == 415
     assert response.json()["detail"] == "THUMBNAIL_UNSUPPORTED_TYPE"
+
+
+# ---------------------------------------------------------------------------
+# Superuser & org-admin project access
+# ---------------------------------------------------------------------------
+
+
+async def test_superuser_list_projects_sees_all_in_org(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    superuser_in_org: dict[str, str],
+) -> None:
+    """A superuser member of an org sees every project, even those they were
+    never explicitly added to."""
+    await client.post("/projects", json={"name": "P1"}, headers=_auth(org_user["access_token"]))
+    await client.post(
+        "/projects",
+        json={"name": "P2"},
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    resp = await client.get("/projects", headers=_auth(superuser_in_org["access_token"]))
+    assert resp.status_code == 200
+    names = sorted(p["name"] for p in resp.json())
+    assert "P1" in names
+    assert "P2" in names
+
+
+async def test_superuser_get_project_succeeds_without_membership(
+    client: AsyncClient,
+    same_org_non_admin_user: dict[str, str],
+    superuser_in_org: dict[str, str],
+) -> None:
+    """Superuser can view a project they are not a member of (within own org)."""
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "SuperView"},
+            headers=_auth(same_org_non_admin_user["access_token"]),
+        )
+    ).json()
+    resp = await client.get(
+        f"/projects/{p['id']}", headers=_auth(superuser_in_org["access_token"])
+    )
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "SuperView"
+
+
+async def test_org_admin_list_projects_sees_all_in_org(
+    client: AsyncClient,
+    same_org_non_admin_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+) -> None:
+    """An org admin sees every project in the org, including those created by
+    non-admin members who did not add the admin."""
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "AdminSees"},
+            headers=_auth(same_org_non_admin_user["access_token"]),
+        )
+    ).json()
+    resp = await client.get("/projects", headers=_auth(same_org_admin_user["access_token"]))
+    assert resp.status_code == 200
+    assert any(proj["id"] == p["id"] for proj in resp.json())
+
+
+async def test_org_admin_get_project_without_membership_succeeds(
+    client: AsyncClient,
+    same_org_non_admin_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+) -> None:
+    """An org admin can view a project even when they are not a member."""
+    p = (
+        await client.post(
+            "/projects",
+            json={"name": "AdminReads"},
+            headers=_auth(same_org_non_admin_user["access_token"]),
+        )
+    ).json()
+    resp = await client.get(
+        f"/projects/{p['id']}", headers=_auth(same_org_admin_user["access_token"])
+    )
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "AdminReads"
+
+
+async def test_non_admin_non_member_still_gets_404(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    """A regular same-org user who is not a member of the project still gets 404."""
+    p = (
+        await client.post(
+            "/projects", json={"name": "Private"}, headers=_auth(org_user["access_token"])
+        )
+    ).json()
+    resp = await client.get(
+        f"/projects/{p['id']}", headers=_auth(same_org_non_admin_user["access_token"])
+    )
+    assert resp.status_code == 404

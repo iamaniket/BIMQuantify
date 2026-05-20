@@ -26,6 +26,7 @@ from bimstitch_api.models.user import User
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
+    _require_project_read_access,
     _require_project_writable,
     _require_role,
 )
@@ -37,7 +38,7 @@ from bimstitch_api.schemas.model import (
 )
 from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.storage.minio import ObjectNotFoundError
-from bimstitch_api.tenancy import get_tenant_session
+from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
 
@@ -91,11 +92,12 @@ async def list_models(
     response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     status_filter: ModelStatus | None = Query(default=None, alias="status"),
     discipline: ModelDiscipline | None = Query(default=None),
 ) -> list[Model]:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     stmt = select(Model).where(Model.project_id == project.id)
     if status_filter is not None:
@@ -115,9 +117,10 @@ async def get_model(
     response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     model = (
         await session.execute(

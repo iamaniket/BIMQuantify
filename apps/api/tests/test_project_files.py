@@ -171,7 +171,6 @@ async def test_initiate_editor_succeeds(
     project_id, model_id = await _project_and_model(
         client, org_user["access_token"], project_name="ShareEditor"
     )
-    await _add_member(client, org_user["access_token"], project_id, same_org_user["id"], "editor")
     resp = await client.post(
         f"/projects/{project_id}/models/{model_id}/files/initiate",
         json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream", "content_sha256": "9c95f91b4579b507d9af0db70dd312e86c9da9c8b3892f03b062ed5cf06d0135"},
@@ -182,7 +181,7 @@ async def test_initiate_editor_succeeds(
 
 async def test_initiate_viewer_forbidden(
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
     email_transport: object,
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
@@ -190,11 +189,11 @@ async def test_initiate_viewer_forbidden(
     project_id, model_id = await _project_and_model(
         client, org_user["access_token"], project_name="LockedV"
     )
-    await _add_member(client, org_user["access_token"], project_id, same_org_user["id"], "viewer")
+    await _add_member(client, org_user["access_token"], project_id, same_org_non_admin_user["id"], "viewer")
     resp = await client.post(
         f"/projects/{project_id}/models/{model_id}/files/initiate",
         json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream", "content_sha256": "804615e99933939d6d99b0122be4a767c4f66008e3a8660655266eb4a852309a"},
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 403
 
@@ -753,7 +752,7 @@ async def test_delete_unknown_file_returns_404(
 
 async def test_delete_viewer_forbidden(
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
     email_transport: object,
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
@@ -761,7 +760,7 @@ async def test_delete_viewer_forbidden(
     project_id, model_id = await _project_and_model(
         client, org_user["access_token"], project_name="DelViewer"
     )
-    await _add_member(client, org_user["access_token"], project_id, same_org_user["id"], "viewer")
+    await _add_member(client, org_user["access_token"], project_id, same_org_non_admin_user["id"], "viewer")
     init = (
         await client.post(
             f"/projects/{project_id}/models/{model_id}/files/initiate",
@@ -778,7 +777,7 @@ async def test_delete_viewer_forbidden(
 
     resp = await client.delete(
         f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}",
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 403
 

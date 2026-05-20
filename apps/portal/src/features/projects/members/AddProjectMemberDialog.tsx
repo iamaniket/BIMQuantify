@@ -7,11 +7,11 @@ import { AppDialog, Label, Select } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
 import { useOrgMembers } from '@/features/admin/members/useOrgMembers';
-import type { ProjectMember, ProjectRoleValue } from '@/lib/api/schemas';
+import type { ProjectMember, ProjectRole } from '@/lib/api/schemas';
 
 import { useAddProjectMember } from './useAddProjectMember';
 
-const ASSIGNABLE_ROLES: ProjectRoleValue[] = [
+const ASSIGNABLE_ROLES: ProjectRole[] = [
   'editor',
   'viewer',
   'inspector',
@@ -40,7 +40,7 @@ export function AddProjectMemberDialog({
   const addMutation = useAddProjectMember();
 
   const [userId, setUserId] = useState<string>('');
-  const [role, setRole] = useState<ProjectRoleValue>('viewer');
+  const [role, setRole] = useState<ProjectRole>('viewer');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export function AddProjectMemberDialog({
           <Select
             id="project-member-role"
             value={role}
-            onChange={(e) => { setRole(e.target.value as ProjectRoleValue); }}
+            onChange={(e) => { setRole(e.target.value as ProjectRole); }}
           >
             {ASSIGNABLE_ROLES.map((r) => (
               <option key={r} value={r}>{tRoles(r)}</option>

@@ -37,6 +37,7 @@ from bimstitch_api.routers.models import _load_model_or_404
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
+    _require_project_read_access,
     _require_project_writable,
     _require_role,
 )
@@ -368,9 +369,10 @@ async def list_files(
     status_filter: Annotated[Literal["ready", "all"], Query(alias="status")] = "ready",
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> list[ProjectFile]:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
     model = await _load_model_or_404(session, project.id, model_id)
 
     stmt = select(ProjectFile).where(ProjectFile.model_id == model.id)
@@ -388,10 +390,11 @@ async def get_download_url(
     file_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectFileDownloadResponse:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)
@@ -477,10 +480,11 @@ async def get_viewer_bundle(
     file_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> ViewerBundleResponse:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)

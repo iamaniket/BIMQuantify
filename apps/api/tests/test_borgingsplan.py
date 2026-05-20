@@ -250,7 +250,6 @@ async def test_publish_requires_owner_role(
     same_org_user: dict,
 ) -> None:
     project = await _create_project(client, org_user["access_token"])
-    await _add_member(client, org_user["access_token"], project["id"], same_org_user["id"], "editor")
     await client.post(
         f"/projects/{project['id']}/borgingsplan/generate",
         json={},
@@ -682,7 +681,7 @@ async def test_delete_checklist_item(
 async def test_moment_create_requires_editor_role(
     client: AsyncClient,
     org_user: dict,
-    same_org_user: dict,
+    same_org_non_admin_user: dict,
 ) -> None:
     project = await _create_project(client, org_user["access_token"])
     gen = await client.post(
@@ -691,7 +690,7 @@ async def test_moment_create_requires_editor_role(
         headers=_auth(org_user["access_token"]),
     )
     plan_id = gen.json()["id"]
-    await _add_member(client, org_user["access_token"], project["id"], same_org_user["id"], "viewer")
+    await _add_member(client, org_user["access_token"], project["id"], same_org_non_admin_user["id"], "viewer")
 
     resp = await client.post(
         f"/borgingsplans/{plan_id}/moments",
@@ -700,7 +699,7 @@ async def test_moment_create_requires_editor_role(
             "name": "Viewer attempt",
             "planned_date": "2026-09-01",
         },
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 403
 

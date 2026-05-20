@@ -285,13 +285,13 @@ async def test_delete_risk_then_get_returns_404(
 async def test_risk_requires_membership_for_get(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     """Same org, but not a project member — must 404 (existence-leak closed)."""
     project = await _create_project(client, org_user["access_token"])
     resp = await client.get(
         f"/projects/{project['id']}/risks",
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 404
 
@@ -299,17 +299,16 @@ async def test_risk_requires_membership_for_get(
 async def test_risk_viewer_can_read_but_not_write(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user["access_token"])
     await _add_member(
         client,
         org_user["access_token"],
         project["id"],
-        same_org_user["id"],
+        same_org_non_admin_user["id"],
         "viewer",
     )
-    # Owner seeds a risk.
     created = (
         await client.post(
             f"/projects/{project['id']}/risks",
@@ -318,34 +317,30 @@ async def test_risk_viewer_can_read_but_not_write(
         )
     ).json()
 
-    # Viewer can list + get.
     list_resp = await client.get(
         f"/projects/{project['id']}/risks",
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert list_resp.status_code == 200
     assert len(list_resp.json()) == 1
 
-    # Viewer cannot POST.
     post_resp = await client.post(
         f"/projects/{project['id']}/risks",
         json=_payload(description="viewer-attempt"),
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert post_resp.status_code == 403
 
-    # Viewer cannot PATCH.
     patch_resp = await client.patch(
         f"/projects/{project['id']}/risks/{created['id']}",
         json={"level": "high"},
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert patch_resp.status_code == 403
 
-    # Viewer cannot DELETE.
     del_resp = await client.delete(
         f"/projects/{project['id']}/risks/{created['id']}",
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert del_resp.status_code == 403
 
@@ -356,13 +351,6 @@ async def test_risk_editor_can_write(
     same_org_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user["access_token"])
-    await _add_member(
-        client,
-        org_user["access_token"],
-        project["id"],
-        same_org_user["id"],
-        "editor",
-    )
     resp = await client.post(
         f"/projects/{project['id']}/risks",
         json=_payload(description="editor-write"),

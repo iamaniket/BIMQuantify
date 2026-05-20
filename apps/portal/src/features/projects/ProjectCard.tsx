@@ -11,7 +11,7 @@ import {
 } from '@bimstitch/ui';
 
 import { BlueprintTexture } from '@/components/BlueprintTexture';
-import type { Project } from '@/lib/api/schemas';
+import type { Project, ProjectMember } from '@/lib/api/schemas';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -35,11 +35,54 @@ function formatDateLabel(iso: string, locale: string): string {
   }).format(parsed);
 }
 
+function displayMemberName(member: ProjectMember): string {
+  const fullName = member.full_name === null ? '' : member.full_name.trim();
+  return fullName.length > 0 ? fullName : member.email;
+}
+
+function toInitials(nameOrEmail: string): string {
+  const cleaned = nameOrEmail.trim();
+  if (cleaned.length === 0) return '?';
+
+  const fromEmail = (cleaned.includes('@') ? cleaned.split('@')[0] : cleaned) ?? cleaned;
+  const parts = fromEmail
+    .split(/[\s._-]+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  if (parts.length === 0) {
+    return fromEmail.slice(0, 2).toUpperCase();
+  }
+  if (parts.length === 1) {
+    return (parts[0] ?? '').slice(0, 2).toUpperCase();
+  }
+  const first = parts[0] ?? '';
+  const second = parts[1] ?? '';
+  return `${first[0] ?? ''}${second[0] ?? ''}`.toUpperCase();
+}
+
+function sortMembersForCard(members: ProjectMember[], ownerId: string): ProjectMember[] {
+  return [...members].sort((a, b) => {
+    const aPriority = a.user_id === ownerId || a.role === 'owner' ? 0 : 1;
+    const bPriority = b.user_id === ownerId || b.role === 'owner' ? 0 : 1;
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
+    const aCreated = Date.parse(a.created_at);
+    const bCreated = Date.parse(b.created_at);
+    const safeACreated = Number.isNaN(aCreated) ? Number.MAX_SAFE_INTEGER : aCreated;
+    const safeBCreated = Number.isNaN(bCreated) ? Number.MAX_SAFE_INTEGER : bCreated;
+    return safeACreated - safeBCreated;
+  });
+}
+
 type Props = {
   project: Project;
+  members?: ProjectMember[];
 };
 
-export function ProjectCard({ project }: Props): JSX.Element {
+export function ProjectCard({ project, members = [] }: Props): JSX.Element {
   const locale = useLocale();
   const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
@@ -49,6 +92,9 @@ export function ProjectCard({ project }: Props): JSX.Element {
   const deliveryLabel = project.delivery_date === null ? '' : formatDateLabel(project.delivery_date, locale);
   const cityLine = project.city ?? null;
   const contractorName = project.contractor_name ?? null;
+  const sortedMembers = sortMembersForCard(members, project.owner_id);
+  const visibleMembers = sortedMembers.slice(0, 4);
+  const remainingMembers = Math.max(sortedMembers.length - visibleMembers.length, 0);
   const thumbnailClassName = archived
     ? 'h-36 w-full object-cover grayscale transition-transform duration-300 group-hover:scale-[1.03]'
     : 'h-36 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]';
@@ -136,6 +182,32 @@ export function ProjectCard({ project }: Props): JSX.Element {
                     <Icon icon={FileText} size="sm" className="text-white/80" />
                     {project.permit_number}
                   </p>
+                )}
+                {visibleMembers.length > 0 && (
+                  <div className="flex items-center pt-1">
+                    <div className="flex -space-x-2">
+                      {visibleMembers.map((member, index) => {
+                        const isLead = index === 0;
+                        return (
+                          <span
+                            key={member.user_id}
+                            title={displayMemberName(member)}
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-[10px] font-semibold ${isLead
+                              ? 'border-amber-300 bg-amber-100 text-amber-900 shadow-sm shadow-amber-700/15'
+                              : 'border-primary-dark/30 bg-primary-dark/80 text-primary-foreground'
+                            }`}
+                          >
+                            {toInitials(displayMemberName(member))}
+                          </span>
+                        );
+                      })}
+                      {remainingMembers > 0 && (
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-primary-dark/30 bg-primary-dark/70 text-[10px] font-semibold text-primary-foreground/90">
+                          +{remainingMembers}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

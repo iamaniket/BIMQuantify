@@ -693,6 +693,7 @@ async def _provision_user_in_org(
     organization_id: object | None = None,
     organization_name: str | None = None,
     is_org_admin: bool = True,
+    is_superuser: bool = False,
 ) -> dict[str, str]:
     """Create a verified user + active membership directly in the DB, then
     log them in to get tokens.
@@ -749,7 +750,7 @@ async def _provision_user_in_org(
             full_name=email.split("@")[0],
             is_active=True,
             is_verified=True,
-            is_superuser=False,
+            is_superuser=is_superuser,
             active_organization_id=org.id,
         )
         session.add(user)
@@ -877,4 +878,25 @@ async def same_org_admin_user(
         email="erin@example.com",
         organization_id=org_user["organization_id"],
         is_org_admin=True,
+    )
+
+
+@pytest.fixture
+async def superuser_in_org(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+    org_user: dict[str, str],
+) -> dict[str, str]:
+    """A platform superuser who is also a member of AlphaCo (same org as
+    ``org_user``).  Used by tests that verify superuser project-level access
+    within their own org — without impersonation."""
+    return await _provision_user_in_org(
+        client,
+        session_maker,
+        engine,
+        email="super@example.com",
+        organization_id=org_user["organization_id"],
+        is_org_admin=True,
+        is_superuser=True,
     )

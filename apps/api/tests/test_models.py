@@ -114,20 +114,20 @@ async def test_create_model_duplicate_name_different_projects_ok(
 async def test_create_model_viewer_forbidden(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user["access_token"], name="ViewerCant")
     await _add_member(
         client,
         org_user["access_token"],
         project["id"],
-        same_org_user["id"],
+        same_org_non_admin_user["id"],
         "viewer",
     )
     resp = await client.post(
         f"/projects/{project['id']}/models",
         json={"name": "Nope", "discipline": "architectural"},
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 403
 
@@ -249,13 +249,6 @@ async def test_patch_model_editor_succeeds(
 ) -> None:
     project = await _create_project(client, org_user["access_token"], name="EditorPatch")
     model = await _create_model(client, org_user["access_token"], project["id"])
-    await _add_member(
-        client,
-        org_user["access_token"],
-        project["id"],
-        same_org_user["id"],
-        "editor",
-    )
     resp = await client.patch(
         f"/projects/{project['id']}/models/{model['id']}",
         json={"name": "Renamed"},
@@ -268,7 +261,7 @@ async def test_patch_model_editor_succeeds(
 async def test_patch_model_viewer_forbidden(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user["access_token"], name="ViewerPatch")
     model = await _create_model(client, org_user["access_token"], project["id"])
@@ -276,13 +269,13 @@ async def test_patch_model_viewer_forbidden(
         client,
         org_user["access_token"],
         project["id"],
-        same_org_user["id"],
+        same_org_non_admin_user["id"],
         "viewer",
     )
     resp = await client.patch(
         f"/projects/{project['id']}/models/{model['id']}",
         json={"name": "Nope"},
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 403
 
@@ -294,13 +287,6 @@ async def test_delete_model_owner_only(
 ) -> None:
     project = await _create_project(client, org_user["access_token"], name="DelM")
     model = await _create_model(client, org_user["access_token"], project["id"])
-    await _add_member(
-        client,
-        org_user["access_token"],
-        project["id"],
-        same_org_user["id"],
-        "editor",
-    )
 
     by_editor = await client.delete(
         f"/projects/{project['id']}/models/{model['id']}",
@@ -355,15 +341,14 @@ async def test_delete_model_cascades_files(
 async def test_non_member_gets_404(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user["access_token"], name="HiddenM")
     model = await _create_model(client, org_user["access_token"], project["id"])
     resp = await client.get(
         f"/projects/{project['id']}/models/{model['id']}",
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
-    # Non-member same-org returns 404 from project-level membership check.
     assert resp.status_code == 404
 
 

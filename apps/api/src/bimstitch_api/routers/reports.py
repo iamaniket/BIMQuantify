@@ -36,7 +36,11 @@ from bimstitch_api.models.project import Project
 from bimstitch_api.models.report import Report, ReportStatus, ReportType
 from bimstitch_api.models.user import User
 from bimstitch_api.notifications.service import create_notification, publish_notification
-from bimstitch_api.routers.projects import _load_project_or_404, _require_membership
+from bimstitch_api.routers.projects import (
+    _load_project_or_404,
+    _require_membership,
+    _require_project_read_access,
+)
 from bimstitch_api.schemas.report import (
     ReportCreateRequest,
     ReportListResponse,
@@ -296,10 +300,11 @@ async def list_reports(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> ReportListResponse:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     base = select(Report).where(Report.project_id == project.id)
     if report_type is not None:
@@ -324,10 +329,11 @@ async def get_report(
     report_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> ReportResponse:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
 
     report = (
         await session.execute(
