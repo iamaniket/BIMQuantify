@@ -299,58 +299,6 @@
       }
     }
   },
-  "projectAccess": {
-    "title": "Access",
-    "subtitle": "People with access to this project and their role.",
-    "crumb": "Access",
-    "addMember": "Add member",
-    "empty": "No members yet. Add the first one to get started.",
-    "emptyState": {
-      "title": "No members yet",
-      "description": "This project has no members assigned yet."
-    },
-    "readOnlyNotice": "You can see who has access to this project. Org admins or the project owner can add or remove members.",
-    "errors": {
-      "notFound": "Project not found.",
-      "loadFailed": "Failed to load the project.",
-      "membersLoadFailed": "Failed to load project members."
-    },
-    "table": {
-      "user": "User",
-      "role": "Role",
-      "added": "Added",
-      "actions": "Actions",
-      "setRole": "Set as {role}",
-      "remove": "Remove from project",
-      "ownerLocked": "The owner role can't be changed.",
-      "roles": {
-        "owner": "Owner",
-        "editor": "Editor",
-        "viewer": "Viewer",
-        "inspector": "Inspector",
-        "contractor": "Contractor",
-        "client": "Client"
-      }
-    },
-    "addDialog": {
-      "title": "Add a member",
-      "subtitle": "Pick an active member of this organization and assign them a role on this project.",
-      "submit": "Add",
-      "fields": {
-        "user": "User",
-        "role": "Role"
-      },
-      "placeholders": {
-        "user": "Select a user"
-      },
-      "allAlreadyMembers": "All active organization members are already in this project.",
-      "errors": {
-        "pickUser": "Pick a user first.",
-        "alreadyMember": "This user is already a member of the project.",
-        "notInOrg": "This user is not an active member of the organization."
-      }
-    }
-  },
   "projectDetail": {
     "tabs": {
       "models": { "label": "Models" },

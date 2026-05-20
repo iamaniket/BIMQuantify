@@ -153,8 +153,8 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
 
         <CardBody className="relative gap-4 border-t border-primary bg-primary text-primary-foreground transition-colors duration-200 group-hover:bg-primary-hover">
           <BlueprintTexture className="opacity-[0.14]" toneClassName="text-white" />
-          <div className="relative grid min-w-0 gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            <div className="min-w-0 space-y-3">
+          <div className="relative grid min-w-0 gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+            <div className="min-w-0 space-y-2">
               <div className="space-y-1.5">
                 {project.lifecycle_state === 'archived' && (
                   <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${projectBadgeClasses(project)}`}>
@@ -183,32 +183,6 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                     {project.permit_number}
                   </p>
                 )}
-                {visibleMembers.length > 0 && (
-                  <div className="flex items-center pt-1">
-                    <div className="flex -space-x-2">
-                      {visibleMembers.map((member, index) => {
-                        const isLead = index === 0;
-                        return (
-                          <span
-                            key={member.user_id}
-                            title={displayMemberName(member)}
-                            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-[10px] font-semibold ${isLead
-                              ? 'border-amber-300 bg-amber-100 text-amber-900 shadow-sm shadow-amber-700/15'
-                              : 'border-primary-dark/30 bg-primary-dark/80 text-primary-foreground'
-                            }`}
-                          >
-                            {toInitials(displayMemberName(member))}
-                          </span>
-                        );
-                      })}
-                      {remainingMembers > 0 && (
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-primary-dark/30 bg-primary-dark/70 text-[10px] font-semibold text-primary-foreground/90">
-                          +{remainingMembers}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -230,7 +204,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
               )}
 
               {project.description !== null && project.description.length > 0 && (
-                <p className="line-clamp-3 break-words text-body2 text-primary-foreground/85">
+                <p className="line-clamp-2 break-words text-body2 text-primary-foreground/85">
                   {project.description}
                 </p>
               )}
@@ -239,19 +213,45 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
         </CardBody>
 
         <CardFooter className="relative border-primary-dark bg-primary-hover transition-colors duration-200 group-hover:bg-primary-dark">
-          <div className="relative grid w-full grid-cols-3 gap-3 text-caption text-primary-foreground/85">
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <Icon icon={CalendarDays} size="sm" className="text-white/80" />
-              <span className="min-w-0 truncate font-semibold text-white">{createdLabel === '' ? '-' : createdLabel}</span>
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <Icon icon={RefreshCw} size="sm" className="text-white/80" />
-              <span className="min-w-0 truncate font-semibold text-white">{updatedLabel === '' ? '-' : updatedLabel}</span>
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <Icon icon={Truck} size="sm" className="text-white/80" />
-              <span className="min-w-0 truncate font-semibold text-white">{deliveryLabel === '' ? '-' : deliveryLabel}</span>
-            </span>
+          <div className="relative flex w-full items-center gap-3 text-caption text-primary-foreground/85">
+            <div className="flex min-w-0 flex-1 gap-3">
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <Icon icon={CalendarDays} size="sm" className="text-white/80" />
+                <span className="min-w-0 truncate font-semibold text-white">{createdLabel === '' ? '-' : createdLabel}</span>
+              </span>
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <Icon icon={RefreshCw} size="sm" className="text-white/80" />
+                <span className="min-w-0 truncate font-semibold text-white">{updatedLabel === '' ? '-' : updatedLabel}</span>
+              </span>
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <Icon icon={Truck} size="sm" className="text-white/80" />
+                <span className="min-w-0 truncate font-semibold text-white">{deliveryLabel === '' ? '-' : deliveryLabel}</span>
+              </span>
+            </div>
+            {visibleMembers.length > 0 && (
+              <div className="flex shrink-0 -space-x-2">
+                {visibleMembers.map((member, index) => {
+                  const isLead = index === 0;
+                  return (
+                    <span
+                      key={member.user_id}
+                      title={displayMemberName(member)}
+                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full border text-[9px] font-semibold ${isLead
+                        ? 'border-amber-300 bg-amber-100 text-amber-900 shadow-sm shadow-amber-700/15'
+                        : 'border-primary-dark/30 bg-primary-dark/80 text-primary-foreground'
+                      }`}
+                    >
+                      {toInitials(displayMemberName(member))}
+                    </span>
+                  );
+                })}
+                {remainingMembers > 0 && (
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary-dark/30 bg-primary-dark/70 text-[9px] font-semibold text-primary-foreground/90">
+                    +{remainingMembers}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </CardFooter>
       </Link>

@@ -300,9 +300,9 @@
     }
   },
   "projectAccess": {
-    "title": "Toegang",
+    "title": "Toegang - {projectName}",
     "subtitle": "Personen met toegang tot dit project en hun rol.",
-    "crumb": "Toegang",
+    "backToProject": "Terug naar project",
     "addMember": "Lid toevoegen",
     "empty": "Nog geen leden. Voeg de eerste toe om te beginnen.",
     "emptyState": {

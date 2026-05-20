@@ -1,6 +1,6 @@
 'use client';
 
-import { HelpCircle, LogOut, Settings, Shield } from 'lucide-react';
+import { HelpCircle, LogOut, Settings, Shield, Users } from 'lucide-react';
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { useCallback, type JSX } from 'react';
 
@@ -13,20 +13,23 @@ import { useSidebar } from './SidebarContext';
 import { SidebarNavItem } from './SidebarNavItem';
 
 const itemDefinitions = [
-  { key: 'admin', icon: Shield, href: '/admin/organizations', requiresSuperuser: true },
-  { key: 'settings', icon: Settings, href: '/settings', requiresSuperuser: false },
-  { key: 'help', icon: HelpCircle, href: undefined, requiresSuperuser: false },
+  { key: 'orgMembers', icon: Users, href: '/tenant', requiresSuperuser: false, requiresOrgAdmin: true },
+  { key: 'admin', icon: Shield, href: '/admin/organizations', requiresSuperuser: true, requiresOrgAdmin: false },
+  { key: 'settings', icon: Settings, href: '/settings', requiresSuperuser: false, requiresOrgAdmin: false },
+  { key: 'help', icon: HelpCircle, href: undefined, requiresSuperuser: false, requiresOrgAdmin: false },
 ] as const;
 
 export function SidebarNav(): JSX.Element {
   const { collapsed } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
-  const { tokens, setTokens, me } = useAuth();
+  const { tokens, setTokens, me, activeMembership } = useAuth();
   const t = useTranslations('sidebar');
   const isSuperuser = me?.user.is_superuser === true;
+  const isOrgAdmin = activeMembership?.is_org_admin === true;
 
   const labels = {
+    orgMembers: t('orgMembers'),
     admin: t('adminConsole'),
     settings: t('settings'),
     help: t('helpAndDocs'),
@@ -63,8 +66,9 @@ export function SidebarNav(): JSX.Element {
           : 'flex flex-col gap-0.5 px-3 pb-1 pt-2'
       }
     >
-      {itemDefinitions.map(({ key, icon: Icon, href, requiresSuperuser }) => {
+      {itemDefinitions.map(({ key, icon: Icon, href, requiresSuperuser, requiresOrgAdmin }) => {
         if (requiresSuperuser && !isSuperuser) return null;
+        if (requiresOrgAdmin && !isOrgAdmin && !isSuperuser) return null;
         // The admin link points at /admin/organizations but we want the whole
         // /admin/* tree to show as active.
         const adminPrefix = '/admin';

@@ -6,6 +6,7 @@ import {
 import { useState, type JSX } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
+import { Link } from '@/i18n/navigation';
 import { BlueprintTexture } from '@/components/BlueprintTexture';
 import type { ComplianceSummary } from '@/features/compliance/types';
 import {
@@ -175,14 +176,14 @@ export function ProjectDetailHeader({
               { label: 'Delivery', value: opleveringValue, sub: opleveringSub },
             ]}
           />
-          <button
-            type="button"
+          <Link
+            href={`/projects/${project.id}/access`}
             title="Share project"
             aria-label="Share project"
             className="absolute right-6 top-1/2 grid h-8 w-8 -translate-y-1/2 shrink-0 place-items-center rounded-lg border-0 bg-transparent text-foreground-secondary transition-colors hover:bg-surface-low hover:text-primary xl:static xl:ml-3.5 xl:translate-y-0"
           >
             <Share2 className="h-3.5 w-3.5" />
-          </button>
+          </Link>
         </div>
       </div>
     </div>
