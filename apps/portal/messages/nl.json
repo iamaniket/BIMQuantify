@@ -118,6 +118,7 @@
   },
   "sidebar": {
     "adminConsole": "Beheerconsole",
+    "orgMembers": "Leden",
     "settings": "Instellingen",
     "helpAndDocs": "Hulp en documentatie",
     "signOut": "Uitloggen",
@@ -716,6 +717,31 @@
     "install": "Installeren",
     "dismiss": "Niet nu",
     "iosHint": "Tik op iOS op het deel-icoon en kies “Zet op beginscherm”."
+  },
+  "tenantAdmin": {
+    "crumb": "Organisatie",
+    "pageSubtitle": "Beheer leden, licenties en auditactiviteit van uw organisatie.",
+    "notAdmin": "U hebt geen beheerderstoegang tot deze organisatie.",
+    "tabs": {
+      "overview": "Overzicht",
+      "members": "Leden",
+      "audit": "Auditlog"
+    },
+    "overview": {
+      "title": "Organisatiegegevens",
+      "name": "Naam",
+      "status": "Status",
+      "seatLimit": "Licentielimiet",
+      "unlimited": "Onbeperkt",
+      "seatUsed": "Licenties in gebruik"
+    },
+    "members": {
+      "inviteButton": "Lid uitnodigen",
+      "loadError": "Kan leden niet laden."
+    },
+    "audit": {
+      "loadError": "Kan auditlog niet laden."
+    }
   },
   "admin": {
     "common": {

@@ -118,6 +118,7 @@
   },
   "sidebar": {
     "adminConsole": "Admin console",
+    "orgMembers": "Members",
     "settings": "Settings",
     "helpAndDocs": "Help & docs",
     "signOut": "Sign out",
@@ -664,6 +665,31 @@
     "install": "Install",
     "dismiss": "Not now",
     "iosHint": "On iOS, tap the share icon and choose “Add to Home Screen”."
+  },
+  "tenantAdmin": {
+    "crumb": "Organization",
+    "pageSubtitle": "Manage members, seats, and audit activity for your organization.",
+    "notAdmin": "You do not have admin access to this organization.",
+    "tabs": {
+      "overview": "Overview",
+      "members": "Members",
+      "audit": "Audit log"
+    },
+    "overview": {
+      "title": "Organization details",
+      "name": "Name",
+      "status": "Status",
+      "seatLimit": "Seat limit",
+      "unlimited": "Unlimited",
+      "seatUsed": "Seats used"
+    },
+    "members": {
+      "inviteButton": "Invite member",
+      "loadError": "Could not load members."
+    },
+    "audit": {
+      "loadError": "Could not load audit log."
+    }
   },
   "admin": {
     "common": {
