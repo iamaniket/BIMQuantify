@@ -91,7 +91,7 @@ async def _decode_verify_token_to_user(
         user_id = data["sub"]
         email = data["email"]
         parsed_id = user_manager.parse_id(user_id)
-    except Exception as exc:  # noqa: BLE001 — any decode/shape error is "bad token"
+    except Exception as exc:  # any JWT decode or shape error is "bad token"
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="ACTIVATION_BAD_TOKEN",

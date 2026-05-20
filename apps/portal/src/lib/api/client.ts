@@ -207,11 +207,14 @@ export const apiClient = {
     responseSchema,
     accessToken,
   }),
-  delete: async (path: string, accessToken: string): Promise<void> => requestNoContent({
-    method: 'DELETE',
-    path,
-    accessToken,
-  }),
+  delete: async (
+    path: string,
+    accessToken: string,
+    body?: unknown,
+  ): Promise<void> => requestNoContent(
+    { method: 'DELETE', path, accessToken },
+    body,
+  ),
   patchNoContent: async (path: string, accessToken: string): Promise<void> => requestNoContent({
     method: 'PATCH',
     path,

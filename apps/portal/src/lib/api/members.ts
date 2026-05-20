@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import {
   MemberListSchema,
   MemberReadSchema,
+  type MemberDeleteInput,
   type MemberInviteInput,
   type MemberRead,
   type MemberUpdateInput,
@@ -66,10 +67,24 @@ export async function removeMember(
   accessToken: string,
   organizationId: string,
   userId: string,
+  input?: MemberDeleteInput,
 ): Promise<void> {
   return apiClient.delete(
     `/organizations/${organizationId}/members/${userId}`,
     accessToken,
+    input,
+  );
+}
+
+export async function leaveOrganization(
+  accessToken: string,
+  organizationId: string,
+  input?: { reassign_to?: string },
+): Promise<void> {
+  return apiClient.postNoContent(
+    `/me/memberships/${organizationId}/leave`,
+    accessToken,
+    input,
   );
 }
 

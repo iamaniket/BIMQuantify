@@ -78,9 +78,29 @@ export const MemberReadSchema = z.object({
   status: z.string(),
   invited_at: z.string(),
   accepted_at: z.union([z.string(), z.null()]),
+  // Pending invitations have an expiry; other statuses are null. Surfaced
+  // so the portal can show a countdown / "expired" badge.
+  expires_at: z.union([z.string(), z.null()]),
+  // When this row is the only surviving admin in the org, destructive
+  // actions on it are blocked server-side. Surfaced so the UI can disable
+  // the buttons up front instead of waiting for a 409.
+  is_last_admin: z.boolean(),
+  can_remove: z.boolean(),
+  can_demote: z.boolean(),
+  can_suspend: z.boolean(),
 });
 
 export type MemberRead = z.infer<typeof MemberReadSchema>;
+
+// Body for `DELETE /organizations/{org}/members/{user}` — supplied when
+// the target user owns one or more projects in the org. The API returns
+// `OWNS_ACTIVE_PROJECTS` with the list of project ids when this is
+// missing; the portal then prompts the admin to pick a reassign target.
+export const MemberDeleteInputSchema = z.object({
+  reassign_to: z.string().optional(),
+});
+
+export type MemberDeleteInput = z.infer<typeof MemberDeleteInputSchema>;
 
 export const MemberListSchema = z.array(MemberReadSchema);
 

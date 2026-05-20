@@ -2,7 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { removeMember } from '@/lib/api/members';
+import { leaveOrganization } from '@/lib/api/members';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { adminOrganizationKey, adminOrganizationsKey } from '../organizations/queryKeys';
@@ -10,19 +10,15 @@ import { orgMembersKey } from './queryKeys';
 
 type Variables = {
   organizationId: string;
-  userId: string;
-  // Required when the target user owns one or more projects in the org.
-  // Without it, the API returns OWNS_ACTIVE_PROJECTS and the portal
-  // opens the reassign-picker dialog.
+  // Required when the leaving user owns one or more projects in the org.
   reassignTo?: string;
 };
 
-export function useRemoveMember(): UseMutationResult<void, Error, Variables> {
+export function useLeaveOrganization(): UseMutationResult<void, Error, Variables> {
   return useAuthMutation({
-    mutationFn: (accessToken, { organizationId, userId, reassignTo }) => removeMember(
+    mutationFn: (accessToken, { organizationId, reassignTo }) => leaveOrganization(
       accessToken,
       organizationId,
-      userId,
       reassignTo === undefined ? undefined : { reassign_to: reassignTo },
     ),
     invalidateKeys: ({ organizationId }) => [

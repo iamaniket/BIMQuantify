@@ -777,6 +777,7 @@
         "empty": "No members yet.",
         "roleAdmin": "Admin",
         "roleMember": "Member",
+        "lastAdminBadge": "Last admin",
         "statuses": {
           "active": "Active",
           "pending": "Pending",
@@ -788,7 +789,37 @@
         "demote": "Revoke admin",
         "suspend": "Suspend",
         "reactivate": "Reactivate",
-        "remove": "Remove from tenant"
+        "remove": "Remove from tenant",
+        "leaveOrg": "Leave tenant",
+        "tooltips": {
+          "lastAdmin": "The tenant must have at least one admin. Promote another member before changing this role.",
+          "selfAction": "Use the leave-tenant action instead.",
+          "ownsProjects": "This member owns one or more projects. Reassign ownership before removing them."
+        },
+        "errors": {
+          "lastAdminRequired": "The tenant must have at least one admin.",
+          "lastSuperuserRequired": "At least one super admin must remain.",
+          "selfActionForbidden": "Use the leave-tenant action instead.",
+          "invalidStatusTransition": "That status change is not allowed.",
+          "orgNotActive": "Tenant is suspended; this action is unavailable.",
+          "ownsActiveProjects": "Pick a new owner for this member's projects before removing them.",
+          "invitationExpired": "This invitation has expired. Ask an admin to resend it.",
+          "reassignTargetNotEligible": "Pick a different teammate to take over."
+        }
+      },
+      "reassign": {
+        "title": "Reassign owned projects",
+        "subtitle": "This member owns {count, plural, one {1 project} other {# projects}} in the tenant. Pick another active member to take over before removing them.",
+        "selectLabel": "New owner",
+        "selectPlaceholder": "Pick a teammate…",
+        "cancel": "Cancel",
+        "confirm": "Reassign and remove"
+      },
+      "leave": {
+        "title": "Leave this tenant",
+        "subtitle": "You will lose access to all projects in this tenant. The admin must invite you again to come back.",
+        "confirm": "Leave tenant",
+        "cancel": "Cancel"
       }
     },
     "users": {

@@ -777,6 +777,7 @@
         "empty": "Nog geen leden.",
         "roleAdmin": "Beheerder",
         "roleMember": "Lid",
+        "lastAdminBadge": "Laatste beheerder",
         "statuses": {
           "active": "Actief",
           "pending": "In afwachting",
@@ -788,7 +789,37 @@
         "demote": "Beheerderrechten intrekken",
         "suspend": "Schorsen",
         "reactivate": "Heractiveren",
-        "remove": "Uit tenant verwijderen"
+        "remove": "Uit tenant verwijderen",
+        "leaveOrg": "Tenant verlaten",
+        "tooltips": {
+          "lastAdmin": "De tenant moet minstens één beheerder hebben. Promoveer eerst een ander lid voordat je deze rol wijzigt.",
+          "selfAction": "Gebruik in plaats daarvan de actie 'Tenant verlaten'.",
+          "ownsProjects": "Dit lid is eigenaar van een of meer projecten. Draag eigenaarschap over voordat je het lid verwijdert."
+        },
+        "errors": {
+          "lastAdminRequired": "De tenant moet minstens één beheerder hebben.",
+          "lastSuperuserRequired": "Er moet minstens één superbeheerder overblijven.",
+          "selfActionForbidden": "Gebruik in plaats daarvan de actie 'Tenant verlaten'.",
+          "invalidStatusTransition": "Die statuswijziging is niet toegestaan.",
+          "orgNotActive": "Tenant is geschorst; deze actie is niet beschikbaar.",
+          "ownsActiveProjects": "Kies eerst een nieuwe eigenaar voor de projecten van dit lid.",
+          "invitationExpired": "Deze uitnodiging is verlopen. Vraag een beheerder om opnieuw te versturen.",
+          "reassignTargetNotEligible": "Kies een andere collega om over te nemen."
+        }
+      },
+      "reassign": {
+        "title": "Eigenaarschap overdragen",
+        "subtitle": "Dit lid is eigenaar van {count, plural, one {1 project} other {# projecten}} in deze tenant. Kies een ander actief lid om het over te nemen voordat je het lid verwijdert.",
+        "selectLabel": "Nieuwe eigenaar",
+        "selectPlaceholder": "Kies een collega…",
+        "cancel": "Annuleren",
+        "confirm": "Overdragen en verwijderen"
+      },
+      "leave": {
+        "title": "Deze tenant verlaten",
+        "subtitle": "Je verliest toegang tot alle projecten in deze tenant. De beheerder moet je opnieuw uitnodigen om terug te komen.",
+        "confirm": "Tenant verlaten",
+        "cancel": "Annuleren"
       }
     },
     "users": {

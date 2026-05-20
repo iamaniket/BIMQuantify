@@ -50,7 +50,9 @@ async def test_activate_success_verifies_and_sets_password(
     email_transport: InMemoryEmailTransport,
 ) -> None:
     """Happy path: fresh invite → user verified + password set + login works."""
-    email = "alice@example.com"
+    # Use a test-unique email — `alice@example.com` and other common test
+    # names are reused by `org_user`/`same_org_user` fixtures in conftest.
+    email = "activate-success@example.com"
     await make_test_user(session_maker, email=email, is_verified=False)
     token = await _request_verify_token(client, email, email_transport)
 
@@ -83,7 +85,7 @@ async def test_activate_flips_sole_pending_membership(
     pending invite should land with that invite flipped to active — they
     were created BECAUSE of that invite, so nothing for them to choose.
     """
-    email = "fionn@example.com"
+    email = "activate-pending@example.com"
     user_id = await make_test_user(session_maker, email=email, is_verified=False)
     org_id = uuid4()
     async with session_maker() as session:
@@ -146,7 +148,7 @@ async def test_activate_rejects_reset_password_token(
     is the exact misuse the legacy frontend made — pinned in a test so the
     audiences can never be silently merged.
     """
-    email = "carol@example.com"
+    email = "activate-wrong-audience@example.com"
     await make_test_user(session_maker, email=email, is_verified=True)
 
     forgot = await client.post("/auth/forgot-password", json={"email": email})
@@ -175,7 +177,7 @@ async def test_activate_already_verified_still_sets_password(
     set the password" rather than erroring. Setting the password is the
     user-meaningful outcome of the flow.
     """
-    email = "dan@example.com"
+    email = "activate-replay@example.com"
     await make_test_user(session_maker, email=email, is_verified=False)
     token = await _request_verify_token(client, email, email_transport)
 
@@ -202,7 +204,7 @@ async def test_activate_inactive_user_rejected(
     email_transport: InMemoryEmailTransport,
 ) -> None:
     """is_active=False must short-circuit the flow, even with a valid token."""
-    email = "ev@example.com"
+    email = "activate-inactive@example.com"
     await make_test_user(session_maker, email=email, is_verified=False)
     token = await _request_verify_token(client, email, email_transport)
 
