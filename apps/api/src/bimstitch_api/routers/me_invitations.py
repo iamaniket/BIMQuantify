@@ -14,11 +14,19 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.admin.membership_rules import (
+    ProposedChange,
+    assert_invitation_not_expired,
+    assert_last_admin_invariant,
+    assert_no_owned_projects,
+    invitation_expires_at,
+)
 from bimstitch_api.auth.fastapi_users import current_active_user
+from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_async_session
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
@@ -35,6 +43,7 @@ class InvitationRead(BaseModel):
     organization_name: str
     is_org_admin: bool
     invited_at: datetime
+    expires_at: datetime
     invited_by_email: str | None
 
 
@@ -82,12 +91,14 @@ async def list_my_invitations(
         .order_by(OrganizationMember.invited_at.desc())
     )
     rows = (await session.execute(stmt)).all()
+    settings = get_settings()
     return [
         InvitationRead(
             organization_id=org.id,
             organization_name=org.name,
             is_org_admin=m.is_org_admin,
             invited_at=m.invited_at,
+            expires_at=invitation_expires_at(m.invited_at, settings.invitation_ttl_days),
             invited_by_email=inviter.email if inviter is not None else None,
         )
         for m, org, inviter in rows
@@ -113,6 +124,8 @@ async def accept_invitation(
             status_code=status.HTTP_409_CONFLICT,
             detail="ORG_NOT_AVAILABLE",
         )
+    settings = get_settings()
+    assert_invitation_not_expired(member.invited_at, settings.invitation_ttl_days)
 
     now = datetime.now(timezone.utc)
     member.status = OrganizationMemberStatus.active
@@ -149,7 +162,9 @@ async def decline_invitation(
 ) -> None:
     member, org = await _load_pending(session, user, organization_id)
     # Tombstone the row — frees the seat and tells the admin the user
-    # declined (vs being silently dropped).
+    # declined (vs being silently dropped). Pending admin invites don't
+    # count toward the last-admin invariant (see membership_rules), so
+    # declining one can never leave the org headless.
     before = {"status": member.status.value}
     member.status = OrganizationMemberStatus.removed
 
@@ -162,6 +177,105 @@ async def decline_invitation(
         after={"status": member.status.value},
         actor_user_id=user.id,
         organization_id=org.id,
+        request=request,
+    )
+    await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Leave organization (self-departure)
+# ---------------------------------------------------------------------------
+
+
+leave_router = APIRouter(prefix="/me/memberships", tags=["memberships"])
+
+
+class LeaveOrgRequest(BaseModel):
+    """Body for `POST /me/memberships/{org_id}/leave`.
+
+    `reassign_to` is required when the leaving user owns one or more
+    projects. The server returns `OWNS_ACTIVE_PROJECTS` with the list of
+    project ids when it's missing.
+    """
+
+    reassign_to: UUID | None = None
+
+
+@leave_router.post(
+    "/{organization_id}/leave",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def leave_organization(
+    organization_id: UUID,
+    request: Request,
+    payload: LeaveOrgRequest | None = None,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+) -> None:
+    """Self-departure. Tombstones the requester's membership row in this
+    org after the last-admin invariant and owned-projects checks pass.
+    The admin DELETE route refuses to act on self so all self-removal
+    flows through here.
+    """
+    org = await session.get(Organization, organization_id)
+    if org is None or org.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND")
+    if org.status != OrganizationStatus.active:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="ORG_NOT_ACTIVE")
+
+    member_q = await session.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.user_id == user.id,
+            OrganizationMember.organization_id == organization_id,
+        )
+    )
+    member = member_q.scalar_one_or_none()
+    if member is None or member.status == OrganizationMemberStatus.removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="MEMBER_NOT_FOUND"
+        )
+
+    # Same invariants as admin removal — last admin can't leave, project
+    # owners must reassign first.
+    await assert_last_admin_invariant(
+        session,
+        organization_id,
+        ProposedChange(
+            user_id=user.id,
+            new_status=OrganizationMemberStatus.removed,
+            new_is_admin=member.is_org_admin,
+        ),
+    )
+    reassign_to = payload.reassign_to if payload is not None else None
+    await assert_no_owned_projects(session, org, user.id, reassign_to)
+
+    before = {"is_org_admin": member.is_org_admin, "status": member.status.value}
+
+    # Drop project_members rows for this user in the org's schema (owner
+    # rows have already been transferred above if applicable).
+    await session.execute(text(f'SET LOCAL search_path = "{org.schema_name}", public'))
+    await session.execute(
+        text("DELETE FROM project_members WHERE user_id = :uid"),
+        {"uid": str(user.id)},
+    )
+    await session.execute(text("SET LOCAL search_path = public"))
+
+    member.status = OrganizationMemberStatus.removed
+
+    # Clear `active_organization_id` if the user was active in the org
+    # they just left, so the next login picks a different one (or none).
+    if user.active_organization_id == organization_id:
+        user.active_organization_id = None
+
+    await audit.record(
+        session,
+        action="organization_member.left",
+        resource_type="organization_member",
+        resource_id=member.id,
+        before=before,
+        after={"reassigned_to": str(reassign_to)} if reassign_to else None,
+        actor_user_id=user.id,
+        organization_id=organization_id,
         request=request,
     )
     await session.commit()

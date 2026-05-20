@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 
+from bimstitch_api.admin.invitation_expiry import InvitationExpirySweeper
 from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
@@ -30,6 +31,9 @@ from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.jobs import router as jobs_router
 from bimstitch_api.routers.jobs_internal import router as jobs_internal_router
 from bimstitch_api.routers.jurisdictions import router as jurisdictions_router
+from bimstitch_api.routers.me_invitations import (
+    leave_router as me_memberships_router,
+)
 from bimstitch_api.routers.me_invitations import router as me_invitations_router
 from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.notifications import router as notifications_router
@@ -47,6 +51,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
     redis = get_redis()
     await FastAPILimiter.init(redis)
     manager = get_manager()
@@ -58,9 +63,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             "MinIO/S3 ensure_bucket failed; uploads will fail until storage is reachable",
             exc_info=True,
         )
+    sweeper = InvitationExpirySweeper(settings.invitation_sweep_interval_minutes)
+    sweeper.start()
     try:
         yield
     finally:
+        await sweeper.stop()
         await manager.stop()
         await FastAPILimiter.close()
         await close_redis()
@@ -89,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_organizations_router)
     app.include_router(organization_members_router)
     app.include_router(me_invitations_router)
+    app.include_router(me_memberships_router)
     app.include_router(projects_router)
     app.include_router(contractors_router)
     app.include_router(models_router)

@@ -23,11 +23,16 @@ async def test_create_project_returns_owner_and_creates_membership(
     assert body["description"] == "high-rise"
     assert body["thumbnail_url"] is None
     assert body["owner_id"] == org_user["id"]
-    assert body["organization_id"] == org_user["organization_id"]
+    # `organization_id` no longer travels on the project payload — Projects
+    # live in a per-tenant schema, so the org is implicit in the JWT context.
     assert "id" in body and "created_at" in body and "updated_at" in body
 
-    # Owner row should be auto-created in project_members.
+    # Owner row should be auto-created in project_members. Set search_path
+    # so the unqualified table name resolves into the org's tenant schema.
     async with session_maker() as session:
+        await session.execute(
+            text(f'SET search_path TO "org_{org_user["organization_id"].replace("-", "")}", public')
+        )
         rows = (
             await session.execute(
                 text("SELECT role FROM project_members WHERE project_id = :pid AND user_id = :uid"),
@@ -464,6 +469,9 @@ async def test_delete_project_owner_soft_removes_and_hides_from_reads(
     assert [project["name"] for project in listed.json()] == []
 
     async with session_maker() as session:
+        await session.execute(
+            text(f'SET search_path TO "org_{org_user["organization_id"].replace("-", "")}", public')
+        )
         state = (
             await session.execute(
                 text("SELECT lifecycle_state FROM projects WHERE id = :pid"),
@@ -524,50 +532,59 @@ async def test_archive_project_editor_forbidden(
     assert response.status_code == 403
 
 
-async def test_unauthenticated_project_request_returns_401(client: AsyncClient) -> None:
+async def test_unauthenticated_project_request_returns_409(client: AsyncClient) -> None:
+    # `get_tenant_session` resolves `require_active_organization` before the
+    # user dependency, so a no-token request short-circuits on the missing
+    # `org` claim with 409 NO_ACTIVE_ORGANIZATION — by design, so the portal
+    # routes the user to the workspace switcher.
     response = await client.get("/projects")
-    assert response.status_code == 401
+    assert response.status_code == 409
+    assert response.json()["detail"] == "NO_ACTIVE_ORGANIZATION"
 
 
 async def test_user_without_org_forbidden(
     client: AsyncClient,
-    email_transport: object,
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    import re
+    """A user with no active org membership gets 409 NO_ACTIVE_ORGANIZATION
+    on any tenant-scoped endpoint — the login flow could not stamp an `org`
+    claim, so the request can't be routed to a tenant schema."""
+    from fastapi_users.password import PasswordHelper
 
-    # Register without an organization_name so the user has organization_id NULL.
-    await client.post(
-        "/auth/register",
-        json={
-            "email": "loner@example.com",
-            "password": "correct-horse-battery",
-            "full_name": "Loner",
-        },
-    )
-    sent = email_transport.last_for("loner@example.com")  # type: ignore[attr-defined]
-    assert sent is not None
-    match = re.search(r"Token:\s*(\S+)", sent.body)
-    assert match is not None
-    await client.post("/auth/verify", json={"token": match.group(1)})
+    from bimstitch_api.models.user import User
+
+    async with session_maker() as session:
+        user = User(
+            email="loner@example.com",
+            hashed_password=PasswordHelper().hash("correct-horse-battery"),
+            full_name="Loner",
+            is_active=True,
+            is_verified=True,
+            is_superuser=False,
+        )
+        session.add(user)
+        await session.commit()
+
     login = await client.post(
         "/auth/jwt/login",
         data={"username": "loner@example.com", "password": "correct-horse-battery"},
     )
+    assert login.status_code == 200, login.text
     token = login.json()["access_token"]
 
-    # Sanity: confirm DB really has NULL org for this user.
+    # Sanity: the user has no active org pointer.
     async with session_maker() as session:
-        org_id = (
+        active_org = (
             await session.execute(
-                text("SELECT organization_id FROM users WHERE email = :e"),
+                text("SELECT active_organization_id FROM users WHERE email = :e"),
                 {"e": "loner@example.com"},
             )
         ).scalar_one()
-    assert org_id is None
+    assert active_org is None
 
     response = await client.get("/projects", headers=_auth(token))
-    assert response.status_code == 403
+    assert response.status_code == 409
+    assert response.json()["detail"] == "NO_ACTIVE_ORGANIZATION"
 
 
 # ---------------------------------------------------------------------------

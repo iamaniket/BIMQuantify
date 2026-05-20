@@ -1,13 +1,19 @@
 from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
 from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy import select
 
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_user_db
 from bimstitch_api.email.transport import get_email_transport
+from bimstitch_api.models.organization_member import (
+    OrganizationMember,
+    OrganizationMemberStatus,
+)
 from bimstitch_api.models.user import User
 
 
@@ -58,6 +64,47 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             subject="Activate your BIMstitch account",
             body=body,
         )
+
+    async def on_after_verify(
+        self, user: User, request: Request | None = None
+    ) -> None:
+        """Bootstrap auto-accept.
+
+        A freshly-activated user with no active memberships and exactly
+        one pending invite was created BECAUSE of that invite — there is
+        no choice for them to make. Flip the row to `active` here so they
+        don't see a misleading "sign in and accept" prompt on top of the
+        password they just set. This mirrors the same narrow rule applied
+        at login (see `auth.routes._flip_pending_memberships`).
+        """
+        # `self.user_db` wraps the same AsyncSession the verify endpoint
+        # used; safe to query/mutate. fastapi-users does NOT commit here
+        # (it commits on the `update` that flipped `is_verified`); we
+        # commit ourselves below.
+        from bimstitch_api.admin.membership_rules import invitation_is_expired
+
+        session = self.user_db.session
+        stmt = select(OrganizationMember).where(
+            OrganizationMember.user_id == user.id,
+            OrganizationMember.status != OrganizationMemberStatus.removed,
+        )
+        rows = list((await session.execute(stmt)).scalars().all())
+        if not rows:
+            return
+        settings = get_settings()
+        has_active = any(m.status == OrganizationMemberStatus.active for m in rows)
+        pending = [
+            m
+            for m in rows
+            if m.status == OrganizationMemberStatus.pending
+            and not invitation_is_expired(m.invited_at, settings.invitation_ttl_days)
+        ]
+        if has_active or len(pending) != 1:
+            return
+
+        pending[0].status = OrganizationMemberStatus.active
+        pending[0].accepted_at = datetime.now(timezone.utc)
+        await session.commit()
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Request | None = None

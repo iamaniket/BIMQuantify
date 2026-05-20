@@ -79,17 +79,18 @@ async def _seed_succeeded_compliance_job(
 
     job_id = uuid4()
     payload = {"framework": framework}
+    schema = f"org_{str(organization_id).replace('-', '')}"
     async with session_maker() as session, session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
         await session.execute(
             text(
-                "INSERT INTO jobs (id, organization_id, project_id, job_type, "
+                "INSERT INTO jobs (id, project_id, job_type, "
                 "status, payload, result, finished_at) "
-                "VALUES (:id, :org, :p, 'compliance_check', 'succeeded', "
+                "VALUES (:id, :p, 'compliance_check', 'succeeded', "
                 "CAST(:pl AS jsonb), CAST(:r AS jsonb), now())"
             ),
             {
                 "id": str(job_id),
-                "org": str(organization_id),
                 "p": str(project_id),
                 "pl": _json.dumps(payload),
                 "r": _json.dumps(result or _DEFAULT_COMPLIANCE_RESULT),
@@ -360,6 +361,7 @@ async def test_report_callback_requires_bearer_token(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "ready",
             "storage_key": "reports/x/y/z.pdf",
@@ -385,6 +387,7 @@ async def test_report_callback_transitions_to_ready(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "ready",
             "storage_key": storage_key,
@@ -424,6 +427,7 @@ async def test_report_callback_records_failure(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "failed",
             "error": "PUPPETEER_TIMEOUT",
@@ -454,6 +458,7 @@ async def test_report_callback_idempotent_after_terminal(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "ready",
             "storage_key": storage_key,
@@ -470,6 +475,7 @@ async def test_report_callback_idempotent_after_terminal(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "failed",
             "error": "should-be-ignored",
@@ -491,6 +497,7 @@ async def test_report_callback_unknown_report_404(
         "/internal/jobs/reports/callback",
         json={
             "report_id": str(uuid4()),
+            "organization_id": org_user["organization_id"],
             "job_id": str(uuid4()),
             "status": "ready",
             "storage_key": "reports/x/y/z.pdf",
@@ -526,6 +533,7 @@ async def test_report_callback_ready_mirrors_status_onto_job_row(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "ready",
             "storage_key": storage_key,
@@ -564,6 +572,7 @@ async def test_report_callback_failed_mirrors_status_onto_job_row(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "failed",
             "error": "CHROMIUM_OOM",
@@ -605,6 +614,7 @@ async def test_report_callback_emits_notification(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "ready",
             "storage_key": storage_key,
@@ -644,6 +654,7 @@ async def test_report_callback_failed_emits_failure_notification(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "failed",
             "error": "RENDER_TIMEOUT_5MIN",
@@ -678,6 +689,7 @@ async def test_report_callback_ready_missing_storage_key_400(
         "/internal/jobs/reports/callback",
         json={
             "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
             "job_id": report["job_id"],
             "status": "ready",
             # storage_key intentionally omitted
@@ -798,25 +810,26 @@ async def test_create_report_snapshot_includes_project_and_contractor(
     user_id = UUID(org_user["id"])
     project_id = uuid4()
     contractor_id = uuid4()
+    schema = f"org_{str(org_id).replace('-', '')}"
     async with session_maker() as session, session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
         await session.execute(
             text(
-                "INSERT INTO contractors (id, organization_id, name, kvk_number) "
-                "VALUES (:id, :org, 'Bouwbedrijf X', '99887766')"
+                "INSERT INTO contractors (id, name, kvk_number) "
+                "VALUES (:id, 'Bouwbedrijf X', '99887766')"
             ),
-            {"id": str(contractor_id), "org": str(org_id)},
+            {"id": str(contractor_id)},
         )
         await session.execute(
             text(
-                "INSERT INTO projects (id, organization_id, name, owner_id, "
+                "INSERT INTO projects (id, name, owner_id, "
                 "contractor_id, street, house_number, postal_code, city, "
                 "permit_number) "
-                "VALUES (:id, :org, 'P-snap', :owner, :contractor, "
+                "VALUES (:id, 'P-snap', :owner, :contractor, "
                 "'Hoofdstraat', '12', '1011 AB', 'Amsterdam', 'OMG-2026-001')"
             ),
             {
                 "id": str(project_id),
-                "org": str(org_id),
                 "owner": str(user_id),
                 "contractor": str(contractor_id),
             },

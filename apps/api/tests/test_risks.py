@@ -435,6 +435,9 @@ async def test_risk_cascade_on_project_hard_delete(
 
     async with session_maker() as session:
         await session.execute(
+            text(f'SET search_path TO "org_{org_user["organization_id"].replace("-", "")}", public')
+        )
+        await session.execute(
             text("DELETE FROM projects WHERE id = :pid"),
             {"pid": project["id"]},
         )

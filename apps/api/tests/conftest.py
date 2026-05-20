@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis, from_url
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -71,9 +71,26 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         User,
     )
 
-    eng = create_async_engine(_TEST_DB_URL, future=True)
+    # NullPool ensures every checkout opens a fresh asyncpg connection, so
+    # the prepared-statement cache that asyncpg keeps per connection cannot
+    # outlive a DROP SCHEMA between tests. Sharing a pooled connection
+    # across tests would otherwise hit `InvalidCachedStatementError` once
+    # a previous test's schema/enums are gone.
+    from sqlalchemy.pool import NullPool
+
+    eng = create_async_engine(_TEST_DB_URL, future=True, poolclass=NullPool)
 
     async with eng.begin() as conn:
+        # Drop any per-tenant schemas left behind by a previous aborted test
+        # run BEFORE dropping public tables — their FKs reference public.users
+        # / public.organizations, so dropping the master tables first would
+        # fail with a dependent-objects error.
+        rows = await conn.exec_driver_sql(
+            "SELECT schema_name FROM information_schema.schemata "
+            "WHERE schema_name LIKE 'org_%'"
+        )
+        for (schema,) in rows.fetchall():
+            await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         # Drop policies/enum left behind from a prior aborted run, then recreate
         # the schema from metadata. `create_all` is DDL-only — RLS policies are
         # applied separately below to mirror what the migration does.
@@ -117,12 +134,29 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         )
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
+        # The production saga runs tenant migrations against per-org schemas
+        # and grants bim_app DML on those tables. Tests instead put EVERY
+        # table (master + tenant) in the `public` schema, so we widen the
+        # bim_app grants to cover the tenant tables too. Without this, any
+        # tenant-session query (which runs as bim_app) hits permission denied.
+        await conn.exec_driver_sql(
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO bim_app"
+        )
+        await conn.exec_driver_sql(
+            "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO bim_app"
+        )
         for stmt in enable_rls_statements():
             await conn.exec_driver_sql(stmt)
 
     yield eng
 
     async with eng.begin() as conn:
+        rows = await conn.exec_driver_sql(
+            "SELECT schema_name FROM information_schema.schemata "
+            "WHERE schema_name LIKE 'org_%'"
+        )
+        for (schema,) in rows.fetchall():
+            await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         for stmt in disable_rls_statements():
             await conn.exec_driver_sql(
                 f"DO $$ BEGIN {stmt} EXCEPTION WHEN others THEN NULL; END $$;"
@@ -175,6 +209,22 @@ async def _clean_tables(
 ) -> AsyncGenerator[None, None]:
     yield
     async with session_maker() as session:
+        # Drop per-tenant schemas created during the test before truncating
+        # the master tables (so the org rows that reference them disappear
+        # together). We never persist tenant data across tests — every test
+        # provisions its own org schema(s) via the `_provision_user_in_org`
+        # helper.
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT schema_name FROM information_schema.schemata "
+                    "WHERE schema_name LIKE 'org_%'"
+                )
+            )
+        ).all()
+        for (schema,) in rows:
+            await session.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+
         # TRUNCATE ... CASCADE handles FK ordering atomically. RLS policies do
         # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
         await session.execute(
@@ -492,98 +542,298 @@ async def rate_limited_client(
 # ---------------------------------------------------------------------------
 
 
-async def _register_login(
-    client: AsyncClient,
-    email_transport: object,
-    email: str,
-    organization_name: str,
-) -> dict[str, str]:
-    import re
+_TEST_PASSWORD = "correct-horse-battery"
 
-    register_resp = await client.post(
-        "/auth/register",
-        json={
-            "email": email,
-            "password": "correct-horse-battery",
-            "full_name": email.split("@")[0],
-            "organization_name": organization_name,
-        },
+
+async def make_test_user(
+    session_maker: async_sessionmaker[AsyncSession],
+    *,
+    email: str,
+    password: str = _TEST_PASSWORD,
+    full_name: str | None = None,
+    is_verified: bool = True,
+    is_superuser: bool = False,
+) -> str:
+    """Insert a user directly into the master DB without going through the
+    saga or the (removed) `/auth/register` route. Returns the user id (str).
+    Tests that need to log in as a verified user can pair this with a
+    `POST /auth/jwt/login` using the same password.
+    """
+    from fastapi_users.password import PasswordHelper
+
+    from bimstitch_api.models.user import User
+
+    async with session_maker() as session:
+        user = User(
+            email=email,
+            hashed_password=PasswordHelper().hash(password),
+            full_name=full_name or email.split("@")[0],
+            is_active=True,
+            is_verified=is_verified,
+            is_superuser=is_superuser,
+        )
+        session.add(user)
+        await session.commit()
+        return str(user.id)
+
+
+_TENANT_DDL_PLACEHOLDER = "__TENANT_SCHEMA__"
+_cached_tenant_ddl: list[str] | None = None
+
+
+def _capture_tenant_ddl() -> list[str]:
+    """Compile the tenant-tables DDL once with a placeholder schema, then
+    let callers string-replace into a real schema name. Schema creation
+    via `Base.metadata.create_all` is slow because SQLAlchemy walks the
+    metadata, sorts dependencies, and compiles DDL for ~24 tables. Doing
+    that per test would push the suite well over an hour; caching the
+    compiled text drops it to milliseconds per schema.
+    """
+    global _cached_tenant_ddl
+    if _cached_tenant_ddl is not None:
+        return _cached_tenant_ddl
+
+    from sqlalchemy import create_mock_engine
+    from sqlalchemy.dialects import postgresql
+
+    from bimstitch_api.db import Base, is_tenant_table
+
+    tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
+    # Temporarily stamp every tenant table with the placeholder schema so
+    # SQLAlchemy emits schema-qualified DDL. `create_mock_engine` does not
+    # honour `schema_translate_map`, so we mutate the metadata directly,
+    # compile, then restore.
+    original_schemas = {t: t.schema for t in tenant_tables}
+    for t in tenant_tables:
+        t.schema = _TENANT_DDL_PLACEHOLDER
+
+    statements: list[str] = []
+
+    def _dump(sql, *_args, **_kw):  # noqa: ANN001
+        compiled = sql.compile(dialect=postgresql.dialect())
+        statements.append(str(compiled).strip())
+
+    try:
+        mock_engine = create_mock_engine("postgresql://", _dump)
+        Base.metadata.create_all(mock_engine, tables=tenant_tables)
+    finally:
+        for t, original in original_schemas.items():
+            t.schema = original
+
+    # Skip `CREATE TYPE` statements: the enums already live in public from
+    # the master `create_all` run, and the per-test schema falls through to
+    # public via search_path. Trying to re-create them per schema raises
+    # DuplicateObjectError. Keeping them in public is also the only thing
+    # that prevents the cross-schema enum-cast bug.
+    _cached_tenant_ddl = [
+        s for s in statements if not s.upper().startswith("CREATE TYPE")
+    ]
+    return _cached_tenant_ddl
+
+
+async def _provision_tenant_schema(
+    engine: AsyncEngine, schema: str
+) -> None:
+    """Materialise a real per-tenant Postgres schema for a test org.
+
+    Replays the cached tenant DDL (compiled once at session start with a
+    placeholder schema) into the target schema. FKs between tenant tables
+    emit as `REFERENCES "<schema>"."<other>"`; FKs at master tables (users,
+    organizations) keep their explicit `public.` qualifier so the identity
+    layer stays shared. Without real per-tenant schemas, cross-org
+    isolation tests can't be proven — both orgs would share `public`.
+    """
+    ddl = _capture_tenant_ddl()
+    # Drive each DDL statement separately — asyncpg's extended protocol
+    # rejects multi-statement strings ("cannot insert multiple commands
+    # into a prepared statement"). All statements run inside a single
+    # transaction so the round-trip per statement is minimal.
+    async with engine.begin() as conn:
+        await conn.exec_driver_sql(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+        for stmt in ddl:
+            await conn.exec_driver_sql(stmt.replace(_TENANT_DDL_PLACEHOLDER, schema))
+        # Drop master-only enums that schema_translate_map duplicated into
+        # this schema — without this, a tenant-session query against
+        # `public.organization_members WHERE status = $1` casts the
+        # parameter to the org-schema duplicate enum and Postgres rejects
+        # the cross-type compare.
+        for master_enum in (
+            "accessrequeststatus",
+            "organizationmemberstatus",
+            "organizationstatus",
+        ):
+            await conn.exec_driver_sql(
+                f'DROP TYPE IF EXISTS "{schema}".{master_enum} CASCADE'
+            )
+        # Partial unique index the metadata can't express via __table_args__.
+        await conn.exec_driver_sql(
+            f'CREATE UNIQUE INDEX IF NOT EXISTS ux_borgingsplans_one_active '
+            f'ON "{schema}".borgingsplans(project_id) '
+            f"WHERE status IN ('draft', 'published')"
+        )
+        # Grants for bim_app on everything in the new schema.
+        await conn.exec_driver_sql(
+            f'GRANT USAGE, CREATE ON SCHEMA "{schema}" TO bim_app'
+        )
+        await conn.exec_driver_sql(
+            f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES '
+            f'IN SCHEMA "{schema}" TO bim_app'
+        )
+        await conn.exec_driver_sql(
+            f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "{schema}" TO bim_app'
+        )
+
+
+async def _provision_user_in_org(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+    *,
+    email: str,
+    organization_id: object | None = None,
+    organization_name: str | None = None,
+) -> dict[str, str]:
+    """Create a verified user + active membership directly in the DB, then
+    log them in to get tokens.
+
+    The public `/auth/register` route was removed in favour of the admin
+    invite flow. Tests still need quickly-provisioned users with an active
+    org context, so this helper bypasses the full saga: insert the user,
+    insert (or reuse) the org with a real per-tenant schema (created by
+    `_provision_tenant_schema`), attach an active OrganizationMember row,
+    then hit `/auth/jwt/login`.
+    """
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    from fastapi_users.password import PasswordHelper
+    from sqlalchemy import select
+
+    from bimstitch_api.models.organization import Organization, OrganizationStatus
+    from bimstitch_api.models.organization_member import (
+        OrganizationMember,
+        OrganizationMemberStatus,
     )
-    assert register_resp.status_code in (200, 201), (
-        f"register failed: {register_resp.status_code} {register_resp.text}"
-    )
-    sent = email_transport.last_for(email)  # type: ignore[attr-defined]
-    assert sent is not None, (
-        f"no verification email sent for {email}; "
-        f"register={register_resp.status_code} {register_resp.text}"
-    )
-    match = re.search(r"Token:\s*(\S+)", sent.body)
-    assert match is not None
-    await client.post("/auth/verify", json={"token": match.group(1)})
+    from bimstitch_api.models.user import User
+    from bimstitch_api.tenancy import schema_name_for
+
+    schema_to_create: str | None = None
+    async with session_maker() as session:
+        # Resolve / create the org row.
+        org: Organization | None = None
+        if organization_id is not None:
+            org = await session.get(Organization, organization_id)
+        elif organization_name is not None:
+            org = (
+                await session.execute(
+                    select(Organization).where(Organization.name == organization_name)
+                )
+            ).scalar_one_or_none()
+        if org is None:
+            new_org_id = organization_id or uuid4()
+            schema_to_create = schema_name_for(new_org_id)
+            org = Organization(
+                id=new_org_id,
+                name=organization_name or f"Org-{str(new_org_id)[:8]}",
+                schema_name=schema_to_create,
+                status=OrganizationStatus.active,
+                provisioned_at=datetime.now(timezone.utc),
+            )
+            session.add(org)
+            await session.flush()
+
+        user = User(
+            email=email,
+            hashed_password=PasswordHelper().hash(_TEST_PASSWORD),
+            full_name=email.split("@")[0],
+            is_active=True,
+            is_verified=True,
+            is_superuser=False,
+            active_organization_id=org.id,
+        )
+        session.add(user)
+        await session.flush()
+
+        session.add(
+            OrganizationMember(
+                user_id=user.id,
+                organization_id=org.id,
+                is_org_admin=True,
+                status=OrganizationMemberStatus.active,
+                accepted_at=datetime.now(timezone.utc),
+            )
+        )
+        await session.commit()
+
+        user_id = str(user.id)
+        org_id = str(org.id)
+
+    # Provision the tenant schema OUTSIDE the master txn so the CREATE SCHEMA
+    # statement commits cleanly.
+    if schema_to_create is not None:
+        await _provision_tenant_schema(engine, schema_to_create)
+
     response = await client.post(
         "/auth/jwt/login",
-        data={"username": email, "password": "correct-horse-battery"},
+        data={"username": email, "password": _TEST_PASSWORD},
     )
-    return response.json()
+    assert response.status_code == 200, (
+        f"login failed for {email}: {response.status_code} {response.text}"
+    )
+    tokens = response.json()
+    return {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "email": email,
+        "id": user_id,
+        "organization_id": org_id,
+    }
 
 
 @pytest.fixture
 async def org_user(
     client: AsyncClient,
-    email_transport: object,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
 ) -> dict[str, str]:
-    """Verified user belonging to AlphaCo. Returns dict with access_token,
-    refresh_token, email, and the user's id (resolved via /users/me)."""
-    tokens = await _register_login(client, email_transport, "alice@example.com", "AlphaCo")
-    me = await client.get(
-        "/users/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    """Verified user belonging to AlphaCo, with an active org membership."""
+    return await _provision_user_in_org(
+        client,
+        session_maker,
+        engine,
+        email="alice@example.com",
+        organization_name="AlphaCo",
     )
-    body = me.json()
-    return {
-        "access_token": tokens["access_token"],
-        "refresh_token": tokens["refresh_token"],
-        "email": body["email"],
-        "id": body["id"],
-        "organization_id": body["organization_id"],
-    }
 
 
 @pytest.fixture
 async def other_org_user(
     client: AsyncClient,
-    email_transport: object,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
 ) -> dict[str, str]:
     """Verified user belonging to BetaCo (different org from `org_user`)."""
-    tokens = await _register_login(client, email_transport, "bob@example.org", "BetaCo")
-    me = await client.get(
-        "/users/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    return await _provision_user_in_org(
+        client,
+        session_maker,
+        engine,
+        email="bob@example.org",
+        organization_name="BetaCo",
     )
-    body = me.json()
-    return {
-        "access_token": tokens["access_token"],
-        "refresh_token": tokens["refresh_token"],
-        "email": body["email"],
-        "id": body["id"],
-        "organization_id": body["organization_id"],
-    }
 
 
 @pytest.fixture
 async def same_org_user(
     client: AsyncClient,
-    email_transport: object,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
     org_user: dict[str, str],
 ) -> dict[str, str]:
     """A second verified user in the same org (AlphaCo) as `org_user`."""
-    tokens = await _register_login(client, email_transport, "carol@example.com", "AlphaCo")
-    me = await client.get(
-        "/users/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    return await _provision_user_in_org(
+        client,
+        session_maker,
+        engine,
+        email="carol@example.com",
+        organization_id=org_user["organization_id"],
     )
-    body = me.json()
-    return {
-        "access_token": tokens["access_token"],
-        "refresh_token": tokens["refresh_token"],
-        "email": body["email"],
-        "id": body["id"],
-        "organization_id": body["organization_id"],
-    }

@@ -15,6 +15,10 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.admin.membership_rules import (
+    ProposedUserChange,
+    assert_last_superuser_invariant,
+)
 from bimstitch_api.admin.provisioning import (
     ProvisioningError,
     delete_organization,
@@ -325,6 +329,13 @@ async def _toggle_superuser(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="USER_NOT_FOUND")
     if user.is_superuser == new_value:
         return user
+    # Demote must leave at least one active superuser standing.
+    if not new_value:
+        await assert_last_superuser_invariant(
+            session,
+            user.id,
+            ProposedUserChange(is_superuser=False, is_active=user.is_active),
+        )
     user.is_superuser = new_value
     await audit.record(
         session,
@@ -387,6 +398,13 @@ async def _toggle_active(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="CANNOT_DEACTIVATE_SELF",
+        )
+    # Deactivating a superuser cannot empty the surviving-superuser set.
+    if not new_value and user.is_superuser:
+        await assert_last_superuser_invariant(
+            session,
+            user.id,
+            ProposedUserChange(is_superuser=True, is_active=False),
         )
     user.is_active = new_value
     await audit.record(

@@ -2,9 +2,11 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_limiter.depends import RateLimiter
+from fastapi_users import exceptions as fau_exceptions
+from fastapi_users.jwt import decode_jwt
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,6 +64,53 @@ class SwitchOrgRequest(BaseModel):
     organization_id: UUID
 
 
+class ActivateRequest(BaseModel):
+    token: str
+    password: str
+
+
+async def _decode_verify_token_to_user(
+    user_manager: UserManager, token: str
+) -> User:
+    """Decode a verify-audience JWT and resolve it to a User row.
+
+    Re-implements the early half of `BaseUserManager.verify`
+    (fastapi_users/manager.py:321-347 in the vendored lib) without the
+    is_verified flip. Used by the /auth/activate flow so we can:
+      - bounce inactive users BEFORE flipping is_verified, and
+      - recover the user on the already-verified replay branch
+        without re-decoding through user_manager.verify() (which would
+        raise UserAlreadyVerified before returning the user).
+    """
+    try:
+        data = decode_jwt(
+            token,
+            user_manager.verification_token_secret,
+            [user_manager.verification_token_audience],
+        )
+        user_id = data["sub"]
+        email = data["email"]
+        parsed_id = user_manager.parse_id(user_id)
+    except Exception as exc:  # noqa: BLE001 — any decode/shape error is "bad token"
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ACTIVATION_BAD_TOKEN",
+        ) from exc
+    try:
+        user = await user_manager.get_by_email(email)
+    except fau_exceptions.UserNotExists as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ACTIVATION_BAD_TOKEN",
+        ) from exc
+    if parsed_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ACTIVATION_BAD_TOKEN",
+        )
+    return user
+
+
 async def _flip_pending_memberships(session: AsyncSession, user: User) -> list[OrganizationMember]:
     """Bootstrap auto-accept on login.
 
@@ -76,8 +125,14 @@ async def _flip_pending_memberships(session: AsyncSession, user: User) -> list[O
     they activated, leave them all pending — the user picks via the
     `/me/invitations` UI.
 
+    Expired pending rows are skipped entirely — auto-accepting an invite
+    that the sweeper would have already tombstoned would be a silent
+    rule-bypass.
+
     Returns the list of flipped rows so callers can audit them.
     """
+    from bimstitch_api.admin.membership_rules import invitation_is_expired
+
     stmt = select(OrganizationMember).where(
         OrganizationMember.user_id == user.id,
         OrganizationMember.status != OrganizationMemberStatus.removed,
@@ -87,8 +142,14 @@ async def _flip_pending_memberships(session: AsyncSession, user: User) -> list[O
     if not rows:
         return []
 
+    settings = get_settings()
     has_active = any(m.status == OrganizationMemberStatus.active for m in rows)
-    pending = [m for m in rows if m.status == OrganizationMemberStatus.pending]
+    pending = [
+        m
+        for m in rows
+        if m.status == OrganizationMemberStatus.pending
+        and not invitation_is_expired(m.invited_at, settings.invitation_ttl_days)
+    ]
     if has_active or len(pending) != 1:
         return []
 
@@ -373,6 +434,65 @@ def build_auth_router() -> APIRouter:
         )
 
     router.include_router(me_router)
+
+    # --- activate: invite-acceptance flow ---------------------------------
+    # POST /auth/activate { token, password } — atomically flips
+    # is_verified=true AND sets the password using a single verify-audience
+    # token (the one in the invite email). Replaces the legacy two-call
+    # client flow (verify + reset-password) which always failed at step 2
+    # because /auth/reset-password decodes a different JWT audience.
+    activate_router = APIRouter(prefix="/auth", tags=["auth"])
+
+    @activate_router.post(
+        "/activate",
+        status_code=status.HTTP_204_NO_CONTENT,
+        response_class=Response,
+    )
+    async def activate(
+        payload: ActivateRequest,
+        request: Request,
+        user_manager: UserManager = Depends(get_user_manager),
+    ) -> Response:
+        # Resolve the user from the token first so an inactive user is
+        # rejected BEFORE we flip is_verified. Bad/expired/forged tokens
+        # raise HTTPException(400, ACTIVATION_BAD_TOKEN) here.
+        user = await _decode_verify_token_to_user(user_manager, payload.token)
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="ACTIVATION_USER_INACTIVE",
+            )
+
+        if not user.is_verified:
+            try:
+                user = await user_manager.verify(payload.token, request)
+            except fau_exceptions.UserAlreadyVerified:
+                # Raced with another call (or a verify happened out-of-band
+                # between _decode and here). Fall through — set the password.
+                pass
+            except (
+                fau_exceptions.InvalidVerifyToken,
+                fau_exceptions.UserNotExists,
+            ) as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="ACTIVATION_BAD_TOKEN",
+                ) from exc
+
+        try:
+            await user_manager._update(user, {"password": payload.password})
+        except fau_exceptions.InvalidPasswordException as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "ACTIVATION_INVALID_PASSWORD",
+                    "reason": e.reason,
+                },
+            ) from e
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    router.include_router(activate_router)
 
     # --- FastAPI Users built-in routers -----------------------------------
     # NOTE: /auth/register is intentionally NOT included. All user creation

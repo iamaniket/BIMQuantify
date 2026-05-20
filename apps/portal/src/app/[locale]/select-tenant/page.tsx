@@ -2,11 +2,14 @@
 
 import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/providers/AuthProvider";
+import { Button, Card, CardBody, CardHeader } from "@bimstitch/ui";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 export default function SelectTenantPage() {
   const { me, switchOrganization } = useAuth();
   const router = useRouter();
+  const t = useTranslations("auth.login");
 
   useEffect(() => {
     if (!me) return;
@@ -27,23 +30,36 @@ export default function SelectTenantPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center">
-      <h2 className="mb-4 text-xl font-bold">Select your organization</h2>
-      <ul className="w-80 space-y-2">
-        {me.memberships.map((m) => (
-          <li key={m.organization_id}>
-            <button
-              className={`w-full rounded border px-4 py-2 text-left hover:bg-gray-100 ${me.active_organization_id === m.organization_id ? "bg-gray-50 font-semibold" : ""}`}
-              onClick={async () => {
-                await switchOrganization(m.organization_id);
-                router.replace("/projects");
-              }}
-            >
-              {m.organization_name}
-            </button>
-          </li>
-        ))}
-      </ul>
+    <main className="flex min-h-screen items-center justify-center px-4">
+      <Card className="w-full max-w-md rounded-2xl">
+        <CardHeader className="space-y-1">
+          <h2 className="text-xl font-bold">{t("organizationStep.title")}</h2>
+          <p className="text-sm text-foreground-secondary">{t("organizationStep.subtitle")}</p>
+        </CardHeader>
+        <CardBody>
+          <ul className="space-y-2">
+            {me.memberships.map((membership) => (
+              <li key={membership.organization_id}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-auto w-full justify-between px-3 py-2 text-sm"
+                  onClick={async () => {
+                    await switchOrganization(membership.organization_id);
+                    router.replace("/projects");
+                  }}
+                >
+                  <span>{membership.organization_name}</span>
+                  {me.active_organization_id === membership.organization_id ? (
+                    <span className="text-xs text-foreground-secondary">{t("organizationStep.active")}</span>
+                  ) : null}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </CardBody>
+      </Card>
     </main>
   );
 }

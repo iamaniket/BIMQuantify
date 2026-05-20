@@ -162,6 +162,7 @@ async def test_callback_running_then_succeeded(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "status": "running",
             "started_at": "2026-04-29T12:00:00Z",
             "extractor_version": "0.1.0",
@@ -177,6 +178,7 @@ async def test_callback_running_then_succeeded(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "status": "succeeded",
             "fragments_key": f"projects/{project_id}/{file_id}.frag",
             "metadata_key": f"projects/{project_id}/{file_id}.metadata.json",
@@ -204,6 +206,7 @@ async def test_callback_is_idempotent_after_terminal(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "status": "succeeded",
             "fragments_key": "projects/x/y.frag",
         },
@@ -217,6 +220,7 @@ async def test_callback_is_idempotent_after_terminal(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "status": "failed",
             "error": "should-be-ignored",
         },
@@ -257,6 +261,7 @@ async def test_callback_records_failure(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "status": "failed",
             "error": "UNSUPPORTED_SCHEMA: IFC4X1",
             "finished_at": "2026-04-29T13:00:00Z",
@@ -380,6 +385,7 @@ async def test_viewer_bundle_returns_presigned_urls_after_extraction(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "status": "succeeded",
             "fragments_key": fragments_key,
             "metadata_key": metadata_key,
@@ -416,6 +422,7 @@ async def test_viewer_bundle_cross_org_returns_404(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "status": "succeeded",
             "fragments_key": f"projects/{project_id}/{file_id}.frag",
         },
@@ -452,6 +459,7 @@ async def test_viewer_role_can_get_viewer_bundle(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "status": "succeeded",
             "fragments_key": fragments_key,
         },

@@ -1342,6 +1342,7 @@ async def test_complete_callback_persists_ifc_project_guid(
         "/internal/jobs/callback",
         json={
             "file_id": init["file_id"],
+            "organization_id": org_user["organization_id"],
             "status": "succeeded",
             "fragments_key": "fragments.frag",
             "metadata_key": "meta.json",
@@ -1389,6 +1390,7 @@ async def test_complete_callback_rejects_on_hash_mismatch(
         "/internal/jobs/callback",
         json={
             "file_id": init["file_id"],
+            "organization_id": org_user["organization_id"],
             "status": "succeeded",
             "fragments_key": "fragments.frag",
             "metadata_key": "meta.json",

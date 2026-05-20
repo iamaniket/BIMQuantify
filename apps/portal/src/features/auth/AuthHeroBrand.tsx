@@ -7,7 +7,6 @@ import {
   KpiStrip,
   LegalFooter,
   SystemStatusBadge,
-  type LegalFooterLink,
   type SystemStatusValue,
 } from '@bimstitch/ui';
 import { useTranslations } from 'next-intl';
@@ -19,24 +18,26 @@ import { useProjectsMap } from '@/features/auth/useProjectsMap';
 import { useSystemStatus } from '@/features/auth/useSystemStatus';
 import { formatApproxCount } from '@/lib/formatting/numbers';
 
-export interface AuthHeroBrandProps {
-  /** Legal links rendered in the footer at the bottom of the brand pane. */
-  legalLinks: readonly LegalFooterLink[];
-}
-
 /**
  * Shared "brand canvas" content for `AuthShell.brand` — the dark blue
  * pane with the BimStitch wordmark, hero copy, KPI strip, live NL map,
  * and the legal footer.
  *
- * Used by both the login page and the legal pages so they share an
- * identical left-pane experience. Lives outside `@bimstitch/ui` because
- * it depends on portal-specific data hooks (system status, projects map).
+ * Used by every non-dashboard auth page so they share an identical
+ * left-pane experience. Lives outside `@bimstitch/ui` because it depends
+ * on portal-specific data hooks (system status, projects map).
  */
-export function AuthHeroBrand({ legalLinks }: AuthHeroBrandProps): JSX.Element {
+export function AuthHeroBrand(): JSX.Element {
   const t = useTranslations('auth');
+  const tLegal = useTranslations('legal');
   const statusQuery = useSystemStatus();
   const markersQuery = useProjectsMap();
+
+  const legalLinks = [
+    { href: '/legal/privacy', label: tLegal('navPrivacy') },
+    { href: '/legal/terms', label: tLegal('navTerms') },
+    { href: '/legal/dpa', label: tLegal('navDpa') },
+  ];
 
   const live = statusQuery.data;
   const status: SystemStatusValue = statusQuery.isLoading

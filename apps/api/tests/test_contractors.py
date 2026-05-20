@@ -23,7 +23,8 @@ async def test_create_contractor_minimal(
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["name"] == "Bouw BV"
-    assert body["organization_id"] == org_user["organization_id"]
+    # Contractors live in the per-tenant schema now — no `organization_id`
+    # column is exposed on the payload.
     assert body["kvk_number"] is None
     assert body["contact_email"] is None
     assert body["contact_phone"] is None

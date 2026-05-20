@@ -137,11 +137,18 @@ async function request<TResponse, TBody>(
   return parsed.data as TResponse;
 }
 
-async function requestNoContent(options: NoContentRequestOptions): Promise<void> {
-  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${options.path}`, {
-    method: options.method,
-    headers: buildHeaders(options.accessToken),
-  });
+async function requestNoContent(
+  options: NoContentRequestOptions,
+  body?: unknown,
+): Promise<void> {
+  const headers = buildHeaders(options.accessToken);
+  const init: RequestInit = { method: options.method, headers };
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${options.path}`, init);
 
   if (!response.ok) {
     const detail = await parseErrorDetail(response);
@@ -210,11 +217,14 @@ export const apiClient = {
     path,
     accessToken,
   }),
-  postNoContent: async (path: string, accessToken: string): Promise<void> => requestNoContent({
-    method: 'POST',
-    path,
-    accessToken,
-  }),
+  postNoContent: async (
+    path: string,
+    accessToken: string,
+    body?: unknown,
+  ): Promise<void> => requestNoContent(
+    { method: 'POST', path, accessToken },
+    body,
+  ),
   postMultipart: async <TResponse>(
     path: string,
     formData: FormData,

@@ -7,6 +7,7 @@
     }
   },
   "activate": {
+    "eyebrow": "Activate account",
     "title": "Activate your account",
     "subtitle": "Set a password to finish activating your BimStitch account.",
     "field": {
@@ -20,6 +21,36 @@
       "activationFailed": "Activation failed. The link may have expired — ask your admin to resend the invite."
     },
     "success": "Account activated. You can sign in now."
+  },
+  "forgotPassword": {
+    "eyebrow": "Account recovery",
+    "title": "Forgot your password?",
+    "subtitle": "Enter the email tied to your BimStitch account and we'll send you a reset link.",
+    "emailPlaceholder": "you@company.nl",
+    "field": {
+      "email": "Work email"
+    },
+    "cta": "Send reset link",
+    "submitting": "Sending…",
+    "sentTitle": "Check your inbox",
+    "sentBody": "If an account exists for that email, a password reset link is on its way. The link expires in 1 hour.",
+    "backToLogin": "Back to sign in"
+  },
+  "resetPassword": {
+    "eyebrow": "Set new password",
+    "title": "Choose a new password",
+    "subtitle": "Pick a strong password for your BimStitch account. The reset link expires after first use.",
+    "field": {
+      "password": "New password",
+      "passwordConfirm": "Confirm password"
+    },
+    "cta": "Update password",
+    "submitting": "Updating…",
+    "errors": {
+      "tokenMissing": "Reset link is missing the token. Use the link from the email or request a new one.",
+      "passwordMismatch": "Passwords do not match.",
+      "resetFailed": "Password reset failed. The link may have expired — request a new one."
+    }
   },
   "settings": {
     "pageTitle": "Settings",
@@ -498,11 +529,19 @@
       "rememberMe": "Keep me signed in on this device",
       "submit": "Sign in",
       "submitting": "Signing in…",
+      "organizationStep": {
+        "title": "Select your organization",
+        "subtitle": "Choose the workspace you want to open.",
+        "switching": "Switching…",
+        "back": "Back to sign in",
+        "active": "Active"
+      },
       "errors": {
         "emailRequired": "Email is required",
         "emailInvalid": "Email is invalid",
         "passwordRequired": "Password is required",
         "invalidCredentials": "Invalid email or password",
+        "organizationSwitchFailed": "Could not switch organization. Please try again.",
         "loginFailedDetail": "Login failed: {detail}",
         "loginFailedGeneric": "Login failed. Please try again."
       }

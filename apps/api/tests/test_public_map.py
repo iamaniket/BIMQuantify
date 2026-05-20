@@ -3,62 +3,71 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import text
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 
 async def _insert_project(
-    session: "AsyncSession",
+    session_maker: "async_sessionmaker[AsyncSession]",
     *,
-    org_id,
-    owner_id,
+    schema: str,
+    owner_id: UUID,
     name: str,
     city: str | None,
     lat: float | None,
     lng: float | None,
 ) -> None:
-    from bimstitch_api.models.project import Project
+    """Direct INSERT into the per-tenant schema. Bypasses the API because
+    the public/projects-map endpoint is org-agnostic and we want to control
+    exactly which schema each project lives in."""
+    async with session_maker() as session:
+        await session.execute(
+            text(f'SET LOCAL search_path TO "{schema}", public')
+        )
+        await session.execute(
+            text(
+                "INSERT INTO projects (id, owner_id, name, city, latitude, longitude) "
+                "VALUES (:id, :owner, :name, :city, :lat, :lng)"
+            ),
+            {
+                "id": uuid4(),
+                "owner": owner_id,
+                "name": name,
+                "city": city,
+                "lat": lat,
+                "lng": lng,
+            },
+        )
+        await session.commit()
 
-    project = Project(
-        organization_id=org_id,
-        owner_id=owner_id,
-        name=name,
-        city=city,
-        latitude=lat,
-        longitude=lng,
+
+async def _seed_org_and_user(
+    client: "AsyncClient",
+    session_maker: "async_sessionmaker[AsyncSession]",
+    engine: "AsyncEngine",
+    *,
+    email: str | None = None,
+) -> tuple[str, UUID]:
+    """Provision an org (with real tenant schema) and a verified user, then
+    return the schema_name and user id ready for direct-INSERT helpers."""
+    from tests.conftest import _provision_user_in_org
+
+    info = await _provision_user_in_org(
+        client,
+        session_maker,
+        engine,
+        email=email or f"u-{uuid4().hex[:6]}@example.com",
     )
-    session.add(project)
-    await session.commit()
+    org_id = UUID(info["organization_id"])
+    from bimstitch_api.tenancy import schema_name_for
 
-
-async def _seed_org_and_user(session: "AsyncSession"):
-    """Create a minimal org + user pair we can hang projects off of.
-
-    We're not using the tenant fixtures because the public endpoint is
-    deliberately org-agnostic — direct DB inserts keep the test focused.
-    """
-    from bimstitch_api.models.organization import Organization
-    from bimstitch_api.models.user import User
-
-    org = Organization(id=uuid4(), name=f"Org-{uuid4().hex[:6]}")
-    user = User(
-        id=uuid4(),
-        email=f"u-{uuid4().hex[:6]}@example.com",
-        hashed_password="x",
-        is_active=True,
-        is_verified=True,
-        is_superuser=False,
-        full_name="Owner",
-        organization_id=org.id,
-    )
-    session.add_all([org, user])
-    await session.commit()
-    return org.id, user.id
+    return schema_name_for(org_id), UUID(info["id"])
 
 
 @pytest.mark.asyncio
@@ -72,21 +81,22 @@ async def test_projects_map_returns_empty_when_no_projects(
 
 @pytest.mark.asyncio
 async def test_projects_map_aggregates_by_city(
-    client: "AsyncClient", session: "AsyncSession"
+    client: "AsyncClient",
+    session_maker: "async_sessionmaker[AsyncSession]",
+    engine: "AsyncEngine",
 ) -> None:
-    org_id, owner_id = await _seed_org_and_user(session)
+    schema, owner_id = await _seed_org_and_user(client, session_maker, engine)
 
-    # Two in Amsterdam at slightly different points, one in Schiphol.
     await _insert_project(
-        session, org_id=org_id, owner_id=owner_id, name="P1",
+        session_maker, schema=schema, owner_id=owner_id, name="P1",
         city="Amsterdam", lat=52.387, lng=4.876,
     )
     await _insert_project(
-        session, org_id=org_id, owner_id=owner_id, name="P2",
+        session_maker, schema=schema, owner_id=owner_id, name="P2",
         city="Amsterdam", lat=52.379, lng=4.901,
     )
     await _insert_project(
-        session, org_id=org_id, owner_id=owner_id, name="P3",
+        session_maker, schema=schema, owner_id=owner_id, name="P3",
         city="Schiphol", lat=52.301, lng=4.766,
     )
 
@@ -103,19 +113,21 @@ async def test_projects_map_aggregates_by_city(
 
 @pytest.mark.asyncio
 async def test_projects_map_ignores_projects_without_coordinates(
-    client: "AsyncClient", session: "AsyncSession"
+    client: "AsyncClient",
+    session_maker: "async_sessionmaker[AsyncSession]",
+    engine: "AsyncEngine",
 ) -> None:
-    org_id, owner_id = await _seed_org_and_user(session)
+    schema, owner_id = await _seed_org_and_user(client, session_maker, engine)
     await _insert_project(
-        session, org_id=org_id, owner_id=owner_id, name="P1",
+        session_maker, schema=schema, owner_id=owner_id, name="P1",
         city="Amsterdam", lat=52.387, lng=4.876,
     )
     await _insert_project(
-        session, org_id=org_id, owner_id=owner_id, name="P-no-coords",
+        session_maker, schema=schema, owner_id=owner_id, name="P-no-coords",
         city="Amsterdam", lat=None, lng=None,
     )
     await _insert_project(
-        session, org_id=org_id, owner_id=owner_id, name="P-no-city",
+        session_maker, schema=schema, owner_id=owner_id, name="P-no-city",
         city=None, lat=52.0, lng=5.0,
     )
 
@@ -129,21 +141,23 @@ async def test_projects_map_ignores_projects_without_coordinates(
 
 @pytest.mark.asyncio
 async def test_projects_map_floors_count_to_one_significant_figure(
-    client: "AsyncClient", session: "AsyncSession"
+    client: "AsyncClient",
+    session_maker: "async_sessionmaker[AsyncSession]",
+    engine: "AsyncEngine",
 ) -> None:
     """Per-city counts must be anonymized — exact tenant numbers never leak."""
-    org_id, owner_id = await _seed_org_and_user(session)
+    schema, owner_id = await _seed_org_and_user(client, session_maker, engine)
 
     # 14 projects in Amsterdam — should floor to 10.
     for i in range(14):
         await _insert_project(
-            session, org_id=org_id, owner_id=owner_id, name=f"AMS-{i}",
+            session_maker, schema=schema, owner_id=owner_id, name=f"AMS-{i}",
             city="Amsterdam", lat=52.38, lng=4.89,
         )
     # 3 projects in Rotterdam — below the rounding threshold, stays exact.
     for i in range(3):
         await _insert_project(
-            session, org_id=org_id, owner_id=owner_id, name=f"RTM-{i}",
+            session_maker, schema=schema, owner_id=owner_id, name=f"RTM-{i}",
             city="Rotterdam", lat=51.92, lng=4.48,
         )
 
@@ -156,18 +170,24 @@ async def test_projects_map_floors_count_to_one_significant_figure(
 
 @pytest.mark.asyncio
 async def test_projects_map_aggregates_across_orgs(
-    client: "AsyncClient", session: "AsyncSession"
+    client: "AsyncClient",
+    session_maker: "async_sessionmaker[AsyncSession]",
+    engine: "AsyncEngine",
 ) -> None:
     """No org leakage — projects from different orgs at the same city are merged."""
-    org_a, owner_a = await _seed_org_and_user(session)
-    org_b, owner_b = await _seed_org_and_user(session)
+    schema_a, owner_a = await _seed_org_and_user(
+        client, session_maker, engine, email="a@example.com"
+    )
+    schema_b, owner_b = await _seed_org_and_user(
+        client, session_maker, engine, email="b@example.com"
+    )
 
     await _insert_project(
-        session, org_id=org_a, owner_id=owner_a, name="P-A",
+        session_maker, schema=schema_a, owner_id=owner_a, name="P-A",
         city="Rotterdam", lat=51.92, lng=4.48,
     )
     await _insert_project(
-        session, org_id=org_b, owner_id=owner_b, name="P-B",
+        session_maker, schema=schema_b, owner_id=owner_b, name="P-B",
         city="Rotterdam", lat=51.92, lng=4.48,
     )
 

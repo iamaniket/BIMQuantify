@@ -182,6 +182,7 @@ async def test_callback_updates_job_to_running(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "job_id": job_id,
             "status": "running",
             "started_at": "2026-05-01T10:00:00Z",
@@ -214,6 +215,7 @@ async def test_callback_updates_job_to_succeeded(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "job_id": job_id,
             "status": "succeeded",
             "fragments_key": fragments_key,
@@ -249,6 +251,7 @@ async def test_callback_updates_job_to_failed(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "job_id": job_id,
             "status": "failed",
             "error": "UNSUPPORTED_SCHEMA: IFC4X1",
@@ -277,7 +280,11 @@ async def test_callback_without_job_id_still_updates_file(
 
     cb = await client.post(
         "/internal/jobs/callback",
-        json={"file_id": file_id, "status": "running"},
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "status": "running",
+        },
         headers=_bearer(),
     )
     assert cb.status_code == 200
@@ -301,6 +308,7 @@ async def test_callback_terminal_job_is_idempotent(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "job_id": job_id,
             "status": "succeeded",
             "fragments_key": "projects/x/y.frag",
@@ -313,6 +321,7 @@ async def test_callback_terminal_job_is_idempotent(
         "/internal/jobs/callback",
         json={
             "file_id": file_id,
+            "organization_id": org_user["organization_id"],
             "job_id": job_id,
             "status": "failed",
             "error": "should-be-ignored",

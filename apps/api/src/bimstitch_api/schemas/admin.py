@@ -90,6 +90,18 @@ class MemberUpdate(BaseModel):
     status: str | None = None  # OrganizationMemberStatus value
 
 
+class MemberDelete(BaseModel):
+    """Body for `DELETE /organizations/{org}/members/{user}`.
+
+    `reassign_to` is required when the target user owns one or more
+    projects in the org. The API returns `OWNS_ACTIVE_PROJECTS` with the
+    list of project ids when the field is missing; the portal then shows
+    a reassign-picker.
+    """
+
+    reassign_to: UUID | None = None
+
+
 class MemberRead(BaseModel):
     user_id: UUID
     email: EmailStr
@@ -98,6 +110,14 @@ class MemberRead(BaseModel):
     status: str
     invited_at: datetime
     accepted_at: datetime | None
+    # Computed expiry for pending rows; null otherwise.
+    expires_at: datetime | None = None
+    # Action capabilities — same logic the server uses, exposed so the
+    # portal can disable destructive buttons before the user clicks.
+    is_last_admin: bool = False
+    can_remove: bool = True
+    can_demote: bool = True
+    can_suspend: bool = True
 
 
 # ---------------------------------------------------------------------------

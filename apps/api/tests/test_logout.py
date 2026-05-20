@@ -1,37 +1,28 @@
-import re
-
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.email.transport import InMemoryEmailTransport
+from tests.conftest import _TEST_PASSWORD, make_test_user
 
 
 async def _login(
-    client: AsyncClient, email_transport: InMemoryEmailTransport, email: str
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    email: str,
 ) -> dict[str, str]:
-    await client.post(
-        "/auth/register",
-        json={
-            "email": email,
-            "password": "correct-horse-battery",
-            "full_name": "T",
-            "organization_name": "O",
-        },
-    )
-    sent = email_transport.last_for(email)
-    assert sent is not None
-    token = re.search(r"Token:\s*(\S+)", sent.body).group(1)  # type: ignore[union-attr]
-    await client.post("/auth/verify", json={"token": token})
+    await make_test_user(session_maker, email=email)
     response = await client.post(
         "/auth/jwt/login",
-        data={"username": email, "password": "correct-horse-battery"},
+        data={"username": email, "password": _TEST_PASSWORD},
     )
+    assert response.status_code == 200, response.text
     return response.json()
 
 
 async def test_logout_revokes_access_token(
-    client: AsyncClient, email_transport: InMemoryEmailTransport
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    tokens = await _login(client, email_transport, "lara@example.com")
+    tokens = await _login(client, session_maker, "lara@example.com")
     auth = {"Authorization": f"Bearer {tokens['access_token']}"}
 
     me = await client.get("/users/me", headers=auth)
@@ -45,9 +36,10 @@ async def test_logout_revokes_access_token(
 
 
 async def test_logout_revokes_refresh_token_when_provided(
-    client: AsyncClient, email_transport: InMemoryEmailTransport
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    tokens = await _login(client, email_transport, "leo@example.com")
+    tokens = await _login(client, session_maker, "leo@example.com")
     auth = {"Authorization": f"Bearer {tokens['access_token']}"}
 
     logout = await client.post(
@@ -70,9 +62,10 @@ async def test_logout_without_bearer_is_rejected(client: AsyncClient) -> None:
 
 
 async def test_refresh_still_works_for_unrevoked_tokens(
-    client: AsyncClient, email_transport: InMemoryEmailTransport
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    tokens = await _login(client, email_transport, "lily@example.com")
+    tokens = await _login(client, session_maker, "lily@example.com")
 
     refresh = await client.post(
         "/auth/jwt/refresh", json={"refresh_token": tokens["refresh_token"]}

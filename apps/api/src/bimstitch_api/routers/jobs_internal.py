@@ -69,7 +69,13 @@ async def _set_tenant_schema(session: AsyncSession, organization_id: UUID) -> st
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND"
         )
-    await session.execute(text(f'SET search_path TO "{schema}", public'))
+    # SET LOCAL — without LOCAL, the modified search_path persists on the
+    # underlying connection and leaks into the next request that pulls that
+    # connection from the pool, which corrupts enum casts on public tables
+    # (`status = $1::organizationmemberstatus` resolves to the org's
+    # duplicate enum instead of public's, and Postgres rejects the implicit
+    # cross-type cast).
+    await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
     return schema
 
 
@@ -165,7 +171,13 @@ async def extraction_callback(
     # Transaction committed — now create and publish notification.
     await _emit_notification(session, row, job, payload)
 
-    await session.refresh(row)
+    # Re-anchor the search_path so the implicit refresh transaction reads
+    # `project_files` out of the tenant schema (the previous SET LOCAL is
+    # gone now that the wrapping transaction committed).
+    schema = schema_name_for(payload.organization_id)
+    async with session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        await session.refresh(row)
     return row
 
 
@@ -226,18 +238,23 @@ async def _emit_notification(
         snippet = (payload.error or "unknown error")[:200]
         body = f"{filename} extraction failed: {snippet}"
 
-    # search_path is already set by the outer callback to the tenant
-    # schema, so the notification insert lands in the right place.
-    notification = await create_notification(
-        session,
-        event_type=event_type,
-        title=title,
-        body=body,
-        project_id=job.project_id if job else None,
-        file_id=file.id,
-        job_id=job.id if job else None,
-    )
-    await session.commit()
+    # Re-anchor the search_path inside this txn — the outer callback's
+    # `SET search_path` may not survive a connection check-in between
+    # transactions on the same AsyncSession (`SET LOCAL` only persists until
+    # commit). Using `SET LOCAL` here keeps the notification insert pinned
+    # to the right tenant schema regardless of the pool state.
+    schema = schema_name_for(payload.organization_id)
+    async with session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        notification = await create_notification(
+            session,
+            event_type=event_type,
+            title=title,
+            body=body,
+            project_id=job.project_id if job else None,
+            file_id=file.id,
+            job_id=job.id if job else None,
+        )
 
     await publish_notification(notification, organization_id=payload.organization_id)
 
@@ -362,19 +379,31 @@ async def report_callback(
         }
         titles = title_map.get(locale, title_map["en"])
         bodies = body_map.get(locale, body_map["en"])
-        notification = await create_notification(
-            session,
-            event_type=event_type,
-            title=titles[payload.status],
-            body=bodies[payload.status],
-            project_id=report.project_id,
-            file_id=None,
-            job_id=payload.job_id,
-        )
-        await session.commit()
+        # Re-anchor search_path inside this txn (see the matching comment in
+        # `_emit_notification` above — `SET LOCAL` only persists until commit,
+        # and the outer callback's transaction has already closed).
+        schema = schema_name_for(payload.organization_id)
+        async with session.begin():
+            await session.execute(
+                text(f'SET LOCAL search_path TO "{schema}", public')
+            )
+            notification = await create_notification(
+                session,
+                event_type=event_type,
+                title=titles[payload.status],
+                body=bodies[payload.status],
+                project_id=report.project_id,
+                file_id=None,
+                job_id=payload.job_id,
+            )
         await publish_notification(notification, organization_id=payload.organization_id)
 
-    await session.refresh(report)
+    # Re-anchor search_path for the refresh — `SET LOCAL` from the earlier
+    # transaction has reset by now.
+    schema = schema_name_for(payload.organization_id)
+    async with session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        await session.refresh(report)
     return report
 
 

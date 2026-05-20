@@ -586,6 +586,78 @@ async def test_login_bootstrap_skipped_when_multiple_pending(
     assert {m.status for m in rows} == {OrganizationMemberStatus.pending}
 
 
+async def test_verify_auto_accepts_bootstrap_pending(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """When a brand-new admin clicks the activation link (POST /auth/verify),
+    their sole pending membership flips to active immediately — no second
+    "accept" step. Without this hook the user would have to log in to
+    trigger the bootstrap rule, and an admin re-sending the invite in
+    between would dispatch a confusingly-worded notification email."""
+    from fastapi_users.db import SQLAlchemyUserDatabase
+
+    from bimstitch_api.auth.manager import UserManager
+
+    user = await _make_user(session, "bootstrap@example.com", is_verified=False)
+    org = await _make_org(session, "FirstHomeCo")
+    await _add_member(
+        session, user=user, org=org, status=OrganizationMemberStatus.pending
+    )
+
+    user_db = SQLAlchemyUserDatabase(session, User)
+    manager = UserManager(user_db)
+    user.is_verified = True
+    await session.flush()
+    await manager.on_after_verify(user, request=None)
+
+    m = (
+        await session.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.user_id == user.id,
+                OrganizationMember.organization_id == org.id,
+            )
+        )
+    ).scalar_one()
+    await session.refresh(m)
+    assert m.status == OrganizationMemberStatus.active
+
+
+async def test_verify_does_not_auto_accept_when_user_has_active_orgs(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """A user who already belongs to an active org and gets re-verified
+    (rare edge case) must NOT have other pending invites silently
+    accepted — same rationale as the login-time narrowing."""
+    from fastapi_users.db import SQLAlchemyUserDatabase
+
+    from bimstitch_api.auth.manager import UserManager
+
+    user = await _make_user(session, "already-in@example.com")
+    home = await _make_org(session, "HomeC2")
+    pending_org = await _make_org(session, "OtherC2")
+    await _add_member(session, user=user, org=home)
+    await _add_member(
+        session, user=user, org=pending_org, status=OrganizationMemberStatus.pending
+    )
+
+    user_db = SQLAlchemyUserDatabase(session, User)
+    manager = UserManager(user_db)
+    await manager.on_after_verify(user, request=None)
+
+    m = (
+        await session.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.user_id == user.id,
+                OrganizationMember.organization_id == pending_org.id,
+            )
+        )
+    ).scalar_one()
+    await session.refresh(m)
+    assert m.status == OrganizationMemberStatus.pending
+
+
 async def test_accepted_invitation_records_audit_entry(
     client: AsyncClient,
     session: AsyncSession,

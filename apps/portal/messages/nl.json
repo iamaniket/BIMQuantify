@@ -7,6 +7,7 @@
     }
   },
   "activate": {
+    "eyebrow": "Account activeren",
     "title": "Activeer uw account",
     "subtitle": "Stel een wachtwoord in om uw BimStitch-account te activeren.",
     "field": {
@@ -20,6 +21,36 @@
       "activationFailed": "Activatie mislukt. De link is mogelijk verlopen — vraag uw beheerder de uitnodiging opnieuw te versturen."
     },
     "success": "Account geactiveerd. U kunt nu inloggen."
+  },
+  "forgotPassword": {
+    "eyebrow": "Account herstellen",
+    "title": "Wachtwoord vergeten?",
+    "subtitle": "Vul het e-mailadres van uw BimStitch-account in en we sturen u een resetlink.",
+    "emailPlaceholder": "u@bedrijf.nl",
+    "field": {
+      "email": "Werkmail"
+    },
+    "cta": "Resetlink versturen",
+    "submitting": "Versturen…",
+    "sentTitle": "Controleer uw inbox",
+    "sentBody": "Als er een account bestaat voor dit e-mailadres, is er een resetlink onderweg. De link verloopt na 1 uur.",
+    "backToLogin": "Terug naar inloggen"
+  },
+  "resetPassword": {
+    "eyebrow": "Nieuw wachtwoord",
+    "title": "Kies een nieuw wachtwoord",
+    "subtitle": "Kies een sterk wachtwoord voor uw BimStitch-account. De resetlink vervalt na eerste gebruik.",
+    "field": {
+      "password": "Nieuw wachtwoord",
+      "passwordConfirm": "Bevestig wachtwoord"
+    },
+    "cta": "Wachtwoord bijwerken",
+    "submitting": "Bijwerken…",
+    "errors": {
+      "tokenMissing": "Resetlink mist het token. Gebruik de link uit de mail of vraag een nieuwe aan.",
+      "passwordMismatch": "Wachtwoorden komen niet overeen.",
+      "resetFailed": "Wachtwoord resetten mislukt. De link is mogelijk verlopen — vraag een nieuwe aan."
+    }
   },
   "settings": {
     "pageTitle": "Instellingen",
@@ -498,11 +529,19 @@
       "rememberMe": "Aangemeld blijven op dit apparaat",
       "submit": "Aanmelden",
       "submitting": "Aanmelden…",
+      "organizationStep": {
+        "title": "Kies je organisatie",
+        "subtitle": "Selecteer de werkruimte die je wilt openen.",
+        "switching": "Wisselen…",
+        "back": "Terug naar aanmelden",
+        "active": "Actief"
+      },
       "errors": {
         "emailRequired": "E-mailadres is verplicht",
         "emailInvalid": "E-mailadres is ongeldig",
         "passwordRequired": "Wachtwoord is verplicht",
         "invalidCredentials": "Onjuist e-mailadres of wachtwoord",
+        "organizationSwitchFailed": "Organisatie wisselen is mislukt. Probeer het opnieuw.",
         "loginFailedDetail": "Aanmelden mislukt: {detail}",
         "loginFailedGeneric": "Aanmelden mislukt. Probeer het opnieuw."
       }

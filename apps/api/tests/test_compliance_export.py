@@ -172,17 +172,22 @@ async def _seed_compliance_job(
         "details": details,
     }
     payload = {"framework": framework}
+    # Jobs lives in `org_<hex>.jobs` now; route the raw INSERT into that
+    # schema via search_path so it actually matches the rows the API
+    # reads back. The `organization_id` column was dropped along with the
+    # move — the schema is the org now.
+    schema = f"org_{str(organization_id).replace('-', '')}"
     async with session_maker() as session, session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
         await session.execute(
             text(
-                "INSERT INTO jobs (id, organization_id, project_id, file_id, job_type, "
+                "INSERT INTO jobs (id, project_id, file_id, job_type, "
                 "status, payload, result, finished_at) "
-                "VALUES (:id, :org, :p, :f, 'compliance_check', 'succeeded', "
+                "VALUES (:id, :p, :f, 'compliance_check', 'succeeded', "
                 "CAST(:pl AS jsonb), CAST(:r AS jsonb), now())"
             ),
             {
                 "id": str(job_id),
-                "org": str(organization_id),
                 "p": str(project_id),
                 "f": str(file_id),
                 "pl": json.dumps(payload),

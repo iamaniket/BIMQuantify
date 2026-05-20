@@ -15,10 +15,6 @@ export default function PortalRootPage(): JSX.Element {
       router.replace('/login');
       return;
     }
-    if (me && me.memberships.length > 1) {
-      router.replace('/select-tenant');
-      return;
-    }
     router.replace('/projects');
   }, [router, tokens, hasHydrated, me]);
 

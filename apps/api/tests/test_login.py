@@ -1,53 +1,33 @@
-import re
-
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.email.transport import InMemoryEmailTransport
-
-
-async def _register(client: AsyncClient, email: str) -> None:
-    await client.post(
-        "/auth/register",
-        json={
-            "email": email,
-            "password": "correct-horse-battery",
-            "full_name": "Test User",
-            "organization_name": "Org",
-        },
-    )
-
-
-async def _verify(client: AsyncClient, email_transport: InMemoryEmailTransport, email: str) -> None:
-    sent = email_transport.last_for(email)
-    assert sent is not None
-    match = re.search(r"Token:\s*(\S+)", sent.body)
-    assert match is not None
-    await client.post("/auth/verify", json={"token": match.group(1)})
+from tests.conftest import _TEST_PASSWORD, make_test_user
 
 
 async def test_login_unverified_is_rejected(
-    client: AsyncClient, email_transport: InMemoryEmailTransport
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     email = "frank@example.com"
-    await _register(client, email)
+    await make_test_user(session_maker, email=email, is_verified=False)
     response = await client.post(
         "/auth/jwt/login",
-        data={"username": email, "password": "correct-horse-battery"},
+        data={"username": email, "password": _TEST_PASSWORD},
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "LOGIN_USER_NOT_VERIFIED"
 
 
 async def test_login_returns_access_and_refresh(
-    client: AsyncClient, email_transport: InMemoryEmailTransport
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     email = "grace@example.com"
-    await _register(client, email)
-    await _verify(client, email_transport, email)
+    await make_test_user(session_maker, email=email)
 
     response = await client.post(
         "/auth/jwt/login",
-        data={"username": email, "password": "correct-horse-battery"},
+        data={"username": email, "password": _TEST_PASSWORD},
     )
     assert response.status_code == 200, response.text
     body = response.json()
@@ -58,11 +38,11 @@ async def test_login_returns_access_and_refresh(
 
 
 async def test_login_bad_password(
-    client: AsyncClient, email_transport: InMemoryEmailTransport
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     email = "hank@example.com"
-    await _register(client, email)
-    await _verify(client, email_transport, email)
+    await make_test_user(session_maker, email=email)
     response = await client.post(
         "/auth/jwt/login",
         data={"username": email, "password": "wrong-password-zzz"},
