@@ -36,6 +36,30 @@
     "sentBody": "If an account exists for that email, a password reset link is on its way. The link expires in 1 hour.",
     "backToLogin": "Back to sign in"
   },
+  "invitations": {
+    "eyebrow": "Team invitations",
+    "title": "Your pending invitations",
+    "subtitle": "Accept an invitation to join the organization, or decline if it isn't for you.",
+    "loading": "Loading your invitations…",
+    "emptyTitle": "No pending invitations",
+    "emptyBody": "You don't have any open team invitations right now. Ask an admin to invite you again if you're expecting one.",
+    "backToProjects": "Back to projects",
+    "accept": "Accept",
+    "accepting": "Accepting…",
+    "decline": "Decline",
+    "declining": "Declining…",
+    "retry": "Try again",
+    "roleAdmin": "Admin role",
+    "roleMember": "Member role",
+    "invitedBy": "Invited by {email}",
+    "invitedByUnknown": "Invited to join",
+    "expiresOn": "Expires {date}",
+    "errors": {
+      "loadFailed": "We couldn't load your invitations. Please try again.",
+      "acceptFailed": "We couldn't accept this invitation. Please try again.",
+      "declineFailed": "We couldn't decline this invitation. Please try again."
+    }
+  },
   "resetPassword": {
     "eyebrow": "Set new password",
     "title": "Choose a new password",

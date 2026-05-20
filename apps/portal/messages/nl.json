@@ -36,6 +36,30 @@
     "sentBody": "Als er een account bestaat voor dit e-mailadres, is er een resetlink onderweg. De link verloopt na 1 uur.",
     "backToLogin": "Terug naar inloggen"
   },
+  "invitations": {
+    "eyebrow": "Teamuitnodigingen",
+    "title": "Uw openstaande uitnodigingen",
+    "subtitle": "Accepteer een uitnodiging om lid te worden van de organisatie, of wijs af als deze niet voor u is.",
+    "loading": "Uitnodigingen laden…",
+    "emptyTitle": "Geen openstaande uitnodigingen",
+    "emptyBody": "U heeft op dit moment geen openstaande teamuitnodigingen. Vraag een beheerder u opnieuw uit te nodigen als u er een verwacht.",
+    "backToProjects": "Terug naar projecten",
+    "accept": "Accepteren",
+    "accepting": "Accepteren…",
+    "decline": "Afwijzen",
+    "declining": "Afwijzen…",
+    "retry": "Opnieuw proberen",
+    "roleAdmin": "Beheerdersrol",
+    "roleMember": "Lidrol",
+    "invitedBy": "Uitgenodigd door {email}",
+    "invitedByUnknown": "Uitgenodigd om deel te nemen",
+    "expiresOn": "Verloopt op {date}",
+    "errors": {
+      "loadFailed": "Uitnodigingen konden niet worden geladen. Probeer het opnieuw.",
+      "acceptFailed": "Uitnodiging accepteren is mislukt. Probeer het opnieuw.",
+      "declineFailed": "Uitnodiging afwijzen is mislukt. Probeer het opnieuw."
+    }
+  },
   "resetPassword": {
     "eyebrow": "Nieuw wachtwoord",
     "title": "Kies een nieuw wachtwoord",
