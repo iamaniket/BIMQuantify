@@ -30,6 +30,7 @@ from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.jobs import router as jobs_router
 from bimstitch_api.routers.jobs_internal import router as jobs_internal_router
 from bimstitch_api.routers.jurisdictions import router as jurisdictions_router
+from bimstitch_api.routers.me_invitations import router as me_invitations_router
 from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.notifications import router as notifications_router
 from bimstitch_api.routers.organization_members import router as organization_members_router
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(build_auth_router())
     app.include_router(admin_organizations_router)
     app.include_router(organization_members_router)
+    app.include_router(me_invitations_router)
     app.include_router(projects_router)
     app.include_router(contractors_router)
     app.include_router(models_router)

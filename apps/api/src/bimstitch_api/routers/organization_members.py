@@ -20,6 +20,7 @@ from bimstitch_api.admin.seats import assert_seat_available
 from bimstitch_api.auth.dependencies import require_org_admin
 from bimstitch_api.auth.manager import UserManager, get_user_manager
 from bimstitch_api.db import get_async_session
+from bimstitch_api.email.invites import send_invite_notification
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization
 from bimstitch_api.models.organization_member import (
@@ -229,11 +230,18 @@ async def invite_member(
     # — so we commit explicitly.
     await session.commit()
 
-    # Send activation email after commit so a flaky SMTP doesn't roll back
-    # the invite. `request_verify` triggers `on_after_request_verify` which
-    # uses the configured email transport.
+    # Send invite email after commit so a flaky SMTP doesn't roll back the
+    # invite. New users get the activation flow (`request_verify` triggers
+    # `on_after_request_verify`); existing verified users get the
+    # notification email and accept via /me/invitations.
     if activation_required:
         await user_manager.request_verify(target_user, request)
+    else:
+        await send_invite_notification(
+            invitee=target_user,
+            organization=org,
+            inviter_email=requester.email,
+        )
 
     return MemberRead(
         user_id=target_user.id,
@@ -399,7 +407,17 @@ async def resend_invite(
             detail="MEMBER_NOT_PENDING",
         )
     if not user.is_verified:
+        # Account never activated — re-send activation token.
         await user_manager.request_verify(user, request)
+    else:
+        # Verified user with a pending membership — re-send the
+        # accept/decline notification.
+        org = await _load_org_or_404(session, organization_id)
+        await send_invite_notification(
+            invitee=user,
+            organization=org,
+            inviter_email=requester.email,
+        )
 
 
 # ---------------------------------------------------------------------------

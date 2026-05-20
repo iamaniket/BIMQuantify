@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     frontend_activate_url: str = Field(
         default="http://localhost:3001/activate", alias="FRONTEND_ACTIVATE_URL"
     )
+    frontend_invitations_url: str = Field(
+        default="http://localhost:3001/invitations", alias="FRONTEND_INVITATIONS_URL"
+    )
 
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
     cors_origin_regex: str | None = Field(default=None, alias="CORS_ORIGIN_REGEX")

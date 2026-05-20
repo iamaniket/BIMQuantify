@@ -63,24 +63,40 @@ class SwitchOrgRequest(BaseModel):
 
 
 async def _flip_pending_memberships(session: AsyncSession, user: User) -> list[OrganizationMember]:
-    """On first verified login, flip every pending membership to active
-    and stamp `accepted_at`. Returns the list of flipped rows so callers
-    can audit them.
+    """Bootstrap auto-accept on login.
+
+    Existing users — those who already belong to at least one active org —
+    must explicitly accept new invites via `/me/invitations`. Otherwise an
+    admin could silently add them to a new tenant they didn't agree to.
+
+    The exception is the bootstrap case: a brand-new user who has zero
+    active memberships and exactly one pending row. They were created
+    BECAUSE of that invite, so auto-accepting it is the only way they
+    land logged-in with an active org. If multiple invites arrived before
+    they activated, leave them all pending — the user picks via the
+    `/me/invitations` UI.
+
+    Returns the list of flipped rows so callers can audit them.
     """
     stmt = select(OrganizationMember).where(
         OrganizationMember.user_id == user.id,
-        OrganizationMember.status == OrganizationMemberStatus.pending,
+        OrganizationMember.status != OrganizationMemberStatus.removed,
     )
     result = await session.execute(stmt)
-    pending = list(result.scalars().all())
-    if not pending:
+    rows = list(result.scalars().all())
+    if not rows:
+        return []
+
+    has_active = any(m.status == OrganizationMemberStatus.active for m in rows)
+    pending = [m for m in rows if m.status == OrganizationMemberStatus.pending]
+    if has_active or len(pending) != 1:
         return []
 
     now = datetime.now(timezone.utc)
-    for m in pending:
-        m.status = OrganizationMemberStatus.active
-        m.accepted_at = now
-    return pending
+    sole = pending[0]
+    sole.status = OrganizationMemberStatus.active
+    sole.accepted_at = now
+    return [sole]
 
 
 async def _ensure_active_organization(

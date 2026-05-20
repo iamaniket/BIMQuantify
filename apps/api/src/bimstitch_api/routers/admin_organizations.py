@@ -22,7 +22,9 @@ from bimstitch_api.admin.provisioning import (
 )
 from bimstitch_api.admin.seats import count_consumed_seats
 from bimstitch_api.auth.dependencies import require_superuser
+from bimstitch_api.auth.manager import UserManager, get_user_manager
 from bimstitch_api.db import get_async_session
+from bimstitch_api.email.invites import send_invite_notification
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
@@ -94,6 +96,7 @@ async def create_organization(
     request: Request,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> OrganizationCreateResponse:
     try:
         result = await provision_organization(
@@ -109,6 +112,21 @@ async def create_organization(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"PROVISIONING_FAILED: {exc}",
         ) from exc
+
+    # Dispatch invite email AFTER the saga has committed. A flaky SMTP must
+    # not roll back a successfully-provisioned org — the admin can resend.
+    if result.activation_required:
+        # Brand-new (or never-verified) admin → activation email so they
+        # can set a password.
+        await user_manager.request_verify(result.admin, request)
+    else:
+        # Existing verified user gets a notification; they sign in and
+        # accept via /me/invitations.
+        await send_invite_notification(
+            invitee=result.admin,
+            organization=result.organization,
+            inviter_email=requester.email,
+        )
 
     seat_count = await count_consumed_seats(session, result.organization.id)
     return OrganizationCreateResponse(
