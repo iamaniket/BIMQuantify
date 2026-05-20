@@ -8,11 +8,11 @@ roll back together if anything fails.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
@@ -44,6 +44,7 @@ from bimstitch_api.models.user import User
 from bimstitch_api.schemas.admin import (
     AuditEntry,
     MemberDelete,
+    MemberGuestUpdate,
     MemberInvite,
     MemberRead,
     MemberUpdate,
@@ -69,6 +70,7 @@ def _build_member_read(
             email=user.email,
             full_name=user.full_name,
             is_org_admin=member.is_org_admin,
+            is_guest=member.is_guest,
             status=member.status.value,
             invited_at=member.invited_at,
             accepted_at=member.accepted_at,
@@ -79,6 +81,7 @@ def _build_member_read(
         email=user.email,
         full_name=user.full_name,
         is_org_admin=member.is_org_admin,
+        is_guest=member.is_guest,
         status=member.status.value,
         invited_at=member.invited_at,
         accepted_at=member.accepted_at,
@@ -145,11 +148,23 @@ async def invite_member(
     # Validate project roles up front (so a bad payload doesn't half-commit).
     for assignment in payload.projects:
         try:
-            ProjectRole(assignment.role)
+            role_enum = ProjectRole(assignment.role)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"INVALID_PROJECT_ROLE: {assignment.role}",
+            )
+        # Owner is reserved for project creators. It can't be assigned via
+        # invite (mirrors the rejection at projects.py::add_member); for
+        # guests the rule is even stricter — they never get owner.
+        if role_enum is ProjectRole.owner:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "GUEST_CANNOT_BE_OWNER"
+                    if payload.is_guest
+                    else "OWNER_ROLE_NOT_ASSIGNABLE"
+                ),
             )
 
     # find-or-create user (case-insensitive)
@@ -176,8 +191,10 @@ async def invite_member(
 
     # Seat-cap check. A fresh invite or a re-activation of a `removed` member
     # would consume a seat; the count excludes removed rows so the check is
-    # accurate at this point.
-    await assert_seat_available(session, org)
+    # accurate at this point. Guests are billed against their home org, so
+    # they bypass the cap on the host org's side.
+    if not payload.is_guest:
+        await assert_seat_available(session, org)
 
     activation_required = False
     if existing is None:
@@ -206,7 +223,8 @@ async def invite_member(
     if existing_m is not None:
         existing_m.status = OrganizationMemberStatus.pending
         existing_m.is_org_admin = payload.is_org_admin
-        existing_m.invited_at = datetime.now(timezone.utc)
+        existing_m.is_guest = payload.is_guest
+        existing_m.invited_at = datetime.now(UTC)
         existing_m.invited_by = requester.id
         existing_m.accepted_at = None
         member = existing_m
@@ -215,6 +233,7 @@ async def invite_member(
             user_id=target_user.id,
             organization_id=organization_id,
             is_org_admin=payload.is_org_admin,
+            is_guest=payload.is_guest,
             status=OrganizationMemberStatus.pending,
             invited_by=requester.id,
         )
@@ -261,6 +280,7 @@ async def invite_member(
             "user_id": str(target_user.id),
             "email": target_user.email,
             "is_org_admin": payload.is_org_admin,
+            "is_guest": payload.is_guest,
             "project_assignments": [
                 {"project_id": str(a.project_id), "role": a.role} for a in payload.projects
             ],
@@ -363,6 +383,78 @@ async def update_member(
         resource_id=m.id,
         before=before,
         after={"is_org_admin": m.is_org_admin, "status": m.status.value},
+        actor_user_id=requester.id,
+        organization_id=organization_id,
+        request=request,
+    )
+    await session.commit()
+
+    user = await session.get(User, user_id)
+    assert user is not None
+    return _build_member_read(m, user)
+
+
+@router.patch(
+    "/{organization_id}/members/{user_id}/guest",
+    response_model=MemberRead,
+)
+async def update_member_guest(
+    organization_id: UUID,
+    user_id: UUID,
+    payload: MemberGuestUpdate,
+    request: Request,
+    requester: User = Depends(require_org_admin),
+    session: AsyncSession = Depends(get_async_session),
+) -> MemberRead:
+    """Toggle a member's guest flag.
+
+    Promotion (guest -> regular) is gated by the seat cap because a guest
+    moving to regular membership consumes a seat. Demotion (regular ->
+    guest) is rejected when the target is currently an org admin: the
+    admin must be demoted via `PATCH /members/{user_id}` first, so the
+    last-admin invariant has its own audit signal.
+    """
+    org = await _load_org_or_404(session, organization_id)
+    assert_org_mutable(org)
+    assert_not_self_action(requester.id, user_id)
+
+    result = await session.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.organization_id == organization_id,
+        )
+    )
+    m = result.scalar_one_or_none()
+    if m is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MEMBER_NOT_FOUND")
+
+    if m.is_guest == payload.is_guest:
+        user = await session.get(User, user_id)
+        assert user is not None
+        return _build_member_read(m, user)
+
+    if payload.is_guest and m.is_org_admin:
+        # Demoting an org admin to guest in one step would skip the
+        # last-admin invariant. Force the admin to be demoted first.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="DEMOTE_ADMIN_BEFORE_GUEST",
+        )
+
+    if not payload.is_guest:
+        # guest -> regular: the row now occupies a real seat.
+        await assert_seat_available(session, org)
+
+    before = {"is_guest": m.is_guest}
+    m.is_guest = payload.is_guest
+
+    await audit.record(
+        session,
+        action="organization_member.guest_changed",
+        resource_type="organization_member",
+        resource_id=m.id,
+        before=before,
+        after={"is_guest": m.is_guest},
         actor_user_id=requester.id,
         organization_id=organization_id,
         request=request,
@@ -486,7 +578,7 @@ async def resend_invite(
     # admin is actively re-poking. Audit the bump so timeline reconstruction
     # stays accurate.
     before_invited_at = member.invited_at
-    member.invited_at = datetime.now(timezone.utc)
+    member.invited_at = datetime.now(UTC)
     await audit.record(
         session,
         action="organization_member.invite_resent",

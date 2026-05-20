@@ -18,9 +18,10 @@ export function Sidebar(): JSX.Element {
 
   return (
     <aside
-      className="relative flex shrink-0 flex-col border-r border-white/12 bg-gradient-to-b from-[#2c5697] to-[#224579] text-white/[0.82] dark:from-[#1e3e72] dark:to-[#16315e]"
+      className="relative flex shrink-0 flex-col border-r border-white/12 text-white/[0.82]"
       style={{
         width: collapsed ? 51 : 232,
+        background: 'linear-gradient(180deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
         transition: transitionsReady ? 'width 220ms cubic-bezier(.4,0,.2,1)' : 'none',
         // Disable animation during hydration to prevent unwanted opening/closing
       }}

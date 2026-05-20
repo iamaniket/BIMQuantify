@@ -14,11 +14,11 @@ portal was blocked.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.models.organization import Organization, OrganizationStatus
@@ -27,7 +27,6 @@ from bimstitch_api.models.organization_member import (
     OrganizationMemberStatus,
 )
 from bimstitch_api.models.user import User
-
 
 # Valid membership status transitions. Anything not in this set raises
 # INVALID_STATUS_TRANSITION. `removed` is terminal — re-invite creates a
@@ -72,6 +71,12 @@ class MemberCapabilities:
     can_remove: bool
     can_demote: bool
     can_suspend: bool
+    # Guest-aware capability flags. The portal reads these to hide
+    # creation/listing UI for cross-org guests without re-implementing the
+    # server rules.
+    can_manage_members: bool = True
+    can_create_projects: bool = True
+    can_view_org_members: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -367,7 +372,7 @@ def invitation_expires_at(invited_at: datetime, ttl_days: int) -> datetime:
 
 
 def invitation_is_expired(invited_at: datetime, ttl_days: int) -> bool:
-    return datetime.now(timezone.utc) >= invitation_expires_at(invited_at, ttl_days)
+    return datetime.now(UTC) >= invitation_expires_at(invited_at, ttl_days)
 
 
 def assert_invitation_not_expired(invited_at: datetime, ttl_days: int) -> None:
@@ -419,11 +424,21 @@ async def compute_member_capabilities(
         )
         # Remove: cannot remove the last surviving admin.
         can_remove = member.status != OrganizationMemberStatus.removed and not is_last_admin
+        # Guest restrictions — these are surfaced so the portal can render
+        # the right shell without re-implementing the server rules. The
+        # server still enforces them in the routers.
+        is_guest = bool(member.is_guest)
+        can_manage_members = not is_guest
+        can_create_projects = not is_guest
+        can_view_org_members = not is_guest
 
         out[user.id] = MemberCapabilities(
             is_last_admin=is_last_admin,
             can_remove=can_remove,
             can_demote=can_demote,
             can_suspend=can_suspend,
+            can_manage_members=can_manage_members,
+            can_create_projects=can_create_projects,
+            can_view_org_members=can_view_org_members,
         )
     return out

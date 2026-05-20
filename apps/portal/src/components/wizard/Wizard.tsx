@@ -1,56 +1,31 @@
 'use client';
 
+import { Button, cn } from '@bimstitch/ui';
 import { Check } from 'lucide-react';
 import { type JSX, type ReactNode, type KeyboardEvent } from 'react';
 
-import { Button } from './Button.js';
-import { cn } from './lib/cn.js';
-
 export type WizardStep = {
-  /** Stable identifier for the step (used as React key). */
   id: string;
-  /** Short label rendered in the stepper. */
   title: string;
-  /** Optional sub-label rendered under the title. */
   description?: string;
-  /** When true, an "(optional)" hint is appended to the title. Cosmetic only. */
   optional?: boolean;
 };
 
 export type WizardProps = {
   steps: readonly WizardStep[];
-  /** 0-based index of the active step (controlled). */
   currentStep: number;
-  /**
-   * Highest step index the user has reached. Stepper allows back-jumps to any
-   * `index <= highestVisited`; forward jumps are always disabled.
-   */
   highestVisited: number;
-  /** Fires when the user clicks a previously-visited step in the stepper. */
   onStepChange: (next: number) => void;
-  /**
-   * Fires when the user clicks the Next button. Caller is responsible for
-   * validating the current step's fields (e.g. via `form.trigger([...])`)
-   * and advancing `currentStep` if validation passes.
-   */
   onNext: () => void | Promise<void>;
-  /** Fires when the user clicks the Back button. */
   onBack: () => void;
-  /**
-   * Fires when the user clicks the Submit button (only rendered on the
-   * final step).
-   */
   onSubmit: () => void | Promise<void>;
   isSubmitting?: boolean;
   submitLabel?: string;
   submitPendingLabel?: string;
   nextLabel?: string;
   backLabel?: string;
-  /** Slot for the Cancel control (typically wrapped in `<DialogClose asChild>`). */
   cancelSlot?: ReactNode;
-  /** Slot rendered above the navigation row — for server errors etc. */
   errorSlot?: ReactNode;
-  /** The active step panel. Caller is responsible for swapping based on `currentStep`. */
   children: ReactNode;
 };
 

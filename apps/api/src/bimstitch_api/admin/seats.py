@@ -22,13 +22,16 @@ from bimstitch_api.models.organization_member import (
 
 async def count_consumed_seats(session: AsyncSession, organization_id: UUID) -> int:
     """Number of seats currently allocated. `removed` rows are tombstones and
-    do NOT count; everything else (pending/active/suspended) does.
+    do NOT count; guests (`is_guest=true`) do NOT count either — they are
+    cross-org collaborators billed against their home org. Everything else
+    (pending/active/suspended regular members) does.
     """
     stmt = (
         select(func.count(OrganizationMember.id))
         .where(
             OrganizationMember.organization_id == organization_id,
             OrganizationMember.status != OrganizationMemberStatus.removed,
+            OrganizationMember.is_guest.is_(False),
         )
     )
     result = await session.execute(stmt)

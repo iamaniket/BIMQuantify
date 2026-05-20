@@ -692,6 +692,7 @@ async def _provision_user_in_org(
     email: str,
     organization_id: object | None = None,
     organization_name: str | None = None,
+    is_org_admin: bool = True,
 ) -> dict[str, str]:
     """Create a verified user + active membership directly in the DB, then
     log them in to get tokens.
@@ -758,7 +759,7 @@ async def _provision_user_in_org(
             OrganizationMember(
                 user_id=user.id,
                 organization_id=org.id,
-                is_org_admin=True,
+                is_org_admin=is_org_admin,
                 status=OrganizationMemberStatus.active,
                 accepted_at=datetime.now(timezone.utc),
             )
@@ -836,4 +837,44 @@ async def same_org_user(
         engine,
         email="carol@example.com",
         organization_id=org_user["organization_id"],
+    )
+
+
+@pytest.fixture
+async def same_org_non_admin_user(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+    org_user: dict[str, str],
+) -> dict[str, str]:
+    """A non-admin verified user in the same org as `org_user`. Used by tests
+    that exercise the "regular member can't manage project access" path —
+    `same_org_user` itself is provisioned as an org admin (the default for the
+    helper) so it would silently pass any org-admin gate."""
+    return await _provision_user_in_org(
+        client,
+        session_maker,
+        engine,
+        email="dave@example.com",
+        organization_id=org_user["organization_id"],
+        is_org_admin=False,
+    )
+
+
+@pytest.fixture
+async def same_org_admin_user(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+    org_user: dict[str, str],
+) -> dict[str, str]:
+    """A second org-admin in the same org. Used by tests that exercise the
+    "org admin can manage projects they don't own" path."""
+    return await _provision_user_in_org(
+        client,
+        session_maker,
+        engine,
+        email="erin@example.com",
+        organization_id=org_user["organization_id"],
+        is_org_admin=True,
     )

@@ -1,5 +1,17 @@
 @import '@bimstitch/design-tokens/tokens.css';
 
+/* Brand identity tokens. Owned by the design-tokens package conceptually,
+   declared here until they migrate into the shared token bundle. */
+:root {
+  --brand-gradient-start: #2c5697;
+  --brand-gradient-end: #224579;
+}
+
+[data-theme="dark"] {
+  --brand-gradient-start: #1e3e72;
+  --brand-gradient-end: #16315e;
+}
+
 @font-face {
   font-family: 'Geist';
   src: url('/fonts/Geist-Variable.woff2') format('woff2-variations');

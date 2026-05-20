@@ -46,23 +46,23 @@ async def test_owner_cannot_add_cross_org_user(
     assert response.status_code == 400
 
 
-async def test_editor_cannot_add_member(
+async def test_non_admin_editor_cannot_add_member(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
-    # Give same_org_user editor role first.
+    # Give the non-admin user editor role first.
     project = await _create_project(client, org_user)
     await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
-    # Editor tries to invite themselves again (role change disguise) — denied.
+    # Editor (who is not an org admin) tries to add a member — denied.
     response = await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "viewer"},
-        headers=_auth(same_org_user["access_token"]),
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert response.status_code == 403
 
@@ -189,20 +189,150 @@ async def test_cannot_promote_to_owner(
     assert response.status_code == 400
 
 
-async def test_editor_forbidden_on_member_routes(
+async def test_non_admin_editor_forbidden_on_member_routes(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user)
     await client.post(
         f"/projects/{project['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
-    # Editor tries to remove the owner (should be 403 — non-owner can't manage members at all).
+    # A non-admin editor tries to remove the owner — 403. Non-owners who aren't
+    # also org admins can't manage members at all.
     response = await client.delete(
         f"/projects/{project['id']}/members/{org_user['id']}",
-        headers=_auth(same_org_user["access_token"]),
+        headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert response.status_code == 403
+
+
+async def test_org_admin_can_add_member_to_project_they_dont_own(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    """An org admin who isn't on the project can still assign access to it."""
+    project = await _create_project(client, org_user)
+    response = await client.post(
+        f"/projects/{project['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
+        headers=_auth(same_org_admin_user["access_token"]),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["user_id"] == same_org_non_admin_user["id"]
+    assert body["role"] == "viewer"
+    # Enriched fields are populated.
+    assert body["email"] == "dave@example.com"
+    assert body["full_name"] == "dave"
+
+
+async def test_org_admin_can_remove_member_from_project_they_dont_own(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    await client.post(
+        f"/projects/{project['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
+        headers=_auth(org_user["access_token"]),
+    )
+    response = await client.delete(
+        f"/projects/{project['id']}/members/{same_org_non_admin_user['id']}",
+        headers=_auth(same_org_admin_user["access_token"]),
+    )
+    assert response.status_code == 204
+
+
+async def test_org_admin_can_change_member_role_on_project_they_dont_own(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    await client.post(
+        f"/projects/{project['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
+        headers=_auth(org_user["access_token"]),
+    )
+    response = await client.patch(
+        f"/projects/{project['id']}/members/{same_org_non_admin_user['id']}",
+        json={"role": "editor"},
+        headers=_auth(same_org_admin_user["access_token"]),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["role"] == "editor"
+
+
+async def test_list_members_returns_email_and_full_name(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    await client.post(
+        f"/projects/{project['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
+        headers=_auth(org_user["access_token"]),
+    )
+    response = await client.get(
+        f"/projects/{project['id']}/members",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 200, response.text
+    members = response.json()
+    assert len(members) == 2
+    by_email = {m["email"]: m for m in members}
+    assert "alice@example.com" in by_email
+    assert by_email["alice@example.com"]["role"] == "owner"
+    assert by_email["alice@example.com"]["full_name"] == "alice"
+    assert "dave@example.com" in by_email
+    assert by_email["dave@example.com"]["role"] == "editor"
+
+
+async def test_list_members_visible_to_org_admin_not_on_project(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    response = await client.get(
+        f"/projects/{project['id']}/members",
+        headers=_auth(same_org_admin_user["access_token"]),
+    )
+    assert response.status_code == 200, response.text
+    assert any(m["role"] == "owner" for m in response.json())
+
+
+async def test_list_members_404_for_non_member_non_admin(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    response = await client.get(
+        f"/projects/{project['id']}/members",
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert response.status_code == 404
+
+
+async def test_list_members_404_for_cross_org_user(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    other_org_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    response = await client.get(
+        f"/projects/{project['id']}/members",
+        headers=_auth(other_org_user["access_token"]),
+    )
+    # Cross-tenant: schema isolation means project doesn't resolve at all → 404.
+    assert response.status_code == 404

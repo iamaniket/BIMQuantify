@@ -3,7 +3,7 @@
 import { Box, Crosshair, DraftingCompass, Download, Eraser, Eye, EyeOff, Ruler, Settings, Square, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
-import { AppDialog, ConfirmDialog, DialogField, DialogSection, cn } from '@bimstitch/ui';
+import { AppDialog, ConfirmDialog, DialogField, DialogSection, Select, cn } from '@bimstitch/ui';
 import type { Measurement, MeasurementConfig, MeasurementMode, ViewerHandle } from '@bimstitch/viewer';
 
 import { PanelEmptyState } from '../PanelEmptyState';
@@ -484,15 +484,15 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
 
         <DialogSection title="Precision">
           <DialogField label="Decimal places">
-            <select
+            <Select
               value={cfg.precision}
               onChange={(e) => update({ precision: parseInt(e.target.value, 10) })}
-              className="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
+              className="h-8 px-2 text-xs"
             >
               {PRECISION_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
-            </select>
+            </Select>
           </DialogField>
         </DialogSection>
 

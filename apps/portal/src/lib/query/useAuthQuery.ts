@@ -50,9 +50,10 @@ type AuthMutationOptions<TData, TVariables> = Omit<
   'mutationFn'
 > & {
   mutationFn: (accessToken: string, variables: TVariables) => Promise<TData>;
-  invalidateKeys?: QueryKey[] | ((variables: TVariables, data: TData) => QueryKey[]);
-  suppressToast?: boolean;
-};
+} & Partial<{
+  invalidateKeys: QueryKey[] | ((variables: TVariables, data: TData) => QueryKey[]);
+  suppressToast: boolean;
+}>;
 
 export function useAuthMutation<TData, TVariables>(
   options: AuthMutationOptions<TData, TVariables>,
@@ -81,7 +82,9 @@ export function useAuthMutation<TData, TVariables>(
           keys.map((key) => queryClient.invalidateQueries({ queryKey: key })),
         );
       }
-      await rest.onSuccess?.(...args);
+      if (rest.onSuccess !== undefined) {
+        await rest.onSuccess(...args);
+      }
     },
     onError: (...args) => {
       const [error] = args;

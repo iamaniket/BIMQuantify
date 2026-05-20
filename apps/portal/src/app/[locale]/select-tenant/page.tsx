@@ -14,9 +14,11 @@ export default function SelectTenantPage() {
   useEffect(() => {
     if (!me) return;
     if (me.memberships.length === 1) {
+      const membership = me.memberships[0];
+      if (membership === undefined) return;
       // Only one tenant, auto-select and redirect
-      if (me.active_organization_id !== me.memberships[0].organization_id) {
-        switchOrganization(me.memberships[0].organization_id).then(() => {
+      if (me.active_organization_id !== membership.organization_id) {
+        switchOrganization(membership.organization_id).then(() => {
           router.replace("/projects");
         });
       } else {
@@ -43,8 +45,8 @@ export default function SelectTenantPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
-                  className="h-auto w-full justify-between px-3 py-2 text-sm"
+                  size="md"
+                  className="w-full justify-between"
                   onClick={async () => {
                     await switchOrganization(membership.organization_id);
                     router.replace("/projects");

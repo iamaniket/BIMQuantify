@@ -1,22 +1,13 @@
 import { useId, type CSSProperties, type JSX } from 'react';
 
 export interface HeroGridProps {
-  /** 0..1 — overall transparency of the grid lines. Defaults to 0.10. */
   opacity?: number;
-  /** Line colour. Defaults to white (works on coloured/dark panels). */
   stroke?: string;
-  /** Spacing in pixels between lines. Defaults to 32. */
   step?: number;
-  /** Inline overrides — e.g. `inset` to position absolutely. */
   style?: CSSProperties;
   className?: string;
 }
 
-/**
- * Repeating square grid used as a decorative overlay on brand panels. Pure
- * SVG; no images, no DOM cost. Drop it as an absolutely-positioned sibling
- * inside a `position: relative` container.
- */
 export function HeroGrid({
   opacity = 0.1,
   stroke = '#ffffff',

@@ -14,9 +14,9 @@ export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
 };
 
 const sizeStyles: Record<InputSize, string> = {
-  sm: 'h-8 text-[14px]',
+  sm: 'h-10 text-[14px]',
   md: 'h-10 text-[14px]',
-  lg: 'h-12 text-[16px]',
+  lg: 'h-10 text-[16px]',
 };
 
 const sizePadding: Record<InputSize, { plain: string; left: string; right: string }> = {

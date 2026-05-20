@@ -93,7 +93,7 @@ function ToolButtonInner(
       type="button"
       disabled={disabled}
       className={cn(
-        'relative inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ease-out',
+        'relative inline-flex h-10 w-10 items-center justify-center rounded-lg transition-all duration-200 ease-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
         buttonClassName(disabled, isActive),
         className,

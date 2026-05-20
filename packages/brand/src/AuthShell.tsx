@@ -1,6 +1,6 @@
 import type { CSSProperties, JSX, ReactNode } from 'react';
 
-import { cn } from './lib/cn.js';
+import { cn } from '@bimstitch/ui';
 
 export interface AuthShellProps {
   /** Content rendered in the left brand canvas (BrandMark + hero copy + KPI strip + optional map). */
@@ -38,15 +38,8 @@ export interface AuthShellProps {
 }
 
 /**
- * Two-column auth shell — brand canvas left, form pane right.
- *
- * Used by both the login page (default 54/46 split) and the request-access
- * page (44/56). The brand canvas owns its own background; the form pane
- * defaults to the page surface so embedded forms feel weightless.
- *
- * Below ~960px the two panes stack so the page stays usable on smaller
- * laptops and tablets — the brand pane keeps a fixed-height hero on
- * mobile so the page doesn't feel chrome-heavy.
+ * Two-column auth shell — brand canvas left, form pane right. Below ~960px
+ * the panes stack so the page stays usable on smaller laptops and tablets.
  */
 export function AuthShell({
   brand,
@@ -65,9 +58,6 @@ export function AuthShell({
     <div
       className={cn(
         'flex min-h-screen w-full flex-col bg-surface-page text-foreground lg:flex-row',
-        // overflow-hidden is fine for short shells (login) but clips
-        // sticky positioning, so we only apply it when the brand isn't
-        // sticky. With sticky brand, the parent must allow overflow.
         brandSticky ? '' : 'overflow-hidden',
         className,
       )}
@@ -80,7 +70,7 @@ export function AuthShell({
         )}
         style={{
           flex: `0 0 ${brandPaneWidth}`,
-          background: 'linear-gradient(180deg, #2c5697 0%, #1e3e72 100%)',
+          background: 'linear-gradient(180deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
           minHeight: '32vh',
         }}
       >

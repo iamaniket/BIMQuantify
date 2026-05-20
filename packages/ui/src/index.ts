@@ -10,6 +10,10 @@ export { Label } from './Label.js';
 export type { LabelProps } from './Label.js';
 export { Textarea } from './Textarea.js';
 export type { TextareaProps } from './Textarea.js';
+export { Select } from './Select.js';
+export type { SelectProps, SelectSize } from './Select.js';
+export { Checkbox } from './Checkbox.js';
+export type { CheckboxProps } from './Checkbox.js';
 export {
   Card, CardHeader, CardBody, CardFooter,
 } from './Card.js';
@@ -61,24 +65,8 @@ export type { DialogFieldProps } from './DialogField.js';
 export { DialogSection } from './DialogSection.js';
 export type { DialogSectionGroupProps } from './DialogSection.js';
 export { cn } from './lib/cn.js';
-export { AuthShell } from './AuthShell.js';
-export type { AuthShellProps } from './AuthShell.js';
-export { BrandMark } from './BrandMark.js';
-export type { BrandMarkProps, BrandMarkTone } from './BrandMark.js';
-export { HeroGrid } from './HeroGrid.js';
-export type { HeroGridProps } from './HeroGrid.js';
-export { KpiStrip } from './KpiStrip.js';
-export type { KpiStripProps, KpiItem, KpiTone } from './KpiStrip.js';
-export { SystemStatusBadge } from './SystemStatusBadge.js';
-export type { SystemStatusBadgeProps, SystemStatusValue } from './SystemStatusBadge.js';
-export { LegalFooter } from './LegalFooter.js';
-export type { LegalFooterProps, LegalFooterLink } from './LegalFooter.js';
 export { FormField } from './FormField.js';
 export type { FormFieldProps } from './FormField.js';
-export { RequestAccessForm, RequestAccessIcons } from './RequestAccessForm.js';
-export type { RequestAccessFormProps, RequestAccessValues } from './RequestAccessForm.js';
-export { RequestAccessSuccess } from './RequestAccessSuccess.js';
-export type { RequestAccessSuccessProps } from './RequestAccessSuccess.js';
 export { ThemeToggle } from './ThemeToggle.js';
 export {
   Tabs, TabsList, TabsTrigger, TabsContent,
@@ -97,8 +85,4 @@ export type { ProgressProps, ProgressVariant } from './Progress.js';
 export {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from './Table.js';
-export { Wizard, WizardStepper } from './Wizard.js';
-export type {
-  WizardProps, WizardStep, WizardStepperProps,
-} from './Wizard.js';
 

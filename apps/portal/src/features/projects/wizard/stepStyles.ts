@@ -6,10 +6,6 @@ import type {
 
 export const fieldLabelClass = 'text-body3 font-medium text-foreground-secondary';
 
-export const selectClass = 'h-9 w-full rounded-md border border-border bg-background '
-  + 'px-2.5 text-body2 text-foreground outline-none focus:border-primary focus:ring-2 '
-  + 'focus:ring-primary/20';
-
 export const fieldErrorClass = 'text-body3 text-error';
 
 export const sectionTitleClass = 'text-caption font-bold uppercase '

@@ -298,7 +298,7 @@ export function DocumentToolbar({
               }
             }}
             aria-label="Current page"
-            className="h-7 w-10 rounded-md border border-border bg-background px-1.5 text-center text-caption font-semibold tabular-nums text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            className="h-10 w-10 rounded-md border border-border bg-background px-1.5 text-center text-[14px] font-semibold tabular-nums text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           />
           <span className="text-caption font-medium text-foreground/55">
             / {numPages ?? '—'}
@@ -334,7 +334,7 @@ export function DocumentToolbar({
               aria-label={t('searchLabel')}
               autoFocus
               data-testid="document-search-input"
-              className="h-7 w-44 rounded-md border border-border bg-background px-2 text-caption text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="h-10 w-44 rounded-md border border-border bg-background px-2 text-[14px] text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             />
             <ToolbarReadout className="min-w-[64px]">
               {searchPending

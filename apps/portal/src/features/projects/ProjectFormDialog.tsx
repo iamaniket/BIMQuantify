@@ -18,8 +18,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  Wizard,
 } from '@bimstitch/ui';
+
+import { Wizard } from '@/components/wizard/Wizard';
 
 import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';

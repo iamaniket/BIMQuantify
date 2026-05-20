@@ -9,8 +9,9 @@ import {
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { AppDialog, Input, Label } from '@bimstitch/ui';
+import { AppDialog, Input } from '@bimstitch/ui';
 
+import { Field } from '@/components/forms/Field';
 import { lookupUserByEmail } from '@/lib/api/admin';
 import { ApiError } from '@/lib/api/client';
 import type { AdminUserRead } from '@/lib/api/schemas';
@@ -162,87 +163,86 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
       saveDisabled={mutation.isPending}
     >
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="org-name">{t('fields.name')}</Label>
-          <Input
-            id="org-name"
-            placeholder={t('placeholders.name')}
-            autoFocus
-            {...form.register('name')}
-          />
-          {form.formState.errors.name && (
-            <p className="text-caption text-error">{form.formState.errors.name.message}</p>
+        <Field form={form} name="name" label={t('fields.name')}>
+          {({ id }) => (
+            <Input
+              id={id}
+              placeholder={t('placeholders.name')}
+              autoFocus
+              {...form.register('name')}
+            />
           )}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="org-admin-email">{t('fields.adminEmail')}</Label>
-          <Input
-            id="org-admin-email"
-            type="email"
-            placeholder={t('placeholders.adminEmail')}
-            {...form.register('admin_email')}
-          />
-          {form.formState.errors.admin_email && (
-            <p className="text-caption text-error">
-              {form.formState.errors.admin_email.message}
-            </p>
+        </Field>
+        <Field form={form} name="admin_email" label={t('fields.adminEmail')}>
+          {({ id }) => (
+            <>
+              <Input
+                id={id}
+                type="email"
+                placeholder={t('placeholders.adminEmail')}
+                {...form.register('admin_email')}
+              />
+              {lookupPending && (
+                <p className="text-caption text-foreground-tertiary">
+                  {t('existingUser.checking')}
+                </p>
+              )}
+              {existingUser !== null && (
+                <div
+                  role="status"
+                  className="flex items-start gap-2 rounded-md border border-info-light bg-info-lighter px-3 py-2 text-body3 text-info"
+                >
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                  <span>
+                    {t('existingUser.banner', {
+                      name: existingUser.full_name ?? existingUser.email,
+                    })}
+                  </span>
+                </div>
+              )}
+            </>
           )}
-          {lookupPending && (
-            <p className="text-caption text-foreground-tertiary">
-              {t('existingUser.checking')}
-            </p>
+        </Field>
+        <Field
+          form={form}
+          name="admin_full_name"
+          label={t('fields.adminFullName')}
+          action={existingUser !== null ? (
+            <span className="text-caption font-normal text-foreground-tertiary">
+              {t('existingUser.nameLocked')}
+            </span>
+          ) : undefined}
+        >
+          {({ id }) => (
+            <Input
+              id={id}
+              placeholder={t('placeholders.adminFullName')}
+              readOnly={existingUser !== null}
+              {...form.register('admin_full_name', {
+                onChange: () => {
+                  fullNameTouchedRef.current = true;
+                },
+              })}
+            />
           )}
-          {existingUser !== null && (
-            <div
-              role="status"
-              className="flex items-start gap-2 rounded-md border border-info-light bg-info-lighter px-3 py-2 text-body3 text-info"
-            >
-              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <span>
-                {t('existingUser.banner', {
-                  name: existingUser.full_name ?? existingUser.email,
-                })}
-              </span>
-            </div>
+        </Field>
+        <Field
+          form={form}
+          name="seat_limit"
+          label={t('fields.seatLimit')}
+          hint={t('hints.seatLimit')}
+        >
+          {({ id }) => (
+            <Input
+              id={id}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              placeholder={t('placeholders.seatLimit')}
+              {...form.register('seat_limit')}
+            />
           )}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="org-admin-name">
-            {t('fields.adminFullName')}
-            {existingUser !== null && (
-              <span className="ml-2 text-caption font-normal text-foreground-tertiary">
-                {t('existingUser.nameLocked')}
-              </span>
-            )}
-          </Label>
-          <Input
-            id="org-admin-name"
-            placeholder={t('placeholders.adminFullName')}
-            readOnly={existingUser !== null}
-            {...form.register('admin_full_name', {
-              onChange: () => {
-                fullNameTouchedRef.current = true;
-              },
-            })}
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="org-seat-limit">{t('fields.seatLimit')}</Label>
-          <Input
-            id="org-seat-limit"
-            type="number"
-            min={1}
-            inputMode="numeric"
-            placeholder={t('placeholders.seatLimit')}
-            {...form.register('seat_limit')}
-          />
-          <p className="text-caption text-foreground-tertiary">{t('hints.seatLimit')}</p>
-          {form.formState.errors.seat_limit && (
-            <p className="text-caption text-error">
-              {form.formState.errors.seat_limit.message}
-            </p>
-          )}
-        </div>
+        </Field>
       </div>
     </AppDialog>
   );

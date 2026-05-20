@@ -120,9 +120,6 @@
     "adminConsole": "Beheerconsole",
     "settings": "Instellingen",
     "helpAndDocs": "Hulp en documentatie",
-    "userName": "Lieke Beumer",
-    "userSummary": "Lieke Beumer · Wkb-inspecteur",
-    "userRole": "Wkb-inspecteur · Beheerder",
     "signOut": "Uitloggen",
     "workspace": "Werkruimte",
     "projects": "Projecten",
@@ -134,6 +131,24 @@
     }
   },
   "projects": {
+    "page": {
+      "searchPlaceholder": "Zoek projecten...",
+      "searchAriaLabel": "Zoek projecten"
+    },
+    "list": {
+      "errors": {
+        "loadFailed": "Projecten laden is mislukt."
+      },
+      "emptyMembership": {
+        "title": "Nog geen projecttoegang",
+        "description": "U zit in deze organisatie, maar u bent nog niet toegevoegd aan een project. Vraag een organisatiebeheerder of projecteigenaar om toegang."
+      },
+      "emptyFiltered": {
+        "title": "Geen overeenkomende projecten",
+        "descriptionNoSearch": "Geen projecten komen overeen met het geselecteerde filter.",
+        "descriptionWithSearch": "Geen projecten komen overeen met \"{search}\". Probeer een andere zoekterm."
+      }
+    },
     "statuses": {
       "planning": "Planning",
       "design": "Ontwerp",
@@ -281,6 +296,58 @@
           "add": "Toevoegen",
           "cancel": "Annuleren"
         }
+      }
+    }
+  },
+  "projectAccess": {
+    "title": "Toegang",
+    "subtitle": "Personen met toegang tot dit project en hun rol.",
+    "crumb": "Toegang",
+    "addMember": "Lid toevoegen",
+    "empty": "Nog geen leden. Voeg de eerste toe om te beginnen.",
+    "emptyState": {
+      "title": "Nog geen leden",
+      "description": "Aan dit project zijn nog geen leden gekoppeld."
+    },
+    "readOnlyNotice": "Je ziet wie toegang heeft tot dit project. Organisatiebeheerders of de projecteigenaar kunnen leden toevoegen of verwijderen.",
+    "errors": {
+      "notFound": "Project niet gevonden.",
+      "loadFailed": "Het project kon niet worden geladen.",
+      "membersLoadFailed": "De projectleden konden niet worden geladen."
+    },
+    "table": {
+      "user": "Gebruiker",
+      "role": "Rol",
+      "added": "Toegevoegd",
+      "actions": "Acties",
+      "setRole": "Instellen als {role}",
+      "remove": "Verwijderen uit project",
+      "ownerLocked": "De eigenaarsrol kan niet worden gewijzigd.",
+      "roles": {
+        "owner": "Eigenaar",
+        "editor": "Bewerker",
+        "viewer": "Lezer",
+        "inspector": "Inspecteur",
+        "contractor": "Aannemer",
+        "client": "Opdrachtgever"
+      }
+    },
+    "addDialog": {
+      "title": "Lid toevoegen",
+      "subtitle": "Kies een actief lid van deze organisatie en wijs een rol toe op dit project.",
+      "submit": "Toevoegen",
+      "fields": {
+        "user": "Gebruiker",
+        "role": "Rol"
+      },
+      "placeholders": {
+        "user": "Selecteer een gebruiker"
+      },
+      "allAlreadyMembers": "Alle actieve organisatieleden zitten al in dit project.",
+      "errors": {
+        "pickUser": "Kies eerst een gebruiker.",
+        "alreadyMember": "Deze gebruiker is al lid van dit project.",
+        "notInOrg": "Deze gebruiker is geen actief lid van de organisatie."
       }
     }
   },

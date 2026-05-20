@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
   useCallback,
@@ -70,6 +71,7 @@ function writeStoredTokens(tokens: TokenPair | null): void {
 }
 
 export function AuthProvider({ children }: Props): JSX.Element {
+  const queryClient = useQueryClient();
   const [tokens, setTokensState] = useState<TokenPair | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [me, setMe] = useState<AuthMeResponse | null>(null);
@@ -101,7 +103,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
       setMe(null);
       return;
     }
-    void refreshMe();
+    refreshMe().catch(() => undefined);
   }, [hasHydrated, tokens, refreshMe]);
 
   const setTokens = useCallback((next: TokenPair | null): void => {
@@ -117,16 +119,16 @@ export function AuthProvider({ children }: Props): JSX.Element {
       }
       const nextTokens = await switchOrgApi(organizationId, current.access_token);
       setTokens(nextTokens);
+      await queryClient.invalidateQueries();
       // /auth/me will be re-fetched by the effect that watches `tokens`.
     },
-    [tokens, setTokens],
+    [tokens, setTokens, queryClient],
   );
 
   const activeMembership = useMemo<OrgMembershipBrief | null>(() => {
-    if (me === null || me.active_organization_id === null) return null;
-    return (
-      me.memberships.find((m) => m.organization_id === me.active_organization_id) ?? null
-    );
+    if (me === null) return null;
+    if (me.active_organization_id === null) return null;
+    return me.memberships.find((m) => m.organization_id === me.active_organization_id) ?? null;
   }, [me]);
 
   const value = useMemo<AuthState>(

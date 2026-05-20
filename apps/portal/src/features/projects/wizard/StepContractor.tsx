@@ -4,13 +4,13 @@ import { useId, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 import { useFormContext } from 'react-hook-form';
 
-import { Button, Input, Label } from '@bimstitch/ui';
+import { Button, Input, Label, Select } from '@bimstitch/ui';
 
 import type { Contractor } from '@/lib/api/schemas';
 
 import type { ProjectFormValues } from '../projectFormSchema';
 
-import { fieldErrorClass, fieldLabelClass, selectClass } from './stepStyles';
+import { fieldErrorClass, fieldLabelClass } from './stepStyles';
 
 export type StepContractorProps = {
   contractors: readonly Contractor[];
@@ -50,9 +50,8 @@ export function StepContractor({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={contractorId} className={fieldLabelClass}>{t('fields.contractor')}</Label>
-        <select
+        <Select
           id={contractorId}
-          className={selectClass}
           disabled={contractorsLoading || isReadOnly}
           {...form.register('contractor_id')}
         >
@@ -60,7 +59,7 @@ export function StepContractor({
           {contractors.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
-        </select>
+        </Select>
         {!showAddContractor && !isReadOnly && (
           <Button
             type="button"

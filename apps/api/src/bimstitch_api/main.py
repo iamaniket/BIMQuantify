@@ -1,18 +1,20 @@
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 
 from bimstitch_api.admin.invitation_expiry import InvitationExpirySweeper
 from bimstitch_api.auth.routes import build_auth_router
+from bimstitch_api.auth.tokens import TokenError, decode_token_full
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
 from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.observability import init_sentry
 from bimstitch_api.routers.access_requests import router as access_requests_router
+from bimstitch_api.routers.admin_impersonate import router as admin_impersonate_router
 from bimstitch_api.routers.admin_organizations import router as admin_organizations_router
 from bimstitch_api.routers.borgingsplan import (
     moment_router as borgingsplan_moment_router,
@@ -74,10 +76,36 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await close_redis()
 
 
+async def _impersonator_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Stash the `imp` claim onto `request.state` for every authenticated
+    request, so `audit.record(...)` can attribute mutations to the real
+    super admin without each route threading the value manually.
+
+    Malformed/missing tokens are silent — auth dependencies surface those
+    later. This middleware is a side-effect-only enricher.
+    """
+    auth_header = request.headers.get("authorization") or request.headers.get(
+        "Authorization"
+    )
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+        try:
+            decoded = decode_token_full(token, "access")
+        except TokenError:
+            decoded = None
+        if decoded is not None and decoded.impersonator_user_id is not None:
+            request.state.impersonator_user_id = decoded.impersonator_user_id
+    return await call_next(request)
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     init_sentry()
     app = FastAPI(title="BIMstitch API", version="0.0.1", lifespan=lifespan)
+
+    app.middleware("http")(_impersonator_middleware)
 
     app.add_middleware(
         CORSMiddleware,
@@ -95,6 +123,7 @@ def create_app() -> FastAPI:
     app.include_router(jurisdictions_router)
     app.include_router(build_auth_router())
     app.include_router(admin_organizations_router)
+    app.include_router(admin_impersonate_router)
     app.include_router(organization_members_router)
     app.include_router(me_invitations_router)
     app.include_router(me_memberships_router)

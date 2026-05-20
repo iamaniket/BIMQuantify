@@ -4,7 +4,7 @@ import {
   RequestAccessForm,
   RequestAccessSuccess,
   type RequestAccessValues,
-} from '@bimstitch/ui';
+} from '@bimstitch/brand';
 import { useState, type JSX } from 'react';
 
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';

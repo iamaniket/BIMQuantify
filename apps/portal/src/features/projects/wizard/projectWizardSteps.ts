@@ -1,4 +1,4 @@
-import type { WizardStep } from '@bimstitch/ui';
+import type { WizardStep } from '@/components/wizard/Wizard';
 
 import type {
   BuildingTypeValue,

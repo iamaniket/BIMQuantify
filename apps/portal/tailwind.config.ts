@@ -7,6 +7,7 @@ const config: Config = {
   content: [
     './src/**/*.{ts,tsx}',
     '../../packages/ui/src/**/*.{ts,tsx}',
+    '../../packages/brand/src/**/*.{ts,tsx}',
   ],
 };
 

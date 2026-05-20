@@ -2,22 +2,12 @@ import { Check } from 'lucide-react';
 import type { JSX } from 'react';
 
 export interface RequestAccessSuccessProps {
-  /** Submitter's full name — used in "your demo is on the way, X". */
   name: string;
-  /** The email the confirmation will land in. */
   email: string;
-  /** Company name — surfaced in the body copy. */
   company: string;
-  /** Click handler for the "Submit another request" button. */
   onReset?: () => void;
 }
 
-/**
- * Confirmation screen rendered after a successful POST /access-requests.
- * No demo-link generation here — the design's deterministic token was a
- * prototype affordance; the real flow has admins approve leads, then
- * separately email the invitation when ready.
- */
 export function RequestAccessSuccess({
   name,
   email,

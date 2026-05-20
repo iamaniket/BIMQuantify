@@ -7,7 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
-from bimstitch_api.cache import cache_response, CACHE_TTL_PROJECT_LIST, CACHE_TTL_PROJECT_DETAIL
+from bimstitch_api.auth.guards import is_guest_member
+from bimstitch_api.cache import CACHE_TTL_PROJECT_DETAIL, CACHE_TTL_PROJECT_LIST, cache_response
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jurisdictions import find_instrument, supported_countries
 from bimstitch_api.jurisdictions import get as get_jurisdiction
@@ -175,6 +176,129 @@ def _require_role(membership: ProjectMember, *allowed: ProjectRole) -> None:
         )
 
 
+async def _is_org_admin(
+    session: AsyncSession, user_id: UUID, organization_id: UUID
+) -> bool:
+    """True if the user has an active org-admin membership in the active org.
+
+    Safe inside a tenant session: `organization_members` lives in `public` and
+    falls through `search_path`; RLS is keyed off `app.current_org_id` which
+    `get_tenant_session` already set.
+    """
+    row = (
+        await session.execute(
+            select(OrganizationMember.id).where(
+                OrganizationMember.user_id == user_id,
+                OrganizationMember.organization_id == organization_id,
+                OrganizationMember.is_org_admin.is_(True),
+                OrganizationMember.status == OrganizationMemberStatus.active,
+            )
+        )
+    ).scalar_one_or_none()
+    return row is not None
+
+
+async def _require_member_manager(
+    session: AsyncSession,
+    project_id: UUID,
+    user: User,
+    organization_id: UUID,
+) -> None:
+    """Gate for project-member mutations (add/remove/update role).
+
+    Allowed: platform super-admin, org admin in the active org, or the
+    project owner. Anyone else → 403. Org admins get this power so a
+    departing project owner doesn't leave a project stranded, and so
+    onboarding/offboarding can be driven centrally.
+    """
+    if user.is_superuser:
+        return
+    if await _is_org_admin(session, user.id, organization_id):
+        return
+    membership = await _get_membership(session, project_id, user.id)
+    if membership is not None and membership.role is ProjectRole.owner:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN, detail="INSUFFICIENT_PROJECT_ROLE"
+    )
+
+
+async def _require_member_viewer(
+    session: AsyncSession,
+    project_id: UUID,
+    user: User,
+    organization_id: UUID,
+) -> None:
+    """Gate for reading the project member list.
+
+    Allowed: platform super-admin, org admin in the active org, or any
+    project member. Anyone else → 404 (mirrors `_require_membership` to
+    keep existence-leakage closed).
+    """
+    if user.is_superuser:
+        return
+    if await _is_org_admin(session, user.id, organization_id):
+        return
+    await _require_membership(session, project_id, user.id)
+
+
+async def _member_to_read(
+    session: AsyncSession, member: ProjectMember
+) -> dict[str, object]:
+    """Serialize a ProjectMember row with the user's email/full_name joined in
+    from `public.users` so the portal can render the row without a second
+    lookup per member.
+    """
+    row = (
+        await session.execute(
+            select(User.email, User.full_name).where(User.id == member.user_id)
+        )
+    ).first()
+    email = row.email if row is not None else ""
+    full_name = row.full_name if row is not None else None
+    return {
+        "project_id": member.project_id,
+        "user_id": member.user_id,
+        "role": member.role,
+        "created_at": member.created_at,
+        "email": email,
+        "full_name": full_name,
+    }
+
+
+async def _seed_project_members(
+    session: AsyncSession,
+    project_id: UUID,
+    owner_user_id: UUID,
+    organization_id: UUID,
+) -> None:
+    """Seed default members on project creation.
+
+    Creator is owner; active org admins are editors.
+    """
+    session.add(ProjectMember(project_id=project_id, user_id=owner_user_id, role=ProjectRole.owner))
+
+    admin_user_ids = (
+        await session.execute(
+            select(OrganizationMember.user_id).where(
+                OrganizationMember.organization_id == organization_id,
+                OrganizationMember.status == OrganizationMemberStatus.active,
+                OrganizationMember.is_org_admin.is_(True),
+                OrganizationMember.user_id != owner_user_id,
+            )
+        )
+    ).scalars().all()
+
+    for admin_user_id in admin_user_ids:
+        session.add(
+            ProjectMember(
+                project_id=project_id,
+                user_id=admin_user_id,
+                role=ProjectRole.editor,
+            )
+        )
+
+
 def _require_project_writable(project: Project) -> None:
     if project.lifecycle_state is ProjectLifecycleState.archived:
         raise HTTPException(
@@ -193,8 +317,16 @@ async def create_project(
     payload: ProjectCreate,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
+    # Cross-org guests cannot create projects in the host org. They were
+    # invited to collaborate on specific projects only.
+    if not user.is_superuser and await is_guest_member(session, user.id, active_org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="GUEST_CANNOT_CREATE_PROJECT",
+        )
     _validate_country(payload.country)
     _validate_consequence_class(payload.consequence_class, payload.country)
     _validate_instrument(payload.instrument_id, payload.country)
@@ -214,7 +346,7 @@ async def create_project(
             status_code=status.HTTP_409_CONFLICT, detail="PROJECT_NAME_CONFLICT"
         ) from exc
 
-    session.add(ProjectMember(project_id=project.id, user_id=user.id, role=ProjectRole.owner))
+    await _seed_project_members(session, project.id, user.id, active_org_id)
     await session.flush()
     await session.refresh(project)
     return await _project_to_read(project, storage)
@@ -227,6 +359,7 @@ async def create_project_with_thumbnail(
     thumbnail: Annotated[UploadFile | None, File()] = None,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, object]:
@@ -236,6 +369,11 @@ async def create_project_with_thumbnail(
     - Max size: THUMBNAIL_MAX_BYTES (default 2 MB)
     - Allowed types: THUMBNAIL_ALLOWED_CONTENT_TYPES (default JPEG, PNG, WebP)
     """
+    if not user.is_superuser and await is_guest_member(session, user.id, active_org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="GUEST_CANNOT_CREATE_PROJECT",
+        )
     thumbnail_key: str | None = None
 
     if thumbnail is not None and thumbnail.filename:
@@ -274,7 +412,7 @@ async def create_project_with_thumbnail(
             status_code=status.HTTP_409_CONFLICT, detail="PROJECT_NAME_CONFLICT"
         ) from exc
 
-    session.add(ProjectMember(project_id=project.id, user_id=user.id, role=ProjectRole.owner))
+    await _seed_project_members(session, project.id, user.id, active_org_id)
     await session.flush()
     await session.refresh(project)
     return await _project_to_read(project, storage)
@@ -417,6 +555,39 @@ async def reactivate_project(
 # ---------------------------------------------------------------------------
 
 
+@router.get("/{project_id}/members", response_model=list[ProjectMemberRead])
+async def list_members(
+    project_id: UUID,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> list[dict[str, object]]:
+    """List members of a project. Visible to project members, org admins, and
+    super-admins. Non-member non-admins get a 404 to keep existence-leakage
+    closed."""
+    project = await _load_project_or_404(session, project_id)
+    await _require_member_viewer(session, project.id, user, active_org_id)
+
+    stmt = (
+        select(ProjectMember, User.email, User.full_name)
+        .join(User, User.id == ProjectMember.user_id)
+        .where(ProjectMember.project_id == project.id)
+        .order_by(ProjectMember.created_at)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        {
+            "project_id": member.project_id,
+            "user_id": member.user_id,
+            "role": member.role,
+            "created_at": member.created_at,
+            "email": email,
+            "full_name": full_name,
+        }
+        for member, email, full_name in rows
+    ]
+
+
 @router.post(
     "/{project_id}/members",
     response_model=ProjectMemberRead,
@@ -428,10 +599,9 @@ async def add_member(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
-) -> ProjectMember:
+) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    caller = await _require_membership(session, project.id, user.id)
-    _require_role(caller, ProjectRole.owner)
+    await _require_member_manager(session, project.id, user, active_org_id)
     _require_project_writable(project)
 
     if payload.role is ProjectRole.owner:
@@ -469,7 +639,7 @@ async def add_member(
             status_code=status.HTTP_409_CONFLICT, detail="MEMBER_ALREADY_EXISTS"
         ) from exc
     await session.refresh(member)
-    return member
+    return await _member_to_read(session, member)
 
 
 @router.delete("/{project_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -478,10 +648,10 @@ async def remove_member(
     user_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
     project = await _load_project_or_404(session, project_id)
-    caller = await _require_membership(session, project.id, user.id)
-    _require_role(caller, ProjectRole.owner)
+    await _require_member_manager(session, project.id, user, active_org_id)
     _require_project_writable(project)
 
     target = await _get_membership(session, project.id, user_id)
@@ -502,10 +672,10 @@ async def update_member_role(
     payload: ProjectMemberUpdate,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
-) -> ProjectMember:
+    active_org_id: UUID = Depends(require_active_organization),
+) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    caller = await _require_membership(session, project.id, user.id)
-    _require_role(caller, ProjectRole.owner)
+    await _require_member_manager(session, project.id, user, active_org_id)
     _require_project_writable(project)
 
     target = await _get_membership(session, project.id, user_id)
@@ -525,4 +695,4 @@ async def update_member_role(
     target.role = payload.role
     await session.flush()
     await session.refresh(target)
-    return target
+    return await _member_to_read(session, target)

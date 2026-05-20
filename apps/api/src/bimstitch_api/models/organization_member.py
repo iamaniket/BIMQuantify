@@ -3,6 +3,7 @@ from enum import StrEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -10,7 +11,6 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy import Boolean
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -54,6 +54,15 @@ class OrganizationMember(MasterBase):
     )
 
     is_org_admin: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+
+    # Cross-org collaborator flag. A guest has a real membership row (and
+    # uses the same tenancy/JWT-switch path as a regular member) but is
+    # restricted: cannot be org_admin, does NOT count toward seat_limit,
+    # cannot list org members or create projects, and only sees projects
+    # they have an explicit `project_members` row in.
+    is_guest: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
 
@@ -105,6 +114,12 @@ class OrganizationMember(MasterBase):
             "user_id",
             "status",
             postgresql_where=text("status = 'active'"),
+        ),
+        Index(
+            "ix_org_members_guests",
+            "organization_id",
+            "is_guest",
+            postgresql_where=text("is_guest = true AND status = 'active'"),
         ),
         {"schema": "public"},
     )

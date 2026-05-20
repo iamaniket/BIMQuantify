@@ -104,18 +104,22 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
         p.name, p.description, p.reference_code,
         p.city, p.contractor_name,
       ];
-      return haystacks.some(
-        (s) => s !== null && s.toLowerCase().includes(term),
-      );
+      return haystacks.some((s) => {
+        if (s === null) {
+          return false;
+        }
+        return s.toLowerCase().includes(term);
+      });
     });
 
-  const filtered = statusFilter === 'all'
-    ? searchFiltered
-    : statusFilter === 'archived'
-      ? searchFiltered.filter((p) => p.lifecycle_state === 'archived')
-      : searchFiltered.filter(
-        (p) => p.lifecycle_state === 'active' && p.status === statusFilter,
-      );
+  let filtered = searchFiltered;
+  if (statusFilter === 'archived') {
+    filtered = searchFiltered.filter((p) => p.lifecycle_state === 'archived');
+  } else if (statusFilter !== 'all') {
+    filtered = searchFiltered.filter(
+      (p) => p.lifecycle_state === 'active' && p.status === statusFilter,
+    );
+  }
 
   if (filtered.length === 0) {
     return (

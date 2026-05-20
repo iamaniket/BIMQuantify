@@ -1,20 +1,14 @@
 import type { JSX } from 'react';
 
-import { cn } from './lib/cn.js';
+import { cn } from '@bimstitch/ui';
 
 export type SystemStatusValue = 'normal' | 'degraded' | 'down' | 'loading';
 
 export interface SystemStatusBadgeProps {
   status: SystemStatusValue;
-  /** Region/node line shown next to the status. e.g. "EU-WEST · AMS01". */
   region?: string;
-  /** Light-text variant for coloured backgrounds. */
   tone?: 'on-dark' | 'on-light';
   className?: string;
-  /**
-   * Override the displayed status text. Lets locale-aware consumers inject
-   * translated labels without dragging an i18n library into this package.
-   */
   labels?: Record<SystemStatusValue, string>;
 }
 
@@ -32,11 +26,6 @@ const labelText: Record<SystemStatusValue, string> = {
   loading: 'Checking status…',
 };
 
-/**
- * Status pill rendered on the login page. Presentational only — consumers
- * pass a status fetched however they like (a React Query hook, server prop,
- * etc.) so this component stays decoupled from any HTTP client.
- */
 export function SystemStatusBadge({
   status,
   region,

@@ -6,8 +6,9 @@ import { useEffect, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { AppDialog, Input, Label } from '@bimstitch/ui';
+import { AppDialog, Checkbox, Input } from '@bimstitch/ui';
 
+import { Field } from '@/components/forms/Field';
 import { ApiError } from '@/lib/api/client';
 import { useInviteMember } from './useInviteMember';
 
@@ -94,35 +95,28 @@ export function InviteMemberDialog({
       saveDisabled={mutation.isPending}
     >
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="invite-email">{t('fields.email')}</Label>
-          <Input
-            id="invite-email"
-            type="email"
-            autoFocus
-            placeholder={t('placeholders.email')}
-            {...form.register('email')}
-          />
-          {form.formState.errors.email && (
-            <p className="text-caption text-error">
-              {form.formState.errors.email.message}
-            </p>
+        <Field form={form} name="email" label={t('fields.email')}>
+          {({ id }) => (
+            <Input
+              id={id}
+              type="email"
+              autoFocus
+              placeholder={t('placeholders.email')}
+              {...form.register('email')}
+            />
           )}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="invite-full-name">{t('fields.fullName')}</Label>
-          <Input
-            id="invite-full-name"
-            placeholder={t('placeholders.fullName')}
-            {...form.register('full_name')}
-          />
-        </div>
+        </Field>
+        <Field form={form} name="full_name" label={t('fields.fullName')}>
+          {({ id }) => (
+            <Input
+              id={id}
+              placeholder={t('placeholders.fullName')}
+              {...form.register('full_name')}
+            />
+          )}
+        </Field>
         <label className="flex items-center gap-2 text-body3">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border border-border"
-            {...form.register('is_org_admin')}
-          />
+          <Checkbox {...form.register('is_org_admin')} />
           <span>{t('fields.isOrgAdmin')}</span>
         </label>
       </div>

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@bimstitch/ui';
+import { Button, Select, Tabs, TabsContent, TabsList, TabsTrigger } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
 import {
@@ -42,8 +42,6 @@ const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; label: string 
   { key: 'right', label: 'Right button' },
   { key: 'wheel', label: 'Wheel' },
 ];
-
-const SELECT_CLS = 'h-8 rounded border border-border bg-background px-2 text-caption text-foreground focus:outline-none focus:ring-2 focus:ring-ring';
 
 type Props = {
   handle: ViewerHandle | null;
@@ -329,8 +327,8 @@ function MouseBindingsSection({
             <span className="truncate font-mono text-foreground-secondary">
               {g}
             </span>
-            <select
-              className={`${SELECT_CLS} max-w-[10rem]`}
+            <Select
+              className="max-w-[10rem]"
               value={bindingFor(g)}
               onChange={(e) => {
                 rebind(g, e.target.value).catch(() => undefined);
@@ -342,7 +340,7 @@ function MouseBindingsSection({
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
           </li>
         ))}
       </ul>
@@ -445,8 +443,7 @@ function MouseControlsSection({
     <Section title="Mouse drag actions" note="Applies on next viewer reload">
       {DRAG_BUTTONS.map((btn) => (
         <Field key={btn.key} label={btn.label}>
-          <select
-            className={SELECT_CLS}
+          <Select
             value={settings.controls[btn.key]}
             onChange={(e) => {
               onChange({
@@ -463,7 +460,7 @@ function MouseControlsSection({
                 {a.label}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       ))}
     </Section>
@@ -518,7 +515,7 @@ export function ViewerSettingsPopover({
           type="button"
           onClick={onClose}
           aria-label="Close settings"
-          className="inline-flex h-8 w-8 items-center justify-center rounded text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
+          className="inline-flex h-10 w-10 items-center justify-center rounded text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
@@ -576,8 +573,7 @@ export function ViewerSettingsPopover({
                 }}
               />
               <Field label="Quality">
-                <select
-                  className={SELECT_CLS}
+                <Select
                   value={settings.effects.quality}
                   onChange={(e) => {
                     update({
@@ -594,7 +590,7 @@ export function ViewerSettingsPopover({
                       {q}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
             </Section>
 

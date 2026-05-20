@@ -6,8 +6,7 @@ from datetime import datetime
 from ipaddress import IPv4Address, IPv6Address
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
-
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # /admin/organizations
@@ -69,6 +68,40 @@ class AdminUserRead(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# /admin/impersonate
+# ---------------------------------------------------------------------------
+
+
+class ImpersonateRequest(BaseModel):
+    """Body for `POST /admin/impersonate/{user_id}`.
+
+    Both fields optional. `organization_id` lets the super admin specify
+    which org context to enter (must be one the target user is an active
+    member of); omitting it falls back to the target's
+    `active_organization_id`. `ttl_seconds` clamps the token lifetime DOWN
+    only — values above the configured ceiling are silently capped.
+    """
+
+    organization_id: UUID | None = None
+    ttl_seconds: int | None = Field(default=None, ge=60)
+
+
+class ImpersonatedUserSummary(BaseModel):
+    id: UUID
+    email: EmailStr
+    full_name: str | None
+    active_organization_id: UUID | None
+
+
+class ImpersonateResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    expires_at: datetime
+    impersonated_user: ImpersonatedUserSummary
+
+
+# ---------------------------------------------------------------------------
 # /organizations/{id}/members
 # ---------------------------------------------------------------------------
 
@@ -82,12 +115,37 @@ class MemberInvite(BaseModel):
     email: EmailStr
     full_name: str | None = Field(default=None, max_length=255)
     is_org_admin: bool = False
+    # Cross-org collaborator. When true, the invitee gets a guest membership:
+    # excluded from seat counts, cannot be org_admin, sees only specifically
+    # granted projects. `projects` must be non-empty for guest invites — a
+    # guest with no project assignments is meaningless.
+    is_guest: bool = False
     projects: list[ProjectAssignment] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_guest_invariants(self) -> MemberInvite:
+        if self.is_guest:
+            if self.is_org_admin:
+                raise ValueError("GUEST_CANNOT_BE_ORG_ADMIN")
+            if not self.projects:
+                raise ValueError("GUEST_REQUIRES_PROJECTS")
+        return self
 
 
 class MemberUpdate(BaseModel):
     is_org_admin: bool | None = None
     status: str | None = None  # OrganizationMemberStatus value
+
+
+class MemberGuestUpdate(BaseModel):
+    """Body for `PATCH /organizations/{org}/members/{user}/guest`.
+
+    Toggling guest <-> regular member is a deliberate transition with its
+    own audit signal (`organization_member.guest_changed`), separate from
+    role and status changes which travel through `PATCH /members/{user}`.
+    """
+
+    is_guest: bool
 
 
 class MemberDelete(BaseModel):
@@ -107,6 +165,7 @@ class MemberRead(BaseModel):
     email: EmailStr
     full_name: str | None
     is_org_admin: bool
+    is_guest: bool = False
     status: str
     invited_at: datetime
     accepted_at: datetime | None
@@ -128,6 +187,7 @@ class MemberRead(BaseModel):
 class AuditEntry(BaseModel):
     id: UUID
     user_id: UUID | None
+    impersonator_user_id: UUID | None = None
     organization_id: UUID | None
     action: str
     resource_type: str

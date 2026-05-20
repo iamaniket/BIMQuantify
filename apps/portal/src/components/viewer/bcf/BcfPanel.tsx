@@ -19,7 +19,7 @@ import {
   type JSX,
 } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { Select, cn } from '@bimstitch/ui';
 import type { BcfTopicSummary, ViewerHandle } from '@bimstitch/viewer';
 
 import { PanelEmptyState } from '../PanelEmptyState';
@@ -198,10 +198,10 @@ export function BcfPanel({ handle }: Props): JSX.Element {
             className="resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-foreground-tertiary"
           />
           <div className="grid grid-cols-3 gap-2">
-            <select
+            <Select
               value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-              className="h-8 rounded border border-border bg-background px-1.5 text-xs text-foreground"
+              className="h-8 px-1.5 text-xs"
               aria-label="Type"
             >
               {TOPIC_TYPES.map((t) => (
@@ -209,11 +209,11 @@ export function BcfPanel({ handle }: Props): JSX.Element {
                   {t}
                 </option>
               ))}
-            </select>
-            <select
+            </Select>
+            <Select
               value={form.status}
               onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-              className="h-8 rounded border border-border bg-background px-1.5 text-xs text-foreground"
+              className="h-8 px-1.5 text-xs"
               aria-label="Status"
             >
               {TOPIC_STATUSES.map((s) => (
@@ -221,11 +221,11 @@ export function BcfPanel({ handle }: Props): JSX.Element {
                   {s}
                 </option>
               ))}
-            </select>
-            <select
+            </Select>
+            <Select
               value={form.priority}
               onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-              className="h-8 rounded border border-border bg-background px-1.5 text-xs text-foreground"
+              className="h-8 px-1.5 text-xs"
               aria-label="Priority"
             >
               {TOPIC_PRIORITIES.map((p) => (
@@ -233,7 +233,7 @@ export function BcfPanel({ handle }: Props): JSX.Element {
                   {p}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-1 text-caption text-foreground-tertiary">

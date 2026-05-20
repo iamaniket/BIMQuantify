@@ -4,7 +4,7 @@ import { Plus, Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Button, Input, PageHeader, Skeleton } from '@bimstitch/ui';
+import { Button, Input, PageHeader, Select, Skeleton } from '@bimstitch/ui';
 
 import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
@@ -43,17 +43,17 @@ export default function AdminOrganizationsPage(): JSX.Element {
             aria-label={t('searchAria')}
           />
         </div>
-        <select
+        <Select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); }}
-          className="h-9 rounded-md border border-border bg-background px-3 text-body3"
+          className="w-auto"
           aria-label={t('statusFilterAria')}
         >
           <option value="all">{t('statusFilters.all')}</option>
           <option value="active">{t('statusFilters.active')}</option>
           <option value="suspended">{t('statusFilters.suspended')}</option>
           <option value="provisioning">{t('statusFilters.provisioning')}</option>
-        </select>
+        </Select>
         <div className="ml-auto">
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus className="mr-1 h-4 w-4" />

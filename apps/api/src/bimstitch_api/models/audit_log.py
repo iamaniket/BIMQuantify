@@ -29,7 +29,21 @@ class AuditLog(MasterBase):
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
 
     # Actor — null for anonymous events (e.g. failed login with unknown email).
+    # When the action was taken via a super-admin impersonation token,
+    # `user_id` is the IMPERSONATED user (the one shown in audit lists for
+    # that user's activity) and `impersonator_user_id` records the real
+    # super admin who initiated the session.
     user_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("public.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Super admin who initiated an impersonation session, if any. NULL for
+    # all non-impersonated traffic. Populated automatically by
+    # `audit.record(...)` from request.state when the access token carries
+    # an `imp` claim.
+    impersonator_user_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("public.users.id", ondelete="SET NULL"),
         nullable=True,
@@ -74,5 +88,6 @@ class AuditLog(MasterBase):
         Index("ix_audit_user_time", "user_id", "created_at"),
         Index("ix_audit_resource", "resource_type", "resource_id"),
         Index("ix_audit_action_time", "action", "created_at"),
+        Index("ix_audit_impersonator_time", "impersonator_user_id", "created_at"),
         {"schema": "public"},
     )

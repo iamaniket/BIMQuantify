@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useId, type JSX } from 'react';
+import { useEffect, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 
 import {
@@ -15,9 +15,10 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  Label,
+  Select,
 } from '@bimstitch/ui';
 
+import { Field } from '@/components/forms/Field';
 import { ApiError } from '@/lib/api/client';
 import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/lib/formatting/models';
 import {
@@ -31,11 +32,6 @@ const DEFAULTS: ModelFormValues = {
   discipline: 'architectural',
   status: 'active',
 };
-
-const SELECT_CLASS = 'h-10 w-full rounded-md border border-border bg-background px-3 text-[14px] '
-  + 'text-foreground transition-colors hover:border-border-hover '
-  + 'focus:outline-none focus:ring-2 focus:ring-ring '
-  + 'disabled:cursor-not-allowed disabled:bg-background-tertiary disabled:text-foreground-disabled';
 
 function formatApiError(error: unknown): string | null {
   if (error === null || error === undefined) return null;
@@ -58,10 +54,6 @@ type Props = {
 };
 
 export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.Element {
-  const nameId = useId();
-  const disciplineId = useId();
-  const statusId = useId();
-
   const createMutation = useCreateModel();
   const { reset: resetMutation } = createMutation;
 
@@ -95,8 +87,6 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
     );
   };
 
-  const nameFieldError = form.formState.errors.name;
-  const nameError = nameFieldError === undefined ? undefined : nameFieldError.message;
   const isSubmitting = createMutation.isPending;
 
   return (
@@ -112,62 +102,58 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
           </DialogHeader>
 
           <DialogBody>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={nameId}>Name</Label>
-              <Input
-                id={nameId}
-                type="text"
-                autoComplete="off"
-                autoFocus
-                invalid={nameError !== undefined}
-                {...form.register('name', {
-                  onChange: () => {
-                    const currentNameError = form.formState.errors.name;
-                    if (currentNameError === undefined) return;
-                    if (currentNameError.type === 'server') {
-                      form.clearErrors('name');
-                    }
-                  },
-                })}
-              />
-              {nameError === undefined ? null : (
-                <span role="alert" className="text-body3 text-error">
-                  {nameError}
-                </span>
+            <Field form={form} name="name" label="Name">
+              {({ id, invalid }) => (
+                <Input
+                  id={id}
+                  type="text"
+                  autoComplete="off"
+                  autoFocus
+                  invalid={invalid}
+                  {...form.register('name', {
+                    onChange: () => {
+                      const currentNameError = form.formState.errors.name;
+                      if (currentNameError === undefined) return;
+                      if (currentNameError.type === 'server') {
+                        form.clearErrors('name');
+                      }
+                    },
+                  })}
+                />
               )}
-            </div>
+            </Field>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={disciplineId}>Discipline</Label>
-              <select
-                id={disciplineId}
-                className={SELECT_CLASS}
-                disabled={isSubmitting}
-                {...form.register('discipline')}
-              >
-                {DISCIPLINE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Field form={form} name="discipline" label="Discipline">
+              {({ id }) => (
+                <Select
+                  id={id}
+                  disabled={isSubmitting}
+                  {...form.register('discipline')}
+                >
+                  {DISCIPLINE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={statusId}>Status</Label>
-              <select
-                id={statusId}
-                className={SELECT_CLASS}
-                disabled={isSubmitting}
-                {...form.register('status')}
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Field form={form} name="status" label="Status">
+              {({ id }) => (
+                <Select
+                  id={id}
+                  disabled={isSubmitting}
+                  {...form.register('status')}
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
 
           </DialogBody>
 

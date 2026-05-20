@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { cn } from './lib/cn.js';
+import { cn } from '@bimstitch/ui';
 
 export interface LegalFooterLink {
   href: string;
@@ -8,15 +8,10 @@ export interface LegalFooterLink {
 }
 
 export interface LegalFooterProps {
-  /** Year shown in the copyright. Defaults to the current calendar year. */
   year?: number;
-  /** Company name shown after the copyright glyph. */
   company?: string;
-  /** Tail text after the company (e.g. compliance flag). */
   tail?: string;
-  /** Light-text variant for coloured backgrounds. */
   tone?: 'on-dark' | 'on-light';
-  /** Right-side links (Privacy / Terms / Status / Help). */
   links?: readonly LegalFooterLink[];
   className?: string;
 }

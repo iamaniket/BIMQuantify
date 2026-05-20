@@ -1,6 +1,5 @@
 'use client';
 
-import { NetherlandsMap, type MapMarker } from '@bimstitch/map';
 import {
   AuthShell,
   BrandMark,
@@ -10,7 +9,8 @@ import {
   RequestAccessSuccess,
   SystemStatusBadge,
   type RequestAccessValues,
-} from '@bimstitch/ui';
+} from '@bimstitch/brand';
+import { NetherlandsMap, type MapMarker } from '@bimstitch/map';
 import { useEffect, useState, type JSX } from 'react';
 
 import { fetchProjectsMap, submitAccessRequest, WebApiError } from '@/lib/api';

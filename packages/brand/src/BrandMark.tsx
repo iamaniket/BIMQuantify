@@ -1,14 +1,11 @@
 import type { CSSProperties, JSX } from 'react';
 
-import { cn } from './lib/cn.js';
+import { cn } from '@bimstitch/ui';
 
 export type BrandMarkTone = 'on-dark' | 'on-light';
 
 export interface BrandMarkProps {
-  /** Square edge length in pixels. Defaults to 32. */
   size?: number;
-  /** Background/stroke palette. `on-dark` is the translucent tile used on
-   * coloured panels; `on-light` is the solid blue gradient tile. */
   tone?: BrandMarkTone;
   className?: string;
   style?: CSSProperties;
@@ -21,16 +18,12 @@ const toneStyles: Record<BrandMarkTone, { bg: string; border: string; stroke: st
     stroke: '#ffffff',
   },
   'on-light': {
-    bg: 'linear-gradient(135deg,#2c5697,#1e3e72)',
+    bg: 'linear-gradient(135deg, var(--brand-gradient-start), var(--brand-gradient-end))',
     border: 'rgba(0,0,0,0.06)',
     stroke: '#ffffff',
   },
 };
 
-/**
- * BimStitch logomark — two stacked zig-zags ("stitched" lines). Used on the
- * login brand canvas, request-access hero and any auth-adjacent header.
- */
 export function BrandMark({
   size = 32,
   tone = 'on-dark',

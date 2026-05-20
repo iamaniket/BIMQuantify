@@ -77,7 +77,7 @@ async def test_create_project_duplicate_name_in_same_org_returns_409(
 async def test_list_projects_returns_only_user_memberships(
     client: AsyncClient,
     org_user: dict[str, str],
-    same_org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
 ) -> None:
     # Alice creates two projects.
     p1 = (
@@ -90,14 +90,16 @@ async def test_list_projects_returns_only_user_memberships(
     # Carol creates her own project — Alice is not a member.
     (
         await client.post(
-            "/projects", json={"name": "Carols"}, headers=_auth(same_org_user["access_token"])
+            "/projects",
+            json={"name": "Carols"},
+            headers=_auth(same_org_non_admin_user["access_token"]),
         )
     ).json()
 
     # Alice adds Carol to P1.
     add = await client.post(
         f"/projects/{p1['id']}/members",
-        json={"user_id": same_org_user["id"], "role": "editor"},
+        json={"user_id": same_org_non_admin_user["id"], "role": "editor"},
         headers=_auth(org_user["access_token"]),
     )
     assert add.status_code == 201
@@ -105,12 +107,40 @@ async def test_list_projects_returns_only_user_memberships(
     alice_list = await client.get("/projects", headers=_auth(org_user["access_token"]))
     assert alice_list.status_code == 200
     alice_names = sorted(p["name"] for p in alice_list.json())
-    assert alice_names == ["P1", "P2"]
+    assert alice_names == ["Carols", "P1", "P2"]
 
-    carol_list = await client.get("/projects", headers=_auth(same_org_user["access_token"]))
+    carol_list = await client.get(
+        "/projects", headers=_auth(same_org_non_admin_user["access_token"])
+    )
     assert carol_list.status_code == 200
     carol_names = sorted(p["name"] for p in carol_list.json())
     assert carol_names == ["Carols", "P1"]
+
+
+async def test_create_project_auto_adds_active_org_admins_as_editors(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_admin_user: dict[str, str],
+) -> None:
+    project = (
+        await client.post(
+            "/projects", json={"name": "Admin-visible"}, headers=_auth(org_user["access_token"])
+        )
+    ).json()
+
+    members = await client.get(
+        f"/projects/{project['id']}/members",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert members.status_code == 200
+    by_user = {member["user_id"]: member["role"] for member in members.json()}
+
+    assert by_user[org_user["id"]] == "owner"
+    assert by_user[same_org_admin_user["id"]] == "editor"
+
+    admin_projects = await client.get("/projects", headers=_auth(same_org_admin_user["access_token"]))
+    assert admin_projects.status_code == 200
+    assert any(p["id"] == project["id"] for p in admin_projects.json())
 
 
 async def test_list_projects_excludes_other_org_projects(

@@ -12,7 +12,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type FormEvent, type JSX } from 'react';
 
-import { Badge, Button, Input, Label, Textarea } from '@bimstitch/ui';
+import { Badge, Button, Input, Label, Select, Textarea } from '@bimstitch/ui';
 
 import { useBorgingsplanCatalog } from '@/features/borgingsplan/usePhaseLabels';
 import { useBorgingsplan, useBorgingsplanVersions } from '@/features/borgingsplan/useBorgingsplan';
@@ -863,17 +863,16 @@ function AddChecklistItemForm({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div className="flex flex-col gap-1">
           <Label className="text-caption text-foreground-secondary">{t('evidenceTypeLabel')}</Label>
-          <select
+          <Select
             value={evidenceType}
             onChange={(e) => setEvidenceType(e.target.value as EvidenceTypeValue)}
-            className="h-9 rounded-md border border-border bg-background px-2 text-body3"
           >
             {EVIDENCE_TYPES.map((ev) => (
               <option key={ev} value={ev}>
                 {tEv(ev)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="flex flex-col gap-1">
           <Label className="text-caption text-foreground-secondary">{t('bblArticleLabel')}</Label>
@@ -956,17 +955,16 @@ function EditChecklistItemForm({
         required
       />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <select
+        <Select
           value={evidenceType}
           onChange={(e) => setEvidenceType(e.target.value as EvidenceTypeValue)}
-          className="h-9 rounded-md border border-border bg-background px-2 text-body3"
         >
           {EVIDENCE_TYPES.map((ev) => (
             <option key={ev} value={ev}>
               {tEv(ev)}
             </option>
           ))}
-        </select>
+        </Select>
         <Input
           type="text"
           value={bblArticleRef}

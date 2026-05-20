@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-type KpiItem = {
+type ProjectKpiCard = {
   label: string;
   value: string;
   color?: string;
@@ -8,10 +8,10 @@ type KpiItem = {
 };
 
 type Props = {
-  items: KpiItem[];
+  items: ProjectKpiCard[];
 };
 
-export function KpiStrip({ items }: Props): JSX.Element {
+export function ProjectKpiCards({ items }: Props): JSX.Element {
   return (
     <div className="grid w-full grid-cols-2 gap-2 xl:flex xl:items-stretch xl:gap-0">
       {items.map((item, i) => (

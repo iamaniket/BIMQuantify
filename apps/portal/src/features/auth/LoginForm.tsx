@@ -26,9 +26,9 @@ type LoginFormValues = { username: string; password: string };
 type OrganizationMembership = { organization_id: string; organization_name: string };
 
 export function LoginForm(): JSX.Element {
-    const requestAccessHref = process.env.NEXT_PUBLIC_MARKETING_URL
-      ? `${process.env.NEXT_PUBLIC_MARKETING_URL.replace(/\/$/, '')}/request-access`
-      : '/request-access';
+  const requestAccessHref = process.env['NEXT_PUBLIC_MARKETING_URL']
+    ? `${process.env['NEXT_PUBLIC_MARKETING_URL'].replace(/\/$/, '')}/request-access`
+    : '/request-access';
   const t = useTranslations('auth.login');
   const router = useRouter();
   const { setTokens, switchOrganization } = useAuth();
@@ -230,8 +230,8 @@ export function LoginForm(): JSX.Element {
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
-                  className="h-auto w-full justify-between px-3 py-2 text-sm"
+                  size="md"
+                  className="w-full justify-between"
                   disabled={switching !== null}
                   onClick={() => {
                     void selectOrganization(membership.organization_id);

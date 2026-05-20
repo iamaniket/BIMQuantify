@@ -105,6 +105,11 @@ class ProjectMemberRead(BaseModel):
     user_id: UUID
     role: ProjectRole
     created_at: datetime
+    # Denormalized from public.users so the portal can render the row without
+    # a second lookup. Email is always present (NOT NULL in DB); full_name is
+    # nullable because users can sign up without providing one.
+    email: str
+    full_name: str | None = None
 
 
 class ProjectMemberCreate(BaseModel):

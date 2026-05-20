@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { AppDialog, Label } from '@bimstitch/ui';
+import { AppDialog, Label, Select } from '@bimstitch/ui';
 
 import type { MemberRead } from '@/lib/api/schemas';
 
@@ -39,9 +39,8 @@ export function ReassignOwnerDialog({
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="reassign-target">{t('selectLabel')}</Label>
-        <select
+        <Select
           id="reassign-target"
-          className="h-9 rounded-md border border-border bg-background px-2 text-body3"
           value={selected}
           onChange={(e) => { setSelected(e.target.value); }}
         >
@@ -53,7 +52,7 @@ export function ReassignOwnerDialog({
               {c.full_name ?? c.email}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
     </AppDialog>
   );

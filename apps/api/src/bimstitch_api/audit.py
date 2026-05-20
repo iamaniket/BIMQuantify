@@ -19,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.models.audit_log import AuditLog
 
-
 # Sensitive fields per table. When a row's dict is captured for before/after,
 # any key in this set is dropped before serialization.
 REDACT_FIELDS_BY_TABLE: dict[str, frozenset[str]] = {
@@ -62,6 +61,24 @@ def _extract_request_context(request: Request | None) -> tuple[str | None, str |
     return request_id, ip, user_agent
 
 
+def _resolve_impersonator(
+    explicit: UUID | None, request: Request | None
+) -> UUID | None:
+    """Pick the impersonator attribution for an audit row.
+
+    Explicit param wins (used by `auth.impersonate.start` to record the
+    super admin even though that endpoint isn't itself an impersonated
+    request). Otherwise we read it off `request.state.impersonator_user_id`
+    where the `get_impersonator_user_id` dependency stashed it when the
+    caller's access token carried an `imp` claim.
+    """
+    if explicit is not None:
+        return explicit
+    if request is None:
+        return None
+    return getattr(request.state, "impersonator_user_id", None)
+
+
 async def record(
     session: AsyncSession,
     *,
@@ -73,6 +90,7 @@ async def record(
     actor_user_id: UUID | None = None,
     organization_id: UUID | None = None,
     request: Request | None = None,
+    impersonator_user_id: UUID | None = None,
 ) -> None:
     """Append an audit entry within the caller's transaction.
 
@@ -80,11 +98,19 @@ async def record(
     the entry commits or rolls back atomically with the operation. Do NOT
     open a new session here — that would let an audit entry persist even
     if the underlying operation later fails.
+
+    When `impersonator_user_id` is not passed but `request` is, the helper
+    auto-populates the column from `request.state.impersonator_user_id`
+    (set by `auth.dependencies.get_impersonator_user_id`). Routes never
+    have to thread this manually for normal traffic; explicit pass is
+    only needed by the impersonate-start endpoint itself.
     """
     request_id, ip_address, user_agent = _extract_request_context(request)
+    impersonator = _resolve_impersonator(impersonator_user_id, request)
 
     entry = AuditLog(
         user_id=actor_user_id,
+        impersonator_user_id=impersonator,
         organization_id=organization_id,
         action=action,
         resource_type=resource_type,

@@ -120,9 +120,6 @@
     "adminConsole": "Admin console",
     "settings": "Settings",
     "helpAndDocs": "Help & docs",
-    "userName": "Lieke Beumer",
-    "userSummary": "Lieke Beumer · Wkb inspector",
-    "userRole": "Wkb inspector · Admin",
     "signOut": "Sign out",
     "workspace": "Workspace",
     "projects": "Projects",
@@ -134,6 +131,24 @@
     }
   },
   "projects": {
+    "page": {
+      "searchPlaceholder": "Search projects...",
+      "searchAriaLabel": "Search projects"
+    },
+    "list": {
+      "errors": {
+        "loadFailed": "Failed to load projects."
+      },
+      "emptyMembership": {
+        "title": "No project access yet",
+        "description": "You are in this organization, but you have not been added to any project yet. Ask an organization admin or project owner to grant access."
+      },
+      "emptyFiltered": {
+        "title": "No matching projects",
+        "descriptionNoSearch": "No projects match the selected filter.",
+        "descriptionWithSearch": "No projects match \"{search}\". Try a different search."
+      }
+    },
     "statuses": {
       "planning": "Planning",
       "design": "Design",
@@ -281,6 +296,58 @@
           "add": "Add",
           "cancel": "Cancel"
         }
+      }
+    }
+  },
+  "projectAccess": {
+    "title": "Access",
+    "subtitle": "People with access to this project and their role.",
+    "crumb": "Access",
+    "addMember": "Add member",
+    "empty": "No members yet. Add the first one to get started.",
+    "emptyState": {
+      "title": "No members yet",
+      "description": "This project has no members assigned yet."
+    },
+    "readOnlyNotice": "You can see who has access to this project. Org admins or the project owner can add or remove members.",
+    "errors": {
+      "notFound": "Project not found.",
+      "loadFailed": "Failed to load the project.",
+      "membersLoadFailed": "Failed to load project members."
+    },
+    "table": {
+      "user": "User",
+      "role": "Role",
+      "added": "Added",
+      "actions": "Actions",
+      "setRole": "Set as {role}",
+      "remove": "Remove from project",
+      "ownerLocked": "The owner role can't be changed.",
+      "roles": {
+        "owner": "Owner",
+        "editor": "Editor",
+        "viewer": "Viewer",
+        "inspector": "Inspector",
+        "contractor": "Contractor",
+        "client": "Client"
+      }
+    },
+    "addDialog": {
+      "title": "Add a member",
+      "subtitle": "Pick an active member of this organization and assign them a role on this project.",
+      "submit": "Add",
+      "fields": {
+        "user": "User",
+        "role": "Role"
+      },
+      "placeholders": {
+        "user": "Select a user"
+      },
+      "allAlreadyMembers": "All active organization members are already in this project.",
+      "errors": {
+        "pickUser": "Pick a user first.",
+        "alreadyMember": "This user is already a member of the project.",
+        "notInOrg": "This user is not an active member of the organization."
       }
     }
   },

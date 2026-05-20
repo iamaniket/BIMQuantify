@@ -22,7 +22,7 @@ import type { Locale } from '@bimstitch/i18n';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { INSTRUMENT_OPTIONS } from '@/features/projects/wizard/projectWizardSteps';
 
-import { KpiStrip } from './KpiStrip';
+import { ProjectKpiCards } from './ProjectKpiCards';
 
 type Props = {
   project: Project;
@@ -167,7 +167,7 @@ export function ProjectDetailHeader({
 
         {/* KPIs + share */}
         <div className="relative flex w-full items-center gap-2 pr-10 xl:max-w-none xl:pr-0">
-          <KpiStrip
+          <ProjectKpiCards
             items={[
               { label: 'Wkb score', value: `${overall}%`, color: 'var(--success)', sub: wkbSub },
               { label: 'Issues open', value: String(issueCount), color: 'var(--error)', sub: `${compliance?.failCount ?? 0} fail · ${compliance?.warnCount ?? 0} warn` },

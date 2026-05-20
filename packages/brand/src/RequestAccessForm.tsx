@@ -3,10 +3,7 @@
 import { Building2, Globe2, GraduationCap, Mail, User } from 'lucide-react';
 import { useState, type ChangeEvent, type FormEvent, type JSX } from 'react';
 
-import { Button } from './Button.js';
-import { FormField } from './FormField.js';
-import { Input } from './Input.js';
-import { Textarea } from './Textarea.js';
+import { Button, Checkbox, FormField, Input, Select, Textarea } from '@bimstitch/ui';
 
 /** Domains the design and the API agree should be rejected as free email. */
 const FREE_DOMAINS = new Set([
@@ -61,13 +58,7 @@ export interface RequestAccessValues {
 export interface RequestAccessFormProps {
   onSubmit: (values: RequestAccessValues) => Promise<void>;
   defaultCountry?: string | undefined;
-  /** Override error shown above the submit button (e.g. API error message). */
   submitError?: string | undefined;
-  /**
-   * Where the "Already on BimStitch? Sign in →" link points. Defaults to
-   * a relative `/login` so the portal version works out of the box; the
-   * marketing site overrides with the portal URL.
-   */
   signInHref?: string | undefined;
 }
 
@@ -114,20 +105,6 @@ const INITIAL: RequestAccessValues = {
   terms_accepted: false,
 };
 
-const selectClass =
-  'w-full rounded-md border border-border bg-background text-foreground '
-  + 'h-10 px-3 text-[14px] outline-none transition-colors '
-  + 'focus:ring-2 focus:ring-ring focus:ring-offset-0 '
-  + 'hover:border-border-hover';
-
-/**
- * Validated lead-capture form for the marketing site. Submits in
- * client-side first (mirrors the server's free-email blocklist) so the user
- * gets immediate feedback; the API re-validates as the source of truth.
- *
- * Owns its own state — pass `onSubmit` to wire it to the API. Throws back
- * up are surfaced via the `submitError` prop.
- */
 export function RequestAccessForm({
   onSubmit,
   defaultCountry = 'NL',
@@ -215,11 +192,11 @@ export function RequestAccessForm({
         </FormField>
 
         <FormField label="Your role" required error={errFor('role')}>
-          <select
+          <Select
             value={values.role}
             onChange={(e) => update('role', e.target.value)}
             onBlur={() => blur('role')}
-            className={selectClass}
+            invalid={errFor('role') !== undefined}
           >
             <option value="">Select…</option>
             {ROLES.map((r) => (
@@ -227,15 +204,15 @@ export function RequestAccessForm({
                 {r}
               </option>
             ))}
-          </select>
+          </Select>
         </FormField>
 
         <FormField label="Company size" required error={errFor('company_size')}>
-          <select
+          <Select
             value={values.company_size}
             onChange={(e) => update('company_size', e.target.value)}
             onBlur={() => blur('company_size')}
-            className={selectClass}
+            invalid={errFor('company_size') !== undefined}
           >
             <option value="">Select…</option>
             {SIZES.map((s) => (
@@ -243,22 +220,22 @@ export function RequestAccessForm({
                 {s} people
               </option>
             ))}
-          </select>
+          </Select>
         </FormField>
 
         <FormField label="Country" required error={errFor('country')} className="col-span-2">
-          <select
+          <Select
             value={values.country}
             onChange={(e) => update('country', e.target.value)}
             onBlur={() => blur('country')}
-            className={selectClass}
+            invalid={errFor('country') !== undefined}
           >
             {COUNTRIES.map(([code, name]) => (
               <option key={code} value={code}>
                 {name}
               </option>
             ))}
-          </select>
+          </Select>
         </FormField>
 
         <FormField
@@ -276,12 +253,11 @@ export function RequestAccessForm({
       </div>
 
       <label className="mt-1 flex cursor-pointer items-start gap-2.5 select-none">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={values.terms_accepted}
           onChange={(e) => update('terms_accepted', e.target.checked)}
           onBlur={() => blur('terms_accepted')}
-          className="mt-0.5 size-4 cursor-pointer accent-primary"
+          className="mt-0.5"
         />
         <span className="text-[12px] leading-snug text-foreground-secondary">
           I agree that BimStitch may contact me about this demo, and I accept the{' '}
@@ -322,5 +298,5 @@ export function RequestAccessForm({
 }
 
 // Re-exported so consumers can show the same iconography in their hero copy
-// if they want, without re-importing lucide.
+// without re-importing lucide.
 export const RequestAccessIcons = { User, Mail, Building2, Globe2, GraduationCap };

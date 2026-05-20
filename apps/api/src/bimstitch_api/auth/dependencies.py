@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,6 +59,33 @@ async def get_active_organization_id(
     except TokenError:
         return None
     return decoded.active_organization_id
+
+
+async def get_impersonator_user_id(
+    request: Request,
+    token: str | None = Depends(_oauth2_scheme),
+) -> UUID | None:
+    """Extract the `imp` claim from the current access token, if present.
+
+    Mounted as a router-level dependency on every authenticated router so
+    `request.state.impersonator_user_id` is reliably set before any handler
+    body runs. `audit.record(...)` reads from request.state to attribute
+    every mutation written during an impersonation session to the real
+    super admin while preserving the impersonated user as the on-paper
+    actor.
+
+    Returns None for normal (non-impersonated) traffic and for unauth
+    requests. Never raises — the dep is purely informational.
+    """
+    if token is None:
+        return None
+    try:
+        decoded = decode_token_full(token, "access")
+    except TokenError:
+        return None
+    if decoded.impersonator_user_id is not None:
+        request.state.impersonator_user_id = decoded.impersonator_user_id
+    return decoded.impersonator_user_id
 
 
 async def require_superuser(user: User = Depends(current_active_user)) -> User:

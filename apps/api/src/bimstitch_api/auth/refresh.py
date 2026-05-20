@@ -2,9 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
 from pydantic import BaseModel
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.tokens import TokenError, create_token, decode_token_full
 from bimstitch_api.cache import get_redis_dep
@@ -51,6 +50,15 @@ async def refresh_access_token(
         decoded = decode_token_full(payload.refresh_token, expected_type="refresh")
     except TokenError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+    # Impersonation sessions are access-only by design. `create_token` rejects
+    # `imp` on refresh tokens, so this only triggers if a token was hand-crafted
+    # — refuse to mint a new access from it.
+    if decoded.impersonator_user_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="IMPERSONATION_REFRESH_FORBIDDEN",
+        )
 
     if await is_revoked(redis, decoded.jti):
         raise HTTPException(

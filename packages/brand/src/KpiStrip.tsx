@@ -1,33 +1,21 @@
 import type { JSX, ReactNode } from 'react';
 
-import { cn } from './lib/cn.js';
+import { cn } from '@bimstitch/ui';
 
 export type KpiTone = 'on-dark' | 'on-light';
 
 export interface KpiItem {
-  /** Uppercase label rendered above the value. */
   label: string;
-  /** The value — usually short text or a small fragment with mixed colour. */
   value: ReactNode;
-  /** Override the colour of just this value (e.g. green for "All systems"). */
   valueColor?: string;
 }
 
 export interface KpiStripProps {
   items: readonly KpiItem[];
-  /** Light dividers on coloured panels vs muted dividers on neutral panels. */
   tone?: KpiTone;
   className?: string;
 }
 
-/**
- * Compact horizontal KPI row used on the login brand canvas — small caps
- * label over a display-font value, with vertical dividers between items.
- *
- * The values are deliberately not numeric badges: the design uses this for
- * generic platform info (Wkb version, BBL version, region, status) that
- * is appropriate to show pre-login.
- */
 export function KpiStrip({ items, tone = 'on-dark', className }: KpiStripProps): JSX.Element {
   const dividerColor = tone === 'on-dark' ? 'rgba(255,255,255,0.18)' : 'rgba(15,23,42,0.10)';
   const labelColor = tone === 'on-dark' ? 'rgba(255,255,255,0.65)' : 'rgba(15,23,42,0.55)';

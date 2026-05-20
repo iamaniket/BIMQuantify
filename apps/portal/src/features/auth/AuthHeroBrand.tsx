@@ -1,6 +1,5 @@
 'use client';
 
-import { NetherlandsMap, type MapMarker } from '@bimstitch/map';
 import {
   BrandMark,
   HeroGrid,
@@ -8,7 +7,8 @@ import {
   LegalFooter,
   SystemStatusBadge,
   type SystemStatusValue,
-} from '@bimstitch/ui';
+} from '@bimstitch/brand';
+import { NetherlandsMap, type MapMarker } from '@bimstitch/map';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

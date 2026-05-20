@@ -1,4 +1,4 @@
-import { AuthShell } from '@bimstitch/ui';
+import { AuthShell } from '@bimstitch/brand';
 import { getTranslations } from 'next-intl/server';
 import type { JSX, ReactNode } from 'react';
 

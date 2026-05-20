@@ -6,8 +6,9 @@ import { useEffect, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { AppDialog, Input, Label } from '@bimstitch/ui';
+import { AppDialog, Input, Select } from '@bimstitch/ui';
 
+import { Field } from '@/components/forms/Field';
 import { ApiError } from '@/lib/api/client';
 import type { OrganizationRead } from '@/lib/api/schemas';
 
@@ -107,42 +108,33 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
       saveDisabled={mutation.isPending}
     >
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-org-name">{t('fields.name')}</Label>
-          <Input id="edit-org-name" autoFocus {...form.register('name')} />
-          {form.formState.errors.name && (
-            <p className="text-caption text-error">{form.formState.errors.name.message}</p>
+        <Field form={form} name="name" label={t('fields.name')}>
+          {({ id }) => <Input id={id} autoFocus {...form.register('name')} />}
+        </Field>
+        <Field form={form} name="status" label={t('fields.status')}>
+          {({ id }) => (
+            <Select id={id} {...form.register('status')}>
+              <option value="active">{t('statuses.active')}</option>
+              <option value="suspended">{t('statuses.suspended')}</option>
+            </Select>
           )}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-org-status">{t('fields.status')}</Label>
-          <select
-            id="edit-org-status"
-            className="h-9 rounded-md border border-border bg-background px-3 text-body3"
-            {...form.register('status')}
-          >
-            <option value="active">{t('statuses.active')}</option>
-            <option value="suspended">{t('statuses.suspended')}</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-org-seat-limit">{t('fields.seatLimit')}</Label>
-          <Input
-            id="edit-org-seat-limit"
-            type="number"
-            min={1}
-            inputMode="numeric"
-            {...form.register('seat_limit')}
-          />
-          <p className="text-caption text-foreground-tertiary">
-            {t('hints.seatLimit', { used: organization.seat_count_used })}
-          </p>
-          {form.formState.errors.seat_limit && (
-            <p className="text-caption text-error">
-              {form.formState.errors.seat_limit.message}
-            </p>
+        </Field>
+        <Field
+          form={form}
+          name="seat_limit"
+          label={t('fields.seatLimit')}
+          hint={t('hints.seatLimit', { used: organization.seat_count_used })}
+        >
+          {({ id }) => (
+            <Input
+              id={id}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              {...form.register('seat_limit')}
+            />
           )}
-        </div>
+        </Field>
       </div>
     </AppDialog>
   );

@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(alias="JWT_SECRET")
     jwt_access_ttl_seconds: int = Field(default=900, alias="JWT_ACCESS_TTL_SECONDS")
     jwt_refresh_ttl_seconds: int = Field(default=604800, alias="JWT_REFRESH_TTL_SECONDS")
+    impersonation_token_ttl_seconds: int = Field(
+        default=900, alias="IMPERSONATION_TOKEN_TTL_SECONDS"
+    )
     invite_token_ttl_seconds: int = Field(default=604800, alias="INVITE_TOKEN_TTL_SECONDS")
     invitation_ttl_days: int = Field(default=14, alias="INVITATION_TTL_DAYS")
     invitation_sweep_interval_minutes: int = Field(

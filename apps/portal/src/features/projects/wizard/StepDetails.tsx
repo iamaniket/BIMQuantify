@@ -4,12 +4,12 @@ import { useId, type JSX } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 
-import { Input, Label } from '@bimstitch/ui';
+import { Input, Label, Select } from '@bimstitch/ui';
 
 import type { ProjectFormValues } from '../projectFormSchema';
 
 import {
-  fieldErrorClass, fieldLabelClass, getFieldErrorMessage, selectClass,
+  fieldErrorClass, fieldLabelClass, getFieldErrorMessage,
 } from './stepStyles';
 import { useWizardOptions } from './useWizardOptions';
 
@@ -81,20 +81,20 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={statusId} className={fieldLabelClass}>{t('fields.status')}</Label>
-          <select id={statusId} className={selectClass} disabled={isReadOnly} {...form.register('status')}>
+          <Select id={statusId} disabled={isReadOnly} {...form.register('status')}>
             {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={phaseId} className={fieldLabelClass}>{t('fields.phase')}</Label>
-          <select id={phaseId} className={selectClass} disabled={isReadOnly} {...form.register('phase')}>
+          <Select id={phaseId} disabled={isReadOnly} {...form.register('phase')}>
             {phaseOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -115,9 +115,8 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={buildingTypeId} className={fieldLabelClass}>{t('fields.buildingType')}</Label>
-          <select
+          <Select
             id={buildingTypeId}
-            className={selectClass}
             disabled={isReadOnly}
             {...form.register('building_type')}
           >
@@ -125,14 +124,13 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             {buildingTypeOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={consequenceClassId} className={fieldLabelClass}>{t('fields.consequenceClass')}</Label>
-          <select
+          <Select
             id={consequenceClassId}
-            className={selectClass}
             disabled={isReadOnly}
             {...form.register('consequence_class')}
           >
@@ -142,7 +140,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
                 {opt.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -163,9 +161,8 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
       <div className="grid grid-cols-1 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={instrumentId} className={fieldLabelClass}>{t('fields.instrument')}</Label>
-          <select
+          <Select
             id={instrumentId}
-            className={selectClass}
             disabled={isReadOnly}
             {...form.register('instrument_id')}
           >
@@ -175,7 +172,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
                 {opt.label} · {opt.provider}
               </option>
             ))}
-          </select>
+          </Select>
           <span className="text-caption text-foreground-tertiary">
             {t('source.prefix')}
             <a
