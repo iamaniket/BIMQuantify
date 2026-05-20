@@ -24,6 +24,9 @@ importers:
 
   apps/portal:
     dependencies:
+      '@bimstitch/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@bimstitch/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
@@ -257,6 +260,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@bimstitch/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@bimstitch/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
@@ -354,6 +360,37 @@ importers:
       typescript-eslint:
         specifier: ^8.18.0
         version: 8.59.0(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
+
+  packages/brand:
+    dependencies:
+      '@bimstitch/ui':
+        specifier: workspace:*
+        version: link:../ui
+    devDependencies:
+      '@bimstitch/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/react':
+        specifier: ^19.0.1
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.0.1
+        version: 19.2.3(@types/react@19.2.14)
+      lucide-react:
+        specifier: ^0.468.0
+        version: 0.468.0(react@19.2.5)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.5(react@19.2.5)
+      rimraf:
+        specifier: ^5.0.10
+        version: 5.0.10
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   packages/design-tokens:
     devDependencies:
