@@ -33,58 +33,80 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _column_exists(table: str, column: str, schema: str = "public") -> bool:
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = :schema AND table_name = :table AND column_name = :column"
+        ),
+        {"schema": schema, "table": table, "column": column},
+    )
+    return result.scalar() is not None
+
+
+def _index_exists(index_name: str, schema: str = "public") -> bool:
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text(
+            "SELECT 1 FROM pg_indexes "
+            "WHERE schemaname = :schema AND indexname = :index"
+        ),
+        {"schema": schema, "index": index_name},
+    )
+    return result.scalar() is not None
+
+
 def upgrade() -> None:
     # ---- organization_members.is_guest -------------------------------------
-    op.add_column(
-        "organization_members",
-        sa.Column(
-            "is_guest",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.text("false"),
-        ),
-        schema="public",
-    )
-    op.create_index(
-        "ix_org_members_guests",
-        "organization_members",
-        ["organization_id", "is_guest"],
-        schema="public",
-        postgresql_where=sa.text("is_guest = true AND status = 'active'"),
-    )
+    if not _column_exists("organization_members", "is_guest"):
+        op.add_column(
+            "organization_members",
+            sa.Column(
+                "is_guest",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.text("false"),
+            ),
+            schema="public",
+        )
+    if not _index_exists("ix_org_members_guests"):
+        op.create_index(
+            "ix_org_members_guests",
+            "organization_members",
+            ["organization_id", "is_guest"],
+            schema="public",
+            postgresql_where=sa.text("is_guest = true AND status = 'active'"),
+        )
 
     # ---- audit_log.impersonator_user_id ------------------------------------
-    op.add_column(
-        "audit_log",
-        sa.Column(
-            "impersonator_user_id",
-            sa.dialects.postgresql.UUID(as_uuid=True),
-            nullable=True,
-        ),
-        schema="public",
-    )
-    op.create_foreign_key(
-        "fk_audit_log_impersonator_user",
-        "audit_log",
-        "users",
-        ["impersonator_user_id"],
-        ["id"],
-        source_schema="public",
-        referent_schema="public",
-        ondelete="SET NULL",
-    )
-    op.create_index(
-        "ix_audit_impersonator_time",
-        "audit_log",
-        ["impersonator_user_id", "created_at"],
-        schema="public",
-    )
-
-    # The `bim_app` non-superuser role needs UPDATE/SELECT on the new
-    # column to write audit entries while the impersonator dep is active.
-    # `audit_log` already has table-wide INSERT/SELECT grants on bim_app
-    # (see `_rls_sql.grant_master_role_statements`); a fresh column is
-    # covered automatically by the table grant.
+    if not _column_exists("audit_log", "impersonator_user_id"):
+        op.add_column(
+            "audit_log",
+            sa.Column(
+                "impersonator_user_id",
+                sa.dialects.postgresql.UUID(as_uuid=True),
+                nullable=True,
+            ),
+            schema="public",
+        )
+        op.create_foreign_key(
+            "fk_audit_log_impersonator_user",
+            "audit_log",
+            "users",
+            ["impersonator_user_id"],
+            ["id"],
+            source_schema="public",
+            referent_schema="public",
+            ondelete="SET NULL",
+        )
+    if not _index_exists("ix_audit_impersonator_time"):
+        op.create_index(
+            "ix_audit_impersonator_time",
+            "audit_log",
+            ["impersonator_user_id", "created_at"],
+            schema="public",
+        )
 
 
 def downgrade() -> None:

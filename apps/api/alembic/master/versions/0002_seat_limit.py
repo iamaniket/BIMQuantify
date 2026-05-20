@@ -21,12 +21,25 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def upgrade() -> None:
-    op.add_column(
-        "organizations",
-        sa.Column("seat_limit", sa.Integer(), nullable=True),
-        schema="public",
+def _column_exists(table: str, column: str, schema: str = "public") -> bool:
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = :schema AND table_name = :table AND column_name = :column"
+        ),
+        {"schema": schema, "table": table, "column": column},
     )
+    return result.scalar() is not None
+
+
+def upgrade() -> None:
+    if not _column_exists("organizations", "seat_limit"):
+        op.add_column(
+            "organizations",
+            sa.Column("seat_limit", sa.Integer(), nullable=True),
+            schema="public",
+        )
 
 
 def downgrade() -> None:
