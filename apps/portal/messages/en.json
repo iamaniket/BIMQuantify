@@ -300,6 +300,78 @@
       }
     }
   },
+  "projectAccess": {
+    "title": "Access",
+    "subtitle": "People with access to this project and their role.",
+    "crumb": "Access",
+    "backToProject": "Back to project",
+    "addMember": "Add member",
+    "empty": "No members yet. Add the first one to get started.",
+    "emptyState": {
+      "title": "No members yet",
+      "description": "No members have been added to this project."
+    },
+    "readOnlyNotice": "You can see who has access to this project. Organisation admins or the project owner can add or remove members.",
+    "hero": {
+      "badge": "Project access",
+      "members": "Members",
+      "owner": "Owner",
+      "roles": "Roles",
+      "lastAdded": "Last added",
+      "noOwner": "—",
+      "never": "—"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Search by name or email…",
+      "roleAll": "All roles"
+    },
+    "panel": {
+      "eyebrow": "Access",
+      "memberCount": "{count} members"
+    },
+    "errors": {
+      "notFound": "Project not found.",
+      "loadFailed": "The project could not be loaded.",
+      "membersLoadFailed": "The project members could not be loaded."
+    },
+    "table": {
+      "user": "User",
+      "role": "Role",
+      "added": "Added",
+      "actions": "Actions",
+      "setRole": "Set as {role}",
+      "remove": "Remove from project",
+      "ownerLocked": "The owner role cannot be changed.",
+      "empty": "No members match your filters.",
+      "showing": "Showing {filtered} of {total} members",
+      "roles": {
+        "owner": "Owner",
+        "editor": "Editor",
+        "viewer": "Viewer",
+        "inspector": "Inspector",
+        "contractor": "Contractor",
+        "client": "Client"
+      }
+    },
+    "addDialog": {
+      "title": "Add member",
+      "subtitle": "Choose an active member of this organisation and assign a role on this project.",
+      "submit": "Add",
+      "fields": {
+        "user": "User",
+        "role": "Role"
+      },
+      "placeholders": {
+        "user": "Select a user"
+      },
+      "allAlreadyMembers": "All active organisation members are already in this project.",
+      "errors": {
+        "pickUser": "Choose a user first.",
+        "alreadyMember": "This user is already a member of this project.",
+        "notInOrg": "This user is not an active member of the organisation."
+      }
+    }
+  },
   "projectDetail": {
     "tabs": {
       "models": { "label": "Models" },

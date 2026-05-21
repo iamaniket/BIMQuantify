@@ -10,18 +10,11 @@ import { Button } from '@bimstitch/ui';
 import type { Model, ProjectFile } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
 import { formatExtractionStatus } from '@/lib/formatting/files';
+import { MODEL_DISCIPLINE_COLORS, getDisciplineColor } from '@/lib/formatting/disciplineColors';
 import { useModelFiles } from '@/features/models/useModelFiles';
 import { viewerKeys } from '@/features/viewer/queryKeys';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import { useAuth } from '@/providers/AuthProvider';
-
-const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
-  architectural: { bg: '#ede8f7', fg: '#5a3fa6' },
-  structural: { bg: '#e5edf7', fg: '#2c5697' },
-  mep: { bg: '#f8ecd9', fg: '#a97428' },
-  coordination: { bg: '#eaf6ef', fg: '#3f8f65' },
-  other: { bg: '#f1f3f6', fg: '#4b5563' },
-};
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -70,7 +63,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
   const queryClient = useQueryClient();
   const { tokens } = useAuth();
   const files = filesQuery.data ?? [];
-  const colors = DISC_COLORS[model.discipline] ?? DISC_COLORS['other']!;
+  const colors = getDisciplineColor(MODEL_DISCIPLINE_COLORS, model.discipline);
   const latestFile = files.length > 0 ? files[0] : undefined;
   const isViewable = latestFile !== undefined && (
     latestFile.file_type === 'pdf'

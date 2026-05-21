@@ -21,6 +21,7 @@ import {
 
 import { ApiError } from '@/lib/api/client';
 import type { MemberRead } from '@/lib/api/schemas';
+import { TableEmptyState } from '@/components/TableEmptyState';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { ReassignOwnerDialog } from './ReassignOwnerDialog';
@@ -159,11 +160,7 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
   };
 
   if (members.length === 0) {
-    return (
-      <div className="flex h-32 items-center justify-center text-body3 text-foreground-tertiary">
-        {t('empty')}
-      </div>
-    );
+    return <TableEmptyState message={t('empty')} />;
   }
 
   // Reassign-target candidates: active members other than the one being

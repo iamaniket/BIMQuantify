@@ -2,13 +2,14 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { useEffect, type JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AppDialog, Input, Select } from '@bimstitch/ui';
 
 import { Field } from '@/components/forms/Field';
+import { useFormDialog } from '@/hooks/useFormDialog';
 import { ApiError } from '@/lib/api/client';
 import type { OrganizationRead } from '@/lib/api/schemas';
 
@@ -46,14 +47,8 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
     defaultValues: toFormValues(organization),
   });
 
-  const { reset: resetForm } = form;
-  const { reset: resetMutation } = mutation;
-  useEffect(() => {
-    if (open) {
-      resetForm(toFormValues(organization));
-      resetMutation();
-    }
-  }, [open, organization, resetForm, resetMutation]);
+  const defaults = useMemo(() => toFormValues(organization), [organization]);
+  useFormDialog(open, form, mutation, defaults);
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     let parsedLimit: number | null;

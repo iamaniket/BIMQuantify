@@ -244,6 +244,107 @@ function RiskRow({ projectId, risk }: RiskRowProps): JSX.Element {
   );
 }
 
+type RiskFormFieldsProps = {
+  level: RiskLevelValue;
+  onLevelChange: (lvl: RiskLevelValue) => void;
+  description: string;
+  onDescriptionChange: (val: string) => void;
+  mitigation: string;
+  onMitigationChange: (val: string) => void;
+  responsibleParty: string;
+  onResponsiblePartyChange: (val: string) => void;
+  bblArticle: string;
+  onBblArticleChange: (val: string) => void;
+  descriptionPlaceholder: string | undefined;
+  mitigationPlaceholder: string | undefined;
+  responsiblePlaceholder: string | undefined;
+};
+
+function RiskFormFields({
+  level, onLevelChange,
+  description, onDescriptionChange,
+  mitigation, onMitigationChange,
+  responsibleParty, onResponsiblePartyChange,
+  bblArticle, onBblArticleChange,
+  descriptionPlaceholder,
+  mitigationPlaceholder,
+  responsiblePlaceholder,
+}: RiskFormFieldsProps): JSX.Element {
+  const t = useTranslations('projectDetail.tabs.borgingsplan.risks');
+  return (
+    <>
+      <div className="flex flex-col gap-1">
+        <Label className="text-caption text-foreground-secondary">{t('descriptionLabel')}</Label>
+        <Input
+          type="text"
+          value={description}
+          onChange={(e) => onDescriptionChange(e.target.value)}
+          placeholder={descriptionPlaceholder}
+          maxLength={2000}
+          required
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label className="text-caption text-foreground-secondary">{t('mitigationLabel')}</Label>
+        <Textarea
+          value={mitigation}
+          onChange={(e) => onMitigationChange(e.target.value)}
+          placeholder={mitigationPlaceholder}
+          maxLength={2000}
+          rows={2}
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="flex flex-col gap-1">
+          <Label className="text-caption text-foreground-secondary">{t('levelLabel')}</Label>
+          <div className="inline-flex overflow-hidden rounded-md border border-border">
+            {LEVELS.map((lvl) => (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => onLevelChange(lvl)}
+                aria-pressed={level === lvl}
+                className={`flex-1 px-2 py-1 text-caption capitalize ${
+                  level === lvl
+                    ? 'bg-foreground text-background'
+                    : 'bg-background text-foreground-secondary hover:bg-background-secondary'
+                }`}
+              >
+                {t(`levels.${lvl}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-caption text-foreground-secondary">{t('responsibleLabel')}</Label>
+          <Input
+            type="text"
+            value={responsibleParty}
+            onChange={(e) => onResponsiblePartyChange(e.target.value)}
+            placeholder={responsiblePlaceholder}
+            maxLength={255}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-caption text-foreground-secondary">{t('bblArticleLabel')}</Label>
+          <Input
+            type="text"
+            value={bblArticle}
+            onChange={(e) => onBblArticleChange(e.target.value)}
+            placeholder={t('bblArticlePlaceholder')}
+            maxLength={50}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
 type RiskEditFormProps = {
   projectId: string;
   risk: Risk;
@@ -284,72 +385,21 @@ function RiskEditForm({ projectId, risk, onDone }: RiskEditFormProps): JSX.Eleme
       onSubmit={submit}
       className="flex flex-col gap-2 rounded-md border border-border bg-background p-3"
     >
-      <div className="flex flex-col gap-1">
-        <Label className="text-caption text-foreground-secondary">{t('descriptionLabel')}</Label>
-        <Input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          maxLength={2000}
-          required
-        />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <Label className="text-caption text-foreground-secondary">{t('mitigationLabel')}</Label>
-        <Textarea
-          value={mitigation}
-          onChange={(e) => setMitigation(e.target.value)}
-          maxLength={2000}
-          rows={2}
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <div className="flex flex-col gap-1">
-          <Label className="text-caption text-foreground-secondary">{t('levelLabel')}</Label>
-          <div className="inline-flex overflow-hidden rounded-md border border-border">
-            {LEVELS.map((lvl) => (
-              <button
-                key={lvl}
-                type="button"
-                onClick={() => setLevel(lvl)}
-                aria-pressed={level === lvl}
-                className={`flex-1 px-2 py-1 text-caption capitalize ${
-                  level === lvl
-                    ? 'bg-foreground text-background'
-                    : 'bg-background text-foreground-secondary hover:bg-background-secondary'
-                }`}
-              >
-                {t(`levels.${lvl}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label className="text-caption text-foreground-secondary">{t('responsibleLabel')}</Label>
-          <Input
-            type="text"
-            value={responsibleParty}
-            onChange={(e) => setResponsibleParty(e.target.value)}
-            maxLength={255}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label className="text-caption text-foreground-secondary">{t('bblArticleLabel')}</Label>
-          <Input
-            type="text"
-            value={bblArticle}
-            onChange={(e) => setBblArticle(e.target.value)}
-            placeholder={t('bblArticlePlaceholder')}
-            maxLength={50}
-          />
-        </div>
-      </div>
-
+      <RiskFormFields
+        level={level}
+        onLevelChange={setLevel}
+        description={description}
+        onDescriptionChange={setDescription}
+        mitigation={mitigation}
+        onMitigationChange={setMitigation}
+        responsibleParty={responsibleParty}
+        onResponsiblePartyChange={setResponsibleParty}
+        bblArticle={bblArticle}
+        onBblArticleChange={setBblArticle}
+        descriptionPlaceholder={undefined}
+        mitigationPlaceholder={undefined}
+        responsiblePlaceholder={undefined}
+      />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onDone}>
           {t('cancelEdit')}
@@ -451,75 +501,21 @@ function CustomRiskForm({ projectId, category, onDone }: CustomRiskFormProps): J
       onSubmit={submit}
       className="flex flex-col gap-2 rounded-md border border-border bg-background p-3"
     >
-      <div className="flex flex-col gap-1">
-        <Label className="text-caption text-foreground-secondary">{t('descriptionLabel')}</Label>
-        <Input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder={t('descriptionPlaceholder')}
-          maxLength={2000}
-          required
-        />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <Label className="text-caption text-foreground-secondary">{t('mitigationLabel')}</Label>
-        <Textarea
-          value={mitigation}
-          onChange={(e) => setMitigation(e.target.value)}
-          placeholder={t('mitigationPlaceholder')}
-          maxLength={2000}
-          rows={2}
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <div className="flex flex-col gap-1">
-          <Label className="text-caption text-foreground-secondary">{t('levelLabel')}</Label>
-          <div className="inline-flex overflow-hidden rounded-md border border-border">
-            {LEVELS.map((lvl) => (
-              <button
-                key={lvl}
-                type="button"
-                onClick={() => setLevel(lvl)}
-                aria-pressed={level === lvl}
-                className={`flex-1 px-2 py-1 text-caption capitalize ${
-                  level === lvl
-                    ? 'bg-foreground text-background'
-                    : 'bg-background text-foreground-secondary hover:bg-background-secondary'
-                }`}
-              >
-                {t(`levels.${lvl}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label className="text-caption text-foreground-secondary">{t('responsibleLabel')}</Label>
-          <Input
-            type="text"
-            value={responsibleParty}
-            onChange={(e) => setResponsibleParty(e.target.value)}
-            placeholder={t('responsiblePlaceholder')}
-            maxLength={255}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label className="text-caption text-foreground-secondary">{t('bblArticleLabel')}</Label>
-          <Input
-            type="text"
-            value={bblArticle}
-            onChange={(e) => setBblArticle(e.target.value)}
-            placeholder={t('bblArticlePlaceholder')}
-            maxLength={50}
-          />
-        </div>
-      </div>
-
+      <RiskFormFields
+        level={level}
+        onLevelChange={setLevel}
+        description={description}
+        onDescriptionChange={setDescription}
+        mitigation={mitigation}
+        onMitigationChange={setMitigation}
+        responsibleParty={responsibleParty}
+        onResponsiblePartyChange={setResponsibleParty}
+        bblArticle={bblArticle}
+        onBblArticleChange={setBblArticle}
+        descriptionPlaceholder={t('descriptionPlaceholder')}
+        mitigationPlaceholder={t('mitigationPlaceholder')}
+        responsiblePlaceholder={t('responsiblePlaceholder')}
+      />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onDone}>
           {t('cancelCustom')}

@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@bimstitch/ui';
 
+import { TableEmptyState } from '@/components/TableEmptyState';
 import { ApiError } from '@/lib/api/client';
 import type { ProjectMember, ProjectRole } from '@/lib/api/schemas';
 
@@ -31,8 +32,6 @@ type Props = {
   canManage: boolean;
 };
 
-// Roles that can be assigned/changed via the UI. Owner is excluded — it's
-// set once at project creation and isn't transferable in this iteration.
 const ASSIGNABLE_ROLES: ProjectRole[] = [
   'editor',
   'viewer',
@@ -41,7 +40,19 @@ const ASSIGNABLE_ROLES: ProjectRole[] = [
   'client',
 ];
 
-export function ProjectMembersList({ projectId, members, canManage }: Props): JSX.Element {
+function initials(name: string | null, email: string): string {
+  if (name !== null) {
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase();
+  }
+  return email[0]?.toUpperCase() ?? '?';
+}
+
+export function ProjectMembersTable({ projectId, members, canManage }: Props): JSX.Element {
   const t = useTranslations('projectAccess.table');
   const updateMutation = useUpdateProjectMemberRole();
   const removeMutation = useRemoveProjectMember();
@@ -57,6 +68,10 @@ export function ProjectMembersList({ projectId, members, canManage }: Props): JS
   };
 
   const settle = (): void => { setBusyUserId(null); };
+
+  if (members.length === 0) {
+    return <TableEmptyState message={t('empty')} />;
+  }
 
   return (
     <>
@@ -83,10 +98,17 @@ export function ProjectMembersList({ projectId, members, canManage }: Props): JS
             return (
               <TableRow key={m.user_id}>
                 <TableCell>
-                  <div className="font-medium">{m.full_name ?? m.email}</div>
-                  {m.full_name !== null && (
-                    <div className="text-caption text-foreground-tertiary">{m.email}</div>
-                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-lighter text-caption font-bold text-primary">
+                      {initials(m.full_name, m.email)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{m.full_name ?? m.email}</div>
+                      {m.full_name !== null && (
+                        <div className="truncate text-caption text-foreground-tertiary">{m.email}</div>
+                      )}
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={isOwner ? 'info' : 'default'}>

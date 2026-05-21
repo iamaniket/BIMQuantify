@@ -2,13 +2,14 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { useEffect, type JSX } from 'react';
+import type { JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AppDialog, Checkbox, Input } from '@bimstitch/ui';
 
 import { Field } from '@/components/forms/Field';
+import { useFormDialog } from '@/hooks/useFormDialog';
 import { ApiError } from '@/lib/api/client';
 import { useInviteMember } from './useInviteMember';
 
@@ -45,14 +46,7 @@ export function InviteMemberDialog({
     defaultValues: EMPTY,
   });
 
-  const { reset: resetForm } = form;
-  const { reset: resetMutation } = mutation;
-  useEffect(() => {
-    if (open) {
-      resetForm(EMPTY);
-      resetMutation();
-    }
-  }, [open, resetForm, resetMutation]);
+  useFormDialog(open, form, mutation, EMPTY);
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     mutation.mutate(

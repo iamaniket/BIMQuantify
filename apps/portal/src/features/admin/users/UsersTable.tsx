@@ -15,6 +15,7 @@ import {
 } from '@bimstitch/ui';
 
 import type { AdminUserRead } from '@/lib/api/schemas';
+import { TableEmptyState } from '@/components/TableEmptyState';
 
 import { useToggleActivateUser } from './useActivateUser';
 import { useTogglePromoteUser } from './usePromoteUser';
@@ -33,11 +34,7 @@ export function UsersTable({ users, currentUserId }: Props): JSX.Element {
   const pending = mutation.isPending || activeMutation.isPending;
 
   if (users.length === 0) {
-    return (
-      <div className="flex h-32 items-center justify-center text-body3 text-foreground-tertiary">
-        {t('empty')}
-      </div>
-    );
+    return <TableEmptyState message={t('empty')} />;
   }
 
   return (

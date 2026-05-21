@@ -19,13 +19,7 @@ const FRAMEWORK_FILTERS: { value: Framework; label: string }[] = [
   { value: 'wkb', label: 'WKB' },
 ];
 
-const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
-  architectural: { bg: '#ede8f7', fg: '#5a3fa6' },
-  structural: { bg: '#e5edf7', fg: '#2c5697' },
-  mep: { bg: '#f8ecd9', fg: '#a97428' },
-  coordination: { bg: '#eaf6ef', fg: '#3f8f65' },
-  other: { bg: '#f1f3f6', fg: '#4b5563' },
-};
+import { MODEL_DISCIPLINE_COLORS, getDisciplineColor } from '@/lib/formatting/disciplineColors';
 
 function formatRelative(iso: string): string {
   if (!iso) return '—';
@@ -136,7 +130,7 @@ function ReportRow({
   projectId: string;
   report: ProjectComplianceReportItem;
 }): JSX.Element {
-  const colors = DISC_COLORS[report.model_discipline] ?? DISC_COLORS['other']!;
+  const colors = getDisciplineColor(MODEL_DISCIPLINE_COLORS, report.model_discipline);
   const tone = scoreTone(report.overall_score);
   return (
     <div className="grid grid-cols-[48px_minmax(0,1fr)_52px_52px_52px_52px_80px] items-center gap-2 border-t border-border px-3 py-2 text-body3">

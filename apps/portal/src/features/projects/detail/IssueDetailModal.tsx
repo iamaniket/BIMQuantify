@@ -16,6 +16,7 @@ import {
 } from '@bimstitch/ui';
 
 import type { ComplianceIssue } from '@/features/compliance/types';
+import { ISSUE_DISCIPLINE_COLORS, getDisciplineColor } from '@/lib/formatting/disciplineColors';
 
 type Props = {
   issue: ComplianceIssue | null;
@@ -23,21 +24,12 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
-  FIRE: { bg: '#fde2e2', fg: '#b91c1c' },
-  ARCH: { bg: '#ede8f7', fg: '#5a3fa6' },
-  STR: { bg: '#e5edf7', fg: '#2c5697' },
-  MEP: { bg: '#f8ecd9', fg: '#a97428' },
-  ACC: { bg: '#eaf6ef', fg: '#3f8f65' },
-  ENV: { bg: '#e0f2fe', fg: '#0369a1' },
-};
-
 export function IssueDetailModal({ issue, open, onOpenChange }: Props): JSX.Element {
   if (issue === null) {
     return <Dialog open={false}><DialogContent><span /></DialogContent></Dialog>;
   }
 
-  const colors = DISC_COLORS[issue.modelDiscipline] ?? { bg: '#f1f3f6', fg: '#4b5563' };
+  const colors = getDisciplineColor(ISSUE_DISCIPLINE_COLORS, issue.modelDiscipline);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

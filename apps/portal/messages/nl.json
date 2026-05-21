@@ -303,6 +303,7 @@
   "projectAccess": {
     "title": "Toegang - {projectName}",
     "subtitle": "Personen met toegang tot dit project en hun rol.",
+    "crumb": "Toegang",
     "backToProject": "Terug naar project",
     "addMember": "Lid toevoegen",
     "empty": "Nog geen leden. Voeg de eerste toe om te beginnen.",
@@ -311,6 +312,23 @@
       "description": "Aan dit project zijn nog geen leden gekoppeld."
     },
     "readOnlyNotice": "Je ziet wie toegang heeft tot dit project. Organisatiebeheerders of de projecteigenaar kunnen leden toevoegen of verwijderen.",
+    "hero": {
+      "badge": "Projecttoegang",
+      "members": "Leden",
+      "owner": "Eigenaar",
+      "roles": "Rollen",
+      "lastAdded": "Laatst toegevoegd",
+      "noOwner": "—",
+      "never": "—"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Zoek op naam of e-mail…",
+      "roleAll": "Alle rollen"
+    },
+    "panel": {
+      "eyebrow": "Toegang",
+      "memberCount": "{count} leden"
+    },
     "errors": {
       "notFound": "Project niet gevonden.",
       "loadFailed": "Het project kon niet worden geladen.",
@@ -324,6 +342,8 @@
       "setRole": "Instellen als {role}",
       "remove": "Verwijderen uit project",
       "ownerLocked": "De eigenaarsrol kan niet worden gewijzigd.",
+      "empty": "Geen leden gevonden voor deze filters.",
+      "showing": "{filtered} van {total} leden",
       "roles": {
         "owner": "Eigenaar",
         "editor": "Bewerker",

@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, type JSX } from 'react';
+import type { JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 
 import {
@@ -19,6 +19,7 @@ import {
 } from '@bimstitch/ui';
 
 import { Field } from '@/components/forms/Field';
+import { useFormDialog } from '@/hooks/useFormDialog';
 import { ApiError } from '@/lib/api/client';
 import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/lib/formatting/models';
 import {
@@ -55,7 +56,6 @@ type Props = {
 
 export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.Element {
   const createMutation = useCreateModel();
-  const { reset: resetMutation } = createMutation;
 
   const form = useForm<ModelFormValues>({
     resolver: zodResolver(ModelFormSchema),
@@ -63,13 +63,7 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
     mode: 'onSubmit',
   });
 
-  const { reset: resetForm } = form;
-
-  useEffect(() => {
-    if (!open) return;
-    resetForm(DEFAULTS);
-    resetMutation();
-  }, [open, resetForm, resetMutation]);
+  useFormDialog(open, form, createMutation, DEFAULTS);
 
   const onSubmit: SubmitHandler<ModelFormValues> = (values) => {
     createMutation.mutate(

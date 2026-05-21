@@ -8,6 +8,7 @@ import {
 } from '@bimstitch/ui';
 
 import type { AuditEntry } from '@/lib/api/schemas';
+import { TableEmptyState } from '@/components/TableEmptyState';
 
 type Props = { entries: AuditEntry[] };
 
@@ -24,11 +25,7 @@ export function AuditLogTable({ entries }: Props): JSX.Element {
   const t = useTranslations('admin.audit.table');
 
   if (entries.length === 0) {
-    return (
-      <div className="flex h-32 items-center justify-center text-body3 text-foreground-tertiary">
-        {t('empty')}
-      </div>
-    );
+    return <TableEmptyState message={t('empty')} />;
   }
 
   return (

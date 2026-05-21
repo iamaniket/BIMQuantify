@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
-  useEffect, useRef, useState, type JSX,
+  useCallback, useEffect, useRef, useState, type JSX,
 } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { AppDialog, Input } from '@bimstitch/ui';
 
 import { Field } from '@/components/forms/Field';
+import { useFormDialog } from '@/hooks/useFormDialog';
 import { lookupUserByEmail } from '@/lib/api/admin';
 import { ApiError } from '@/lib/api/client';
 import type { AdminUserRead } from '@/lib/api/schemas';
@@ -55,9 +56,6 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
     defaultValues: EMPTY,
   });
 
-  const { reset: resetForm } = form;
-  const { reset: resetMutation } = mutation;
-
   // Tracks the user found by the email lookup. When set, the form shows a
   // banner explaining the existing user will be attached as admin.
   const [existingUser, setExistingUser] = useState<AdminUserRead | null>(null);
@@ -66,15 +64,12 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
   // auto-fill if they haven't, so we never clobber their input.
   const fullNameTouchedRef = useRef(false);
 
-  useEffect(() => {
-    if (open) {
-      resetForm(EMPTY);
-      resetMutation();
-      setExistingUser(null);
-      setLookupPending(false);
-      fullNameTouchedRef.current = false;
-    }
-  }, [open, resetForm, resetMutation]);
+  const onReset = useCallback(() => {
+    setExistingUser(null);
+    setLookupPending(false);
+    fullNameTouchedRef.current = false;
+  }, []);
+  useFormDialog(open, form, mutation, EMPTY, onReset);
 
   // Debounced lookup whenever the email field stabilises on a syntactically
   // valid email. We accept the result only if the email hasn't changed in

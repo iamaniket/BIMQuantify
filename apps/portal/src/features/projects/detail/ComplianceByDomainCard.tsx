@@ -15,6 +15,7 @@ import type {
   ComplianceTrend,
 } from '@/features/compliance/types';
 import type { Model } from '@/lib/api/schemas';
+import { MODEL_DISCIPLINE_COLORS, getDisciplineColor } from '@/lib/formatting/disciplineColors';
 
 type Props = {
   domains: ComplianceDomain[];
@@ -25,14 +26,6 @@ type Props = {
   totalChecks: number;
   failCount: number;
   embedded?: boolean;
-};
-
-const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
-  architectural: { bg: '#ede8f7', fg: '#5a3fa6' },
-  structural: { bg: '#e5edf7', fg: '#2c5697' },
-  mep: { bg: '#f8ecd9', fg: '#a97428' },
-  coordination: { bg: '#eaf6ef', fg: '#3f8f65' },
-  other: { bg: '#f1f3f6', fg: '#4b5563' },
 };
 
 export function ComplianceByDomainCard({
@@ -160,7 +153,7 @@ export function ComplianceByDomainCard({
           {tab === 'models' &&
             models.map((m) => {
               const score = 70 + Math.floor(Math.random() * 30);
-              const colors = DISC_COLORS[m.discipline] ?? DISC_COLORS['other'];
+              const colors = getDisciplineColor(MODEL_DISCIPLINE_COLORS, m.discipline);
               return (
                 <div key={m.id}>
                   <div className="mb-1 flex items-baseline justify-between text-body3">
