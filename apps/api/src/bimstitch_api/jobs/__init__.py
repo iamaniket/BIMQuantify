@@ -4,7 +4,9 @@ package, which was over-fitted to IFC."""
 
 from bimstitch_api.jobs.dispatcher import (
     DispatchJobError,
+    JobConcurrencyError,
     JobDispatcher,
+    check_job_concurrency,
     dispatch_job,
     get_job_dispatcher,
     require_worker_secret,
@@ -14,7 +16,9 @@ from bimstitch_api.jobs.dispatcher import (
 
 __all__ = [
     "DispatchJobError",
+    "JobConcurrencyError",
     "JobDispatcher",
+    "check_job_concurrency",
     "dispatch_job",
     "get_job_dispatcher",
     "require_worker_secret",

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -50,7 +50,7 @@ class SoftDeleteMixin:
         twice never "moves" the deletion forward.
         """
         if self.deleted_at is None:
-            self.deleted_at = now if now is not None else datetime.now(timezone.utc)
+            self.deleted_at = now if now is not None else datetime.now(UTC)
 
     def restore(self) -> None:
         """Undo a soft-delete. No-op on a non-deleted row."""

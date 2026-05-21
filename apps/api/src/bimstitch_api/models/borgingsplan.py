@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
+
 # `User` lives in MasterBase's registry; cross-registry relationships must
 # pass the class directly (string lookup is per-registry).
 from bimstitch_api.models.user import User

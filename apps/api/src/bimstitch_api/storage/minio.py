@@ -69,7 +69,12 @@ class S3Storage:
             region_name=self._region,
             aws_access_key_id=self._access,
             aws_secret_access_key=self._secret,
-            config=Config(signature_version="s3v4"),
+            config=Config(
+                signature_version="s3v4",
+                connect_timeout=5,
+                read_timeout=10,
+                retries={"max_attempts": 2, "mode": "standard"},
+            ),
         ) as client:
             yield client
 

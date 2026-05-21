@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -153,7 +153,7 @@ async def _flip_pending_memberships(session: AsyncSession, user: User) -> list[O
     if has_active or len(pending) != 1:
         return []
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     sole = pending[0]
     sole.status = OrganizationMemberStatus.active
     sole.accepted_at = now
@@ -398,7 +398,7 @@ def build_auth_router() -> APIRouter:
             try:
                 decoded = decode_token_full(current_access, "access")
                 if decoded.jti is not None and decoded.exp is not None:
-                    ttl = max(decoded.exp - int(datetime.now(timezone.utc).timestamp()), 1)
+                    ttl = max(decoded.exp - int(datetime.now(UTC).timestamp()), 1)
                     await revoke_jti(redis, decoded.jti, ttl)
             except Exception:
                 # Bad/expired token — nothing to revoke.

@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import Depends, Request
@@ -103,7 +103,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             return
 
         pending[0].status = OrganizationMemberStatus.active
-        pending[0].accepted_at = datetime.now(timezone.utc)
+        pending[0].accepted_at = datetime.now(UTC)
         await session.commit()
 
     async def on_after_forgot_password(

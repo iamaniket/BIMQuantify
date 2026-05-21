@@ -22,7 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from fastapi_users.password import PasswordHelper
@@ -132,24 +132,23 @@ async def _provision_org(name: str) -> tuple[Organization, str]:
     session_maker = get_session_maker()
     admin_engine = get_admin_engine()
 
-    async with session_maker() as s:
-        async with s.begin():
-            existing = (
-                await s.execute(select(Organization).where(Organization.name == name))
-            ).scalar_one_or_none()
-            if existing is not None:
-                return existing, existing.schema_name
+    async with session_maker() as s, s.begin():
+        existing = (
+            await s.execute(select(Organization).where(Organization.name == name))
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing, existing.schema_name
 
-            org_id = uuid4()
-            schema = schema_name_for(org_id)
-            org = Organization(
-                id=org_id,
-                name=name,
-                schema_name=schema,
-                status=OrganizationStatus.active,
-                provisioned_at=datetime.now(timezone.utc),
-            )
-            s.add(org)
+        org_id = uuid4()
+        schema = schema_name_for(org_id)
+        org = Organization(
+            id=org_id,
+            name=name,
+            schema_name=schema,
+            status=OrganizationStatus.active,
+            provisioned_at=datetime.now(UTC),
+        )
+        s.add(org)
 
     async with admin_engine.begin() as conn:
         await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
@@ -184,7 +183,7 @@ async def _attach_member(
         existing.is_org_admin = is_org_admin
         existing.status = OrganizationMemberStatus.active
         if existing.accepted_at is None:
-            existing.accepted_at = datetime.now(timezone.utc)
+            existing.accepted_at = datetime.now(UTC)
         return
     session.add(
         OrganizationMember(
@@ -192,7 +191,7 @@ async def _attach_member(
             organization_id=organization_id,
             is_org_admin=is_org_admin,
             status=OrganizationMemberStatus.active,
-            accepted_at=datetime.now(timezone.utc),
+            accepted_at=datetime.now(UTC),
         )
     )
 
@@ -213,14 +212,13 @@ async def reset_all() -> None:
         for schema in schemas:
             await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
 
-    async with session_maker() as s:
-        async with s.begin():
-            await s.execute(
-                text(
-                    "TRUNCATE TABLE audit_log, organization_members, users, "
-                    "organizations RESTART IDENTITY CASCADE"
-                )
+    async with session_maker() as s, s.begin():
+        await s.execute(
+            text(
+                "TRUNCATE TABLE audit_log, organization_members, users, "
+                "organizations RESTART IDENTITY CASCADE"
             )
+        )
     print("  reset complete.")
 
 
@@ -234,26 +232,25 @@ async def seed() -> None:
     # 1. Platform org + super admin (no saga — keep platform org outside
     # tenant-data plane; it doesn't need a tenant schema since super admin
     # endpoints work on master only).
-    async with session_maker() as s:
-        async with s.begin():
-            platform = (
-                await s.execute(
-                    select(Organization).where(Organization.name == PLATFORM_ORG_NAME)
-                )
-            ).scalar_one_or_none()
-            if platform is None:
-                platform_id = uuid4()
-                platform = Organization(
-                    id=platform_id,
-                    name=PLATFORM_ORG_NAME,
-                    schema_name=schema_name_for(platform_id),
-                    status=OrganizationStatus.active,
-                    provisioned_at=datetime.now(timezone.utc),
-                )
-                s.add(platform)
-                # We DO create the schema so super admin can still query
-                # tenant tables under it if they switch into it.
-                await s.flush()
+    async with session_maker() as s, s.begin():
+        platform = (
+            await s.execute(
+                select(Organization).where(Organization.name == PLATFORM_ORG_NAME)
+            )
+        ).scalar_one_or_none()
+        if platform is None:
+            platform_id = uuid4()
+            platform = Organization(
+                id=platform_id,
+                name=PLATFORM_ORG_NAME,
+                schema_name=schema_name_for(platform_id),
+                status=OrganizationStatus.active,
+                provisioned_at=datetime.now(UTC),
+            )
+            s.add(platform)
+            # We DO create the schema so super admin can still query
+            # tenant tables under it if they switch into it.
+            await s.flush()
 
     # Platform schema (idempotent)
     admin_engine = get_admin_engine()
@@ -265,64 +262,62 @@ async def seed() -> None:
         for stmt in grant_schema_to_app_role(platform.schema_name):
             await conn.execute(text(stmt))
 
-    async with session_maker() as s:
-        async with s.begin():
-            super_user, created = await _find_or_create_user(
-                s,
-                email=super_admin["email"],
-                password=super_admin["password"],
-                full_name=super_admin["full_name"],
-                is_superuser=True,
-            )
-            await _attach_member(
-                s, user=super_user, organization_id=platform.id, is_org_admin=True
-            )
-            super_user.active_organization_id = platform.id
-            print(("  Created" if created else "  Existing") + f": {super_user.email}")
+    async with session_maker() as s, s.begin():
+        super_user, created = await _find_or_create_user(
+            s,
+            email=super_admin["email"],
+            password=super_admin["password"],
+            full_name=super_admin["full_name"],
+            is_superuser=True,
+        )
+        await _attach_member(
+            s, user=super_user, organization_id=platform.id, is_org_admin=True
+        )
+        super_user.active_organization_id = platform.id
+        print(("  Created" if created else "  Existing") + f": {super_user.email}")
 
     # 2. Demo orgs (full provisioning)
     acme, _ = await _provision_org(DEMO_ORG_A_NAME)
     beta, _ = await _provision_org(DEMO_ORG_B_NAME)
 
     # 3. Org users + memberships
-    async with session_maker() as s:
-        async with s.begin():
-            for u in acme_users:
-                user, created = await _find_or_create_user(
-                    s, email=u["email"], password=u["password"], full_name=u["full_name"]
-                )
-                await _attach_member(
-                    s, user=user, organization_id=acme.id, is_org_admin=u["is_org_admin"]
-                )
-                if user.active_organization_id is None:
-                    user.active_organization_id = acme.id
-                print(("  Created" if created else "  Existing") + f": {user.email}")
-
-            for u in beta_users:
-                user, created = await _find_or_create_user(
-                    s, email=u["email"], password=u["password"], full_name=u["full_name"]
-                )
-                await _attach_member(
-                    s, user=user, organization_id=beta.id, is_org_admin=u["is_org_admin"]
-                )
-                if user.active_organization_id is None:
-                    user.active_organization_id = beta.id
-                print(("  Created" if created else "  Existing") + f": {user.email}")
-
-            cross, created = await _find_or_create_user(
-                s,
-                email=cross_user["email"],
-                password=cross_user["password"],
-                full_name=cross_user["full_name"],
+    async with session_maker() as s, s.begin():
+        for u in acme_users:
+            user, created = await _find_or_create_user(
+                s, email=u["email"], password=u["password"], full_name=u["full_name"]
             )
-            await _attach_member(s, user=cross, organization_id=acme.id, is_org_admin=False)
-            await _attach_member(s, user=cross, organization_id=beta.id, is_org_admin=False)
-            if cross.active_organization_id is None:
-                cross.active_organization_id = acme.id
-            print(
-                ("  Created" if created else "  Existing")
-                + f": {cross.email} (member of both Acme and Beta)"
+            await _attach_member(
+                s, user=user, organization_id=acme.id, is_org_admin=u["is_org_admin"]
             )
+            if user.active_organization_id is None:
+                user.active_organization_id = acme.id
+            print(("  Created" if created else "  Existing") + f": {user.email}")
+
+        for u in beta_users:
+            user, created = await _find_or_create_user(
+                s, email=u["email"], password=u["password"], full_name=u["full_name"]
+            )
+            await _attach_member(
+                s, user=user, organization_id=beta.id, is_org_admin=u["is_org_admin"]
+            )
+            if user.active_organization_id is None:
+                user.active_organization_id = beta.id
+            print(("  Created" if created else "  Existing") + f": {user.email}")
+
+        cross, created = await _find_or_create_user(
+            s,
+            email=cross_user["email"],
+            password=cross_user["password"],
+            full_name=cross_user["full_name"],
+        )
+        await _attach_member(s, user=cross, organization_id=acme.id, is_org_admin=False)
+        await _attach_member(s, user=cross, organization_id=beta.id, is_org_admin=False)
+        if cross.active_organization_id is None:
+            cross.active_organization_id = acme.id
+        print(
+            ("  Created" if created else "  Existing")
+            + f": {cross.email} (member of both Acme and Beta)"
+        )
 
     print("Seed complete.")
 

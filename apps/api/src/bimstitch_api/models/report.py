@@ -129,4 +129,6 @@ class Report(TimestampMixin, TenantBase):
             "ix_reports_job_id", "job_id", postgresql_where=text("job_id IS NOT NULL")
         ),
         Index("ix_reports_report_type", "report_type"),
+        Index("ix_reports_source_job_id", "source_job_id"),
+        Index("ix_reports_created_by", "created_by_user_id"),
     )

@@ -27,7 +27,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
-from bimstitch_api.jobs import DispatchJobError, dispatch_job
+from bimstitch_api.jobs import (
+    DispatchJobError,
+    JobConcurrencyError,
+    check_job_concurrency,
+    dispatch_job,
+)
 from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.job import Job, JobStatus, JobType
@@ -231,6 +236,14 @@ async def create_report(
         "locale": locale,
         "jurisdiction": project.country,
     }
+
+    try:
+        await check_job_concurrency(session, settings)
+    except JobConcurrencyError:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="TOO_MANY_ACTIVE_JOBS",
+        )
 
     job = Job(
         project_id=project.id,

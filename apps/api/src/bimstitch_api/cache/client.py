@@ -1,6 +1,6 @@
 from collections.abc import AsyncGenerator
 
-from redis.asyncio import Redis, from_url
+from redis.asyncio import ConnectionPool, Redis
 
 from bimstitch_api.config import get_settings
 
@@ -11,7 +11,12 @@ def get_redis() -> Redis:
     global _redis
     if _redis is None:
         settings = get_settings()
-        _redis = from_url(settings.redis_url, decode_responses=True)
+        pool = ConnectionPool.from_url(
+            settings.redis_url,
+            max_connections=settings.redis_max_connections,
+            decode_responses=True,
+        )
+        _redis = Redis(connection_pool=pool)
     return _redis
 
 

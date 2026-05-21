@@ -157,4 +157,5 @@ class ProjectFile(TimestampMixin, SoftDeleteMixin, TenantBase):
                 "content_sha256 IS NOT NULL AND status IN ('pending', 'ready')"
             ),
         ),
+        Index("ix_project_files_uploaded_by", "uploaded_by_user_id"),
     )

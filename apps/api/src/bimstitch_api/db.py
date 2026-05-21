@@ -61,7 +61,15 @@ def get_engine() -> AsyncEngine:
     global _engine, _session_maker
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(settings.database_url, future=True)
+        _engine = create_async_engine(
+            settings.database_url,
+            future=True,
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_max_overflow,
+            pool_recycle=settings.db_pool_recycle_seconds,
+            pool_timeout=settings.db_pool_timeout_seconds,
+            pool_pre_ping=True,
+        )
         _session_maker = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
 
@@ -85,7 +93,14 @@ def get_admin_engine() -> AsyncEngine:
         url = settings.admin_database_url or settings.database_url
         # AUTOCOMMIT so `CREATE SCHEMA` / `DROP SCHEMA` don't deadlock with
         # the synchronous Alembic command that follows in the saga.
-        _admin_engine = create_async_engine(url, future=True, isolation_level="AUTOCOMMIT")
+        _admin_engine = create_async_engine(
+            url,
+            future=True,
+            isolation_level="AUTOCOMMIT",
+            pool_size=3,
+            max_overflow=5,
+            pool_pre_ping=True,
+        )
     return _admin_engine
 
 

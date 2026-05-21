@@ -49,6 +49,12 @@ class Settings(BaseSettings):
 
     redis_url: str = Field(default="redis://localhost:6380/0", alias="REDIS_URL")
     test_redis_url: str | None = Field(default=None, alias="TEST_REDIS_URL")
+    redis_max_connections: int = Field(default=50, alias="REDIS_MAX_CONNECTIONS")
+
+    db_pool_size: int = Field(default=20, alias="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=40, alias="DB_MAX_OVERFLOW")
+    db_pool_recycle_seconds: int = Field(default=1800, alias="DB_POOL_RECYCLE_SECONDS")
+    db_pool_timeout_seconds: int = Field(default=30, alias="DB_POOL_TIMEOUT_SECONDS")
 
     rate_limit_login_per_min: int = Field(default=5, alias="RATE_LIMIT_LOGIN_PER_MIN")
     rate_limit_register_per_hour: int = Field(default=3, alias="RATE_LIMIT_REGISTER_PER_HOUR")
@@ -79,6 +85,8 @@ class Settings(BaseSettings):
     sentry_environment: str | None = Field(default=None, alias="SENTRY_ENVIRONMENT")
     sentry_traces_sample_rate: float = Field(default=0.1, alias="SENTRY_TRACES_SAMPLE_RATE")
     sentry_release: str | None = Field(default=None, alias="SENTRY_RELEASE")
+
+    max_concurrent_jobs_per_org: int = Field(default=10, alias="MAX_CONCURRENT_JOBS_PER_ORG")
 
     arbiter_url: str = Field(default="http://localhost:8090", alias="ARBITER_URL")
     arbiter_timeout_seconds: float = Field(default=30.0, alias="ARBITER_TIMEOUT_SECONDS")

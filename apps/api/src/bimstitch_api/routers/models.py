@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
-from bimstitch_api.cache import cache_response, CACHE_TTL_MODELS_LIST, CACHE_TTL_MODEL_DETAIL
+from bimstitch_api.cache import CACHE_TTL_MODEL_DETAIL, CACHE_TTL_MODELS_LIST, cache_response
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.project_file import ProjectFile
 from bimstitch_api.models.project_member import ProjectRole

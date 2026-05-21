@@ -1,8 +1,18 @@
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
-from sqlalchemy import select
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -479,17 +489,27 @@ async def create_project_with_thumbnail(
 @router.get("", response_model=list[ProjectRead])
 async def list_projects(
     response: Response,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> list[dict[str, object]]:
-    stmt = select(Project).where(Project.lifecycle_state != ProjectLifecycleState.removed)
+    base = select(Project).where(
+        Project.lifecycle_state.in_(
+            [ProjectLifecycleState.active, ProjectLifecycleState.archived]
+        )
+    )
     if not user.is_superuser and not await _is_org_admin(session, user.id, active_org_id):
-        stmt = stmt.join(ProjectMember, ProjectMember.project_id == Project.id).where(
+        base = base.join(ProjectMember, ProjectMember.project_id == Project.id).where(
             ProjectMember.user_id == user.id
         )
-    stmt = stmt.order_by(Project.created_at)
+
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+
+    stmt = base.order_by(Project.created_at).limit(limit).offset(offset)
     result = await session.execute(stmt)
     projects = list(result.scalars().all())
     cache_response(response, CACHE_TTL_PROJECT_LIST)

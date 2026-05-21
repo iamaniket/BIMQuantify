@@ -121,5 +121,11 @@ class OrganizationMember(MasterBase):
             "is_guest",
             postgresql_where=text("is_guest = true AND status = 'active'"),
         ),
+        Index(
+            "ix_org_members_org_status",
+            "organization_id",
+            "status",
+            postgresql_where=text("status = 'active'"),
+        ),
         {"schema": "public"},
     )

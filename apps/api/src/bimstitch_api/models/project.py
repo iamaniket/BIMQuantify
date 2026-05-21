@@ -185,4 +185,10 @@ class Project(TimestampMixin, TenantBase):
             unique=True,
             postgresql_where="reference_code IS NOT NULL AND lifecycle_state != 'removed'",
         ),
+        Index("ix_projects_owner_id", "owner_id"),
+        Index(
+            "ix_projects_lifecycle_active",
+            "lifecycle_state",
+            postgresql_where="lifecycle_state IN ('active', 'archived')",
+        ),
     )

@@ -87,4 +87,11 @@ class Job(TimestampMixin, TenantBase):
         Index("ix_jobs_status", "status"),
         Index("ix_jobs_job_type", "job_type"),
         Index("ix_jobs_created_at", text("created_at DESC")),
+        Index("ix_jobs_created_by", "created_by_user_id"),
+        Index(
+            "ix_jobs_project_created",
+            "project_id",
+            text("created_at DESC"),
+            postgresql_where=text("project_id IS NOT NULL"),
+        ),
     )

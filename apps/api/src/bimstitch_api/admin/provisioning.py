@@ -15,7 +15,7 @@ import os
 import pathlib
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from alembic import command
@@ -25,8 +25,8 @@ from fastapi_users.password import PasswordHelper
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimstitch_api._rls_sql import drop_tenant_schema, grant_schema_to_app_role
 from bimstitch_api import audit
+from bimstitch_api._rls_sql import drop_tenant_schema, grant_schema_to_app_role
 from bimstitch_api.db import get_admin_engine, get_session_maker
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
@@ -137,16 +137,15 @@ async def provision_organization(
 
     try:
         # ── Step 1 ──────────────────────────────────────────────────────
-        async with session_maker() as s:
-            async with s.begin():
-                org = Organization(
-                    id=org_id,
-                    name=name.strip(),
-                    schema_name=schema,
-                    status=OrganizationStatus.provisioning,
-                    seat_limit=seat_limit,
-                )
-                s.add(org)
+        async with session_maker() as s, s.begin():
+            org = Organization(
+                id=org_id,
+                name=name.strip(),
+                schema_name=schema,
+                status=OrganizationStatus.provisioning,
+                seat_limit=seat_limit,
+            )
+            s.add(org)
         completed.add("master_row")
         logger.info("provision[%s] master row inserted", schema)
 
@@ -174,57 +173,56 @@ async def provision_organization(
         logger.info("provision[%s] grants applied", schema)
 
         # ── Step 5 ──────────────────────────────────────────────────────
-        async with session_maker() as s:
-            async with s.begin():
-                admin_user, created_admin = await _find_or_create_user(
-                    s, email=admin_email, full_name=admin_full_name
-                )
-                # If the admin already had a verified account elsewhere they
-                # don't need to activate again — they just log in. The bool
-                # below drives the email template choice in the router.
-                activation_required = not admin_user.is_verified
+        async with session_maker() as s, s.begin():
+            admin_user, created_admin = await _find_or_create_user(
+                s, email=admin_email, full_name=admin_full_name
+            )
+            # If the admin already had a verified account elsewhere they
+            # don't need to activate again — they just log in. The bool
+            # below drives the email template choice in the router.
+            activation_required = not admin_user.is_verified
 
-                s.add(
-                    OrganizationMember(
-                        user_id=admin_user.id,
-                        organization_id=org_id,
-                        is_org_admin=True,
-                        status=OrganizationMemberStatus.pending,
-                        invited_by=requester.id,
-                    )
-                )
-
-                await s.execute(
-                    update(Organization)
-                    .where(Organization.id == org_id)
-                    .values(
-                        status=OrganizationStatus.active,
-                        provisioned_at=datetime.now(timezone.utc),
-                    )
-                )
-
-                await audit.record(
-                    s,
-                    action="organization.created",
-                    resource_type="organization",
-                    resource_id=org_id,
-                    after={
-                        "id": str(org_id),
-                        "name": name,
-                        "schema_name": schema,
-                        "admin_email": admin_email,
-                        "seat_limit": seat_limit,
-                    },
-                    actor_user_id=requester.id,
+            s.add(
+                OrganizationMember(
+                    user_id=admin_user.id,
                     organization_id=org_id,
-                    request=request,
+                    is_org_admin=True,
+                    status=OrganizationMemberStatus.pending,
+                    invited_by=requester.id,
                 )
+            )
 
-                # Refetch the org so the caller gets fresh state.
-                refreshed = await s.execute(
-                    select(Organization).where(Organization.id == org_id)
+            await s.execute(
+                update(Organization)
+                .where(Organization.id == org_id)
+                .values(
+                    status=OrganizationStatus.active,
+                    provisioned_at=datetime.now(UTC),
                 )
-                org = refreshed.scalar_one()
+            )
+
+            await audit.record(
+                s,
+                action="organization.created",
+                resource_type="organization",
+                resource_id=org_id,
+                after={
+                    "id": str(org_id),
+                    "name": name,
+                    "schema_name": schema,
+                    "admin_email": admin_email,
+                    "seat_limit": seat_limit,
+                },
+                actor_user_id=requester.id,
+                organization_id=org_id,
+                request=request,
+            )
+
+            # Refetch the org so the caller gets fresh state.
+            refreshed = await s.execute(
+                select(Organization).where(Organization.id == org_id)
+            )
+            org = refreshed.scalar_one()
         completed.add("admin_member")
         logger.info("provision[%s] admin member inserted", schema)
 
@@ -269,11 +267,10 @@ async def _compensate(schema: str, org_id: UUID, completed: set[str]) -> None:
 
     if "master_row" in completed:
         try:
-            async with session_maker() as s:
-                async with s.begin():
-                    await s.execute(
-                        delete(Organization).where(Organization.id == org_id)
-                    )
+            async with session_maker() as s, s.begin():
+                await s.execute(
+                    delete(Organization).where(Organization.id == org_id)
+                )
         except Exception:
             logger.exception("compensate[%s] DELETE org row failed", schema)
 
@@ -295,37 +292,36 @@ async def delete_organization(
     session_maker = get_session_maker()
     admin_engine = get_admin_engine()
 
-    async with session_maker() as s:
-        async with s.begin():
-            org = await s.get(Organization, organization_id)
-            if org is None or org.deleted_at is not None:
-                return  # idempotent — already gone
+    async with session_maker() as s, s.begin():
+        org = await s.get(Organization, organization_id)
+        if org is None or org.deleted_at is not None:
+            return  # idempotent — already gone
 
-            schema = org.schema_name
-            before = {
-                "id": str(org.id),
-                "name": org.name,
-                "schema_name": schema,
-                "status": org.status.value,
-            }
-            await s.execute(
-                update(Organization)
-                .where(Organization.id == organization_id)
-                .values(
-                    deleted_at=datetime.now(timezone.utc),
-                    status=OrganizationStatus.deleted,
-                )
+        schema = org.schema_name
+        before = {
+            "id": str(org.id),
+            "name": org.name,
+            "schema_name": schema,
+            "status": org.status.value,
+        }
+        await s.execute(
+            update(Organization)
+            .where(Organization.id == organization_id)
+            .values(
+                deleted_at=datetime.now(UTC),
+                status=OrganizationStatus.deleted,
             )
-            await audit.record(
-                s,
-                action="organization.deleted",
-                resource_type="organization",
-                resource_id=organization_id,
-                before=before,
-                actor_user_id=requester.id,
-                organization_id=organization_id,
-                request=request,
-            )
+        )
+        await audit.record(
+            s,
+            action="organization.deleted",
+            resource_type="organization",
+            resource_id=organization_id,
+            before=before,
+            actor_user_id=requester.id,
+            organization_id=organization_id,
+            request=request,
+        )
 
     # Drop the schema OUTSIDE the master txn so a failed drop doesn't
     # leave the master row marked active again.

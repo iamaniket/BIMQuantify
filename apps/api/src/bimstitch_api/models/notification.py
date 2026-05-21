@@ -68,6 +68,9 @@ class Notification(TenantBase):
 
     __table_args__ = (
         Index("ix_notifications_created_at", text("created_at DESC")),
+        Index("ix_notifications_project_id", "project_id"),
+        Index("ix_notifications_file_id", "file_id"),
+        Index("ix_notifications_job_id", "job_id"),
     )
 
 

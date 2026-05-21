@@ -9,7 +9,7 @@ so this is a pure status flip plus an `accepted_at` stamp.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -127,7 +127,7 @@ async def accept_invitation(
     settings = get_settings()
     assert_invitation_not_expired(member.invited_at, settings.invitation_ttl_days)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     member.status = OrganizationMemberStatus.active
     member.accepted_at = now
 

@@ -21,7 +21,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.ifc.header import parse_ifc_header
-from bimstitch_api.jobs import DispatchJobError, dispatch_job
+from bimstitch_api.jobs import (
+    DispatchJobError,
+    JobConcurrencyError,
+    check_job_concurrency,
+    dispatch_job,
+)
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.model import Model
 from bimstitch_api.models.project_file import (
@@ -278,6 +283,14 @@ async def complete_upload(
         if model.primary_file_type is None:
             model.primary_file_type = row.file_type
 
+        try:
+            await check_job_concurrency(session, settings)
+        except JobConcurrencyError:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="TOO_MANY_ACTIVE_JOBS",
+            )
+
         pdf_job = Job(
             project_id=project.id,
             file_id=row.id,
@@ -317,6 +330,14 @@ async def complete_upload(
         row.extraction_status = ExtractionStatus.queued
         if model.primary_file_type is None:
             model.primary_file_type = row.file_type
+
+        try:
+            await check_job_concurrency(session, settings)
+        except JobConcurrencyError:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="TOO_MANY_ACTIVE_JOBS",
+            )
 
         ifc_job = Job(
             project_id=project.id,
@@ -442,6 +463,14 @@ async def retry_extraction(
     row.extraction_error = None
     row.extraction_started_at = None
     row.extraction_finished_at = None
+
+    try:
+        await check_job_concurrency(session, settings)
+    except JobConcurrencyError:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="TOO_MANY_ACTIVE_JOBS",
+        )
 
     retry_job = Job(
         project_id=project.id,

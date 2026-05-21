@@ -261,7 +261,9 @@ async def _emit_notification(
 
 async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
     row = (
-        await session.execute(select(ProjectFile).where(ProjectFile.id == file_id))
+        await session.execute(
+            select(ProjectFile).where(ProjectFile.id == file_id).with_for_update()
+        )
     ).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FILE_NOT_FOUND")
@@ -269,7 +271,11 @@ async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
 
 
 async def _load_job_optional(session: AsyncSession, job_id: UUID) -> Job | None:
-    return (await session.execute(select(Job).where(Job.id == job_id))).scalar_one_or_none()
+    return (
+        await session.execute(
+            select(Job).where(Job.id == job_id).with_for_update()
+        )
+    ).scalar_one_or_none()
 
 
 # ---------------------------------------------------------------------------
@@ -291,7 +297,9 @@ async def report_callback(
     async with session.begin():
         await _set_tenant_schema(session, payload.organization_id)
         report = (
-            await session.execute(select(Report).where(Report.id == payload.report_id))
+            await session.execute(
+                select(Report).where(Report.id == payload.report_id).with_for_update()
+            )
         ).scalar_one_or_none()
         if report is None:
             raise HTTPException(

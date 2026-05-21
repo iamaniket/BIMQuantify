@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.models.job import Job, JobStatus, JobType
@@ -40,6 +41,7 @@ async def list_jobs(
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await session.scalar(count_stmt)) or 0
 
+    stmt = stmt.options(defer(Job.payload), defer(Job.result))
     stmt = stmt.order_by(Job.created_at.desc()).limit(limit).offset(offset)
     items = list((await session.execute(stmt)).scalars().all())
     return JobListResponse(items=items, total=total, limit=limit, offset=offset)
