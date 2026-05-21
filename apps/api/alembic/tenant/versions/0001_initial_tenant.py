@@ -1,8 +1,11 @@
-"""Initial tenant schema: projects, project_members, models, project_files, jobs, reports,
-contractors, notifications, notification_reads, risks, borgingsplans, borgingsmomenten, checklist_items.
+"""Initial tenant schema.
 
-Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables (users)
-are emitted as `public.users(id)` so they resolve regardless of search_path.
+Creates all tenant-side tables via Base.metadata.create_all(), then adds
+partial unique indexes that aren't expressible in model __table_args__.
+
+Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master
+tables (users) are emitted as `public.users(id)` so they resolve
+regardless of search_path.
 
 Revision ID: 0001_tenant
 Revises:
@@ -17,7 +20,6 @@ from typing import Sequence, Union
 from alembic import op
 from sqlalchemy import text
 
-# Revision identifiers, used by Alembic.
 revision: str = "0001_tenant"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
@@ -33,13 +35,13 @@ def _schema() -> str:
 
 def upgrade() -> None:
     from bimstitch_api.db import Base, is_tenant_table
-    # Importing the models registers them with Base.metadata.
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
+        ChecklistItemResult,
         Contractor,
         Job,
         Model,
@@ -56,15 +58,9 @@ def upgrade() -> None:
     )
 
     bind = op.get_bind()
-    # search_path was set by env.py before this migration runs, so unqualified
-    # table names land in the target tenant schema. We still filter to the
-    # tenant-side subset of metadata so we don't accidentally try to create
-    # the master tables here.
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
     Base.metadata.create_all(bind, tables=tenant_tables)
 
-    # Partial unique index for "one active borgingsplan per project" — not
-    # expressible in __table_args__ (Alembic autogen ignores partials there).
     schema = _schema()
     bind.execute(
         text(
@@ -83,6 +79,7 @@ def downgrade() -> None:
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
+        ChecklistItemResult,
         Contractor,
         Job,
         Model,
@@ -103,7 +100,6 @@ def downgrade() -> None:
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_borgingsplans_one_active'))
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
     Base.metadata.drop_all(bind, tables=tenant_tables)
-    # Tenant-schema-local enum types
     for enum in (
         "borgingsmomentphase",
         "borgingsmomentstatus",
@@ -113,6 +109,7 @@ def downgrade() -> None:
         "extractionstatus",
         "filetype",
         "ifcschema",
+        "inspectionverdict",
         "jobstatus",
         "jobtype",
         "modeldiscipline",
