@@ -109,8 +109,8 @@ async def _verify_membership(
 
 
 async def get_tenant_session(
-    organization_id: UUID = Depends(require_active_organization),
     user: User = Depends(current_verified_user),
+    organization_id: UUID = Depends(require_active_organization),
     master_session: AsyncSession = Depends(get_async_session),
 ) -> AsyncGenerator[AsyncSession, None]:
     """Yield a session scoped to the active org's schema. Verifies the

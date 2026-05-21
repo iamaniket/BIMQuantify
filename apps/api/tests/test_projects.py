@@ -585,14 +585,9 @@ async def test_archive_project_editor_forbidden(
     assert response.status_code == 403
 
 
-async def test_unauthenticated_project_request_returns_409(client: AsyncClient) -> None:
-    # `get_tenant_session` resolves `require_active_organization` before the
-    # user dependency, so a no-token request short-circuits on the missing
-    # `org` claim with 409 NO_ACTIVE_ORGANIZATION — by design, so the portal
-    # routes the user to the workspace switcher.
+async def test_unauthenticated_project_request_returns_401(client: AsyncClient) -> None:
     response = await client.get("/projects")
-    assert response.status_code == 409
-    assert response.json()["detail"] == "NO_ACTIVE_ORGANIZATION"
+    assert response.status_code == 401
 
 
 async def test_user_without_org_forbidden(
