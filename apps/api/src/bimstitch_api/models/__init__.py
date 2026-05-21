@@ -11,6 +11,10 @@ from bimstitch_api.models.checklist_item import (
     ChecklistItemType,
     EvidenceType,
 )
+from bimstitch_api.models.checklist_item_result import (
+    ChecklistItemResult,
+    InspectionVerdict,
+)
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
@@ -53,10 +57,12 @@ __all__ = [
     "Borgingsplan",
     "BorgingsplanStatus",
     "ChecklistItem",
+    "ChecklistItemResult",
     "ChecklistItemType",
     "Contractor",
     "EvidenceType",
     "ExtractionStatus",
+    "InspectionVerdict",
     "IfcSchema",
     "Job",
     "JobStatus",

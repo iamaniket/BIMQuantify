@@ -20,6 +20,7 @@ import {
 } from '@/features/compliance/hooks';
 import { useAuth } from '@/providers/AuthProvider';
 
+import { PageShell } from '@/components/layout/PageShell';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
 import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
@@ -106,7 +107,16 @@ export default function ProjectDetailPage(): JSX.Element {
     : undefined;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <PageShell
+      hero={
+        <ProjectDetailHeader
+          project={project}
+          compliance={summary}
+          issueCount={0}
+          dossierPct={dossierPct}
+        />
+      }
+    >
       <Dialog
         open={uploadModelId !== null}
         onOpenChange={(open) => { if (!open) setUploadModelId(null); }}
@@ -129,15 +139,7 @@ export default function ProjectDetailPage(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      <ProjectDetailHeader
-        project={project}
-        compliance={summary}
-        issueCount={0}
-        dossierPct={dossierPct}
-      />
-
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-y-auto px-3.5 pb-3.5 xl:grid-cols-2">
-        {/* Left column — single merged compliance card */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 px-3.5 pb-3.5 xl:grid-cols-2">
         <ComplianceByDomainCard
           domains={domains}
           articles={articles}
@@ -148,7 +150,6 @@ export default function ProjectDetailPage(): JSX.Element {
           failCount={summary?.failCount ?? 0}
         />
 
-        {/* Right column — 60/40 vertical split: tabs on top, activity below */}
         <div className="grid min-h-0 grid-rows-[3fr_2fr] gap-3.5">
           <RightColumnTabs
             projectId={projectId}
@@ -159,6 +160,6 @@ export default function ProjectDetailPage(): JSX.Element {
           <ActivityPanel />
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

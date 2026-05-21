@@ -30,6 +30,7 @@ from bimstitch_api.models import (  # noqa: F401
     Borgingsmoment,
     Borgingsplan,
     ChecklistItem,
+    ChecklistItemResult,
     Contractor,
     Job,
     Model,

@@ -9,5 +9,6 @@ export * from './schemas/notifications';
 export * from './schemas/reports';
 export * from './schemas/risks';
 export * from './schemas/borgingsplan';
+export * from './schemas/inspection';
 export * from './schemas/admin';
 export * from './schemas/invitations';

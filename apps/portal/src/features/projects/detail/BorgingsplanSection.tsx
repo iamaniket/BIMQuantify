@@ -3,6 +3,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  ClipboardCheck,
   FileSignature,
   Pencil,
   Plus,
@@ -13,6 +14,8 @@ import { useTranslations } from 'next-intl';
 import { useMemo, useState, type FormEvent, type JSX } from 'react';
 
 import { Badge, Button, Input, Label, Select, Textarea } from '@bimstitch/ui';
+
+import { Link } from '@/i18n/navigation';
 
 import { useBorgingsplanCatalog } from '@/features/borgingsplan/usePhaseLabels';
 import { useBorgingsplan, useBorgingsplanVersions } from '@/features/borgingsplan/useBorgingsplan';
@@ -477,45 +480,56 @@ function MomentRow({
           </div>
         </button>
 
-        {!readOnly && (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={onMoveUp}
-              disabled={!canMoveUp}
-              className="text-foreground-tertiary hover:text-foreground disabled:opacity-30"
-              aria-label={t('moveUp')}
+        <div className="flex items-center gap-1">
+          {readOnly && moment.checklist_items.length > 0 && (
+            <Link
+              href={`/projects/${projectId}/inspect/${moment.id}`}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-caption font-medium text-primary hover:bg-primary/10"
             >
-              <ChevronUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={onMoveDown}
-              disabled={!canMoveDown}
-              className="text-foreground-tertiary hover:text-foreground disabled:opacity-30"
-              aria-label={t('moveDown')}
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing((v) => !v)}
-              className="text-foreground-tertiary hover:text-foreground"
-              aria-label={t('edit')}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => deleteMutation.mutate(moment.id)}
-              disabled={deleteMutation.isPending}
-              className="text-foreground-tertiary hover:text-error disabled:opacity-50"
-              aria-label={t('deleteMoment')}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              {t('inspect')}
+            </Link>
+          )}
+          {!readOnly && (
+            <>
+              <button
+                type="button"
+                onClick={onMoveUp}
+                disabled={!canMoveUp}
+                className="text-foreground-tertiary hover:text-foreground disabled:opacity-30"
+                aria-label={t('moveUp')}
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onMoveDown}
+                disabled={!canMoveDown}
+                className="text-foreground-tertiary hover:text-foreground disabled:opacity-30"
+                aria-label={t('moveDown')}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing((v) => !v)}
+                className="text-foreground-tertiary hover:text-foreground"
+                aria-label={t('edit')}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate(moment.id)}
+                disabled={deleteMutation.isPending}
+                className="text-foreground-tertiary hover:text-error disabled:opacity-50"
+                aria-label={t('deleteMoment')}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {editing && !readOnly && (
