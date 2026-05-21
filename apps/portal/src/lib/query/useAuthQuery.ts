@@ -10,12 +10,16 @@ import {
   type UseQueryOptions,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { ApiError } from '@/lib/api/client';
 import { getErrorMessage } from '@/lib/api/errorMessages';
+import { tokenManager } from '@/lib/auth/tokenManager';
 import { useAuth } from '@/providers/AuthProvider';
+
+function is401(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
+}
 
 type AuthQueryOptions<
   TData,
@@ -37,9 +41,17 @@ export function useAuthQuery<
 
   return useQuery<TData, Error, TSelect, TKey>({
     ...rest,
-    queryFn: () => {
+    queryFn: async () => {
       if (accessToken === null) throw new Error('Not authenticated');
-      return queryFn(accessToken);
+      try {
+        return await queryFn(accessToken);
+      } catch (error) {
+        if (is401(error)) {
+          const newToken = await tokenManager.refresh();
+          return queryFn(newToken);
+        }
+        throw error;
+      }
     },
     enabled: accessToken !== null && (enabled ?? true),
   } as UseQueryOptions<TData, Error, TSelect, TKey>);
@@ -58,10 +70,9 @@ type AuthMutationOptions<TData, TVariables> = Omit<
 export function useAuthMutation<TData, TVariables>(
   options: AuthMutationOptions<TData, TVariables>,
 ): UseMutationResult<TData, Error, TVariables> {
-  const { tokens, setTokens } = useAuth();
+  const { tokens } = useAuth();
   const accessToken = tokens === null ? null : tokens.access_token;
   const queryClient = useQueryClient();
-  const router = useRouter();
 
   const {
     mutationFn, invalidateKeys, suppressToast, onError, ...rest
@@ -69,9 +80,17 @@ export function useAuthMutation<TData, TVariables>(
 
   return useMutation<TData, Error, TVariables>({
     ...rest,
-    mutationFn: (variables) => {
+    mutationFn: async (variables) => {
       if (accessToken === null) throw new Error('Not authenticated');
-      return mutationFn(accessToken, variables);
+      try {
+        return await mutationFn(accessToken, variables);
+      } catch (error) {
+        if (is401(error)) {
+          const newToken = await tokenManager.refresh();
+          return mutationFn(newToken, variables);
+        }
+        throw error;
+      }
     },
     onSuccess: async (...args) => {
       if (invalidateKeys !== undefined) {
@@ -91,11 +110,6 @@ export function useAuthMutation<TData, TVariables>(
 
       if (!suppressToast) {
         toast.error(getErrorMessage(error));
-      }
-
-      if (error instanceof ApiError && error.status === 401) {
-        setTokens(null);
-        router.push('/login');
       }
 
       if (onError !== undefined) {

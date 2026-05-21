@@ -1,8 +1,7 @@
 'use client';
 
 import { FolderOpen, Search } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
-import { useEffect, type JSX } from 'react';
+import { type JSX } from 'react';
 import { useQueries } from '@tanstack/react-query';
 
 import {
@@ -45,8 +44,7 @@ type ProjectListProps = {
 };
 
 export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Element {
-  const router = useRouter();
-  const { setTokens, tokens } = useAuth();
+  const { tokens } = useAuth();
   const query = useProjects();
   const accessToken = tokens === null ? null : tokens.access_token;
 
@@ -98,20 +96,6 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
       membersByProjectId.set(project.id, members);
     }
   });
-
-  const isUnauthorized = query.isError && query.error instanceof ApiError
-    && (query.error.status === 401 || query.error.status === 403);
-
-  useEffect(() => {
-    if (isUnauthorized) {
-      setTokens(null);
-      router.replace('/login');
-    }
-  }, [isUnauthorized, setTokens, router]);
-
-  if (isUnauthorized) {
-    return <div />;
-  }
 
   if (query.isLoading) {
     return (

@@ -7,11 +7,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type JSX,
   type ReactNode,
 } from 'react';
 
+import { tokenManager } from '@/lib/auth/tokenManager';
+
+import { ApiError } from '@/lib/api/client';
 import { getAuthMe, switchOrganization as switchOrgApi } from '@/lib/api/organizations';
 import {
   TokenPairSchema,
@@ -75,9 +79,12 @@ export function AuthProvider({ children }: Props): JSX.Element {
   const [tokens, setTokensState] = useState<TokenPair | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [me, setMe] = useState<AuthMeResponse | null>(null);
+  const tokensRef = useRef<TokenPair | null>(null);
 
   useEffect(() => {
-    setTokensState(readStoredTokens());
+    const stored = readStoredTokens();
+    tokensRef.current = stored;
+    setTokensState(stored);
     setHasHydrated(true);
   }, []);
 
@@ -90,11 +97,23 @@ export function AuthProvider({ children }: Props): JSX.Element {
     try {
       const next = await getAuthMe(current.access_token);
       setMe(next);
-    } catch {
-      // Stale token, network blip — leave the existing snapshot rather than
-      // clearing it. The caller can re-attempt via refreshMe() if needed.
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        try {
+          const newToken = await tokenManager.refresh();
+          const next = await getAuthMe(newToken);
+          setMe(next);
+          // Token was refreshed — force all queries to re-fetch with the new token.
+          await queryClient.invalidateQueries();
+        } catch {
+          // Refresh failed — tokenManager already called setTokens(null),
+          // layouts will redirect to /login.
+        }
+        return;
+      }
+      // Network blip or other error — leave existing snapshot.
     }
-  }, [tokens]);
+  }, [tokens, queryClient]);
 
   // Fetch /auth/me whenever the access token changes (login, refresh, switch).
   useEffect(() => {
@@ -107,9 +126,15 @@ export function AuthProvider({ children }: Props): JSX.Element {
   }, [hasHydrated, tokens, refreshMe]);
 
   const setTokens = useCallback((next: TokenPair | null): void => {
+    tokensRef.current = next;
     writeStoredTokens(next);
     setTokensState(next);
   }, []);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    tokenManager.register(() => tokensRef.current, setTokens);
+  }, [hasHydrated, setTokens]);
 
   const switchOrganization = useCallback(
     async (organizationId: string): Promise<void> => {

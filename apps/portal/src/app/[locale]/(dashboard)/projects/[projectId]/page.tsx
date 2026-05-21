@@ -2,8 +2,7 @@
 
 import { useParams } from 'next/navigation';
 
-import { useRouter } from '@/i18n/navigation';
-import { useEffect, useState, type JSX } from 'react';
+import { useState, type JSX } from 'react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, Skeleton } from '@bimstitch/ui';
 
@@ -18,8 +17,6 @@ import {
   useComplianceArticles,
   useComplianceTrend,
 } from '@/features/compliance/hooks';
-import { useAuth } from '@/providers/AuthProvider';
-
 import { PageShell } from '@/components/layout/PageShell';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
 import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
@@ -27,11 +24,8 @@ import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
 import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
 
 export default function ProjectDetailPage(): JSX.Element {
-  const router = useRouter();
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
-
-  const { setTokens } = useAuth();
   const projectQuery = useProject(projectId);
   const modelsQuery = useModels(projectId);
   const summaryQuery = useComplianceSummary(projectId);
@@ -40,22 +34,6 @@ export default function ProjectDetailPage(): JSX.Element {
   const trendQuery = useComplianceTrend(projectId);
 
   const [uploadModelId, setUploadModelId] = useState<string | null>(null);
-
-  const isUnauthorized =
-    projectQuery.isError &&
-    projectQuery.error instanceof ApiError &&
-    (projectQuery.error.status === 401 || projectQuery.error.status === 403);
-
-  useEffect(() => {
-    if (isUnauthorized) {
-      setTokens(null);
-      router.replace('/login');
-    }
-  }, [isUnauthorized, setTokens, router]);
-
-  if (isUnauthorized) {
-    return <main className="flex flex-1 items-center justify-center" />;
-  }
 
   if (projectQuery.isLoading) {
     return (

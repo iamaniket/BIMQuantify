@@ -516,7 +516,7 @@ export default function TenantAdminPage(): JSX.Element {
   useHeaderCrumbsOverride(crumbs);
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [tab, setTab] = useState('members');
+  const [tab, setTab] = useState('overview');
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');

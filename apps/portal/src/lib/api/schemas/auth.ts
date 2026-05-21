@@ -56,3 +56,10 @@ export const SwitchOrgRequestSchema = z.object({
 });
 
 export type SwitchOrgRequest = z.infer<typeof SwitchOrgRequestSchema>;
+
+export const AccessTokenResponseSchema = z.object({
+  access_token: z.string().min(1),
+  token_type: z.string(),
+});
+
+export type AccessTokenResponse = z.infer<typeof AccessTokenResponseSchema>;
