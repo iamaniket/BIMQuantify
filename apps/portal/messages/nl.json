@@ -719,6 +719,98 @@
     "dismiss": "Niet nu",
     "iosHint": "Tik op iOS op het deel-icoon en kies “Zet op beginscherm”."
   },
+  "orgDetail": {
+    "tabs": {
+      "overview": "Overzicht",
+      "members": "Leden",
+      "audit": "Auditlog"
+    },
+    "hero": {
+      "status": "Status",
+      "allNominal": "Alle systemen operationeel",
+      "seats": "Licenties",
+      "unlimitedPlan": "Onbeperkt abonnement",
+      "members": "Leden",
+      "total": "totaal",
+      "admin": "Beheerder",
+      "member": "Lid",
+      "pendingInvite": "{count, plural, =0 {} =1 {1 openstaande uitnodiging} other {# openstaande uitnodigingen}}",
+      "lastActivity": "Laatste activiteit",
+      "ago": "geleden",
+      "eventsToday": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} vandaag",
+      "noEvents": "Nog geen gebeurtenissen"
+    },
+    "panel": {
+      "overviewEyebrow": "Organisatieoverzicht",
+      "membersEyebrow": "Teamleden",
+      "activeMembers": "{count} {count, plural, =1 {actief lid} other {actieve leden}}",
+      "pendingShort": "{count} in afwachting",
+      "auditEyebrow": "Auditlog",
+      "recentEvents": "{count} recente {count, plural, =1 {gebeurtenis} other {gebeurtenissen}}",
+      "lastDays": "laatste {days} dagen",
+      "manageSettings": "Organisatie-instellingen beheren"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Zoeken op naam of e-mail…",
+      "roleAll": "Alle rollen",
+      "roleAdmin": "Beheerder",
+      "roleMember": "Lid",
+      "statusAll": "Alle statussen",
+      "statusActive": "Actief",
+      "statusPending": "In afwachting",
+      "statusSuspended": "Opgeschort",
+      "inviteButton": "Lid uitnodigen",
+      "dateRange": "Laatste 7 dagen",
+      "dateToday": "Vandaag",
+      "date7": "Laatste 7 dagen",
+      "date30": "Laatste 30 dagen",
+      "dateAll": "Altijd",
+      "actionAll": "Alle acties",
+      "exportCsv": "Exporteer CSV"
+    },
+    "overview": {
+      "title": "Organisatiegegevens",
+      "name": "Naam",
+      "status": "Status",
+      "seatLimit": "Licentielimiet",
+      "unlimited": "Onbeperkt",
+      "seatUsed": "Licenties in gebruik",
+      "seatUsageTitle": "Licentiegebruik",
+      "seatsInUse": "{count, plural, =1 {licentie in gebruik} other {licenties in gebruik}}",
+      "showingOf": "Toont {shown} van {total}",
+      "assigned": "Toegewezen",
+      "available": "Beschikbaar",
+      "availableUnlimited": "Beschikbaar (onbeperkt)",
+      "recentActivityTitle": "Recente activiteit",
+      "viewAuditLog": "Bekijk auditlog",
+      "signedIn": "heeft ingelogd",
+      "wasInvitedAs": "is uitgenodigd als {role}",
+      "roleChanged": "rol gewijzigd",
+      "updatedOrgName": "organisatienaam bijgewerkt",
+      "membersByRoleTitle": "Leden per rol",
+      "fullAccess": "volledige toegang",
+      "readWrite": "lezen en schrijven",
+      "pendingInvite": "Openstaande uitnodiging",
+      "quickActionsTitle": "Snelle acties",
+      "inviteMember": "Lid uitnodigen",
+      "inviteMemberSub": "Stuur een uitnodiging per e-mail",
+      "exportData": "Organisatiegegevens exporteren",
+      "exportDataSub": "Leden + auditlog, CSV",
+      "dangerZoneTitle": "Gevarenzone",
+      "dangerZoneDesc": "Verwijder deze organisatie permanent. Alle projecten, leden en auditgeschiedenis worden gewist. Dit kan niet ongedaan worden gemaakt.",
+      "deleteOrg": "Organisatie verwijderen"
+    },
+    "members": {
+      "inviteButton": "Lid uitnodigen",
+      "loadError": "Kan leden niet laden.",
+      "showing": "Toont {filtered} van {total} leden"
+    },
+    "audit": {
+      "loadError": "Kan auditlog niet laden.",
+      "eventCount": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} · laatste 7 dagen",
+      "loadOlder": "Oudere gebeurtenissen laden"
+    }
+  },
   "tenantAdmin": {
     "crumb": "Organisatie",
     "pageSubtitle": "Beheer leden, licenties en auditactiviteit van uw organisatie.",

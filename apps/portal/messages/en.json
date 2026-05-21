@@ -667,6 +667,98 @@
     "dismiss": "Not now",
     "iosHint": "On iOS, tap the share icon and choose “Add to Home Screen”."
   },
+  "orgDetail": {
+    "tabs": {
+      "overview": "Overview",
+      "members": "Members",
+      "audit": "Audit log"
+    },
+    "hero": {
+      "status": "Status",
+      "allNominal": "All systems nominal",
+      "seats": "Seats",
+      "unlimitedPlan": "Unlimited plan",
+      "members": "Members",
+      "total": "total",
+      "admin": "Admin",
+      "member": "Member",
+      "pendingInvite": "{count, plural, =0 {} =1 {1 pending invite} other {# pending invites}}",
+      "lastActivity": "Last activity",
+      "ago": "ago",
+      "eventsToday": "{count} {count, plural, =1 {event} other {events}} today",
+      "noEvents": "No events yet"
+    },
+    "panel": {
+      "overviewEyebrow": "Organization overview",
+      "membersEyebrow": "Team members",
+      "activeMembers": "{count} active {count, plural, =1 {member} other {members}}",
+      "pendingShort": "{count} pending",
+      "auditEyebrow": "Audit log",
+      "recentEvents": "{count} recent {count, plural, =1 {event} other {events}}",
+      "lastDays": "last {days} days",
+      "manageSettings": "Manage org settings"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Search by name or email…",
+      "roleAll": "All roles",
+      "roleAdmin": "Admin",
+      "roleMember": "Member",
+      "statusAll": "All statuses",
+      "statusActive": "Active",
+      "statusPending": "Pending",
+      "statusSuspended": "Suspended",
+      "inviteButton": "Invite member",
+      "dateRange": "Last 7 days",
+      "dateToday": "Today",
+      "date7": "Last 7 days",
+      "date30": "Last 30 days",
+      "dateAll": "All time",
+      "actionAll": "All actions",
+      "exportCsv": "Export CSV"
+    },
+    "overview": {
+      "title": "Organization details",
+      "name": "Name",
+      "status": "Status",
+      "seatLimit": "Seat limit",
+      "unlimited": "Unlimited",
+      "seatUsed": "Seats used",
+      "seatUsageTitle": "Seat usage",
+      "seatsInUse": "{count, plural, =1 {seat in use} other {seats in use}}",
+      "showingOf": "Showing {shown} of {total}",
+      "assigned": "Assigned",
+      "available": "Available",
+      "availableUnlimited": "Available (unlimited)",
+      "recentActivityTitle": "Recent activity",
+      "viewAuditLog": "View audit log",
+      "signedIn": "signed in",
+      "wasInvitedAs": "was invited as {role}",
+      "roleChanged": "role changed",
+      "updatedOrgName": "updated organization name",
+      "membersByRoleTitle": "Members by role",
+      "fullAccess": "full access",
+      "readWrite": "read & write",
+      "pendingInvite": "Pending invite",
+      "quickActionsTitle": "Quick actions",
+      "inviteMember": "Invite a member",
+      "inviteMemberSub": "Send a seat invite by email",
+      "exportData": "Export org data",
+      "exportDataSub": "Members + audit log, CSV",
+      "dangerZoneTitle": "Danger zone",
+      "dangerZoneDesc": "Permanently delete this organization. All projects, members and audit history will be wiped. This cannot be undone.",
+      "deleteOrg": "Delete organization"
+    },
+    "members": {
+      "inviteButton": "Invite member",
+      "loadError": "Could not load members.",
+      "showing": "Showing {filtered} of {total} members"
+    },
+    "audit": {
+      "loadError": "Could not load audit log.",
+      "eventCount": "{count} {count, plural, =1 {event} other {events}} · last 7 days",
+      "loadOlder": "Load older events"
+    }
+  },
   "tenantAdmin": {
     "crumb": "Organization",
     "pageSubtitle": "Manage members, seats, and audit activity for your organization.",

@@ -1,39 +1,22 @@
 'use client';
 
-import {
-  Pause, Pencil, Play, Plus, Trash2,
-} from 'lucide-react';
+import { Pause, Pencil, Play, Trash2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { use, useMemo, useState, type JSX } from 'react';
 
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  ConfirmDialog,
-  PageHeader,
-  Skeleton,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@bimstitch/ui';
+import { Button, ConfirmDialog, Skeleton } from '@bimstitch/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/header/AppHeaderContext';
-
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
-import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
 import { InviteMemberDialog } from '@/features/admin/members/InviteMemberDialog';
-import { MembersTable } from '@/features/admin/members/MembersTable';
 import { useOrgMembers } from '@/features/admin/members/useOrgMembers';
 import { OrgEditDialog } from '@/features/admin/organizations/OrgEditDialog';
-import { OrgStatusBadge } from '@/features/admin/organizations/OrgStatusBadge';
-import { SeatUsage } from '@/features/admin/organizations/SeatUsage';
 import { useAdminOrganization } from '@/features/admin/organizations/useAdminOrganization';
 import { useDeleteOrganization } from '@/features/admin/organizations/useDeleteOrganization';
 import { useUpdateOrganization } from '@/features/admin/organizations/useUpdateOrganization';
+import { OrgDetailView } from '@/features/org-detail';
+import type { OrgDetailData } from '@/features/org-detail';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -50,8 +33,6 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
   const deleteMutation = useDeleteOrganization();
   const statusMutation = useUpdateOrganization();
 
-  // Render breadcrumb with the real tenant name. Falls back to the static
-  // "Tenant" crumb from AppHeaderRoute while the org is loading.
   const orgName = orgQuery.data?.name;
   const crumbs = useMemo(
     () => (orgName === undefined
@@ -84,22 +65,22 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
       </main>
     );
   }
-  const org = orgQuery.data;
+  const raw = orgQuery.data;
 
   const handleDelete = (): void => {
-    if (!window.confirm(t('confirmDelete', { name: org.name }))) return;
-    deleteMutation.mutate(org.id, {
+    if (!window.confirm(t('confirmDelete', { name: raw.name }))) return;
+    deleteMutation.mutate(raw.id, {
       onSuccess: () => {
         router.replace('/admin/organizations');
       },
     });
   };
 
-  const isSuspended = org.status === 'suspended';
+  const isSuspended = raw.status === 'suspended';
   const handleConfirmStatus = (): void => {
     statusMutation.mutate(
       {
-        id: org.id,
+        id: raw.id,
         input: { status: isSuspended ? 'active' : 'suspended' },
       },
       {
@@ -110,126 +91,57 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
     );
   };
 
+  const org: OrgDetailData = {
+    id: raw.id,
+    name: raw.name,
+    status: raw.status,
+    seatLimit: raw.seat_limit,
+    seatCountUsed: raw.seat_count_used,
+    schemaName: raw.schema_name,
+    createdAt: raw.created_at,
+    provisionedAt: raw.provisioned_at,
+  };
+
   return (
-    <main className="px-4 py-6 sm:px-6 lg:px-8">
-      <PageHeader
-        title={org.name}
-        subtitle={org.schema_name}
-        actions={
-          <>
-            <Button variant="border" onClick={() => { setEditOpen(true); }}>
-              <Pencil className="mr-1 h-4 w-4" />
+    <>
+      <OrgDetailView
+        org={org}
+        members={membersQuery.data ?? []}
+        membersLoading={membersQuery.isLoading}
+        membersError={membersQuery.isError}
+        auditEntries={auditQuery.data ?? []}
+        auditLoading={auditQuery.isLoading}
+        auditError={auditQuery.isError}
+        onInvite={() => { setInviteOpen(true); }}
+        onDelete={handleDelete}
+        heroActions={
+          <div className="flex gap-2">
+            <Button variant="border" size="sm" onClick={() => { setEditOpen(true); }}>
+              <Pencil className="mr-1 h-3.5 w-3.5" />
               {t('editButton')}
             </Button>
             <Button
               variant={isSuspended ? 'primary' : 'border'}
+              size="sm"
               onClick={() => { setStatusConfirmOpen(true); }}
             >
               {isSuspended ? (
-                <Play className="mr-1 h-4 w-4" />
+                <Play className="mr-1 h-3.5 w-3.5" />
               ) : (
-                <Pause className="mr-1 h-4 w-4" />
+                <Pause className="mr-1 h-3.5 w-3.5" />
               )}
               {isSuspended ? t('reactivateButton') : t('suspendButton')}
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-1 h-4 w-4" />
+            <Button variant="destructive" size="sm" onClick={handleDelete}>
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
               {t('deleteButton')}
             </Button>
-          </>
-        }
-        className={undefined}
-      />
-
-      <div className="mb-6 flex flex-wrap gap-3">
-        <OrgStatusBadge status={org.status} />
-        <SeatUsage seatCountUsed={org.seat_count_used} seatLimit={org.seat_limit} />
-      </div>
-
-      <Tabs defaultValue="overview">
-        <TabsList className="mb-4">
-          <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
-          <TabsTrigger value="members">{t('tabs.members')}</TabsTrigger>
-          <TabsTrigger value="audit">{t('tabs.audit')}</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview">
-          <Card>
-            <CardHeader>
-              <h3 className="text-body2 font-semibold">{t('overview.title')}</h3>
-            </CardHeader>
-            <CardBody>
-              <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                <div>
-                  <dt className="text-caption text-foreground-tertiary">
-                    {t('overview.created')}
-                  </dt>
-                  <dd className="text-body3">
-                    {new Date(org.created_at).toLocaleString()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-caption text-foreground-tertiary">
-                    {t('overview.provisioned')}
-                  </dt>
-                  <dd className="text-body3">
-                    {org.provisioned_at === null
-                      ? '—'
-                      : new Date(org.provisioned_at).toLocaleString()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-caption text-foreground-tertiary">
-                    {t('overview.seatLimit')}
-                  </dt>
-                  <dd className="text-body3">
-                    {org.seat_limit === null ? t('overview.unlimited') : org.seat_limit}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-caption text-foreground-tertiary">
-                    {t('overview.seatUsed')}
-                  </dt>
-                  <dd className="text-body3">{org.seat_count_used}</dd>
-                </div>
-              </dl>
-            </CardBody>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="members">
-          <div className="mb-3 flex justify-end">
-            <Button onClick={() => { setInviteOpen(true); }}>
-              <Plus className="mr-1 h-4 w-4" />
-              {t('members.inviteButton')}
-            </Button>
           </div>
-          {membersQuery.isLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : membersQuery.isError ? (
-            <p className="text-body3 text-error">{t('members.loadError')}</p>
-          ) : (
-            <MembersTable
-              organizationId={org.id}
-              members={membersQuery.data ?? []}
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="audit">
-          {auditQuery.isLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : auditQuery.isError ? (
-            <p className="text-body3 text-error">{t('audit.loadError')}</p>
-          ) : (
-            <AuditLogTable entries={auditQuery.data ?? []} />
-          )}
-        </TabsContent>
-      </Tabs>
-
-      <OrgEditDialog organization={org} open={editOpen} onOpenChange={setEditOpen} />
+        }
+      />
+      <OrgEditDialog organization={raw} open={editOpen} onOpenChange={setEditOpen} />
       <InviteMemberDialog
-        organizationId={org.id}
+        organizationId={raw.id}
         open={inviteOpen}
         onOpenChange={setInviteOpen}
       />
@@ -239,8 +151,8 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
         title={isSuspended ? t('reactivate.title') : t('suspend.title')}
         description={
           isSuspended
-            ? t('reactivate.body', { name: org.name })
-            : t('suspend.body', { name: org.name })
+            ? t('reactivate.body', { name: raw.name })
+            : t('suspend.body', { name: raw.name })
         }
         confirmLabel={
           isSuspended ? t('reactivate.confirm') : t('suspend.confirm')
@@ -251,6 +163,6 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
         isPending={statusMutation.isPending}
         errorMessage={undefined}
       />
-    </main>
+    </>
   );
 }
