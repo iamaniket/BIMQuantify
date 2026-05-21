@@ -189,10 +189,18 @@ async def provision_organization(
                         user_id=admin_user.id,
                         organization_id=org_id,
                         is_org_admin=True,
-                        status=OrganizationMemberStatus.pending,
+                        status=OrganizationMemberStatus.active,
+                        accepted_at=datetime.now(timezone.utc),
                         invited_by=requester.id,
                     )
                 )
+
+                if admin_user.active_organization_id is None:
+                    await s.execute(
+                        update(User)
+                        .where(User.id == admin_user.id)
+                        .values(active_organization_id=org_id)
+                    )
 
                 await s.execute(
                     update(Organization)

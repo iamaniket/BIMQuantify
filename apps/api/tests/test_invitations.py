@@ -209,7 +209,8 @@ def stub_provisioning(monkeypatch: pytest.MonkeyPatch) -> None:
                         user_id=user.id,
                         organization_id=org_id,
                         is_org_admin=True,
-                        status=OrganizationMemberStatus.pending,
+                        status=OrganizationMemberStatus.active,
+                        accepted_at=datetime.now(timezone.utc),
                         invited_by=requester.id,
                     )
                 )
