@@ -751,8 +751,15 @@ async def test_cascade_on_project_delete(
         headers=_auth(org_user["access_token"]),
     )
 
+    from sqlalchemy import text
+
+    from bimstitch_api.tenancy import schema_name_for
+
     project_uuid = uuid.UUID(project["id"])
+    schema = schema_name_for(uuid.UUID(org_user["organization_id"]))
+
     async with session_maker() as s:
+        await s.execute(text(f'SET search_path TO "{schema}", public'))
         # Hard-delete the project row to trigger FK CASCADE (not the soft-delete
         # archive endpoint, which only flips lifecycle_state).
         proj = (await s.execute(select(Project).where(Project.id == project_uuid))).scalar_one()
@@ -760,6 +767,7 @@ async def test_cascade_on_project_delete(
         await s.commit()
 
     async with session_maker() as s:
+        await s.execute(text(f'SET search_path TO "{schema}", public'))
         plans = (
             await s.execute(
                 select(Borgingsplan).where(Borgingsplan.project_id == project_uuid)

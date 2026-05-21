@@ -487,6 +487,7 @@ async def test_report_callback_idempotent_after_terminal(
 
 
 async def test_report_callback_unknown_report_404(
+    org_user: dict[str, str],
     email_transport: object,
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:

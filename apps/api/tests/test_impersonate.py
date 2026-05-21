@@ -260,9 +260,12 @@ async def test_ttl_request_above_ceiling_is_clamped(
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["expires_in"] <= ceiling
-    # Sanity: at least 60s below the upper bound (we're not picking 0).
-    assert body["expires_in"] > 60
+    # create_token_with_jti clamps DOWN to jwt_access_ttl_seconds, so the
+    # effective ceiling is min(impersonation_ttl, access_ttl).
+    effective_ceiling = min(ceiling, settings.jwt_access_ttl_seconds)
+    assert body["expires_in"] <= effective_ceiling
+    # Sanity: we got a positive lifetime, not zero.
+    assert body["expires_in"] > 0
 
 
 async def test_ttl_request_below_floor_is_rejected(

@@ -142,7 +142,11 @@ async def test_callback_unknown_file_returns_404(
     client, _fake = fake_storage_client
     resp = await client.post(
         "/internal/jobs/callback",
-        json={"file_id": str(uuid4()), "status": "succeeded"},
+        json={
+            "file_id": str(uuid4()),
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+        },
         headers=_bearer(),
     )
     assert resp.status_code == 404
@@ -242,7 +246,11 @@ async def test_callback_rejects_invalid_incoming_status(
 
     resp = await client.post(
         "/internal/jobs/callback",
-        json={"file_id": file_id, "status": "queued"},
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "status": "queued",
+        },
         headers=_bearer(),
     )
     assert resp.status_code == 400
@@ -302,7 +310,7 @@ async def test_retry_requeues_failed_extraction(
     # Replace dispatcher with a recording stub so the retry succeeds.
     extraction_calls.clear()
 
-    async def _record(job, _settings) -> None:
+    async def _record(job, _settings, _organization_id=None) -> None:
         payload = dict(job.payload or {})
         entry = {
             "job_id": str(job.id),

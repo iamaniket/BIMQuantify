@@ -347,10 +347,12 @@ async def test_member_suspension_does_not_remove_seat(
     from bimstitch_api.admin.seats import count_consumed_seats
 
     org = await _make_org(session, "SeatHoldCo")
+    admin = await _make_user(session, "seatholdadmin@example.com")
+    await _add_member(session, user=admin, org=org, is_org_admin=True)
     user = await _make_user(session, "held@example.com")
     await _add_member(session, user=user, org=org)
 
-    assert await count_consumed_seats(session, org.id) == 1
+    assert await count_consumed_seats(session, org.id) == 2
 
     resp = await client.patch(
         f"/organizations/{org.id}/members/{user.id}",
@@ -359,5 +361,5 @@ async def test_member_suspension_does_not_remove_seat(
     )
     assert resp.status_code == 200, resp.text
 
-    # Still 1 seat — suspended is not removed.
-    assert await count_consumed_seats(session, org.id) == 1
+    # Still 2 seats — suspended is not removed.
+    assert await count_consumed_seats(session, org.id) == 2
