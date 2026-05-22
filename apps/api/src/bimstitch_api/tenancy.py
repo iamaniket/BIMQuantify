@@ -129,16 +129,14 @@ async def get_tenant_session(
     session_maker = get_session_maker()
     async with session_maker() as session, session.begin():
         await session.execute(text("SET LOCAL ROLE bim_app"))
-        # Tenant tables → org schema; master tables fall through to public.
         await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
-        # Set GUCs for the surviving master-table RLS policies.
+        # Combine the two set_config calls into a single round-trip.
         await session.execute(
-            text("SELECT set_config('app.current_org_id', :org, true)"),
-            {"org": str(organization_id)},
-        )
-        await session.execute(
-            text("SELECT set_config('app.current_user_id', :uid, true)"),
-            {"uid": str(user.id)},
+            text(
+                "SELECT set_config('app.current_org_id', :org, true),"
+                "       set_config('app.current_user_id', :uid, true)"
+            ),
+            {"org": str(organization_id), "uid": str(user.id)},
         )
         yield session
 

@@ -17,6 +17,7 @@ Flow:
         → emits job_started notification
 """
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from uuid import UUID
@@ -332,7 +333,7 @@ async def list_reports(
         )
     ).scalars().all()
 
-    items = [await _to_response(r, storage) for r in rows]
+    items = list(await asyncio.gather(*[_to_response(r, storage) for r in rows]))
     return ReportListResponse(items=items, total=int(total))
 
 

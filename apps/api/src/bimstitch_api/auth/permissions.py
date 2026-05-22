@@ -45,6 +45,7 @@ class Resource(StrEnum):
     risk = "risk"
     assurance_plan = "assurance_plan"
     completion_declaration = "completion_declaration"
+    deadline = "deadline"
     audit_log = "audit_log"
 
 
@@ -65,6 +66,7 @@ _READ_WRITE: frozenset[Action] = frozenset({Action.read, Action.create, Action.u
 _READ_WRITE_DELETE: frozenset[Action] = frozenset(
     {Action.read, Action.create, Action.update, Action.delete}
 )
+_READ_UPDATE: frozenset[Action] = frozenset({Action.read, Action.update})
 _NONE: frozenset[Action] = frozenset()
 
 
@@ -92,6 +94,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.assurance_plan: frozenset(
                     {Action.read, Action.create, Action.update, Action.delete, Action.publish}
                 ),
+                Resource.deadline: _READ_UPDATE,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _READ,
             }
@@ -106,6 +109,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.inspection: _READ_WRITE_DELETE,
                 Resource.finding: _READ_WRITE,
                 Resource.risk: _READ_WRITE_DELETE,
+                Resource.deadline: _READ_UPDATE,
                 Resource.assurance_plan: _READ_WRITE_DELETE,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
@@ -121,6 +125,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.inspection: _READ,
                 Resource.finding: _READ,
                 Resource.risk: _READ,
+                Resource.deadline: _READ,
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
@@ -140,6 +145,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.inspection: _READ_WRITE_DELETE,
                 Resource.finding: frozenset({Action.read, Action.create, Action.update}),
                 Resource.risk: _READ,
+                Resource.deadline: _READ_UPDATE,
                 Resource.assurance_plan: _READ_WRITE,
                 # Sole signing authority — the legal core of the system.
                 Resource.completion_declaration: frozenset(
@@ -160,6 +166,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.invitation: _NONE,
                 Resource.inspection: _READ,
                 Resource.finding: frozenset({Action.read, Action.update}),
+                Resource.deadline: _READ_UPDATE,
                 Resource.risk: _READ,
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,
@@ -177,6 +184,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.invitation: _NONE,
                 Resource.inspection: _READ,
                 Resource.finding: _READ,
+                Resource.deadline: _READ,
                 Resource.risk: _READ,
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,

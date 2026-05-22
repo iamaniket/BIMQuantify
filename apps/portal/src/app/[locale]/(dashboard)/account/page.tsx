@@ -3,10 +3,13 @@
 import {
   Camera,
   Check,
+  ChevronRight,
   Mail,
   Pencil,
+  Shield,
   Trash2,
   UserRound,
+  Users,
   X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -18,8 +21,21 @@ import {
   type JSX,
 } from 'react';
 
-import { Button, Card, CardBody, CardHeader, PageHeader } from '@bimstitch/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@bimstitch/ui';
 
+import { HeroShell } from '@/components/layout/HeroShell';
+import { PageShell } from '@/components/layout/PageShell';
 import { ApiError } from '@/lib/api/client';
 import {
   acceptInvitation,
@@ -45,13 +61,463 @@ function toInitials(nameOrEmail: string): string {
     .join('');
 }
 
+const tabTriggerClass =
+  'relative gap-2 rounded-none bg-transparent px-4 py-3 text-body3 font-medium text-foreground-tertiary shadow-none transition-colors hover:text-foreground-secondary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary';
+
+// ---------------------------------------------------------------------------
+// Hero
+// ---------------------------------------------------------------------------
+
+function AccountHero({
+  userName,
+  email,
+  avatarUrl,
+  orgName,
+  roleLabel,
+  invitationCount,
+}: {
+  userName: string;
+  email: string;
+  avatarUrl: string | null;
+  orgName: string;
+  roleLabel: string;
+  invitationCount: number;
+}): JSX.Element {
+  const t = useTranslations('account.hero');
+
+  return (
+    <HeroShell
+      image={
+        avatarUrl !== null ? (
+          <img
+            src={avatarUrl}
+            alt={userName}
+            className="h-[80px] w-[80px] rounded-xl object-cover shadow-md"
+          />
+        ) : (
+          <div className="flex h-[80px] w-[80px] items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light text-[28px] font-extrabold text-primary-foreground shadow-md">
+            {toInitials(userName)}
+          </div>
+        )
+      }
+      title={userName}
+      badge={
+        <Badge variant="info">
+          <Shield className="mr-1 h-3 w-3" />
+          {t('badge')}
+        </Badge>
+      }
+      subtitle={
+        <span className="flex items-center gap-1.5">
+          <Mail className="h-3 w-3" />
+          {email}
+        </span>
+      }
+      kpis={[
+        {
+          label: t('org'),
+          value: orgName,
+          sub: t('activeOrg'),
+        },
+        {
+          label: t('role'),
+          value: roleLabel,
+          sub: t('currentRole'),
+        },
+        {
+          label: t('invitations'),
+          value: String(invitationCount),
+          sub: t('pending'),
+        },
+      ]}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Profile pane (overview tab)
+// ---------------------------------------------------------------------------
+
+function ProfilePane({
+  userName,
+  email,
+  avatarPresignedUrl,
+  avatarBusy,
+  roleLabel,
+  orgName,
+  isActive,
+  isVerified,
+  memberStatus,
+  seatLimit,
+  seatCountUsed,
+  editingName,
+  nameValue,
+  nameBusy,
+  fileRef,
+  onStartEditName,
+  onNameChange,
+  onSaveName,
+  onCancelEditName,
+  onAvatarPick,
+  onAvatarRemove,
+  hasAvatar,
+  onSwitchTab,
+}: {
+  userName: string;
+  email: string;
+  avatarPresignedUrl: string | null;
+  avatarBusy: boolean;
+  roleLabel: string;
+  orgName: string;
+  isActive: boolean;
+  isVerified: boolean;
+  memberStatus: string | null;
+  seatLimit: number | null;
+  seatCountUsed: number;
+  editingName: boolean;
+  nameValue: string;
+  nameBusy: boolean;
+  fileRef: React.RefObject<HTMLInputElement | null>;
+  onStartEditName: () => void;
+  onNameChange: (v: string) => void;
+  onSaveName: () => void;
+  onCancelEditName: () => void;
+  onAvatarPick: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onAvatarRemove: () => void;
+  hasAvatar: boolean;
+  onSwitchTab: (tab: string) => void;
+}): JSX.Element {
+  const t = useTranslations('account');
+  const tOverview = useTranslations('account.overview');
+
+  return (
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      {/* Left column — personal info */}
+      <div className="flex flex-col gap-5">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <UserRound className="h-4 w-4 text-primary" />
+              <h3 className="text-body2 font-bold">{tOverview('personalInfo')}</h3>
+            </div>
+          </CardHeader>
+          <CardBody className="gap-5 py-5">
+            <div className="flex items-start gap-5">
+              {/* Avatar */}
+              <div className="relative shrink-0">
+                {avatarPresignedUrl !== null ? (
+                  <img
+                    src={avatarPresignedUrl}
+                    alt={userName}
+                    className="h-[72px] w-[72px] rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="grid h-[72px] w-[72px] place-items-center rounded-full bg-primary-light text-lg font-extrabold text-primary">
+                    {toInitials(userName)}
+                  </div>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={onAvatarPick}
+                />
+              </div>
+
+              {/* Info */}
+              <div className="min-w-0 flex-1 space-y-3">
+                {/* Name */}
+                <div>
+                  <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-tertiary">
+                    {t('nameLabel')}
+                  </div>
+                  {editingName ? (
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={nameValue}
+                        onChange={(e) => { onNameChange(e.target.value); }}
+                        placeholder={t('namePlaceholder')}
+                        className="h-8 flex-1 rounded-md border border-border bg-background px-2.5 text-body2 text-foreground outline-none focus:border-primary"
+                      />
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={nameBusy}
+                        onClick={onSaveName}
+                        className="flex items-center gap-1"
+                      >
+                        <Check size={14} aria-hidden />
+                        {t('saveName')}
+                      </Button>
+                      <Button
+                        variant="border"
+                        size="sm"
+                        disabled={nameBusy}
+                        onClick={onCancelEditName}
+                      >
+                        {t('cancelEdit')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <span className="text-body1 font-semibold text-foreground">{userName}</span>
+                      <button
+                        type="button"
+                        onClick={onStartEditName}
+                        className="grid h-6 w-6 place-items-center rounded text-foreground-tertiary hover:bg-background-secondary hover:text-foreground"
+                        title={t('editName')}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-tertiary">
+                    {t('emailLabel')}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-body2 text-foreground">
+                    <Mail size={13} className="text-foreground-tertiary" />
+                    {email}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Avatar actions */}
+            <div className="flex gap-2">
+              <Button
+                variant="border"
+                size="sm"
+                disabled={avatarBusy}
+                onClick={() => { fileRef.current?.click(); }}
+                className="flex items-center gap-1.5"
+              >
+                <Camera size={14} aria-hidden />
+                {hasAvatar ? t('changePhoto') : t('uploadPhoto')}
+              </Button>
+              {hasAvatar && (
+                <Button
+                  variant="border"
+                  size="sm"
+                  disabled={avatarBusy}
+                  onClick={onAvatarRemove}
+                  className="flex items-center gap-1.5 text-error"
+                >
+                  <Trash2 size={14} aria-hidden />
+                  {t('removePhoto')}
+                </Button>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Right column — account details + quick actions */}
+      <div className="flex flex-col gap-5">
+        <Card>
+          <CardHeader>
+            <h3 className="text-body2 font-bold">{tOverview('accountDetails')}</h3>
+          </CardHeader>
+          <CardBody className="space-y-0 p-0">
+            <div className="divide-y divide-border">
+              <div className="flex items-center justify-between px-5 py-2.5">
+                <div className="text-body3 font-medium text-foreground-secondary">{t('roleLabel')}</div>
+                <div className="text-body3 text-foreground">{roleLabel}</div>
+              </div>
+              <div className="flex items-center justify-between px-5 py-2.5">
+                <div className="text-body3 font-medium text-foreground-secondary">{t('orgLabel')}</div>
+                <div className="text-body3 text-foreground">{orgName}</div>
+              </div>
+              <div className="flex items-center justify-between px-5 py-2.5">
+                <div className="text-body3 font-medium text-foreground-secondary">{tOverview('statusLabel')}</div>
+                <Badge variant={isActive ? 'success' : 'warning'}>
+                  {isActive ? tOverview('statusActive') : tOverview('statusInactive')}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between px-5 py-2.5">
+                <div className="text-body3 font-medium text-foreground-secondary">{tOverview('verificationLabel')}</div>
+                <Badge variant={isVerified ? 'success' : 'warning'}>
+                  {isVerified ? tOverview('verified') : tOverview('unverified')}
+                </Badge>
+              </div>
+              {memberStatus !== null && (
+                <div className="flex items-center justify-between px-5 py-2.5">
+                  <div className="text-body3 font-medium text-foreground-secondary">{tOverview('memberStatusLabel')}</div>
+                  <div className="text-body3 capitalize text-foreground">{memberStatus}</div>
+                </div>
+              )}
+              <div className="flex items-center justify-between px-5 py-2.5">
+                <div className="text-body3 font-medium text-foreground-secondary">{tOverview('seatsLabel')}</div>
+                <div className="text-body3 text-foreground">
+                  {seatLimit !== null
+                    ? tOverview('seatsValue', { used: seatCountUsed, limit: seatLimit })
+                    : tOverview('seatsUnlimited')}
+                </div>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h3 className="text-body2 font-bold">{tOverview('quickActionsTitle')}</h3>
+          </CardHeader>
+          <CardBody className="space-y-0.5 p-2">
+            <button
+              type="button"
+              className="grid w-full grid-cols-[32px_1fr_auto] items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:border-primary-light hover:bg-primary-lighter"
+              onClick={onStartEditName}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-lighter text-primary">
+                <Pencil className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-body3 font-semibold">{tOverview('editProfile')}</div>
+                <div className="text-caption text-foreground-tertiary">{tOverview('editProfileSub')}</div>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-foreground-tertiary" />
+            </button>
+            <button
+              type="button"
+              className="grid w-full grid-cols-[32px_1fr_auto] items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:border-primary-light hover:bg-primary-lighter"
+              onClick={() => { onSwitchTab('invitations'); }}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-lighter text-primary">
+                <Users className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-body3 font-semibold">{tOverview('viewInvitations')}</div>
+                <div className="text-caption text-foreground-tertiary">{tOverview('viewInvitationsSub')}</div>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-foreground-tertiary" />
+            </button>
+          </CardBody>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Invitations pane
+// ---------------------------------------------------------------------------
+
+function InvitationsPane({
+  invitations,
+  invitationsLoading,
+  pendingOrgId,
+  invError,
+  onAccept,
+  onDecline,
+}: {
+  invitations: InvitationRead[];
+  invitationsLoading: boolean;
+  pendingOrgId: string | null;
+  invError: string | null;
+  onAccept: (orgId: string) => void;
+  onDecline: (orgId: string) => void;
+}): JSX.Element {
+  const t = useTranslations('account');
+
+  if (invitationsLoading) {
+    return (
+      <div className="py-4 text-center text-body2 text-foreground-tertiary">Loading…</div>
+    );
+  }
+
+  return (
+    <>
+      {invitations.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-background-secondary/60 px-4 py-6 text-center text-body2 text-foreground-tertiary">
+          {t('noInvitations')}
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {invitations.map((inv) => {
+            const isPending = pendingOrgId === inv.organization_id;
+            const expiresAt = new Date(inv.expires_at);
+            const formattedExpiry = Number.isNaN(expiresAt.getTime())
+              ? inv.expires_at
+              : expiresAt.toLocaleDateString();
+
+            return (
+              <li
+                key={inv.organization_id}
+                className="rounded-lg border border-border bg-background px-4 py-3"
+              >
+                <div className="flex flex-col gap-1">
+                  <div className="font-display text-[15px] font-medium text-foreground">
+                    {inv.organization_name}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[12px] text-foreground-tertiary">
+                    <Mail size={12} aria-hidden />
+                    {inv.invited_by_email !== null
+                      ? t('invitedBy', { email: inv.invited_by_email })
+                      : t('invitedByUnknown')}
+                  </div>
+                  <div className="text-[11.5px] text-foreground-tertiary">
+                    {inv.is_org_admin ? t('roleAdmin') : t('roleMember')}
+                    {' · '}
+                    {t('expiresOn', { date: formattedExpiry })}
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => { onAccept(inv.organization_id); }}
+                    className="flex items-center gap-1.5"
+                  >
+                    <Check size={14} aria-hidden />
+                    {isPending ? t('accepting') : t('accept')}
+                  </Button>
+                  <Button
+                    variant="border"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => { onDecline(inv.organization_id); }}
+                    className="flex items-center gap-1.5"
+                  >
+                    <X size={14} aria-hidden />
+                    {isPending ? t('declining') : t('decline')}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {invError !== null && (
+        <div
+          role="alert"
+          className="mt-2 rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
+        >
+          {invError}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function AccountPage(): JSX.Element {
   const t = useTranslations('account');
+  const tPanel = useTranslations('account.panel');
   const { tokens, me, activeMembership, refreshMe } = useAuth();
   const accessToken = tokens?.access_token ?? null;
 
   const user = me?.user;
   const userName = user?.full_name?.trim() || user?.email || 'User';
+  const email = user?.email ?? '—';
   const initials = toInitials(userName);
   const roleLabel = activeMembership?.is_org_admin ? t('roleAdmin') : t('roleMember');
   const orgName = activeMembership?.organization_name ?? '—';
@@ -174,236 +640,126 @@ export default function AccountPage(): JSX.Element {
     }
   };
 
+  // --- Tabs ---
+  const [tab, setTab] = useState('profile');
+
+  if (me === null) {
+    return (
+      <PageShell
+        hero={
+          <div className="relative flex h-full items-center gap-5 bg-surface-main px-5 py-4">
+            <Skeleton className="h-[80px] w-[80px] rounded-xl" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          </div>
+        }
+      >
+        <div className="p-5">
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </PageShell>
+    );
+  }
+
+  const panelHeading = {
+    profile: {
+      eyebrow: tPanel('profileEyebrow'),
+      title: tPanel('profileTitle'),
+    },
+    invitations: {
+      eyebrow: tPanel('invitationsEyebrow'),
+      title: tPanel('invitationsTitle', { count: invitations.length }),
+    },
+  }[tab] ?? { eyebrow: '', title: '' };
+
   return (
-    <main className="w-full overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-      <PageHeader
-        title={t('pageTitle')}
-        subtitle={t('pageSubtitle')}
-        actions={undefined}
-        className="mb-6"
-      />
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        {/* Profile card */}
-        <Card className="border-border/80">
-          <CardHeader className="gap-2 border-b border-border/80 pb-4">
-            <div className="flex items-center gap-2 text-foreground">
-              <UserRound className="h-5 w-5 text-primary" />
-              <h2 className="text-body1 font-semibold">{t('profileTitle')}</h2>
-            </div>
-          </CardHeader>
-          <CardBody className="gap-5 py-5">
-            {/* Avatar + name row */}
-            <div className="flex items-start gap-5">
-              {/* Avatar */}
-              <div className="relative shrink-0">
-                {avatarPresignedUrl ? (
-                  <img
-                    src={avatarPresignedUrl}
-                    alt={userName}
-                    className="h-[72px] w-[72px] rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="grid h-[72px] w-[72px] place-items-center rounded-full bg-primary-light text-lg font-extrabold text-primary">
-                    {initials}
-                  </div>
-                )}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => { void onAvatarPick(e); }}
-                />
-              </div>
-
-              {/* Info */}
-              <div className="min-w-0 flex-1 space-y-3">
-                {/* Name */}
-                <div>
-                  <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-tertiary">
-                    {t('nameLabel')}
-                  </div>
-                  {editingName ? (
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={nameValue}
-                        onChange={(e) => { setNameValue(e.target.value); }}
-                        placeholder={t('namePlaceholder')}
-                        className="h-8 flex-1 rounded-md border border-border bg-background px-2.5 text-body2 text-foreground outline-none focus:border-primary"
-                      />
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        disabled={nameBusy}
-                        onClick={() => { void saveName(); }}
-                        className="flex items-center gap-1"
-                      >
-                        <Check size={14} aria-hidden />
-                        {t('saveName')}
-                      </Button>
-                      <Button
-                        variant="border"
-                        size="sm"
-                        disabled={nameBusy}
-                        onClick={() => { setEditingName(false); }}
-                      >
-                        {t('cancelEdit')}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <span className="text-body1 font-semibold text-foreground">{userName}</span>
-                      <button
-                        type="button"
-                        onClick={startEditName}
-                        className="grid h-6 w-6 place-items-center rounded text-foreground-tertiary hover:bg-background-secondary hover:text-foreground"
-                        title={t('editName')}
-                      >
-                        <Pencil size={13} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Email */}
-                <div>
-                  <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-tertiary">
-                    {t('emailLabel')}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-body2 text-foreground">
-                    <Mail size={13} className="text-foreground-tertiary" />
-                    {user?.email ?? '—'}
-                  </div>
-                </div>
-
-                {/* Role + Org */}
-                <div className="flex gap-6">
-                  <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-tertiary">
-                      {t('roleLabel')}
-                    </div>
-                    <div className="mt-0.5 text-body2 text-foreground">{roleLabel}</div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-tertiary">
-                      {t('orgLabel')}
-                    </div>
-                    <div className="mt-0.5 text-body2 text-foreground">{orgName}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Avatar actions */}
-            <div className="flex gap-2">
-              <Button
-                variant="border"
-                size="sm"
-                disabled={avatarBusy}
-                onClick={() => { fileRef.current?.click(); }}
-                className="flex items-center gap-1.5"
-              >
-                <Camera size={14} aria-hidden />
-                {user?.avatar_url ? t('changePhoto') : t('uploadPhoto')}
-              </Button>
-              {user?.avatar_url ? (
-                <Button
-                  variant="border"
-                  size="sm"
-                  disabled={avatarBusy}
-                  onClick={() => { void onAvatarRemove(); }}
-                  className="flex items-center gap-1.5 text-error"
-                >
-                  <Trash2 size={14} aria-hidden />
-                  {t('removePhoto')}
-                </Button>
-              ) : null}
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Invitations card */}
-        <Card className="border-border/80">
-          <CardHeader className="gap-2 border-b border-border/80 pb-4">
-            <h2 className="text-body1 font-semibold text-foreground">{t('invitationsTitle')}</h2>
-          </CardHeader>
-          <CardBody className="gap-3 py-5">
-            {invitationsLoading ? (
-              <div className="py-4 text-center text-body2 text-foreground-tertiary">Loading…</div>
-            ) : invitations.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-background-secondary/60 px-4 py-6 text-center text-body2 text-foreground-tertiary">
-                {t('noInvitations')}
-              </div>
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {invitations.map((inv) => {
-                  const isPending = pendingOrgId === inv.organization_id;
-                  const expiresAt = new Date(inv.expires_at);
-                  const formattedExpiry = Number.isNaN(expiresAt.getTime())
-                    ? inv.expires_at
-                    : expiresAt.toLocaleDateString();
-
-                  return (
-                    <li
-                      key={inv.organization_id}
-                      className="rounded-lg border border-border bg-background px-4 py-3"
-                    >
-                      <div className="flex flex-col gap-1">
-                        <div className="font-display text-[15px] font-medium text-foreground">
-                          {inv.organization_name}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[12px] text-foreground-tertiary">
-                          <Mail size={12} aria-hidden />
-                          {inv.invited_by_email !== null
-                            ? t('invitedBy', { email: inv.invited_by_email })
-                            : t('invitedByUnknown')}
-                        </div>
-                        <div className="text-[11.5px] text-foreground-tertiary">
-                          {inv.is_org_admin ? t('roleAdmin') : t('roleMember')}
-                          {' · '}
-                          {t('expiresOn', { date: formattedExpiry })}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          disabled={isPending}
-                          onClick={() => { void onAccept(inv.organization_id); }}
-                          className="flex items-center gap-1.5"
-                        >
-                          <Check size={14} aria-hidden />
-                          {isPending ? t('accepting') : t('accept')}
-                        </Button>
-                        <Button
-                          variant="border"
-                          size="sm"
-                          disabled={isPending}
-                          onClick={() => { void onDecline(inv.organization_id); }}
-                          className="flex items-center gap-1.5"
-                        >
-                          <X size={14} aria-hidden />
-                          {isPending ? t('declining') : t('decline')}
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+    <PageShell
+      hero={
+        <AccountHero
+          userName={userName}
+          email={email}
+          avatarUrl={avatarPresignedUrl}
+          orgName={orgName}
+          roleLabel={roleLabel}
+          invitationCount={me.pending_invitations_count}
+        />
+      }
+    >
+      <Tabs
+        value={tab}
+        onValueChange={setTab}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      >
+        <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
+          <TabsTrigger value="profile" className={tabTriggerClass}>
+            <UserRound className="h-3.5 w-3.5" />
+            {t('tabs.profile')}
+          </TabsTrigger>
+          <TabsTrigger value="invitations" className={tabTriggerClass}>
+            <Mail className="h-3.5 w-3.5" />
+            {t('tabs.invitations')}
+            {invitations.length > 0 && (
+              <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
+                {invitations.length}
+              </span>
             )}
-            {invError !== null && (
-              <div
-                role="alert"
-                className="mt-2 rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
-              >
-                {invError}
-              </div>
-            )}
-          </CardBody>
-        </Card>
-      </div>
-    </main>
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="flex shrink-0 items-center gap-4 border-b border-border px-5 py-2.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-3">
+            <div className="text-caption font-bold uppercase tracking-widest text-foreground-tertiary after:ml-2 after:opacity-50 after:content-['·']">
+              {panelHeading.eyebrow}
+            </div>
+            <div className="flex flex-wrap items-baseline gap-2.5">
+              <h2 className="text-body2 font-bold">{panelHeading.title}</h2>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <TabsContent value="profile" className="mt-0">
+            <ProfilePane
+              userName={userName}
+              email={email}
+              avatarPresignedUrl={avatarPresignedUrl}
+              avatarBusy={avatarBusy}
+              roleLabel={roleLabel}
+              orgName={orgName}
+              isActive={user?.is_active ?? true}
+              isVerified={user?.is_verified ?? false}
+              memberStatus={activeMembership?.member_status ?? null}
+              seatLimit={activeMembership?.seat_limit ?? null}
+              seatCountUsed={activeMembership?.seat_count_used ?? 0}
+              editingName={editingName}
+              nameValue={nameValue}
+              nameBusy={nameBusy}
+              fileRef={fileRef}
+              onStartEditName={startEditName}
+              onNameChange={setNameValue}
+              onSaveName={() => { void saveName(); }}
+              onCancelEditName={() => { setEditingName(false); }}
+              onAvatarPick={(e) => { void onAvatarPick(e); }}
+              onAvatarRemove={() => { void onAvatarRemove(); }}
+              hasAvatar={Boolean(user?.avatar_url)}
+              onSwitchTab={setTab}
+            />
+          </TabsContent>
+
+          <TabsContent value="invitations" className="mt-0">
+            <InvitationsPane
+              invitations={invitations}
+              invitationsLoading={invitationsLoading}
+              pendingOrgId={pendingOrgId}
+              invError={invError}
+              onAccept={(orgId) => { void onAccept(orgId); }}
+              onDecline={(orgId) => { void onDecline(orgId); }}
+            />
+          </TabsContent>
+        </div>
+      </Tabs>
+    </PageShell>
   );
 }

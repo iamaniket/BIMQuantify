@@ -167,6 +167,46 @@
       "declineFailed": "Could not decline this invitation.",
       "avatarFailed": "Could not upload photo.",
       "nameFailed": "Could not update name."
+    },
+    "hero": {
+      "badge": "Personal Account",
+      "subtitle": "Manage your profile and account settings",
+      "org": "Organization",
+      "role": "Role",
+      "invitations": "Invitations",
+      "pending": "pending",
+      "noOrg": "None",
+      "currentRole": "Current role",
+      "activeOrg": "Active org"
+    },
+    "tabs": {
+      "profile": "Profile",
+      "invitations": "Invitations"
+    },
+    "panel": {
+      "profileEyebrow": "Profile",
+      "profileTitle": "Personal Information",
+      "invitationsEyebrow": "Invitations",
+      "invitationsTitle": "{count, plural, =0 {No pending invitations} one {# pending invitation} other {# pending invitations}}"
+    },
+    "overview": {
+      "personalInfo": "Personal Information",
+      "accountDetails": "Account Details",
+      "quickActionsTitle": "Quick Actions",
+      "editProfile": "Edit profile",
+      "editProfileSub": "Update your name or photo",
+      "viewInvitations": "View invitations",
+      "viewInvitationsSub": "Review pending team invitations",
+      "statusLabel": "Status",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "verificationLabel": "Email verification",
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "memberStatusLabel": "Membership",
+      "seatsLabel": "Org seats",
+      "seatsValue": "{used} of {limit} used",
+      "seatsUnlimited": "Unlimited"
     }
   },
   "projects": {

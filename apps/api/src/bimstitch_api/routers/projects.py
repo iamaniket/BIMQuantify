@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -412,6 +413,10 @@ async def create_project(
 
     await _seed_project_members(session, project.id, user.id, active_org_id)
     await session.flush()
+
+    from bimstitch_api.deadlines.compute import recompute_deadlines
+    await recompute_deadlines(session, project)
+
     await session.refresh(project)
     return await _project_to_read(project, storage)
 
@@ -478,6 +483,10 @@ async def create_project_with_thumbnail(
 
     await _seed_project_members(session, project.id, user.id, active_org_id)
     await session.flush()
+
+    from bimstitch_api.deadlines.compute import recompute_deadlines
+    await recompute_deadlines(session, project)
+
     await session.refresh(project)
     return await _project_to_read(project, storage)
 
@@ -509,7 +518,7 @@ async def list_projects(
     result = await session.execute(stmt)
     projects = list(result.scalars().all())
     cache_response(response, CACHE_TTL_PROJECT_LIST)
-    return [await _project_to_read(p, storage) for p in projects]
+    return list(await asyncio.gather(*[_project_to_read(p, storage) for p in projects]))
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
@@ -557,6 +566,11 @@ async def update_project(
         await _validate_contractor_exists(session, updates["contractor_id"])
     for field, value in updates.items():
         setattr(project, field, value)
+
+    if {"planned_start_date", "delivery_date", "country"} & updates.keys():
+        from bimstitch_api.deadlines.compute import recompute_deadlines
+        await recompute_deadlines(session, project)
+
     try:
         await session.flush()
     except IntegrityError as exc:

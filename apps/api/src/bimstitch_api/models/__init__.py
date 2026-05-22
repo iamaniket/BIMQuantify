@@ -16,6 +16,7 @@ from bimstitch_api.models.checklist_item_result import (
     InspectionVerdict,
 )
 from bimstitch_api.models.contractor import Contractor
+from bimstitch_api.models.deadline import Deadline, DeadlineStatus
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.notification import (
@@ -60,6 +61,8 @@ __all__ = [
     "ChecklistItemResult",
     "ChecklistItemType",
     "Contractor",
+    "Deadline",
+    "DeadlineStatus",
     "EvidenceType",
     "ExtractionStatus",
     "IfcSchema",

@@ -23,10 +23,45 @@ from __future__ import annotations
 from bimstitch_api.jurisdictions import (
     BorgingsmomentTemplate,
     ChecklistItemTemplate,
+    DeadlineRule,
     Instrument,
     Jurisdiction,
     RiskTemplate,
     register,
+)
+
+# Wkb notification deadlines. Three formal meldingen required per project.
+# Bouwmelding: 4 weeks (28 calendar days) before planned start.
+# Informatieplicht: 2 working days before planned start.
+# Gereedmelding: 10 working days after delivery.
+NL_DEADLINE_RULES: tuple[DeadlineRule, ...] = (
+    DeadlineRule(
+        deadline_type="bouwmelding",
+        label={"nl": "Bouwmelding", "en": "Construction notification"},
+        source_field="planned_start_date",
+        offset_days=28,
+        use_working_days=False,
+        direction="before",
+        legal_reference="Wkb art. 2.21",
+    ),
+    DeadlineRule(
+        deadline_type="informatieplicht",
+        label={"nl": "Informatieplicht", "en": "Information obligation"},
+        source_field="planned_start_date",
+        offset_days=2,
+        use_working_days=True,
+        direction="before",
+        legal_reference="Wkb art. 2.21",
+    ),
+    DeadlineRule(
+        deadline_type="gereedmelding",
+        label={"nl": "Gereedmelding", "en": "Completion notification"},
+        source_field="delivery_date",
+        offset_days=10,
+        use_working_days=True,
+        direction="after",
+        legal_reference="Wkb art. 2.21",
+    ),
 )
 
 # Bbl seed risks for a Gk1 (woning) project. Hand-curated; update on Bbl
@@ -915,6 +950,7 @@ NL = Jurisdiction(
     borgingsmoment_phase_labels=NL_PHASE_LABELS,
     borgingsmoment_templates=NL_BORGINGSMOMENT_TEMPLATES,
     risk_category_to_phases=NL_RISK_CATEGORY_TO_PHASES,
+    deadline_rules=NL_DEADLINE_RULES,
 )
 
 register(NL)

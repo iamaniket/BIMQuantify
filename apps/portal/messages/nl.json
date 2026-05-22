@@ -167,6 +167,46 @@
       "declineFailed": "Kan uitnodiging niet weigeren.",
       "avatarFailed": "Kan foto niet uploaden.",
       "nameFailed": "Kan naam niet bijwerken."
+    },
+    "hero": {
+      "badge": "Persoonlijk Account",
+      "subtitle": "Beheer je profiel en accountinstellingen",
+      "org": "Organisatie",
+      "role": "Rol",
+      "invitations": "Uitnodigingen",
+      "pending": "openstaand",
+      "noOrg": "Geen",
+      "currentRole": "Huidige rol",
+      "activeOrg": "Actieve org"
+    },
+    "tabs": {
+      "profile": "Profiel",
+      "invitations": "Uitnodigingen"
+    },
+    "panel": {
+      "profileEyebrow": "Profiel",
+      "profileTitle": "Persoonlijke Gegevens",
+      "invitationsEyebrow": "Uitnodigingen",
+      "invitationsTitle": "{count, plural, =0 {Geen openstaande uitnodigingen} one {# openstaande uitnodiging} other {# openstaande uitnodigingen}}"
+    },
+    "overview": {
+      "personalInfo": "Persoonlijke Gegevens",
+      "accountDetails": "Accountgegevens",
+      "quickActionsTitle": "Snelle Acties",
+      "editProfile": "Profiel bewerken",
+      "editProfileSub": "Naam of foto bijwerken",
+      "viewInvitations": "Uitnodigingen bekijken",
+      "viewInvitationsSub": "Openstaande teamuitnodigingen bekijken",
+      "statusLabel": "Status",
+      "statusActive": "Actief",
+      "statusInactive": "Inactief",
+      "verificationLabel": "E-mailverificatie",
+      "verified": "Geverifieerd",
+      "unverified": "Niet geverifieerd",
+      "memberStatusLabel": "Lidmaatschap",
+      "seatsLabel": "Org-seats",
+      "seatsValue": "{used} van {limit} gebruikt",
+      "seatsUnlimited": "Onbeperkt"
     }
   },
   "projects": {

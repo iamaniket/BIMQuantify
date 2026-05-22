@@ -7,16 +7,13 @@ exercised by the test suite directly.
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import aioboto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
     from bimstitch_api.config import Settings
 
 
@@ -56,122 +53,139 @@ class S3Storage:
         self._bucket = settings.s3_bucket_ifc
         self._ttl = settings.s3_presign_ttl_seconds
         self._cors_origins = settings.cors_origin_list
+        self._client_ctx: Any = None
+        self._s3: Any = None
 
     @property
     def presign_ttl(self) -> int:
         return self._ttl
 
-    @asynccontextmanager
-    async def _client(self) -> AsyncIterator[object]:
-        async with self._session.client(
-            "s3",
-            endpoint_url=self._endpoint,
-            region_name=self._region,
-            aws_access_key_id=self._access,
-            aws_secret_access_key=self._secret,
-            config=Config(
-                signature_version="s3v4",
-                connect_timeout=5,
-                read_timeout=10,
-                retries={"max_attempts": 2, "mode": "standard"},
-            ),
-        ) as client:
-            yield client
+    def _client_config(self) -> Config:
+        return Config(
+            signature_version="s3v4",
+            connect_timeout=5,
+            read_timeout=10,
+            retries={"max_attempts": 2, "mode": "standard"},
+            max_pool_connections=15,
+        )
+
+    async def _get_client(self) -> Any:
+        if self._s3 is None:
+            self._client_ctx = self._session.client(
+                "s3",
+                endpoint_url=self._endpoint,
+                region_name=self._region,
+                aws_access_key_id=self._access,
+                aws_secret_access_key=self._secret,
+                config=self._client_config(),
+            )
+            self._s3 = await self._client_ctx.__aenter__()
+        return self._s3
+
+    async def close(self) -> None:
+        if self._client_ctx is not None:
+            try:
+                await self._client_ctx.__aexit__(None, None, None)
+            except Exception:
+                logger.warning("Error closing S3 client", exc_info=True)
+            finally:
+                self._s3 = None
+                self._client_ctx = None
 
     async def presigned_put_url(self, key: str, content_type: str, content_length: int) -> str:
-        async with self._client() as client:
-            url: str = await client.generate_presigned_url(  # type: ignore[attr-defined]
-                "put_object",
-                Params={
-                    "Bucket": self._bucket,
-                    "Key": key,
-                    "ContentType": content_type,
-                    "ContentLength": content_length,
-                },
-                ExpiresIn=self._ttl,
-            )
-            return url
+        client = await self._get_client()
+        url: str = await client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": self._bucket,
+                "Key": key,
+                "ContentType": content_type,
+                "ContentLength": content_length,
+            },
+            ExpiresIn=self._ttl,
+        )
+        return url
 
     async def presigned_get_url(self, key: str, filename: str) -> str:
-        async with self._client() as client:
-            url: str = await client.generate_presigned_url(  # type: ignore[attr-defined]
-                "get_object",
-                Params={
-                    "Bucket": self._bucket,
-                    "Key": key,
-                    "ResponseContentDisposition": f'attachment; filename="{filename}"',
-                },
-                ExpiresIn=self._ttl,
-            )
-            return url
+        client = await self._get_client()
+        url: str = await client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self._bucket,
+                "Key": key,
+                "ResponseContentDisposition": f'attachment; filename="{filename}"',
+            },
+            ExpiresIn=self._ttl,
+        )
+        return url
 
     async def put_object(self, key: str, content_type: str, data: bytes) -> None:
-        async with self._client() as client:
-            await client.put_object(  # type: ignore[attr-defined]
-                Bucket=self._bucket,
-                Key=key,
-                Body=data,
-                ContentType=content_type,
-            )
+        client = await self._get_client()
+        await client.put_object(
+            Bucket=self._bucket,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+        )
 
     async def head_object(self, key: str) -> dict[str, object]:
-        async with self._client() as client:
-            try:
-                response: dict[str, object] = await client.head_object(  # type: ignore[attr-defined]
-                    Bucket=self._bucket, Key=key
-                )
-                return response
-            except ClientError as exc:
-                code = exc.response.get("Error", {}).get("Code", "")
-                if code in {"404", "NoSuchKey", "NotFound"}:
-                    raise ObjectNotFoundError(key) from exc
-                raise
+        client = await self._get_client()
+        try:
+            response: dict[str, object] = await client.head_object(
+                Bucket=self._bucket, Key=key
+            )
+            return response
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "")
+            if code in {"404", "NoSuchKey", "NotFound"}:
+                raise ObjectNotFoundError(key) from exc
+            raise
 
     async def get_object_range(self, key: str, start: int, end: int) -> bytes:
-        async with self._client() as client:
-            response = await client.get_object(  # type: ignore[attr-defined]
-                Bucket=self._bucket, Key=key, Range=f"bytes={start}-{end}"
-            )
-            body = response["Body"]
-            data: bytes = await body.read()
-            return data
+        client = await self._get_client()
+        response = await client.get_object(
+            Bucket=self._bucket, Key=key, Range=f"bytes={start}-{end}"
+        )
+        body = response["Body"]
+        data: bytes = await body.read()
+        return data
 
     async def delete_object(self, key: str) -> None:
-        async with self._client() as client:
-            await client.delete_object(Bucket=self._bucket, Key=key)  # type: ignore[attr-defined]
+        client = await self._get_client()
+        await client.delete_object(Bucket=self._bucket, Key=key)
 
     async def ensure_bucket(self) -> None:
-        async with self._client() as client:
-            try:
-                await client.head_bucket(Bucket=self._bucket)  # type: ignore[attr-defined]
-            except ClientError as exc:
-                code = exc.response.get("Error", {}).get("Code", "")
-                if code in {"404", "NoSuchBucket", "NotFound"}:
-                    await client.create_bucket(Bucket=self._bucket)  # type: ignore[attr-defined]
-                else:
-                    raise
+        client = await self._get_client()
+        try:
+            await client.head_bucket(Bucket=self._bucket)
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "")
+            if code in {"404", "NoSuchBucket", "NotFound"}:
+                await client.create_bucket(Bucket=self._bucket)
+            else:
+                raise
 
-            cors_config = {
-                "CORSRules": [
-                    {
-                        "AllowedOrigins": self._cors_origins or ["*"],
-                        "AllowedMethods": ["PUT", "GET", "HEAD"],
-                        "AllowedHeaders": ["*"],
-                        "ExposeHeaders": ["ETag"],
-                        "MaxAgeSeconds": 3000,
-                    }
-                ]
-            }
-            try:
-                await client.put_bucket_cors(  # type: ignore[attr-defined]
-                    Bucket=self._bucket, CORSConfiguration=cors_config
+        cors_config = {
+            "CORSRules": [
+                {
+                    "AllowedOrigins": self._cors_origins or ["*"],
+                    "AllowedMethods": ["PUT", "GET", "HEAD"],
+                    "AllowedHeaders": ["*"],
+                    "ExposeHeaders": ["ETag"],
+                    "MaxAgeSeconds": 3000,
+                }
+            ]
+        }
+        try:
+            await client.put_bucket_cors(
+                Bucket=self._bucket, CORSConfiguration=cors_config
+            )
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "")
+            if code == "NotImplemented":
+                logger.warning(
+                    "put_bucket_cors is not supported by this storage backend; "
+                    "configure CORS on the storage server directly"
                 )
-            except ClientError as exc:
-                code = exc.response.get("Error", {}).get("Code", "")
-                if code == "NotImplemented":
-                    logger.warning(
-                        "put_bucket_cors is not supported by this storage backend; "
-                        "configure CORS on the storage server directly"
-                    )
-                else:
-                    raise
+            else:
+                raise

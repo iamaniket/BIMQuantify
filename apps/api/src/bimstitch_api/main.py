@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi_limiter import FastAPILimiter
 
 from bimstitch_api.admin.invitation_expiry import InvitationExpirySweeper
@@ -11,6 +12,7 @@ from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.auth.tokens import TokenError, decode_token_full
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
+from bimstitch_api.jobs.dispatcher import close_http_client
 from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.observability import init_sentry
 from bimstitch_api.routers.access_requests import router as access_requests_router
@@ -29,6 +31,7 @@ from bimstitch_api.routers.compliance import (
     router as compliance_router,
 )
 from bimstitch_api.routers.contractors import router as contractors_router
+from bimstitch_api.routers.deadlines import router as deadlines_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.inspection import router as inspection_router
 from bimstitch_api.routers.jobs import router as jobs_router
@@ -72,6 +75,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        storage = get_storage()
+        if hasattr(storage, "close"):
+            await storage.close()
+        await close_http_client()
         await sweeper.stop()
         await manager.stop()
         await FastAPILimiter.close()
@@ -97,8 +104,10 @@ async def _impersonator_middleware(
             decoded = decode_token_full(token, "access")
         except TokenError:
             decoded = None
-        if decoded is not None and decoded.impersonator_user_id is not None:
-            request.state.impersonator_user_id = decoded.impersonator_user_id
+        if decoded is not None:
+            request.state.decoded_token = decoded
+            if decoded.impersonator_user_id is not None:
+                request.state.impersonator_user_id = decoded.impersonator_user_id
     return await call_next(request)
 
 
@@ -108,6 +117,8 @@ def create_app() -> FastAPI:
     app = FastAPI(title="BIMstitch API", version="0.0.1", lifespan=lifespan)
 
     app.middleware("http")(_impersonator_middleware)
+
+    app.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=5)
 
     app.add_middleware(
         CORSMiddleware,
@@ -137,6 +148,7 @@ def create_app() -> FastAPI:
     app.include_router(jobs_internal_router)
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
+    app.include_router(deadlines_router)
     app.include_router(risks_router)
     app.include_router(borgingsplan_plan_router)
     app.include_router(borgingsplan_moment_router)

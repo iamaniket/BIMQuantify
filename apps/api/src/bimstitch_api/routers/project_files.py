@@ -9,6 +9,7 @@ upload is a new version of its model; `version_number` is assigned at
 `initiate` time as `MAX(version_number) + 1` per model.
 """
 
+import asyncio
 import logging
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
@@ -19,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.ifc.header import parse_ifc_header
 from bimstitch_api.jobs import (
@@ -38,7 +40,6 @@ from bimstitch_api.models.project_file import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.models import _load_model_or_404
-from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
@@ -533,17 +534,26 @@ async def get_viewer_bundle(
     if row.extraction_status is not ExtractionStatus.succeeded or row.fragments_storage_key is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VIEWER_BUNDLE_NOT_READY")
 
-    fragments_url = await storage.presigned_get_url(
-        row.fragments_storage_key, f"{row.original_filename}.frag"
-    )
+    coros: list[object] = [
+        storage.presigned_get_url(row.fragments_storage_key, f"{row.original_filename}.frag"),
+    ]
+    has_metadata = row.metadata_storage_key is not None
+    has_properties = row.properties_storage_key is not None
+    if has_metadata:
+        coros.append(storage.presigned_get_url(row.metadata_storage_key, "metadata.json"))
+    if has_properties:
+        coros.append(storage.presigned_get_url(row.properties_storage_key, "properties.json"))
+
+    urls = await asyncio.gather(*coros)
+    fragments_url = urls[0]
+    idx = 1
     metadata_url: str | None = None
-    if row.metadata_storage_key is not None:
-        metadata_url = await storage.presigned_get_url(row.metadata_storage_key, "metadata.json")
+    if has_metadata:
+        metadata_url = urls[idx]
+        idx += 1
     properties_url: str | None = None
-    if row.properties_storage_key is not None:
-        properties_url = await storage.presigned_get_url(
-            row.properties_storage_key, "properties.json"
-        )
+    if has_properties:
+        properties_url = urls[idx]
 
     return ViewerBundleResponse(
         file_type=row.file_type,

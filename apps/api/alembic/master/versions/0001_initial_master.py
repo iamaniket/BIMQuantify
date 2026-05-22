@@ -35,7 +35,9 @@ def upgrade() -> None:
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
+        ChecklistItemResult,
         Contractor,
+        Deadline,
         Job,
         Model,
         Notification,
@@ -54,8 +56,6 @@ def upgrade() -> None:
     master_tables = [t for t in Base.metadata.tables.values() if is_master_table(t)]
     Base.metadata.create_all(bind, tables=master_tables)
 
-    # bim_app role + per-table grants on master tables. Tenant schemas get
-    # their own grants from the provisioning saga.
     for stmt in create_app_role_statements():
         op.execute(stmt)
     for stmt in enable_rls_statements():
@@ -71,7 +71,9 @@ def downgrade() -> None:
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
+        ChecklistItemResult,
         Contractor,
+        Deadline,
         Job,
         Model,
         Notification,

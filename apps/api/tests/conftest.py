@@ -58,6 +58,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         ChecklistItem,
         ChecklistItemResult,
         Contractor,
+        Deadline,
         Job,
         Model,
         Notification,
@@ -126,6 +127,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS organizationstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS notificationeventtype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS inspectionverdict")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS deadlinestatus")
         await conn.run_sync(Base.metadata.create_all)
         # Partial unique index for "one active borgingsplan per project" — not
         # expressible in __table_args__, so mirror the migration here.
@@ -190,6 +192,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS organizationstatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS notificationeventtype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS inspectionverdict")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS deadlinestatus")
     await eng.dispose()
 
 
@@ -257,7 +260,7 @@ async def _clean_tables(
                 await session.execute(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
-                        "borgingsmomenten, borgingsplans, "
+                        "borgingsmomenten, borgingsplans, deadlines, "
                         "risks, access_requests, reports, jobs, project_files, models, "
                         "project_members, projects, contractors, notification_reads, "
                         "notifications, audit_log, organization_members, users, "

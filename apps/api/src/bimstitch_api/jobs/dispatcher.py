@@ -45,6 +45,25 @@ JobDispatcher = Callable[[Job, Settings, UUID], Awaitable[None]]
 
 _RETRY_DELAYS = (0.5, 1.0, 2.0)
 
+_http_client: httpx.AsyncClient | None = None
+
+
+def _get_http_client(timeout: httpx.Timeout) -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            timeout=timeout,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return _http_client
+
+
+async def close_http_client() -> None:
+    global _http_client
+    if _http_client is not None:
+        await _http_client.aclose()
+        _http_client = None
+
 
 async def _http_dispatch(job: Job, settings: Settings, organization_id: UUID) -> None:
     body = {
@@ -55,16 +74,16 @@ async def _http_dispatch(job: Job, settings: Settings, organization_id: UUID) ->
     }
     headers = {"Authorization": f"Bearer {settings.processor_shared_secret}"}
     timeout = httpx.Timeout(settings.processor_dispatch_timeout_seconds)
+    client = _get_http_client(timeout)
 
     last_err: Exception | None = None
     for attempt in range(len(_RETRY_DELAYS) + 1):
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.post(
-                    f"{settings.processor_url.rstrip('/')}/jobs",
-                    json=body,
-                    headers=headers,
-                )
+            response = await client.post(
+                f"{settings.processor_url.rstrip('/')}/jobs",
+                json=body,
+                headers=headers,
+            )
             if response.status_code >= 500 and attempt < len(_RETRY_DELAYS):
                 logger.warning(
                     "Processor returned %d on attempt %d, retrying",

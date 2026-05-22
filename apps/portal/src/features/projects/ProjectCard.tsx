@@ -236,9 +236,9 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                     <span
                       key={member.user_id}
                       title={displayMemberName(member)}
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full border text-[9px] font-semibold ${isLead
+                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full border-2 text-[9px] font-semibold ${isLead
                         ? 'border-amber-300 bg-amber-100 text-amber-900 shadow-sm shadow-amber-700/15'
-                        : 'border-primary-dark/30 bg-primary-dark/80 text-primary-foreground'
+                        : 'border-white bg-primary-light text-primary'
                       }`}
                     >
                       {toInitials(displayMemberName(member))}
@@ -246,7 +246,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                   );
                 })}
                 {remainingMembers > 0 && (
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary-dark/30 bg-primary-dark/70 text-[9px] font-semibold text-primary-foreground/90">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-primary-light text-[9px] font-semibold text-primary">
                     +{remainingMembers}
                   </span>
                 )}

@@ -32,6 +32,7 @@ from bimstitch_api.models import (  # noqa: F401
     ChecklistItem,
     ChecklistItemResult,
     Contractor,
+    Deadline,
     Job,
     Model,
     Notification,

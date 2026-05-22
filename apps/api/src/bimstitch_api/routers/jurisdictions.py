@@ -12,9 +12,10 @@ string lookup so portal Zod schemas don't need to know about locales.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel
 
+from bimstitch_api.cache import CACHE_TTL_JURISDICTIONS, cache_response
 from bimstitch_api.jurisdictions import (
     all_jurisdictions,
     localize_map,
@@ -54,6 +55,16 @@ class BorgingsmomentTemplateResponse(BaseModel):
     checklist: list[ChecklistItemTemplateResponse]
 
 
+class DeadlineRuleResponse(BaseModel):
+    deadline_type: str
+    label: str
+    source_field: str
+    offset_days: int
+    use_working_days: bool
+    direction: str
+    legal_reference: str | None
+
+
 class JurisdictionResponse(BaseModel):
     country: str
     name: str
@@ -73,6 +84,7 @@ class JurisdictionResponse(BaseModel):
     risk_templates: dict[str, list[RiskTemplateResponse]]
     borgingsmoment_phase_labels: dict[str, str]
     borgingsmoment_templates: list[BorgingsmomentTemplateResponse]
+    deadline_rules: list[DeadlineRuleResponse]
     risk_category_to_phases: dict[str, list[str]]
 
 
@@ -82,6 +94,7 @@ class JurisdictionListResponse(BaseModel):
 
 @router.get("", response_model=JurisdictionListResponse)
 async def list_jurisdictions(
+    response: Response,
     locale: str = Query(
         "nl",
         description=(
@@ -92,6 +105,7 @@ async def list_jurisdictions(
         max_length=10,
     ),
 ) -> JurisdictionListResponse:
+    cache_response(response, CACHE_TTL_JURISDICTIONS, is_public=True)
     items: list[JurisdictionResponse] = []
     for j in all_jurisdictions():
         default = j.default_locale
@@ -167,6 +181,18 @@ async def list_jurisdictions(
                         ],
                     )
                     for mt in j.borgingsmoment_templates
+                ],
+                deadline_rules=[
+                    DeadlineRuleResponse(
+                        deadline_type=r.deadline_type,
+                        label=pick_label(r.label, locale, default),
+                        source_field=r.source_field,
+                        offset_days=r.offset_days,
+                        use_working_days=r.use_working_days,
+                        direction=r.direction,
+                        legal_reference=r.legal_reference,
+                    )
+                    for r in j.deadline_rules
                 ],
                 risk_category_to_phases={
                     category: list(phases)

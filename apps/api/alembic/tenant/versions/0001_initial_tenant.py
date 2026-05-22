@@ -40,7 +40,9 @@ def upgrade() -> None:
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
+        ChecklistItemResult,
         Contractor,
+        Deadline,
         Job,
         Model,
         Notification,
@@ -56,10 +58,6 @@ def upgrade() -> None:
     )
 
     bind = op.get_bind()
-    # search_path was set by env.py before this migration runs, so unqualified
-    # table names land in the target tenant schema. We still filter to the
-    # tenant-side subset of metadata so we don't accidentally try to create
-    # the master tables here.
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
     Base.metadata.create_all(bind, tables=tenant_tables)
 
@@ -83,7 +81,9 @@ def downgrade() -> None:
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
+        ChecklistItemResult,
         Contractor,
+        Deadline,
         Job,
         Model,
         Notification,
@@ -103,7 +103,6 @@ def downgrade() -> None:
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_borgingsplans_one_active'))
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
     Base.metadata.drop_all(bind, tables=tenant_tables)
-    # Tenant-schema-local enum types
     for enum in (
         "borgingsmomentphase",
         "borgingsmomentstatus",
@@ -129,5 +128,7 @@ def downgrade() -> None:
         "risklevel",
         "buildingtype",
         "consequenceclass",
+        "deadlinestatus",
+        "inspectionverdict",
     ):
         bind.execute(text(f'DROP TYPE IF EXISTS "{schema}".{enum}'))

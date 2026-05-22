@@ -35,6 +35,7 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/jwt/login", auto_error=Fals
 
 
 async def get_active_organization_id(
+    request: Request,
     token: str | None = Depends(_oauth2_scheme),
     x_active_organization_override: str | None = Header(default=None),
 ) -> UUID | None:
@@ -54,10 +55,12 @@ async def get_active_organization_id(
     """
     if token is None:
         return None
-    try:
-        decoded = decode_token_full(token, "access")
-    except TokenError:
-        return None
+    decoded = getattr(request.state, "decoded_token", None)
+    if decoded is None:
+        try:
+            decoded = decode_token_full(token, "access")
+        except TokenError:
+            return None
     return decoded.active_organization_id
 
 
@@ -79,10 +82,12 @@ async def get_impersonator_user_id(
     """
     if token is None:
         return None
-    try:
-        decoded = decode_token_full(token, "access")
-    except TokenError:
-        return None
+    decoded = getattr(request.state, "decoded_token", None)
+    if decoded is None:
+        try:
+            decoded = decode_token_full(token, "access")
+        except TokenError:
+            return None
     if decoded.impersonator_user_id is not None:
         request.state.impersonator_user_id = decoded.impersonator_user_id
     return decoded.impersonator_user_id
