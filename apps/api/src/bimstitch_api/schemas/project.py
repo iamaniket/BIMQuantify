@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from bimstitch_api.models.project import (
     BuildingType,
@@ -119,3 +119,17 @@ class ProjectMemberCreate(BaseModel):
 
 class ProjectMemberUpdate(BaseModel):
     role: ProjectRole
+
+
+class ProjectInvitationCreate(BaseModel):
+    email: EmailStr
+    role: ProjectRole = ProjectRole.viewer
+    full_name: str | None = Field(default=None, max_length=255)
+
+
+class ProjectInvitationResponse(BaseModel):
+    email: str
+    role: ProjectRole
+    project_id: UUID
+    scenario: str
+    user_id: UUID

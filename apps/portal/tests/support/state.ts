@@ -31,4 +31,11 @@ export const state = {
   // --- Suite E/F: forgot-password reset paths (written by MailHog extraction) ---
   _memberResetPath: '',
   _adminResetPath: '',
+
+  // --- Suite G-J: project-scoped invitation tests ---
+  projectId: '',
+  guestEmail: '',
+  guestFullName: '',
+  guestPassword: 'Passw0rd!Gu3st',
+  _guestActivationPath: '',
 };

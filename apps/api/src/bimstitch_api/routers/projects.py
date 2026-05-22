@@ -1,4 +1,6 @@
 import asyncio
+import secrets
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -9,22 +11,32 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
+    Request,
     Response,
     UploadFile,
     status,
 )
-from sqlalchemy import func, select
+from fastapi_users.password import PasswordHelper
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.guards import is_guest_member
+from bimstitch_api.auth.manager import UserManager, get_user_manager
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.cache import CACHE_TTL_PROJECT_DETAIL, CACHE_TTL_PROJECT_LIST, cache_response
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.db import get_session_maker
+from bimstitch_api.email.invites import (
+    send_project_added_notification,
+    send_project_invite_notification,
+)
 from bimstitch_api.jurisdictions import find_instrument, supported_countries
 from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.models.contractor import Contractor
+from bimstitch_api.models.organization import Organization
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
@@ -38,6 +50,8 @@ from bimstitch_api.models.project_member import ProjectMember, ProjectRole
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.project import (
     ProjectCreate,
+    ProjectInvitationCreate,
+    ProjectInvitationResponse,
     ProjectMemberCreate,
     ProjectMemberRead,
     ProjectMemberUpdate,
@@ -57,9 +71,7 @@ _THUMBNAIL_KEY_PREFIX = "thumbnails/"
 # ---------------------------------------------------------------------------
 
 
-async def _resolve_thumbnail_url(
-    thumbnail_url: str | None, storage: StorageBackend
-) -> str | None:
+async def _resolve_thumbnail_url(thumbnail_url: str | None, storage: StorageBackend) -> str | None:
     """Return a presigned GET URL when thumbnail_url is an S3 key; passthrough otherwise."""
     if thumbnail_url is None:
         return None
@@ -126,9 +138,7 @@ def _validate_instrument(instrument_id: str | None, country: str | None) -> None
         )
 
 
-async def _validate_contractor_exists(
-    session: AsyncSession, contractor_id: UUID | None
-) -> None:
+async def _validate_contractor_exists(session: AsyncSession, contractor_id: UUID | None) -> None:
     """Surface a 400 if the contractor isn't in the current tenant schema.
     Cross-tenant isolation is enforced by the schema namespace itself —
     contractors in another org's schema are inaccessible to this session,
@@ -137,14 +147,10 @@ async def _validate_contractor_exists(
     if contractor_id is None:
         return
     found = (
-        await session.execute(
-            select(Contractor.id).where(Contractor.id == contractor_id)
-        )
+        await session.execute(select(Contractor.id).where(Contractor.id == contractor_id))
     ).scalar_one_or_none()
     if found is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="CONTRACTOR_NOT_FOUND"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CONTRACTOR_NOT_FOUND")
 
 
 async def _load_project_or_404(session: AsyncSession, project_id: UUID) -> Project:
@@ -181,9 +187,7 @@ async def _require_membership(
     return membership
 
 
-async def _is_org_admin(
-    session: AsyncSession, user_id: UUID, organization_id: UUID
-) -> bool:
+async def _is_org_admin(session: AsyncSession, user_id: UUID, organization_id: UUID) -> bool:
     """True if the user has an active org-admin membership in the active org.
 
     Safe inside a tenant session: `organization_members` lives in `public` and
@@ -223,9 +227,7 @@ async def _require_member_manager(
     membership = await _get_membership(session, project_id, user.id)
     if membership is not None and membership.role is ProjectRole.owner:
         return
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN, detail="INSUFFICIENT_PROJECT_ROLE"
-    )
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="INSUFFICIENT_PROJECT_ROLE")
 
 
 async def _require_project_read_access(
@@ -309,17 +311,13 @@ async def _require_member_viewer(
     await _require_membership(session, project_id, user.id)
 
 
-async def _member_to_read(
-    session: AsyncSession, member: ProjectMember
-) -> dict[str, object]:
+async def _member_to_read(session: AsyncSession, member: ProjectMember) -> dict[str, object]:
     """Serialize a ProjectMember row with the user's email/full_name joined in
     from `public.users` so the portal can render the row without a second
     lookup per member.
     """
     row = (
-        await session.execute(
-            select(User.email, User.full_name).where(User.id == member.user_id)
-        )
+        await session.execute(select(User.email, User.full_name).where(User.id == member.user_id))
     ).first()
     email = row.email if row is not None else ""
     full_name = row.full_name if row is not None else None
@@ -346,15 +344,19 @@ async def _seed_project_members(
     session.add(ProjectMember(project_id=project_id, user_id=owner_user_id, role=ProjectRole.owner))
 
     admin_user_ids = (
-        await session.execute(
-            select(OrganizationMember.user_id).where(
-                OrganizationMember.organization_id == organization_id,
-                OrganizationMember.status == OrganizationMemberStatus.active,
-                OrganizationMember.is_org_admin.is_(True),
-                OrganizationMember.user_id != owner_user_id,
+        (
+            await session.execute(
+                select(OrganizationMember.user_id).where(
+                    OrganizationMember.organization_id == organization_id,
+                    OrganizationMember.status == OrganizationMemberStatus.active,
+                    OrganizationMember.is_org_admin.is_(True),
+                    OrganizationMember.user_id != owner_user_id,
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     for admin_user_id in admin_user_ids:
         session.add(
@@ -415,6 +417,7 @@ async def create_project(
     await session.flush()
 
     from bimstitch_api.deadlines.compute import recompute_deadlines
+
     await recompute_deadlines(session, project)
 
     await session.refresh(project)
@@ -446,9 +449,7 @@ async def create_project_with_thumbnail(
     thumbnail_key: str | None = None
 
     if thumbnail is not None and thumbnail.filename:
-        allowed_types = [
-            t.strip() for t in settings.thumbnail_allowed_content_types.split(",")
-        ]
+        allowed_types = [t.strip() for t in settings.thumbnail_allowed_content_types.split(",")]
         content_type = thumbnail.content_type or ""
         if content_type not in allowed_types:
             raise HTTPException(
@@ -485,6 +486,7 @@ async def create_project_with_thumbnail(
     await session.flush()
 
     from bimstitch_api.deadlines.compute import recompute_deadlines
+
     await recompute_deadlines(session, project)
 
     await session.refresh(project)
@@ -502,9 +504,7 @@ async def list_projects(
     storage: StorageBackend = Depends(get_storage),
 ) -> list[dict[str, object]]:
     base = select(Project).where(
-        Project.lifecycle_state.in_(
-            [ProjectLifecycleState.active, ProjectLifecycleState.archived]
-        )
+        Project.lifecycle_state.in_([ProjectLifecycleState.active, ProjectLifecycleState.archived])
     )
     if not user.is_superuser and not await _is_org_admin(session, user.id, active_org_id):
         base = base.join(ProjectMember, ProjectMember.project_id == Project.id).where(
@@ -556,9 +556,7 @@ async def update_project(
         # Re-validate against the (possibly new) country; falls back to the
         # existing project.country if the patch doesn't touch it.
         target_country = updates.get("country", project.country)
-        _validate_consequence_class(
-            payload.consequence_class, target_country
-        )
+        _validate_consequence_class(payload.consequence_class, target_country)
     if "instrument_id" in updates:
         target_country = updates.get("country", project.country)
         _validate_instrument(updates["instrument_id"], target_country)
@@ -569,6 +567,7 @@ async def update_project(
 
     if {"planned_start_date", "delivery_date", "country"} & updates.keys():
         from bimstitch_api.deadlines.compute import recompute_deadlines
+
         await recompute_deadlines(session, project)
 
     try:
@@ -790,3 +789,183 @@ async def update_member_role(
     await session.flush()
     await session.refresh(target)
     return await _member_to_read(session, target)
+
+
+# ---------------------------------------------------------------------------
+# Project-scoped invitations
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{project_id}/invitations",
+    response_model=ProjectInvitationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def invite_to_project(
+    project_id: UUID,
+    payload: ProjectInvitationCreate,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    user_manager: UserManager = Depends(get_user_manager),
+) -> ProjectInvitationResponse:
+    project = await _load_project_or_404(session, project_id)
+    await _require_member_manager(session, project.id, user, active_org_id)
+    _require_project_writable(project)
+
+    if payload.role is ProjectRole.owner:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="OWNER_ROLE_NOT_ASSIGNABLE"
+        )
+
+    sm = get_session_maker()
+    async with sm() as ms:
+        org = await ms.get(Organization, active_org_id)
+        if org is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND")
+        schema = org.schema_name
+
+        # Find existing user (case-insensitive).
+        normalized = payload.email.strip().lower()
+        existing_user = (
+            await ms.execute(select(User).where(func.lower(User.email) == normalized))
+        ).scalar_one_or_none()
+
+        # Check existing org membership.
+        existing_member: OrganizationMember | None = None
+        if existing_user is not None:
+            existing_member = (
+                await ms.execute(
+                    select(OrganizationMember).where(
+                        OrganizationMember.user_id == existing_user.id,
+                        OrganizationMember.organization_id == active_org_id,
+                    )
+                )
+            ).scalar_one_or_none()
+
+        # Branch on scenario.
+        scenario: str
+        target_user: User
+
+        if existing_user is None:
+            # Scenario 1: brand-new user.
+            target_user = User(
+                email=payload.email,
+                hashed_password=PasswordHelper().hash(secrets.token_hex(32)),
+                full_name=payload.full_name,
+                is_active=True,
+                is_verified=False,
+                is_superuser=False,
+            )
+            ms.add(target_user)
+            await ms.flush()
+
+            member = OrganizationMember(
+                user_id=target_user.id,
+                organization_id=active_org_id,
+                is_org_admin=False,
+                is_guest=True,
+                status=OrganizationMemberStatus.pending,
+                invited_by=user.id,
+            )
+            ms.add(member)
+            await ms.flush()
+            scenario = "new_user"
+
+        elif existing_member is None or existing_member.status == OrganizationMemberStatus.removed:
+            # Scenario 2: user exists but not in this org (or was removed).
+            target_user = existing_user
+            if existing_member is not None:
+                existing_member.status = OrganizationMemberStatus.pending
+                existing_member.is_org_admin = False
+                existing_member.is_guest = True
+                existing_member.invited_at = datetime.now(UTC)
+                existing_member.invited_by = user.id
+                existing_member.accepted_at = None
+            else:
+                member = OrganizationMember(
+                    user_id=target_user.id,
+                    organization_id=active_org_id,
+                    is_org_admin=False,
+                    is_guest=True,
+                    status=OrganizationMemberStatus.pending,
+                    invited_by=user.id,
+                )
+                ms.add(member)
+                await ms.flush()
+            scenario = "new_org_member"
+
+        elif existing_member.status == OrganizationMemberStatus.active:
+            # Scenario 3: already an active org member.
+            target_user = existing_user
+            scenario = "existing_org_member"
+
+        else:
+            # Pending or suspended — tell them there's already a pending invite.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="ORG_INVITE_ALREADY_PENDING",
+            )
+
+        # Insert project_members row in the tenant schema.
+        await ms.execute(text(f'SET LOCAL search_path = "{schema}", public'))
+        try:
+            await ms.execute(
+                text(
+                    "INSERT INTO project_members (project_id, user_id, role) "
+                    "VALUES (:pid, :uid, :role)"
+                ),
+                {
+                    "pid": str(project.id),
+                    "uid": str(target_user.id),
+                    "role": payload.role.value,
+                },
+            )
+        except IntegrityError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="MEMBER_ALREADY_EXISTS"
+            ) from exc
+        await ms.execute(text("SET LOCAL search_path = public"))
+
+        await audit.record(
+            ms,
+            action="project_invitation.created",
+            resource_type="project_member",
+            resource_id=str(project.id),
+            after={
+                "email": target_user.email,
+                "user_id": str(target_user.id),
+                "role": payload.role.value,
+                "scenario": scenario,
+            },
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            request=request,
+        )
+        await ms.commit()
+
+    # Send email AFTER commit so a flaky transport doesn't roll back the invite.
+    if scenario == "new_user":
+        await user_manager.request_verify(target_user, request)
+    elif scenario == "new_org_member":
+        await send_project_invite_notification(
+            invitee=target_user,
+            organization=org,
+            project_name=project.name,
+            inviter_email=user.email,
+        )
+    else:
+        await send_project_added_notification(
+            member=target_user,
+            project_name=project.name,
+            inviter_email=user.email,
+        )
+
+    return ProjectInvitationResponse(
+        email=target_user.email,
+        role=payload.role,
+        project_id=project.id,
+        scenario=scenario,
+        user_id=target_user.id,
+    )

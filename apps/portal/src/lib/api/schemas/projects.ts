@@ -149,3 +149,15 @@ export const ProjectMemberUpdateSchema = z.object({
 });
 
 export type ProjectMemberUpdateInput = z.infer<typeof ProjectMemberUpdateSchema>;
+
+// Project Invitations
+
+export const ProjectInvitationResponseSchema = z.object({
+  email: z.string(),
+  role: ProjectRoleEnum,
+  project_id: z.string().uuid(),
+  scenario: z.string(),
+  user_id: z.string().uuid(),
+});
+
+export type ProjectInvitationResponse = z.infer<typeof ProjectInvitationResponseSchema>;

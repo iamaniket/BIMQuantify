@@ -416,18 +416,30 @@
       "title": "Lid toevoegen",
       "subtitle": "Kies een actief lid van deze organisatie en wijs een rol toe op dit project.",
       "submit": "Toevoegen",
+      "tabs": {
+        "fromOrg": "Uit organisatie",
+        "inviteByEmail": "Uitnodigen per e-mail"
+      },
       "fields": {
         "user": "Gebruiker",
-        "role": "Rol"
+        "role": "Rol",
+        "email": "E-mailadres",
+        "fullName": "Volledige naam (optioneel)"
       },
       "placeholders": {
-        "user": "Selecteer een gebruiker"
+        "user": "Selecteer een gebruiker",
+        "email": "naam@bedrijf.nl",
+        "fullName": "bv. Jan de Vries"
       },
       "allAlreadyMembers": "Alle actieve organisatieleden zitten al in dit project.",
+      "guestHint": "Als deze persoon niet in je organisatie zit, wordt diegene uitgenodigd als gast.",
+      "inviteSuccess": "Uitnodiging succesvol verstuurd.",
+      "addedSuccess": "Lid toegevoegd aan het project.",
       "errors": {
         "pickUser": "Kies eerst een gebruiker.",
         "alreadyMember": "Deze gebruiker is al lid van dit project.",
-        "notInOrg": "Deze gebruiker is geen actief lid van de organisatie."
+        "notInOrg": "Deze gebruiker is geen actief lid van de organisatie.",
+        "invalidEmail": "Voer een geldig e-mailadres in."
       }
     },
     "tabs": {

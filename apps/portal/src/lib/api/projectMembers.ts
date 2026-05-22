@@ -1,12 +1,16 @@
 import { apiClient } from './client';
 import {
+  ProjectInvitationResponseSchema,
   ProjectMemberListSchema,
   ProjectMemberSchema,
+  type ProjectInvitationResponse,
   type ProjectMember,
   type ProjectMemberCreateInput,
   type ProjectMemberList,
   type ProjectMemberUpdateInput,
 } from './schemas';
+
+export type { ProjectInvitationResponse } from './schemas';
 
 export async function listProjectMembers(
   accessToken: string,
@@ -53,6 +57,25 @@ export async function removeProjectMember(
 ): Promise<void> {
   return apiClient.delete(
     `/projects/${projectId}/members/${userId}`,
+    accessToken,
+  );
+}
+
+export type ProjectInvitationInput = {
+  email: string;
+  role?: string;
+  full_name?: string | null;
+};
+
+export async function inviteToProject(
+  accessToken: string,
+  projectId: string,
+  input: ProjectInvitationInput,
+): Promise<ProjectInvitationResponse> {
+  return apiClient.post<ProjectInvitationResponse>(
+    `/projects/${projectId}/invitations`,
+    input,
+    ProjectInvitationResponseSchema,
     accessToken,
   );
 }

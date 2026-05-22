@@ -1,13 +1,17 @@
 /**
  * Multitenant E2E Journey
  *
- * Runs 23 sequential tests covering the full lifecycle:
+ * Runs 35 sequential tests covering the full lifecycle:
  *   A. Super admin creates a new tenant + first admin
  *   B. Admin activates account via MailHog email → logs in
  *   C. Admin invites a member, creates a project, edits the project
  *   D. Member activates account → logs in → accepts invitation → views projects
  *   E. Member forgot-password → reset via MailHog link → login with new password
  *   F. Admin forgot-password → reset via MailHog link → login with new password
+ *   G. Owner invites new external user via project "Invite by email" tab
+ *   H. Guest permission boundaries (read-only access, cannot create/edit/delete)
+ *   I. Owner manages guest (role change, edit verification, removal)
+ *   J. Admin invites existing org member to project (scenario 3)
  *
  * Prerequisites (must all be running before `pnpm test:e2e:multi`):
  *   - docker compose up -d  (postgres, redis, mailhog, minio)
@@ -233,6 +237,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
     // On success the dialog closes and we land on the project detail page
     await page.waitForURL(/\/projects\/[0-9a-f-]+/, { timeout: 20_000 });
+
+    const idMatch = page.url().match(/\/projects\/([0-9a-f-]+)/);
+    if (!idMatch?.[1]) throw new Error('Could not extract projectId from URL');
+    state.projectId = idMatch[1];
   });
 
   test('C4: admin edits the project from the projects list', async ({ page }) => {
@@ -480,5 +488,437 @@ test.describe.serial('Multitenant E2E Journey', () => {
   test('F4: admin logs in with the new password', async ({ page }) => {
     await loginViaUI(page, state.adminEmail, state.adminPassword);
     await expect(page).toHaveURL(/\/(projects|account)/);
+  });
+
+  // =========================================================================
+  // G — Owner invites new external user to the project via email
+  // =========================================================================
+
+  test('G1: admin invites a new external user via the "Invite by email" tab', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+
+    state.guestEmail = `guest-${RUN}@example.com`;
+    state.guestFullName = `E2E Guest ${RUN}`;
+
+    await page.goto(`/en/projects/${state.projectId}/access`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Switch to the Members tab and open the Add member dialog.
+    await page.getByRole('tab', { name: /members/i }).click();
+    const addBtn = page.getByRole('button', { name: /add member/i });
+    await expect(addBtn).toBeVisible({ timeout: 10_000 });
+
+    await clearAllEmails();
+
+    await addBtn.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Switch to the "Invite by email" tab inside the dialog.
+    await dialog.getByRole('tab', { name: /invite by email/i }).click();
+
+    await dialog.locator('#invite-email').fill(state.guestEmail);
+    await dialog.locator('#invite-full-name').fill(state.guestFullName);
+    await dialog.locator('#project-member-role-invite').selectOption('inspector');
+
+    const [inviteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/invitations') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      dialog.getByRole('button', { name: /add/i }).click(),
+    ]);
+    if (!inviteResp.ok()) {
+      const body = await inviteResp.text();
+      throw new Error(`Invite API returned ${inviteResp.status()}: ${body}`);
+    }
+
+    // Wait for dialog to close (same race-handling pattern as C4).
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+  });
+
+  test('G2: guest activation email extracted from MailHog', async () => {
+    const body = await waitForEmail(state.guestEmail, { timeoutMs: 40_000 });
+    const activationUrl = extractUrlFromEmail(body, /\/activate\?token=/);
+    const parsed = new URL(activationUrl);
+    state._guestActivationPath = parsed.pathname + parsed.search;
+  });
+
+  test('G3: guest activates account (sets password)', async ({ page }) => {
+    await page.goto(state._guestActivationPath);
+    await expect(page.getByRole('heading', { name: /activate/i })).toBeVisible();
+
+    const passwords = page.locator('input[type="password"]');
+    await passwords.nth(0).fill(state.guestPassword);
+    await passwords.nth(1).fill(state.guestPassword);
+
+    await page.getByRole('button', { name: /activate account/i }).click();
+    await page.waitForURL(/\/login/, { timeout: 15_000 });
+  });
+
+  test('G4: guest logs in, accepts org invite, and sees the project', async ({ page }) => {
+    await loginViaUI(page, state.guestEmail, state.guestPassword, {
+      expectedPathPattern: /\/(account|projects)/,
+    });
+
+    // Accept the pending org invitation if it wasn't auto-accepted during login.
+    await page.goto('/en/account');
+    const invTab = page.getByRole('tab', { name: /invitations/i });
+    if (await invTab.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await invTab.click();
+      const acceptBtn = page.getByRole('button', { name: /accept/i });
+      if (await acceptBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await acceptBtn.click();
+        await expect(acceptBtn).not.toBeVisible({ timeout: 10_000 });
+      }
+    }
+
+    // Guest should see exactly the one project they were invited to.
+    await page.goto('/en/projects');
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+
+    // Only one project card (guests are filtered to explicit memberships).
+    const cards = page.locator('a[href*="/projects/"]').filter({ has: page.getByText(state.projectName) });
+    await expect(cards).toHaveCount(1);
+  });
+
+  // =========================================================================
+  // H — Guest permission boundaries
+  // =========================================================================
+
+  test('H1: guest sees read-only access page — no member management', async ({ page }) => {
+    await injectSavedAuth(page, state.guestEmail);
+    await page.goto(`/en/projects/${state.projectId}/access`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Overview tab: "View-only access" card visible, Quick Actions card absent.
+    await expect(page.getByText(/view-only access/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/quick actions/i)).not.toBeVisible();
+
+    // Members tab: no "Add member" button, no actions column dropdowns.
+    await page.getByRole('tab', { name: /members/i }).click();
+    await expect(page.getByRole('button', { name: /add member/i })).not.toBeVisible();
+
+    // No actions dropdown triggers on any member row.
+    const actionButtons = page.getByRole('button', { name: /actions/i });
+    await expect(actionButtons).toHaveCount(0);
+  });
+
+  test('H2: guest cannot create a new project', async ({ page }) => {
+    await injectSavedAuth(page, state.guestEmail);
+    await page.goto('/en/projects');
+
+    // "New project" button is always rendered (no UI gate).
+    await page.getByRole('button', { name: /new project/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Walk through the wizard to trigger the API call.
+    // Step 1 — Basics
+    await dialog.locator('input[name="name"]').fill('Should-Fail-Guest-Create');
+    await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
+
+    // Step 2 — Details
+    await dialog.locator('select[name="building_type"]').selectOption('dwelling');
+    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
+    await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog.locator('[aria-current="step"]')).toContainText('Address');
+
+    // Step 3 — Address (fix lat/lng NaN issue, same as C3)
+    await page.evaluate(() => {
+      const el = document.querySelector('input[name="latitude"]') as HTMLElement | null;
+      if (!el) throw new Error('latitude input not found');
+      const fiberKey = Object.keys(el).find((k) => k.startsWith('__reactFiber'));
+      if (!fiberKey) throw new Error('no React fiber key');
+      type Fiber = { memoizedProps?: Record<string, unknown>; return?: Fiber | null };
+      let fiber: Fiber | null = (el as unknown as Record<string, unknown>)[fiberKey] as Fiber;
+      for (let depth = 0; fiber && depth < 200; depth++) {
+        const props = fiber.memoizedProps;
+        if (props && typeof props['value'] === 'object' && props['value'] !== null) {
+          const ctx = props['value'] as Record<string, unknown>;
+          if ('_formValues' in ctx) {
+            const fv = ctx['_formValues'] as Record<string, unknown>;
+            fv['latitude'] = 52.37;
+            fv['longitude'] = 4.89;
+            return;
+          }
+        }
+        fiber = fiber.return ?? null;
+      }
+      throw new Error('RHF form context not found in fiber tree');
+    });
+    await dialog.getByRole('button', { name: 'Next' }).click();
+
+    // Step 4 — Contractor → "Create project"
+    const [createResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/projects') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      dialog.getByRole('button', { name: /create project/i }).click(),
+    ]);
+
+    expect(createResp.status()).toBe(403);
+    const body = await createResp.json();
+    expect(body.detail).toBe('GUEST_CANNOT_CREATE_PROJECT');
+
+    await page.keyboard.press('Escape');
+  });
+
+  test('H3: guest cannot edit or delete the project', async ({ page }) => {
+    await injectSavedAuth(page, state.guestEmail);
+    await page.goto('/en/projects');
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+
+    // --- Edit attempt ---
+    await page.getByRole('button', { name: 'Project actions' }).first().click();
+    await page.getByRole('menuitem', { name: /edit/i }).click();
+
+    const editDialog = page.getByRole('dialog');
+    await expect(editDialog).toBeVisible();
+
+    const nameInput = editDialog.locator('input[name="name"]');
+    await nameInput.click({ clickCount: 3 });
+    await nameInput.fill('Guest-Edit-Should-Fail');
+
+    await editDialog.locator('button[aria-label="Contractor"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+
+    const [editResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => /\/projects\/[0-9a-f-]+$/.test(r.url()) && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      editDialog.getByRole('button', { name: /save changes/i }).click(),
+    ]);
+    expect(editResp.status()).toBe(403);
+
+    await page.keyboard.press('Escape');
+    await expect(editDialog).not.toBeVisible({ timeout: 5_000 });
+
+    // Re-navigate to clear any error toasts that overlay the card controls.
+    await page.goto('/en/projects');
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+
+    // --- Delete attempt ---
+    await page.getByRole('button', { name: 'Project actions' }).first().click();
+    await page.getByRole('menuitem', { name: /remove/i }).click();
+
+    const confirmDialog = page.getByRole('dialog');
+    await expect(confirmDialog).toBeVisible();
+
+    const [deleteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => /\/projects\/[0-9a-f-]+$/.test(r.url()) && r.request().method() === 'DELETE',
+        { timeout: 20_000 },
+      ),
+      confirmDialog.getByRole('button', { name: /remove/i }).click(),
+    ]);
+    expect(deleteResp.status()).toBe(403);
+
+    await expect(page.getByText(/do not have permission/i)).toBeVisible({ timeout: 5_000 });
+    await page.keyboard.press('Escape');
+  });
+
+  // =========================================================================
+  // I — Owner manages guest (role change + removal)
+  // =========================================================================
+
+  test('I1: owner changes guest role from inspector to editor', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto(`/en/projects/${state.projectId}/access`);
+
+    await page.getByRole('tab', { name: /members/i }).click();
+
+    // Find the guest row and open its actions dropdown.
+    const guestRow = page.getByRole('row').filter({ hasText: state.guestEmail });
+    await expect(guestRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = guestRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    const [patchResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members/') && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: /editor/i }).click(),
+    ]);
+    if (!patchResp.ok()) {
+      const body = await patchResp.text();
+      throw new Error(`Role change failed: ${patchResp.status()}: ${body}`);
+    }
+
+    // Badge should now show "Editor".
+    await expect(guestRow.getByText(/editor/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('I2: guest (now editor) can edit the project', async ({ page }) => {
+    await injectSavedAuth(page, state.guestEmail);
+    await page.goto('/en/projects');
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+
+    // Edit the project name.
+    await page.getByRole('button', { name: 'Project actions' }).first().click();
+    await page.getByRole('menuitem', { name: /edit/i }).click();
+
+    const editDialog = page.getByRole('dialog');
+    await expect(editDialog).toBeVisible();
+
+    const editedName = `${state.projectName} (guest-edit)`;
+    const nameInput = editDialog.locator('input[name="name"]');
+    await nameInput.click({ clickCount: 3 });
+    await nameInput.fill(editedName);
+
+    await editDialog.locator('button[aria-label="Contractor"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+
+    const [saveResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => /\/projects\/[0-9a-f-]+$/.test(r.url()) && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      editDialog.getByRole('button', { name: /save changes/i }).click(),
+    ]);
+    if (!saveResp.ok()) {
+      const body = await saveResp.text();
+      throw new Error(`Guest edit failed: ${saveResp.status()}: ${body}`);
+    }
+
+    try {
+      await editDialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+    }
+
+    // Re-navigate so the card and its dropdown trigger are in a clean state.
+    await page.goto('/en/projects');
+    await expect(page.getByText(editedName)).toBeVisible({ timeout: 10_000 });
+
+    // Restore original name so later tests aren't affected.
+    await page.getByRole('button', { name: 'Project actions' }).first().click();
+    await page.getByRole('menuitem', { name: /edit/i }).click();
+    await expect(editDialog).toBeVisible();
+
+    const restoreInput = editDialog.locator('input[name="name"]');
+    await restoreInput.click({ clickCount: 3 });
+    await restoreInput.fill(state.projectName);
+
+    await editDialog.locator('button[aria-label="Contractor"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+
+    const [restoreResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => /\/projects\/[0-9a-f-]+$/.test(r.url()) && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      editDialog.getByRole('button', { name: /save changes/i }).click(),
+    ]);
+    if (!restoreResp.ok()) {
+      const body = await restoreResp.text();
+      throw new Error(`Name restore failed: ${restoreResp.status()}: ${body}`);
+    }
+
+    try {
+      await editDialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+    }
+  });
+
+  test('I3: owner removes guest — guest can no longer see the project', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto(`/en/projects/${state.projectId}/access`);
+
+    await page.getByRole('tab', { name: /members/i }).click();
+
+    const guestRow = page.getByRole('row').filter({ hasText: state.guestEmail });
+    await expect(guestRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = guestRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    const [deleteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members/') && r.request().method() === 'DELETE',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: /remove/i }).click(),
+    ]);
+    if (!deleteResp.ok()) {
+      const body = await deleteResp.text();
+      throw new Error(`Remove member failed: ${deleteResp.status()}: ${body}`);
+    }
+
+    await expect(guestRow).not.toBeVisible({ timeout: 10_000 });
+
+    // Now verify the removed guest can no longer see the project.
+    await injectSavedAuth(page, state.guestEmail);
+    await page.goto('/en/projects');
+    await page.waitForLoadState('domcontentloaded');
+
+    // The project should not be visible; the list should be empty for this guest.
+    await expect(page.getByText(state.projectName)).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // J — Invite existing org member (Scenario 3: already in org)
+  // =========================================================================
+
+  test('J1: admin invites existing org member via "Invite by email" tab', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+
+    await clearAllEmails();
+
+    await page.goto(`/en/projects/${state.projectId}/access`);
+    await page.getByRole('tab', { name: /members/i }).click();
+
+    const addBtn = page.getByRole('button', { name: /add member/i });
+    await expect(addBtn).toBeVisible({ timeout: 10_000 });
+    await addBtn.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.getByRole('tab', { name: /invite by email/i }).click();
+    await dialog.locator('#invite-email').fill(state.memberEmail);
+    await dialog.locator('#project-member-role-invite').selectOption('editor');
+
+    const [inviteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/invitations') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      dialog.getByRole('button', { name: /add/i }).click(),
+    ]);
+    if (!inviteResp.ok()) {
+      const body = await inviteResp.text();
+      throw new Error(`Invite existing member failed: ${inviteResp.status()}: ${body}`);
+    }
+
+    const respBody = await inviteResp.json();
+    expect(respBody.scenario).toBe('existing_org_member');
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+  });
+
+  test('J2: notification email arrives and member sees the project', async ({ page }) => {
+    const body = await waitForEmail(state.memberEmail, { timeoutMs: 40_000 });
+    expect(body).toContain(state.projectName);
+
+    await injectSavedAuth(page, state.memberEmail);
+    await page.goto('/en/projects');
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
   });
 });
