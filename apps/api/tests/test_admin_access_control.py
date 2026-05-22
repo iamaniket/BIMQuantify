@@ -348,9 +348,13 @@ async def test_member_suspension_does_not_remove_seat(
 
     org = await _make_org(session, "SeatHoldCo")
     user = await _make_user(session, "held@example.com")
-    await _add_member(session, user=user, org=org)
+    # The member must be an admin so a *second* admin can be added to satisfy
+    # the LAST_ADMIN_REQUIRED guard when we suspend them below.
+    admin2 = await _make_user(session, "admin2@seatholdco.com")
+    await _add_member(session, user=user, org=org, is_org_admin=True)
+    await _add_member(session, user=admin2, org=org, is_org_admin=True)
 
-    assert await count_consumed_seats(session, org.id) == 1
+    assert await count_consumed_seats(session, org.id) == 2
 
     resp = await client.patch(
         f"/organizations/{org.id}/members/{user.id}",
@@ -359,5 +363,5 @@ async def test_member_suspension_does_not_remove_seat(
     )
     assert resp.status_code == 200, resp.text
 
-    # Still 1 seat — suspended is not removed.
-    assert await count_consumed_seats(session, org.id) == 1
+    # Still 2 seats — suspended is not removed.
+    assert await count_consumed_seats(session, org.id) == 2

@@ -27,13 +27,20 @@ def test_matrix_covers_every_resource_for_every_role() -> None:
         )
 
 
-@pytest.mark.parametrize("role", list(ProjectRole))
-@pytest.mark.parametrize("resource", list(Resource))
-@pytest.mark.parametrize("action", list(Action))
-def test_has_permission_never_raises(role: ProjectRole, resource: Resource, action: Action) -> None:
-    """Sanity: every (role, resource, action) triple resolves to a bool."""
-    result = has_permission(role, resource, action)
-    assert isinstance(result, bool)
+def test_has_permission_never_raises() -> None:
+    """Sanity: every (role, resource, action) triple resolves to a bool.
+
+    Previously parametrized as 432 individual tests (6 roles × 12 resources
+    × 6 actions). Collapsed into a single loop — same coverage, ~150s faster
+    because we avoid 431 extra ``_clean_tables`` teardowns.
+    """
+    for role in ProjectRole:
+        for resource in Resource:
+            for action in Action:
+                result = has_permission(role, resource, action)
+                assert isinstance(result, bool), (
+                    f"has_permission({role}, {resource}, {action}) returned {type(result)}"
+                )
 
 
 # ---------------------------------------------------------------------------

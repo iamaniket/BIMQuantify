@@ -13,6 +13,7 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import _add_member, _auth, _create_project
@@ -752,7 +753,12 @@ async def test_cascade_on_project_delete(
     )
 
     project_uuid = uuid.UUID(project["id"])
+    org_id = org_user["organization_id"]
+    schema = f"org_{org_id.replace('-', '')}"
+
     async with session_maker() as s:
+        # Point search_path at the tenant schema so we can see the project.
+        await s.execute(text(f'SET search_path TO "{schema}", public'))
         # Hard-delete the project row to trigger FK CASCADE (not the soft-delete
         # archive endpoint, which only flips lifecycle_state).
         proj = (await s.execute(select(Project).where(Project.id == project_uuid))).scalar_one()
@@ -760,6 +766,7 @@ async def test_cascade_on_project_delete(
         await s.commit()
 
     async with session_maker() as s:
+        await s.execute(text(f'SET search_path TO "{schema}", public'))
         plans = (
             await s.execute(
                 select(Borgingsplan).where(Borgingsplan.project_id == project_uuid)

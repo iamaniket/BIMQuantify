@@ -208,43 +208,86 @@ async def redis_client() -> AsyncGenerator[Redis, None]:
 
 @pytest.fixture(autouse=True)
 async def _clean_tables(
+    request: pytest.FixtureRequest,
     session_maker: async_sessionmaker[AsyncSession],
 ) -> AsyncGenerator[None, None]:
-    yield
-    async with session_maker() as session:
-        # Drop per-tenant schemas created during the test before truncating
-        # the master tables (so the org rows that reference them disappear
-        # together). We never persist tenant data across tests — every test
-        # provisions its own org schema(s) via the `_provision_user_in_org`
-        # helper.
-        rows = (
-            await session.execute(
-                text(
-                    "SELECT schema_name FROM information_schema.schemata "
-                    "WHERE schema_name LIKE 'org_%'"
-                )
-            )
-        ).all()
-        for (schema,) in rows:
-            await session.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+    """Truncate all tables after each DB test.
 
-        # TRUNCATE ... CASCADE handles FK ordering atomically. RLS policies do
-        # not block TRUNCATE for the table owner with FORCE — TRUNCATE is DDL.
-        await session.execute(
-            text(
-                "TRUNCATE TABLE checklist_item_results, checklist_items, borgingsmomenten, borgingsplans, "
-                "risks, access_requests, reports, jobs, project_files, models, "
-                "project_members, projects, contractors, notification_reads, "
-                "notifications, audit_log, organization_members, users, "
-                "organizations RESTART IDENTITY CASCADE"
-            )
-        )
-        await session.commit()
+    Skips when the test has no DB fixtures (no ``client``, ``org_user``,
+    ``session``, ``fake_storage_client``, ``rate_limited_client``).  Pure
+    logic tests (permissions, approx, ifc_header, …) never touch the DB so
+    the TRUNCATE is wasted work — and the 0.35s per-test overhead adds up
+    to minutes across hundreds of parametrized cases.
+
+    Also retries once on deadlock (``40P01``) to handle the rare case where
+    a lingering connection from the test body hasn't been fully released
+    when teardown starts.
+    """
+    yield
+
+    # Skip cleanup for tests that never touched the DB.
+    _db_fixture_names = {
+        "client", "org_user", "other_org_user", "same_org_user",
+        "same_org_non_admin_user", "same_org_admin_user", "superuser_in_org",
+        "session", "fake_storage_client", "rate_limited_client",
+    }
+    if not _db_fixture_names.intersection(request.fixturenames):
+        return
+
+    import asyncio
+
+    for attempt in range(2):
+        try:
+            async with session_maker() as session:
+                # Drop per-tenant schemas created during the test before
+                # truncating the master tables.
+                rows = (
+                    await session.execute(
+                        text(
+                            "SELECT schema_name FROM information_schema.schemata "
+                            "WHERE schema_name LIKE 'org_%'"
+                        )
+                    )
+                ).all()
+                for (schema,) in rows:
+                    await session.execute(
+                        text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+                    )
+
+                await session.execute(
+                    text(
+                        "TRUNCATE TABLE checklist_item_results, checklist_items, "
+                        "borgingsmomenten, borgingsplans, "
+                        "risks, access_requests, reports, jobs, project_files, models, "
+                        "project_members, projects, contractors, notification_reads, "
+                        "notifications, audit_log, organization_members, users, "
+                        "organizations RESTART IDENTITY CASCADE"
+                    )
+                )
+                await session.commit()
+            return  # success
+        except Exception as exc:
+            # Retry once on deadlock (Postgres SQLSTATE 40P01).
+            if attempt == 0 and "deadlock" in str(exc).lower():
+                await asyncio.sleep(0.5)
+                continue
+            raise
 
 
 @pytest.fixture(autouse=True)
-async def _flush_redis(redis_client: Redis) -> AsyncGenerator[None, None]:
+async def _flush_redis(
+    request: pytest.FixtureRequest,
+    redis_client: Redis,
+) -> AsyncGenerator[None, None]:
     yield
+    # Skip for pure-logic tests that never touch Redis.
+    _db_fixture_names = {
+        "client", "org_user", "other_org_user", "same_org_user",
+        "same_org_non_admin_user", "same_org_admin_user", "superuser_in_org",
+        "session", "fake_storage_client", "rate_limited_client",
+    }
+    if not _db_fixture_names.intersection(request.fixturenames):
+        return
     await redis_client.flushdb()
 
 
