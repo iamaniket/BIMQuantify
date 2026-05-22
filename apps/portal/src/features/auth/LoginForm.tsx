@@ -41,6 +41,7 @@ export function LoginForm(): JSX.Element {
   const [memberships, setMemberships] = useState<OrganizationMembership[] | null>(null);
   const [switching, setSwitching] = useState<string | null>(null);
   const [organizationError, setOrganizationError] = useState<string | null>(null);
+  const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
 
   const schema = useMemo(
     () =>
@@ -72,11 +73,12 @@ export function LoginForm(): JSX.Element {
               organization_id: membership.organization_id,
               organization_name: membership.organization_name,
             })));
+            setPendingInvitationsCount(me.pending_invitations_count ?? 0);
             setOrganizationError(null);
             setSwitching(null);
             setAuthStep('organization');
           } else {
-            router.push('/projects');
+            router.push(me.pending_invitations_count > 0 ? '/account' : '/projects');
           }
         } catch {
           router.push('/projects');
@@ -108,7 +110,7 @@ export function LoginForm(): JSX.Element {
 
     try {
       await switchOrganization(organizationId);
-      router.push('/projects');
+      router.push(pendingInvitationsCount > 0 ? '/account' : '/projects');
     } catch {
       setOrganizationError(t('errors.organizationSwitchFailed'));
       setSwitching(null);

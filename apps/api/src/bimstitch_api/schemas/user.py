@@ -5,6 +5,7 @@ from fastapi_users import schemas
 
 class UserRead(schemas.BaseUser[UUID]):
     full_name: str | None = None
+    avatar_url: str | None = None
     active_organization_id: UUID | None = None
 
 
@@ -18,3 +19,4 @@ class UserCreate(schemas.BaseUserCreate):
 
 class UserUpdate(schemas.BaseUserUpdate):
     full_name: str | None = None
+    avatar_url: str | None = None

@@ -687,3 +687,86 @@ async def test_accepted_invitation_records_audit_entry(
         )
     ).scalar_one_or_none()
     assert entry is not None
+
+
+@pytest.mark.asyncio
+async def test_login_no_auto_accept_when_removed_from_previous_org(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """A user who was removed from their only org and then invited to a new
+    one must NOT be auto-accepted at login. They are a returning user, not
+    a bootstrap case."""
+    user = await _make_user(session, "removed-then-invited@example.com")
+    old_org = await _make_org(session, "FormerCo")
+    new_org = await _make_org(session, "NewInviteCo2")
+    m_old = await _add_member(session, user=user, org=old_org)
+    m_old.status = OrganizationMemberStatus.removed
+    user.active_organization_id = None
+    await session.commit()
+
+    await _add_member(
+        session,
+        user=user,
+        org=new_org,
+        status=OrganizationMemberStatus.pending,
+    )
+
+    await _login(client, user.email)
+
+    m = (
+        await session.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.user_id == user.id,
+                OrganizationMember.organization_id == new_org.id,
+            )
+        )
+    ).scalar_one()
+    await session.refresh(m)
+    assert m.status == OrganizationMemberStatus.pending
+
+
+@pytest.mark.asyncio
+async def test_auth_me_includes_pending_invitations_count(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """GET /auth/me should return the number of pending invitations."""
+    user = await _make_user(session, "count-pending@example.com")
+    home = await _make_org(session, "CountHomeCo")
+    pending_org = await _make_org(session, "CountPendingCo")
+    await _add_member(session, user=user, org=home)
+    await _add_member(
+        session,
+        user=user,
+        org=pending_org,
+        status=OrganizationMemberStatus.pending,
+    )
+
+    tokens = await _login(client, user.email)
+    resp = await client.get(
+        "/auth/me",
+        headers=_auth(tokens["access_token"]),
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["pending_invitations_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_auth_me_zero_pending_when_no_invitations(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """GET /auth/me returns 0 pending when user has no pending invites."""
+    user = await _make_user(session, "no-pending@example.com")
+    org = await _make_org(session, "NoPendingCo")
+    await _add_member(session, user=user, org=org)
+
+    tokens = await _login(client, user.email)
+    resp = await client.get(
+        "/auth/me",
+        headers=_auth(tokens["access_token"]),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["pending_invitations_count"] == 0

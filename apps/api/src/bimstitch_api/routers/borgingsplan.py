@@ -35,15 +35,14 @@ from bimstitch_api.models.borgingsmoment import Borgingsmoment, BorgingsmomentPh
 from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
 from bimstitch_api.models.checklist_item import ChecklistItem, ChecklistItemType, EvidenceType
 from bimstitch_api.models.project import Project
-from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
     _require_project_read_access,
     _require_project_writable,
-    _require_role,
 )
 from bimstitch_api.schemas.borgingsplan import (
     BorgingsmomentCreate,
@@ -480,7 +479,7 @@ async def generate_borgingsplan(
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.create)
     _require_project_writable(project)
     opts = payload or GenerateOptions()
 
@@ -534,7 +533,7 @@ async def update_borgingsplan(
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.update)
     _require_project_writable(project)
 
     plan = await _load_active_plan_or_404(session, project.id)
@@ -557,7 +556,7 @@ async def publish_borgingsplan(
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner)
+    require_permission(membership.role, Resource.assurance_plan, Action.publish)
     _require_project_writable(project)
 
     plan = await _load_active_plan_or_404(session, project.id)
@@ -585,7 +584,7 @@ async def new_borgingsplan_version(
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.create)
     _require_project_writable(project)
 
     source = await _load_active_plan_or_404(session, project.id)
@@ -620,7 +619,7 @@ async def reset_borgingsplan_to_template(
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.update)
     _require_project_writable(project)
 
     plan = await _load_plan_in_project_or_404(session, project.id, plan_id)
@@ -667,7 +666,7 @@ async def create_moment(
         )
     project = await _walk_to_project_via_plan(session, plan)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.create)
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -710,7 +709,7 @@ async def update_moment(
     moment = await _load_moment_in_plan_or_404(session, plan_id, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.update)
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -735,7 +734,7 @@ async def delete_moment(
     moment = await _load_moment_in_plan_or_404(session, plan_id, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.delete)
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -764,7 +763,7 @@ async def reorder_moments(
         )
     project = await _walk_to_project_via_plan(session, plan)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.update)
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -824,7 +823,7 @@ async def create_checklist_item(
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.create)
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -867,7 +866,7 @@ async def update_checklist_item(
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.update)
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -894,7 +893,7 @@ async def delete_checklist_item(
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.delete)
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -918,7 +917,7 @@ async def reorder_checklist_items(
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.assurance_plan, Action.update)
     _require_project_writable(project)
     _require_plan_draft(plan)
 

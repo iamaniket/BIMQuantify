@@ -262,7 +262,7 @@ async def test_publish_requires_owner_role(
         headers=_auth(same_org_user["access_token"]),
     )
     assert resp.status_code == 403
-    assert resp.json()["detail"] == "INSUFFICIENT_PROJECT_ROLE"
+    assert resp.json()["detail"]["code"] == "PERMISSION_DENIED"
 
 
 @pytest.mark.asyncio

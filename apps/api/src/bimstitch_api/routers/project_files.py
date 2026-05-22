@@ -36,15 +36,14 @@ from bimstitch_api.models.project_file import (
     ProjectFile,
     ProjectFileStatus,
 )
-from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.models import _load_model_or_404
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
     _require_project_read_access,
     _require_project_writable,
-    _require_role,
 )
 from bimstitch_api.schemas.project_file import (
     InitiateUploadRequest,
@@ -108,7 +107,7 @@ async def initiate_upload(
 ) -> InitiateUploadResponse:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.project_file, Action.create)
     _require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
@@ -239,7 +238,7 @@ async def complete_upload(
 ) -> ProjectFile:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.project_file, Action.create)
     _require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
@@ -445,7 +444,7 @@ async def retry_extraction(
     """
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.project_file, Action.update)
     _require_project_writable(project)
     model = await _load_model_or_404(session, project.id, model_id)
 
@@ -567,7 +566,7 @@ async def delete_file(
 ) -> Response:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.project_file, Action.delete)
     _require_project_writable(project)
     model = await _load_model_or_404(session, project.id, model_id)
 

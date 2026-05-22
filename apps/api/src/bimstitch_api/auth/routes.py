@@ -58,6 +58,7 @@ class AuthMeResponse(BaseModel):
     user: UserRead
     active_organization_id: UUID | None
     memberships: list[OrgMembershipBrief]
+    pending_invitations_count: int
 
 
 class SwitchOrgRequest(BaseModel):
@@ -135,7 +136,6 @@ async def _flip_pending_memberships(session: AsyncSession, user: User) -> list[O
 
     stmt = select(OrganizationMember).where(
         OrganizationMember.user_id == user.id,
-        OrganizationMember.status != OrganizationMemberStatus.removed,
     )
     result = await session.execute(stmt)
     rows = list(result.scalars().all())
@@ -143,14 +143,14 @@ async def _flip_pending_memberships(session: AsyncSession, user: User) -> list[O
         return []
 
     settings = get_settings()
-    has_active = any(m.status == OrganizationMemberStatus.active for m in rows)
+    has_non_pending = any(m.status != OrganizationMemberStatus.pending for m in rows)
     pending = [
         m
         for m in rows
         if m.status == OrganizationMemberStatus.pending
         and not invitation_is_expired(m.invited_at, settings.invitation_ttl_days)
     ]
-    if has_active or len(pending) != 1:
+    if has_non_pending or len(pending) != 1:
         return []
 
     now = datetime.now(UTC)
@@ -349,10 +349,16 @@ def build_auth_router() -> APIRouter:
                 )
             )
 
+        pending_count = sum(
+            1 for m, org in rows
+            if m.status == OrganizationMemberStatus.pending
+        )
+
         return AuthMeResponse(
             user=UserRead.model_validate(user, from_attributes=True),
             active_organization_id=active_org_id,
             memberships=memberships,
+            pending_invitations_count=pending_count,
         )
 
     @me_router.post("/switch-organization", response_model=TokenPair)

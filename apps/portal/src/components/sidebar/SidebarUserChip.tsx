@@ -1,9 +1,11 @@
 'use client';
 
-import type { JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 
 import { useTranslations } from 'next-intl';
 
+import { Link } from '@/i18n/navigation';
+import { getAvatarUrl } from '@/lib/api/profile';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { useSidebar } from './SidebarContext';
@@ -22,7 +24,8 @@ function toInitials(nameOrEmail: string): string {
 
 export function SidebarUserChip(): JSX.Element {
   const { collapsed } = useSidebar();
-  const { me, activeMembership } = useAuth();
+  const { me, activeMembership, tokens } = useAuth();
+  const t = useTranslations('sidebar');
   const fallbackName = me?.user.email ?? 'User';
   const userName = me?.user.full_name?.trim() || fallbackName;
   const initials = toInitials(userName);
@@ -31,17 +34,48 @@ export function SidebarUserChip(): JSX.Element {
     roleLabel = activeMembership.is_org_admin ? 'Admin' : 'Member';
   }
 
+  const pendingCount = me?.pending_invitations_count ?? 0;
+  const avatarKey = me?.user.avatar_url;
+  const accessToken = tokens?.access_token ?? null;
+
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!avatarKey || accessToken === null) {
+      setAvatarSrc(null);
+      return;
+    }
+    void getAvatarUrl(accessToken).then(setAvatarSrc).catch(() => { setAvatarSrc(null); });
+  }, [avatarKey, accessToken]);
+
   return (
-    <div
-      className={`relative flex items-center gap-2.5 border-b border-white/12 ${
+    <Link
+      href="/account"
+      aria-label={t('account')}
+      className={`relative flex items-center gap-2.5 border-b border-white/12 transition-colors hover:bg-white/10 ${
         collapsed ? 'justify-center px-0 py-3.5' : 'px-4 py-3.5'
       }`}
     >
-      <div
-        className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-primary-light text-[11px] font-extrabold text-primary"
-        title={userName}
-      >
-        {initials}
+      <div className="relative shrink-0">
+        {avatarSrc ? (
+          <img
+            src={avatarSrc}
+            alt={userName}
+            className="h-[30px] w-[30px] rounded-full object-cover"
+          />
+        ) : (
+          <div
+            className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-primary-light text-[11px] font-extrabold text-primary"
+            title={userName}
+          >
+            {initials}
+          </div>
+        )}
+        {pendingCount > 0 && (
+          <span className="absolute -right-[3px] -top-[3px] grid h-[14px] min-w-[14px] place-items-center rounded-full border-[1.5px] border-[#1e293b] bg-[#c94736] px-[3px] text-[9px] font-extrabold leading-[14px] tabular-nums text-white">
+            {pendingCount > 9 ? '9+' : String(pendingCount)}
+          </span>
+        )}
       </div>
       {!collapsed && (
         <div className="min-w-0 flex-1">
@@ -53,6 +87,6 @@ export function SidebarUserChip(): JSX.Element {
           )}
         </div>
       )}
-    </div>
+    </Link>
   );
 }

@@ -4,11 +4,6 @@ Single source of truth for "what can each ProjectRole do to each Resource".
 Pure module — no DB, no FastAPI deps — so it's importable from anywhere and
 trivially unit-testable.
 
-This is intentionally not wired into the routers yet. The 14 existing
-`_require_role(...)` call-sites in routers/{projects,models,project_files}.py
-continue to do their per-endpoint membership-role checks. A follow-up task
-will refactor those to delegate to `has_permission()`.
-
 Role and resource codes are jurisdiction-neutral; Dutch (or other locale)
 display labels live in the portal i18n catalog. The semantic mapping for the
 NL/WKB market is:
@@ -47,6 +42,7 @@ class Resource(StrEnum):
     invitation = "invitation"
     inspection = "inspection"
     finding = "finding"
+    risk = "risk"
     assurance_plan = "assurance_plan"
     completion_declaration = "completion_declaration"
     audit_log = "audit_log"
@@ -59,6 +55,7 @@ class Action(StrEnum):
     delete = "delete"
     archive = "archive"
     invite = "invite"
+    publish = "publish"
     sign = "sign"
 
 
@@ -91,7 +88,10 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 ),
                 Resource.inspection: _READ_WRITE_DELETE,
                 Resource.finding: _READ_WRITE_DELETE,
-                Resource.assurance_plan: _READ_WRITE_DELETE,
+                Resource.risk: _READ_WRITE_DELETE,
+                Resource.assurance_plan: frozenset(
+                    {Action.read, Action.create, Action.update, Action.delete, Action.publish}
+                ),
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _READ,
             }
@@ -100,12 +100,13 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
             {
                 Resource.project: frozenset({Action.read, Action.update}),
                 Resource.model: _READ_WRITE,
-                Resource.project_file: _READ_WRITE,
+                Resource.project_file: _READ_WRITE_DELETE,
                 Resource.member: _READ,
                 Resource.invitation: _READ,
-                Resource.inspection: _READ_WRITE,
+                Resource.inspection: _READ_WRITE_DELETE,
                 Resource.finding: _READ_WRITE,
-                Resource.assurance_plan: _READ_WRITE,
+                Resource.risk: _READ_WRITE_DELETE,
+                Resource.assurance_plan: _READ_WRITE_DELETE,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
             }
@@ -119,6 +120,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.invitation: _NONE,
                 Resource.inspection: _READ,
                 Resource.finding: _READ,
+                Resource.risk: _READ,
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
@@ -137,6 +139,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.invitation: _NONE,
                 Resource.inspection: _READ_WRITE_DELETE,
                 Resource.finding: frozenset({Action.read, Action.create, Action.update}),
+                Resource.risk: _READ,
                 Resource.assurance_plan: _READ_WRITE,
                 # Sole signing authority — the legal core of the system.
                 Resource.completion_declaration: frozenset(
@@ -155,8 +158,9 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.project_file: _READ_WRITE,
                 Resource.member: _READ,
                 Resource.invitation: _NONE,
-                Resource.inspection: _READ_WRITE,
+                Resource.inspection: _READ,
                 Resource.finding: frozenset({Action.read, Action.update}),
+                Resource.risk: _READ,
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
@@ -173,6 +177,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.invitation: _NONE,
                 Resource.inspection: _READ,
                 Resource.finding: _READ,
+                Resource.risk: _READ,
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,

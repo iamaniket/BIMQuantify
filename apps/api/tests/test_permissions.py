@@ -104,11 +104,8 @@ def test_only_owner_can_invite() -> None:
             assert not allowed
 
 
-def test_contractor_can_write_inspections_and_update_findings() -> None:
-    assert has_permission(ProjectRole.contractor, Resource.inspection, Action.create)
-    assert has_permission(ProjectRole.contractor, Resource.inspection, Action.update)
+def test_contractor_can_update_findings_but_not_delete() -> None:
     assert has_permission(ProjectRole.contractor, Resource.finding, Action.update)
-    # But cannot delete findings — only owner.
     assert not has_permission(ProjectRole.contractor, Resource.finding, Action.delete)
 
 
@@ -131,6 +128,26 @@ def test_audit_log_is_append_only() -> None:
         assert not has_permission(role, Resource.audit_log, Action.delete)
 
 
+def test_only_owner_can_publish_assurance_plan() -> None:
+    for role in ProjectRole:
+        allowed = has_permission(role, Resource.assurance_plan, Action.publish)
+        if role is ProjectRole.owner:
+            assert allowed, "owner must be able to publish"
+        else:
+            assert not allowed, f"{role.value} must NOT publish"
+
+
+def test_risk_crud_requires_owner_or_editor() -> None:
+    for role in ProjectRole:
+        can_create = has_permission(role, Resource.risk, Action.create)
+        can_update = has_permission(role, Resource.risk, Action.update)
+        can_delete = has_permission(role, Resource.risk, Action.delete)
+        if role in (ProjectRole.owner, ProjectRole.editor):
+            assert can_create and can_update and can_delete
+        else:
+            assert not can_create and not can_update and not can_delete
+
+
 # ---------------------------------------------------------------------------
 # Snapshot: pin the current matrix.
 # ---------------------------------------------------------------------------
@@ -148,19 +165,21 @@ def test_matrix_snapshot() -> None:
             "invitation": {"read", "create", "delete", "invite"},
             "inspection": {"read", "create", "update", "delete"},
             "finding": {"read", "create", "update", "delete"},
-            "assurance_plan": {"read", "create", "update", "delete"},
+            "risk": {"read", "create", "update", "delete"},
+            "assurance_plan": {"read", "create", "update", "delete", "publish"},
             "completion_declaration": {"read"},
             "audit_log": {"read"},
         },
         "editor": {
             "project": {"read", "update"},
             "model": {"read", "create", "update"},
-            "project_file": {"read", "create", "update"},
+            "project_file": {"read", "create", "update", "delete"},
             "member": {"read"},
             "invitation": {"read"},
-            "inspection": {"read", "create", "update"},
+            "inspection": {"read", "create", "update", "delete"},
             "finding": {"read", "create", "update"},
-            "assurance_plan": {"read", "create", "update"},
+            "risk": {"read", "create", "update", "delete"},
+            "assurance_plan": {"read", "create", "update", "delete"},
             "completion_declaration": {"read"},
             "audit_log": set(),
         },
@@ -172,6 +191,7 @@ def test_matrix_snapshot() -> None:
             "invitation": set(),
             "inspection": {"read"},
             "finding": {"read"},
+            "risk": {"read"},
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),
@@ -184,6 +204,7 @@ def test_matrix_snapshot() -> None:
             "invitation": set(),
             "inspection": {"read", "create", "update", "delete"},
             "finding": {"read", "create", "update"},
+            "risk": {"read"},
             "assurance_plan": {"read", "create", "update"},
             "completion_declaration": {"read", "create", "update", "sign"},
             "audit_log": {"read"},
@@ -194,8 +215,9 @@ def test_matrix_snapshot() -> None:
             "project_file": {"read", "create", "update"},
             "member": {"read"},
             "invitation": set(),
-            "inspection": {"read", "create", "update"},
+            "inspection": {"read"},
             "finding": {"read", "update"},
+            "risk": {"read"},
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),
@@ -208,6 +230,7 @@ def test_matrix_snapshot() -> None:
             "invitation": set(),
             "inspection": {"read"},
             "finding": {"read"},
+            "risk": {"read"},
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),

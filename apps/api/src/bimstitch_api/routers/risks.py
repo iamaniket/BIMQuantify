@@ -17,15 +17,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
-from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
     _require_project_read_access,
     _require_project_writable,
-    _require_role,
 )
 from bimstitch_api.schemas.risk import RiskCreate, RiskRead, RiskUpdate
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
@@ -53,7 +52,7 @@ async def create_risk(
 ) -> Risk:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.risk, Action.create)
     _require_project_writable(project)
 
     # TODO(#36): emit audit_log entry once the table lands.
@@ -105,7 +104,7 @@ async def update_risk(
 ) -> Risk:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.risk, Action.update)
     _require_project_writable(project)
 
     risk = await _load_risk_or_404(session, project.id, risk_id)
@@ -127,7 +126,7 @@ async def delete_risk(
 ) -> Response:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.risk, Action.delete)
     _require_project_writable(project)
 
     risk = await _load_risk_or_404(session, project.id, risk_id)

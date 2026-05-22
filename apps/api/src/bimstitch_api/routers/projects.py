@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.guards import is_guest_member
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.cache import CACHE_TTL_PROJECT_DETAIL, CACHE_TTL_PROJECT_LIST, cache_response
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jurisdictions import find_instrument, supported_countries
@@ -179,13 +180,6 @@ async def _require_membership(
     return membership
 
 
-def _require_role(membership: ProjectMember, *allowed: ProjectRole) -> None:
-    if membership.role not in allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="INSUFFICIENT_PROJECT_ROLE"
-        )
-
-
 async def _is_org_admin(
     session: AsyncSession, user_id: UUID, organization_id: UUID
 ) -> bool:
@@ -269,7 +263,7 @@ async def _require_project_write_access(
     if await _is_org_admin(session, user.id, organization_id):
         return
     membership = await _require_membership(session, project_id, user.id)
-    _require_role(membership, ProjectRole.owner, ProjectRole.editor)
+    require_permission(membership.role, Resource.project, Action.update)
 
 
 async def _require_project_owner_or_admin(
@@ -277,6 +271,8 @@ async def _require_project_owner_or_admin(
     project_id: UUID,
     user: User,
     organization_id: UUID,
+    *,
+    action: Action = Action.delete,
 ) -> None:
     """Gate for destructive / lifecycle project mutations (delete, archive,
     reactivate).
@@ -290,7 +286,7 @@ async def _require_project_owner_or_admin(
     if await _is_org_admin(session, user.id, organization_id):
         return
     membership = await _require_membership(session, project_id, user.id)
-    _require_role(membership, ProjectRole.owner)
+    require_permission(membership.role, Resource.project, action)
 
 
 async def _require_member_viewer(
@@ -596,7 +592,9 @@ async def archive_project(
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    await _require_project_owner_or_admin(session, project.id, user, active_org_id)
+    await _require_project_owner_or_admin(
+        session, project.id, user, active_org_id, action=Action.archive
+    )
 
     if project.lifecycle_state is ProjectLifecycleState.archived:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="PROJECT_ARCHIVED")
@@ -616,7 +614,9 @@ async def reactivate_project(
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
-    await _require_project_owner_or_admin(session, project.id, user, active_org_id)
+    await _require_project_owner_or_admin(
+        session, project.id, user, active_org_id, action=Action.archive
+    )
 
     if project.lifecycle_state is not ProjectLifecycleState.archived:
         raise HTTPException(

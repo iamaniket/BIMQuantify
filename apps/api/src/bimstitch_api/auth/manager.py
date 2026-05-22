@@ -86,20 +86,19 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         session = self.user_db.session
         stmt = select(OrganizationMember).where(
             OrganizationMember.user_id == user.id,
-            OrganizationMember.status != OrganizationMemberStatus.removed,
         )
         rows = list((await session.execute(stmt)).scalars().all())
         if not rows:
             return
         settings = get_settings()
-        has_active = any(m.status == OrganizationMemberStatus.active for m in rows)
+        has_non_pending = any(m.status != OrganizationMemberStatus.pending for m in rows)
         pending = [
             m
             for m in rows
             if m.status == OrganizationMemberStatus.pending
             and not invitation_is_expired(m.invited_at, settings.invitation_ttl_days)
         ]
-        if has_active or len(pending) != 1:
+        if has_non_pending or len(pending) != 1:
             return
 
         pending[0].status = OrganizationMemberStatus.active

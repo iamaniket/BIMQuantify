@@ -21,6 +21,7 @@ class User(SQLAlchemyBaseUserTableUUID, MasterBase):
     __table_args__ = {"schema": "public"}
 
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     # The org this user is currently working in. NULL is valid for a platform
     # superadmin who hasn't picked an org, or for a newly-created user before

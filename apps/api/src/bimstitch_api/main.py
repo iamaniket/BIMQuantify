@@ -38,6 +38,7 @@ from bimstitch_api.routers.me_invitations import (
     leave_router as me_memberships_router,
 )
 from bimstitch_api.routers.me_invitations import router as me_invitations_router
+from bimstitch_api.routers.me_profile import router as me_profile_router
 from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.notifications import router as notifications_router
 from bimstitch_api.routers.organization_members import router as organization_members_router
@@ -128,6 +129,7 @@ def create_app() -> FastAPI:
     app.include_router(organization_members_router)
     app.include_router(me_invitations_router)
     app.include_router(me_memberships_router)
+    app.include_router(me_profile_router)
     app.include_router(projects_router)
     app.include_router(contractors_router)
     app.include_router(models_router)

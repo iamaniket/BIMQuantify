@@ -26,15 +26,14 @@ from bimstitch_api.models.checklist_item_result import (
     ChecklistItemResult,
     InspectionVerdict,
 )
-from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.borgingsplan import (
     _load_moment_by_id_or_404,
     _walk_to_project_via_moment,
 )
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.routers.projects import (
     _require_membership,
-    _require_role,
 )
 from bimstitch_api.schemas.borgingsplan import BorgingsmomentRead
 from bimstitch_api.schemas.inspection import (
@@ -45,12 +44,6 @@ from bimstitch_api.schemas.inspection import (
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 router = APIRouter(tags=["inspection"])
-
-_WRITE_ROLES = (
-    ProjectRole.owner,
-    ProjectRole.editor,
-    ProjectRole.inspector,
-)
 
 _TERMINAL_STATUSES = frozenset({
     BorgingsmomentStatus.passed,
@@ -65,7 +58,7 @@ async def _require_moment_writable(
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, _plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    _require_role(membership, *_WRITE_ROLES)
+    require_permission(membership.role, Resource.inspection, Action.update)
     return moment, project.id
 
 

@@ -129,6 +129,44 @@
     "tenant": {
       "label": "Tenant",
       "seats": "seats"
+    },
+    "account": "Account"
+  },
+  "account": {
+    "pageTitle": "Account",
+    "pageSubtitle": "Manage your profile and review pending invitations.",
+    "profileTitle": "Profile",
+    "emailLabel": "Email",
+    "nameLabel": "Full name",
+    "roleLabel": "Role",
+    "roleAdmin": "Admin",
+    "roleMember": "Member",
+    "orgLabel": "Organization",
+    "uploadPhoto": "Upload photo",
+    "removePhoto": "Remove",
+    "changePhoto": "Change",
+    "editName": "Edit",
+    "saveName": "Save",
+    "cancelEdit": "Cancel",
+    "namePlaceholder": "Your full name",
+    "nameUpdated": "Name updated.",
+    "avatarUpdated": "Photo updated.",
+    "avatarRemoved": "Photo removed.",
+    "invitationsTitle": "Team invitations",
+    "noInvitations": "No pending invitations right now.",
+    "accept": "Accept",
+    "accepting": "Accepting…",
+    "decline": "Decline",
+    "declining": "Declining…",
+    "invitedBy": "Invited by {email}",
+    "invitedByUnknown": "Invited to join",
+    "expiresOn": "Expires {date}",
+    "errors": {
+      "loadFailed": "Could not load invitations.",
+      "acceptFailed": "Could not accept this invitation.",
+      "declineFailed": "Could not decline this invitation.",
+      "avatarFailed": "Could not upload photo.",
+      "nameFailed": "Could not update name."
     }
   },
   "projects": {
@@ -298,6 +336,107 @@
           "cancel": "Cancel"
         }
       }
+    }
+  },
+  "projectAccess": {
+    "crumb": "Access",
+    "title": "Access",
+    "subtitle": "People with access to this project and their role.",
+    "backToProject": "Back to project",
+    "addMember": "Add member",
+    "empty": "No members yet. Add the first one to get started.",
+    "emptyState": {
+      "title": "No members yet",
+      "description": "No members have been added to this project yet."
+    },
+    "readOnlyNotice": "You can see who has access to this project. Organization admins or the project owner can add or remove members.",
+    "errors": {
+      "notFound": "Project not found.",
+      "loadFailed": "Could not load the project.",
+      "membersLoadFailed": "Could not load project members."
+    },
+    "table": {
+      "user": "User",
+      "role": "Role",
+      "added": "Added",
+      "actions": "Actions",
+      "setRole": "Set as {role}",
+      "remove": "Remove from project",
+      "ownerLocked": "The owner role cannot be changed.",
+      "roles": {
+        "owner": "Owner",
+        "editor": "Editor",
+        "viewer": "Viewer",
+        "inspector": "Inspector",
+        "contractor": "Contractor",
+        "client": "Client"
+      }
+    },
+    "addDialog": {
+      "title": "Add member",
+      "subtitle": "Choose an active member of this organization and assign a role on this project.",
+      "submit": "Add",
+      "fields": {
+        "user": "User",
+        "role": "Role"
+      },
+      "placeholders": {
+        "user": "Select a user"
+      },
+      "allAlreadyMembers": "All active organization members are already in this project.",
+      "errors": {
+        "pickUser": "Please pick a user first.",
+        "alreadyMember": "This user is already a member of this project.",
+        "notInOrg": "This user is not an active member of the organization."
+      }
+    },
+    "tabs": {
+      "overview": "Overview",
+      "members": "Members"
+    },
+    "panel": {
+      "overviewEyebrow": "ACCESS",
+      "membersEyebrow": "MEMBERS",
+      "activeMembers": "{count} active members",
+      "showingOf": "Showing {filtered} of {total} members"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Search members…",
+      "roleAll": "All roles",
+      "roleOwner": "Owner",
+      "roleEditor": "Editor",
+      "roleViewer": "Viewer",
+      "roleInspector": "Inspector",
+      "roleContractor": "Contractor",
+      "roleClient": "Client"
+    },
+    "overview": {
+      "membersByRoleTitle": "Members by role",
+      "quickActionsTitle": "Quick actions",
+      "addMember": "Add member",
+      "addMemberSub": "Invite an organization member to this project",
+      "viewAllMembers": "View all members",
+      "viewAllMembersSub": "See the full member list and manage roles",
+      "readOnlyTitle": "View-only access",
+      "readOnlyDesc": "You can see who has access but cannot add or remove members. Contact the project owner or an org admin for changes.",
+      "roleDesc": {
+        "owner": "full access",
+        "editor": "read & write",
+        "viewer": "read only",
+        "inspector": "inspections",
+        "contractor": "construction",
+        "client": "oversight"
+      }
+    },
+    "hero": {
+      "members": "Members",
+      "roles": "Roles",
+      "owner": "Owner",
+      "active": "active",
+      "distinct": "distinct",
+      "projectOwner": "project owner",
+      "badge": "Access Management",
+      "subtitle": "Manage who can access this project"
     }
   },
   "projectDetail": {

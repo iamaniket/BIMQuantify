@@ -129,6 +129,44 @@
     "tenant": {
       "label": "Tenant",
       "seats": "seats"
+    },
+    "account": "Account"
+  },
+  "account": {
+    "pageTitle": "Account",
+    "pageSubtitle": "Beheer je profiel en bekijk openstaande uitnodigingen.",
+    "profileTitle": "Profiel",
+    "emailLabel": "E-mail",
+    "nameLabel": "Volledige naam",
+    "roleLabel": "Rol",
+    "roleAdmin": "Beheerder",
+    "roleMember": "Lid",
+    "orgLabel": "Organisatie",
+    "uploadPhoto": "Foto uploaden",
+    "removePhoto": "Verwijderen",
+    "changePhoto": "Wijzigen",
+    "editName": "Bewerken",
+    "saveName": "Opslaan",
+    "cancelEdit": "Annuleren",
+    "namePlaceholder": "Je volledige naam",
+    "nameUpdated": "Naam bijgewerkt.",
+    "avatarUpdated": "Foto bijgewerkt.",
+    "avatarRemoved": "Foto verwijderd.",
+    "invitationsTitle": "Teamuitnodigingen",
+    "noInvitations": "Geen openstaande uitnodigingen.",
+    "accept": "Accepteren",
+    "accepting": "Accepteren…",
+    "decline": "Weigeren",
+    "declining": "Weigeren…",
+    "invitedBy": "Uitgenodigd door {email}",
+    "invitedByUnknown": "Uitgenodigd om deel te nemen",
+    "expiresOn": "Verloopt op {date}",
+    "errors": {
+      "loadFailed": "Kan uitnodigingen niet laden.",
+      "acceptFailed": "Kan uitnodiging niet accepteren.",
+      "declineFailed": "Kan uitnodiging niet weigeren.",
+      "avatarFailed": "Kan foto niet uploaden.",
+      "nameFailed": "Kan naam niet bijwerken."
     }
   },
   "projects": {
@@ -301,7 +339,8 @@
     }
   },
   "projectAccess": {
-    "title": "Toegang - {projectName}",
+    "crumb": "Toegang",
+    "title": "Toegang",
     "subtitle": "Personen met toegang tot dit project en hun rol.",
     "backToProject": "Terug naar project",
     "addMember": "Lid toevoegen",
@@ -350,6 +389,54 @@
         "alreadyMember": "Deze gebruiker is al lid van dit project.",
         "notInOrg": "Deze gebruiker is geen actief lid van de organisatie."
       }
+    },
+    "tabs": {
+      "overview": "Overzicht",
+      "members": "Leden"
+    },
+    "panel": {
+      "overviewEyebrow": "TOEGANG",
+      "membersEyebrow": "LEDEN",
+      "activeMembers": "{count} actieve leden",
+      "showingOf": "{filtered} van {total} leden weergegeven"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Zoek leden…",
+      "roleAll": "Alle rollen",
+      "roleOwner": "Eigenaar",
+      "roleEditor": "Bewerker",
+      "roleViewer": "Lezer",
+      "roleInspector": "Inspecteur",
+      "roleContractor": "Aannemer",
+      "roleClient": "Opdrachtgever"
+    },
+    "overview": {
+      "membersByRoleTitle": "Leden per rol",
+      "quickActionsTitle": "Snelle acties",
+      "addMember": "Lid toevoegen",
+      "addMemberSub": "Nodig een organisatielid uit voor dit project",
+      "viewAllMembers": "Alle leden bekijken",
+      "viewAllMembersSub": "Bekijk de volledige ledenlijst en beheer rollen",
+      "readOnlyTitle": "Alleen-lezen toegang",
+      "readOnlyDesc": "Je kunt zien wie toegang heeft, maar kunt geen leden toevoegen of verwijderen. Neem contact op met de projecteigenaar of een organisatiebeheerder.",
+      "roleDesc": {
+        "owner": "volledige toegang",
+        "editor": "lezen & schrijven",
+        "viewer": "alleen lezen",
+        "inspector": "inspecties",
+        "contractor": "bouw",
+        "client": "toezicht"
+      }
+    },
+    "hero": {
+      "members": "Leden",
+      "roles": "Rollen",
+      "owner": "Eigenaar",
+      "active": "actief",
+      "distinct": "uniek",
+      "projectOwner": "projecteigenaar",
+      "badge": "Toegangsbeheer",
+      "subtitle": "Beheer wie toegang heeft tot dit project"
     }
   },
   "projectDetail": {

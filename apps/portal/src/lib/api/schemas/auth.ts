@@ -22,6 +22,7 @@ export const UserReadSchema = z.object({
   is_superuser: z.boolean(),
   is_verified: z.boolean(),
   full_name: z.union([z.string(), z.null()]),
+  avatar_url: z.union([z.string(), z.null()]).optional(),
   active_organization_id: z.union([z.string(), z.null()]).optional(),
 });
 
@@ -47,6 +48,7 @@ export const AuthMeResponseSchema = z.object({
   user: UserReadSchema,
   active_organization_id: z.union([z.string(), z.null()]),
   memberships: z.array(OrgMembershipBriefSchema),
+  pending_invitations_count: z.number().int(),
 });
 
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;
