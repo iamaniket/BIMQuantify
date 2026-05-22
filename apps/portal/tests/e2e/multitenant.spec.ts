@@ -1,11 +1,13 @@
 /**
  * Multitenant E2E Journey
  *
- * Runs 15 sequential tests covering the full lifecycle:
+ * Runs 23 sequential tests covering the full lifecycle:
  *   A. Super admin creates a new tenant + first admin
  *   B. Admin activates account via MailHog email → logs in
  *   C. Admin invites a member, creates a project, edits the project
  *   D. Member activates account → logs in → accepts invitation → views projects
+ *   E. Member forgot-password → reset via MailHog link → login with new password
+ *   F. Admin forgot-password → reset via MailHog link → login with new password
  *
  * Prerequisites (must all be running before `pnpm test:e2e:multi`):
  *   - docker compose up -d  (postgres, redis, mailhog, minio)
@@ -380,5 +382,103 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
     await expect(page).toHaveURL(/\/projects/);
     await expect(page.getByRole('main')).toBeVisible();
+  });
+
+  // =========================================================================
+  // SUITE E — Member forgot-password → reset → login with new password
+  // =========================================================================
+
+  test('E1: member requests a password reset via the forgot-password UI', async ({ page }) => {
+    await clearAllEmails();
+
+    await page.goto('/en/login');
+    await page.waitForLoadState('domcontentloaded');
+
+    await page.getByRole('link', { name: /forgot/i }).click();
+    await expect(page).toHaveURL(/\/forgot-password/);
+
+    await page.getByLabel(/work email/i).fill(state.memberEmail);
+    await page.getByRole('button', { name: /send reset link/i }).click();
+
+    await expect(page.getByRole('heading', { name: /check your inbox/i })).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('E2: extract member reset link from MailHog', async () => {
+    const body = await waitForEmail(state.memberEmail, { timeoutMs: 40_000 });
+    const resetUrl = extractUrlFromEmail(body, /\/reset-password\?token=/);
+    const parsed = new URL(resetUrl);
+    state._memberResetPath = parsed.pathname + parsed.search;
+  });
+
+  test('E3: member resets password via the reset-password page', async ({ page }) => {
+    const newPassword = 'ResetM3mber!New';
+
+    await page.goto(state._memberResetPath);
+    await expect(page.getByRole('heading', { name: /choose a new password/i })).toBeVisible();
+
+    await page.getByLabel(/^new password$/i).fill(newPassword);
+    await page.getByLabel(/confirm password/i).fill(newPassword);
+    await page.getByRole('button', { name: /update password/i }).click();
+
+    await page.waitForURL(/\/login\?reset=1/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/reset=1/);
+
+    state.memberPassword = newPassword;
+  });
+
+  test('E4: member logs in with the new password', async ({ page }) => {
+    await loginViaUI(page, state.memberEmail, state.memberPassword);
+    await expect(page).toHaveURL(/\/(projects|account)/);
+  });
+
+  // =========================================================================
+  // SUITE F — Admin forgot-password → reset → login with new password
+  // =========================================================================
+
+  test('F1: admin requests a password reset via the forgot-password UI', async ({ page }) => {
+    await clearAllEmails();
+
+    await page.goto('/en/login');
+    await page.waitForLoadState('domcontentloaded');
+
+    await page.getByRole('link', { name: /forgot/i }).click();
+    await expect(page).toHaveURL(/\/forgot-password/);
+
+    await page.getByLabel(/work email/i).fill(state.adminEmail);
+    await page.getByRole('button', { name: /send reset link/i }).click();
+
+    await expect(page.getByRole('heading', { name: /check your inbox/i })).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('F2: extract admin reset link from MailHog', async () => {
+    const body = await waitForEmail(state.adminEmail, { timeoutMs: 40_000 });
+    const resetUrl = extractUrlFromEmail(body, /\/reset-password\?token=/);
+    const parsed = new URL(resetUrl);
+    state._adminResetPath = parsed.pathname + parsed.search;
+  });
+
+  test('F3: admin resets password via the reset-password page', async ({ page }) => {
+    const newPassword = 'ResetAdm1n!New';
+
+    await page.goto(state._adminResetPath);
+    await expect(page.getByRole('heading', { name: /choose a new password/i })).toBeVisible();
+
+    await page.getByLabel(/^new password$/i).fill(newPassword);
+    await page.getByLabel(/confirm password/i).fill(newPassword);
+    await page.getByRole('button', { name: /update password/i }).click();
+
+    await page.waitForURL(/\/login\?reset=1/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/reset=1/);
+
+    state.adminPassword = newPassword;
+  });
+
+  test('F4: admin logs in with the new password', async ({ page }) => {
+    await loginViaUI(page, state.adminEmail, state.adminPassword);
+    await expect(page).toHaveURL(/\/(projects|account)/);
   });
 });

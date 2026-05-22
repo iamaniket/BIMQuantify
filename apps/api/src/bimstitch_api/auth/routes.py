@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_limiter.depends import RateLimiter
 from fastapi_users import exceptions as fau_exceptions
 from fastapi_users.jwt import decode_jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,6 +68,10 @@ class SwitchOrgRequest(BaseModel):
 class ActivateRequest(BaseModel):
     token: str
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
 
 
 async def _decode_verify_token_to_user(
@@ -500,6 +504,35 @@ def build_auth_router() -> APIRouter:
 
     router.include_router(activate_router)
 
+    # --- forgot-password shadow with rate limiting ------------------------
+    # FastAPI Users' get_reset_password_router() bundles forgot+reset; we
+    # need the limiter on forgot only — reset is already gated by a single
+    # signed JWT, so adding a 3/hour bucket there just locks users out after
+    # a few mistypes. Register this BEFORE the bundled router so Starlette's
+    # first-match-wins picks ours for /auth/forgot-password.
+    forgot_router = APIRouter(prefix="/auth", tags=["auth"])
+
+    @forgot_router.post(
+        "/forgot-password",
+        status_code=status.HTTP_202_ACCEPTED,
+        dependencies=[Depends(FORGOT_RATE_LIMITER)],
+    )
+    async def forgot_password(
+        request: Request,
+        payload: ForgotPasswordRequest,
+        user_manager: UserManager = Depends(get_user_manager),
+    ) -> None:
+        try:
+            user = await user_manager.get_by_email(payload.email)
+        except fau_exceptions.UserNotExists:
+            return
+        try:
+            await user_manager.forgot_password(user, request)
+        except fau_exceptions.UserInactive:
+            return
+
+    router.include_router(forgot_router)
+
     # --- FastAPI Users built-in routers -----------------------------------
     # NOTE: /auth/register is intentionally NOT included. All user creation
     # goes through admin invite endpoints.
@@ -508,7 +541,8 @@ def build_auth_router() -> APIRouter:
         fastapi_users.get_reset_password_router(),
         prefix="/auth",
         tags=["auth"],
-        dependencies=[Depends(FORGOT_RATE_LIMITER)],
+        # No dependencies — rate limiting lives on the shadow forgot-password
+        # route above; reset-password is gated by the single-use JWT.
     )
     router.include_router(
         fastapi_users.get_users_router(UserRead, UserUpdate),

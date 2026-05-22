@@ -3,14 +3,11 @@
 import { ArrowRight, Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useId, useState, type FormEvent, type JSX } from 'react';
-import { z } from 'zod';
 
 import { Button, FormField, Input } from '@bimstitch/ui';
 
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { apiClient } from '@/lib/api/client';
-
-const ForgotResponseSchema = z.object({}).passthrough();
 
 /**
  * Body content for the forgot-password page. The chrome (brand pane +
@@ -27,7 +24,7 @@ export function ForgotPasswordPanel(): JSX.Element {
     e.preventDefault();
     setPending(true);
     try {
-      await apiClient.post('/auth/forgot-password', { email }, ForgotResponseSchema, '');
+      await apiClient.postNoContent('/auth/forgot-password', '', { email });
     } catch {
       // Never leak whether the email exists — same posture as the API.
     } finally {

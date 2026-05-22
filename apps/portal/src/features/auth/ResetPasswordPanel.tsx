@@ -4,15 +4,12 @@ import { ArrowRight, Lock } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useId, useState, type FormEvent, type JSX } from 'react';
-import { z } from 'zod';
 
 import { Button, FormField, Input } from '@bimstitch/ui';
 
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { useRouter } from '@/i18n/navigation';
-import { apiClient, ApiError } from '@/lib/api/client';
-
-const ResetResponseSchema = z.object({}).passthrough();
+import { apiClient } from '@/lib/api/client';
 
 /**
  * Body content for the reset-password page. The chrome (brand pane +
@@ -40,19 +37,10 @@ export function ResetPasswordPanel(): JSX.Element {
     }
     setPending(true);
     try {
-      await apiClient.post(
-        '/auth/reset-password',
-        { token, password },
-        ResetResponseSchema,
-        '',
-      );
+      await apiClient.postNoContent('/auth/reset-password', '', { token, password });
       router.replace('/login?reset=1');
-    } catch (e) {
-      if (e instanceof ApiError) {
-        setError(t('errors.resetFailed'));
-      } else {
-        setError(t('errors.resetFailed'));
-      }
+    } catch {
+      setError(t('errors.resetFailed'));
     } finally {
       setPending(false);
     }

@@ -1,7 +1,7 @@
 /**
  * Shared run-state singleton for the multitenant E2E journey.
  *
- * All 15 tests run in a single describe.serial block inside the same
+ * All 23 tests run in a single describe.serial block inside the same
  * Node.js worker process, so a plain module-level object is safe for
  * passing data between sequential tests (org name → activation link →
  * project name, etc.).
@@ -27,4 +27,8 @@ export const state = {
 
   // --- Suite D: written by member-invite extraction test ---
   _memberInvitePath: '',
+
+  // --- Suite E/F: forgot-password reset paths (written by MailHog extraction) ---
+  _memberResetPath: '',
+  _adminResetPath: '',
 };
