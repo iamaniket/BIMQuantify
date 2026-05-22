@@ -12,6 +12,8 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:multi": "playwright test tests/e2e/multitenant.spec.ts --project=chromium --workers=1 --ui",
+    "test:e2e:multi:ci": "playwright test tests/e2e/multitenant.spec.ts --project=chromium --workers=1",
     "clean": "rimraf .next .turbo node_modules"
   },
   "dependencies": {

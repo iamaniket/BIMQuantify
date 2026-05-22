@@ -2,14 +2,23 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  /* The login.spec.ts tests can run in parallel; the multitenant journey is
+   * serial by design (test.describe.serial). Setting fullyParallel: false and
+   * workers: 1 ensures the sequential journey never runs alongside itself. */
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: Boolean(process.env['CI']),
   retries: process.env['CI'] ? 2 : 0,
-  workers: process.env['CI'] ? 1 : undefined,
-  reporter: 'list',
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+  ],
+  outputDir: './test-results',
   use: {
     baseURL: 'http://localhost:3001',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   projects: [
     {
@@ -20,7 +29,9 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev',
     url: 'http://localhost:3001',
-    reuseExistingServer: !process.env['CI'],
+    /* Always reuse a running server — avoids starting a second Next.js
+     * instance when the dev server is already up. */
+    reuseExistingServer: true,
     timeout: 120_000,
   },
 });
