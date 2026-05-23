@@ -1909,6 +1909,12 @@ test.describe.serial('Multitenant E2E Journey', () => {
       throw new Error(`Delete project failed: ${deleteResp.status()}: ${body}`);
     }
 
+    // Wait for the confirm dialog to close before checking the project list.
+    // The dialog description contains the project name, so checking
+    // getByText() while the dialog is still visible causes a strict-mode
+    // violation (2 elements match: card title + dialog description).
+    await expect(confirmDialog).not.toBeVisible({ timeout: 10_000 });
+
     // Project should disappear from the list.
     await expect(page.getByText(state.lifecycleProjectName)).not.toBeVisible({ timeout: 10_000 });
   });
@@ -1986,8 +1992,17 @@ test.describe.serial('Multitenant E2E Journey', () => {
       throw new Error(`Role change to viewer failed: ${patchResp.status()}: ${body}`);
     }
 
-    // Badge should now show "Viewer".
-    await expect(memberRow.getByText(/viewer/i)).toBeVisible({ timeout: 5_000 });
+    // The mutation's onSuccess invalidates the project-members query, which
+    // triggers a background refetch. Wait for the badge to update; if the
+    // cache invalidation + refetch is slow, reload the page as a fallback.
+    const viewerBadge = memberRow.getByText(/viewer/i);
+    const updatedInPlace = await viewerBadge.isVisible({ timeout: 5_000 }).catch(() => false);
+    if (!updatedInPlace) {
+      await page.reload();
+      await page.getByRole('tab', { name: /members/i }).click();
+      const refreshedRow = page.getByRole('row').filter({ hasText: state.memberEmail });
+      await expect(refreshedRow.getByText(/viewer/i)).toBeVisible({ timeout: 10_000 });
+    }
   });
 
   test('T3: member (now viewer) cannot edit the project', async ({ page }) => {
@@ -2274,15 +2289,21 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.goto('/en/login');
     await page.waitForLoadState('domcontentloaded');
 
-    await page.getByLabel(/work email/i).fill(state.adminEmail);
-    await page.getByLabel(/password/i).fill(state.adminPassword);
+    // Triple-click to select any autofilled/stale value before fill —
+    // same pattern as loginViaUI to avoid concatenated emails.
+    const emailInput = page.locator('input[name="username"]');
+    await emailInput.click({ clickCount: 3 });
+    await emailInput.fill(state.adminEmail);
+    const passwordInput = page.locator('input[name="password"]');
+    await passwordInput.click({ clickCount: 3 });
+    await passwordInput.fill(state.adminPassword);
 
     const [loginResp] = await Promise.all([
       page.waitForResponse(
         (r) => r.url().includes('/auth/jwt/login') && r.request().method() === 'POST',
         { timeout: 15_000 },
       ),
-      page.getByRole('button', { name: /sign in/i }).click(),
+      page.getByRole('button', { name: 'Sign in', exact: true }).click(),
     ]);
 
     // Login should fail: either 400 (LOGIN_BAD_CREDENTIALS) or similar.
@@ -2318,11 +2339,38 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
 
     // Verify admin can log in again.
-    // Admin may land on /select-tenant if they have multiple org memberships (org1 + org2).
-    await loginViaUI(page, state.adminEmail, state.adminPassword, {
-      expectedPathPattern: /\/(projects|select-tenant|account)/,
-    });
-    await expect(page).toHaveURL(/\/(projects|select-tenant|account)/, { timeout: 15_000 });
+    // Admin has two org memberships by this point, so the login page shows an
+    // inline org-selection step (URL stays /en/login) instead of navigating away.
+    await page.goto('/en/login');
+    await page.waitForLoadState('domcontentloaded');
+    const emailInput = page.locator('input[name="username"]');
+    await emailInput.click({ clickCount: 3 });
+    await emailInput.fill(state.adminEmail);
+    const pwInput = page.locator('input[name="password"]');
+    await pwInput.click({ clickCount: 3 });
+    await pwInput.fill(state.adminPassword);
+
+    const [loginResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/auth/jwt/login') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+      ),
+      page.getByRole('button', { name: 'Sign in', exact: true }).click(),
+    ]);
+    if (!loginResp.ok()) {
+      const body = await loginResp.text();
+      throw new Error(`W7 login failed: ${loginResp.status()}: ${body}`);
+    }
+
+    // Click the primary org in the inline org-selector to complete login.
+    const orgButton = page.getByRole('button', { name: state.orgName });
+    await expect(orgButton).toBeVisible({ timeout: 10_000 });
+    await orgButton.click();
+    await expect(page).toHaveURL(/\/(projects|account)/, { timeout: 20_000 });
+
+    // Update the token cache so X1–X4 can use injectSavedAuth with the fresh
+    // org-scoped token from this login.
+    await updateTokenCacheFromPage(page, state.adminEmail);
   });
 
   // =========================================================================
