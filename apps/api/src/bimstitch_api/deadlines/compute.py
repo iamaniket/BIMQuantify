@@ -17,12 +17,14 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.deadlines.working_days import compute_due_date
-from bimstitch_api.jurisdictions import DeadlineRule, require
+from bimstitch_api.jurisdictions import require
 from bimstitch_api.models.deadline import Deadline, DeadlineStatus
+from bimstitch_api.models.deadline_notification_log import DeadlineNotificationLog
 
 
 async def recompute_deadlines(
@@ -72,6 +74,12 @@ async def recompute_deadlines(
                 dl.status = DeadlineStatus.not_applicable
                 dl.met_at = None
                 dl.met_by_user_id = None
+                # Clear notification log — deadline is no longer applicable.
+                await session.execute(
+                    sa_delete(DeadlineNotificationLog).where(
+                        DeadlineNotificationLog.deadline_id == dl.id
+                    )
+                )
             else:
                 dl.due_date = new_due
                 if dl.status == DeadlineStatus.met:
@@ -80,11 +88,25 @@ async def recompute_deadlines(
                         dl.status = DeadlineStatus.pending
                         dl.met_at = None
                         dl.met_by_user_id = None
+                        # Clear notification log so new due date gets
+                        # fresh reminders.
+                        await session.execute(
+                            sa_delete(DeadlineNotificationLog).where(
+                                DeadlineNotificationLog.deadline_id == dl.id
+                            )
+                        )
                     # else: date unchanged, preserve met status
                 elif dl.status == DeadlineStatus.not_applicable:
                     # Was n.v.t., now has a date → pending
                     dl.status = DeadlineStatus.pending
-                # else: already pending, keep it
+                elif old_due != new_due:
+                    # Pending but date changed → clear log for fresh reminders.
+                    await session.execute(
+                        sa_delete(DeadlineNotificationLog).where(
+                            DeadlineNotificationLog.deadline_id == dl.id
+                        )
+                    )
+                # else: already pending, same date, keep it
         else:
             dl = Deadline(
                 project_id=project_id,

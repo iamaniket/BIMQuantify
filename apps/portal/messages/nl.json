@@ -493,6 +493,8 @@
   },
   "projectDetail": {
     "tabs": {
+      "eyebrow": "Projectbestanden",
+      "subtitle": "{count, plural, =0 {Nog geen modellen} =1 {1 model} other {# modellen}}",
       "models": { "label": "Modellen" },
       "borgingsplan": {
         "label": "Borgingsplan",
@@ -603,6 +605,36 @@
         "title": "Nog geen projectdocumenten",
         "description": "Upload tekeningen, certificaten en overige documenten zodat je ze kunt koppelen aan inspecties en bevindingen.",
         "ctaLabel": "Document uploaden"
+      },
+      "deadlines": {
+        "label": "Deadlines",
+        "emptyTitle": "Nog geen deadlines",
+        "emptyDescription": "Deadlines verschijnen automatisch zodra de benodigde datumvelden zijn ingevuld.",
+        "dueDate": "Vervaldatum: {date}",
+        "noDueDate": "Geen vervaldatum — brondatum ontbreekt",
+        "daysRemaining": "{days, plural, =1 {1 dag resterend} other {# dagen resterend}}",
+        "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}",
+        "markMet": "Markeer als voldaan",
+        "statuses": {
+          "pending": "In afwachting",
+          "met": "Voldaan",
+          "notApplicable": "N.v.t.",
+          "overdue": "Verlopen"
+        },
+        "notificationSettingsToggle": "Meldingsinstellingen",
+        "notifications": {
+          "title": "Meldingsinstellingen",
+          "description": "Stel in wanneer en aan wie deadlineherinneringen worden verstuurd.",
+          "reminderDays": "Herinneringsdagen",
+          "daysBefore": "{days, plural, =1 {1 dag van tevoren} other {# dagen van tevoren}}",
+          "recipientRoles": "Meld deze rollen",
+          "enable": "Meldingen inschakelen",
+          "disable": "Meldingen uitschakelen",
+          "sourceDefault": "Jurisdictiestandaard",
+          "sourceOrg": "Organisatiestandaard",
+          "sourceProject": "Projectoverschrijving",
+          "revertToDefaults": "Terug naar standaard"
+        }
       },
       "rapporten": { "label": "Rapporten" }
     }
@@ -862,7 +894,8 @@
     "tabs": {
       "overview": "Overzicht",
       "members": "Leden",
-      "audit": "Auditlog"
+      "audit": "Auditlog",
+      "notifications": "Meldingen"
     },
     "hero": {
       "status": "Status",
@@ -887,7 +920,16 @@
       "auditEyebrow": "Auditlog",
       "recentEvents": "{count} recente {count, plural, =1 {gebeurtenis} other {gebeurtenissen}}",
       "lastDays": "laatste {days} dagen",
-      "manageSettings": "Organisatie-instellingen beheren"
+      "manageSettings": "Organisatie-instellingen beheren",
+      "notificationsEyebrow": "Standaard meldingen",
+      "notificationsTitle": "Deadlinemeldingsinstellingen"
+    },
+    "notificationDefaults": {
+      "title": "Standaard deadlinemeldingen",
+      "description": "Stel het standaard herinneringsschema en de ontvangers in voor deadlinemeldingen in alle projecten. Projecten kunnen deze instellingen individueel overschrijven.",
+      "loadError": "Kan meldingsinstellingen niet laden.",
+      "emptyTitle": "Geen deadlinetypen geconfigureerd",
+      "emptyDescription": "Deadlinemeldingsinstellingen verschijnen hier zodra jurisdictieregels beschikbaar zijn."
     },
     "toolbar": {
       "searchPlaceholder": "Zoeken op naam of e-mail…",

@@ -3,7 +3,7 @@
 import { Plus } from 'lucide-react';
 import { useState, type JSX } from 'react';
 
-import { Button, Panel, PanelBody, PanelHeader } from '@bimstitch/ui';
+import { Button } from '@bimstitch/ui';
 
 import type { Model } from '@/lib/api/schemas';
 import { NewModelDialog } from '@/features/models/NewModelDialog';
@@ -21,8 +21,8 @@ export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
 
   return (
     <div className="flex flex-col gap-3">
-      <Panel>
-        <PanelHeader>
+      <div>
+        <div className="border-b border-border px-4 py-3">
           <div className="grid grid-cols-[minmax(0,1fr)_64px_56px_88px_144px] items-center gap-4 text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
             <span>Document</span>
             <span>Type</span>
@@ -40,9 +40,9 @@ export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
               </Button>
             </div>
           </div>
-        </PanelHeader>
+        </div>
 
-        <PanelBody>
+        <div className="flex flex-col">
           {models.length === 0 ? (
             <div className="px-4 py-10 text-center text-body3 text-foreground-tertiary">
               No documents yet. Create one to get started.
@@ -57,8 +57,8 @@ export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
               />
             ))
           )}
-        </PanelBody>
-      </Panel>
+        </div>
+      </div>
 
       <NewModelDialog
         open={newModelOpen}

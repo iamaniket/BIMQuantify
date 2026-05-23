@@ -31,12 +31,17 @@ from bimstitch_api.jurisdictions import (
 )
 
 # Wkb notification deadlines. Three formal meldingen required per project.
-# Bouwmelding: 4 weeks (28 calendar days) before planned start.
-# Informatieplicht: 2 working days before planned start.
-# Gereedmelding: 10 working days after delivery.
+# Construction notification (bouwmelding): 4 weeks (28 calendar days) before
+#     planned start.
+# Information obligation (informatieplicht): 2 working days before planned
+#     start.
+# Completion notification (gereedmelding): 10 working days after delivery.
+#
+# `deadline_type` keys are English for EU-wide scope. Dutch display names
+# live in the `label` LocaleMap.
 NL_DEADLINE_RULES: tuple[DeadlineRule, ...] = (
     DeadlineRule(
-        deadline_type="bouwmelding",
+        deadline_type="construction_notification",
         label={"nl": "Bouwmelding", "en": "Construction notification"},
         source_field="planned_start_date",
         offset_days=28,
@@ -45,16 +50,17 @@ NL_DEADLINE_RULES: tuple[DeadlineRule, ...] = (
         legal_reference="Wkb art. 2.21",
     ),
     DeadlineRule(
-        deadline_type="informatieplicht",
+        deadline_type="information_obligation",
         label={"nl": "Informatieplicht", "en": "Information obligation"},
         source_field="planned_start_date",
         offset_days=2,
         use_working_days=True,
         direction="before",
         legal_reference="Wkb art. 2.21",
+        default_reminder_days=(3, 1),
     ),
     DeadlineRule(
-        deadline_type="gereedmelding",
+        deadline_type="completion_notification",
         label={"nl": "Gereedmelding", "en": "Completion notification"},
         source_field="delivery_date",
         offset_days=10,

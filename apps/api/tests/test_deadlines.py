@@ -82,7 +82,7 @@ async def test_deadlines_seeded_on_create_with_dates(
 
     assert len(deadlines) == 3
     types = {d["deadline_type"] for d in deadlines}
-    assert types == {"bouwmelding", "informatieplicht", "gereedmelding"}
+    assert types == {"construction_notification", "information_obligation", "completion_notification"}
 
     for d in deadlines:
         assert d["status"] == "pending"
@@ -118,10 +118,10 @@ async def test_deadlines_partial_dates(
     deadlines = await _list_deadlines(client, org_user["access_token"], project["id"])
 
     by_type = {d["deadline_type"]: d for d in deadlines}
-    assert by_type["bouwmelding"]["status"] == "pending"
-    assert by_type["informatieplicht"]["status"] == "pending"
-    assert by_type["gereedmelding"]["status"] == "not_applicable"
-    assert by_type["gereedmelding"]["due_date"] is None
+    assert by_type["construction_notification"]["status"] == "pending"
+    assert by_type["information_obligation"]["status"] == "pending"
+    assert by_type["completion_notification"]["status"] == "not_applicable"
+    assert by_type["completion_notification"]["due_date"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ async def test_recompute_on_date_change(
     token = org_user["access_token"]
     project = await _create_project_with_dates(client, token, name="Recompute Test")
     deadlines_before = await _list_deadlines(client, token, project["id"])
-    old_bouwmelding = next(d for d in deadlines_before if d["deadline_type"] == "bouwmelding")
+    old_bouwmelding = next(d for d in deadlines_before if d["deadline_type"] == "construction_notification")
 
     # Change planned_start_date
     resp = await client.patch(
@@ -147,7 +147,7 @@ async def test_recompute_on_date_change(
     assert resp.status_code == 200
 
     deadlines_after = await _list_deadlines(client, token, project["id"])
-    new_bouwmelding = next(d for d in deadlines_after if d["deadline_type"] == "bouwmelding")
+    new_bouwmelding = next(d for d in deadlines_after if d["deadline_type"] == "construction_notification")
 
     # Due date changed
     assert new_bouwmelding["due_date"] != old_bouwmelding["due_date"]
@@ -171,10 +171,10 @@ async def test_recompute_nulling_date_flips_to_not_applicable(
 
     deadlines = await _list_deadlines(client, token, project["id"])
     by_type = {d["deadline_type"]: d for d in deadlines}
-    assert by_type["bouwmelding"]["status"] == "not_applicable"
-    assert by_type["informatieplicht"]["status"] == "not_applicable"
+    assert by_type["construction_notification"]["status"] == "not_applicable"
+    assert by_type["information_obligation"]["status"] == "not_applicable"
     # gereedmelding untouched (still based on delivery_date)
-    assert by_type["gereedmelding"]["status"] == "pending"
+    assert by_type["completion_notification"]["status"] == "pending"
 
 
 async def test_recompute_met_deadline_resets_when_date_changes(
@@ -185,7 +185,7 @@ async def test_recompute_met_deadline_resets_when_date_changes(
     project = await _create_project_with_dates(client, token, name="Met Reset")
 
     deadlines = await _list_deadlines(client, token, project["id"])
-    bouwmelding = next(d for d in deadlines if d["deadline_type"] == "bouwmelding")
+    bouwmelding = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
 
     # Mark as met
     met_result = await _mark_met(client, token, project["id"], bouwmelding["id"])
@@ -212,7 +212,7 @@ async def test_recompute_met_deadline_preserved_when_date_unchanged(
     project = await _create_project_with_dates(client, token, name="Met Preserve")
 
     deadlines = await _list_deadlines(client, token, project["id"])
-    bouwmelding = next(d for d in deadlines if d["deadline_type"] == "bouwmelding")
+    bouwmelding = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
 
     # Mark as met
     await _mark_met(client, token, project["id"], bouwmelding["id"])
@@ -253,7 +253,7 @@ async def test_mark_met_sets_fields(
     token = org_user["access_token"]
     project = await _create_project_with_dates(client, token, name="Mark Met")
     deadlines = await _list_deadlines(client, token, project["id"])
-    dl = next(d for d in deadlines if d["deadline_type"] == "bouwmelding")
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
 
     result = await _mark_met(client, token, project["id"], dl["id"])
     assert result["status"] == "met"
@@ -268,7 +268,7 @@ async def test_mark_met_idempotent(
     token = org_user["access_token"]
     project = await _create_project_with_dates(client, token, name="Idempotent")
     deadlines = await _list_deadlines(client, token, project["id"])
-    dl = next(d for d in deadlines if d["deadline_type"] == "bouwmelding")
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
 
     first = await _mark_met(client, token, project["id"], dl["id"])
     second = await _mark_met(client, token, project["id"], dl["id"])
@@ -311,7 +311,7 @@ async def test_is_overdue_for_past_due_pending(
         name="Overdue Test",
     )
     deadlines = await _list_deadlines(client, token, project["id"])
-    bouwmelding = next(d for d in deadlines if d["deadline_type"] == "bouwmelding")
+    bouwmelding = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
     assert bouwmelding["is_overdue"] is True
 
 
@@ -327,7 +327,7 @@ async def test_is_overdue_false_for_met(
         name="Met Not Overdue",
     )
     deadlines = await _list_deadlines(client, token, project["id"])
-    bouwmelding = next(d for d in deadlines if d["deadline_type"] == "bouwmelding")
+    bouwmelding = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
 
     result = await _mark_met(client, token, project["id"], bouwmelding["id"])
     assert result["is_overdue"] is False
@@ -393,7 +393,7 @@ async def test_viewer_cannot_mark_met(
     )
 
     deadlines = await _list_deadlines(client, token, project["id"])
-    dl = next(d for d in deadlines if d["deadline_type"] == "bouwmelding")
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
 
     resp = await client.patch(
         f"/projects/{project['id']}/deadlines/{dl['id']}",
@@ -413,7 +413,7 @@ async def test_editor_can_mark_met(
     project = await _create_project_with_dates(client, token, name="Editor Met")
 
     deadlines = await _list_deadlines(client, token, project["id"])
-    dl = next(d for d in deadlines if d["deadline_type"] == "bouwmelding")
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
 
     resp = await client.patch(
         f"/projects/{project['id']}/deadlines/{dl['id']}",

@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  Bell,
   ChevronRight,
   Clock,
   Download,
@@ -37,6 +38,7 @@ import { HeroShell } from '@/components/layout/HeroShell';
 import { PageShell } from '@/components/layout/PageShell';
 import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
 import { MembersTable } from '@/features/admin/members/MembersTable';
+import { DeadlineNotificationDefaults } from '@/features/admin/notifications/DeadlineNotificationDefaults';
 import type { AuditEntry, MemberRead } from '@/lib/api/schemas';
 
 import type { OrgDetailViewProps } from './types';
@@ -528,6 +530,11 @@ export function OrgDetailView({
       title: t('panel.recentEvents', { count: auditEntries.length }),
       sub: t('panel.lastDays', { days: 7 }),
     },
+    notifications: {
+      eyebrow: t('panel.notificationsEyebrow'),
+      title: t('panel.notificationsTitle'),
+      sub: '',
+    },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
 
   const tabTriggerClass =
@@ -567,6 +574,10 @@ export function OrgDetailView({
             <span className="rounded-full bg-background-hover px-1.5 py-px text-caption font-bold text-foreground-tertiary">
               {auditEntries.length}
             </span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className={tabTriggerClass}>
+            <Bell className="h-3.5 w-3.5" />
+            {t('tabs.notifications')}
           </TabsTrigger>
         </TabsList>
 
@@ -661,6 +672,10 @@ export function OrgDetailView({
                 </div>
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="notifications" className="mt-0">
+            <DeadlineNotificationDefaults />
           </TabsContent>
         </div>
       </Tabs>

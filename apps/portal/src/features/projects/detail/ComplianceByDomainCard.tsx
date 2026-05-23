@@ -64,13 +64,13 @@ export function ComplianceByDomainCard({
   return (
     <div
       className={`relative flex min-h-0 flex-1 flex-col overflow-hidden p-4 ${
-        embedded ? 'bg-transparent' : 'rounded-xl border border-border bg-background shadow-sm'
+        embedded ? 'bg-transparent' : 'rounded-xl bg-background shadow-sm'
       }`}
     >
       <BlueprintTexture className="opacity-[0.04]" />
 
       {/* Header */}
-      <div className="relative mb-3 flex items-start justify-between">
+      <div className="relative mb-3 flex items-end justify-between">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
             {t('eyebrow')}
@@ -89,18 +89,18 @@ export function ComplianceByDomainCard({
       </div>
 
       {/* Body */}
-      <div className="relative flex min-h-0 flex-1 items-center gap-4">
+      <div className="relative flex min-h-0 flex-1 items-center gap-4 overflow-hidden">
         <div className="shrink-0">
           <ComplianceDonut
             segments={donutSegments}
             centerValue={`${overallScore}%`}
             centerLabel={t('donutCenterLabel')}
             centerSub={t('failingSuffix', { count: failCount })}
-            size={380}
+            size={260}
           />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto">
           {tab === 'domains' &&
             domains.map((d) => {
               const t = d.pass + d.warn + d.fail;
@@ -196,7 +196,7 @@ export function ComplianceByDomainCard({
       </div>
 
       {/* Trend strip */}
-      <div className="relative mt-3 flex items-center gap-3 border-t border-border pt-3">
+      <div className="relative mt-3 flex shrink-0 items-center gap-3 border-t border-border pt-3">
         <div>
           <div className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
             {t('trendEyebrow')}

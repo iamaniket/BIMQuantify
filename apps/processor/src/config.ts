@@ -27,6 +27,19 @@ const Schema = z.object({
     .string()
     .default(String(2 * 1024 * 1024 * 1024))
     .transform((v) => Number.parseInt(v, 10)),
+
+  EMAIL_TRANSPORT: z.enum(['smtp', 'postmark']).default('smtp'),
+  SMTP_HOST: z.string().default('localhost'),
+  SMTP_PORT: z
+    .string()
+    .default('1025')
+    .transform((v) => Number.parseInt(v, 10)),
+  SMTP_FROM: z.string().default('no-reply@bimstitch.dev'),
+  POSTMARK_SERVER_TOKEN: z.string().optional(),
+  ACTION_CONCURRENCY: z
+    .string()
+    .default('10')
+    .transform((v) => Number.parseInt(v, 10)),
 });
 
 export type Config = z.infer<typeof Schema>;
@@ -45,5 +58,6 @@ export function resetConfig(): void {
 }
 
 export const QUEUE_NAME = 'jobs';
+export const ACTION_QUEUE_NAME = 'actions';
 export const SUPPORTED_SCHEMAS = ['IFC2X3', 'IFC4', 'IFC4X3'] as const;
 export type SupportedSchema = (typeof SUPPORTED_SCHEMAS)[number];

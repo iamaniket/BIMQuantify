@@ -9,6 +9,7 @@ import type { Model } from '@/lib/api/schemas';
 
 import { BevindingenTab } from './BevindingenTab';
 import { BorgingsplanTab } from './BorgingsplanTab';
+import { DeadlinesTab } from './DeadlinesTab';
 import { DocumentenTab } from './DocumentenTab';
 import { InspectiesTab } from './InspectiesTab';
 import { ModelsTab } from './ModelsTab';
@@ -32,22 +33,33 @@ export function RightColumnTabs({
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-      <div className="shrink-0 px-3 pt-3">
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="inline-flex w-auto">
-            <TabsTrigger value="models">
-              {t('models.label')}
-              <span className="ml-1 rounded-full bg-background-secondary px-1.5 text-caption tabular-nums text-foreground-secondary">
-                {models.length}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger value="borgingsplan">{t('borgingsplan.label')}</TabsTrigger>
-            <TabsTrigger value="inspecties">{t('inspecties.label')}</TabsTrigger>
-            <TabsTrigger value="bevindingen">{t('bevindingen.label')}</TabsTrigger>
-            <TabsTrigger value="documenten">{t('documenten.label')}</TabsTrigger>
-            <TabsTrigger value="rapporten">{t('rapporten.label')}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="shrink-0 p-4 pb-0">
+        <div className="mb-3 flex items-end justify-between">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+              {t('eyebrow')}
+            </div>
+            <div className="mt-0.5 text-title3 font-medium tracking-tight text-foreground">
+              {t('subtitle', { count: models.length })}
+            </div>
+          </div>
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="inline-flex w-auto">
+              <TabsTrigger value="models">
+                {t('models.label')}
+                <span className="ml-1 rounded-full bg-background-secondary px-1.5 text-caption tabular-nums text-foreground-secondary">
+                  {models.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="borgingsplan">{t('borgingsplan.label')}</TabsTrigger>
+              <TabsTrigger value="deadlines">{t('deadlines.label')}</TabsTrigger>
+              <TabsTrigger value="inspecties">{t('inspecties.label')}</TabsTrigger>
+              <TabsTrigger value="bevindingen">{t('bevindingen.label')}</TabsTrigger>
+              <TabsTrigger value="documenten">{t('documenten.label')}</TabsTrigger>
+              <TabsTrigger value="rapporten">{t('rapporten.label')}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
@@ -56,6 +68,9 @@ export function RightColumnTabs({
         )}
         {tab === 'borgingsplan' && (
           <BorgingsplanTab projectId={projectId} country={projectCountry} />
+        )}
+        {tab === 'deadlines' && (
+          <DeadlinesTab projectId={projectId} country={projectCountry} />
         )}
         {tab === 'inspecties' && <InspectiesTab />}
         {tab === 'bevindingen' && <BevindingenTab />}

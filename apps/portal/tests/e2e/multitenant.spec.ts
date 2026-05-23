@@ -1,7 +1,7 @@
 /**
  * Multitenant E2E Journey
  *
- * Runs 90 sequential tests covering the full lifecycle:
+ * Runs 88 sequential tests covering the full lifecycle:
  *   A. Super admin creates a new tenant + first admin
  *   B. Admin activates account via MailHog email → logs in
  *   C. Admin invites a member, creates a project, edits the project
@@ -18,7 +18,7 @@
  *   N. Last-admin protection (cannot leave/demote sole admin)
  *   O. Seat limit enforcement (invite blocked at cap → cap removed)
  *   P. Profile name edit (inline edit on /account)
- *   Q. Invitation decline (new user declines → no workspace access)
+ *   Q. Invitation decline (admin declines a temp-org invite)
  *   R. Organization switching (multi-org via /select-tenant)
  *   S. Project lifecycle (archive → reactivate → delete)
  *   T. Project member role change + removal (editor → viewer → removed)
@@ -37,7 +37,7 @@
 
 import { expect, test } from '@playwright/test';
 
-import { injectSavedAuth, loginViaAPI, loginViaUI } from '../support/auth';
+import { injectSavedAuth, loginViaAPI, loginViaUI, updateTokenCacheFromPage } from '../support/auth';
 import { clearAllEmails, extractUrlFromEmail, waitForEmail } from '../support/mailhog';
 import { requireSuperAdminCreds } from '../support/env';
 import { state } from '../support/state';
@@ -424,6 +424,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
   // =========================================================================
 
   test('E1: member requests a password reset via the forgot-password UI', async ({ page }) => {
+    // Flush Redis so the forgot-password rate limiter (3/hour per IP) starts
+    // at zero — any manual testing or previous runs could have consumed slots.
+    const { execSync } = await import('child_process');
+    execSync('docker exec bimstitch-redis redis-cli FLUSHALL', { stdio: 'ignore' });
     await clearAllEmails();
 
     await page.goto('/en/login');
@@ -433,7 +437,22 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await expect(page).toHaveURL(/\/forgot-password/);
 
     await page.getByLabel(/work email/i).fill(state.memberEmail);
-    await page.getByRole('button', { name: /send reset link/i }).click();
+
+    // Intercept the API call so a 429 or 5xx surfaces immediately instead of
+    // the UI silently swallowing it and showing "check your inbox" regardless.
+    const [forgotResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/auth/forgot-password') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+      ),
+      page.getByRole('button', { name: /send reset link/i }).click(),
+    ]);
+    if (!forgotResp.ok()) {
+      const body = await forgotResp.text();
+      throw new Error(
+        `forgot-password returned ${forgotResp.status()} for ${state.memberEmail}: ${body}`,
+      );
+    }
 
     await expect(page.getByRole('heading', { name: /check your inbox/i })).toBeVisible({
       timeout: 10_000,
@@ -473,6 +492,9 @@ test.describe.serial('Multitenant E2E Journey', () => {
   // =========================================================================
 
   test('F1: admin requests a password reset via the forgot-password UI', async ({ page }) => {
+    // Flush Redis again — E1 reset it, but F1 is a separate 1-hour window slot.
+    const { execSync } = await import('child_process');
+    execSync('docker exec bimstitch-redis redis-cli FLUSHALL', { stdio: 'ignore' });
     await clearAllEmails();
 
     await page.goto('/en/login');
@@ -482,7 +504,20 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await expect(page).toHaveURL(/\/forgot-password/);
 
     await page.getByLabel(/work email/i).fill(state.adminEmail);
-    await page.getByRole('button', { name: /send reset link/i }).click();
+
+    const [forgotResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/auth/forgot-password') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+      ),
+      page.getByRole('button', { name: /send reset link/i }).click(),
+    ]);
+    if (!forgotResp.ok()) {
+      const body = await forgotResp.text();
+      throw new Error(
+        `forgot-password returned ${forgotResp.status()} for ${state.adminEmail}: ${body}`,
+      );
+    }
 
     await expect(page.getByRole('heading', { name: /check your inbox/i })).toBeVisible({
       timeout: 10_000,
@@ -1033,6 +1068,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, email);
 
     await page.goto('/en/admin/organizations');
+    // The org list (with clickable links) is in the Organizations tab.
+    await page.getByRole('tab', { name: /organizations/i }).click();
     const orgLink = page.getByRole('link', { name: state.orgName });
     await expect(orgLink).toBeVisible({ timeout: 10_000 });
     await orgLink.click();
@@ -1457,80 +1494,66 @@ test.describe.serial('Multitenant E2E Journey', () => {
   // Q — Invitation decline
   // =========================================================================
 
-  test('Q1: admin invites a new "decline user" via tenant Members tab', async ({ page }) => {
-    await injectSavedAuth(page, state.adminEmail);
+  test('Q1: super admin creates a temp org with admin email to test invitation decline', async ({ page }) => {
+    // Strategy: use the already-verified admin user as the invitee.
+    // Because admin is already activated and has an active org1 membership,
+    // the `on_after_verify` auto-accept hook will NOT fire — it only triggers
+    // during first account activation for users with 0 active memberships.
+    // The Q-org invitation therefore stays pending until admin manually declines.
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
 
-    state.declineEmail = `decline-${RUN}@example.com`;
-
+    state.q_org_name = `E2E-Q-Org-${RUN}`;
     await clearAllEmails();
 
-    await page.goto('/en/tenant');
-    await page.getByRole('tab', { name: 'Members' }).click();
-    await page.getByRole('button', { name: 'Invite member' }).click();
+    await page.goto('/en/admin/organizations');
+    await page.getByRole('tab', { name: /organizations/i }).click();
+    const newTenantBtn = page.getByRole('button', { name: 'New tenant' });
+    await expect(newTenantBtn).toBeVisible({ timeout: 10_000 });
+    await newTenantBtn.click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
-    await dialog.locator('input[name="email"]').fill(state.declineEmail);
-    const fullNameInput = dialog.locator('input[name="full_name"]');
-    if (await fullNameInput.isVisible()) {
-      await fullNameInput.fill(`E2E Decline ${RUN}`);
-    }
+    await dialog.locator('input[name="name"]').fill(state.q_org_name);
+    await dialog.locator('input[name="admin_email"]').fill(state.adminEmail);
 
-    const [inviteResp] = await Promise.all([
+    const [createResp] = await Promise.all([
       page.waitForResponse(
-        (r) => r.url().includes('/members') && r.request().method() === 'POST',
+        (r) => r.url().includes('organizations') && r.request().method() === 'POST',
         { timeout: 30_000 },
       ),
-      dialog.getByRole('button', { name: 'Send invite' }).click(),
+      dialog.getByRole('button', { name: 'Create tenant', exact: true }).click(),
     ]);
-    if (!inviteResp.ok()) {
-      const body = await inviteResp.text();
-      throw new Error(`Invite decline user failed: ${inviteResp.status()}: ${body}`);
+
+    if (!createResp.ok()) {
+      const body = await createResp.text();
+      throw new Error(`Create Q-org failed: ${createResp.status()}: ${body}`);
     }
 
-    try {
-      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
-    } catch {
-      await page.keyboard.press('Escape');
-      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
-    }
+    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
   });
 
-  test('Q2: extract decline user activation email and activate', async ({ page }) => {
-    const body = await waitForEmail(state.declineEmail, { timeoutMs: 40_000 });
-    const activationUrl = extractUrlFromEmail(body, /\/activate\?token=/);
-    const parsed = new URL(activationUrl);
-    state._declineActivationPath = parsed.pathname + parsed.search;
-
-    await page.goto(state._declineActivationPath);
-
-    const passwords = page.locator('input[type="password"]');
-    await passwords.nth(0).fill(state.declinePassword);
-    await passwords.nth(1).fill(state.declinePassword);
-
-    await page.getByRole('button', { name: /activate account/i }).click();
-    await page.waitForURL(/\/login/, { timeout: 15_000 });
-  });
-
-  test('Q3: decline user logs in and sees Invitations tab', async ({ page }) => {
-    await loginViaUI(page, state.declineEmail, state.declinePassword, {
-      expectedPathPattern: /\/(account|projects)/,
-    });
-
-    await page.goto('/en/account');
-    const invTab = page.getByRole('tab', { name: /invitations/i });
-    await expect(invTab).toBeVisible({ timeout: 10_000 });
-    await invTab.click();
-  });
-
-  test('Q4: decline user declines the invitation', async ({ page }) => {
-    await injectSavedAuth(page, state.declineEmail);
+  test('Q2: admin sees the Q-org invitation on the Invitations tab', async ({ page }) => {
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
     await page.goto('/en/account');
 
     const invTab = page.getByRole('tab', { name: /invitations/i });
     await expect(invTab).toBeVisible({ timeout: 10_000 });
     await invTab.click();
+
+    // Q-org invite stays pending — admin is already verified so no auto-accept.
+    await expect(page.getByText(state.q_org_name)).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('Q3: admin declines the Q-org invitation', async ({ page }) => {
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
+    await page.goto('/en/account');
+
+    const invTab = page.getByRole('tab', { name: /invitations/i });
+    await invTab.click();
+
+    await expect(page.getByText(state.q_org_name)).toBeVisible({ timeout: 10_000 });
 
     const declineBtn = page.getByRole('button', { name: /decline/i }).first();
     await expect(declineBtn).toBeVisible({ timeout: 10_000 });
@@ -1543,23 +1566,13 @@ test.describe.serial('Multitenant E2E Journey', () => {
       declineBtn.click(),
     ]);
 
-    // Decline endpoint returns 204 on success.
     if (declineResp.status() !== 204 && !declineResp.ok()) {
       const body = await declineResp.text();
       throw new Error(`Decline invitation failed: ${declineResp.status()}: ${body}`);
     }
 
-    // After declining, no pending invitations should remain.
-    await expect(declineBtn).not.toBeVisible({ timeout: 10_000 });
-  });
-
-  test('Q5: decline user has no workspace access after declining', async ({ page }) => {
-    // Fresh login to get a token reflecting the declined state.
-    await loginViaAPI(page, state.declineEmail, state.declinePassword);
-    await page.goto('/en/projects');
-
-    // No active org → either empty state, redirect, or no-org banner.
-    await expect(page.getByText(state.projectName)).not.toBeVisible({ timeout: 10_000 });
+    // Q-org entry disappears from the Invitations tab after declining.
+    await expect(page.getByText(state.q_org_name)).not.toBeVisible({ timeout: 10_000 });
   });
 
   // =========================================================================
@@ -1605,20 +1618,37 @@ test.describe.serial('Multitenant E2E Journey', () => {
   });
 
   test('R2: admin accepts the org2 invitation', async ({ page }) => {
-    // Admin already has a cached token from org1. We need a fresh login
-    // to pick up the pending invitation.
+    // Fresh login so the portal fetches the latest invitation list.
+    // Admin already has an active org1 membership → the on_after_verify
+    // auto-accept rule does NOT fire, so org2 stays pending until accepted here.
     await loginViaAPI(page, state.adminEmail, state.adminPassword);
     await page.goto('/en/account');
 
+    // Invitations tab must be visible — R1 just created an org2 invitation.
     const invTab = page.getByRole('tab', { name: /invitations/i });
-    if (await invTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await invTab.click();
-      const acceptBtn = page.getByRole('button', { name: /accept/i }).first();
-      if (await acceptBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await acceptBtn.click();
-        await expect(acceptBtn).not.toBeVisible({ timeout: 10_000 });
-      }
+    await expect(invTab).toBeVisible({ timeout: 15_000 });
+    await invTab.click();
+
+    // The org2 invitation row must be visible.
+    await expect(page.getByText(state.org2Name)).toBeVisible({ timeout: 10_000 });
+
+    const acceptBtn = page.getByRole('button', { name: /accept/i }).first();
+    await expect(acceptBtn).toBeVisible({ timeout: 10_000 });
+
+    const [acceptResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/invitations/') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      acceptBtn.click(),
+    ]);
+    if (!acceptResp.ok()) {
+      const body = await acceptResp.text();
+      throw new Error(`Accept org2 invitation failed: ${acceptResp.status()}: ${body}`);
     }
+
+    // After accepting, the pending invitation row should disappear.
+    await expect(acceptBtn).not.toBeVisible({ timeout: 10_000 });
   });
 
   test('R3: admin sees both orgs on /select-tenant', async ({ page }) => {
@@ -1672,6 +1702,11 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
     await page.waitForURL(/\/projects/, { timeout: 15_000 });
     await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+
+    // Save the org1-scoped tokens that the switch just issued into the in-process
+    // cache. Subsequent injectSavedAuth calls will inject these org1 tokens
+    // rather than the stale org2-scoped tokens that loginViaAPI set above.
+    await updateTokenCacheFromPage(page, state.adminEmail);
   });
 
   // =========================================================================
@@ -1746,8 +1781,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
     const cards = page.locator('a[href*="/projects/"]').filter({
       has: page.getByText(state.lifecycleProjectName),
     });
-    const card = cards.first();
-    const actionsBtn = card.getByRole('button', { name: 'Project actions' });
+    // "Project actions" button is a sibling of the <a> link (rendered by
+    // <ProjectCardMenu> outside <Link> in ProjectCard.tsx). Step up to the
+    // parent card container with locator('..') before querying the button.
+    const actionsBtn = cards.first().locator('..').getByRole('button', { name: 'Project actions' });
     await actionsBtn.click();
 
     const [archiveResp] = await Promise.all([
@@ -1764,36 +1801,34 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
   });
 
-  test('S3: archived project is not visible in default project list', async ({ page }) => {
+  test('S3: archived project shows the Archived badge in the default project list', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto('/en/projects');
 
-    // The default status filter shows "All" active projects; archived are hidden
-    // unless the user specifically selects the "Archived" filter.
+    // The default "All" filter shows EVERY project, including archived ones.
+    // Archived projects are not hidden — they appear with an "Archived · read only" badge.
     await page.waitForLoadState('domcontentloaded');
 
-    // Give the list time to render.
+    // Both the original project and the just-archived lifecycle project should be visible.
     await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
-    // The lifecycle project should not be in the default active list.
-    await expect(page.getByText(state.lifecycleProjectName)).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(state.lifecycleProjectName)).toBeVisible({ timeout: 10_000 });
+
+    // The archived badge confirms the archive operation succeeded.
+    await expect(page.getByText('Archived · read only')).toBeVisible({ timeout: 5_000 });
   });
 
   test('S4: admin reactivates the archived project', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto('/en/projects');
 
-    // Switch to the "Archived" filter to find the lifecycle project.
-    const archivedFilter = page.getByRole('button', { name: /archived/i });
-    await expect(archivedFilter).toBeVisible({ timeout: 10_000 });
-    await archivedFilter.click();
-
+    // The archived lifecycle project is visible in the default list.
     await expect(page.getByText(state.lifecycleProjectName)).toBeVisible({ timeout: 10_000 });
 
     // Open the card menu and click Reactivate.
     const cards = page.locator('a[href*="/projects/"]').filter({
       has: page.getByText(state.lifecycleProjectName),
     });
-    const actionsBtn = cards.first().getByRole('button', { name: 'Project actions' });
+    const actionsBtn = cards.first().locator('..').getByRole('button', { name: 'Project actions' });
     await actionsBtn.click();
 
     const [reactivateResp] = await Promise.all([
@@ -1827,7 +1862,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     const cards = page.locator('a[href*="/projects/"]').filter({
       has: page.getByText(state.lifecycleProjectName),
     });
-    await cards.first().getByRole('button', { name: 'Project actions' }).click();
+    await cards.first().locator('..').getByRole('button', { name: 'Project actions' }).click();
     await page.getByRole('menuitem', { name: /remove/i }).click();
 
     const confirmDialog = page.getByRole('dialog');
@@ -1855,7 +1890,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     const cards = page.locator('a[href*="/projects/"]').filter({
       has: page.getByText(state.lifecycleProjectName),
     });
-    await cards.first().getByRole('button', { name: 'Project actions' }).click();
+    await cards.first().locator('..').getByRole('button', { name: 'Project actions' }).click();
     await page.getByRole('menuitem', { name: /remove/i }).click();
 
     const confirmDialog = page.getByRole('dialog');
@@ -2024,8 +2059,13 @@ test.describe.serial('Multitenant E2E Journey', () => {
   // U — Resend invitation
   // =========================================================================
 
-  test('U1: admin re-invites the decline user to the tenant', async ({ page }) => {
+  test('U1: admin invites a fresh user to the tenant for resend-invite test', async ({ page }) => {
+    // Use a brand-new email that has never been invited before.
+    // This user will NOT be activated, so the invite stays pending — exactly
+    // what we need to exercise the "Resend invite" action in U2.
     await injectSavedAuth(page, state.adminEmail);
+
+    state.u_inviteEmail = `u-${RUN}@example.com`;
     await clearAllEmails();
 
     await page.goto('/en/tenant');
@@ -2035,10 +2075,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
-    await dialog.locator('input[name="email"]').fill(state.declineEmail);
+    await dialog.locator('input[name="email"]').fill(state.u_inviteEmail);
     const fullNameInput = dialog.locator('input[name="full_name"]');
     if (await fullNameInput.isVisible()) {
-      await fullNameInput.fill(`E2E Decline ${RUN}`);
+      await fullNameInput.fill(`E2E Invite ${RUN}`);
     }
 
     const [inviteResp] = await Promise.all([
@@ -2050,7 +2090,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     ]);
     if (!inviteResp.ok()) {
       const body = await inviteResp.text();
-      throw new Error(`Re-invite decline user failed: ${inviteResp.status()}: ${body}`);
+      throw new Error(`Invite u-user failed: ${inviteResp.status()}: ${body}`);
     }
 
     try {
@@ -2068,10 +2108,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.goto('/en/tenant');
     await page.getByRole('tab', { name: 'Members' }).click();
 
-    const declineRow = page.getByRole('row').filter({ hasText: state.declineEmail });
-    await expect(declineRow).toBeVisible({ timeout: 10_000 });
+    const memberRow = page.getByRole('row').filter({ hasText: state.u_inviteEmail });
+    await expect(memberRow).toBeVisible({ timeout: 10_000 });
 
-    const actionsBtn = declineRow.getByRole('button', { name: /actions/i });
+    const actionsBtn = memberRow.getByRole('button', { name: /actions/i });
     await actionsBtn.click();
 
     const [resendResp] = await Promise.all([
@@ -2088,8 +2128,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
   });
 
-  test('U3: new invite email arrives in MailHog', async () => {
-    const body = await waitForEmail(state.declineEmail, { timeoutMs: 40_000 });
+  test('U3: resent invite email arrives in MailHog', async () => {
+    const body = await waitForEmail(state.u_inviteEmail, { timeoutMs: 40_000 });
     expect(body).toBeTruthy();
   });
 
@@ -2153,15 +2193,16 @@ test.describe.serial('Multitenant E2E Journey', () => {
       throw new Error(`Promote user failed: ${promoteResp.status()}: ${body}`);
     }
 
-    // The badge should now show "Yes" for superuser.
-    await expect(adminRow.getByText(/yes/i)).toBeVisible({ timeout: 5_000 });
+    // The badge should now show "Super admin" for the superuser column.
+    await expect(adminRow.getByText(/super admin/i)).toBeVisible({ timeout: 5_000 });
   });
 
   test('W3: promoted admin can access /admin/organizations', async ({ page }) => {
     // Fresh login to get a token reflecting the new superuser status.
     await loginViaAPI(page, state.adminEmail, state.adminPassword);
     await page.goto('/en/admin/organizations');
-
+    // Switch to the Organizations tab to confirm the page is fully accessible.
+    await page.getByRole('tab', { name: /organizations/i }).click();
     // If the admin is now a superuser, this page should load without redirect.
     await expect(
       page.getByRole('button', { name: 'New tenant' }),
@@ -2208,7 +2249,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
     await expect(adminRow).toBeVisible({ timeout: 10_000 });
 
-    const deactivateBtn = adminRow.getByRole('button', { name: /deactivate/i });
+    // Button label is "Disable" (i18n key "deactivate" = "Disable").
+    const deactivateBtn = adminRow.getByRole('button', { name: /disable/i });
     await expect(deactivateBtn).toBeVisible({ timeout: 5_000 });
 
     const [deactivateResp] = await Promise.all([
@@ -2224,7 +2266,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
       throw new Error(`Deactivate user failed: ${deactivateResp.status()}: ${body}`);
     }
 
-    // Badge should now show "Disabled".
+    // Access badge now shows "Disabled".
     await expect(adminRow.getByText(/disabled/i)).toBeVisible({ timeout: 5_000 });
   });
 
@@ -2258,8 +2300,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
     await expect(adminRow).toBeVisible({ timeout: 10_000 });
 
-    // After deactivation, the button label should be "Activate".
-    const activateBtn = adminRow.getByRole('button', { name: /activate/i });
+    // After deactivation, the button label is "Enable" (i18n key "activate" = "Enable").
+    const activateBtn = adminRow.getByRole('button', { name: /enable/i });
     await expect(activateBtn).toBeVisible({ timeout: 5_000 });
 
     const [activateResp] = await Promise.all([
@@ -2276,7 +2318,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
 
     // Verify admin can log in again.
-    await loginViaUI(page, state.adminEmail, state.adminPassword);
+    // Admin may land on /select-tenant if they have multiple org memberships (org1 + org2).
+    await loginViaUI(page, state.adminEmail, state.adminPassword, {
+      expectedPathPattern: /\/(projects|select-tenant|account)/,
+    });
     await expect(page).toHaveURL(/\/(projects|select-tenant|account)/, { timeout: 15_000 });
   });
 

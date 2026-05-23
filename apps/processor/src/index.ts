@@ -8,9 +8,11 @@
  */
 
 import { getConfig } from './config.js';
+import { closeEmailTransport } from './email/transport.js';
 import { buildServer } from './http/server.js';
 import { logger } from './log.js';
 import { closeBrowser } from './pipeline/report/chromium.js';
+import { startActionWorker } from './queue/action-worker.js';
 import { closeQueue } from './queue/queue.js';
 import { startWorker } from './queue/worker.js';
 
@@ -18,6 +20,7 @@ async function main(): Promise<void> {
   const cfg = getConfig();
   const server = await buildServer();
   const worker = startWorker();
+  const actionWorker = startActionWorker();
 
   await server.listen({ host: '0.0.0.0', port: cfg.PORT });
   logger.info({ port: cfg.PORT }, 'processor service listening');
@@ -26,9 +29,11 @@ async function main(): Promise<void> {
     logger.info({ signal }, 'shutting down');
     try {
       await server.close();
+      await actionWorker.close();
       await worker.close();
       await closeQueue();
       await closeBrowser();
+      closeEmailTransport();
     } finally {
       process.exit(0);
     }

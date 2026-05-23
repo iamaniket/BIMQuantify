@@ -12,6 +12,7 @@ from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.auth.tokens import TokenError, decode_token_full
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
+from bimstitch_api.deadlines.reminder_engine import DeadlineReminderSweeper
 from bimstitch_api.jobs.dispatcher import close_http_client
 from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.observability import init_sentry
@@ -31,6 +32,12 @@ from bimstitch_api.routers.compliance import (
     router as compliance_router,
 )
 from bimstitch_api.routers.contractors import router as contractors_router
+from bimstitch_api.routers.deadline_notification_settings import (
+    org_router as dl_notif_settings_org_router,
+)
+from bimstitch_api.routers.deadline_notification_settings import (
+    project_router as dl_notif_settings_project_router,
+)
 from bimstitch_api.routers.deadlines import router as deadlines_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.inspection import router as inspection_router
@@ -70,8 +77,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             "MinIO/S3 ensure_bucket failed; uploads will fail until storage is reachable",
             exc_info=True,
         )
-    sweeper = InvitationExpirySweeper(settings.invitation_sweep_interval_minutes)
-    sweeper.start()
+    invitation_sweeper = InvitationExpirySweeper(settings.invitation_sweep_interval_minutes)
+    invitation_sweeper.start()
+    deadline_sweeper = DeadlineReminderSweeper(settings.deadline_sweep_interval_minutes)
+    deadline_sweeper.start()
     try:
         yield
     finally:
@@ -79,7 +88,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         if hasattr(storage, "close"):
             await storage.close()
         await close_http_client()
-        await sweeper.stop()
+        await deadline_sweeper.stop()
+        await invitation_sweeper.stop()
         await manager.stop()
         await FastAPILimiter.close()
         await close_redis()
@@ -95,9 +105,7 @@ async def _impersonator_middleware(
     Malformed/missing tokens are silent — auth dependencies surface those
     later. This middleware is a side-effect-only enricher.
     """
-    auth_header = request.headers.get("authorization") or request.headers.get(
-        "Authorization"
-    )
+    auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
     if auth_header and auth_header.lower().startswith("bearer "):
         token = auth_header.split(" ", 1)[1].strip()
         try:
@@ -149,6 +157,8 @@ def create_app() -> FastAPI:
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
     app.include_router(deadlines_router)
+    app.include_router(dl_notif_settings_org_router)
+    app.include_router(dl_notif_settings_project_router)
     app.include_router(risks_router)
     app.include_router(borgingsplan_plan_router)
     app.include_router(borgingsplan_moment_router)

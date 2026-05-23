@@ -208,6 +208,19 @@ export const apiClient = {
     responseSchema,
     accessToken,
   }),
+  put: async <TResponse>(
+    path: string,
+    body: unknown,
+    responseSchema: ZodType<TResponse>,
+    accessToken: string,
+  ): Promise<TResponse> => request<TResponse, unknown>({
+    method: 'PUT',
+    path,
+    body,
+    formEncoded: false,
+    responseSchema,
+    accessToken,
+  }),
   delete: async (
     path: string,
     accessToken: string,

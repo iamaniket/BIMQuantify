@@ -66,13 +66,15 @@ class DeadlineRule:
     types — DE will have entirely different deadlines.
     """
 
-    deadline_type: str  # stable DB key, e.g. "bouwmelding"
+    deadline_type: str  # stable English DB key, e.g. "construction_notification"
     label: LocaleMap  # {"nl": "Bouwmelding", "en": "Construction notification"}
     source_field: str  # "planned_start_date" | "delivery_date"
     offset_days: int  # absolute value
     use_working_days: bool  # True → skip weekends + holidays
     direction: str  # "before" | "after"
     legal_reference: str | None = None
+    default_reminder_days: tuple[int, ...] = (14, 7, 3, 1)
+    default_recipient_roles: tuple[str, ...] = ("owner", "editor", "contractor")
 
 
 def get_deadline_rules(country: str) -> tuple[DeadlineRule, ...]:
@@ -194,9 +196,10 @@ class Jurisdiction:
     # roof and finishing inspections, etc.
     risk_category_to_phases: dict[str, tuple[str, ...]] = field(default_factory=dict)
     # Formal notification deadlines for this country's quality-assurance
-    # regime. NL: Wkb meldingen (bouwmelding, informatieplicht,
-    # gereedmelding). The API computes due_dates from project date fields
-    # using these rules. Adding a country = register its own rules.
+    # regime. NL: Wkb meldingen (construction_notification,
+    # information_obligation, completion_notification). The API computes
+    # due_dates from project date fields using these rules. Adding a
+    # country = register its own rules.
     deadline_rules: tuple[DeadlineRule, ...] = ()
 
 

@@ -349,6 +349,51 @@ def extraction_calls(
     return _stub_job_dispatcher
 
 
+@pytest.fixture(autouse=True)
+def _stub_action_dispatcher() -> Generator[list[dict[str, object]], None, None]:
+    """No-op action dispatcher that records calls.
+
+    Parallels ``_stub_job_dispatcher`` for the lightweight action dispatch
+    path (send_email, etc.). Tests that need to assert dispatch was called
+    pull the ``action_dispatch_calls`` fixture.
+    """
+    from bimstitch_api.actions.dispatcher import (
+        reset_action_dispatcher,
+        set_action_dispatcher,
+    )
+    from bimstitch_api.config import Settings
+
+    calls: list[dict[str, object]] = []
+
+    async def _record(
+        action_type: str,
+        payload: dict,
+        _settings: Settings,
+        organization_id,
+    ) -> None:
+        calls.append(
+            {
+                "action_type": action_type,
+                "organization_id": str(organization_id),
+                "payload": payload,
+            }
+        )
+
+    set_action_dispatcher(_record)
+    try:
+        yield calls
+    finally:
+        reset_action_dispatcher()
+
+
+@pytest.fixture
+def action_dispatch_calls(
+    _stub_action_dispatcher: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Alias so test signatures read naturally."""
+    return _stub_action_dispatcher
+
+
 @pytest.fixture
 async def session(
     session_maker: async_sessionmaker[AsyncSession],

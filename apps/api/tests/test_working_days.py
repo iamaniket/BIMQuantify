@@ -98,9 +98,9 @@ def test_subtract_working_days_negative_raises() -> None:
 # compute_due_date — per Wkb deadline type
 # ---------------------------------------------------------------------------
 
-# Bouwmelding: 28 calendar days before planned_start_date
-_BOUWMELDING = DeadlineRule(
-    deadline_type="bouwmelding",
+# Construction notification (bouwmelding): 28 calendar days before planned_start_date
+_CONSTRUCTION_NOTIFICATION = DeadlineRule(
+    deadline_type="construction_notification",
     label={"nl": "Bouwmelding", "en": "Construction notification"},
     source_field="planned_start_date",
     offset_days=28,
@@ -108,9 +108,9 @@ _BOUWMELDING = DeadlineRule(
     direction="before",
 )
 
-# Informatieplicht: 2 working days before planned_start_date
-_INFORMATIEPLICHT = DeadlineRule(
-    deadline_type="informatieplicht",
+# Information obligation (informatieplicht): 2 working days before planned_start_date
+_INFORMATION_OBLIGATION = DeadlineRule(
+    deadline_type="information_obligation",
     label={"nl": "Informatieplicht", "en": "Information obligation"},
     source_field="planned_start_date",
     offset_days=2,
@@ -118,9 +118,9 @@ _INFORMATIEPLICHT = DeadlineRule(
     direction="before",
 )
 
-# Gereedmelding: 10 working days after delivery_date
-_GEREEDMELDING = DeadlineRule(
-    deadline_type="gereedmelding",
+# Completion notification (gereedmelding): 10 working days after delivery_date
+_COMPLETION_NOTIFICATION = DeadlineRule(
+    deadline_type="completion_notification",
     label={"nl": "Gereedmelding", "en": "Completion notification"},
     source_field="delivery_date",
     offset_days=10,
@@ -129,36 +129,36 @@ _GEREEDMELDING = DeadlineRule(
 )
 
 
-def test_bouwmelding_28_calendar_days() -> None:
+def test_construction_notification_28_calendar_days() -> None:
     # Planned start 2026-07-01 → due 2026-06-03
-    result = compute_due_date(dt.date(2026, 7, 1), _BOUWMELDING, "NL")
+    result = compute_due_date(dt.date(2026, 7, 1), _CONSTRUCTION_NOTIFICATION, "NL")
     assert result == dt.date(2026, 6, 3)
 
 
-def test_informatieplicht_2_working_days_before() -> None:
+def test_information_obligation_2_working_days_before() -> None:
     # Planned start Wed 2026-07-01 → -2 working days = Mon 2026-06-29
-    result = compute_due_date(dt.date(2026, 7, 1), _INFORMATIEPLICHT, "NL")
+    result = compute_due_date(dt.date(2026, 7, 1), _INFORMATION_OBLIGATION, "NL")
     assert result == dt.date(2026, 6, 29)
 
 
-def test_informatieplicht_across_weekend() -> None:
+def test_information_obligation_across_weekend() -> None:
     # Planned start Mon 2026-06-08 → -2 working days = Thu 2026-06-04
-    result = compute_due_date(dt.date(2026, 6, 8), _INFORMATIEPLICHT, "NL")
+    result = compute_due_date(dt.date(2026, 6, 8), _INFORMATION_OBLIGATION, "NL")
     assert result == dt.date(2026, 6, 4)
 
 
-def test_gereedmelding_10_working_days_after() -> None:
+def test_completion_notification_10_working_days_after() -> None:
     # Delivery Mon 2026-06-01 → +10 working days = Mon 2026-06-15
-    result = compute_due_date(dt.date(2026, 6, 1), _GEREEDMELDING, "NL")
+    result = compute_due_date(dt.date(2026, 6, 1), _COMPLETION_NOTIFICATION, "NL")
     assert result == dt.date(2026, 6, 15)
 
 
-def test_gereedmelding_across_holidays() -> None:
+def test_completion_notification_across_holidays() -> None:
     # Delivery Fri 2026-12-18 → +10 working days, crossing Kerst + Nieuwjaar
     # Working days: Mon 21, Tue 22, Wed 23, Thu 24 (4 so far)
     # Fri 25 = Kerst, Sat/Sun skip, Mon 28, Tue 29, Wed 30, Thu 31 (8)
     # Fri 1 Jan = Nieuwjaar, Mon 4 Jan, Tue 5 Jan (10)
-    result = compute_due_date(dt.date(2026, 12, 18), _GEREEDMELDING, "NL")
+    result = compute_due_date(dt.date(2026, 12, 18), _COMPLETION_NOTIFICATION, "NL")
     assert result == dt.date(2027, 1, 5)
 
 

@@ -117,7 +117,7 @@ export default function ProjectDetailPage(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 px-3.5 pb-3.5 xl:grid-cols-2">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 xl:grid-cols-2">
         <ComplianceByDomainCard
           domains={domains}
           articles={articles}

@@ -46,10 +46,8 @@ export const state = {
   // --- Suite P: profile name edit ---
   _originalAdminName: '',
 
-  // --- Suite Q: invitation decline ---
-  declineEmail: '',
-  declinePassword: 'Passw0rd!Dcln',
-  _declineActivationPath: '',
+  // --- Suite Q: invitation decline (admin declines a temp-org invite) ---
+  q_org_name: '',
 
   // --- Suite R: org switching ---
   org2Name: '',
@@ -57,6 +55,9 @@ export const state = {
   // --- Suite S: project lifecycle ---
   lifecycleProjectName: '',
   lifecycleProjectId: '',
+
+  // --- Suite U: resend invitation ---
+  u_inviteEmail: '',
 
   // --- Suite W: super admin user management ---
   _adminUserId: '',

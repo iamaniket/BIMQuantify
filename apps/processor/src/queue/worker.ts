@@ -23,6 +23,9 @@ export function startWorker(): Worker<WorkerJob> {
         case 'compliance_report':
           await runComplianceReport(job.data);
           break;
+        case 'send_email':
+          // Handled by the action worker on the "actions" queue.
+          break;
         default: {
           const _exhaustive: never = job.data.job_type;
           throw new Error(`unknown job_type: ${String(_exhaustive)}`);

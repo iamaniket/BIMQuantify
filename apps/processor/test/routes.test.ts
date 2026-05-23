@@ -42,6 +42,7 @@ describe('POST /jobs', () => {
   const validBody = {
     job_id: '123e4567-e89b-12d3-a456-426614174002',
     job_type: 'ifc_extraction' as const,
+    organization_id: '123e4567-e89b-12d3-a456-426614174003',
     payload: {
       file_id: '123e4567-e89b-12d3-a456-426614174000',
       project_id: '123e4567-e89b-12d3-a456-426614174001',

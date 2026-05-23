@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Bell,
   CheckCircle2,
+  Clock,
   Loader2,
   RefreshCw,
 } from 'lucide-react';
@@ -26,6 +27,8 @@ const ICON_BY_TYPE: Record<NotificationEventTypeValue, JSX.Element> = {
   job_progress: <RefreshCw className="h-3 w-3" aria-hidden />,
   job_succeeded: <CheckCircle2 className="h-3 w-3" aria-hidden />,
   job_failed: <AlertTriangle className="h-3 w-3" aria-hidden />,
+  deadline_upcoming: <Clock className="h-3 w-3" aria-hidden />,
+  deadline_missed: <AlertTriangle className="h-3 w-3" aria-hidden />,
 };
 
 const TONE_BY_TYPE: Record<NotificationEventTypeValue, string> = {
@@ -33,6 +36,8 @@ const TONE_BY_TYPE: Record<NotificationEventTypeValue, string> = {
   job_progress: 'bg-[rgba(95,136,178,0.12)] text-[#3f668f]',
   job_succeeded: 'bg-[rgba(95,217,158,0.14)] text-[#2f7350]',
   job_failed: 'bg-[rgba(201,71,54,0.10)] text-[#c94736]',
+  deadline_upcoming: 'bg-[rgba(217,169,40,0.14)] text-[#8f6d1e]',
+  deadline_missed: 'bg-[rgba(201,71,54,0.10)] text-[#c94736]',
 };
 
 function formatRelative(iso: string): string {

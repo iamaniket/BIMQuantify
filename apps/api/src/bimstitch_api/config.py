@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     invitation_sweep_interval_minutes: int = Field(
         default=60, alias="INVITATION_SWEEP_INTERVAL_MINUTES"
     )
+    deadline_sweep_interval_minutes: int = Field(
+        default=60, alias="DEADLINE_SWEEP_INTERVAL_MINUTES"
+    )
 
     smtp_host: str = Field(default="localhost", alias="SMTP_HOST")
     smtp_port: int = Field(default=1025, alias="SMTP_PORT")
@@ -42,6 +45,9 @@ class Settings(BaseSettings):
     )
     frontend_invitations_url: str = Field(
         default="http://localhost:3001/account", alias="FRONTEND_INVITATIONS_URL"
+    )
+    frontend_project_url: str = Field(
+        default="http://localhost:3001/projects", alias="FRONTEND_PROJECT_URL"
     )
 
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")

@@ -122,6 +122,17 @@ export async function injectSavedAuth(page: Page, email: string): Promise<void> 
   );
 }
 
+/**
+ * Read the current tokens from the page's localStorage and update the
+ * in-process tokenCache. Call this after an org-switch so that subsequent
+ * injectSavedAuth calls carry the correct org-scoped token rather than the
+ * stale token from the original loginViaAPI call.
+ */
+export async function updateTokenCacheFromPage(page: Page, email: string): Promise<void> {
+  const stored = await page.evaluate((key: string) => window.localStorage.getItem(key), STORAGE_KEY);
+  if (stored) tokenCache.set(email, stored);
+}
+
 export async function clearAuth(page: Page): Promise<void> {
   await page.evaluate((key: string) => {
     window.localStorage.removeItem(key);
