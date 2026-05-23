@@ -85,7 +85,6 @@ describe('SidebarTenantCard', () => {
 
     expect(screen.getByText('Tenant')).toBeInTheDocument();
     expect(screen.getByText('Acme Construction')).toBeInTheDocument();
-    expect(screen.getByText('3 / 10 seats')).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Acme Construction — 3 / 10 seats'));
 

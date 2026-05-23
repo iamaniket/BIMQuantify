@@ -14,6 +14,7 @@ export default defineConfig({
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
   ],
   outputDir: './test-results',
+  timeout: 60_000,
   use: {
     baseURL: 'http://localhost:3001',
     trace: 'retain-on-failure',

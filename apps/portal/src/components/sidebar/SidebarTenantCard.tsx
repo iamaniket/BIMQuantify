@@ -94,7 +94,7 @@ export function SidebarTenantCard(): JSX.Element | null {
       <div className="relative">
         <button
           type="button"
-          className="flex w-full items-center gap-2.5 rounded-md border border-white/12 bg-white/[0.04] px-2.5 py-2 text-left transition-colors hover:bg-white/10"
+          className={`flex w-full items-center gap-[11px] rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-2 text-left transition-colors ${canSwitch ? 'cursor-pointer hover:bg-white/10' : 'cursor-default'}`}
           aria-label={ariaLabel}
           aria-haspopup={canSwitch ? 'listbox' : undefined}
           aria-expanded={canSwitch ? open : undefined}
@@ -104,16 +104,11 @@ export function SidebarTenantCard(): JSX.Element | null {
             }
           }}
         >
-          <div className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[5px] bg-gradient-to-br from-[#5fa8ff] to-[#2c5697] text-[10px] font-extrabold text-white">
+          <div className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded bg-gradient-to-br from-[#5fa8ff] to-[#2c5697] text-[8px] font-extrabold text-white">
             {acronym}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[12.5px] font-semibold text-white">{name}</div>
-            <div className="mt-px text-[10px] font-medium text-white/55">
-              {seatLabel(used, limit)} {t('seats')}
-            </div>
-          </div>
-          <ChevronDown className="h-3 w-3 shrink-0 text-white/55" />
+          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-white">{name}</span>
+          {canSwitch && <ChevronDown className="h-3 w-3 shrink-0 text-white/55" />}
         </button>
         {canSwitch && open && (
           <ul

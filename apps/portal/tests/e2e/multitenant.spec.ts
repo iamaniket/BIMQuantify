@@ -79,6 +79,9 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, email);
 
     await page.goto('/en/admin/organizations');
+    // The page opens on the Overview tab by default — switch to Organizations
+    // where the "New tenant" toolbar button lives.
+    await page.getByRole('tab', { name: /organizations/i }).click();
     await expect(
       page.getByRole('button', { name: 'New tenant' }),
     ).toBeVisible({ timeout: 10_000 });
@@ -96,6 +99,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await clearAllEmails();
 
     await page.goto('/en/admin/organizations');
+    // Switch to the Organizations tab where the "New tenant" button lives.
+    await page.getByRole('tab', { name: /organizations/i }).click();
     const newTenantBtn = page.getByRole('button', { name: 'New tenant' });
     await expect(newTenantBtn).toBeVisible({ timeout: 10_000 });
     await newTenantBtn.click();
@@ -1403,31 +1408,27 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await expect(profileTab).toBeVisible({ timeout: 10_000 });
     await profileTab.click();
 
-    // The profile pane should display the admin's current name.
-    const nameEl = page.getByText(state.adminEmail.split('@')[0]!).or(
-      page.locator('[data-state="active"]').getByText(/e2e/i),
-    );
-    // Store whatever name is currently shown for later restoration.
-    state._originalAdminName = await page.evaluate(() => {
-      // The hero title renders the full_name (or email if absent).
-      const hero = document.querySelector('h1, [class*="title"]');
-      return hero?.textContent?.trim() ?? '';
-    });
-    // Just verify the profile section rendered.
-    await expect(page.getByRole('main')).toBeVisible();
+    // The profile pane should display "Personal Information" card heading.
+    await expect(
+      page.getByRole('heading', { name: /personal information/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('P2: admin edits their display name', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto('/en/account');
 
-    // Click the pencil icon next to the name to enter edit mode.
-    const editBtn = page.locator('button[title]').filter({ has: page.locator('svg') }).first();
-    // Fallback: click any edit trigger that opens the inline name editor.
-    const pencilBtn = page.getByTitle(/edit/i).first();
+    await expect(
+      page.getByRole('heading', { name: /personal information/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Click the pencil button next to the name (title="Edit").
+    const pencilBtn = page.getByTitle('Edit');
+    await expect(pencilBtn).toBeVisible({ timeout: 5_000 });
     await pencilBtn.click();
 
-    const nameInput = page.locator('input[placeholder]').first();
+    // The inline name editor should appear with a text input.
+    const nameInput = page.locator('input[type="text"]').first();
     await expect(nameInput).toBeVisible({ timeout: 5_000 });
     await nameInput.click({ clickCount: 3 });
     await nameInput.fill(`Admin ${RUN} (edited)`);
@@ -1449,7 +1450,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto('/en/account');
 
-    await expect(page.getByText(`Admin ${RUN} (edited)`)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(`Admin ${RUN} (edited)`).first()).toBeVisible({ timeout: 10_000 });
   });
 
   // =========================================================================
@@ -1574,6 +1575,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await clearAllEmails();
 
     await page.goto('/en/admin/organizations');
+    // Switch to the Organizations tab where the "New tenant" button lives.
+    await page.getByRole('tab', { name: /organizations/i }).click();
     const newTenantBtn = page.getByRole('button', { name: 'New tenant' });
     await expect(newTenantBtn).toBeVisible({ timeout: 10_000 });
     await newTenantBtn.click();

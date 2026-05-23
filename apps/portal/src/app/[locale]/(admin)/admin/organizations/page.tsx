@@ -254,7 +254,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
-  const [tab, setTab] = useState('organizations');
+  const [tab, setTab] = useState('overview');
 
   const params = {
     q: search === '' ? undefined : search,
@@ -297,16 +297,16 @@ export default function AdminOrganizationsPage(): JSX.Element {
       >
         {/* Underline tabs */}
         <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
+          <TabsTrigger value="overview" className={TAB_CLASS}>
+            <LayoutGrid className="h-3.5 w-3.5" />
+            {t('tabs.overview')}
+          </TabsTrigger>
           <TabsTrigger value="organizations" className={TAB_CLASS}>
             <Table2 className="h-3.5 w-3.5" />
             {t('tabs.organizations')}
             <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
               {allOrgs.length}
             </span>
-          </TabsTrigger>
-          <TabsTrigger value="overview" className={TAB_CLASS}>
-            <LayoutGrid className="h-3.5 w-3.5" />
-            {t('tabs.overview')}
           </TabsTrigger>
         </TabsList>
 
