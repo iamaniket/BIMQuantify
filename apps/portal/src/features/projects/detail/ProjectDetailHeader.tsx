@@ -72,7 +72,7 @@ export function ProjectDetailHeader({
   }
 
   const thumbnail = (
-    <div className="h-28 w-full overflow-hidden rounded-[10px] border border-black/10 bg-black/5 shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)] sm:h-32 xl:h-[156px] xl:w-[156px]">
+    <div className="h-28 w-full overflow-hidden rounded-[10px] border border-black/10 bg-black/5 shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)] sm:h-32 xl:h-[160px] xl:w-[240px]">
       {project.thumbnail_url !== null ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

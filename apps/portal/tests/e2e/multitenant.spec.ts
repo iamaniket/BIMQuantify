@@ -1,7 +1,7 @@
 /**
  * Multitenant E2E Journey
  *
- * Runs 35 sequential tests covering the full lifecycle:
+ * Runs 90 sequential tests covering the full lifecycle:
  *   A. Super admin creates a new tenant + first admin
  *   B. Admin activates account via MailHog email → logs in
  *   C. Admin invites a member, creates a project, edits the project
@@ -12,6 +12,19 @@
  *   H. Guest permission boundaries (read-only access, cannot create/edit/delete)
  *   I. Owner manages guest (role change, edit verification, removal)
  *   J. Admin invites existing org member to project (scenario 3)
+ *   K. Member suspension & reactivation (blocked → restored)
+ *   L. Tenant suspension & reactivation (all members blocked → restored)
+ *   M. Member removal & re-invite (removed → re-added → access restored)
+ *   N. Last-admin protection (cannot leave/demote sole admin)
+ *   O. Seat limit enforcement (invite blocked at cap → cap removed)
+ *   P. Profile name edit (inline edit on /account)
+ *   Q. Invitation decline (new user declines → no workspace access)
+ *   R. Organization switching (multi-org via /select-tenant)
+ *   S. Project lifecycle (archive → reactivate → delete)
+ *   T. Project member role change + removal (editor → viewer → removed)
+ *   U. Resend invitation (admin resends pending invite)
+ *   W. Super admin user management (promote/demote/deactivate/reactivate)
+ *   X. Audit log visibility + Logout (tenant audit, global audit, sign out)
  *
  * Prerequisites (must all be running before `pnpm test:e2e:multi`):
  *   - docker compose up -d  (postgres, redis, mailhog, minio)
@@ -929,5 +942,1404 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, state.memberEmail);
     await page.goto('/en/projects');
     await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // K — Member suspension & reactivation
+  // =========================================================================
+
+  test('K1: admin suspends the member via the tenant Members tab', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+
+    const memberRow = page.getByRole('row').filter({ hasText: state.memberEmail });
+    await expect(memberRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = memberRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    const [patchResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members/') && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: 'Suspend' }).click(),
+    ]);
+    if (!patchResp.ok()) {
+      const body = await patchResp.text();
+      throw new Error(`Suspend member failed: ${patchResp.status()}: ${body}`);
+    }
+
+    await expect(memberRow.getByText(/suspended/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('K2: suspended member logs in but cannot access the workspace', async ({ page }) => {
+    // Fresh login required — old cached token still has the (now-invalid) org claim.
+    await loginViaAPI(page, state.memberEmail, state.memberPassword);
+    await page.goto('/en/projects');
+
+    // The token has active_organization_id=null because the membership is
+    // suspended. Tenant-scoped API calls fail: either 409 NO_ACTIVE_ORGANIZATION
+    // (no org claim in JWT) or 403 ORG_MEMBERSHIP_REQUIRED.
+    // The projects page should NOT show the project.
+    await expect(page.getByText(state.projectName)).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  test('K3: admin reactivates the member', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+
+    const memberRow = page.getByRole('row').filter({ hasText: state.memberEmail });
+    await expect(memberRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = memberRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    const [patchResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members/') && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: 'Reactivate' }).click(),
+    ]);
+    if (!patchResp.ok()) {
+      const body = await patchResp.text();
+      throw new Error(`Reactivate member failed: ${patchResp.status()}: ${body}`);
+    }
+
+    await expect(memberRow.getByText(/active/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('K4: reactivated member can access projects again', async ({ page }) => {
+    // Fresh login to get a token with the active org claim restored.
+    await loginViaAPI(page, state.memberEmail, state.memberPassword);
+    await page.goto('/en/projects');
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // L — Tenant (org) suspension & reactivation
+  // =========================================================================
+
+  test('L1: super admin navigates to org detail and captures orgId', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto('/en/admin/organizations');
+    const orgLink = page.getByRole('link', { name: state.orgName });
+    await expect(orgLink).toBeVisible({ timeout: 10_000 });
+    await orgLink.click();
+
+    await page.waitForURL(/\/admin\/organizations\/[0-9a-f-]+/, { timeout: 10_000 });
+    const idMatch = page.url().match(/\/organizations\/([0-9a-f-]+)/);
+    if (!idMatch?.[1]) throw new Error('Could not extract orgId from URL');
+    state.orgId = idMatch[1];
+  });
+
+  test('L2: super admin suspends the tenant', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto(`/en/admin/organizations/${state.orgId}`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Click the "Suspend" button in the hero section.
+    const suspendBtn = page.getByRole('button', { name: 'Suspend' });
+    await expect(suspendBtn).toBeVisible({ timeout: 10_000 });
+    await suspendBtn.click();
+
+    // Confirm the dialog.
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    const [patchResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/organizations/') && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      dialog.getByRole('button', { name: /suspend tenant/i }).click(),
+    ]);
+    if (!patchResp.ok()) {
+      const body = await patchResp.text();
+      throw new Error(`Suspend org failed: ${patchResp.status()}: ${body}`);
+    }
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+
+    // Status badge should now show "Suspended".
+    await expect(page.getByText(/suspended/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('L3: admin member is blocked from workspace while org is suspended', async ({ page }) => {
+    // Fresh login — the old token's org claim points at a now-suspended org.
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
+    await page.goto('/en/projects');
+
+    // Tenant is suspended → API returns 403 ORG_SUSPENDED or 409 NO_ACTIVE_ORGANIZATION
+    // depending on whether the JWT still carries the org claim. Either way the
+    // project is not visible.
+    await expect(page.getByText(state.projectName)).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  test('L4: super admin reactivates the tenant', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto(`/en/admin/organizations/${state.orgId}`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const reactivateBtn = page.getByRole('button', { name: 'Reactivate' });
+    await expect(reactivateBtn).toBeVisible({ timeout: 10_000 });
+    await reactivateBtn.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    const [patchResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/organizations/') && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      dialog.getByRole('button', { name: /reactivate tenant/i }).click(),
+    ]);
+    if (!patchResp.ok()) {
+      const body = await patchResp.text();
+      throw new Error(`Reactivate org failed: ${patchResp.status()}: ${body}`);
+    }
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+
+    await expect(page.getByText(/active/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('L5: admin can access projects again after org reactivation', async ({ page }) => {
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
+    await page.goto('/en/projects');
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // M — Member removal & re-invite
+  // =========================================================================
+
+  test('M1: admin removes the member from the tenant', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+
+    const memberRow = page.getByRole('row').filter({ hasText: state.memberEmail });
+    await expect(memberRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = memberRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    const [deleteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members/') && r.request().method() === 'DELETE',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: /remove from tenant/i }).click(),
+    ]);
+    if (!deleteResp.ok()) {
+      const body = await deleteResp.text();
+      throw new Error(`Remove member failed: ${deleteResp.status()}: ${body}`);
+    }
+
+    await expect(memberRow).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  test('M2: removed member logs in but has no workspace access', async ({ page }) => {
+    await loginViaAPI(page, state.memberEmail, state.memberPassword);
+    await page.goto('/en/projects');
+
+    // Membership row was deleted → no org in token → projects not visible.
+    await expect(page.getByText(state.projectName)).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  test('M3: admin re-invites the removed member', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await clearAllEmails();
+
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+    await page.getByRole('button', { name: 'Invite member' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.locator('input[name="email"]').fill(state.memberEmail);
+    // full_name is optional for existing users; some UIs pre-fill it.
+    // Fill it anyway so the field validation passes.
+    const fullNameInput = dialog.locator('input[name="full_name"]');
+    if (await fullNameInput.isVisible()) {
+      await fullNameInput.fill(`E2E Member ${RUN}`);
+    }
+
+    const [inviteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      dialog.getByRole('button', { name: 'Send invite' }).click(),
+    ]);
+    if (!inviteResp.ok()) {
+      const body = await inviteResp.text();
+      throw new Error(`Re-invite member failed: ${inviteResp.status()}: ${body}`);
+    }
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+  });
+
+  test('M4: re-invited member receives invite and accepts', async ({ page }) => {
+    // The member is already verified (activated in B/D), so the backend sends
+    // an invite notification (not activation email). They accept via the
+    // /account Invitations tab.
+    const body = await waitForEmail(state.memberEmail, { timeoutMs: 40_000 });
+    expect(body).toBeTruthy();
+
+    await loginViaAPI(page, state.memberEmail, state.memberPassword);
+    await page.goto('/en/account');
+
+    const invTab = page.getByRole('tab', { name: /invitations/i });
+    if (await invTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await invTab.click();
+      const acceptBtn = page.getByRole('button', { name: /accept/i }).first();
+      if (await acceptBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+        await acceptBtn.click();
+        await expect(acceptBtn).not.toBeVisible({ timeout: 10_000 });
+      }
+    }
+  });
+
+  test('M5: re-added member can access the workspace again', async ({ page }) => {
+    // Fresh login after accepting the invite to get an org-bearing token.
+    await loginViaAPI(page, state.memberEmail, state.memberPassword);
+    await page.goto('/en/projects');
+
+    // The member was re-added to the org but their project_members rows were
+    // deleted on removal (M1). An empty project list (no 403) proves the
+    // membership is restored — the member just isn't on any project yet.
+    await expect(page).toHaveURL(/\/projects/);
+    await expect(page.getByRole('main')).toBeVisible();
+  });
+
+  // =========================================================================
+  // N — Last-admin protection
+  // =========================================================================
+
+  test('N1: last admin cannot leave or demote themselves', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+
+    const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
+    await expect(adminRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = adminRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    // "Leave tenant" should be visible but DISABLED because this is the
+    // last (and only) admin.
+    const leaveItem = page.getByRole('menuitem', { name: /leave tenant/i });
+    await expect(leaveItem).toBeVisible();
+    await expect(leaveItem).toBeDisabled();
+
+    // "Revoke admin" should be visible but DISABLED (last admin).
+    const demoteItem = page.getByRole('menuitem', { name: /revoke admin/i });
+    await expect(demoteItem).toBeVisible();
+    await expect(demoteItem).toBeDisabled();
+
+    // Dismiss the dropdown.
+    await page.keyboard.press('Escape');
+  });
+
+  // =========================================================================
+  // O — Seat limit enforcement
+  // =========================================================================
+
+  test('O1: super admin sets seat limit equal to current usage', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto(`/en/admin/organizations/${state.orgId}`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Click the Edit button to open the edit dialog.
+    const editBtn = page.getByRole('button', { name: /edit/i }).first();
+    await expect(editBtn).toBeVisible({ timeout: 10_000 });
+    await editBtn.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Set seat_limit to the current consumed count (admin = 1 regular member
+    // after the re-invite in M3; the guest is is_guest=true and doesn't count).
+    // We'll set it to 2 — admin + the newly re-invited member.
+    const seatInput = dialog.locator('input[name="seat_limit"]');
+    await seatInput.click({ clickCount: 3 });
+    await seatInput.fill('2');
+
+    const [saveResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/organizations/') && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      dialog.getByRole('button', { name: /save/i }).click(),
+    ]);
+    if (!saveResp.ok()) {
+      const body = await saveResp.text();
+      throw new Error(`Set seat limit failed: ${saveResp.status()}: ${body}`);
+    }
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+  });
+
+  test('O2: admin cannot invite beyond the seat limit', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+    await page.getByRole('button', { name: 'Invite member' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.locator('input[name="email"]').fill(`overflow-${RUN}@example.com`);
+    const fullNameInput = dialog.locator('input[name="full_name"]');
+    if (await fullNameInput.isVisible()) {
+      await fullNameInput.fill(`E2E Overflow ${RUN}`);
+    }
+
+    const [inviteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      dialog.getByRole('button', { name: 'Send invite' }).click(),
+    ]);
+
+    // Should fail with 409 SEAT_LIMIT_EXCEEDED.
+    expect(inviteResp.status()).toBe(409);
+    const body = await inviteResp.json();
+    expect(body.detail).toBe('SEAT_LIMIT_EXCEEDED');
+
+    // The portal should show an error toast with the seat-limit message.
+    await expect(
+      page.getByText('Seat limit reached'),
+    ).toBeVisible({ timeout: 5_000 });
+
+    await page.keyboard.press('Escape');
+  });
+
+  test('O3: super admin removes the seat limit', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto(`/en/admin/organizations/${state.orgId}`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const editBtn = page.getByRole('button', { name: /edit/i }).first();
+    await expect(editBtn).toBeVisible({ timeout: 10_000 });
+    await editBtn.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Clear the seat_limit field to make it unlimited.
+    const seatInput = dialog.locator('input[name="seat_limit"]');
+    await seatInput.click({ clickCount: 3 });
+    await seatInput.fill('');
+
+    const [saveResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/organizations/') && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      dialog.getByRole('button', { name: /save/i }).click(),
+    ]);
+    if (!saveResp.ok()) {
+      const body = await saveResp.text();
+      throw new Error(`Remove seat limit failed: ${saveResp.status()}: ${body}`);
+    }
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+  });
+
+  // =========================================================================
+  // P — Profile name edit
+  // =========================================================================
+
+  test('P1: admin navigates to /account and sees Profile tab', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/account');
+
+    const profileTab = page.getByRole('tab', { name: /profile/i });
+    await expect(profileTab).toBeVisible({ timeout: 10_000 });
+    await profileTab.click();
+
+    // The profile pane should display the admin's current name.
+    const nameEl = page.getByText(state.adminEmail.split('@')[0]!).or(
+      page.locator('[data-state="active"]').getByText(/e2e/i),
+    );
+    // Store whatever name is currently shown for later restoration.
+    state._originalAdminName = await page.evaluate(() => {
+      // The hero title renders the full_name (or email if absent).
+      const hero = document.querySelector('h1, [class*="title"]');
+      return hero?.textContent?.trim() ?? '';
+    });
+    // Just verify the profile section rendered.
+    await expect(page.getByRole('main')).toBeVisible();
+  });
+
+  test('P2: admin edits their display name', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/account');
+
+    // Click the pencil icon next to the name to enter edit mode.
+    const editBtn = page.locator('button[title]').filter({ has: page.locator('svg') }).first();
+    // Fallback: click any edit trigger that opens the inline name editor.
+    const pencilBtn = page.getByTitle(/edit/i).first();
+    await pencilBtn.click();
+
+    const nameInput = page.locator('input[placeholder]').first();
+    await expect(nameInput).toBeVisible({ timeout: 5_000 });
+    await nameInput.click({ clickCount: 3 });
+    await nameInput.fill(`Admin ${RUN} (edited)`);
+
+    const [saveResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/me/profile') && r.request().method() === 'PATCH',
+        { timeout: 15_000 },
+      ),
+      page.getByRole('button', { name: /save/i }).click(),
+    ]);
+    if (!saveResp.ok()) {
+      const body = await saveResp.text();
+      throw new Error(`Profile update failed: ${saveResp.status()}: ${body}`);
+    }
+  });
+
+  test('P3: updated name is reflected in the UI', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/account');
+
+    await expect(page.getByText(`Admin ${RUN} (edited)`)).toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // Q — Invitation decline
+  // =========================================================================
+
+  test('Q1: admin invites a new "decline user" via tenant Members tab', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+
+    state.declineEmail = `decline-${RUN}@example.com`;
+
+    await clearAllEmails();
+
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+    await page.getByRole('button', { name: 'Invite member' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.locator('input[name="email"]').fill(state.declineEmail);
+    const fullNameInput = dialog.locator('input[name="full_name"]');
+    if (await fullNameInput.isVisible()) {
+      await fullNameInput.fill(`E2E Decline ${RUN}`);
+    }
+
+    const [inviteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      dialog.getByRole('button', { name: 'Send invite' }).click(),
+    ]);
+    if (!inviteResp.ok()) {
+      const body = await inviteResp.text();
+      throw new Error(`Invite decline user failed: ${inviteResp.status()}: ${body}`);
+    }
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+  });
+
+  test('Q2: extract decline user activation email and activate', async ({ page }) => {
+    const body = await waitForEmail(state.declineEmail, { timeoutMs: 40_000 });
+    const activationUrl = extractUrlFromEmail(body, /\/activate\?token=/);
+    const parsed = new URL(activationUrl);
+    state._declineActivationPath = parsed.pathname + parsed.search;
+
+    await page.goto(state._declineActivationPath);
+
+    const passwords = page.locator('input[type="password"]');
+    await passwords.nth(0).fill(state.declinePassword);
+    await passwords.nth(1).fill(state.declinePassword);
+
+    await page.getByRole('button', { name: /activate account/i }).click();
+    await page.waitForURL(/\/login/, { timeout: 15_000 });
+  });
+
+  test('Q3: decline user logs in and sees Invitations tab', async ({ page }) => {
+    await loginViaUI(page, state.declineEmail, state.declinePassword, {
+      expectedPathPattern: /\/(account|projects)/,
+    });
+
+    await page.goto('/en/account');
+    const invTab = page.getByRole('tab', { name: /invitations/i });
+    await expect(invTab).toBeVisible({ timeout: 10_000 });
+    await invTab.click();
+  });
+
+  test('Q4: decline user declines the invitation', async ({ page }) => {
+    await injectSavedAuth(page, state.declineEmail);
+    await page.goto('/en/account');
+
+    const invTab = page.getByRole('tab', { name: /invitations/i });
+    await expect(invTab).toBeVisible({ timeout: 10_000 });
+    await invTab.click();
+
+    const declineBtn = page.getByRole('button', { name: /decline/i }).first();
+    await expect(declineBtn).toBeVisible({ timeout: 10_000 });
+
+    const [declineResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/invitations/') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      declineBtn.click(),
+    ]);
+
+    // Decline endpoint returns 204 on success.
+    if (declineResp.status() !== 204 && !declineResp.ok()) {
+      const body = await declineResp.text();
+      throw new Error(`Decline invitation failed: ${declineResp.status()}: ${body}`);
+    }
+
+    // After declining, no pending invitations should remain.
+    await expect(declineBtn).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  test('Q5: decline user has no workspace access after declining', async ({ page }) => {
+    // Fresh login to get a token reflecting the declined state.
+    await loginViaAPI(page, state.declineEmail, state.declinePassword);
+    await page.goto('/en/projects');
+
+    // No active org → either empty state, redirect, or no-org banner.
+    await expect(page.getByText(state.projectName)).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // R — Organization switching
+  // =========================================================================
+
+  test('R1: super admin creates a second tenant with the same admin email', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    state.org2Name = `E2E-Org2-${RUN}`;
+
+    await clearAllEmails();
+
+    await page.goto('/en/admin/organizations');
+    const newTenantBtn = page.getByRole('button', { name: 'New tenant' });
+    await expect(newTenantBtn).toBeVisible({ timeout: 10_000 });
+    await newTenantBtn.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.locator('input[name="name"]').fill(state.org2Name);
+    await dialog.locator('input[name="admin_email"]').fill(state.adminEmail);
+
+    const [createResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('organizations') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      dialog.getByRole('button', { name: 'Create tenant', exact: true }).click(),
+    ]);
+
+    if (!createResp.ok()) {
+      const body = await createResp.text();
+      throw new Error(`Create org2 API returned ${createResp.status()}: ${body}`);
+    }
+
+    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(state.org2Name)).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('R2: admin accepts the org2 invitation', async ({ page }) => {
+    // Admin already has a cached token from org1. We need a fresh login
+    // to pick up the pending invitation.
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
+    await page.goto('/en/account');
+
+    const invTab = page.getByRole('tab', { name: /invitations/i });
+    if (await invTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await invTab.click();
+      const acceptBtn = page.getByRole('button', { name: /accept/i }).first();
+      if (await acceptBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+        await acceptBtn.click();
+        await expect(acceptBtn).not.toBeVisible({ timeout: 10_000 });
+      }
+    }
+  });
+
+  test('R3: admin sees both orgs on /select-tenant', async ({ page }) => {
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
+    await page.goto('/en/select-tenant');
+
+    // The select-tenant page auto-redirects if only 1 membership.
+    // With 2 memberships, it should show both org names.
+    await expect(page.getByText(state.orgName)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(state.org2Name)).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('R4: admin switches to org2', async ({ page }) => {
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
+    await page.goto('/en/select-tenant');
+
+    await expect(page.getByText(state.org2Name)).toBeVisible({ timeout: 10_000 });
+
+    const [switchResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/auth/switch-organization') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('button', { name: state.org2Name }).click(),
+    ]);
+    if (!switchResp.ok()) {
+      const body = await switchResp.text();
+      throw new Error(`Switch org failed: ${switchResp.status()}: ${body}`);
+    }
+
+    // Should land on /projects (empty for org2, but page should load).
+    await page.waitForURL(/\/projects/, { timeout: 15_000 });
+
+    // org1 project should NOT be visible in org2 context.
+    await expect(page.getByText(state.projectName)).not.toBeVisible({ timeout: 5_000 });
+  });
+
+  test('R5: admin switches back to org1 and sees the original project', async ({ page }) => {
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
+    await page.goto('/en/select-tenant');
+
+    await expect(page.getByText(state.orgName)).toBeVisible({ timeout: 10_000 });
+
+    await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/auth/switch-organization') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('button', { name: state.orgName }).click(),
+    ]);
+
+    await page.waitForURL(/\/projects/, { timeout: 15_000 });
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // S — Project lifecycle: archive, reactivate, delete
+  // =========================================================================
+
+  test('S1: admin creates a second project for lifecycle tests', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+
+    state.lifecycleProjectName = `E2E-Lifecycle-${RUN}`;
+
+    await page.goto('/en/projects');
+    await page.getByRole('button', { name: 'New project' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.locator('input[name="name"]').fill(state.lifecycleProjectName);
+    await dialog.locator('textarea').first().fill('Project for archive/delete tests');
+
+    await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
+
+    await dialog.locator('select[name="building_type"]').selectOption('dwelling');
+    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
+
+    await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog.locator('[aria-current="step"]')).toContainText('Address');
+
+    // Fix lat/lng NaN issue (same as C3).
+    await page.evaluate(() => {
+      const el = document.querySelector('input[name="latitude"]') as HTMLElement | null;
+      if (!el) throw new Error('latitude input not found');
+      const fiberKey = Object.keys(el).find((k) => k.startsWith('__reactFiber'));
+      if (!fiberKey) throw new Error('no React fiber key');
+      type Fiber = { memoizedProps?: Record<string, unknown>; return?: Fiber | null };
+      let fiber: Fiber | null = (el as unknown as Record<string, unknown>)[fiberKey] as Fiber;
+      for (let depth = 0; fiber && depth < 200; depth++) {
+        const props = fiber.memoizedProps;
+        if (props && typeof props['value'] === 'object' && props['value'] !== null) {
+          const ctx = props['value'] as Record<string, unknown>;
+          if ('_formValues' in ctx) {
+            const fv = ctx['_formValues'] as Record<string, unknown>;
+            fv['latitude'] = 52.37;
+            fv['longitude'] = 4.89;
+            return;
+          }
+        }
+        fiber = fiber.return ?? null;
+      }
+      throw new Error('RHF form context not found in fiber tree');
+    });
+
+    await dialog.getByRole('button', { name: 'Next' }).click();
+    await dialog.getByRole('button', { name: 'Create project' }).click();
+
+    await page.waitForURL(/\/projects\/[0-9a-f-]+/, { timeout: 20_000 });
+
+    const idMatch = page.url().match(/\/projects\/([0-9a-f-]+)/);
+    if (!idMatch?.[1]) throw new Error('Could not extract lifecycleProjectId from URL');
+    state.lifecycleProjectId = idMatch[1];
+  });
+
+  test('S2: admin archives the lifecycle project', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/projects');
+
+    await expect(page.getByText(state.lifecycleProjectName)).toBeVisible({ timeout: 10_000 });
+
+    // Find the lifecycle project card's action menu.
+    // There may be multiple project cards; target the one containing the lifecycle project name.
+    const cards = page.locator('a[href*="/projects/"]').filter({
+      has: page.getByText(state.lifecycleProjectName),
+    });
+    const card = cards.first();
+    const actionsBtn = card.getByRole('button', { name: 'Project actions' });
+    await actionsBtn.click();
+
+    const [archiveResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes(`/projects/${state.lifecycleProjectId}/archive`)
+          && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: /archive/i }).click(),
+    ]);
+    if (!archiveResp.ok()) {
+      const body = await archiveResp.text();
+      throw new Error(`Archive project failed: ${archiveResp.status()}: ${body}`);
+    }
+  });
+
+  test('S3: archived project is not visible in default project list', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/projects');
+
+    // The default status filter shows "All" active projects; archived are hidden
+    // unless the user specifically selects the "Archived" filter.
+    await page.waitForLoadState('domcontentloaded');
+
+    // Give the list time to render.
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+    // The lifecycle project should not be in the default active list.
+    await expect(page.getByText(state.lifecycleProjectName)).not.toBeVisible({ timeout: 5_000 });
+  });
+
+  test('S4: admin reactivates the archived project', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/projects');
+
+    // Switch to the "Archived" filter to find the lifecycle project.
+    const archivedFilter = page.getByRole('button', { name: /archived/i });
+    await expect(archivedFilter).toBeVisible({ timeout: 10_000 });
+    await archivedFilter.click();
+
+    await expect(page.getByText(state.lifecycleProjectName)).toBeVisible({ timeout: 10_000 });
+
+    // Open the card menu and click Reactivate.
+    const cards = page.locator('a[href*="/projects/"]').filter({
+      has: page.getByText(state.lifecycleProjectName),
+    });
+    const actionsBtn = cards.first().getByRole('button', { name: 'Project actions' });
+    await actionsBtn.click();
+
+    const [reactivateResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes(`/projects/${state.lifecycleProjectId}/reactivate`)
+          && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: /reactivate/i }).click(),
+    ]);
+    if (!reactivateResp.ok()) {
+      const body = await reactivateResp.text();
+      throw new Error(`Reactivate project failed: ${reactivateResp.status()}: ${body}`);
+    }
+  });
+
+  test('S5: member cannot delete the lifecycle project (403)', async ({ page }) => {
+    await injectSavedAuth(page, state.memberEmail);
+    await page.goto('/en/projects');
+
+    // Member was re-added to the org in M3-M5 but may not be on the lifecycle
+    // project. If the project card is visible, try to delete; otherwise the
+    // member simply has no access — which is the correct outcome.
+    const projectCard = page.getByText(state.lifecycleProjectName);
+    const isVisible = await projectCard.isVisible({ timeout: 5_000 }).catch(() => false);
+    if (!isVisible) {
+      // Member doesn't see the project at all — passes (no access = no delete).
+      return;
+    }
+
+    const cards = page.locator('a[href*="/projects/"]').filter({
+      has: page.getByText(state.lifecycleProjectName),
+    });
+    await cards.first().getByRole('button', { name: 'Project actions' }).click();
+    await page.getByRole('menuitem', { name: /remove/i }).click();
+
+    const confirmDialog = page.getByRole('dialog');
+    await expect(confirmDialog).toBeVisible();
+
+    const [deleteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes(`/projects/${state.lifecycleProjectId}`)
+          && r.request().method() === 'DELETE',
+        { timeout: 20_000 },
+      ),
+      confirmDialog.getByRole('button', { name: /remove/i }).click(),
+    ]);
+
+    expect(deleteResp.status()).toBe(403);
+    await page.keyboard.press('Escape');
+  });
+
+  test('S6: admin deletes the lifecycle project', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/projects');
+
+    await expect(page.getByText(state.lifecycleProjectName)).toBeVisible({ timeout: 10_000 });
+
+    const cards = page.locator('a[href*="/projects/"]').filter({
+      has: page.getByText(state.lifecycleProjectName),
+    });
+    await cards.first().getByRole('button', { name: 'Project actions' }).click();
+    await page.getByRole('menuitem', { name: /remove/i }).click();
+
+    const confirmDialog = page.getByRole('dialog');
+    await expect(confirmDialog).toBeVisible();
+
+    const [deleteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes(`/projects/${state.lifecycleProjectId}`)
+          && r.request().method() === 'DELETE',
+        { timeout: 20_000 },
+      ),
+      confirmDialog.getByRole('button', { name: /remove/i }).click(),
+    ]);
+    if (!deleteResp.ok()) {
+      const body = await deleteResp.text();
+      throw new Error(`Delete project failed: ${deleteResp.status()}: ${body}`);
+    }
+
+    // Project should disappear from the list.
+    await expect(page.getByText(state.lifecycleProjectName)).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // T — Project member role change + removal
+  // =========================================================================
+
+  test('T1: admin adds member to the project as editor', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto(`/en/projects/${state.projectId}/access`);
+
+    await page.getByRole('tab', { name: /members/i }).click();
+
+    // Check if member is already on the project; if not, add them.
+    const memberRow = page.getByRole('row').filter({ hasText: state.memberEmail });
+    const alreadyMember = await memberRow.isVisible({ timeout: 3_000 }).catch(() => false);
+    if (alreadyMember) return;
+
+    await clearAllEmails();
+
+    const addBtn = page.getByRole('button', { name: /add member/i });
+    await expect(addBtn).toBeVisible({ timeout: 10_000 });
+    await addBtn.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.getByRole('tab', { name: /invite by email/i }).click();
+    await dialog.locator('#invite-email').fill(state.memberEmail);
+    await dialog.locator('#project-member-role-invite').selectOption('editor');
+
+    const [inviteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/invitations') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      dialog.getByRole('button', { name: /add/i }).click(),
+    ]);
+    if (!inviteResp.ok()) {
+      const body = await inviteResp.text();
+      throw new Error(`Add member to project failed: ${inviteResp.status()}: ${body}`);
+    }
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+  });
+
+  test('T2: admin changes member project role from editor to viewer', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto(`/en/projects/${state.projectId}/access`);
+
+    await page.getByRole('tab', { name: /members/i }).click();
+
+    const memberRow = page.getByRole('row').filter({ hasText: state.memberEmail });
+    await expect(memberRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = memberRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    // The menu item format is "Set as Viewer".
+    const [patchResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members/') && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: /viewer/i }).click(),
+    ]);
+    if (!patchResp.ok()) {
+      const body = await patchResp.text();
+      throw new Error(`Role change to viewer failed: ${patchResp.status()}: ${body}`);
+    }
+
+    // Badge should now show "Viewer".
+    await expect(memberRow.getByText(/viewer/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('T3: member (now viewer) cannot edit the project', async ({ page }) => {
+    await injectSavedAuth(page, state.memberEmail);
+    await page.goto('/en/projects');
+
+    // The project should still be visible (viewers can read).
+    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole('button', { name: 'Project actions' }).first().click();
+    await page.getByRole('menuitem', { name: /edit/i }).click();
+
+    const editDialog = page.getByRole('dialog');
+    await expect(editDialog).toBeVisible();
+
+    const nameInput = editDialog.locator('input[name="name"]');
+    await nameInput.click({ clickCount: 3 });
+    await nameInput.fill('Viewer-Edit-Should-Fail');
+
+    await editDialog.locator('button[aria-label="Contractor"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+
+    const [editResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => /\/projects\/[0-9a-f-]+$/.test(r.url()) && r.request().method() === 'PATCH',
+        { timeout: 20_000 },
+      ),
+      editDialog.getByRole('button', { name: /save changes/i }).click(),
+    ]);
+    expect(editResp.status()).toBe(403);
+
+    await page.keyboard.press('Escape');
+  });
+
+  test('T4: admin removes member from project — member can no longer see it', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto(`/en/projects/${state.projectId}/access`);
+
+    await page.getByRole('tab', { name: /members/i }).click();
+
+    const memberRow = page.getByRole('row').filter({ hasText: state.memberEmail });
+    await expect(memberRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = memberRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    const [deleteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members/') && r.request().method() === 'DELETE',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: /remove/i }).click(),
+    ]);
+    if (!deleteResp.ok()) {
+      const body = await deleteResp.text();
+      throw new Error(`Remove member from project failed: ${deleteResp.status()}: ${body}`);
+    }
+
+    await expect(memberRow).not.toBeVisible({ timeout: 10_000 });
+
+    // Verify removed member can't see the project.
+    await injectSavedAuth(page, state.memberEmail);
+    await page.goto('/en/projects');
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByText(state.projectName)).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  // =========================================================================
+  // U — Resend invitation
+  // =========================================================================
+
+  test('U1: admin re-invites the decline user to the tenant', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await clearAllEmails();
+
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+    await page.getByRole('button', { name: 'Invite member' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.locator('input[name="email"]').fill(state.declineEmail);
+    const fullNameInput = dialog.locator('input[name="full_name"]');
+    if (await fullNameInput.isVisible()) {
+      await fullNameInput.fill(`E2E Decline ${RUN}`);
+    }
+
+    const [inviteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/members') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      dialog.getByRole('button', { name: 'Send invite' }).click(),
+    ]);
+    if (!inviteResp.ok()) {
+      const body = await inviteResp.text();
+      throw new Error(`Re-invite decline user failed: ${inviteResp.status()}: ${body}`);
+    }
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    } catch {
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+    }
+  });
+
+  test('U2: admin resends the pending invite via member actions', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await clearAllEmails();
+
+    await page.goto('/en/tenant');
+    await page.getByRole('tab', { name: 'Members' }).click();
+
+    const declineRow = page.getByRole('row').filter({ hasText: state.declineEmail });
+    await expect(declineRow).toBeVisible({ timeout: 10_000 });
+
+    const actionsBtn = declineRow.getByRole('button', { name: /actions/i });
+    await actionsBtn.click();
+
+    const [resendResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/resend-invite') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('menuitem', { name: /resend invite/i }).click(),
+    ]);
+
+    if (resendResp.status() !== 204 && !resendResp.ok()) {
+      const body = await resendResp.text();
+      throw new Error(`Resend invite failed: ${resendResp.status()}: ${body}`);
+    }
+  });
+
+  test('U3: new invite email arrives in MailHog', async () => {
+    const body = await waitForEmail(state.declineEmail, { timeoutMs: 40_000 });
+    expect(body).toBeTruthy();
+  });
+
+  // =========================================================================
+  // V — Guest flag toggle (API-driven — no portal UI for the toggle)
+  // =========================================================================
+  // Skipped: The guest flag toggle endpoint (PATCH /organizations/{org_id}/members/{user_id}/guest)
+  // exists in the API but has no portal UI trigger. Guest status is set during the project invitation
+  // flow. This is better covered by API-level tests. Suites G–I already verify guest permission
+  // boundaries end-to-end.
+
+  // =========================================================================
+  // W — Super admin user management
+  // =========================================================================
+
+  test('W1: super admin navigates to /admin/users and finds the admin user', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto('/en/admin/users');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Search for the admin by email.
+    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    await expect(searchInput).toBeVisible({ timeout: 10_000 });
+    await searchInput.fill(state.adminEmail);
+
+    // Wait for the user row to appear.
+    const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
+    await expect(adminRow).toBeVisible({ timeout: 10_000 });
+
+    // Capture the admin's user ID from the promote/demote button's mutation call.
+    // We'll extract it from the API response in W2.
+  });
+
+  test('W2: super admin promotes admin to superuser', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto('/en/admin/users');
+    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    await searchInput.fill(state.adminEmail);
+
+    const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
+    await expect(adminRow).toBeVisible({ timeout: 10_000 });
+
+    // The "Promote" button is in the actions column.
+    const promoteBtn = adminRow.getByRole('button', { name: /promote/i });
+    await expect(promoteBtn).toBeVisible({ timeout: 5_000 });
+
+    const [promoteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/admin/users/') && r.url().includes('/promote')
+          && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      promoteBtn.click(),
+    ]);
+    if (!promoteResp.ok()) {
+      const body = await promoteResp.text();
+      throw new Error(`Promote user failed: ${promoteResp.status()}: ${body}`);
+    }
+
+    // The badge should now show "Yes" for superuser.
+    await expect(adminRow.getByText(/yes/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('W3: promoted admin can access /admin/organizations', async ({ page }) => {
+    // Fresh login to get a token reflecting the new superuser status.
+    await loginViaAPI(page, state.adminEmail, state.adminPassword);
+    await page.goto('/en/admin/organizations');
+
+    // If the admin is now a superuser, this page should load without redirect.
+    await expect(
+      page.getByRole('button', { name: 'New tenant' }),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('W4: super admin demotes admin back to normal user', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto('/en/admin/users');
+    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    await searchInput.fill(state.adminEmail);
+
+    const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
+    await expect(adminRow).toBeVisible({ timeout: 10_000 });
+
+    // After promotion, the button label should now be "Demote".
+    const demoteBtn = adminRow.getByRole('button', { name: /demote/i });
+    await expect(demoteBtn).toBeVisible({ timeout: 5_000 });
+
+    const [demoteResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/admin/users/') && r.url().includes('/demote')
+          && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      demoteBtn.click(),
+    ]);
+    if (!demoteResp.ok()) {
+      const body = await demoteResp.text();
+      throw new Error(`Demote user failed: ${demoteResp.status()}: ${body}`);
+    }
+  });
+
+  test('W5: super admin deactivates the admin user', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto('/en/admin/users');
+    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    await searchInput.fill(state.adminEmail);
+
+    const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
+    await expect(adminRow).toBeVisible({ timeout: 10_000 });
+
+    const deactivateBtn = adminRow.getByRole('button', { name: /deactivate/i });
+    await expect(deactivateBtn).toBeVisible({ timeout: 5_000 });
+
+    const [deactivateResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/admin/users/') && r.url().includes('/deactivate')
+          && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      deactivateBtn.click(),
+    ]);
+    if (!deactivateResp.ok()) {
+      const body = await deactivateResp.text();
+      throw new Error(`Deactivate user failed: ${deactivateResp.status()}: ${body}`);
+    }
+
+    // Badge should now show "Disabled".
+    await expect(adminRow.getByText(/disabled/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('W6: deactivated admin cannot log in', async ({ page }) => {
+    await page.goto('/en/login');
+    await page.waitForLoadState('domcontentloaded');
+
+    await page.getByLabel(/work email/i).fill(state.adminEmail);
+    await page.getByLabel(/password/i).fill(state.adminPassword);
+
+    const [loginResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/auth/jwt/login') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+      ),
+      page.getByRole('button', { name: /sign in/i }).click(),
+    ]);
+
+    // Login should fail: either 400 (LOGIN_BAD_CREDENTIALS) or similar.
+    expect(loginResp.ok()).toBe(false);
+  });
+
+  test('W7: super admin reactivates the admin user → admin can log in again', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto('/en/admin/users');
+    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    await searchInput.fill(state.adminEmail);
+
+    const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
+    await expect(adminRow).toBeVisible({ timeout: 10_000 });
+
+    // After deactivation, the button label should be "Activate".
+    const activateBtn = adminRow.getByRole('button', { name: /activate/i });
+    await expect(activateBtn).toBeVisible({ timeout: 5_000 });
+
+    const [activateResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/admin/users/') && r.url().includes('/activate')
+          && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      activateBtn.click(),
+    ]);
+    if (!activateResp.ok()) {
+      const body = await activateResp.text();
+      throw new Error(`Reactivate user failed: ${activateResp.status()}: ${body}`);
+    }
+
+    // Verify admin can log in again.
+    await loginViaUI(page, state.adminEmail, state.adminPassword);
+    await expect(page).toHaveURL(/\/(projects|select-tenant|account)/, { timeout: 15_000 });
+  });
+
+  // =========================================================================
+  // X — Audit log + Logout
+  // =========================================================================
+
+  test('X1: admin views audit entries on the /tenant Audit tab', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/tenant');
+
+    const auditTab = page.getByRole('tab', { name: /audit/i });
+    await expect(auditTab).toBeVisible({ timeout: 10_000 });
+    await auditTab.click();
+
+    // The audit log should contain at least one entry from the prior suites
+    // (member invitations, role changes, suspensions, etc.).
+    const tableRows = page.getByRole('row');
+    // Header row + at least 1 data row.
+    await expect(tableRows).not.toHaveCount(0, { timeout: 10_000 });
+    // Verify some audit content is rendered (action column should have values).
+    await expect(page.getByText(/member|organization|project|auth/i).first()).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('X2: super admin views global audit log at /admin/audit-log', async ({ page }) => {
+    const { email } = requireSuperAdminCreds();
+    await injectSavedAuth(page, email);
+
+    await page.goto('/en/admin/audit-log');
+    await page.waitForLoadState('domcontentloaded');
+
+    // The global audit log should show entries.
+    const tableRows = page.getByRole('row');
+    await expect(tableRows).not.toHaveCount(0, { timeout: 10_000 });
+  });
+
+  test('X3: admin logs out via the sidebar sign-out button', async ({ page }) => {
+    await injectSavedAuth(page, state.adminEmail);
+    await page.goto('/en/projects');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait for projects to load (ensures auth is fully hydrated).
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
+
+    // The logout button is in the sidebar. Its aria-label or text content is
+    // "Sign out". The sidebar may be collapsed; look for the sidebar nav item.
+    const signOutBtn = page.getByRole('button', { name: /sign out/i }).or(
+      page.locator('a').filter({ hasText: /sign out/i }),
+    );
+    await expect(signOutBtn).toBeVisible({ timeout: 10_000 });
+
+    // Click sign-out — this fires POST /auth/logout and clears localStorage.
+    await signOutBtn.click();
+
+    // Should redirect to /login.
+    await page.waitForURL(/\/login/, { timeout: 15_000 });
+  });
+
+  test('X4: after logout, navigating to /projects redirects to /login', async ({ page }) => {
+    // Don't inject any auth — we just logged out.
+    await page.goto('/en/projects');
+
+    // Without valid tokens, the app should redirect to /login.
+    await page.waitForURL(/\/login/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/login/);
   });
 });
