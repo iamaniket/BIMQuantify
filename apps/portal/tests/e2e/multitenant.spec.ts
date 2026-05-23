@@ -42,6 +42,15 @@ const RUN = state.runId;
 
 test.describe.serial('Multitenant E2E Journey', () => {
 
+  // Flush Redis rate-limit counters and JWT blocklist entries left over from
+  // previous runs so the suite starts clean.  Without this, accumulated
+  // forgot-password hits (3/hour limit) cause suites E/F to silently fail.
+  test.beforeAll(async () => {
+    const { execSync } = await import('child_process');
+    execSync('docker exec bimstitch-redis redis-cli FLUSHALL', { stdio: 'ignore' });
+    await clearAllEmails();
+  });
+
   // =========================================================================
   // SUITE A — Super admin
   // =========================================================================

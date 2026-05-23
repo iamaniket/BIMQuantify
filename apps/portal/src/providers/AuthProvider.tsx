@@ -89,7 +89,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
   }, []);
 
   const refreshMe = useCallback(async (): Promise<void> => {
-    const current = tokens;
+    const current = tokensRef.current;
     if (current === null) {
       setMe(null);
       return;
@@ -103,7 +103,6 @@ export function AuthProvider({ children }: Props): JSX.Element {
           const newToken = await tokenManager.refresh();
           const next = await getAuthMe(newToken);
           setMe(next);
-          // Token was refreshed — force all queries to re-fetch with the new token.
           await queryClient.invalidateQueries();
         } catch {
           // Refresh failed — tokenManager already called setTokens(null),
@@ -113,7 +112,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
       }
       // Network blip or other error — leave existing snapshot.
     }
-  }, [tokens, queryClient]);
+  }, [queryClient]);
 
   // Fetch /auth/me whenever the access token changes (login, refresh, switch).
   useEffect(() => {
@@ -123,7 +122,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
       return;
     }
     refreshMe().catch(() => undefined);
-  }, [hasHydrated, tokens, refreshMe]);
+  }, [hasHydrated, tokens]); // eslint-disable-line react-hooks/exhaustive-deps -- refreshMe is stable (no state deps)
 
   const setTokens = useCallback((next: TokenPair | null): void => {
     tokensRef.current = next;
@@ -138,7 +137,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
 
   const switchOrganization = useCallback(
     async (organizationId: string): Promise<void> => {
-      const current = tokens;
+      const current = tokensRef.current;
       if (current === null) {
         throw new Error('Cannot switch organization without an active session');
       }
@@ -147,7 +146,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
       await queryClient.invalidateQueries();
       // /auth/me will be re-fetched by the effect that watches `tokens`.
     },
-    [tokens, setTokens, queryClient],
+    [setTokens, queryClient],
   );
 
   const activeMembership = useMemo<OrgMembershipBrief | null>(() => {

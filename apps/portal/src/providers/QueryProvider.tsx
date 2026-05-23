@@ -17,6 +17,7 @@ export function QueryProvider({ children }: Props): JSX.Element {
         queries: {
           retry: false,
           refetchOnWindowFocus: false,
+          staleTime: 30_000,
         },
         mutations: {
           onError: (error) => {

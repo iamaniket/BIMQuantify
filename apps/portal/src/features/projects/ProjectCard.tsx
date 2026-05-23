@@ -1,19 +1,26 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Building2, CalendarDays, FileText, Layers, MapPin, RefreshCw, Ruler, Truck,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { useState, type JSX } from 'react';
+import { useCallback, useState, type JSX } from 'react';
 
 import {
   Card, CardBody, CardFooter, Icon,
 } from '@bimstitch/ui';
 
 import { BlueprintTexture } from '@/components/BlueprintTexture';
+import { listModels } from '@/lib/api/models';
+import { getProject } from '@/lib/api/projects';
 import type { Project, ProjectMember } from '@/lib/api/schemas';
+import { modelsKey } from '@/features/models/queryKeys';
+import { useAuth } from '@/providers/AuthProvider';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { useLocale, useTranslations } from 'next-intl';
+
+import { projectKey } from './queryKeys';
 
 import { ProjectCardMenu } from './ProjectCardMenu';
 import {
@@ -84,6 +91,8 @@ type Props = {
 
 export function ProjectCard({ project, members = [] }: Props): JSX.Element {
   const locale = useLocale();
+  const queryClient = useQueryClient();
+  const { tokens } = useAuth();
   const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
   const archived = isProjectArchived(project);
@@ -102,6 +111,25 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
     ? 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-slate-50 to-slate-100 grayscale'
     : 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-slate-50 to-slate-100';
 
+  const prefetchProject = useCallback(() => {
+    if (tokens === null) return;
+    const accessToken = tokens.access_token;
+    queryClient
+      .prefetchQuery({
+        queryKey: projectKey(project.id),
+        queryFn: () => getProject(accessToken, project.id),
+        staleTime: 30_000,
+      })
+      .catch(() => undefined);
+    queryClient
+      .prefetchQuery({
+        queryKey: modelsKey(project.id),
+        queryFn: () => listModels(accessToken, project.id),
+        staleTime: 30_000,
+      })
+      .catch(() => undefined);
+  }, [tokens, queryClient, project.id]);
+
   const [aerialFailed, setAerialFailed] = useState(false);
   const aerialUrl = (
     project.thumbnail_url === null
@@ -114,7 +142,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
     : null;
 
   return (
-    <Card className="group relative min-w-[340px] overflow-hidden border-border bg-background transition-all duration-200 hover:-translate-y-1 hover:border-primary-light hover:shadow-xl hover:shadow-primary/15">
+    <Card className="group relative min-w-[340px] overflow-hidden border-border bg-background transition-all duration-200 hover:-translate-y-1 hover:border-primary-light hover:shadow-xl hover:shadow-primary/15" onMouseEnter={prefetchProject}>
       <Link
         href={`/projects/${project.id}`}
         className="flex flex-1 flex-col gap-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
