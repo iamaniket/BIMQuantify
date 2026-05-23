@@ -65,6 +65,8 @@ export type { DialogFieldProps } from './DialogField.js';
 export { DialogSection } from './DialogSection.js';
 export type { DialogSectionGroupProps } from './DialogSection.js';
 export { cn } from './lib/cn.js';
+export { controlSizeStyles } from './lib/sizes.js';
+export type { ControlSize } from './lib/sizes.js';
 export { FormField } from './FormField.js';
 export type { FormFieldProps } from './FormField.js';
 export { ThemeToggle } from './ThemeToggle.js';

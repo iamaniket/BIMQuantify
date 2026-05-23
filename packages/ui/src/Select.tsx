@@ -1,8 +1,10 @@
 import { forwardRef, type SelectHTMLAttributes } from 'react';
 
 import { cn } from './lib/cn.js';
+import { controlSizeStyles } from './lib/sizes.js';
+import type { ControlSize } from './lib/sizes.js';
 
-export type SelectSize = 'sm' | 'md' | 'lg';
+export type SelectSize = ControlSize;
 
 export type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> & {
   selectSize?: SelectSize;
@@ -10,9 +12,9 @@ export type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> 
 };
 
 const sizeStyles: Record<SelectSize, string> = {
-  sm: 'h-10 text-[14px] px-2',
-  md: 'h-10 text-[14px] px-3',
-  lg: 'h-10 text-[16px] px-4',
+  sm: `${controlSizeStyles.sm} px-2`,
+  md: `${controlSizeStyles.md} px-3`,
+  lg: `${controlSizeStyles.lg} px-4`,
 };
 
 const baseStyles =

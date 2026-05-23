@@ -1,9 +1,11 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 
 import { cn } from './lib/cn.js';
+import { controlSizeStyles } from './lib/sizes.js';
+import type { ControlSize } from './lib/sizes.js';
 
 export type ButtonVariant = 'primary' | 'border' | 'secondary' | 'ghost' | 'destructive';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = ControlSize;
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -42,9 +44,9 @@ const variantStyles: Record<ButtonVariant, string> = {
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'h-10 px-3 text-[14px] leading-[16px]',
-  md: 'h-10 px-4 text-[14px] leading-[16px]',
-  lg: 'h-10 px-5 text-[16px] leading-[20px]',
+  sm: `${controlSizeStyles.sm} px-3 leading-[16px]`,
+  md: `${controlSizeStyles.md} px-4 leading-[16px]`,
+  lg: `${controlSizeStyles.lg} px-5 leading-[20px]`,
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

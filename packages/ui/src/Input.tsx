@@ -1,8 +1,10 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 
 import { cn } from './lib/cn.js';
+import { controlSizeStyles } from './lib/sizes.js';
+import type { ControlSize } from './lib/sizes.js';
 
-export type InputSize = 'sm' | 'md' | 'lg';
+export type InputSize = ControlSize;
 
 export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
   inputSize?: InputSize;
@@ -13,11 +15,7 @@ export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
   trailing?: ReactNode;
 };
 
-const sizeStyles: Record<InputSize, string> = {
-  sm: 'h-10 text-[14px]',
-  md: 'h-10 text-[14px]',
-  lg: 'h-10 text-[16px]',
-};
+const sizeStyles = controlSizeStyles;
 
 const sizePadding: Record<InputSize, { plain: string; left: string; right: string }> = {
   sm: { plain: 'px-2', left: 'pl-8 pr-2', right: 'pr-8 pl-2' },
