@@ -22,12 +22,13 @@ column on borgingsmomenten + checklist_items. Audit log (backlog #36) is TODO.
 from datetime import UTC, date, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.jurisdictions import pick_label
 from bimstitch_api.jurisdictions import require as require_jurisdiction
@@ -473,13 +474,27 @@ async def list_borgingsplan_versions(
 )
 async def generate_borgingsplan(
     project_id: UUID,
+    request: Request,
     payload: GenerateOptions | None = None,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.create)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.create)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.create.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=project_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     opts = payload or GenerateOptions()
 
@@ -511,7 +526,6 @@ async def generate_borgingsplan(
         await session.delete(existing)
         await session.flush()
 
-    # TODO(#36): emit audit_log entry once the table lands.
     next_version = await _next_version_number(session, project.id)
     try:
         plan = await _build_plan_from_templates(session, project, user.id, next_version)
@@ -519,6 +533,17 @@ async def generate_borgingsplan(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="PLAN_GENERATION_RACE"
         ) from exc
+    moment_count = len(plan.moments)
+    await audit.record(
+        session,
+        action="borgingsplan.generated",
+        resource_type="borgingsplan",
+        resource_id=plan.id,
+        after={"version_number": plan.version_number, "status": plan.status.value, "moment_count": moment_count},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return plan
 
 
@@ -528,21 +553,47 @@ async def generate_borgingsplan(
 async def update_borgingsplan(
     project_id: UUID,
     payload: BorgingsplanUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.update)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.update)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.update.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=project_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
 
     plan = await _load_active_plan_or_404(session, project.id)
     _require_plan_draft(plan)
     updates = payload.model_dump(exclude_unset=True)
-    # TODO(#36): emit audit_log entry once the table lands.
+    before = {k: getattr(plan, k) for k in updates}
     for field, value in updates.items():
         setattr(plan, field, value)
     await session.flush()
+    after = {k: getattr(plan, k) for k in updates}
+    await audit.record(
+        session,
+        action="borgingsplan.updated",
+        resource_type="borgingsplan",
+        resource_id=plan.id,
+        before=before,
+        after=after,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _reload_plan_with_children(session, plan.id)
 
 
@@ -551,12 +602,26 @@ async def update_borgingsplan(
 )
 async def publish_borgingsplan(
     project_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.publish)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.publish)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.publish.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=project_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
 
     plan = await _load_active_plan_or_404(session, project.id)
@@ -565,10 +630,20 @@ async def publish_borgingsplan(
             status_code=status.HTTP_409_CONFLICT, detail="PLAN_ALREADY_PUBLISHED"
         )
 
-    # TODO(#36): emit audit_log entry once the table lands.
     plan.status = BorgingsplanStatus.published
     plan.published_at = datetime.now(UTC)
     await session.flush()
+    await audit.record(
+        session,
+        action="borgingsplan.published",
+        resource_type="borgingsplan",
+        resource_id=plan.id,
+        before={"status": BorgingsplanStatus.draft.value},
+        after={"status": BorgingsplanStatus.published.value, "version_number": plan.version_number},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _reload_plan_with_children(session, plan.id)
 
 
@@ -579,12 +654,26 @@ async def publish_borgingsplan(
 )
 async def new_borgingsplan_version(
     project_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.create)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.create)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.create.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=project_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
 
     source = await _load_active_plan_or_404(session, project.id)
@@ -593,10 +682,21 @@ async def new_borgingsplan_version(
             status_code=status.HTTP_409_CONFLICT, detail="PLAN_NOT_PUBLISHED"
         )
 
-    # TODO(#36): emit audit_log entry once the table lands.
+    superseded_version = source.version_number
     source.status = BorgingsplanStatus.superseded
     source.superseded_at = datetime.now(UTC)
     await session.flush()
+    await audit.record(
+        session,
+        action="borgingsplan.superseded",
+        resource_type="borgingsplan",
+        resource_id=source.id,
+        before={"version_number": superseded_version, "status": BorgingsplanStatus.published.value},
+        after={"status": BorgingsplanStatus.superseded.value},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     next_version = await _next_version_number(session, project.id)
     try:
         new_plan = await _clone_plan(session, source, user.id, next_version)
@@ -604,6 +704,16 @@ async def new_borgingsplan_version(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="PLAN_GENERATION_RACE"
         ) from exc
+    await audit.record(
+        session,
+        action="borgingsplan.generated",
+        resource_type="borgingsplan",
+        resource_id=new_plan.id,
+        after={"version_number": new_plan.version_number, "status": new_plan.status.value, "cloned_from_version": superseded_version},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return new_plan
 
 
@@ -614,12 +724,26 @@ async def new_borgingsplan_version(
 async def reset_borgingsplan_to_template(
     project_id: UUID,
     plan_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.update)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.update)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.update.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=plan_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
 
     plan = await _load_plan_in_project_or_404(session, project.id, plan_id)
@@ -627,7 +751,6 @@ async def reset_borgingsplan_to_template(
 
     # In-place regeneration: keep the version_number, replace contents.
     version_number = plan.version_number
-    # TODO(#36): emit audit_log entry once the table lands.
     await session.delete(plan)
     await session.flush()
     try:
@@ -638,6 +761,16 @@ async def reset_borgingsplan_to_template(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="PLAN_GENERATION_RACE"
         ) from exc
+    await audit.record(
+        session,
+        action="borgingsplan.reset",
+        resource_type="borgingsplan",
+        resource_id=new_plan.id,
+        after={"version_number": version_number, "moment_count": len(new_plan.moments)},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return new_plan
 
 
@@ -654,8 +787,10 @@ async def reset_borgingsplan_to_template(
 async def create_moment(
     plan_id: UUID,
     payload: BorgingsmomentCreate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsmoment:
     plan = (
         await session.execute(select(Borgingsplan).where(Borgingsplan.id == plan_id))
@@ -666,7 +801,19 @@ async def create_moment(
         )
     project = await _walk_to_project_via_plan(session, plan)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.create)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.create)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.create.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=plan_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -684,7 +831,6 @@ async def create_moment(
         seq = int(max_seq) + 1
 
     data = payload.model_dump(exclude={"sequence_in_phase"})
-    # TODO(#36): emit audit_log entry once the table lands.
     moment = Borgingsmoment(
         borgingsplan_id=plan.id,
         project_id=project.id,
@@ -693,6 +839,20 @@ async def create_moment(
     )
     session.add(moment)
     await session.flush()
+    await audit.record(
+        session,
+        action="borgingsmoment.created",
+        resource_type="borgingsmoment",
+        resource_id=moment.id,
+        after={
+            "phase": moment.phase.value,
+            "planned_date": str(moment.planned_date) if moment.planned_date else None,
+            "sequence_in_phase": moment.sequence_in_phase,
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _reload_moment_with_items(session, moment.id)
 
 
@@ -703,21 +863,49 @@ async def update_moment(
     plan_id: UUID,
     moment_id: UUID,
     payload: BorgingsmomentUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsmoment:
     moment = await _load_moment_in_plan_or_404(session, plan_id, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.update)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.update)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.update.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=moment_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     _require_plan_draft(plan)
 
     updates = payload.model_dump(exclude_unset=True)
-    # TODO(#36): emit audit_log entry once the table lands.
+    before = {k: (v.value if hasattr(v, "value") else str(v) if v is not None else None)
+               for k, v in ((f, getattr(moment, f)) for f in updates)}
     for field, value in updates.items():
         setattr(moment, field, value)
     await session.flush()
+    after = {k: (v.value if hasattr(v, "value") else str(v) if v is not None else None)
+              for k, v in ((f, getattr(moment, f)) for f in updates)}
+    await audit.record(
+        session,
+        action="borgingsmoment.updated",
+        resource_type="borgingsmoment",
+        resource_id=moment.id,
+        before=before,
+        after=after,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _reload_moment_with_items(session, moment.id)
 
 
@@ -728,19 +916,43 @@ async def update_moment(
 async def delete_moment(
     plan_id: UUID,
     moment_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
     moment = await _load_moment_in_plan_or_404(session, plan_id, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.delete)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.delete)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.delete.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=moment_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     _require_plan_draft(plan)
 
-    # TODO(#36): emit audit_log entry once the table lands.
+    before = {"phase": moment.phase.value, "sequence_in_phase": moment.sequence_in_phase}
     await session.delete(moment)
     await session.flush()
+    await audit.record(
+        session,
+        action="borgingsmoment.deleted",
+        resource_type="borgingsmoment",
+        resource_id=moment_id,
+        before=before,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -751,8 +963,10 @@ async def delete_moment(
 async def reorder_moments(
     plan_id: UUID,
     payload: MomentReorderRequest,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> list[Borgingsmoment]:
     plan = (
         await session.execute(select(Borgingsplan).where(Borgingsplan.id == plan_id))
@@ -763,7 +977,19 @@ async def reorder_moments(
         )
     project = await _walk_to_project_via_plan(session, plan)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.update)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.update)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.update.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=plan_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -785,10 +1011,19 @@ async def reorder_moments(
             detail="REORDER_MOMENT_IDS_MISMATCH",
         )
 
-    # TODO(#36): emit audit_log entry once the table lands.
     for index, mid in enumerate(payload.moment_ids):
         by_id[mid].sequence_in_phase = index
     await session.flush()
+    await audit.record(
+        session,
+        action="borgingsmoment.reordered",
+        resource_type="borgingsmoment",
+        resource_id=plan_id,
+        after={"phase": payload.phase.value, "order": [str(mid) for mid in payload.moment_ids]},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
 
     refreshed = (
         await session.execute(
@@ -817,13 +1052,27 @@ async def reorder_moments(
 async def create_checklist_item(
     moment_id: UUID,
     payload: ChecklistItemCreate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> ChecklistItem:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.create)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.create)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.create.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=moment_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -839,7 +1088,6 @@ async def create_checklist_item(
         seq = int(max_seq) + 1
 
     data = payload.model_dump(exclude={"sequence"})
-    # TODO(#36): emit audit_log entry once the table lands.
     item = ChecklistItem(
         borgingsmoment_id=moment.id,
         project_id=project.id,
@@ -849,6 +1097,21 @@ async def create_checklist_item(
     session.add(item)
     await session.flush()
     await session.refresh(item)
+    await audit.record(
+        session,
+        action="checklist_item.created",
+        resource_type="checklist_item",
+        resource_id=item.id,
+        after={
+            "moment_id": str(moment.id),
+            "description": item.description,
+            "evidence_type": item.evidence_type.value if item.evidence_type else None,
+            "sequence": item.sequence,
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return item
 
 
@@ -860,23 +1123,49 @@ async def update_checklist_item(
     moment_id: UUID,
     item_id: UUID,
     payload: ChecklistItemUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> ChecklistItem:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.update)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.update)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.update.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=item_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     _require_plan_draft(plan)
 
     item = await _load_item_in_moment_or_404(session, moment.id, item_id)
     updates = payload.model_dump(exclude_unset=True)
-    # TODO(#36): emit audit_log entry once the table lands.
+    before = {k: (v.value if hasattr(v, "value") else str(v) if v is not None else None) for k, v in ((f, getattr(item, f)) for f in updates)}
     for field, value in updates.items():
         setattr(item, field, value)
     await session.flush()
     await session.refresh(item)
+    after = {k: (v.value if hasattr(v, "value") else str(v) if v is not None else None) for k, v in ((f, getattr(item, f)) for f in updates)}
+    await audit.record(
+        session,
+        action="checklist_item.updated",
+        resource_type="checklist_item",
+        resource_id=item.id,
+        before=before,
+        after=after,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return item
 
 
@@ -887,20 +1176,44 @@ async def update_checklist_item(
 async def delete_checklist_item(
     moment_id: UUID,
     item_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.delete)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.delete)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.delete.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=item_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     _require_plan_draft(plan)
 
     item = await _load_item_in_moment_or_404(session, moment.id, item_id)
-    # TODO(#36): emit audit_log entry once the table lands.
+    before = {"description": item.description, "sequence": item.sequence}
     await session.delete(item)
     await session.flush()
+    await audit.record(
+        session,
+        action="checklist_item.deleted",
+        resource_type="checklist_item",
+        resource_id=item_id,
+        before=before,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -911,13 +1224,27 @@ async def delete_checklist_item(
 async def reorder_checklist_items(
     moment_id: UUID,
     payload: ChecklistItemReorderRequest,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> list[ChecklistItem]:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
     membership = await _require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.assurance_plan, Action.update)
+    try:
+        require_permission(membership.role, Resource.assurance_plan, Action.update)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.assurance_plan.value,
+            action=Action.update.value,
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            resource_id=moment_id,
+            request=request,
+        )
+        raise
     _require_project_writable(project)
     _require_plan_draft(plan)
 
@@ -938,10 +1265,19 @@ async def reorder_checklist_items(
             detail="REORDER_ITEM_IDS_MISMATCH",
         )
 
-    # TODO(#36): emit audit_log entry once the table lands.
     for index, iid in enumerate(payload.item_ids):
         by_id[iid].sequence = index
     await session.flush()
+    await audit.record(
+        session,
+        action="checklist_item.reordered",
+        resource_type="checklist_item",
+        resource_id=moment_id,
+        after={"order": [str(iid) for iid in payload.item_ids]},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
 
     refreshed = (
         await session.execute(

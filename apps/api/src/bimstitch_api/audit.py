@@ -125,3 +125,62 @@ async def record(
     # Caller's transaction commits this. We deliberately do NOT flush() —
     # letting the surrounding txn batch the insert is fine, and a forced
     # flush here would emit SQL before the caller is ready.
+
+
+async def log_permission_denied(
+    *,
+    role: str,
+    resource: str,
+    action: str,
+    actor_user_id: UUID,
+    organization_id: UUID | None = None,
+    resource_id: str | UUID | None = None,
+    request: Request | None = None,
+) -> None:
+    """Record a permission denial in an independent session.
+
+    The calling endpoint's tenant transaction will be rolled back when the
+    HTTPException propagates, so a same-session entry would vanish with it.
+    This function commits the denial row in its own transaction.
+
+    Call pattern::
+
+        try:
+            require_permission(membership.role, Resource.risk, Action.delete)
+        except HTTPException:
+            await audit.log_permission_denied(
+                role=membership.role.value,
+                resource=Resource.risk.value,
+                action=Action.delete.value,
+                actor_user_id=user.id,
+                organization_id=active_org_id,
+                resource_id=risk_id,
+                request=request,
+            )
+            raise
+
+    Failures are caught and logged — a broken audit path must never mask the
+    original 403 response.
+    """
+    import logging  # stdlib, always available
+
+    from bimstitch_api.db import get_session_maker  # lazy to avoid circular import
+
+    try:
+        sm = get_session_maker()
+        async with sm() as ds:
+            async with ds.begin():
+                await record(
+                    ds,
+                    action="permission.denied",
+                    resource_type=resource,
+                    resource_id=resource_id,
+                    before={"role": role, "resource": resource, "action": action},
+                    actor_user_id=actor_user_id,
+                    organization_id=organization_id,
+                    request=request,
+                )
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).warning(
+            "Failed to record permission denial audit entry", exc_info=True
+        )

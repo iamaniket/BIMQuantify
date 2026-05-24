@@ -14,11 +14,12 @@ verdict. These endpoints manage that flow:
 from datetime import UTC, date, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.models.borgingsmoment import Borgingsmoment, BorgingsmomentStatus
 from bimstitch_api.models.checklist_item import ChecklistItem
@@ -77,11 +78,12 @@ async def _require_moment_readable(
 )
 async def start_inspection(
     moment_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsmoment:
-    moment, _project_id = await _require_moment_writable(session, moment_id, user)
+    moment, project_id = await _require_moment_writable(session, moment_id, user)
 
     if moment.status in _TERMINAL_STATUSES:
         raise HTTPException(
@@ -93,6 +95,16 @@ async def start_inspection(
         moment.status = BorgingsmomentStatus.in_progress
         moment.actual_date = date.today()
         await session.flush()
+        await audit.record(
+            session,
+            action="inspection.started",
+            resource_type="borgingsmoment",
+            resource_id=moment.id,
+            after={"moment_id": str(moment.id), "inspector_user_id": str(user.id)},
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            request=request,
+        )
 
     return (
         await session.execute(
@@ -112,6 +124,7 @@ async def submit_result(
     moment_id: UUID,
     item_id: UUID,
     payload: ResultCreate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -175,6 +188,21 @@ async def submit_result(
     session.add(result)
     await session.flush()
     await session.refresh(result)
+    await audit.record(
+        session,
+        action="inspection_result.submitted",
+        resource_type="checklist_item_result",
+        resource_id=result.id,
+        after={
+            "checklist_item_id": str(item_id),
+            "verdict": result.verdict.value,
+            "has_note": bool(result.note),
+            "has_photos": bool(result.photo_ids),
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return result
 
 
@@ -253,6 +281,7 @@ async def inspection_summary(
 )
 async def complete_inspection(
     moment_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -296,11 +325,25 @@ async def complete_inspection(
         )
     ).scalar_one()
 
-    moment.status = (
-        BorgingsmomentStatus.failed if has_failures
-        else BorgingsmomentStatus.passed
-    )
+    final_status = BorgingsmomentStatus.failed if has_failures else BorgingsmomentStatus.passed
+    moment.status = final_status
     await session.flush()
+
+    await audit.record(
+        session,
+        action="inspection.completed",
+        resource_type="borgingsmoment",
+        resource_id=moment.id,
+        before={"status": BorgingsmomentStatus.in_progress.value},
+        after={
+            "status": final_status.value,
+            "total_items": total_items,
+            "fail_count": int(has_failures),
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
 
     return (
         await session.execute(

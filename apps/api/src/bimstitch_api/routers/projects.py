@@ -1,6 +1,6 @@
 import asyncio
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -87,6 +87,15 @@ async def _project_to_read(project: Project, storage: StorageBackend) -> dict[st
     data["thumbnail_url"] = await _resolve_thumbnail_url(project.thumbnail_url, storage)
     data["contractor_name"] = project.contractor.name if project.contractor is not None else None
     return data
+
+
+def _serialize_field(v: object) -> object:
+    """Serialize a model-field value to a JSON-safe scalar for audit log snapshots."""
+    if hasattr(v, "value"):  # enum
+        return v.value
+    if isinstance(v, date):  # covers datetime too (datetime subclasses date)
+        return v.isoformat()
+    return v
 
 
 def _validate_country(country: str | None) -> None:
@@ -384,6 +393,7 @@ def _require_project_writable(project: Project) -> None:
 @router.post("", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 async def create_project(
     payload: ProjectCreate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -421,12 +431,28 @@ async def create_project(
     await recompute_deadlines(session, project)
 
     await session.refresh(project)
+    await audit.record(
+        session,
+        action="project.created",
+        resource_type="project",
+        resource_id=project.id,
+        after={
+            "name": project.name,
+            "country": project.country,
+            "building_type": project.building_type.value if project.building_type else None,
+            "consequence_class": project.consequence_class.value if project.consequence_class else None,
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _project_to_read(project, storage)
 
 
 @router.post("/with-thumbnail", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 async def create_project_with_thumbnail(
     name: Annotated[str, Form(min_length=1, max_length=255)],
+    request: Request,
     description: Annotated[str | None, Form()] = None,
     thumbnail: Annotated[UploadFile | None, File()] = None,
     session: AsyncSession = Depends(get_tenant_session),
@@ -490,6 +516,16 @@ async def create_project_with_thumbnail(
     await recompute_deadlines(session, project)
 
     await session.refresh(project)
+    await audit.record(
+        session,
+        action="project.created",
+        resource_type="project",
+        resource_id=project.id,
+        after={"name": project.name},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _project_to_read(project, storage)
 
 
@@ -540,6 +576,7 @@ async def get_project(
 async def update_project(
     project_id: UUID,
     payload: ProjectUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -562,6 +599,7 @@ async def update_project(
         _validate_instrument(updates["instrument_id"], target_country)
     if "contractor_id" in updates:
         await _validate_contractor_exists(session, updates["contractor_id"])
+    before = {k: _serialize_field(getattr(project, k)) for k in updates}
     for field, value in updates.items():
         setattr(project, field, value)
 
@@ -577,12 +615,25 @@ async def update_project(
             status_code=status.HTTP_409_CONFLICT, detail="PROJECT_NAME_CONFLICT"
         ) from exc
     await session.refresh(project)
+    after = {k: _serialize_field(getattr(project, k)) for k in updates}
+    await audit.record(
+        session,
+        action="project.updated",
+        resource_type="project",
+        resource_id=project.id,
+        before=before,
+        after=after,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _project_to_read(project, storage)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
     project_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -590,15 +641,26 @@ async def delete_project(
     project = await _load_project_or_404(session, project_id)
     await _require_project_owner_or_admin(session, project.id, user, active_org_id)
 
+    before = {"name": project.name, "lifecycle_state": project.lifecycle_state.value}
     project.lifecycle_state = ProjectLifecycleState.removed
     await session.flush()
-
+    await audit.record(
+        session,
+        action="project.deleted",
+        resource_type="project",
+        resource_id=project.id,
+        before=before,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{project_id}/archive", response_model=ProjectRead)
 async def archive_project(
     project_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -615,12 +677,24 @@ async def archive_project(
     project.lifecycle_state = ProjectLifecycleState.archived
     await session.flush()
     await session.refresh(project)
+    await audit.record(
+        session,
+        action="project.archived",
+        resource_type="project",
+        resource_id=project.id,
+        before={"lifecycle_state": ProjectLifecycleState.active.value},
+        after={"lifecycle_state": ProjectLifecycleState.archived.value},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _project_to_read(project, storage)
 
 
 @router.post("/{project_id}/reactivate", response_model=ProjectRead)
 async def reactivate_project(
     project_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -640,6 +714,17 @@ async def reactivate_project(
     project.lifecycle_state = ProjectLifecycleState.active
     await session.flush()
     await session.refresh(project)
+    await audit.record(
+        session,
+        action="project.reactivated",
+        resource_type="project",
+        resource_id=project.id,
+        before={"lifecycle_state": ProjectLifecycleState.archived.value},
+        after={"lifecycle_state": ProjectLifecycleState.active.value},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _project_to_read(project, storage)
 
 
@@ -689,6 +774,7 @@ async def list_members(
 async def add_member(
     project_id: UUID,
     payload: ProjectMemberCreate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -732,6 +818,16 @@ async def add_member(
             status_code=status.HTTP_409_CONFLICT, detail="MEMBER_ALREADY_EXISTS"
         ) from exc
     await session.refresh(member)
+    await audit.record(
+        session,
+        action="project_member.added",
+        resource_type="project_member",
+        resource_id=project.id,
+        after={"user_id": str(payload.user_id), "role": payload.role.value},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _member_to_read(session, member)
 
 
@@ -739,6 +835,7 @@ async def add_member(
 async def remove_member(
     project_id: UUID,
     user_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -753,8 +850,19 @@ async def remove_member(
     if target.role is ProjectRole.owner:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OWNER_NOT_REMOVABLE")
 
+    before = {"user_id": str(user_id), "role": target.role.value}
     await session.delete(target)
     await session.flush()
+    await audit.record(
+        session,
+        action="project_member.removed",
+        resource_type="project_member",
+        resource_id=project.id,
+        before=before,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -763,6 +871,7 @@ async def update_member_role(
     project_id: UUID,
     user_id: UUID,
     payload: ProjectMemberUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -785,9 +894,21 @@ async def update_member_role(
             status_code=status.HTTP_400_BAD_REQUEST, detail="OWNER_ROLE_NOT_ASSIGNABLE"
         )
 
+    old_role = target.role
     target.role = payload.role
     await session.flush()
     await session.refresh(target)
+    await audit.record(
+        session,
+        action="project_member.role_changed",
+        resource_type="project_member",
+        resource_id=project.id,
+        before={"user_id": str(user_id), "role": old_role.value},
+        after={"user_id": str(user_id), "role": payload.role.value},
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        request=request,
+    )
     return await _member_to_read(session, target)
 
 
