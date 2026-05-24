@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { AppDialog, Input } from '@bimstitch/ui';
 
 import { Field } from '@/components/forms/Field';
+import { useRegisterField } from '@/hooks/useRegisterField';
 import { lookupUserByEmail } from '@/lib/api/admin';
 import { ApiError } from '@/lib/api/client';
 import type { AdminUserRead } from '@/lib/api/schemas';
@@ -169,7 +170,7 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
               id={id}
               placeholder={t('placeholders.name')}
               autoFocus
-              {...form.register('name')}
+              {...useRegisterField(form, 'name')}
             />
           )}
         </Field>
@@ -180,7 +181,7 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
                 id={id}
                 type="email"
                 placeholder={t('placeholders.adminEmail')}
-                {...form.register('admin_email')}
+                {...useRegisterField(form, 'admin_email')}
               />
               {lookupPending && (
                 <p className="text-caption text-foreground-tertiary">
@@ -218,7 +219,7 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
               id={id}
               placeholder={t('placeholders.adminFullName')}
               readOnly={existingUser !== null}
-              {...form.register('admin_full_name', {
+              {...useRegisterField(form, 'admin_full_name', {
                 onChange: () => {
                   fullNameTouchedRef.current = true;
                 },
@@ -239,7 +240,7 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
               min={1}
               inputMode="numeric"
               placeholder={t('placeholders.seatLimit')}
-              {...form.register('seat_limit')}
+              {...useRegisterField(form, 'seat_limit')}
             />
           )}
         </Field>

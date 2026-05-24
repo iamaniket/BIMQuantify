@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Building2, Layers, Ruler, Share2,
+  Building2, Hammer, Layers, MapPin, Ruler, Scale, Share2,
 } from 'lucide-react';
 import { useState, type JSX } from 'react';
 
@@ -72,7 +72,7 @@ export function ProjectDetailHeader({
   }
 
   const thumbnail = (
-    <div className="h-28 w-full overflow-hidden rounded-[10px] border border-black/10 bg-black/5 shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)] sm:h-32 xl:h-[160px] xl:w-[240px]">
+    <div className="h-28 w-full overflow-hidden rounded-[10px] border border-black/10 bg-black/5 shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)] sm:h-32 xl:h-[130px] xl:w-[195px]">
       {project.thumbnail_url !== null ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -126,15 +126,15 @@ export function ProjectDetailHeader({
 
   const subtitleRow = (
     <>
-      <span>
-        <span className="text-black/40 dark:text-white/70">◉</span>{' '}
+      <span className="inline-flex items-center gap-1">
+        <MapPin className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
         {address ?? 'No address set'}
       </span>
       {project.contractor_name !== null && (
         <>
           <span className="text-black/30 dark:text-white/60">·</span>
-          <span>
-            <span className="text-black/40 dark:text-white/70">⚒</span>{' '}
+          <span className="inline-flex items-center gap-1">
+            <Hammer className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
             {project.contractor_name}
           </span>
         </>
@@ -142,8 +142,8 @@ export function ProjectDetailHeader({
       {instrument !== undefined && (
         <>
           <span className="text-black/30 dark:text-white/60">·</span>
-          <span title={`Toegelaten instrument · ${instrument.provider}`}>
-            <span className="text-black/40 dark:text-white/70">⚖</span>{' '}
+          <span className="inline-flex items-center gap-1" title={`Toegelaten instrument · ${instrument.provider}`}>
+            <Scale className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
             <a
               href={instrument.methodology_url}
               target="_blank"
@@ -162,6 +162,7 @@ export function ProjectDetailHeader({
     <HeroShell
       image={thumbnail}
       title={project.name}
+      description={project.description}
       badge={badgeRow}
       subtitle={subtitleRow}
       kpis={[

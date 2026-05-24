@@ -15,6 +15,7 @@ import {
   Button, Input, Label, Textarea,
 } from '@bimstitch/ui';
 
+import { useRegisterField } from '@/hooks/useRegisterField';
 import type { ProjectFormValues } from '../projectFormSchema';
 
 import {
@@ -58,13 +59,7 @@ export function StepBasics({
   const nameError = getFieldErrorMessage(errors, 'name');
   const descriptionError = getFieldErrorMessage(errors, 'description');
 
-  const nameRegister = form.register('name', {
-    onChange: () => {
-      const current = errors.name;
-      if (current === undefined) return;
-      if (current.type === 'server') form.clearErrors('name');
-    },
-  });
+  const nameRegister = useRegisterField(form, 'name');
 
   const handleOpenFilePicker = (): void => {
     const input = thumbnailInputRef.current;
@@ -102,7 +97,7 @@ export function StepBasics({
           rows={3}
           invalid={descriptionError !== undefined}
           disabled={isReadOnly}
-          {...form.register('description')}
+          {...useRegisterField(form, 'description')}
         />
         {descriptionError !== undefined && (
           <span role="alert" className={fieldErrorClass}>{descriptionError}</span>

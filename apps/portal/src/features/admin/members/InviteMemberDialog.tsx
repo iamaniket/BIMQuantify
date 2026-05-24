@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { AppDialog, Checkbox, Input } from '@bimstitch/ui';
 
 import { Field } from '@/components/forms/Field';
+import { useRegisterField } from '@/hooks/useRegisterField';
 import { ApiError } from '@/lib/api/client';
 import { useInviteMember } from './useInviteMember';
 
@@ -102,7 +103,7 @@ export function InviteMemberDialog({
               type="email"
               autoFocus
               placeholder={t('placeholders.email')}
-              {...form.register('email')}
+              {...useRegisterField(form, 'email')}
             />
           )}
         </Field>
@@ -111,7 +112,7 @@ export function InviteMemberDialog({
             <Input
               id={id}
               placeholder={t('placeholders.fullName')}
-              {...form.register('full_name')}
+              {...useRegisterField(form, 'full_name')}
             />
           )}
         </Field>

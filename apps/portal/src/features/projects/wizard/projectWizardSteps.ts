@@ -137,19 +137,16 @@ export const PROJECT_WIZARD_STEPS: readonly (WizardStep & { id: ProjectWizardSte
     id: 'details',
     title: 'Details',
     description: 'Status, phase, dates',
-    optional: true,
   },
   {
     id: 'address',
     title: 'Address',
     description: 'Site location',
-    optional: true,
   },
   {
     id: 'contractor',
     title: 'Contractor',
     description: 'Assign a company',
-    optional: true,
   },
 ] as const;
 

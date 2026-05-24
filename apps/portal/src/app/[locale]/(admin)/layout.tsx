@@ -45,7 +45,7 @@ export default function AdminLayout({ children }: Props): JSX.Element {
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <AppHeaderRoute />
-            <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+            <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
           </div>
         </div>
       </SidebarProvider>

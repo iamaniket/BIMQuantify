@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import { Input, Label, Select } from '@bimstitch/ui';
 
+import { useRegisterField } from '@/hooks/useRegisterField';
 import type { ProjectFormValues } from '../projectFormSchema';
 
 import {
@@ -55,7 +56,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             placeholder={t('fields.referenceCodePlaceholder')}
             invalid={refCodeError !== undefined}
             disabled={isReadOnly}
-            {...form.register('reference_code')}
+            {...useRegisterField(form, 'reference_code')}
           />
           {refCodeError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{refCodeError}</span>
@@ -70,7 +71,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             placeholder={t('fields.permitNumberPlaceholder')}
             invalid={permitError !== undefined}
             disabled={isReadOnly}
-            {...form.register('permit_number')}
+            {...useRegisterField(form, 'permit_number')}
           />
           {permitError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{permitError}</span>
@@ -81,7 +82,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={statusId} className={fieldLabelClass}>{t('fields.status')}</Label>
-          <Select id={statusId} disabled={isReadOnly} {...form.register('status')}>
+          <Select id={statusId} disabled={isReadOnly} {...useRegisterField(form, 'status')}>
             {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
@@ -90,7 +91,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={phaseId} className={fieldLabelClass}>{t('fields.phase')}</Label>
-          <Select id={phaseId} disabled={isReadOnly} {...form.register('phase')}>
+          <Select id={phaseId} disabled={isReadOnly} {...useRegisterField(form, 'phase')}>
             {phaseOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
@@ -104,7 +105,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             type="date"
             invalid={deliveryError !== undefined}
             disabled={isReadOnly}
-            {...form.register('delivery_date')}
+            {...useRegisterField(form, 'delivery_date')}
           />
           {deliveryError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{deliveryError}</span>
@@ -118,7 +119,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
           <Select
             id={buildingTypeId}
             disabled={isReadOnly}
-            {...form.register('building_type')}
+            {...useRegisterField(form, 'building_type')}
           >
             <option value="">—</option>
             {buildingTypeOptions.map((opt) => (
@@ -132,7 +133,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
           <Select
             id={consequenceClassId}
             disabled={isReadOnly}
-            {...form.register('consequence_class')}
+            {...useRegisterField(form, 'consequence_class')}
           >
             <option value="">—</option>
             {consequenceClassOptions.map((opt) => (
@@ -150,7 +151,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             type="date"
             invalid={plannedStartError !== undefined}
             disabled={isReadOnly}
-            {...form.register('planned_start_date')}
+            {...useRegisterField(form, 'planned_start_date')}
           />
           {plannedStartError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{plannedStartError}</span>
@@ -164,7 +165,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
           <Select
             id={instrumentId}
             disabled={isReadOnly}
-            {...form.register('instrument_id')}
+            {...useRegisterField(form, 'instrument_id')}
           >
             <option value="">—</option>
             {instrumentOptions.map((opt) => (

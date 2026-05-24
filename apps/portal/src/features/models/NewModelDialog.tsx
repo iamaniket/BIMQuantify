@@ -19,6 +19,7 @@ import {
 } from '@bimstitch/ui';
 
 import { Field } from '@/components/forms/Field';
+import { useRegisterField } from '@/hooks/useRegisterField';
 import { ApiError } from '@/lib/api/client';
 import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/lib/formatting/models';
 import {
@@ -110,15 +111,7 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
                   autoComplete="off"
                   autoFocus
                   invalid={invalid}
-                  {...form.register('name', {
-                    onChange: () => {
-                      const currentNameError = form.formState.errors.name;
-                      if (currentNameError === undefined) return;
-                      if (currentNameError.type === 'server') {
-                        form.clearErrors('name');
-                      }
-                    },
-                  })}
+                  {...useRegisterField(form, 'name')}
                 />
               )}
             </Field>
@@ -128,7 +121,7 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
                 <Select
                   id={id}
                   disabled={isSubmitting}
-                  {...form.register('discipline')}
+                  {...useRegisterField(form, 'discipline')}
                 >
                   {DISCIPLINE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -144,7 +137,7 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
                 <Select
                   id={id}
                   disabled={isSubmitting}
-                  {...form.register('status')}
+                  {...useRegisterField(form, 'status')}
                 >
                   {STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>

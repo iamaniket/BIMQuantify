@@ -7,6 +7,7 @@ import { useFormContext } from 'react-hook-form';
 import { Button, Input, Label, Select } from '@bimstitch/ui';
 
 import type { Contractor } from '@/lib/api/schemas';
+import { useRegisterField } from '@/hooks/useRegisterField';
 
 import type { ProjectFormValues } from '../projectFormSchema';
 
@@ -53,7 +54,7 @@ export function StepContractor({
         <Select
           id={contractorId}
           disabled={contractorsLoading || isReadOnly}
-          {...form.register('contractor_id')}
+          {...useRegisterField(form, 'contractor_id')}
         >
           <option value="">{t('fields.noneOption')}</option>
           {contractors.map((c) => (
