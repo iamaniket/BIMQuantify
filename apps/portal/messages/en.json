@@ -492,6 +492,19 @@
     }
   },
   "projectDetail": {
+    "hero": {
+      "wkbScore": "Wkb score",
+      "issuesOpen": "Issues open",
+      "holdback": "Holdback",
+      "delivery": "Delivery",
+      "noScanYet": "No scan yet",
+      "fromLatestScan": "From latest scan",
+      "noDeliveryDate": "No delivery date",
+      "daysRemaining": "{count} days remaining",
+      "daysOverdue": "{count} days overdue",
+      "failWarn": "{fail} fail \u00b7 {warn} warn",
+      "dossierReady": "{pct}% dossier ready"
+    },
     "tabs": {
       "eyebrow": "Project files",
       "subtitle": "{count, plural, =0 {No models yet} =1 {1 model} other {# models}}",
@@ -910,7 +923,8 @@
       "lastActivity": "Last activity",
       "ago": "ago",
       "eventsToday": "{count} {count, plural, =1 {event} other {events}} today",
-      "noEvents": "No events yet"
+      "noEvents": "No events yet",
+      "today": "today"
     },
     "panel": {
       "overviewEyebrow": "Organization overview",

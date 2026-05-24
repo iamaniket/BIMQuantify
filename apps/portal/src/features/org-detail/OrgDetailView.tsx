@@ -157,7 +157,7 @@ function OrgDetailHero({
           sub: (
             <span className="flex items-center gap-1">
               <Clock className="h-2.5 w-2.5" />
-              today
+              {t('today')}
             </span>
           ),
         },

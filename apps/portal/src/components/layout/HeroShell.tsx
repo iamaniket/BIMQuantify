@@ -1,13 +1,9 @@
 import type { JSX, ReactNode } from 'react';
 
 import { BlueprintTexture } from '@/components/BlueprintTexture';
+import { KpiStrip, type KpiItem } from '@/components/layout/KpiCard';
 
-type KpiItem = {
-  label: string;
-  value: string;
-  color?: string;
-  sub?: ReactNode;
-};
+export type { KpiItem };
 
 type HeroShellProps = {
   image: ReactNode;
@@ -58,33 +54,13 @@ export function HeroShell({
         </div>
 
         {/* Right — KPI cards + optional action (40% width) */}
-        <div className="hidden w-2/5 shrink-0 items-center gap-2 xl:flex">
-          <div className="flex items-stretch gap-0">
-            {kpis.map((item, i) => (
-              <div
-                key={item.label}
-                className={`flex min-w-0 flex-1 flex-col justify-center border-0 bg-transparent px-[22px] py-1 ${
-                  i === 0 ? '' : 'border-l border-border'
-                }`}
-              >
-                <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-foreground-tertiary">
-                  {item.label}
-                </div>
-                <div
-                  className="mt-[3px] font-display text-[22px] font-semibold leading-[1.05] tracking-[-0.015em] tabular-nums"
-                  style={{ color: item.color ?? 'currentColor' }}
-                >
-                  {item.value}
-                </div>
-                {item.sub !== undefined && (
-                  <div className="mt-[3px] whitespace-nowrap text-[10.5px] text-foreground-tertiary">
-                    {item.sub}
-                  </div>
-                )}
-              </div>
-            ))}
+        <div className="hidden w-2/5 shrink-0 items-center xl:flex">
+          <div className="min-w-0 flex-1">
+            <KpiStrip items={kpis} />
           </div>
-          {action}
+          {action !== undefined && (
+            <div className="shrink-0 pl-2">{action}</div>
+          )}
         </div>
       </div>
     </div>

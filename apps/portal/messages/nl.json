@@ -492,6 +492,19 @@
     }
   },
   "projectDetail": {
+    "hero": {
+      "wkbScore": "Wkb-score",
+      "issuesOpen": "Open issues",
+      "holdback": "Inhouding",
+      "delivery": "Oplevering",
+      "noScanYet": "Nog geen scan",
+      "fromLatestScan": "Uit laatste scan",
+      "noDeliveryDate": "Geen opleverdatum",
+      "daysRemaining": "{count} dagen resterend",
+      "daysOverdue": "{count} dagen te laat",
+      "failWarn": "{fail} fout \u00b7 {warn} waarsch.",
+      "dossierReady": "{pct}% dossier gereed"
+    },
     "tabs": {
       "eyebrow": "Projectbestanden",
       "subtitle": "{count, plural, =0 {Nog geen modellen} =1 {1 model} other {# modellen}}",
@@ -910,7 +923,8 @@
       "lastActivity": "Laatste activiteit",
       "ago": "geleden",
       "eventsToday": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} vandaag",
-      "noEvents": "Nog geen gebeurtenissen"
+      "noEvents": "Nog geen gebeurtenissen",
+      "today": "vandaag"
     },
     "panel": {
       "overviewEyebrow": "Organisatieoverzicht",

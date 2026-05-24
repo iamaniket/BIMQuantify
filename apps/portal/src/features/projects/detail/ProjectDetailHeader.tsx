@@ -39,6 +39,7 @@ export function ProjectDetailHeader({
   const locale = useLocale() as Locale;
   const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
+  const tHero = useTranslations('projectDetail.hero');
   const [aerialFailed, setAerialFailed] = useState(false);
   const overall = compliance?.overallScore ?? 0;
   const address = formatAddress(project);
@@ -59,16 +60,16 @@ export function ProjectDetailHeader({
     : null;
 
   let opleveringValue = '—';
-  let opleveringSub = 'No delivery date';
+  let opleveringSub = tHero('noDeliveryDate');
   const wkbSub = compliance?.lastScanAt !== undefined && compliance.lastScanAt !== null
-    ? 'From latest scan'
-    : 'No scan yet';
+    ? tHero('fromLatestScan')
+    : tHero('noScanYet');
   if (project.delivery_date !== null) {
     opleveringValue = formatDeliveryDate(project.delivery_date, locale);
     const days = daysUntil(project.delivery_date);
     opleveringSub = days >= 0
-      ? `${String(days)} days remaining`
-      : `${String(Math.abs(days))} days overdue`;
+      ? tHero('daysRemaining', { count: days })
+      : tHero('daysOverdue', { count: Math.abs(days) });
   }
 
   const thumbnail = (
@@ -166,10 +167,10 @@ export function ProjectDetailHeader({
       badge={badgeRow}
       subtitle={subtitleRow}
       kpis={[
-        { label: 'Wkb score', value: `${overall}%`, color: 'var(--success)', sub: wkbSub },
-        { label: 'Issues open', value: String(issueCount), color: 'var(--error)', sub: `${compliance?.failCount ?? 0} fail · ${compliance?.warnCount ?? 0} warn` },
-        { label: 'Holdback', value: '—', sub: `${dossierPct}% dossier ready` },
-        { label: 'Delivery', value: opleveringValue, sub: opleveringSub },
+        { label: tHero('wkbScore'), value: `${overall}%`, color: 'var(--success)', sub: wkbSub },
+        { label: tHero('issuesOpen'), value: String(issueCount), color: 'var(--error)', sub: tHero('failWarn', { fail: compliance?.failCount ?? 0, warn: compliance?.warnCount ?? 0 }) },
+        { label: tHero('holdback'), value: '—', sub: tHero('dossierReady', { pct: dossierPct }) },
+        { label: tHero('delivery'), value: opleveringValue, sub: opleveringSub },
       ]}
       action={
         <Link
