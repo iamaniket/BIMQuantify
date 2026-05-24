@@ -58,7 +58,9 @@
       "loadFailed": "Uitnodigingen konden niet worden geladen. Probeer het opnieuw.",
       "acceptFailed": "Uitnodiging accepteren is mislukt. Probeer het opnieuw.",
       "declineFailed": "Uitnodiging afwijzen is mislukt. Probeer het opnieuw."
-    }
+    },
+    "acceptSuccess": "Uitnodiging geaccepteerd — welkom bij het team!",
+    "declineSuccess": "Uitnodiging afgewezen."
   },
   "resetPassword": {
     "eyebrow": "Nieuw wachtwoord",
@@ -168,6 +170,8 @@
       "avatarFailed": "Kan foto niet uploaden.",
       "nameFailed": "Kan naam niet bijwerken."
     },
+    "acceptSuccess": "Uitnodiging geaccepteerd — welkom bij het team!",
+    "declineSuccess": "Uitnodiging afgewezen.",
     "hero": {
       "badge": "Persoonlijk Account",
       "subtitle": "Beheer je profiel en accountinstellingen",

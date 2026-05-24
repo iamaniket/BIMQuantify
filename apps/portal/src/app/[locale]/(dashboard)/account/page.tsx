@@ -20,6 +20,7 @@ import {
   useState,
   type JSX,
 } from 'react';
+import { toast } from 'sonner';
 
 import {
   Badge,
@@ -619,6 +620,7 @@ export default function AccountPage(): JSX.Element {
       await acceptInvitation(accessToken, orgId);
       await refreshMe();
       await loadInvitations();
+      toast.success(t('acceptSuccess'));
     } catch (err) {
       setInvError(err instanceof ApiError ? err.detail : t('errors.acceptFailed'));
     } finally {
@@ -633,6 +635,7 @@ export default function AccountPage(): JSX.Element {
     try {
       await declineInvitation(accessToken, orgId);
       await loadInvitations();
+      toast.success(t('declineSuccess'));
     } catch (err) {
       setInvError(err instanceof ApiError ? err.detail : t('errors.declineFailed'));
     } finally {

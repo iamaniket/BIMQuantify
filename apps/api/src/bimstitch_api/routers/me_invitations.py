@@ -143,6 +143,18 @@ async def accept_invitation(
     )
     await session.commit()
 
+    # In-app notification (best-effort, after commit).
+    from bimstitch_api.notifications.service import emit_notification_for_org
+    from bimstitch_api.models.notification import NotificationEventType
+
+    display_name = user.full_name or user.email
+    await emit_notification_for_org(
+        organization_id=org.id,
+        event_type=NotificationEventType.invitation_accepted,
+        title="Invitation accepted",
+        body=f"{display_name} accepted the invitation to {org.name}",
+    )
+
     return InvitationAcceptResponse(
         organization_id=org.id,
         status=member.status.value,

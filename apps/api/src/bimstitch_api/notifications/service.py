@@ -2,6 +2,7 @@ import json
 import logging
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.cache import get_redis
@@ -72,3 +73,51 @@ async def publish_notification(
         await redis.publish(channel, payload)
     except Exception:
         logger.exception("Failed to publish notification to Redis channel %s", channel)
+
+
+async def emit_notification_for_org(
+    *,
+    organization_id: UUID,
+    event_type: NotificationEventType,
+    title: str,
+    body: str,
+    project_id: UUID | None = None,
+) -> None:
+    """Create and publish a notification from a non-tenant context.
+
+    Invitation endpoints use master sessions (``get_async_session``), but
+    ``Notification`` lives in the per-org tenant schema.  This helper opens
+    a short-lived transaction with ``SET LOCAL search_path`` anchored to the
+    target schema — the same pattern ``jobs_internal._emit_notification``
+    uses for extraction callbacks.
+
+    Best-effort: a failure here is logged but never masks the calling
+    endpoint's response.
+    """
+    from bimstitch_api.db import get_session_maker
+    from bimstitch_api.tenancy import schema_name_for
+
+    try:
+        schema = schema_name_for(organization_id)
+        sm = get_session_maker()
+        async with sm() as session:
+            async with session.begin():
+                await session.execute(
+                    text(f'SET LOCAL search_path TO "{schema}", public')
+                )
+                notification = await create_notification(
+                    session,
+                    event_type=event_type,
+                    title=title,
+                    body=body,
+                    project_id=project_id,
+                )
+        # Publish AFTER commit so the row is visible to readers.
+        await publish_notification(notification, organization_id=organization_id)
+    except Exception:
+        logger.warning(
+            "Failed to emit %s notification for org %s",
+            event_type.value,
+            organization_id,
+            exc_info=True,
+        )

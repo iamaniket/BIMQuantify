@@ -295,6 +295,17 @@ async def invite_member(
     # — so we commit explicitly.
     await session.commit()
 
+    # In-app notification (best-effort, after commit).
+    from bimstitch_api.notifications.service import emit_notification_for_org
+    from bimstitch_api.models.notification import NotificationEventType
+
+    await emit_notification_for_org(
+        organization_id=organization_id,
+        event_type=NotificationEventType.invitation_sent,
+        title="Team invitation sent",
+        body=f"{target_user.email} has been invited to {org.name}",
+    )
+
     # Send invite email after commit so a flaky SMTP doesn't roll back the
     # invite. New users get the activation flow (`request_verify` triggers
     # `on_after_request_verify`); existing verified users get the

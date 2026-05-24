@@ -58,7 +58,9 @@
       "loadFailed": "We couldn't load your invitations. Please try again.",
       "acceptFailed": "We couldn't accept this invitation. Please try again.",
       "declineFailed": "We couldn't decline this invitation. Please try again."
-    }
+    },
+    "acceptSuccess": "Invitation accepted — welcome to the team!",
+    "declineSuccess": "Invitation declined."
   },
   "resetPassword": {
     "eyebrow": "Set new password",
@@ -168,6 +170,8 @@
       "avatarFailed": "Could not upload photo.",
       "nameFailed": "Could not update name."
     },
+    "acceptSuccess": "Invitation accepted — welcome to the team!",
+    "declineSuccess": "Invitation declined.",
     "hero": {
       "badge": "Personal Account",
       "subtitle": "Manage your profile and account settings",

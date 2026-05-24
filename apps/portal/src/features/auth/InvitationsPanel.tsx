@@ -3,6 +3,7 @@
 import { Check, Mail, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '@bimstitch/ui';
 
@@ -61,6 +62,7 @@ export function InvitationsPanel(): JSX.Element {
       await acceptInvitation(accessToken, organizationId);
       await refreshMe();
       await load();
+      toast.success(t('acceptSuccess'));
     } catch (err) {
       const message = err instanceof ApiError ? err.detail : t('errors.acceptFailed');
       setActionError(message);
@@ -76,6 +78,7 @@ export function InvitationsPanel(): JSX.Element {
     try {
       await declineInvitation(accessToken, organizationId);
       await load();
+      toast.success(t('declineSuccess'));
     } catch (err) {
       const message = err instanceof ApiError ? err.detail : t('errors.declineFailed');
       setActionError(message);

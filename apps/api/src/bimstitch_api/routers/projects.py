@@ -1066,6 +1066,18 @@ async def invite_to_project(
         )
         await ms.commit()
 
+    # In-app notification (best-effort, after commit).
+    from bimstitch_api.notifications.service import emit_notification_for_org
+    from bimstitch_api.models.notification import NotificationEventType
+
+    await emit_notification_for_org(
+        organization_id=active_org_id,
+        event_type=NotificationEventType.invitation_sent,
+        title="Project invitation sent",
+        body=f"{target_user.email} has been invited to {project.name}",
+        project_id=project.id,
+    )
+
     # Send email AFTER commit so a flaky transport doesn't roll back the invite.
     if scenario == "new_user":
         await user_manager.request_verify(target_user, request)
