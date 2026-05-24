@@ -27,7 +27,7 @@ import type { ViewerHandle } from '@bimstitch/viewer';
 import type { ViewerSettings } from '@/lib/viewerSettings';
 
 import { ToolButton, ToolbarGroup, ToolbarShell } from './_toolbarPrimitives';
-import { ViewerSettingsPopover } from './ViewerSettingsPopover';
+import { ViewerSettingsDialog } from './settings/ViewerSettingsDialog';
 
 type Props = {
   handle: ViewerHandle | null;
@@ -140,18 +140,18 @@ export function ViewerToolbar({
 
   return (
     <ToolbarShell testId="viewer-toolbar">
-      {settingsOpen ? (
-        <ViewerSettingsPopover
-          handle={handle}
-          settings={settings}
-          onSettingsChange={onSettingsChange}
-          onClose={() => { setSettingsOpen(false); }}
-          onReloadViewer={() => {
-            setSettingsOpen(false);
-            onReloadViewer();
-          }}
-        />
-      ) : null}
+      <ViewerSettingsDialog
+        mode="3d"
+        open={settingsOpen}
+        onClose={() => { setSettingsOpen(false); }}
+        handle={handle}
+        settings={settings}
+        onSettingsChange={onSettingsChange}
+        onReloadViewer={() => {
+          setSettingsOpen(false);
+          onReloadViewer();
+        }}
+      />
 
       {GROUPS.map((group, gi) => (
         <ToolbarGroup key={gi} withDivider={gi > 0}>

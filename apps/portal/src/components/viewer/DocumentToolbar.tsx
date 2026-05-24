@@ -42,7 +42,7 @@ import {
   ToolbarReadout,
   ToolbarShell,
 } from './_toolbarPrimitives';
-import { DocumentSettingsPopover } from './DocumentSettingsPopover';
+import { ViewerSettingsDialog } from './settings/ViewerSettingsDialog';
 
 type Props = {
   currentPage: number;
@@ -157,13 +157,15 @@ export function DocumentToolbar({
 
   return (
     <ToolbarShell testId="document-toolbar">
-      {settingsOpen ? (
-        <DocumentSettingsPopover
-          settings={settings}
-          onSettingsChange={onSettingsChange}
-          onClose={() => { setSettingsOpen(false); }}
-        />
-      ) : null}
+      <ViewerSettingsDialog
+        mode="2d"
+        open={settingsOpen}
+        onClose={() => { setSettingsOpen(false); }}
+        handle={undefined}
+        settings={settings}
+        onSettingsChange={onSettingsChange}
+        onReloadViewer={undefined}
+      />
 
       {/* Group 1: Navigation tools (Select / Pan / Zoom) */}
       <ToolbarGroup withDivider={false}>
