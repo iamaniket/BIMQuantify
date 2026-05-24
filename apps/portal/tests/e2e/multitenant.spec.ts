@@ -26,13 +26,12 @@
  *   W. Super admin user management (promote/demote/deactivate/reactivate)
  *   X. Audit log visibility + Logout (tenant audit, global audit, sign out)
  *
- * Prerequisites (must all be running before `pnpm test:e2e:multi`):
- *   - docker compose up -d  (postgres, redis, mailhog, minio)
- *   - API:    uv run uvicorn bimstitch_api.main:app --reload --port 8000
- *   - Portal: pnpm --filter=portal dev  (or let Playwright start it)
- *   - Seed:   uv run python -m bimstitch_api.seed  (super admin must exist)
- *   - Creds:  SEED_SUPERADMIN_EMAIL + SEED_SUPERADMIN_PASSWORD
- *             set in apps/api/.env or apps/portal/.env.test.local
+ * Prerequisites: handled automatically by `globalSetup` (see global-setup.ts).
+ * The setup creates an isolated `bimstitch_e2e` database, starts the API
+ * server, and seeds test data.  Just run `pnpm test:e2e:multi:ci`.
+ *
+ * For fully isolated containers: `pnpm test:e2e:full` (spins up
+ * docker-compose.test.yml, runs tests, tears down).
  */
 
 import { expect, test } from '@playwright/test';
@@ -49,6 +48,15 @@ import { state } from '../support/state';
 /** Build unique names scoped to this test run so reruns never clash. */
 const RUN = state.runId;
 
+const REDIS_CONTAINER = process.env['E2E_REDIS_CONTAINER'] ?? 'bimstitch-redis';
+const REDIS_DB = process.env['E2E_REDIS_DB'] ?? '2';
+
+function flushRedis(): void {
+  const { execSync } = require('child_process');
+  const dbFlag = REDIS_DB === '0' ? '' : `-n ${REDIS_DB}`;
+  execSync(`docker exec ${REDIS_CONTAINER} redis-cli ${dbFlag} FLUSHDB`, { stdio: 'ignore' });
+}
+
 // ---------------------------------------------------------------------------
 // THE JOURNEY
 // ---------------------------------------------------------------------------
@@ -59,8 +67,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
   // previous runs so the suite starts clean.  Without this, accumulated
   // forgot-password hits (3/hour limit) cause suites E/F to silently fail.
   test.beforeAll(async () => {
-    const { execSync } = await import('child_process');
-    execSync('docker exec bimstitch-redis redis-cli FLUSHALL', { stdio: 'ignore' });
+    flushRedis();
     await clearAllEmails();
   });
 
@@ -426,8 +433,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
   test('E1: member requests a password reset via the forgot-password UI', async ({ page }) => {
     // Flush Redis so the forgot-password rate limiter (3/hour per IP) starts
     // at zero — any manual testing or previous runs could have consumed slots.
-    const { execSync } = await import('child_process');
-    execSync('docker exec bimstitch-redis redis-cli FLUSHALL', { stdio: 'ignore' });
+    flushRedis();
     await clearAllEmails();
 
     await page.goto('/en/login');
@@ -493,8 +499,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
   test('F1: admin requests a password reset via the forgot-password UI', async ({ page }) => {
     // Flush Redis again — E1 reset it, but F1 is a separate 1-hour window slot.
-    const { execSync } = await import('child_process');
-    execSync('docker exec bimstitch-redis redis-cli FLUSHALL', { stdio: 'ignore' });
+    flushRedis();
     await clearAllEmails();
 
     await page.goto('/en/login');

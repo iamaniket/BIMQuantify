@@ -30,8 +30,8 @@ loadEnvFile(resolve(__dirname, '../../.env.test.local'));
 export const E2E_ENV = {
   SUPERADMIN_EMAIL: process.env['SEED_SUPERADMIN_EMAIL'] ?? '',
   SUPERADMIN_PASSWORD: process.env['SEED_SUPERADMIN_PASSWORD'] ?? '',
-  API_URL: process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000',
-  MAILHOG_URL: process.env['MAILHOG_URL'] ?? 'http://localhost:8025',
+  API_URL: process.env['E2E_API_URL'] ?? process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000',
+  MAILHOG_URL: process.env['E2E_MAILHOG_URL'] ?? process.env['MAILHOG_URL'] ?? 'http://localhost:8025',
 };
 
 export function requireSuperAdminCreds(): { email: string; password: string } {

@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
+  globalSetup: './tests/support/global-setup.ts',
+  globalTeardown: './tests/support/global-teardown.ts',
   testDir: './tests',
   /* The login.spec.ts tests can run in parallel; the multitenant journey is
    * serial by design (test.describe.serial). Setting fullyParallel: false and

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse, urlunparse
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -42,7 +43,27 @@ os.environ["PROCESSOR_SHARED_SECRET"] = "dev-shared-secret-change-me"
 
 
 @pytest.fixture(scope="session")
-async def engine() -> AsyncGenerator[AsyncEngine, None]:
+async def _ensure_test_db() -> None:
+    """Auto-create the test database if it doesn't exist."""
+    import asyncpg
+
+    parsed = urlparse(_TEST_DB_URL.replace("+asyncpg", ""))
+    db_name = parsed.path.lstrip("/")
+    maintenance_url = urlunparse(parsed._replace(path="/postgres"))
+
+    conn = await asyncpg.connect(maintenance_url)
+    try:
+        exists = await conn.fetchval(
+            "SELECT 1 FROM pg_database WHERE datname = $1", db_name
+        )
+        if not exists:
+            await conn.execute(f'CREATE DATABASE "{db_name}"')
+    finally:
+        await conn.close()
+
+
+@pytest.fixture(scope="session")
+async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     # Imported here so env vars above take effect first.
     from bimstitch_api._rls_sql import (
         create_app_role_statements,

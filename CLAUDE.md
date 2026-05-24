@@ -69,7 +69,36 @@ uv run ruff format .
 uv run mypy src
 ```
 
-**Test database**: `tests/conftest.py` points at `bimstitch_test` on `localhost:5434` (or `TEST_DATABASE_URL`). Create it once with `docker exec bimstitch-postgres psql -U bim -d postgres -c "CREATE DATABASE bimstitch_test;"`. The conftest does `create_all`/`drop_all` per session and truncates tables between tests — no migrations in the test loop.
+**Test database**: `tests/conftest.py` points at `bimstitch_test` on `localhost:5434` (or `TEST_DATABASE_URL`). The `_ensure_test_db` fixture auto-creates the database if it doesn't exist — no manual `docker exec` needed. The conftest does `create_all`/`drop_all` per session and truncates tables between tests — no migrations in the test loop.
+
+### E2E Testing (Playwright)
+
+All commands run from `apps/portal/` (or use `pnpm --filter=portal` from repo root).
+
+```bash
+# Option A — dev containers (postgres, redis, mailhog already running via `docker compose up -d`)
+# Stop the dev API first (port 8000 must be free — the test framework starts its own API).
+pnpm --filter=portal test:e2e:multi:ci   # headless, single worker
+pnpm --filter=portal test:e2e:multi      # interactive UI mode
+
+# Option B — fully isolated test containers (CI/CD ready, one command)
+pnpm --filter=portal test:e2e:full       # starts docker-compose.test.yml, runs tests, tears down
+```
+
+**How it works**:
+- `global-setup.ts` creates an ephemeral `bimstitch_e2e` database, runs migrations + seed, starts a dedicated API process on port 8000.
+- `global-teardown.ts` kills the API process after tests complete.
+- `run-e2e.mjs` (Option B) orchestrates separate test containers (`docker-compose.test.yml`) on different ports to avoid conflicts with dev services.
+
+**Database isolation summary**:
+| Database | Purpose | Port | Redis DB |
+|----------|---------|------|----------|
+| `bimstitch` | Development | 5434 | 0 |
+| `bimstitch_test` | API pytest | 5434 | 1 |
+| `bimstitch_e2e` | E2E (dev containers) | 5434 | 2 |
+| `bimstitch_e2e` | E2E (test containers) | 5435 | 0 |
+
+**Environment variables**: E2E config is driven by `E2E_*` env vars (documented in `apps/api/.env.example` and `apps/portal/.env.example`). Defaults point at dev containers; `run-e2e.mjs` overrides them for test containers.
 
 ## Architecture — Python API
 
@@ -228,10 +257,23 @@ Portal reads: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 
 ## Docker services
 
-`docker-compose.yml` at repo root. The API itself runs on the host (`uv run uvicorn ...`), not in Docker.
+### Dev stack — `docker-compose.yml` (repo root)
+
+The API itself runs on the host (`uv run uvicorn ...`), not in Docker.
 
 - `postgres` — Postgres 16, host port **5434**. User `bim`, password `bim`, database `bimstitch`.
 - `mailhog` — SMTP on 1025, web UI at http://localhost:8025.
 - `redis` — Redis 7, host port **6380**. Used for rate limiting, JWT blocklist, and BullMQ job queue.
-- `minio` — S3-compatible storage, API on port **9000**, console at **9001**. Root credentials are defined in `docker-compose.yml` (`MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`); copy them into your local `.env` files for the API/arbiter/processor.
+- `minio` — S3-compatible storage, API on port **9000**, console at **9001**. Root credentials: `bimstitch` / `bimstitch-secret`.
 - `processor` — built from `apps/processor/Dockerfile`, host port **8088**. Reaches API via `host.docker.internal:8000`. Auth: `PROCESSOR_SHARED_SECRET`. Generic Node.js worker for all background jobs (IFC extraction, PDF extraction, PDF report generation).
+
+### Test stack — `docker-compose.test.yml` (repo root)
+
+Ephemeral, no volumes. Used by `pnpm --filter=portal test:e2e:full`. Project name `bimstitch-test` prevents container collisions with dev.
+
+- `postgres` — port **5435**, container `bimstitch-test-postgres`
+- `redis` — port **6381**, container `bimstitch-test-redis`
+- `mailhog` — SMTP **1026**, HTTP **8026**, container `bimstitch-test-mailhog`
+- `minio` — API **9002**, console **9003**, container `bimstitch-test-minio`
+
+Lifecycle: `docker compose -f docker-compose.test.yml up -d --wait` / `down -v`. The `run-e2e.mjs` script manages this automatically.
