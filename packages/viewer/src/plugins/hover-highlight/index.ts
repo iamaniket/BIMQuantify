@@ -53,6 +53,16 @@ export function hoverHighlightPlugin(
   let pending: { x: number; y: number } | null = null;
   let enabled = true;
   const edges = new EdgeOverlay();
+  let cachedSectionPlanes: Array<{ normal: { x: number; y: number; z: number }; point: { x: number; y: number; z: number }; active: boolean }> = [];
+
+  const isClippedBySection = (pt: { x: number; y: number; z: number }): boolean =>
+    cachedSectionPlanes.some((p) => {
+      if (!p.active) return false;
+      const d = (pt.x - p.point.x) * p.normal.x +
+                (pt.y - p.point.y) * p.normal.y +
+                (pt.z - p.point.z) * p.normal.z;
+      return d < 0;
+    });
 
   const sameItem = (a: ItemId | null, b: ItemId | null): boolean => {
     if (a === b) return true;
@@ -134,7 +144,8 @@ export function hoverHighlightPlugin(
         const next = pending;
         pending = null;
         const hit = await pick(ctxRef, next);
-        apply(hit?.item ?? null);
+        const item = hit && !isClippedBySection(hit.point) ? hit.item : null;
+        apply(item);
       }
     } finally {
       inFlight = false;
@@ -161,6 +172,10 @@ export function hoverHighlightPlugin(
       // on shared items without coordinating through a layered manager.
       ctx.events.on('selection:change', ({ added, removed }) => {
         handleSelectionChange(added, removed);
+      });
+
+      ctx.events.on('section:change', ({ planes }) => {
+        cachedSectionPlanes = planes;
       });
 
       ctx.commands.register(
@@ -209,6 +224,7 @@ export function hoverHighlightPlugin(
       painted = null;
       pending = null;
       inFlight = false;
+      cachedSectionPlanes = [];
       ctxRef = null;
     },
   };

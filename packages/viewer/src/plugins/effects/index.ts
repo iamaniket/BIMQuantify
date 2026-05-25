@@ -227,12 +227,36 @@ export function effectsPlugin(
     const prevClearAlpha = renderer.getClearAlpha();
 
     const tempHidden: THREE.Object3D[] = [];
+    let sectionPlanes: THREE.Plane[] | null = null;
     scene.traverse((obj) => {
-      if (obj.name === 'shadow-ground' && obj.visible) {
+      if ((obj.name === 'shadow-ground' || obj.name === 'section-helper') && obj.visible) {
         obj.visible = false;
         tempHidden.push(obj);
       }
+      // Section back-face cap meshes (added by section plugin to fill the
+      // clipped interior) must not contribute to the normal buffer — their
+      // back-facing normals make the Sobel pass paint outlines on the cut.
+      if (obj.userData['__sectionBackface'] === true && obj.visible) {
+        obj.visible = false;
+        tempHidden.push(obj);
+        return;
+      }
+      if (sectionPlanes === null && (obj as THREE.Mesh).isMesh) {
+        const mesh = obj as THREE.Mesh;
+        const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+        const cp = (mat as THREE.Material | undefined)?.clippingPlanes;
+        if (cp && cp.length > 0) sectionPlanes = cp;
+      }
     });
+
+    // Sync section planes so the normal buffer only captures visible geometry.
+    // Reference comparison: needsUpdate fires only when the array is replaced
+    // (count changed); moved planes update uniforms automatically each frame.
+    const nextPlanes: THREE.Plane[] | null = renderer.localClippingEnabled ? sectionPlanes : null;
+    if (normalMaterial.clippingPlanes !== nextPlanes) {
+      normalMaterial.clippingPlanes = nextPlanes;
+      normalMaterial.needsUpdate = true;
+    }
 
     // Push current camera near/far so the normal material can compute a
     // linearised depth into alpha. Both PerspectiveCamera and
@@ -335,21 +359,25 @@ export function effectsPlugin(
           uCameraFar: { value: 1000.0 },
         },
         vertexShader: /* glsl */ `
+          #include <clipping_planes_pars_vertex>
           varying vec3 vWorldNormal;
           varying float vViewZ;
           void main() {
             vWorldNormal = normalize(mat3(modelMatrix) * normal);
-            vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            vViewZ = -mv.z;
-            gl_Position = projectionMatrix * mv;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewZ = -mvPosition.z;
+            gl_Position = projectionMatrix * mvPosition;
+            #include <clipping_planes_vertex>
           }
         `,
         fragmentShader: /* glsl */ `
+          #include <clipping_planes_pars_fragment>
           uniform float uCameraNear;
           uniform float uCameraFar;
           varying vec3 vWorldNormal;
           varying float vViewZ;
           void main() {
+            #include <clipping_planes_fragment>
             float linearDepth = (vViewZ - uCameraNear) / max(uCameraFar - uCameraNear, 1e-6);
             // Bias into [0.005, 1.0] so geometry never has alpha == 0 (which
             // is the "background" sentinel the edge shader checks for).

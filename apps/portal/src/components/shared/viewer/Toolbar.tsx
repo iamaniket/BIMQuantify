@@ -8,12 +8,11 @@ import {
   MousePointer2,
   Move,
   Orbit,
-  Scan,
   Settings,
   User,
   ZoomIn,
 } from 'lucide-react';
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 
 import type { ViewerHandle } from '@bimstitch/viewer';
 
@@ -39,6 +38,15 @@ export function Toolbar({
 }: Props): JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTool, setActiveTool] = useState('select');
+
+  useEffect(() => {
+    if (!handle) return;
+    return handle.events.on('mode:exit', ({ toolName }) => {
+      if (toolName.startsWith('walkthrough')) {
+        setActiveTool('select');
+      }
+    });
+  }, [handle]);
 
   const run = (cmd: string): void => {
     if (!handle) return;
@@ -85,14 +93,6 @@ export function Toolbar({
         {
           type: 'button', id: 'fit', icon: Maximize, label: 'Fit to view',
           onClick: () => { run('camera.zoomExtents'); },
-        },
-      ],
-    },
-    {
-      tools: [
-        {
-          type: 'button', id: 'section', icon: Scan, label: 'Section',
-          onClick: () => { run('section.add'); },
         },
       ],
     },

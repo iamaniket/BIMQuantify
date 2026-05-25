@@ -43,6 +43,7 @@ export interface ViewerEvents {
   'contextmenu:close': undefined;
   'xray:change': { xrayed: ItemId[]; opacityOverrides: Array<{ item: ItemId; opacity: number }> };
   'section:change': { planes: Array<{ id: string; normal: Vec3; point: Vec3; active: boolean }> };
+  'section:select': { id: string | null };
   'measurement:change': { measurements: Array<{ id: string; type: string; value: number; unit: string; visible: boolean }> };
   'measurement:complete': { id: string; type: string; value: number };
   'measurement:axisLock': { active: boolean; axis: 'x' | 'y' | 'z' | null };

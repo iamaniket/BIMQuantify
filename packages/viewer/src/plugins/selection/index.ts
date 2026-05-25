@@ -45,6 +45,16 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
   let ctxRef: ViewerContext | null = null;
   let enabled = true;
   const edges = new EdgeOverlay();
+  let cachedSectionPlanes: Array<{ normal: { x: number; y: number; z: number }; point: { x: number; y: number; z: number }; active: boolean }> = [];
+
+  const isClippedBySection = (pt: { x: number; y: number; z: number }): boolean =>
+    cachedSectionPlanes.some((p) => {
+      if (!p.active) return false;
+      const d = (pt.x - p.point.x) * p.normal.x +
+                (pt.y - p.point.y) * p.normal.y +
+                (pt.z - p.point.z) * p.normal.z;
+      return d < 0;
+    });
 
   const groupByModel = (items: ItemId[]): Map<string, number[]> => {
     const map = new Map<string, number[]>();
@@ -157,7 +167,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     const ndc = ndcOf(args);
     if (!ndc) { clear(); return; }
     const hit = await pick(ctxRef, ndc);
-    if (!hit) { clear(); return; }
+    if (!hit || isClippedBySection(hit.point)) { clear(); return; }
     setSelection([hit.item]);
   };
 
@@ -166,7 +176,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     const ndc = ndcOf(args);
     if (!ndc) return;
     const hit = await pick(ctxRef, ndc);
-    if (!hit) return;
+    if (!hit || isClippedBySection(hit.point)) return;
     addItems([hit.item]);
   };
 
@@ -175,7 +185,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     const ndc = ndcOf(args);
     if (!ndc) return;
     const hit = await pick(ctxRef, ndc);
-    if (!hit) return;
+    if (!hit || isClippedBySection(hit.point)) return;
     if (selected.has(key(hit.item))) removeItems([hit.item]);
     else addItems([hit.item]);
   };
@@ -185,7 +195,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     const ndc = ndcOf(args);
     if (!ndc) return;
     const hit = await pick(ctxRef, ndc);
-    if (!hit) return;
+    if (!hit || isClippedBySection(hit.point)) return;
     removeItems([hit.item]);
   };
 
@@ -227,6 +237,10 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
     install(ctx: ViewerContext) {
       ctxRef = ctx;
+
+      ctx.events.on('section:change', ({ planes }) => {
+        cachedSectionPlanes = planes;
+      });
 
       ctx.commands.register('selection.clear', () => clear(), {
         title: 'Clear selection',
@@ -332,6 +346,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     uninstall() {
       if (ctxRef) edges.dispose(ctxRef);
       clear();
+      cachedSectionPlanes = [];
       ctxRef = null;
     },
   };

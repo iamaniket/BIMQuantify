@@ -18,6 +18,16 @@ export interface ModeToolDescriptor {
   cancel: () => boolean;
   /** Called when edit mode exits so the tool can clean up. */
   onExit?: () => void;
+  /**
+   * When true, camera orbit/pan/zoom stay active during edit mode.
+   * Use for click-based tools (section placement, measurement) where
+   * mouse drags should still control the camera. The `pointer:click`
+   * event already distinguishes clicks (< 4px movement) from drags,
+   * so there is no conflict.
+   *
+   * Default: false (legacy behavior — camera disabled).
+   */
+  preserveCamera?: boolean;
 }
 
 export interface ModePluginAPI {
@@ -53,7 +63,7 @@ export function modePlugin(): Plugin & ModePluginAPI {
 
     const controls = ctxRef.cameraControls;
     const ACTION = (controls.constructor as { ACTION?: Record<string, number> }).ACTION;
-    if (ACTION) {
+    if (ACTION && !tool.preserveCamera) {
       savedLeftAction = controls.mouseButtons.left as number;
       controls.mouseButtons.left = (ACTION['NONE'] ?? 0) as typeof controls.mouseButtons.left;
     }

@@ -473,16 +473,22 @@ export function KeyBindingsTab(props: Props): JSX.Element {
 
   return (
     <Tabs defaultValue="keyboard" className="flex flex-col flex-1">
-      <TabsList className="shrink-0">
-        <TabsTrigger value="keyboard" className="flex-1 text-caption">
+      <TabsList className="w-full shrink-0 rounded-none bg-transparent p-0 gap-0 border-b border-border">
+        <TabsTrigger
+          value="keyboard"
+          className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1.5 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+        >
           Keyboard
         </TabsTrigger>
-        <TabsTrigger value="mouse" className="flex-1 text-caption">
+        <TabsTrigger
+          value="mouse"
+          className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1.5 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+        >
           Mouse
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="keyboard" className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
+      <TabsContent value="keyboard" className="relative flex flex-1 min-h-0 flex-col overflow-hidden data-[state=inactive]:hidden">
         <div className="flex flex-1 min-h-0 flex-col">
           {/* Pinned: keyboard visual */}
           <div className="flex shrink-0 justify-center overflow-x-auto pb-2 pt-3">

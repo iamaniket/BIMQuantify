@@ -40,6 +40,7 @@ export type {
   SectionPluginOptions,
   SectionPluginAPI,
   SectionPlane,
+  SectionConfig,
   ModePluginAPI,
   ModeToolDescriptor,
   ViewerMode,

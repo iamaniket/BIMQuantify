@@ -16,6 +16,7 @@ const PANEL_TITLES: Record<PanelId, string> = {
   issues: 'Issues',
   compliance: 'BBL Compliance',
   measure: 'Measurement',
+  section: 'Section Planes',
   bcf: 'BCF Topics',
   pages: 'Pages',
 };
@@ -25,6 +26,7 @@ type SidePanelProps = {
   explorerContent?: ReactNode | undefined;
   propertiesContent?: ReactNode | undefined;
   measureContent?: ReactNode | undefined;
+  sectionContent?: ReactNode | undefined;
   bcfContent?: ReactNode | undefined;
   pagesContent?: ReactNode | undefined;
   headerActions?: Partial<Record<PanelId, ReactNode>> | undefined;
@@ -48,6 +50,7 @@ export function SidePanel({
   explorerContent,
   propertiesContent,
   measureContent,
+  sectionContent,
   bcfContent,
   pagesContent,
   headerActions,
@@ -82,6 +85,7 @@ export function SidePanel({
               {activePanel === 'properties' && propertiesContent}
               {activePanel === 'documents' && <DocumentsPanel />}
               {activePanel === 'measure' && measureContent}
+              {activePanel === 'section' && sectionContent}
               {activePanel === 'bcf' && bcfContent}
               {activePanel === 'pages' && pagesContent}
               {activePanel === 'issues' && <PlaceholderContent label="Issues" />}

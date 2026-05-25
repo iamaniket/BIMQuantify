@@ -142,7 +142,7 @@ export interface EntityAppearance {
   opacity: number | null;
 }
 
-export type { SectionPluginOptions, SectionPluginAPI, SectionPlane } from './plugins/section/index.js';
+export type { SectionPluginOptions, SectionPluginAPI, SectionPlane, SectionConfig } from './plugins/section/index.js';
 
 export type { ModePluginAPI, ModeToolDescriptor, ViewerMode } from './plugins/mode/index.js';
 

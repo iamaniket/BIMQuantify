@@ -1371,6 +1371,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     await ctxRef.commands.execute('mode.enter', {
       name: `measurement.${mode}`,
       label: modeLabel(mode),
+      preserveCamera: true,
       cancel: () => false,
       onExit: () => {
         clearPending();

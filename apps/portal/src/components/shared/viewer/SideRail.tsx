@@ -8,6 +8,7 @@ import {
   ListTree,
   MessageSquare,
   Ruler,
+  Scan,
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ export type PanelId =
   | 'issues'
   | 'compliance'
   | 'measure'
+  | 'section'
   | 'bcf'
   | 'pages';
 
@@ -46,6 +48,7 @@ const IFC_BUTTONS: RailButton[] = [
   { id: 'issues', label: 'Issues', icon: AlertCircle },
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
   { id: 'measure', label: 'Measurement', icon: Ruler },
+  { id: 'section', label: 'Section Planes', icon: Scan },
   { id: 'bcf', label: 'BCF Topics', icon: MessageSquare },
 ];
 

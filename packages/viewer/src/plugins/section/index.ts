@@ -12,6 +12,8 @@
 
 import * as THREE from 'three';
 import type { Plugin, Vec3, ViewerContext } from '../../core/types.js';
+import { pick } from '../../core/Raycaster.js';
+import { SectionGizmo } from './gizmo.js';
 
 const NAME = 'section' as const;
 
@@ -39,6 +41,16 @@ export interface SectionPluginOptions {
   edgeColor?: number;
 }
 
+export interface SectionConfig {
+  helperScale: number;
+  helperColor: number;
+  helperOpacity: number;
+  fillColor: number;
+  fillOpacity: number;
+  showFill: boolean;
+  edgeColor: number;
+}
+
 export interface SectionPluginAPI {
   setEnabled(enabled: boolean): void;
   isEnabled(): boolean;
@@ -59,19 +71,26 @@ let nextId = 0;
 export function sectionPlugin(
   options: SectionPluginOptions = {},
 ): Plugin & SectionPluginAPI {
-  const helperScale = options.helperScale ?? 1.5;
-  const helperColor = options.helperColor ?? 0x1e90ff;
-  const helperOpacity = options.helperOpacity ?? 0.12;
-  const fillColor = options.fillColor ?? helperColor;
-  const fillOpacity = options.fillOpacity ?? 0.6;
-  const showFill = options.showFill ?? false;
-  const edgeColor = options.edgeColor ?? helperColor;
+  let helperScale = options.helperScale ?? 0.5;
+  let helperColor = options.helperColor ?? 0x1e90ff;
+  let helperOpacity = options.helperOpacity ?? 0.12;
+  let fillColor = options.fillColor ?? helperColor;
+  let fillOpacity = options.fillOpacity ?? 0.6;
+  let showFill = options.showFill ?? true;
+  let edgeColor = options.edgeColor ?? helperColor;
 
   let ctxRef: ViewerContext | null = null;
   let enabled = true;
   const entries = new Map<string, PlaneEntry>();
   let materialHookDispose: (() => void) | null = null;
-  const capFills = new Map<string, THREE.Mesh>();
+
+  let placementActive = false;
+  let clickUnsub: (() => void) | null = null;
+  let moveUnsub: (() => void) | null = null;
+  let selectedId: string | null = null;
+  let previewHelper: THREE.Group | null = null;
+  let modelLoadUnsub: (() => void) | null = null;
+  let gizmo: SectionGizmo | null = null;
 
   // ----- material management -----
 
@@ -79,6 +98,67 @@ export function sectionPlugin(
     [...entries.values()]
       .filter((e) => e.active)
       .map((e) => e.plane);
+
+  // ----- back-face cap rendering -----
+  // To avoid seeing through the clipped model interior, we add a back-face
+  // mesh for each model mesh. When the front face is clipped away, the back
+  // face renders as a solid cap in `fillColor`. This is the standard technique
+  // used by xeokit, Forge, and other BIM viewers.
+  const backfaceMeshes = new Map<THREE.Mesh, THREE.Mesh>();
+
+  const createBackfaceMaterial = (): THREE.MeshBasicMaterial => {
+    const planes = getActiveClippingPlanes();
+    return new THREE.MeshBasicMaterial({
+      color: fillColor,
+      side: THREE.BackSide,
+      clippingPlanes: planes.length > 0 ? planes : null,
+      clipShadows: true,
+      transparent: fillOpacity < 1,
+      opacity: fillOpacity,
+      depthWrite: true,
+    });
+  };
+
+  const BACKFACE_TAG = '__sectionBackface';
+
+  const addBackfaceMeshes = (): void => {
+    if (!ctxRef || !showFill) return;
+    for (const model of ctxRef.models().values()) {
+      model.object.traverse((obj) => {
+        const mesh = obj as THREE.Mesh;
+        if (!mesh.isMesh || backfaceMeshes.has(mesh) || mesh.userData[BACKFACE_TAG]) return;
+        const backMesh = new THREE.Mesh(mesh.geometry, createBackfaceMaterial());
+        backMesh.renderOrder = -1;
+        backMesh.matrixAutoUpdate = false;
+        backMesh.userData[BACKFACE_TAG] = true;
+        mesh.add(backMesh);
+        backfaceMeshes.set(mesh, backMesh);
+      });
+    }
+  };
+
+  const removeBackfaceMeshes = (): void => {
+    for (const [, backMesh] of backfaceMeshes) {
+      backMesh.removeFromParent();
+      (backMesh.material as THREE.Material).dispose();
+    }
+    backfaceMeshes.clear();
+  };
+
+  const updateBackfacePlanes = (): void => {
+    const planes = getActiveClippingPlanes();
+    const planesList = planes.length > 0 ? planes : null;
+    for (const [, backMesh] of backfaceMeshes) {
+      const mat = backMesh.material as THREE.MeshBasicMaterial;
+      mat.clippingPlanes = planesList;
+      mat.needsUpdate = true;
+    }
+  };
+
+  const refreshBackfaceMeshes = (): void => {
+    removeBackfaceMeshes();
+    if (showFill && entries.size > 0) addBackfaceMeshes();
+  };
 
   const applyToMaterial = (mat: THREE.Material): void => {
     const planes = getActiveClippingPlanes();
@@ -100,6 +180,15 @@ export function sectionPlugin(
       });
     }
     ctxRef.renderer.localClippingEnabled = entries.size > 0;
+    updateBackfacePlanes();
+    // Clip the shadow-ground so the drop shadow only shows under visible geometry.
+    const planes = getActiveClippingPlanes();
+    const planesList = planes.length > 0 ? planes : null;
+    ctxRef.scene.traverse((obj) => {
+      if (obj.name !== 'shadow-ground') return;
+      const mat = (obj as THREE.Mesh).material as THREE.Material | undefined;
+      if (mat) { mat.clippingPlanes = planesList; mat.needsUpdate = true; }
+    });
   };
 
   const removeClippingFromAllMaterials = (): void => {
@@ -118,20 +207,32 @@ export function sectionPlugin(
       });
     }
     ctxRef.renderer.localClippingEnabled = false;
+    removeBackfaceMeshes();
+    ctxRef.scene.traverse((obj) => {
+      if (obj.name !== 'shadow-ground') return;
+      const mat = (obj as THREE.Mesh).material as THREE.Material | undefined;
+      if (mat) { mat.clippingPlanes = null; mat.needsUpdate = true; }
+    });
   };
 
   // ----- helpers -----
 
   const computeHelperSize = (): number => {
     if (!ctxRef) return 10;
-    const box = new THREE.Box3();
-    for (const model of ctxRef.models().values()) {
-      const mBox = model.box;
-      if (mBox && !mBox.isEmpty()) box.union(mBox);
+    const camera = ctxRef.camera;
+    const h = ctxRef.canvas.clientHeight || 1;
+
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const target = new THREE.Vector3();
+      ctxRef.cameraControls.getTarget(target);
+      const dist = camera.position.distanceTo(target);
+      const fovRad = (camera.fov * Math.PI) / 180;
+      return 2 * Math.tan(fovRad / 2) * dist * helperScale;
     }
-    if (box.isEmpty()) return 10;
-    const size = box.getSize(new THREE.Vector3());
-    return Math.max(size.x, size.y, size.z) * helperScale;
+    // Orthographic fallback
+    const ortho = camera as THREE.OrthographicCamera;
+    const worldPerPixel = (ortho.top - ortho.bottom) / Math.max(h * ortho.zoom, 1e-6);
+    return worldPerPixel * h * helperScale;
   };
 
   const createHelper = (normal: THREE.Vector3, point: THREE.Vector3): THREE.Group => {
@@ -181,43 +282,6 @@ export function sectionPlugin(
     return group;
   };
 
-  const createCapFill = (id: string, normal: THREE.Vector3, point: THREE.Vector3): void => {
-    if (!ctxRef || !showFill) return;
-    const planeSize = computeHelperSize();
-    const geo = new THREE.PlaneGeometry(planeSize, planeSize);
-    const mat = new THREE.MeshBasicMaterial({
-      color: fillColor,
-      transparent: true,
-      opacity: fillOpacity,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-      stencilWrite: true,
-      stencilRef: 1,
-      stencilFunc: THREE.AlwaysStencilFunc,
-      stencilZPass: THREE.ReplaceStencilOp,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    const quat = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 0, 1),
-      normal.clone().normalize(),
-    );
-    mesh.quaternion.copy(quat);
-    mesh.position.copy(point);
-    mesh.renderOrder = 1;
-    ctxRef.scene.add(mesh);
-    capFills.set(id, mesh);
-  };
-
-  const removeCapFill = (id: string): void => {
-    const mesh = capFills.get(id);
-    if (mesh) {
-      mesh.geometry.dispose();
-      (mesh.material as THREE.Material).dispose();
-      mesh.removeFromParent();
-      capFills.delete(id);
-    }
-  };
-
   const disposeHelper = (helper: THREE.Group): void => {
     helper.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
@@ -256,6 +320,225 @@ export function sectionPlugin(
     return box.getCenter(new THREE.Vector3());
   };
 
+  // ----- selection -----
+
+  const highlightEntry = (entry: PlaneEntry): void => {
+    entry.helper.traverse((obj) => {
+      const line = obj as THREE.Line;
+      if (line.isLine && line.material) {
+        const mat = line.material as THREE.LineBasicMaterial;
+        mat.color.set(0xffffff);
+        mat.opacity = 1;
+        mat.needsUpdate = true;
+      }
+    });
+  };
+
+  const unhighlightEntry = (entry: PlaneEntry): void => {
+    entry.helper.traverse((obj) => {
+      const line = obj as THREE.Line;
+      if (line.isLine && line.material) {
+        const mat = line.material as THREE.LineBasicMaterial;
+        mat.color.set(helperColor);
+        mat.opacity = 0.5;
+        mat.needsUpdate = true;
+      }
+    });
+  };
+
+  const selectPlane = (id: string | null): void => {
+    if (selectedId === id) return;
+    if (selectedId) {
+      const prev = entries.get(selectedId);
+      if (prev) unhighlightEntry(prev);
+    }
+    if (gizmo) {
+      gizmo.dispose();
+      gizmo = null;
+    }
+    selectedId = id;
+    if (id && ctxRef) {
+      const entry = entries.get(id);
+      if (entry) {
+        highlightEntry(entry);
+        gizmo = new SectionGizmo(ctxRef, entry, (update) => {
+          const patch: { point?: THREE.Vector3; normal?: THREE.Vector3 } = {};
+          if (update.point) patch.point = new THREE.Vector3(update.point.x, update.point.y, update.point.z);
+          if (update.normal) patch.normal = new THREE.Vector3(update.normal.x, update.normal.y, update.normal.z);
+          updatePlane(id, patch);
+          gizmo?.attach(entry);
+        }, computeHelperSize());
+      }
+    }
+    ctxRef?.events.emit('section:select', { id });
+  };
+
+  // ----- update plane (consolidates move/rotate/set) -----
+
+  const updatePlane = (id: string, patch: { point?: THREE.Vector3; normal?: THREE.Vector3 }): void => {
+    if (!ctxRef) return;
+    const entry = entries.get(id);
+    if (!entry) return;
+
+    if (patch.normal) {
+      entry.normal.copy(patch.normal).normalize();
+    }
+    if (patch.point) {
+      entry.point.copy(patch.point);
+    }
+    entry.plane.setFromNormalAndCoplanarPoint(entry.normal, entry.point);
+
+    const quat = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 0, 1),
+      entry.normal.clone().normalize(),
+    );
+    entry.helper.quaternion.copy(quat);
+    entry.helper.position.copy(entry.point);
+
+    applyToAllMaterials();
+    emitChange();
+  };
+
+  // ----- placement mode -----
+
+  const clearPreview = (): void => {
+    if (previewHelper) {
+      disposeHelper(previewHelper);
+      previewHelper = null;
+    }
+  };
+
+  const handlePlacementMove = async (payload: {
+    ndc: { x: number; y: number };
+  }): Promise<void> => {
+    if (!ctxRef || !placementActive) return;
+    const result = await pick(ctxRef, payload.ndc);
+    if (!result) {
+      clearPreview();
+      return;
+    }
+
+    const point = new THREE.Vector3(result.point.x, result.point.y, result.point.z);
+    let normal: THREE.Vector3;
+    if (result.raw.normal) {
+      // Negate the surface normal so the clicked side (the one the user
+      // is looking at) is the side that gets clipped away. Three.js keeps
+      // the side the plane normal points to; flipping makes the section
+      // "cut into" the surface instead of "cut behind" it.
+      normal = result.raw.normal.clone().normalize().negate();
+    } else {
+      normal = ctxRef.camera.getWorldDirection(new THREE.Vector3());
+    }
+
+    if (!previewHelper) {
+      previewHelper = createHelper(normal, point);
+      previewHelper.traverse((obj) => {
+        const mesh = obj as THREE.Mesh;
+        if (mesh.isMesh && mesh.material) {
+          (mesh.material as THREE.MeshBasicMaterial).opacity = 0.06;
+          (mesh.material as THREE.Material).needsUpdate = true;
+        }
+        const line = obj as THREE.Line;
+        if (line.isLine && line.material) {
+          (line.material as THREE.LineBasicMaterial).opacity = 0.25;
+          (line.material as THREE.Material).needsUpdate = true;
+        }
+      });
+      ctxRef.scene.add(previewHelper);
+    } else {
+      const quat = new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 0, 1),
+        normal,
+      );
+      previewHelper.quaternion.copy(quat);
+      previewHelper.position.copy(point);
+    }
+  };
+
+  const handlePlacementClick = async (payload: {
+    ndc: { x: number; y: number };
+    button: number;
+  }): Promise<void> => {
+    if (!ctxRef || !placementActive || payload.button !== 0) return;
+    if (gizmo?.isDragging()) return;
+
+    // Check if user clicked an existing helper mesh → select it instead
+    const helperMeshes: THREE.Object3D[] = [];
+    for (const entry of entries.values()) {
+      helperMeshes.push(entry.helper);
+    }
+    if (helperMeshes.length > 0) {
+      const camera = ctxRef.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
+      const threeRaycaster = new THREE.Raycaster();
+      threeRaycaster.setFromCamera(new THREE.Vector2(payload.ndc.x, payload.ndc.y), camera);
+      const hits = threeRaycaster.intersectObjects(helperMeshes, true);
+      if (hits.length > 0) {
+        const hitObj = hits[0]!.object;
+        for (const [id, entry] of entries) {
+          if (entry.helper === hitObj || entry.helper.children.includes(hitObj)) {
+            selectPlane(id);
+            return;
+          }
+        }
+      }
+    }
+
+    const result = await pick(ctxRef, payload.ndc);
+    if (!result) return;
+
+    const point = new THREE.Vector3(result.point.x, result.point.y, result.point.z);
+    let normal: THREE.Vector3;
+    if (result.raw.normal) {
+      // Match the preview: negate so the clicked side is the side cut away.
+      normal = result.raw.normal.clone().normalize().negate();
+    } else {
+      normal = ctxRef.camera.getWorldDirection(new THREE.Vector3());
+    }
+
+    clearPreview();
+    const id = add({ normal: { x: normal.x, y: normal.y, z: normal.z }, point: { x: point.x, y: point.y, z: point.z } });
+    if (id) selectPlane(id);
+
+    // Single-shot: exit placement mode after placing a plane.
+    deactivate().catch(() => undefined);
+  };
+
+  const cleanupPlacement = (): void => {
+    clearPreview();
+    clickUnsub?.();
+    clickUnsub = null;
+    moveUnsub?.();
+    moveUnsub = null;
+    placementActive = false;
+  };
+
+  const activate = async (): Promise<void> => {
+    if (!ctxRef || !enabled || placementActive) return;
+    placementActive = true;
+
+    clickUnsub = ctxRef.events.on('pointer:click', (p) => {
+      handlePlacementClick(p).catch(() => undefined);
+    });
+    moveUnsub = ctxRef.events.on('pointer:move', (p) => {
+      handlePlacementMove(p).catch(() => undefined);
+    });
+
+    await ctxRef.commands.execute('mode.enter', {
+      name: 'section.place',
+      label: 'Section Plane',
+      cancel: (): boolean => {
+        clearPreview();
+        return false;
+      },
+      onExit: () => { cleanupPlacement(); },
+    });
+  };
+
+  const deactivate = async (): Promise<void> => {
+    if (!ctxRef || !placementActive) return;
+    await ctxRef.commands.execute('mode.exit');
+  };
+
   // ----- commands -----
 
   const add = (args: unknown): string => {
@@ -275,8 +558,8 @@ export function sectionPlugin(
     ctxRef.scene.add(helper);
 
     entries.set(id, { id, plane, helper, active: true, normal, point });
-    createCapFill(id, normal, point);
     applyToAllMaterials();
+    refreshBackfaceMeshes();
     emitChange();
     return id;
   };
@@ -287,21 +570,23 @@ export function sectionPlugin(
     if (!id) return;
     const entry = entries.get(id);
     if (!entry) return;
+    if (selectedId === id) selectPlane(null);
     disposeHelper(entry.helper);
-    removeCapFill(id);
     entries.delete(id);
     applyToAllMaterials();
+    refreshBackfaceMeshes();
     emitChange();
   };
 
   const removeAll = (): void => {
     if (!ctxRef) return;
+    selectPlane(null);
     for (const entry of entries.values()) {
       disposeHelper(entry.helper);
-      removeCapFill(entry.id);
     }
     entries.clear();
     applyToAllMaterials();
+    refreshBackfaceMeshes();
     emitChange();
   };
 
@@ -370,7 +655,7 @@ export function sectionPlugin(
 
   const api: Plugin & SectionPluginAPI = {
     name: NAME,
-    dependencies: ['camera'],
+    dependencies: ['camera', 'mode'],
 
     planes: list,
     setEnabled,
@@ -406,6 +691,112 @@ export function sectionPlugin(
         title: 'Get section enabled state',
       });
 
+      // Placement mode commands
+      ctx.commands.register('section.activate', () => activate(), {
+        title: 'Enter section placement mode',
+      });
+      ctx.commands.register('section.deactivate', () => deactivate(), {
+        title: 'Exit section placement mode',
+      });
+      ctx.commands.register('section.isActive', () => placementActive, {
+        title: 'Check if section placement mode is active',
+      });
+
+      // Selection commands
+      ctx.commands.register('section.select', (args: unknown) => {
+        const id = args === null ? null : typeof args === 'string' ? args : (args as { id?: string | null })?.id ?? null;
+        selectPlane(id);
+      }, { title: 'Select a section plane' });
+      ctx.commands.register('section.getSelected', () => selectedId, {
+        title: 'Get selected section plane ID',
+      });
+
+      // Manipulation commands
+      ctx.commands.register('section.move', (args: unknown) => {
+        const { id, offset } = args as { id: string; offset: number };
+        const entry = entries.get(id);
+        if (!entry) return;
+        const newPoint = entry.point.clone().addScaledVector(entry.normal, offset);
+        updatePlane(id, { point: newPoint });
+      }, { title: 'Slide section plane along its normal' });
+
+      ctx.commands.register('section.setNormal', (args: unknown) => {
+        const { id, normal: n } = args as { id: string; normal: Vec3 };
+        updatePlane(id, { normal: new THREE.Vector3(n.x, n.y, n.z) });
+      }, { title: 'Set section plane orientation' });
+
+      ctx.commands.register('section.setPoint', (args: unknown) => {
+        const { id, point: p } = args as { id: string; point: Vec3 };
+        updatePlane(id, { point: new THREE.Vector3(p.x, p.y, p.z) });
+      }, { title: 'Set section plane position' });
+
+      ctx.commands.register('section.rotate', (args: unknown) => {
+        const { id, axis: a, angle } = args as { id: string; axis: Vec3; angle: number };
+        const entry = entries.get(id);
+        if (!entry) return;
+        const axisVec = new THREE.Vector3(a.x, a.y, a.z).normalize();
+        const quat = new THREE.Quaternion().setFromAxisAngle(axisVec, angle);
+        const newNormal = entry.normal.clone().applyQuaternion(quat);
+        updatePlane(id, { normal: newNormal });
+      }, { title: 'Rotate section plane normal around axis' });
+
+      ctx.commands.register('section.getExtent', (args: unknown) => {
+        const id = typeof args === 'string' ? args : (args as { id?: string })?.id;
+        if (!id || !ctxRef) return null;
+        const entry = entries.get(id);
+        if (!entry) return null;
+        const box = new THREE.Box3();
+        for (const model of ctxRef.models().values()) {
+          const mBox = model.box;
+          if (mBox && !mBox.isEmpty()) box.union(mBox);
+        }
+        if (box.isEmpty()) return null;
+        const corners = [
+          new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+          new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+          new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+          new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+          new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+          new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+          new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+          new THREE.Vector3(box.max.x, box.max.y, box.max.z),
+        ];
+        const projections = corners.map((c) => c.dot(entry.normal));
+        const min = Math.min(...projections);
+        const max = Math.max(...projections);
+        const current = entry.point.dot(entry.normal);
+        return { min, max, current };
+      }, { title: 'Get slider range for a section plane' });
+
+      ctx.commands.register('section.getConfig', (): SectionConfig => ({
+        helperScale, helperColor, helperOpacity,
+        fillColor, fillOpacity, showFill, edgeColor,
+      }), { title: 'Get section display config' });
+
+      ctx.commands.register('section.setConfig', (args: unknown) => {
+        const cfg = args as Partial<SectionConfig>;
+        if (cfg.helperScale !== undefined) helperScale = cfg.helperScale;
+        if (cfg.helperColor !== undefined) helperColor = cfg.helperColor;
+        if (cfg.helperOpacity !== undefined) helperOpacity = cfg.helperOpacity;
+        if (cfg.fillColor !== undefined) fillColor = cfg.fillColor;
+        if (cfg.fillOpacity !== undefined) fillOpacity = cfg.fillOpacity;
+        if (cfg.showFill !== undefined) showFill = cfg.showFill;
+        if (cfg.edgeColor !== undefined) edgeColor = cfg.edgeColor;
+        // Rebuild all helpers with new config
+        for (const entry of entries.values()) {
+          disposeHelper(entry.helper);
+          entry.helper = createHelper(entry.normal, entry.point);
+          ctxRef?.scene.add(entry.helper);
+          entry.helper.visible = entry.active;
+        }
+        refreshBackfaceMeshes();
+        if (selectedId) {
+          const sel = entries.get(selectedId);
+          if (sel) highlightEntry(sel);
+        }
+        emitChange();
+      }, { title: 'Update section display config' });
+
       // Apply clipping planes to new materials that stream in.
       const handler = ({ value: mat }: { value: THREE.Material }): void => {
         if (enabled && entries.size > 0) applyToMaterial(mat);
@@ -415,21 +806,29 @@ export function sectionPlugin(
         ctx.fragments.models.materials.list.onItemSet.remove(handler);
       };
 
-      // When a new model loads, inject clipping planes into its materials.
-      ctx.events.on('model:loaded', () => {
-        if (enabled && entries.size > 0) applyToAllMaterials();
+      // When a new model loads, inject clipping planes into its materials
+      // and add back-face cap meshes for the new geometry.
+      modelLoadUnsub = ctx.events.on('model:loaded', () => {
+        if (enabled && entries.size > 0) {
+          applyToAllMaterials();
+          refreshBackfaceMeshes();
+        }
       });
     },
 
     uninstall() {
+      cleanupPlacement();
+      selectPlane(null);
+      clearPreview();
       removeClippingFromAllMaterials();
       for (const entry of entries.values()) {
         disposeHelper(entry.helper);
-        removeCapFill(entry.id);
       }
       entries.clear();
       materialHookDispose?.();
       materialHookDispose = null;
+      modelLoadUnsub?.();
+      modelLoadUnsub = null;
       ctxRef = null;
     },
   };

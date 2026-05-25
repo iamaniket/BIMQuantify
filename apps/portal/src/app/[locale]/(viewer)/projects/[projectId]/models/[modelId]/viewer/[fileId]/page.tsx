@@ -28,6 +28,7 @@ import { SideRail, type PanelId, type Mode } from '@/components/shared/viewer/Si
 import { Toolbar } from '@/components/shared/viewer/Toolbar';
 import { BcfPanel, BcfHeaderActions } from '@/components/shared/viewer/bcf/BcfPanel';
 import { MeasurementPanel, MeasurementHeaderActions } from '@/components/shared/viewer/measurement/MeasurementPanel';
+import { SectionPanel } from '@/components/shared/viewer/section/SectionPanel';
 import { PagesPanel } from '@/components/shared/viewer/pages/PagesPanel';
 import { ContextMenu } from '@/features/viewer/ContextMenu';
 import { ModelExplorer } from '@/features/viewer/explorer/ModelExplorer';
@@ -128,6 +129,17 @@ export default function ViewerPage(): JSX.Element {
   const togglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
+
+  // Auto-open section panel when entering section placement mode
+  useEffect(() => {
+    const handle = viewerHandleRef.current;
+    if (!handle) return undefined;
+    return handle.events.on('mode:enter', ({ toolName }) => {
+      if (toolName === 'section.place') {
+        setActivePanel('section');
+      }
+    });
+  }, [viewerReady]);
 
   useAppHeader({
     statusLabel: selectionCount > 0 ? `${String(selectionCount)} selected` : null,
@@ -317,6 +329,9 @@ export default function ViewerPage(): JSX.Element {
               ) : undefined}
               measureContent={isIfc ? (
                 <MeasurementPanel handle={viewerHandleRef.current} />
+              ) : undefined}
+              sectionContent={isIfc ? (
+                <SectionPanel handle={viewerHandleRef.current} />
               ) : undefined}
               bcfContent={isIfc ? (
                 <BcfPanel handle={viewerHandleRef.current} />
