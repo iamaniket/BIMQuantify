@@ -11,7 +11,8 @@ import {
   Card, CardBody, CardFooter, Icon,
 } from '@bimstitch/ui';
 
-import { BlueprintTexture } from '@/components/BlueprintTexture';
+import { AvatarStack } from '@/components/shared/AvatarStack';
+import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { listModels } from '@/lib/api/models';
 import { getProject } from '@/lib/api/projects';
 import type { Project, ProjectMember } from '@/lib/api/schemas';
@@ -45,27 +46,6 @@ function formatDateLabel(iso: string, locale: string): string {
 function displayMemberName(member: ProjectMember): string {
   const fullName = member.full_name === null ? '' : member.full_name.trim();
   return fullName.length > 0 ? fullName : member.email;
-}
-
-function toInitials(nameOrEmail: string): string {
-  const cleaned = nameOrEmail.trim();
-  if (cleaned.length === 0) return '?';
-
-  const fromEmail = (cleaned.includes('@') ? cleaned.split('@')[0] : cleaned) ?? cleaned;
-  const parts = fromEmail
-    .split(/[\s._-]+/)
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-
-  if (parts.length === 0) {
-    return fromEmail.slice(0, 2).toUpperCase();
-  }
-  if (parts.length === 1) {
-    return (parts[0] ?? '').slice(0, 2).toUpperCase();
-  }
-  const first = parts[0] ?? '';
-  const second = parts[1] ?? '';
-  return `${first[0] ?? ''}${second[0] ?? ''}`.toUpperCase();
 }
 
 function sortMembersForCard(members: ProjectMember[], ownerId: string): ProjectMember[] {
@@ -102,8 +82,11 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
   const cityLine = project.city ?? null;
   const contractorName = project.contractor_name ?? null;
   const sortedMembers = sortMembersForCard(members, project.owner_id);
-  const visibleMembers = sortedMembers.slice(0, 4);
-  const remainingMembers = Math.max(sortedMembers.length - visibleMembers.length, 0);
+  const avatarMembers = sortedMembers.map((m, i) => ({
+    id: m.user_id,
+    name: displayMemberName(m),
+    isLead: i === 0,
+  }));
   const thumbnailClassName = archived
     ? 'h-36 w-full object-cover grayscale transition-transform duration-300 group-hover:scale-[1.03]'
     : 'h-36 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]';
@@ -256,30 +239,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                 <span className="min-w-0 truncate font-semibold text-white">{deliveryLabel === '' ? '-' : deliveryLabel}</span>
               </span>
             </div>
-            {visibleMembers.length > 0 && (
-              <div className="flex shrink-0 -space-x-2">
-                {visibleMembers.map((member, index) => {
-                  const isLead = index === 0;
-                  return (
-                    <span
-                      key={member.user_id}
-                      title={displayMemberName(member)}
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full border-2 text-[9px] font-semibold ${isLead
-                        ? 'border-amber-300 bg-amber-100 text-amber-900 shadow-sm shadow-amber-700/15'
-                        : 'border-white bg-primary-light text-primary'
-                      }`}
-                    >
-                      {toInitials(displayMemberName(member))}
-                    </span>
-                  );
-                })}
-                {remainingMembers > 0 && (
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-primary-light text-[9px] font-semibold text-primary">
-                    +{remainingMembers}
-                  </span>
-                )}
-              </div>
-            )}
+            <AvatarStack members={avatarMembers} />
           </div>
         </CardFooter>
       </Link>

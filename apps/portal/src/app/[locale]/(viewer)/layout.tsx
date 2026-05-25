@@ -3,10 +3,10 @@
 import { useRouter } from '@/i18n/navigation';
 import { useEffect, type JSX, type ReactNode } from 'react';
 
-import { AppHeaderProvider } from '@/components/header/AppHeaderContext';
-import { AppHeaderRoute } from '@/components/header/AppHeaderRoute';
-import { Sidebar } from '@/components/sidebar/Sidebar';
-import { SidebarProvider } from '@/components/sidebar/SidebarContext';
+import { AppHeaderProvider } from '@/components/shared/header/AppHeaderContext';
+import { AppHeaderRoute } from '@/components/shared/header/AppHeaderRoute';
+import { Sidebar } from '@/components/shared/sidebar/Sidebar';
+import { SidebarProvider } from '@/components/shared/sidebar/SidebarContext';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { useAuth } from '@/providers/AuthProvider';
 

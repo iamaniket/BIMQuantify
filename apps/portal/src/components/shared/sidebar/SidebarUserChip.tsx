@@ -8,19 +8,8 @@ import { Link } from '@/i18n/navigation';
 import { getAvatarUrl } from '@/lib/api/profile';
 import { useAuth } from '@/providers/AuthProvider';
 
+import { UserAvatar } from '@/components/shared/UserAvatar';
 import { useSidebar } from './SidebarContext';
-
-function toInitials(nameOrEmail: string): string {
-  const words = nameOrEmail.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '?';
-  if (words.length === 1) {
-    return words[0]!.slice(0, 2).toUpperCase();
-  }
-  return words
-    .slice(0, 2)
-    .map((word) => word[0]!.toUpperCase())
-    .join('');
-}
 
 export function SidebarUserChip(): JSX.Element {
   const { collapsed } = useSidebar();
@@ -28,7 +17,6 @@ export function SidebarUserChip(): JSX.Element {
   const t = useTranslations('sidebar');
   const fallbackName = me?.user.email ?? 'User';
   const userName = me?.user.full_name?.trim() || fallbackName;
-  const initials = toInitials(userName);
   let roleLabel = '';
   if (activeMembership) {
     roleLabel = activeMembership.is_org_admin ? 'Admin' : 'Member';
@@ -57,20 +45,11 @@ export function SidebarUserChip(): JSX.Element {
       }`}
     >
       <div className="relative shrink-0">
-        {avatarSrc ? (
-          <img
-            src={avatarSrc}
-            alt={userName}
-            className="h-[30px] w-[30px] rounded-full object-cover"
-          />
-        ) : (
-          <div
-            className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-primary-light text-[11px] font-extrabold text-primary"
-            title={userName}
-          >
-            {initials}
-          </div>
-        )}
+        <UserAvatar
+          name={userName}
+          src={avatarSrc}
+          className="h-[30px] w-[30px] text-[11px] font-extrabold"
+        />
         {pendingCount > 0 && (
           <span className="absolute -right-[3px] -top-[3px] grid h-[14px] min-w-[14px] place-items-center rounded-full border-[1.5px] border-[#1e293b] bg-[#c94736] px-[3px] text-[9px] font-extrabold leading-[14px] tabular-nums text-white">
             {pendingCount > 9 ? '9+' : String(pendingCount)}

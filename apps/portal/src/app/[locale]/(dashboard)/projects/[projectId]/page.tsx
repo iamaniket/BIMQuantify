@@ -17,7 +17,8 @@ import {
   useComplianceArticles,
   useComplianceTrend,
 } from '@/features/compliance/hooks';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageShell } from '@/components/shared/layout/PageShell';
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
 import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
@@ -57,12 +58,7 @@ export default function ProjectDetailPage(): JSX.Element {
         : 'Failed to load project.';
     return (
       <main className="p-6">
-        <div
-          role="alert"
-          className="rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body2 text-error"
-        >
-          {errorMessage}
-        </div>
+        <ErrorBanner message={errorMessage} tone="soft" className="text-body2" />
       </main>
     );
   }

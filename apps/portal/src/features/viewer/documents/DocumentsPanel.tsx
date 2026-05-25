@@ -7,8 +7,8 @@ import { Button, Input } from '@bimstitch/ui';
 
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
-import { PanelEmptyState } from '../PanelEmptyState';
-import { ViewerPanelTabs, type ViewerTabDef } from '../ViewerPanelTabs';
+import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
+import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 
 type DocsScope = 'all' | 'entity' | 'project';
 
@@ -18,7 +18,7 @@ export function DocumentsPanel(): JSX.Element {
   const [scope, setScope] = useState<DocsScope>(hasSelection ? 'entity' : 'all');
   const [query, setQuery] = useState('');
 
-  const tabs: ViewerTabDef<DocsScope>[] = [
+  const tabs: TabDef<DocsScope>[] = [
     { id: 'all', label: 'All', count: 0 },
     { id: 'entity', label: 'On entity', count: 0, disabled: !hasSelection },
     { id: 'project', label: 'Project', count: 0 },
@@ -47,7 +47,7 @@ export function DocumentsPanel(): JSX.Element {
         </Button>
       </div>
 
-      <ViewerPanelTabs tabs={tabs} active={scope} onChange={setScope} />
+      <PanelTabs tabs={tabs} active={scope} onChange={setScope} />
 
       <div className="border-b border-border bg-background px-2.5 py-2">
         <div className="relative">

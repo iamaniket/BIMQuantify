@@ -5,8 +5,8 @@ import { useState, type JSX } from 'react';
 
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 
-import { PanelEmptyState } from '../PanelEmptyState';
-import { ViewerPanelTabs, type ViewerTabDef } from '../ViewerPanelTabs';
+import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
+import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 import { ClassesTab } from './ClassesTab';
 import { ObjectsTab } from './ObjectsTab';
 import { StoriesTab } from './StoriesTab';
@@ -18,7 +18,7 @@ type ModelExplorerProps = {
 
 type ExplorerTab = 'objects' | 'classes' | 'stories';
 
-const TABS: ViewerTabDef<ExplorerTab>[] = [
+const TABS: TabDef<ExplorerTab>[] = [
   { id: 'objects', label: 'Model' },
   { id: 'classes', label: 'Classes' },
   { id: 'stories', label: 'Stories' },
@@ -45,7 +45,7 @@ export function ModelExplorer({
 
   return (
     <div className="flex h-full flex-col">
-      <ViewerPanelTabs tabs={TABS} active={tab} onChange={setTab} />
+      <PanelTabs tabs={TABS} active={tab} onChange={setTab} />
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === 'objects' && (
           <ObjectsTab spatialTree={metadata.spatialTree} elements={metadata.elements} />

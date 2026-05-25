@@ -10,11 +10,10 @@ import {
   RotateCcw,
   ShieldCheck,
   Trash2,
-  UploadCloud,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import {
-  useCallback, useRef, useState, type ChangeEvent, type DragEvent, type JSX,
+  useCallback, useState, type JSX,
 } from 'react';
 
 import {
@@ -25,8 +24,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Skeleton,
-  cn,
 } from '@bimstitch/ui';
+
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
+import { FileDropZone } from '@/components/shared/FileDropZone';
 
 import { ApiError } from '@/lib/api/client';
 import { getDownloadUrl } from '@/lib/api/projectFiles';
@@ -247,9 +248,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
   const uploadMutation = useUploadModelFile();
   const deleteMutation = useDeleteModelFile();
 
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [pending, setPending] = useState<PendingUpload[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProjectFile | null>(null);
 
   const files = filesQuery.data ?? [];
@@ -326,24 +325,6 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
     );
   }, [projectId, modelId, uploadMutation, lockedFileType]);
 
-  const handleFiles = useCallback((files: FileList | null): void => {
-    if (files === null) return;
-    Array.from(files).forEach(startUpload);
-  }, [startUpload]);
-
-  const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    handleFiles(event.target.files);
-    if (inputRef.current !== null) {
-      inputRef.current.value = '';
-    }
-  };
-
-  const handleDrop = (event: DragEvent<HTMLDivElement>): void => {
-    event.preventDefault();
-    setIsDragging(false);
-    handleFiles(event.dataTransfer.files);
-  };
-
   const handleDeleteConfirm = (): void => {
     if (deleteTarget === null) return;
     deleteMutation.mutate(
@@ -367,47 +348,16 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
 
   return (
     <div className="flex flex-col gap-3">
-      <div
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => { setIsDragging(false); }}
-        onDrop={handleDrop}
-        className={cn(
-          'flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed px-4 py-6 text-center transition-colors',
-          isDragging
-            ? 'border-primary bg-primary/5'
-            : 'border-border bg-background-secondary',
-        )}
-      >
-        <UploadCloud className="h-6 w-6 text-foreground-tertiary" />
-        <p className="text-body3 text-foreground">
-          Drop a file here, or
-        </p>
-        <Button
-          type="button"
-          variant="primary"
-          size="sm"
-          onClick={() => {
-            if (inputRef.current !== null) {
-              inputRef.current.click();
-            }
-          }}
-        >
-          Choose file
-        </Button>
-        <p className="text-caption text-foreground-tertiary">
-          {lockedFileType !== null
+      <FileDropZone
+        accept={lockedFileType !== null ? `.${lockedFileType}` : '.ifc,.pdf'}
+        multiple
+        onFiles={(files) => { Array.from(files).forEach(startUpload); }}
+        hint={
+          lockedFileType !== null
             ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> only — locked by first upload</>
-            : '.ifc and .pdf files'}
-        </p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={lockedFileType !== null ? `.${lockedFileType}` : '.ifc,.pdf'}
-          multiple
-          className="hidden"
-          onChange={handleInputChange}
-        />
-      </div>
+            : '.ifc and .pdf files'
+        }
+      />
 
       {pending.length === 0 ? null : (
         <div className="flex flex-col gap-2">
@@ -428,12 +378,10 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
       ) : null}
 
       {fileError === null ? null : (
-        <div
-          role="alert"
-          className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-body3 text-error"
-        >
-          {fileError instanceof ApiError ? fileError.detail : 'Failed to load files.'}
-        </div>
+        <ErrorBanner
+          message={fileError instanceof ApiError ? fileError.detail : 'Failed to load files.'}
+          tone="soft"
+        />
       )}
 
       {!filesQuery.isLoading && readyFiles.length === 0 && pending.length === 0 ? (

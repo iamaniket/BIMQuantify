@@ -3,12 +3,8 @@
 import {
   ChevronRight,
   Eye,
-  EyeOff,
   Glasses,
-  MousePointer2,
   Search,
-  Ruler,
-  Scissors,
 } from 'lucide-react';
 import {
   useCallback,
@@ -20,7 +16,7 @@ import {
 
 import type { ViewerHandle, ViewerEvents } from '@bimstitch/viewer';
 
-import { useViewerState } from './useViewerState';
+import { useViewerState } from '@/components/shared/viewer/useViewerState';
 
 type ContextMenuData = ViewerEvents['contextmenu:open'];
 
@@ -28,6 +24,7 @@ type MenuItem = {
   label: string;
   icon?: JSX.Element;
   command?: string;
+  commandArgs?: unknown;
   disabled?: boolean;
   children?: MenuItem[];
   separator?: boolean;
@@ -43,8 +40,34 @@ function buildMenu(
   hasSelection: boolean,
   hasHidden: boolean,
   hasXray: boolean,
-  hasItem: boolean,
+  item: ContextMenuData['item'],
 ): MenuItem[] {
+  const hasItem = item !== null;
+
+  const visibilityChildren: MenuItem[] = [
+    hasHidden ? { label: 'Show All', command: 'visibility.showAll' } : null,
+    { label: 'Hide All', command: 'visibility.hideAll' },
+    ...(hasItem
+      ? [
+          { label: '', separator: true } as MenuItem,
+          { label: 'Hide', command: 'visibility.hideItem', commandArgs: item } as MenuItem,
+          { label: 'Show Only This', command: 'visibility.isolateItem', commandArgs: item } as MenuItem,
+        ]
+      : []),
+  ].filter(Boolean) as MenuItem[];
+
+  const xrayChildren: MenuItem[] = [
+    { label: 'X-Ray All', command: 'xray.all' },
+    hasXray ? { label: 'Clear X-Ray', command: 'xray.clear' } : null,
+    ...(hasItem
+      ? [
+          { label: '', separator: true } as MenuItem,
+          { label: 'X-Ray', command: 'xray.set', commandArgs: item } as MenuItem,
+          { label: 'X-Ray Others', command: 'xray.allExceptItem', commandArgs: item } as MenuItem,
+        ]
+      : []),
+  ].filter(Boolean) as MenuItem[];
+
   return [
     {
       label: 'Inspect Properties',
@@ -53,49 +76,20 @@ function buildMenu(
     },
     { label: '', separator: true },
     {
-      label: 'View / Show',
+      label: 'Visibility',
       icon: <Eye className={ICON_CLASS} />,
-      children: [
-        { label: 'Show All', command: 'visibility.showAll', disabled: !hasHidden },
-      ],
-    },
-    {
-      label: 'Hide',
-      icon: <EyeOff className={ICON_CLASS} />,
-      children: [
-        { label: 'Hide Selected', command: 'visibility.hide', disabled: !hasSelection },
-        { label: 'Hide Unselected', command: 'visibility.isolate', disabled: !hasSelection },
-      ],
+      children: visibilityChildren,
     },
     {
       label: 'X-Ray',
       icon: <Glasses className={ICON_CLASS} />,
-      children: [
-        { label: 'X-Ray Selected', command: 'xray.selected', disabled: !hasSelection },
-        { label: 'X-Ray Others', command: 'xray.allExcept', disabled: !hasSelection },
-        { label: 'Clear X-Ray', command: 'xray.clear', disabled: !hasXray },
-      ],
-    },
-    {
-      label: 'Select',
-      icon: <MousePointer2 className={ICON_CLASS} />,
-      children: [
-        { label: 'Select All', command: 'selection.selectAll' },
-        { label: 'Clear Selection', command: 'selection.clear', disabled: !hasSelection },
-      ],
+      children: xrayChildren,
     },
     { label: '', separator: true },
-    {
-      label: 'Clear all slices',
-      icon: <Scissors className={ICON_CLASS} />,
-      disabled: true,
-    },
-    {
-      label: 'Measurements',
-      icon: <Ruler className={ICON_CLASS} />,
-      disabled: true,
-    },
-  ];
+    { label: 'Select All', command: 'selection.selectAll' },
+    hasSelection ? { label: 'Clear Selection', command: 'selection.clear' } : null,
+    hasSelection ? { label: 'Invert Selection', command: 'selection.invert' } : null,
+  ].filter(Boolean) as MenuItem[];
 }
 
 function MenuItemRow({
@@ -104,7 +98,7 @@ function MenuItemRow({
   parentDirection,
 }: {
   item: MenuItem;
-  onCommand: (cmd: string) => void;
+  onCommand: (cmd: string, args?: unknown) => void;
   parentDirection: 'right' | 'left';
 }): JSX.Element {
   const [subOpen, setSubOpen] = useState(false);
@@ -134,7 +128,7 @@ function MenuItemRow({
   const handleClick = (): void => {
     if (isDisabled) return;
     if (item.command) {
-      onCommand(item.command);
+      onCommand(item.command, item.commandArgs);
     }
   };
 
@@ -152,7 +146,7 @@ function MenuItemRow({
         className={
           'flex w-full items-center gap-3 rounded px-3 py-1.5 text-left text-sm '
           + (isDisabled && !hasChildren
-            ? 'cursor-default text-foreground-secondary/60'
+            ? 'cursor-not-allowed bg-background-tertiary text-foreground-disabled'
             : 'text-foreground hover:bg-background-secondary')
         }
       >
@@ -181,7 +175,7 @@ function SubMenu({
   direction,
 }: {
   items: MenuItem[];
-  onCommand: (cmd: string) => void;
+  onCommand: (cmd: string, args?: unknown) => void;
   parentRef: React.RefObject<HTMLDivElement | null>;
   direction: 'right' | 'left';
 }): JSX.Element {
@@ -208,7 +202,7 @@ function SubMenu({
     <div
       ref={subRef}
       className={
-        'absolute z-50 min-w-[180px] rounded-lg border border-neutral-700 bg-neutral-800/95 p-1 shadow-xl backdrop-blur ' +
+        'absolute z-50 min-w-[180px] rounded-lg border border-border bg-background p-1 shadow-xl ' +
         positionClass
       }
     >
@@ -224,7 +218,7 @@ function SubMenu({
   );
 }
 
-export function ViewerContextMenu({ handle }: Props): JSX.Element | null {
+export function ContextMenu({ handle }: Props): JSX.Element | null {
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -247,10 +241,25 @@ export function ViewerContextMenu({ handle }: Props): JSX.Element | null {
     };
   }, [handle]);
 
+  // Close menu when clicking outside of it
+  useEffect(() => {
+    if (!menu || !handle) return undefined;
+
+    const onOutsideClick = (ev: MouseEvent): void => {
+      const el = menuRef.current;
+      if (el && !el.contains(ev.target as Node)) {
+        handle.commands.execute('contextMenu.close').catch(() => undefined);
+      }
+    };
+
+    document.addEventListener('mousedown', onOutsideClick);
+    return () => document.removeEventListener('mousedown', onOutsideClick);
+  }, [menu, handle]);
+
   const runCommand = useCallback(
-    (cmd: string) => {
+    (cmd: string, args?: unknown) => {
       if (!handle) return;
-      handle.commands.execute(cmd).catch((err: unknown) => {
+      handle.commands.execute(cmd, args).catch((err: unknown) => {
         // eslint-disable-next-line no-console
         console.warn(`[context-menu] ${cmd} failed:`, err);
       });
@@ -261,12 +270,11 @@ export function ViewerContextMenu({ handle }: Props): JSX.Element | null {
 
   if (!menu) return null;
 
-  const hasItem = menu.item !== null;
   const items = buildMenu(
     viewerState.selectionCount > 0,
     viewerState.hasHidden || viewerState.isIsolated,
     viewerState.hasXray,
-    hasItem,
+    menu.item,
   );
 
   return (
@@ -294,7 +302,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
     x: number;
     y: number;
     items: MenuItem[];
-    onCommand: (cmd: string) => void;
+    onCommand: (cmd: string, args?: unknown) => void;
   },
   ref: ForwardedRef<HTMLDivElement>,
 ): JSX.Element {
@@ -334,7 +342,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
         else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={
-        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-neutral-700 bg-neutral-800/95 p-1 shadow-xl backdrop-blur '
+        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background p-1 shadow-xl '
         + (ready ? 'opacity-100' : 'opacity-0')
       }
       style={{ left: pos.left, top: pos.top }}

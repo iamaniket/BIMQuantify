@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@bimstitch/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
 import type { MemberRead } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -176,14 +177,7 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
 
   return (
     <>
-      {errorMessage !== null && (
-        <div
-          className="mb-3 rounded-md border border-error bg-error/10 px-3 py-2 text-body3 text-error"
-          role="alert"
-        >
-          {errorMessage}
-        </div>
-      )}
+      <ErrorBanner message={errorMessage} className="mb-3" />
       <Table>
         <TableHeader>
           <TableRow>

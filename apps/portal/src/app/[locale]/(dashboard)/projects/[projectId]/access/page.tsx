@@ -29,10 +29,11 @@ import {
   TabsList,
   TabsTrigger,
 } from '@bimstitch/ui';
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
-import { HeroShell } from '@/components/layout/HeroShell';
-import { PageShell } from '@/components/layout/PageShell';
-import { useHeaderCrumbsOverride } from '@/components/header/AppHeaderContext';
+import { HeroShell } from '@/components/shared/layout/HeroShell';
+import { PageShell } from '@/components/shared/layout/PageShell';
+import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { ApiError } from '@/lib/api/client';
 import type { ProjectMember } from '@/lib/api/schemas';
 import { useProject } from '@/features/projects/useProject';
@@ -379,12 +380,7 @@ export default function ProjectAccessPage(): JSX.Element {
     const isNotFound = error instanceof ApiError && error.status === 404;
     return (
       <main className="w-full px-4 py-6 sm:px-6 lg:px-8">
-        <div
-          role="alert"
-          className="rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body2 text-error"
-        >
-          {isNotFound ? t('errors.notFound') : t('errors.loadFailed')}
-        </div>
+        <ErrorBanner message={isNotFound ? t('errors.notFound') : t('errors.loadFailed')} tone="soft" className="text-body2" />
       </main>
     );
   }
@@ -411,12 +407,7 @@ export default function ProjectAccessPage(): JSX.Element {
   let membersContent: JSX.Element;
   if (membersQuery.isError) {
     membersContent = (
-      <div
-        role="alert"
-        className="rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body3 text-error"
-      >
-        {t('errors.membersLoadFailed')}
-      </div>
+      <ErrorBanner message={t('errors.membersLoadFailed')} tone="soft" />
     );
   } else if (members.length === 0) {
     membersContent = (

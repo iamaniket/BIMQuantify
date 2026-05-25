@@ -7,7 +7,7 @@ import { use, useMemo, useState, type JSX } from 'react';
 
 import { Button, ConfirmDialog, Skeleton } from '@bimstitch/ui';
 
-import { useHeaderCrumbsOverride } from '@/components/header/AppHeaderContext';
+import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
 import { InviteMemberDialog } from '@/features/admin/members/InviteMemberDialog';
 import { useOrgMembers } from '@/features/admin/members/useOrgMembers';

@@ -4,28 +4,28 @@ import type { JSX, ReactNode } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
-export type ViewerTabDef<T extends string> = {
+export type TabDef<T extends string> = {
   id: T;
   label: string;
   count?: number;
   disabled?: boolean;
 };
 
-type ViewerPanelTabsProps<T extends string> = {
-  tabs: ViewerTabDef<T>[];
+type PanelTabsProps<T extends string> = {
+  tabs: TabDef<T>[];
   active: T;
   onChange: (id: T) => void;
   trailing?: ReactNode;
   className?: string;
 };
 
-export function ViewerPanelTabs<T extends string>({
+export function PanelTabs<T extends string>({
   tabs,
   active,
   onChange,
   trailing,
   className,
-}: ViewerPanelTabsProps<T>): JSX.Element {
+}: PanelTabsProps<T>): JSX.Element {
   return (
     <div
       role="tablist"

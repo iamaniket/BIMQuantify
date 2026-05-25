@@ -1,4 +1,4 @@
-import type { WizardStep } from '@/components/wizard/Wizard';
+import type { WizardStep } from '@/components/shared/wizard/Wizard';
 
 import type {
   BuildingTypeValue,

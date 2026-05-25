@@ -6,7 +6,7 @@ import { useMemo, type JSX } from 'react';
 import type { ElementEntry } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
-import { PanelEmptyState } from '../PanelEmptyState';
+import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { TreeContainer } from './TreeContainer';
 import { TreeNodeComponent, type TreeNodeData } from './TreeNode';
 import { elementToLeaf, groupElementsBy } from './treeBuilders';

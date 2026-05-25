@@ -8,6 +8,8 @@ import {
   Card, CardBody, CardFooter, EmptyState, Skeleton,
 } from '@bimstitch/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
+
 import { ApiError } from '@/lib/api/client';
 import { listProjectMembers } from '@/lib/api/projectMembers';
 import type { ProjectMemberList } from '@/lib/api/schemas';
@@ -111,14 +113,7 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
     const message = query.error instanceof ApiError
       ? query.error.detail
       : 'Failed to load projects.';
-    return (
-      <div
-        role="alert"
-        className="rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body2 text-error"
-      >
-        {message}
-      </div>
-    );
+    return <ErrorBanner message={message} tone="soft" className="text-body2" />;
   }
 
   if (projects.length === 0) {

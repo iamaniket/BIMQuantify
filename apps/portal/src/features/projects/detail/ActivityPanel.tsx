@@ -2,7 +2,7 @@
 
 import { useState, type JSX } from 'react';
 
-import { BlueprintTexture } from '@/components/BlueprintTexture';
+import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { MOCK_ACTIVITY } from '@/features/compliance/mockData';
 import type { ActivityItem } from '@/features/compliance/types';
 

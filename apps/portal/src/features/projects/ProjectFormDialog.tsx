@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@bimstitch/ui';
 
-import { Wizard } from '@/components/wizard/Wizard';
+import { Wizard } from '@/components/shared/wizard/Wizard';
 
 import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';

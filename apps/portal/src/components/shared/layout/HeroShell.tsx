@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from 'react';
 
-import { BlueprintTexture } from '@/components/BlueprintTexture';
-import { KpiStrip, type KpiItem } from '@/components/layout/KpiCard';
+import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
+import { KpiStrip, type KpiItem } from '@/components/shared/layout/KpiCard';
 
 export type { KpiItem };
 

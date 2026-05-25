@@ -14,6 +14,7 @@ import {
   TabsTrigger,
 } from '@bimstitch/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
 import { useOrgMembers } from '@/features/admin/members/useOrgMembers';
 import type { ProjectMember, ProjectRole } from '@/lib/api/schemas';
@@ -166,14 +167,7 @@ export function AddProjectMemberDialog({
           </TabsTrigger>
         </TabsList>
 
-        {errorMessage !== null && (
-          <div
-            className="mb-4 rounded-md border border-error bg-error/10 px-3 py-2 text-body3 text-error"
-            role="alert"
-          >
-            {errorMessage}
-          </div>
-        )}
+        <ErrorBanner message={errorMessage} className="mb-4" />
 
         <TabsContent value="fromOrg">
           <div className="flex flex-col gap-4">

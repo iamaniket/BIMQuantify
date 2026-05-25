@@ -5,7 +5,7 @@ import { IntlWrapper } from '@/__tests__/intl-wrapper';
 
 import type { ComplianceSummary } from '@/features/compliance/types';
 
-vi.mock('@/components/BlueprintTexture', () => ({
+vi.mock('@/components/shared/BlueprintTexture', () => ({
   BlueprintTexture: () => <div data-testid="blueprint-texture" />,
 }));
 

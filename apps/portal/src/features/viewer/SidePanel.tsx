@@ -5,11 +5,11 @@ import type { JSX, ReactNode } from 'react';
 import { cn } from '@bimstitch/ui';
 
 import { DocumentsPanel } from './documents/DocumentsPanel';
-import type { ViewerPanelId } from './ViewerSideRail';
+import type { PanelId } from '@/components/shared/viewer/SideRail';
 
-export type { ViewerPanelId } from './ViewerSideRail';
+export type { PanelId } from '@/components/shared/viewer/SideRail';
 
-const PANEL_TITLES: Record<ViewerPanelId, string> = {
+const PANEL_TITLES: Record<PanelId, string> = {
   explorer: 'Model Tree',
   properties: 'Properties',
   documents: 'Documents',
@@ -20,14 +20,14 @@ const PANEL_TITLES: Record<ViewerPanelId, string> = {
   pages: 'Pages',
 };
 
-type ViewerSidePanelProps = {
-  activePanel: ViewerPanelId | null;
+type SidePanelProps = {
+  activePanel: PanelId | null;
   explorerContent?: ReactNode | undefined;
   propertiesContent?: ReactNode | undefined;
   measureContent?: ReactNode | undefined;
   bcfContent?: ReactNode | undefined;
   pagesContent?: ReactNode | undefined;
-  headerActions?: Partial<Record<ViewerPanelId, ReactNode>> | undefined;
+  headerActions?: Partial<Record<PanelId, ReactNode>> | undefined;
 };
 
 function PlaceholderContent({ label }: { label: string }): JSX.Element {
@@ -43,7 +43,7 @@ function PlaceholderContent({ label }: { label: string }): JSX.Element {
   );
 }
 
-export function ViewerSidePanel({
+export function SidePanel({
   activePanel,
   explorerContent,
   propertiesContent,
@@ -51,7 +51,7 @@ export function ViewerSidePanel({
   bcfContent,
   pagesContent,
   headerActions,
-}: ViewerSidePanelProps): JSX.Element {
+}: SidePanelProps): JSX.Element {
   const isOpen = activePanel !== null;
 
   return (

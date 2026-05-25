@@ -35,8 +35,9 @@ import {
   TabsTrigger,
 } from '@bimstitch/ui';
 
-import { HeroShell } from '@/components/layout/HeroShell';
-import { PageShell } from '@/components/layout/PageShell';
+import { HeroShell } from '@/components/shared/layout/HeroShell';
+import { PageShell } from '@/components/shared/layout/PageShell';
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
 import {
   acceptInvitation,
@@ -494,14 +495,7 @@ function InvitationsPane({
           })}
         </ul>
       )}
-      {invError !== null && (
-        <div
-          role="alert"
-          className="mt-2 rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
-        >
-          {invError}
-        </div>
-      )}
+      <ErrorBanner message={invError} tone="soft" className="mt-2" />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { BlueprintTexture } from '@/components/BlueprintTexture';
+import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import type { ComplianceSummary } from '@/features/compliance/types';
 
 import { HoldbackUnlock } from './HoldbackUnlock';

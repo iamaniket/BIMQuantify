@@ -4,7 +4,7 @@ import type { JSX } from 'react';
 
 import { TooltipProvider } from '@bimstitch/ui';
 
-import { StitchLogo } from '@/components/charts/StitchLogo';
+import { StitchLogo } from '@/components/shared/charts/StitchLogo';
 
 import { SidebarCollapseToggle } from './SidebarCollapseToggle';
 import { SidebarNav } from './SidebarNav';

@@ -210,6 +210,8 @@ Next.js 15 with App Router, React 19, Tailwind CSS, port 3001.
 
 **Forms**: React Hook Form + `@hookform/resolvers/zod`. Schemas in `projectFormSchema.ts`, `modelFormSchema.ts`.
 
+**Shared component rule**: `components/shared/` contains store-agnostic UI skeletons — data flows in via props only. A component that imports from a zustand store, React Query hook, or a feature-level hook is feature-specific and belongs in the matching `features/<domain>/` directory, not `components/shared/`. Viewer components that access `useViewerEntityStore` live in `features/viewer/`; toolbar primitives, panel shells, and settings dialogs (all pure props) stay in `components/shared/viewer/`.
+
 **Environment**: Single var `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`), validated by Zod at import time (`lib/env.ts`).
 
 ## Architecture — Viewer (`packages/viewer`)

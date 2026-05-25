@@ -7,6 +7,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type JSX } from 'react';
 
 import { Badge, Button, Skeleton } from '@bimstitch/ui';
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
 import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
 import { ComplianceHealthCard } from '@/features/projects/detail/ComplianceHealthCard';
@@ -105,12 +106,7 @@ export default function ReportDetailPage(): JSX.Element {
             <ArrowLeft className="mr-1.5 h-3 w-3" /> {t('backToProject')}
           </Button>
         </Link>
-        <div
-          role="alert"
-          className="mt-4 rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body2 text-error"
-        >
-          {t('noReport', { framework: framework.toUpperCase() })}
-        </div>
+        <ErrorBanner message={t('noReport', { framework: framework.toUpperCase() })} tone="soft" className="mt-4 text-body2" />
       </main>
     );
   }
@@ -194,14 +190,7 @@ export default function ReportDetailPage(): JSX.Element {
             )}
           </div>
         </div>
-        {rulesDownloadError !== null && (
-          <div
-            role="alert"
-            className="mb-2 rounded-md border border-error-light bg-error-lighter px-3 py-1.5 text-caption text-error"
-          >
-            {rulesDownloadError}
-          </div>
-        )}
+        <ErrorBanner message={rulesDownloadError} tone="soft" className="mb-2 py-1.5 text-caption" />
         {latestQuery.data !== undefined ? (
           <RulesBreakdown
             rules={latestQuery.data.rules_summary}

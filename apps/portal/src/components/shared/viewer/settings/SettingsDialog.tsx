@@ -303,7 +303,7 @@ function needsReload(prev: ViewerSettings, next: ViewerSettings): boolean {
   return false;
 }
 
-export function ViewerSettingsDialog(props: Props): JSX.Element {
+export function SettingsDialog(props: Props): JSX.Element {
   const {
     mode, open, onClose, settings, onSettingsChange,
   } = props;

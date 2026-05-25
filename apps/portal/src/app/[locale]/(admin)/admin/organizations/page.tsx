@@ -22,9 +22,9 @@ import {
   TabsTrigger,
 } from '@bimstitch/ui';
 
-import { useHeaderCrumbsOverride } from '@/components/header/AppHeaderContext';
-import { HeroShell } from '@/components/layout/HeroShell';
-import { PageShell } from '@/components/layout/PageShell';
+import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
+import { HeroShell } from '@/components/shared/layout/HeroShell';
+import { PageShell } from '@/components/shared/layout/PageShell';
 import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';

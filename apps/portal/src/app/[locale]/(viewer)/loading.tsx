@@ -36,7 +36,7 @@ export default function ViewerLoading(): JSX.Element {
         </div>
       </div>
 
-      {/* Status bar skeleton — matches ViewerStatusBar's 22px height */}
+      {/* Status bar skeleton — matches StatusBar's 22px height */}
       <div className="flex h-[22px] shrink-0 items-center border-t border-border bg-background/95 px-3">
         <Skeleton className="h-2.5 w-64 rounded bg-foreground/5" />
       </div>

@@ -5,20 +5,12 @@ import { useEffect, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 
 import {
-  Button,
-  Dialog,
-  DialogBody,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Input,
   Select,
 } from '@bimstitch/ui';
 
-import { Field } from '@/components/forms/Field';
+import { FormDialog } from '@/components/shared/FormDialog';
+import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';
 import { ApiError } from '@/lib/api/client';
 import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/lib/formatting/models';
@@ -91,77 +83,61 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
   const isSubmitting = createMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form noValidate onSubmit={form.handleSubmit(onSubmit)}>
-          <DialogHeader>
-            <DialogTitle>New document</DialogTitle>
-            <DialogDescription>
-              Group file versions by discipline. You can upload a file into the
-              document after creating it.
-            </DialogDescription>
-          </DialogHeader>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="New document"
+      description="Group file versions by discipline. You can upload a file into the document after creating it."
+      onSubmit={form.handleSubmit(onSubmit)}
+      submitLabel={isSubmitting ? 'Creating…' : 'Create'}
+      submitDisabled={isSubmitting}
+    >
+      <div className="flex flex-col gap-4">
+        <Field form={form} name="name" label="Name">
+          {({ id, invalid }) => (
+            <Input
+              id={id}
+              type="text"
+              autoComplete="off"
+              autoFocus
+              invalid={invalid}
+              {...useRegisterField(form, 'name')}
+            />
+          )}
+        </Field>
 
-          <DialogBody>
-            <Field form={form} name="name" label="Name">
-              {({ id, invalid }) => (
-                <Input
-                  id={id}
-                  type="text"
-                  autoComplete="off"
-                  autoFocus
-                  invalid={invalid}
-                  {...useRegisterField(form, 'name')}
-                />
-              )}
-            </Field>
+        <Field form={form} name="discipline" label="Discipline">
+          {({ id }) => (
+            <Select
+              id={id}
+              disabled={isSubmitting}
+              {...useRegisterField(form, 'discipline')}
+            >
+              {DISCIPLINE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
 
-            <Field form={form} name="discipline" label="Discipline">
-              {({ id }) => (
-                <Select
-                  id={id}
-                  disabled={isSubmitting}
-                  {...useRegisterField(form, 'discipline')}
-                >
-                  {DISCIPLINE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-
-            <Field form={form} name="status" label="Status">
-              {({ id }) => (
-                <Select
-                  id={id}
-                  disabled={isSubmitting}
-                  {...useRegisterField(form, 'status')}
-                >
-                  {STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-
-          </DialogBody>
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="border" size="md" disabled={isSubmitting}>
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button type="submit" variant="primary" size="md" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating…' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <Field form={form} name="status" label="Status">
+          {({ id }) => (
+            <Select
+              id={id}
+              disabled={isSubmitting}
+              {...useRegisterField(form, 'status')}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+      </div>
+    </FormDialog>
   );
 }

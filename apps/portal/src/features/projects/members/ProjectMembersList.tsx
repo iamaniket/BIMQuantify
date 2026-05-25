@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@bimstitch/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
 import type { ProjectMember, ProjectRole } from '@/lib/api/schemas';
 
@@ -60,14 +61,7 @@ export function ProjectMembersList({ projectId, members, canManage }: Props): JS
 
   return (
     <>
-      {errorMessage !== null && (
-        <div
-          className="mb-3 rounded-md border border-error bg-error/10 px-3 py-2 text-body3 text-error"
-          role="alert"
-        >
-          {errorMessage}
-        </div>
-      )}
+      <ErrorBanner message={errorMessage} className="mb-3" />
       <Table>
         <TableHeader>
           <TableRow>

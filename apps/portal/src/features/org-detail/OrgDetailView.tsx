@@ -34,8 +34,8 @@ import {
   TabsTrigger,
 } from '@bimstitch/ui';
 
-import { HeroShell } from '@/components/layout/HeroShell';
-import { PageShell } from '@/components/layout/PageShell';
+import { HeroShell } from '@/components/shared/layout/HeroShell';
+import { PageShell } from '@/components/shared/layout/PageShell';
 import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
 import { MembersTable } from '@/features/admin/members/MembersTable';
 import { DeadlineNotificationDefaults } from '@/features/admin/notifications/DeadlineNotificationDefaults';

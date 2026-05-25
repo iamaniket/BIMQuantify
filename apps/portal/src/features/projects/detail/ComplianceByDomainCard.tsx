@@ -5,10 +5,10 @@ import { useState, type JSX } from 'react';
 
 import { Tabs, TabsList, TabsTrigger, Progress } from '@bimstitch/ui';
 
-import { BlueprintTexture } from '@/components/BlueprintTexture';
-import { ComplianceDonut } from '@/components/charts/ComplianceDonut';
-import { ComplianceBar } from '@/components/charts/ComplianceBar';
-import { TrendSparkline } from '@/components/charts/TrendSparkline';
+import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
+import { ComplianceDonut } from '@/components/shared/charts/ComplianceDonut';
+import { ComplianceBar } from '@/components/shared/charts/ComplianceBar';
+import { TrendSparkline } from '@/components/shared/charts/TrendSparkline';
 import type {
   ComplianceDomain,
   ComplianceArticle,

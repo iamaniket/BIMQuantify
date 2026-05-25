@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@bimstitch/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { useRouter } from '@/i18n/navigation';
 import { ApiError } from '@/lib/api/client';
@@ -103,12 +104,7 @@ export function InvitationsPanel(): JSX.Element {
     return (
       <>
         <AuthFormIntro eyebrow={t('eyebrow')} heading={t('title')} />
-        <div
-          role="alert"
-          className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
-        >
-          {state.message}
-        </div>
+        <ErrorBanner message={state.message} tone="soft" />
         <Button variant="border" size="md" onClick={() => void load()} className="mt-3">
           {t('retry')}
         </Button>
@@ -192,14 +188,7 @@ export function InvitationsPanel(): JSX.Element {
           );
         })}
       </ul>
-      {actionError !== null && (
-        <div
-          role="alert"
-          className="mt-3 rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
-        >
-          {actionError}
-        </div>
-      )}
+      <ErrorBanner message={actionError} tone="soft" className="mt-3" />
     </>
   );
 }

@@ -6,10 +6,10 @@ import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useViewerFPS } from '@/features/viewer/useViewerFPS';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
-import type { ViewerMode } from './ViewerSideRail';
+import type { Mode } from '@/components/shared/viewer/SideRail';
 
-type ViewerStatusBarProps = {
-  mode: ViewerMode;
+type StatusBarProps = {
+  mode: Mode;
   metadata?: ModelMetadata | undefined;
   viewerReady?: boolean;
   currentPage?: number;
@@ -119,13 +119,13 @@ function IfcStatusBar({
   );
 }
 
-export function ViewerStatusBar({
+export function StatusBar({
   mode,
   metadata,
   viewerReady = false,
   currentPage = 1,
   numPages = null,
-}: ViewerStatusBarProps): JSX.Element {
+}: StatusBarProps): JSX.Element {
   if (mode === 'pdf') {
     return <PdfStatusBar currentPage={currentPage} numPages={numPages} />;
   }

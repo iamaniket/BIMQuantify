@@ -12,6 +12,7 @@ import {
 } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import type {
   DocumentActiveTool,
   DocumentRotation,
@@ -20,19 +21,19 @@ import type {
   ViewerHandle,
 } from '@bimstitch/viewer';
 
-import { useAppHeader } from '@/components/header/AppHeaderContext';
-import { DocumentToolbar } from '@/components/viewer/DocumentToolbar';
-import { ViewerContextMenu } from '@/components/viewer/ViewerContextMenu';
-import { ViewerModeIndicator } from '@/components/viewer/ViewerModeIndicator';
-import { ViewerSidePanel } from '@/components/viewer/ViewerSidePanel';
-import { ViewerSideRail, type ViewerPanelId, type ViewerMode } from '@/components/viewer/ViewerSideRail';
-import { ViewerStatusBar } from '@/components/viewer/ViewerStatusBar';
-import { ViewerToolbar } from '@/components/viewer/ViewerToolbar';
-import { BcfPanel, BcfHeaderActions } from '@/components/viewer/bcf/BcfPanel';
-import { ModelExplorer } from '@/components/viewer/explorer/ModelExplorer';
-import { MeasurementPanel, MeasurementHeaderActions } from '@/components/viewer/measurement/MeasurementPanel';
-import { PagesPanel } from '@/components/viewer/pages/PagesPanel';
-import { PropertiesPanel } from '@/components/viewer/properties/PropertiesPanel';
+import { useAppHeader } from '@/components/shared/header/AppHeaderContext';
+import { DocumentToolbar } from '@/components/shared/viewer/DocumentToolbar';
+import { ModeIndicator } from '@/components/shared/viewer/ModeIndicator';
+import { SideRail, type PanelId, type Mode } from '@/components/shared/viewer/SideRail';
+import { Toolbar } from '@/components/shared/viewer/Toolbar';
+import { BcfPanel, BcfHeaderActions } from '@/components/shared/viewer/bcf/BcfPanel';
+import { MeasurementPanel, MeasurementHeaderActions } from '@/components/shared/viewer/measurement/MeasurementPanel';
+import { PagesPanel } from '@/components/shared/viewer/pages/PagesPanel';
+import { ContextMenu } from '@/features/viewer/ContextMenu';
+import { ModelExplorer } from '@/features/viewer/explorer/ModelExplorer';
+import { PropertiesPanel } from '@/features/viewer/properties/PropertiesPanel';
+import { SidePanel } from '@/features/viewer/SidePanel';
+import { StatusBar } from '@/features/viewer/StatusBar';
 import { useDocumentShortcuts } from '@/features/viewer/useDocumentShortcuts';
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
@@ -112,7 +113,7 @@ export default function ViewerPage(): JSX.Element {
   const selectionCount = useViewerEntityStore((s) => s.selected.size);
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
   const [viewerEpoch, setViewerEpoch] = useState(0);
-  const [activePanel, setActivePanel] = useState<ViewerPanelId | null>(null);
+  const [activePanel, setActivePanel] = useState<PanelId | null>(null);
 
   // PDF-mode state — owned here so the toolbar, pages panel, status bar, and
   // DocumentViewer all read/write the same source of truth.
@@ -124,7 +125,7 @@ export default function ViewerPage(): JSX.Element {
   const [pdfSettings, setPdfSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
 
-  const togglePanel = useCallback((id: ViewerPanelId) => {
+  const togglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
@@ -174,7 +175,7 @@ export default function ViewerPage(): JSX.Element {
     setViewerError(err.message);
   }, []);
 
-  const mode: ViewerMode = bundle?.file_type === 'pdf' ? 'pdf' : 'ifc';
+  const mode: Mode = bundle?.file_type === 'pdf' ? 'pdf' : 'ifc';
   const isPdf = mode === 'pdf';
   const isIfc = mode === 'ifc';
   const shellReady = bundle !== null && error === null;
@@ -220,12 +221,7 @@ export default function ViewerPage(): JSX.Element {
   let canvas: JSX.Element | null = null;
   if (error !== null) {
     canvas = (
-      <div
-        role="alert"
-        className="m-6 rounded-md border border-error-light bg-error-lighter px-4 py-3 text-body2 text-error"
-      >
-        {error}
-      </div>
+      <ErrorBanner message={error} tone="soft" className="m-6 text-body2" />
     );
   } else if (bundle === null) {
     canvas = <Skeleton className="absolute inset-0" />;
@@ -300,11 +296,11 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
 
-        {isIfc ? <ViewerContextMenu handle={viewerHandleRef.current} /> : null}
+        {isIfc ? <ContextMenu handle={viewerHandleRef.current} /> : null}
 
         {showChrome ? (
           <>
-            <ViewerSidePanel
+            <SidePanel
               activePanel={activePanel}
               explorerContent={isIfc ? (
                 <ModelExplorer
@@ -337,7 +333,7 @@ export default function ViewerPage(): JSX.Element {
                 bcf: <BcfHeaderActions handle={viewerHandleRef.current} />,
               } : undefined}
             />
-            <ViewerSideRail
+            <SideRail
               mode={mode}
               activePanel={activePanel}
               onTogglePanel={togglePanel}
@@ -354,7 +350,7 @@ export default function ViewerPage(): JSX.Element {
 
         {ifcShellReady ? (
           <div className={isEditMode ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
-            <ViewerToolbar
+            <Toolbar
               handle={viewerHandleRef.current}
               selectionCount={selectionCount}
               settings={settings}
@@ -385,7 +381,7 @@ export default function ViewerPage(): JSX.Element {
         ) : null}
 
         {isIfc && isEditMode ? (
-          <ViewerModeIndicator toolLabel={modeState.toolLabel} />
+          <ModeIndicator toolLabel={modeState.toolLabel} />
         ) : null}
 
         {viewerError !== null ? (
@@ -397,7 +393,7 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
       </div>
-      <ViewerStatusBar
+      <StatusBar
         mode={mode}
         metadata={metadata}
         viewerReady={viewerReady}

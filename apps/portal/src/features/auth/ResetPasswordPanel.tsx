@@ -7,6 +7,7 @@ import { useId, useState, type FormEvent, type JSX } from 'react';
 
 import { Button, FormField, Input } from '@bimstitch/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { useRouter } from '@/i18n/navigation';
 import { apiClient } from '@/lib/api/client';
@@ -52,12 +53,7 @@ export function ResetPasswordPanel(): JSX.Element {
     <>
       <AuthFormIntro eyebrow={t('eyebrow')} heading={t('title')} subtitle={t('subtitle')} />
       {tokenMissing ? (
-        <div
-          role="alert"
-          className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
-        >
-          {t('errors.tokenMissing')}
-        </div>
+        <ErrorBanner message={t('errors.tokenMissing')} tone="soft" />
       ) : (
         <form noValidate onSubmit={onSubmit} className="flex w-full flex-col gap-3.5">
           <FormField label={t('field.password')} htmlFor={passwordId}>
@@ -84,14 +80,7 @@ export function ResetPasswordPanel(): JSX.Element {
               onChange={(e) => setConfirm(e.target.value)}
             />
           </FormField>
-          {error !== null && (
-            <div
-              role="alert"
-              className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
-            >
-              {error}
-            </div>
-          )}
+          <ErrorBanner message={error} tone="soft" />
           <Button
             type="submit"
             variant="primary"

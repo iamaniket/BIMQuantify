@@ -21,7 +21,7 @@ import type { Locale } from '@bimstitch/i18n';
 
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { INSTRUMENT_OPTIONS } from '@/features/projects/wizard/projectWizardSteps';
-import { HeroShell } from '@/components/layout/HeroShell';
+import { HeroShell } from '@/components/shared/layout/HeroShell';
 
 type Props = {
   project: Project;

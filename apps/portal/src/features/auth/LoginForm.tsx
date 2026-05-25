@@ -11,6 +11,8 @@ import { z } from 'zod';
 
 import { Button, FormField, Input } from '@bimstitch/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
+
 import { useLogin } from '@/features/auth/useLogin';
 import { ApiError } from '@/lib/api/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -195,14 +197,7 @@ export function LoginForm(): JSX.Element {
             <span className="text-[12.5px] text-foreground-secondary">{t('rememberMe')}</span>
           </label>
 
-          {apiErrorMessage === null ? null : (
-            <div
-              role="alert"
-              className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
-            >
-              {apiErrorMessage}
-            </div>
-          )}
+          <ErrorBanner message={apiErrorMessage} tone="soft" />
 
           <Button
             type="submit"
@@ -248,14 +243,7 @@ export function LoginForm(): JSX.Element {
             ))}
           </ul>
 
-          {organizationError === null ? null : (
-            <div
-              role="alert"
-              className="rounded-md border border-error-light bg-error-lighter px-3 py-2 text-[12.5px] text-error"
-            >
-              {organizationError}
-            </div>
-          )}
+          <ErrorBanner message={organizationError} tone="soft" />
 
           <Button
             type="button"

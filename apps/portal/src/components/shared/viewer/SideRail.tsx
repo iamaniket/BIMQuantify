@@ -15,7 +15,7 @@ import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
-export type ViewerPanelId =
+export type PanelId =
   | 'explorer'
   | 'properties'
   | 'documents'
@@ -25,16 +25,16 @@ export type ViewerPanelId =
   | 'bcf'
   | 'pages';
 
-export type ViewerMode = 'ifc' | 'pdf';
+export type Mode = 'ifc' | 'pdf';
 
-type ViewerSideRailProps = {
-  mode: ViewerMode;
-  activePanel: ViewerPanelId | null;
-  onTogglePanel: (id: ViewerPanelId) => void;
+type SideRailProps = {
+  mode: Mode;
+  activePanel: PanelId | null;
+  onTogglePanel: (id: PanelId) => void;
 };
 
 type RailButton = {
-  id: ViewerPanelId;
+  id: PanelId;
   label: string;
   icon: LucideIcon;
 };
@@ -56,11 +56,11 @@ const PDF_BUTTONS: RailButton[] = [
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
 ];
 
-export function ViewerSideRail({
+export function SideRail({
   mode,
   activePanel,
   onTogglePanel,
-}: ViewerSideRailProps): JSX.Element {
+}: SideRailProps): JSX.Element {
   const buttons = mode === 'pdf' ? PDF_BUTTONS : IFC_BUTTONS;
   return (
     <div className="absolute bottom-0 right-0 top-0 z-30 flex w-11 flex-col items-center gap-1 border-l border-border bg-background-secondary py-2">

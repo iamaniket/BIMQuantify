@@ -467,7 +467,7 @@ function MouseControlsSection({
   );
 }
 
-export function ViewerSettingsPopover({
+export function SettingsPopover({
   handle,
   settings,
   onSettingsChange,

@@ -6,6 +6,8 @@ import { useState, useMemo, type JSX } from 'react';
 
 import { Badge, Button, Input } from '@bimstitch/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
+
 import type { ComplianceIssue } from '@/features/compliance/types';
 
 import { IssueDetailModal } from './IssueDetailModal';
@@ -109,12 +111,7 @@ export function IssuesTab({ issues, onDownloadCsv }: Props): JSX.Element {
         )}
       </div>
       {downloadError !== null && (
-        <div
-          role="alert"
-          className="rounded-md border border-error-light bg-error-lighter px-3 py-1.5 text-caption text-error"
-        >
-          {downloadError}
-        </div>
+        <ErrorBanner message={downloadError} tone="soft" className="py-1.5 text-caption" />
       )}
 
       <div className="rounded-lg border border-border bg-background">

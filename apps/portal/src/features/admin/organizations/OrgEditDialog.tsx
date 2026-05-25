@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 import { AppDialog, Input, Select } from '@bimstitch/ui';
 
-import { Field } from '@/components/forms/Field';
+import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';
 import { ApiError } from '@/lib/api/client';
 import type { OrganizationRead } from '@/lib/api/schemas';

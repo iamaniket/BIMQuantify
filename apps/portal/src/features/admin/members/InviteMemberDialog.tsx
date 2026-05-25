@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 import { AppDialog, Checkbox, Input } from '@bimstitch/ui';
 
-import { Field } from '@/components/forms/Field';
+import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';
 import { ApiError } from '@/lib/api/client';
 import { useInviteMember } from './useInviteMember';
