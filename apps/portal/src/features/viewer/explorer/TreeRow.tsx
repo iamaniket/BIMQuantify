@@ -9,22 +9,14 @@ import {
   Layers,
   MapPin,
 } from 'lucide-react';
-import { type JSX, useCallback, useRef, useEffect, memo } from 'react';
+import { type CSSProperties, type JSX, useCallback, useRef, useEffect, memo } from 'react';
 
 import { cn } from '@bimstitch/ui';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useViewerEntityStore, type EntityKey } from '@/stores/viewerEntityStore';
 
-export type TreeNodeData = {
-  key: string;
-  label: string;
-  type?: string;
-  entityKeys: EntityKey[];
-  children?: TreeNodeData[];
-};
-
-/* ── IFC-type → icon mapping ────────────────────────────── */
+import type { TreeNodeData } from './TreeNode';
 
 const TYPE_ICON_MAP: Record<string, typeof Component> = {
   IfcProject: FolderKanban,
@@ -38,8 +30,6 @@ function typeIcon(type: string | undefined): typeof Component | null {
   if (!type) return null;
   return TYPE_ICON_MAP[type] ?? null;
 }
-
-/* ── Checkbox with indeterminate support ────────────────── */
 
 type TreeCheckboxProps = {
   checked: boolean;
@@ -69,27 +59,28 @@ function TreeCheckbox({ checked, indeterminate, onChange, onClick }: TreeCheckbo
   );
 }
 
-/* ── TreeNode ───────────────────────────────────────────── */
-
-type TreeNodeProps = {
+type TreeRowProps = {
+  style: CSSProperties;
   node: TreeNodeData;
   depth: number;
   expanded: Set<string>;
   onToggleExpand: (key: string) => void;
 };
 
-function TreeNodeInner({
+function TreeRowInner({
+  style,
   node,
   depth,
   expanded,
   onToggleExpand,
-}: TreeNodeProps): JSX.Element {
+}: TreeRowProps): JSX.Element {
   const isExpanded = expanded.has(node.key);
   const hasChildren = (node.children?.length ?? 0) > 0;
 
   const { isSelected, hiddenCount } = useViewerEntityStore(
     useShallow((s) => {
-      const isSelected = node.entityKeys.some((k) => s.selected.has(k));
+      const isSelected =
+        s.selectedAll || node.entityKeys.some((k) => s.selected.has(k));
       let hiddenCount = 0;
       for (const k of node.entityKeys) {
         if (s.hidden.has(k)) hiddenCount++;
@@ -136,13 +127,13 @@ function TreeNodeInner({
   const Icon = typeIcon(node.type);
 
   return (
-    <div>
+    <div style={style}>
       <div
         role="treeitem"
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={isSelected}
         className={cn(
-          'group flex items-center gap-1.5 py-1 pr-2 cursor-pointer select-none',
+          'group flex h-full items-center gap-1.5 pr-2 cursor-pointer select-none',
           'hover:bg-background-secondary rounded',
           isSelected && 'bg-primary/10',
           allHidden && 'opacity-40',
@@ -150,7 +141,6 @@ function TreeNodeInner({
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
         onClick={handleRowClick}
       >
-        {/* Expand / collapse chevron */}
         <button
           type="button"
           className={cn(
@@ -168,7 +158,6 @@ function TreeNodeInner({
           />
         </button>
 
-        {/* Visibility checkbox */}
         {totalKeys > 0 && (
           <TreeCheckbox
             checked={isChecked}
@@ -178,12 +167,10 @@ function TreeNodeInner({
           />
         )}
 
-        {/* Type icon */}
         {Icon != null && (
           <Icon className="h-3.5 w-3.5 shrink-0 text-foreground-secondary" />
         )}
 
-        {/* Label */}
         <span
           className="flex-1 truncate text-caption"
           title={node.label}
@@ -191,20 +178,8 @@ function TreeNodeInner({
           {node.label}
         </span>
       </div>
-
-      {isExpanded && node.children != null
-        ? node.children.map((child) => (
-            <TreeNodeComponent
-              key={child.key}
-              node={child}
-              depth={depth + 1}
-              expanded={expanded}
-              onToggleExpand={onToggleExpand}
-            />
-          ))
-        : null}
     </div>
   );
 }
 
-export const TreeNodeComponent = memo(TreeNodeInner);
+export const TreeRow = memo(TreeRowInner);

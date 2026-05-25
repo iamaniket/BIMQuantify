@@ -1,6 +1,6 @@
 'use client';
 
-import type { JSX, ReactNode } from 'react';
+import { type JSX, type ReactNode, useCallback, useRef, useState } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
@@ -45,6 +45,10 @@ function PlaceholderContent({ label }: { label: string }): JSX.Element {
   );
 }
 
+const MIN_WIDTH = 280;
+const MAX_WIDTH = 600;
+const DEFAULT_WIDTH = 360;
+
 export function SidePanel({
   activePanel,
   explorerContent,
@@ -56,22 +60,58 @@ export function SidePanel({
   headerActions,
 }: SidePanelProps): JSX.Element {
   const isOpen = activePanel !== null;
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const dragging = useRef(false);
+
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragging.current = true;
+    const startX = e.clientX;
+    const startWidth = width;
+
+    const onPointerMove = (ev: PointerEvent): void => {
+      if (!dragging.current) return;
+      const delta = startX - ev.clientX;
+      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta));
+      setWidth(next);
+    };
+
+    const onPointerUp = (): void => {
+      dragging.current = false;
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  }, [width]);
 
   return (
     <div
       aria-hidden={!isOpen}
+      style={{ width: isOpen ? width : DEFAULT_WIDTH }}
       className={cn(
-        'absolute bottom-0 right-[51px] top-0 z-20 w-[360px] transition-transform duration-200 ease-out',
+        'absolute bottom-0 right-[51px] top-0 z-20 transition-transform duration-200 ease-out',
         isOpen
           ? 'pointer-events-auto translate-x-0'
           : 'pointer-events-none translate-x-full',
       )}
     >
+      {/* Resize handle */}
+      <div
+        onPointerDown={onPointerDown}
+        className="absolute -left-1 top-0 bottom-0 z-10 w-2 cursor-col-resize hover:bg-primary/20 active:bg-primary/30 transition-colors"
+      />
       <div className="flex h-full flex-col border-l border-border bg-background shadow-lg">
         {activePanel !== null && (
           <>
-            <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background-secondary px-3.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-foreground-secondary">
+            <div
+              className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3.5"
+              style={{
+                background: 'linear-gradient(135deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
+              }}
+            >
+              <span className="text-xs font-bold uppercase tracking-wider text-white">
                 {PANEL_TITLES[activePanel]}
               </span>
               {headerActions?.[activePanel] && (

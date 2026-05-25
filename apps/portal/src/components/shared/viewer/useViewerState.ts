@@ -25,7 +25,15 @@ export function useViewerState(handle: ViewerHandle | null): ViewerState {
     if (!handle) return undefined;
 
     const offSelection = handle.events.on('selection:change', (ev) => {
-      setState((prev) => ({ ...prev, selectionCount: ev.selected.length }));
+      // When `allSelected` is true the viewer event omits the enumerated
+      // list; the truthy count below is enough for callers that only
+      // check `selectionCount > 0` (e.g. context-menu enablement).
+      // Callers needing the actual number must consult `totalElements`
+      // from model metadata.
+      setState((prev) => ({
+        ...prev,
+        selectionCount: ev.allSelected ? Number.MAX_SAFE_INTEGER : ev.selected.length,
+      }));
     });
 
     const offVisibility = handle.events.on('visibility:change', (ev) => {

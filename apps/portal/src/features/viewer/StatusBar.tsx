@@ -2,6 +2,8 @@
 
 import type { JSX } from 'react';
 
+import { cn } from '@bimstitch/ui';
+
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useViewerFPS } from '@/features/viewer/useViewerFPS';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
@@ -17,12 +19,12 @@ type StatusBarProps = {
 };
 
 function Separator(): JSX.Element {
-  return <span className="mx-2 inline-block h-[11px] w-px bg-foreground/10" />;
+  return <span className="mx-1.5 inline-block h-[9px] w-px bg-white/20" />;
 }
 
 function Label({ children }: { children: React.ReactNode }): JSX.Element {
   return (
-    <span className="text-caption font-bold uppercase tracking-widest text-foreground/40">
+    <span className="text-caption font-bold uppercase tracking-widest text-white/50">
       {children}
     </span>
   );
@@ -30,7 +32,7 @@ function Label({ children }: { children: React.ReactNode }): JSX.Element {
 
 function Value({ children }: { children: React.ReactNode }): JSX.Element {
   return (
-    <span className="text-caption font-semibold tabular-nums tracking-tight text-foreground/80">
+    <span className="text-caption font-semibold tabular-nums tracking-tight text-white/90">
       {children}
     </span>
   );
@@ -39,12 +41,14 @@ function Value({ children }: { children: React.ReactNode }): JSX.Element {
 function PdfStatusBar({
   currentPage,
   numPages,
+  className,
 }: {
   currentPage: number;
   numPages: number | null;
+  className?: string;
 }): JSX.Element {
   return (
-    <div className="flex h-[22px] shrink-0 items-center overflow-hidden border-t border-border bg-background/95 px-3 font-mono backdrop-blur-sm">
+    <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-mono', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
       <span className="flex min-w-0 flex-1 items-center overflow-hidden">
         <Label>page</Label>
         <span>&nbsp;</span>
@@ -69,19 +73,23 @@ function PdfStatusBar({
 function IfcStatusBar({
   metadata,
   viewerReady,
+  className,
 }: {
   metadata: ModelMetadata | undefined;
   viewerReady: boolean;
+  className?: string;
 }): JSX.Element {
   const fps = useViewerFPS(viewerReady);
-  const selectionCount = useViewerEntityStore((s) => s.selected.size);
+  const selectedAll = useViewerEntityStore((s) => s.selectedAll);
+  const partialCount = useViewerEntityStore((s) => s.selected.size);
   const hiddenCount = useViewerEntityStore((s) => s.hidden.size);
 
   const totalElements = metadata?.totalElements ?? 0;
   const visibleCount = totalElements - hiddenCount;
+  const selectionCount = selectedAll ? totalElements : partialCount;
 
   return (
-    <div className="flex h-[22px] shrink-0 items-center overflow-hidden border-t border-border bg-background/95 px-3 font-mono backdrop-blur-sm">
+    <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-mono', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
       <span className="flex min-w-0 flex-1 items-center overflow-hidden">
         <Label>selected</Label>
         <span>&nbsp;</span>
@@ -107,7 +115,7 @@ function IfcStatusBar({
         <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
         <Label>fps</Label>
         <span>&nbsp;</span>
-        <span className="text-caption font-semibold tabular-nums tracking-tight text-green-600 dark:text-green-400">
+        <span className="text-caption font-semibold tabular-nums tracking-tight text-green-300">
           {fps > 0 ? fps : '—'}
         </span>
         <Separator />

@@ -7,8 +7,8 @@ import type { ElementEntry } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
-import { TreeContainer } from './TreeContainer';
-import { TreeNodeComponent, type TreeNodeData } from './TreeNode';
+import { VirtualizedTree } from './VirtualizedTree';
+import type { TreeNodeData } from './TreeNode';
 import { elementToLeaf, groupElementsBy } from './treeBuilders';
 import { useTreeExpansion } from './useTreeExpansion';
 
@@ -43,16 +43,10 @@ export function ClassesTab({ elements }: ClassesTabProps): JSX.Element {
   }
 
   return (
-    <TreeContainer>
-      {classNodes.map((node) => (
-        <TreeNodeComponent
-          key={node.key}
-          node={node}
-          depth={0}
-          expanded={expanded}
-          onToggleExpand={toggle}
-        />
-      ))}
-    </TreeContainer>
+    <VirtualizedTree
+      roots={classNodes}
+      expanded={expanded}
+      onToggleExpand={toggle}
+    />
   );
 }

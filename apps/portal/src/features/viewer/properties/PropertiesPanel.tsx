@@ -30,6 +30,7 @@ export function PropertiesPanel({
   isLoadingProperties,
 }: PropertiesPanelProps): JSX.Element {
   const selected = useViewerEntityStore((s) => s.selected);
+  const selectedAll = useViewerEntityStore((s) => s.selectedAll);
   const [tab, setTab] = useState<PropertiesTab>('properties');
 
   const elementsByExpressId = useMemo(() => {
@@ -49,6 +50,16 @@ export function PropertiesPanel({
     if (!parsed) return null;
     return elementsByExpressId.get(parsed.localId) ?? null;
   }, [selected, elementsByExpressId]);
+
+  if (selectedAll) {
+    const total = metadata?.totalElements ?? 0;
+    return (
+      <PanelEmptyState
+        icon={Info}
+        message={`All ${total.toLocaleString()} elements selected. Select a single element to inspect its properties.`}
+      />
+    );
+  }
 
   if (selected.size === 0) {
     return (

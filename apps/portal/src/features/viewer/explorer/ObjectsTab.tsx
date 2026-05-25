@@ -7,8 +7,8 @@ import type { ElementEntry, SpatialNode } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
-import { TreeContainer } from './TreeContainer';
-import { TreeNodeComponent, type TreeNodeData } from './TreeNode';
+import { VirtualizedTree } from './VirtualizedTree';
+import type { TreeNodeData } from './TreeNode';
 import { elementToLeaf, groupElementsBy, collectExpandedKeys } from './treeBuilders';
 import { useTreeExpansion } from './useTreeExpansion';
 
@@ -70,13 +70,10 @@ export function ObjectsTab({
   }
 
   return (
-    <TreeContainer>
-      <TreeNodeComponent
-        node={tree}
-        depth={0}
-        expanded={expanded}
-        onToggleExpand={toggle}
-      />
-    </TreeContainer>
+    <VirtualizedTree
+      roots={[tree]}
+      expanded={expanded}
+      onToggleExpand={toggle}
+    />
   );
 }

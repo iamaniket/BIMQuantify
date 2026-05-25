@@ -53,8 +53,16 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
       store.getState()._setModelId(modelId);
     });
 
-    const offSelection = handle.events.on('selection:change', ({ selected }) => {
-      store.getState()._applyViewerSelection(itemsToKeys(selected));
+    const offSelection = handle.events.on('selection:change', ({ selected, allSelected }) => {
+      if (allSelected) {
+        // O(1) regardless of model size — no key conversion, no Set build.
+        store.getState()._applyViewerSelection([], true);
+      } else if (selected.length === 0) {
+        store.setState((s) => ({ _syncDepth: s._syncDepth + 1 }));
+        store.getState().clearSelection();
+      } else {
+        store.getState()._applyViewerSelection(itemsToKeys(selected), false);
+      }
       queueMicrotask(() => {
         store.setState((s) => ({ _syncDepth: Math.max(0, s._syncDepth - 1) }));
       });
@@ -103,9 +111,13 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
     const unsub = store.subscribe((state, prev) => {
       if (state._syncDepth > 0) return;
 
-      if (state.selected !== prev.selected) {
-        const items = keysToItems(state.selected);
-        void handle.commands.execute('selection.set', items);
+      if (state.selected !== prev.selected || state.selectedAll !== prev.selectedAll) {
+        if (state.selectedAll) {
+          void handle.commands.execute('selection.selectAll');
+        } else {
+          const items = keysToItems(state.selected);
+          void handle.commands.execute('selection.set', items);
+        }
       }
 
       if (state.hidden !== prev.hidden || state.isolated !== prev.isolated || state.isolationActive !== prev.isolationActive) {

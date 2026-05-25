@@ -31,6 +31,12 @@ interface ViewerEntityState {
   modelId: string | null;
 
   selected: Set<EntityKey>;
+  /**
+   * When true, every loaded item is considered selected. `selected` stays
+   * empty so the JS-side cost of "select all" is O(1). UI consumers must
+   * branch on this flag (TreeRow row highlight, StatusBar count, etc.).
+   */
+  selectedAll: boolean;
   hidden: Set<EntityKey>;
   isolated: Set<EntityKey>;
   xrayed: Set<EntityKey>;
@@ -60,7 +66,7 @@ interface ViewerEntityState {
 
   setFeatureEnabled: (feature: ViewerFeature, on: boolean) => void;
 
-  _applyViewerSelection: (keys: EntityKey[]) => void;
+  _applyViewerSelection: (keys: EntityKey[], allSelected: boolean) => void;
   _applyViewerVisibility: (
     hidden: EntityKey[],
     isolated: EntityKey[],
@@ -86,6 +92,7 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
   modelId: null,
 
   selected: EMPTY_SET,
+  selectedAll: false,
   hidden: EMPTY_SET,
   isolated: EMPTY_SET,
   xrayed: EMPTY_SET,
@@ -96,20 +103,20 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
 
   _syncDepth: 0,
 
-  select: (keys) => set({ selected: new Set(keys) }),
+  select: (keys) => set({ selected: new Set(keys), selectedAll: false }),
   addToSelection: (keys) =>
     set((s) => {
       const next = new Set(s.selected);
       for (const k of keys) next.add(k);
-      return { selected: next };
+      return { selected: next, selectedAll: false };
     }),
   removeFromSelection: (keys) =>
     set((s) => {
       const next = new Set(s.selected);
       for (const k of keys) next.delete(k);
-      return { selected: next };
+      return { selected: next, selectedAll: false };
     }),
-  clearSelection: () => set({ selected: EMPTY_SET }),
+  clearSelection: () => set({ selected: EMPTY_SET, selectedAll: false }),
 
   hideItems: (keys) =>
     set((s) => {
@@ -165,10 +172,14 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
   setFeatureEnabled: (feature, on) =>
     set((s) => ({ enabled: { ...s.enabled, [feature]: on } })),
 
-  _applyViewerSelection: (keys) =>
+  _applyViewerSelection: (keys, allSelected) =>
     set((s) => ({
       _syncDepth: s._syncDepth + 1,
-      selected: new Set(keys),
+      selectedAll: allSelected,
+      // When `allSelected` is true the viewer treats every item as
+      // selected without enumerating them; leave `selected` empty so
+      // every per-key consumer hits the flag branch instead.
+      selected: allSelected || keys.length === 0 ? EMPTY_SET : new Set(keys),
     })),
   _applyViewerVisibility: (hidden, isolated, active) =>
     set((s) => ({
@@ -204,6 +215,7 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
     set({
       modelId: null,
       selected: EMPTY_SET,
+      selectedAll: false,
       hidden: EMPTY_SET,
       isolated: EMPTY_SET,
       xrayed: EMPTY_SET,
@@ -217,7 +229,7 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
 export function getAppearance(key: EntityKey): EntityAppearance {
   const s = useViewerEntityStore.getState();
   return {
-    selected: s.selected.has(key),
+    selected: s.selectedAll || s.selected.has(key),
     visible: !s.hidden.has(key),
     xray: s.xrayed.has(key),
     opacity: s.opacityOverrides.get(key) ?? null,

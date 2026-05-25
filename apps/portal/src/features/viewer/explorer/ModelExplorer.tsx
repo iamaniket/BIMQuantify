@@ -46,7 +46,7 @@ export function ModelExplorer({
   return (
     <div className="flex h-full flex-col">
       <PanelTabs tabs={TABS} active={tab} onChange={setTab} />
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {tab === 'objects' && (
           <ObjectsTab spatialTree={metadata.spatialTree} elements={metadata.elements} />
         )}

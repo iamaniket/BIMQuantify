@@ -35,7 +35,19 @@ export interface ViewerEvents {
   'pointer:move': { ndc: { x: number; y: number }; clientX: number; clientY: number };
   'pointer:click': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean; clientX: number; clientY: number };
   'hover:change': { item: ItemId | null };
-  'selection:change': { selected: ItemId[]; added: ItemId[]; removed: ItemId[] };
+  /**
+   * Fired when the selection set changes. When `allSelected` is true the
+   * full set is implicit (every loaded item) — `selected`/`added` are
+   * empty by convention; consumers must consult the flag to render counts
+   * and highlight state. Materializing the full list at this point would
+   * cost O(N) for nothing.
+   */
+  'selection:change': {
+    selected: ItemId[];
+    added: ItemId[];
+    removed: ItemId[];
+    allSelected: boolean;
+  };
   'camera:change': { position: Vec3; target: Vec3 };
   'viewer:idle': undefined;
   'visibility:change': { hidden: ItemId[]; isolated: ItemId[]; isolationActive: boolean };

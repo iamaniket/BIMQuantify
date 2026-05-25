@@ -13,8 +13,9 @@ import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 type DocsScope = 'all' | 'entity' | 'project';
 
 export function DocumentsPanel(): JSX.Element {
-  const selectionCount = useViewerEntityStore((s) => s.selected.size);
-  const hasSelection = selectionCount > 0;
+  const partialCount = useViewerEntityStore((s) => s.selected.size);
+  const selectedAll = useViewerEntityStore((s) => s.selectedAll);
+  const hasSelection = selectedAll || partialCount > 0;
   const [scope, setScope] = useState<DocsScope>(hasSelection ? 'entity' : 'all');
   const [query, setQuery] = useState('');
 

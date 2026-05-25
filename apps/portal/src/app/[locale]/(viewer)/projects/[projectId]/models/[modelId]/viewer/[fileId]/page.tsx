@@ -111,7 +111,8 @@ export default function ViewerPage(): JSX.Element {
   const [viewerError, setViewerError] = useState<string | null>(null);
   const viewerHandleRef = useRef<ViewerHandle | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
-  const selectionCount = useViewerEntityStore((s) => s.selected.size);
+  const partialSelectionCount = useViewerEntityStore((s) => s.selected.size);
+  const isAllSelected = useViewerEntityStore((s) => s.selectedAll);
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
   const [viewerEpoch, setViewerEpoch] = useState(0);
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
@@ -141,11 +142,6 @@ export default function ViewerPage(): JSX.Element {
     });
   }, [viewerReady]);
 
-  useAppHeader({
-    statusLabel: selectionCount > 0 ? `${String(selectionCount)} selected` : null,
-    statusTone: 'warning',
-  });
-
   useViewerBridge(viewerHandleRef.current);
   const modeState = useViewerMode(viewerHandleRef.current);
   const isEditMode = modeState.mode === 'edit';
@@ -153,10 +149,19 @@ export default function ViewerPage(): JSX.Element {
   const metadataUrl = bundle?.metadata_url ?? null;
   const propertiesUrl = bundle?.properties_url ?? null;
   const { data: metadata, isLoading: isLoadingMetadata } = useModelMetadata(metadataUrl);
+  const hasSelection = isAllSelected || partialSelectionCount > 0;
+  const selectionCount = isAllSelected
+    ? metadata?.totalElements ?? 0
+    : partialSelectionCount;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,
-    activePanel === 'properties' && selectionCount > 0,
+    activePanel === 'properties' && hasSelection && !isAllSelected,
   );
+
+  useAppHeader({
+    statusLabel: hasSelection ? `${String(selectionCount)} selected` : null,
+    statusTone: 'warning',
+  });
 
   const [sceneReady, setSceneReady] = useState(false);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);

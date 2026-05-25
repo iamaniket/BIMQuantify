@@ -9,6 +9,12 @@
  *
  * Exposes itself through `ctx.plugins.get('selection')` so other plugins
  * (e.g. hover) can do fast reads without going through the bus.
+ *
+ * Bulk "select all" / "clear" path uses the library's `setColor(undefined, …)`
+ * fast path and tracks the state as a single `allSelected` flag instead
+ * of materialising an N-entry Set. Operations that need to break the
+ * "all" invariant (deselect a single item, remove, toggle) call
+ * `materializeAll()` first to populate the Set on demand.
  */
 
 import * as THREE from 'three';
@@ -29,6 +35,7 @@ export interface SelectionPluginAPI {
   hasItem(item: ItemId): boolean;
   size(): number;
   list(): ItemId[];
+  isAllSelected(): boolean;
   setEnabled(enabled: boolean): void;
   isEnabled(): boolean;
 }
@@ -39,6 +46,12 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
   // `${modelId}::${localId}` keys for cheap Set ops.
   const selected = new Set<string>();
   const itemMap = new Map<string, ItemId>();
+  // When true, every loaded item is considered selected. `selected`/`itemMap`
+  // stay empty so the JS-side cost of select-all is O(1).
+  let allSelected = false;
+  // Cached element counts per model, updated on `model:loaded`. Used by
+  // `size()` when `allSelected` is true.
+  const modelCounts = new Map<string, number>();
 
   const key = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
@@ -66,10 +79,14 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     return map;
   };
 
+  // Edge overlays are only drawn for small selections — adding/removing
+  // individual LineSegments for thousands of items is too expensive.
+  const EDGE_OVERLAY_THRESHOLD = 50;
+
   // Fire-and-forget per-model setColor / resetColor. The library's
   // MeshConnection batches multiple calls landing in the same tick so
   // there's no benefit to awaiting these.
-  const paint = (items: ItemId[], on: boolean): void => {
+  const paintColors = (items: ItemId[], on: boolean): void => {
     if (!ctxRef || !items.length) return;
     if (!enabled) return;
     for (const [modelId, ids] of groupByModel(items)) {
@@ -78,36 +95,85 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
       if (on) void model.setColor(ids, color).catch(() => undefined);
       else    void model.resetColor(ids).catch(() => undefined);
     }
-    if (on) void edges.add(ctxRef, items, color);
-    else    edges.remove(ctxRef, items);
+  };
+
+  const paint = (items: ItemId[], on: boolean): void => {
+    paintColors(items, on);
+    if (items.length <= EDGE_OVERLAY_THRESHOLD) {
+      if (!ctxRef) return;
+      if (on) void edges.add(ctxRef, items, color);
+      else    edges.remove(ctxRef, items);
+    }
   };
 
   const emitChange = (added: ItemId[], removed: ItemId[]): void => {
     if (!ctxRef) return;
     ctxRef.events.emit('selection:change', {
-      selected: [...itemMap.values()],
+      selected: allSelected ? [] : [...itemMap.values()],
       added,
       removed,
+      allSelected,
     });
   };
 
+  // Lazily materialise the "all selected" set into the real Set+Map.
+  // Called by any operation that needs a concrete per-item view (e.g.
+  // deselecting one item out of an "all" selection). Cost: O(N) once.
+  const materializeAll = async (): Promise<void> => {
+    if (!allSelected || !ctxRef) return;
+    selected.clear();
+    itemMap.clear();
+    for (const [modelId, model] of ctxRef.models()) {
+      let ids: Iterable<number>;
+      try {
+        ids = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
+      } catch {
+        continue;
+      }
+      for (const localId of ids) {
+        const it: ItemId = { modelId, localId };
+        const k = key(it);
+        selected.add(k);
+        itemMap.set(k, it);
+      }
+    }
+    allSelected = false;
+  };
+
   const setSelection = (items: ItemId[]): void => {
+    // Caller has a concrete list of items, so any "all" invariant is
+    // broken. We don't materialize because we'll overwrite the set anyway.
+    const wasAllSelected = allSelected;
+    allSelected = false;
     const nextKeys = new Set(items.map(key));
     const removed: ItemId[] = [];
     const added: ItemId[] = [];
-    for (const k of selected) {
-      if (!nextKeys.has(k)) {
-        const it = itemMap.get(k);
-        if (it) removed.push(it);
+    if (wasAllSelected) {
+      // Coming from all-selected: everything not in `items` is implicitly
+      // removed. Skip building the explicit removed[] (would be O(N) for
+      // little gain) — the visual reset uses the bulk path below.
+      for (const it of items) added.push(it);
+    } else {
+      for (const k of selected) {
+        if (!nextKeys.has(k)) {
+          const it = itemMap.get(k);
+          if (it) removed.push(it);
+        }
       }
-    }
-    for (const it of items) {
-      if (!selected.has(key(it))) added.push(it);
+      for (const it of items) {
+        if (!selected.has(key(it))) added.push(it);
+      }
     }
     // Fire both in the same tick — library batches the underlying tile
     // updates inside its MeshConnection window.
-    paint(removed, false);
-    paint(added, true);
+    if (wasAllSelected) {
+      // Coming out of all-selected mode: nothing was painted, so just
+      // paint the kept items. No bulk reset needed.
+      paint(items, true);
+    } else {
+      paint(removed, false);
+      paint(added, true);
+    }
     selected.clear();
     itemMap.clear();
     for (const it of items) {
@@ -115,10 +181,11 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
       selected.add(k);
       itemMap.set(k, it);
     }
-    if (added.length || removed.length) emitChange(added, removed);
+    if (added.length || removed.length || wasAllSelected) emitChange(added, removed);
   };
 
   const addItems = (items: ItemId[]): void => {
+    if (allSelected) return; // Already includes everything.
     const fresh = items.filter((it) => !selected.has(key(it)));
     if (!fresh.length) return;
     paint(fresh, true);
@@ -130,7 +197,11 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     emitChange(fresh, []);
   };
 
-  const removeItems = (items: ItemId[]): void => {
+  const removeItems = async (items: ItemId[]): Promise<void> => {
+    if (allSelected) {
+      // Need a concrete per-item view before we can remove just some.
+      await materializeAll();
+    }
     const present = items.filter((it) => selected.has(key(it)));
     if (!present.length) return;
     paint(present, false);
@@ -143,12 +214,45 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
   };
 
   const clear = (): void => {
-    if (!selected.size) return;
+    if (!allSelected && !selected.size) return;
+    if (allSelected) {
+      // selectAll() didn't paint anything (see comment there), so clearing
+      // out of "all selected" is purely a flag flip — no worker round-trip.
+      if (ctxRef) edges.clear(ctxRef);
+      allSelected = false;
+      emitChange([], []);
+      return;
+    }
     const all = [...itemMap.values()];
-    paint(all, false);
+    paintColors(all, false);
+    if (ctxRef) edges.clear(ctxRef);
     selected.clear();
     itemMap.clear();
     emitChange([], all);
+  };
+
+  const selectAll = (): void => {
+    if (!enabled || !ctxRef) return;
+    if (allSelected) return;
+    // Intentionally skip the 3D paint on select-all. The library's worker
+    // walks every item to update its virtual-mesh state — that's the ~1s
+    // floor that survived the bulk-API switch. The UI (status bar, tree,
+    // properties panel) already communicates "everything is selected" via
+    // the `selectedAll` flag, which is what users actually need from this
+    // command. Re-painting becomes visible again as soon as the user
+    // narrows the selection (pickSet on a single item paints just that
+    // one).
+    //
+    // If there was a partial selection before this, reset just those
+    // items' colors so they don't stay stuck in selection color.
+    if (selected.size) {
+      paintColors([...itemMap.values()], false);
+    }
+    if (ctxRef) edges.clear(ctxRef);
+    selected.clear();
+    itemMap.clear();
+    allSelected = true;
+    emitChange([], []);
   };
 
   // Pick-by-NDC helpers — used by the mouse-bindings dispatcher.
@@ -186,7 +290,11 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     if (!ndc) return;
     const hit = await pick(ctxRef, ndc);
     if (!hit || isClippedBySection(hit.point)) return;
-    if (selected.has(key(hit.item))) removeItems([hit.item]);
+    if (allSelected) {
+      // Toggling under "all selected" means removing this one item.
+      await materializeAll();
+    }
+    if (selected.has(key(hit.item))) await removeItems([hit.item]);
     else addItems([hit.item]);
   };
 
@@ -196,7 +304,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     if (!ndc) return;
     const hit = await pick(ctxRef, ndc);
     if (!hit || isClippedBySection(hit.point)) return;
-    removeItems([hit.item]);
+    await removeItems([hit.item]);
   };
 
   // Toggle visual rendering without throwing away the selection set.
@@ -205,33 +313,49 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     if (enabled === next) return;
     enabled = next;
     if (!ctxRef) return;
-    const all = [...itemMap.values()];
-    if (!enabled && all.length) {
-      // Direct unpaint without going through `paint` (which is gated
-      // on `enabled`).
-      for (const [modelId, ids] of groupByModel(all)) {
-        const model = ctxRef.models().get(modelId);
-        if (model) void model.resetColor(ids).catch(() => undefined);
+    // The `allSelected` branch never paints in either direction — selectAll
+    // already skipped the 3D paint, so there's nothing to unpaint/repaint
+    // when the feature flips.
+    if (!enabled) {
+      if (!allSelected && selected.size) {
+        const all = [...itemMap.values()];
+        for (const [modelId, ids] of groupByModel(all)) {
+          const model = ctxRef.models().get(modelId);
+          if (model) void model.resetColor(ids).catch(() => undefined);
+        }
       }
-      edges.remove(ctxRef, all);
-    } else if (enabled && all.length) {
-      paint(all, true);
+      edges.clear(ctxRef);
+    } else if (enabled) {
+      if (!allSelected && selected.size) {
+        paint([...itemMap.values()], true);
+      }
     }
     ctxRef.events.emit('feature:enabled', { name: NAME, enabled });
+  };
+
+  const totalLoadedItems = (): number => {
+    let n = 0;
+    for (const c of modelCounts.values()) n += c;
+    return n;
   };
 
   const api: Plugin & SelectionPluginAPI = {
     name: NAME,
 
     hasItem(item: ItemId) {
-      return selected.has(key(item));
+      return allSelected || selected.has(key(item));
     },
     size() {
-      return selected.size;
+      return allSelected ? totalLoadedItems() : selected.size;
     },
     list() {
+      // For partial selections this is cheap. When `allSelected` is true
+      // we return the explicit list of items currently known — this is a
+      // sync API, so callers wanting the full materialized list must
+      // first run `selection.materializeAll` (exposed as a command).
       return [...itemMap.values()];
     },
+    isAllSelected() { return allSelected; },
     setEnabled,
     isEnabled() { return enabled; },
 
@@ -240,6 +364,20 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
       ctx.events.on('section:change', ({ planes }) => {
         cachedSectionPlanes = planes;
+      });
+
+      // Refresh cached counts whenever a model loads so `size()` stays accurate.
+      ctx.events.on('model:loaded', ({ modelId }) => {
+        const model = ctx.models().get(modelId);
+        if (!model) return;
+        void (model as unknown as { getLocalIds(): Promise<Iterable<number>> })
+          .getLocalIds()
+          .then((ids) => {
+            let n = 0;
+            for (const _ of ids) n++;
+            modelCounts.set(modelId, n);
+          })
+          .catch(() => undefined);
       });
 
       ctx.commands.register('selection.clear', () => clear(), {
@@ -267,7 +405,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
         'selection.has',
         (args: unknown) => {
           const items = toItems(args);
-          return items.length > 0 && selected.has(key(items[0]!));
+          return items.length > 0 && (allSelected || selected.has(key(items[0]!)));
         },
         { title: 'Check selection membership' },
       );
@@ -306,25 +444,21 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
         title: 'Get selection enabled state',
       });
 
-      ctx.commands.register('selection.selectAll', async () => {
-        if (!enabled) return;
-        const all: ItemId[] = [];
-        for (const [modelId, model] of ctx.models()) {
-          let ids: Iterable<number>;
-          try {
-            ids = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
-          } catch {
-            continue;
-          }
-          for (const localId of ids) {
-            all.push({ modelId, localId });
-          }
-        }
-        if (all.length) setSelection(all);
-      }, { title: 'Select all elements' });
+      ctx.commands.register('selection.selectAll', () => selectAll(), {
+        title: 'Select all elements',
+      });
+
+      ctx.commands.register('selection.materializeAll', async () => {
+        await materializeAll();
+      }, { title: 'Materialize all-selected state' });
 
       ctx.commands.register('selection.invert', async () => {
         if (!enabled) return;
+        if (allSelected) {
+          // Inverting "everything" is "nothing".
+          clear();
+          return;
+        }
         const inverted: ItemId[] = [];
         for (const [modelId, model] of ctx.models()) {
           let ids: Iterable<number>;
@@ -347,6 +481,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
       if (ctxRef) edges.dispose(ctxRef);
       clear();
       cachedSectionPlanes = [];
+      modelCounts.clear();
       ctxRef = null;
     },
   };

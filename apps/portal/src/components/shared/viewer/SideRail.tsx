@@ -67,7 +67,7 @@ export function SideRail({
   const buttons = mode === 'pdf' ? PDF_BUTTONS : IFC_BUTTONS;
   return (
     <div
-      className="absolute bottom-0 right-0 top-0 z-30 flex w-[51px] flex-col items-center gap-2 border-l border-white/12 py-3"
+      className="absolute bottom-0 right-0 top-0 z-30 flex w-[51px] flex-col items-center gap-2 border-l border-t border-white/12 py-3"
       style={{
         background: 'linear-gradient(180deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
       }}

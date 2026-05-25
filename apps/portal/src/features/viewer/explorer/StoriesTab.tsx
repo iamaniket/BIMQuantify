@@ -7,8 +7,8 @@ import type { ElementEntry, SpatialNode } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
-import { TreeContainer } from './TreeContainer';
-import { TreeNodeComponent, type TreeNodeData } from './TreeNode';
+import { VirtualizedTree } from './VirtualizedTree';
+import type { TreeNodeData } from './TreeNode';
 import {
   collectStoreys,
   elementToLeaf,
@@ -53,16 +53,10 @@ export function StoriesTab({
   }
 
   return (
-    <TreeContainer>
-      {storeyNodes.map((node) => (
-        <TreeNodeComponent
-          key={node.key}
-          node={node}
-          depth={0}
-          expanded={expanded}
-          onToggleExpand={toggle}
-        />
-      ))}
-    </TreeContainer>
+    <VirtualizedTree
+      roots={storeyNodes}
+      expanded={expanded}
+      onToggleExpand={toggle}
+    />
   );
 }
