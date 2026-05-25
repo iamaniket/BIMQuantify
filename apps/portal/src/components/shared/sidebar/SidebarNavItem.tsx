@@ -42,7 +42,7 @@ export function SidebarNavItem({
   const className = collapsed ? collapsedRow : expandedRow;
 
   const iconClassName = `h-[18px] w-[18px] shrink-0 ${active ? '' : ''}`;
-  const iconStyle = active ? { color: ACCENT } : { color: 'rgba(255,255,255,0.55)' };
+  const iconStyle = active ? { color: '#ffffff' } : { color: 'rgba(255,255,255,0.55)' };
 
   const content = (
     <>

@@ -18,13 +18,16 @@ export default function ViewerLoading(): JSX.Element {
         {/* Toolbar placeholder (matches showToolbarPlaceholder strip in the viewer page) */}
         <div
           aria-hidden
-          className="pointer-events-none absolute left-0 right-11 top-0 h-12 border-b border-border bg-background/95 backdrop-blur-sm"
+          className="pointer-events-none absolute left-0 right-[51px] top-0 h-12 border-b border-border bg-background/95 backdrop-blur-sm"
         />
 
-        {/* Side rail placeholder — matches w-11 right-aligned rail */}
+        {/* Side rail placeholder — matches w-[51px] right-aligned rail */}
         <div
           aria-hidden
-          className="pointer-events-none absolute bottom-0 right-0 top-0 w-11 border-l border-border bg-background-secondary"
+          className="pointer-events-none absolute bottom-0 right-0 top-0 w-[51px] border-l border-white/12"
+          style={{
+            background: 'linear-gradient(180deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
+          }}
         />
 
         {/* Centered "Preparing viewer…" spinner */}

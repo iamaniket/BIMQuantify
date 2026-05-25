@@ -66,7 +66,12 @@ export function SideRail({
 }: SideRailProps): JSX.Element {
   const buttons = mode === 'pdf' ? PDF_BUTTONS : IFC_BUTTONS;
   return (
-    <div className="absolute bottom-0 right-0 top-0 z-30 flex w-11 flex-col items-center gap-1 border-l border-border bg-background-secondary py-2">
+    <div
+      className="absolute bottom-0 right-0 top-0 z-30 flex w-[51px] flex-col items-center gap-2 border-l border-white/12 py-3"
+      style={{
+        background: 'linear-gradient(180deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
+      }}
+    >
       {buttons.map(({ id, label, icon: Icon }) => {
         const isActive = activePanel === id;
         return (
@@ -77,13 +82,13 @@ export function SideRail({
             onClick={() => onTogglePanel(id)}
             title={label}
             className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-md transition-all duration-150',
+              'flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150',
               isActive
-                ? 'bg-primary-lighter text-primary border border-primary-light shadow-sm'
-                : 'text-foreground-secondary border border-transparent shadow-sm hover:bg-primary/5 hover:text-primary hover:border-primary-light',
+                ? 'bg-white/[0.16] text-white'
+                : 'text-white/[0.82] border border-transparent hover:bg-white/10 hover:text-white',
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-[18px] w-[18px]" style={isActive ? { color: '#ffffff' } : { color: 'rgba(255,255,255,0.55)' }} />
           </button>
         );
       })}
