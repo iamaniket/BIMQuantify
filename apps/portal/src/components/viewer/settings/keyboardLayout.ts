@@ -38,7 +38,11 @@ const SPACER = (w: number): typeof DEFAULTS => ({
   isSpacer: true,
 });
 
+export const KEY_UNIT = 34;
+export const KEY_GAP = 2;
+
 export const KEYBOARD_ROWS: KeyDef[][] = [
+  // Row 0 — digit row + nav cluster
   [
     k('Escape', 'Esc', W(1.5)),
     k('', '', SPACER(0.5)),
@@ -55,7 +59,12 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('Minus', '-'),
     k('Equal', '='),
     k('Backspace', 'Bksp', W(1.5)),
+    k('', '', SPACER(0.5)),
+    k('Insert', 'Ins'),
+    k('Home', 'Home'),
+    k('PageUp', 'PgUp'),
   ],
+  // Row 1 — QWERTY + nav cluster
   [
     k('Tab', 'Tab', W(1.5)),
     k('KeyQ', 'Q'),
@@ -71,7 +80,12 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('BracketLeft', '['),
     k('BracketRight', ']'),
     k('Backslash', '\\', W(1.5)),
+    k('', '', SPACER(0.5)),
+    k('Delete', 'Del'),
+    k('End', 'End'),
+    k('PageDown', 'PgDn'),
   ],
+  // Row 2 — home row
   [
     k('CapsLock', 'Caps', W(1.75)),
     k('KeyA', 'A'),
@@ -87,6 +101,7 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('Quote', "'"),
     k('Enter', 'Enter', W(2.25)),
   ],
+  // Row 3 — shift row + arrow up
   [
     k('ShiftLeft', 'Shift', MOD(2.25)),
     k('KeyZ', 'Z'),
@@ -100,7 +115,11 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('Period', '.'),
     k('Slash', '/'),
     k('ShiftRight', 'Shift', MOD(2.75)),
+    k('', '', SPACER(1.5)),
+    k('ArrowUp', '↑'),
+    k('', '', SPACER(1)),
   ],
+  // Row 4 — bottom row + arrows
   [
     k('ControlLeft', 'Ctrl', MOD(1.5)),
     k('MetaLeft', 'Win', MOD(1.25)),
@@ -108,9 +127,8 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('Space', 'Space', W(5.5)),
     k('AltRight', 'Alt', MOD(1.25)),
     k('ControlRight', 'Ctrl', MOD(1.25)),
-    k('', '', SPACER(0.5)),
+    k('', '', SPACER(1.5)),
     k('ArrowLeft', '←'),
-    k('ArrowUp', '↑'),
     k('ArrowDown', '↓'),
     k('ArrowRight', '→'),
   ],
@@ -154,6 +172,7 @@ export function codeToComboKey(code: string): string {
     End: 'End',
     PageUp: 'PageUp',
     PageDown: 'PageDown',
+    Insert: 'Insert',
   };
   return map[code] ?? code;
 }

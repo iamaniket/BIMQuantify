@@ -1,25 +1,35 @@
 'use client';
 
-import { type JSX } from 'react';
+import { type CSSProperties, type JSX } from 'react';
 
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@bimstitch/ui';
 
 import {
-  CATEGORY_LABELS,
   CATEGORY_STYLES,
   UNBOUND_STYLE,
   type CategoryStyle,
 } from './shortcutCategories';
-import { KEYBOARD_ROWS, codeToComboKey, type KeyDef } from './keyboardLayout';
-import type { NormalizedBinding, ShortcutCategory } from './types';
+import { KEYBOARD_ROWS, KEY_GAP, KEY_UNIT, codeToComboKey, type KeyDef } from './keyboardLayout';
+import type { NormalizedBinding } from './types';
 
 type Props = {
   bindings: NormalizedBinding[];
   capturing: string | null;
   onCaptureStart: (command: string) => void;
+  selectedCode: string | null;
+  onPick: (code: string) => void;
 };
+
+const MODIFIER_CODES = new Set([
+  'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight',
+  'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'CapsLock',
+]);
+
+function unitPx(u: number): number {
+  return KEY_UNIT * u + (u - 1) * KEY_GAP;
+}
 
 function findBindingForKey(
   key: KeyDef,
@@ -34,107 +44,258 @@ function findBindingForKey(
   }) ?? null;
 }
 
-function getKeyStyle(key: KeyDef, binding: NormalizedBinding | null): CategoryStyle {
+function getStyle(key: KeyDef, binding: NormalizedBinding | null): CategoryStyle {
   if (key.isModifier) return CATEGORY_STYLES.modifier;
   if (!binding) return UNBOUND_STYLE;
   return CATEGORY_STYLES[binding.category];
 }
 
-const KEY_UNIT = 36;
-const KEY_GAP = 2;
-
-export function VisualKeyboard({
-  bindings,
-  capturing,
-  onCaptureStart,
-}: Props): JSX.Element {
+function Led({ on }: { on: boolean }): JSX.Element {
   return (
-    <TooltipProvider delayDuration={200}>
-    <div className="space-y-3">
-      <div className="flex flex-col items-center gap-[2px]">
-        {KEYBOARD_ROWS.map((row, ri) => (
-          <div key={String(ri)} className="flex gap-[2px]">
-            {row.map((key, ki) => {
-              if (key.isSpacer) {
-                const sw = (key.width ?? 1);
-                return (
-                  <div
-                    key={`spacer-${String(ri)}-${String(ki)}`}
-                    style={{ width: sw * KEY_UNIT + (sw - 1) * KEY_GAP }}
-                  />
-                );
-              }
+    <span style={{
+      width: 5, height: 5, borderRadius: '50%',
+      background: on ? '#e83e34' : '#3a3530',
+      boxShadow: on ? '0 0 5px rgba(232,62,52,0.9)' : 'inset 0 0 2px #000',
+    }} />
+  );
+}
 
-              const binding = findBindingForKey(key, bindings);
-              const style = getKeyStyle(key, binding);
-              const isCapturing = capturing !== null
-                && binding !== null
-                && binding.command === capturing;
-              const kw = (key.width ?? 1);
-              const w = kw * KEY_UNIT + (kw - 1) * KEY_GAP;
-
-              const keyButton = (
-                <button
-                  key={key.code || `${String(ri)}-${String(ki)}`}
-                  type="button"
-                  disabled={!binding && !key.isModifier}
-                  onClick={() => {
-                    if (binding) onCaptureStart(binding.command);
-                  }}
-                  className={[
-                    'flex items-center justify-center rounded-sm border text-caption font-medium transition-all',
-                    'h-[34px]',
-                    style.bg,
-                    style.border,
-                    binding ? 'cursor-pointer hover:brightness-95' : 'cursor-default',
-                    isCapturing ? 'ring-2 ring-primary ring-offset-1' : '',
-                  ].join(' ')}
-                  style={{ width: w, minWidth: w }}
-                >
-                  <span className={`select-none ${binding ? 'text-foreground' : 'text-foreground-tertiary'}`}>
-                    {key.label}
-                  </span>
-                </button>
-              );
-
-              if (binding) {
-                return (
-                  <Tooltip key={key.code}>
-                    <TooltipTrigger asChild>
-                      {keyButton}
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      {isCapturing ? 'Press a key…' : binding.label}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
-
-              return keyButton;
-            })}
-          </div>
-        ))}
+function TopPanel(): JSX.Element {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 14,
+      padding: '8px 14px',
+      background: '#1c1a16',
+      borderRadius: 6,
+      border: '1px solid #0d0c0a',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.4)',
+      marginBottom: 10,
+    }}>
+      <div style={{
+        fontSize: 18, fontWeight: 800, letterSpacing: -0.5,
+        fontFamily: '"Saira Condensed", "DM Sans", sans-serif',
+        color: '#f4eee0', lineHeight: 1, fontStyle: 'italic',
+      }}>
+        BimStitch<span style={{ position: 'relative', top: -6, fontSize: 10 }}>&deg;</span>
       </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        {(Object.keys(CATEGORY_LABELS) as ShortcutCategory[]).map((cat) => {
-          const s = CATEGORY_STYLES[cat];
-          return (
-            <div key={cat} className="flex items-center gap-1.5">
-              <div className={`h-3 w-3 rounded-xs border ${s.bg} ${s.border}`} />
-              <span className="text-caption text-foreground-secondary">
-                {CATEGORY_LABELS[cat]}
-              </span>
-            </div>
-          );
-        })}
-        <div className="flex items-center gap-1.5">
-          <div className={`h-3 w-3 rounded-xs border ${UNBOUND_STYLE.bg} ${UNBOUND_STYLE.border}`} />
-          <span className="text-caption text-foreground-secondary">Unbound</span>
-        </div>
+      <div style={{
+        fontSize: 9, letterSpacing: 2, color: '#f4eee0',
+        fontFamily: '"Saira Condensed", "DM Sans", sans-serif', fontWeight: 700, opacity: 0.5,
+      }}>
+        KEYBOARD
+      </div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          width: 160, height: 28,
+          backgroundImage: 'repeating-linear-gradient(90deg, #4a4640 0, #4a4640 3px, #1c1a16 3px, #1c1a16 6px)',
+          borderRadius: 2,
+          opacity: 0.7,
+        }} />
+      </div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <Led on={false} /><Led on /><Led on={false} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <span style={{ fontSize: 9, letterSpacing: 1.6, fontWeight: 700, color: '#e3dccb' }}>
+          POWER
+        </span>
+        <span style={{
+          display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+          background: 'radial-gradient(circle at 30% 30%, #ff8a82, #e83e34 60%, #8a1a14 100%)',
+          boxShadow: '0 0 6px #e83e34, 0 0 14px rgba(232,62,52,0.6)',
+        }} />
       </div>
     </div>
+  );
+}
+
+function Keycap({
+  code, label, widthU, isMod, binding, isSelected, cat, onPick,
+}: {
+  code: string;
+  label: string;
+  widthU: number;
+  isMod: boolean;
+  binding: NormalizedBinding | null;
+  isSelected: boolean;
+  cat: CategoryStyle;
+  onPick: (code: string) => void;
+}): JSX.Element {
+  const w = unitPx(widthU);
+  const isLong = label.length >= 4;
+  const isMedium = label.length >= 2 && label.length <= 3;
+  const hasBind = binding !== null || isMod;
+
+  let faceTop: string, faceBot: string, skirtTop: string, skirtBot: string, legendCol: string;
+  if (isMod || MODIFIER_CODES.has(code)) {
+    faceTop = '#4a4a4a'; faceBot = '#3a3a3a';
+    skirtTop = '#2a2a2a'; skirtBot = '#1c1c1c';
+    legendCol = '#e8e8e8';
+  } else {
+    faceTop = '#5a5a5a'; faceBot = '#484848';
+    skirtTop = '#333333'; skirtBot = '#222222';
+    legendCol = '#f0f0f0';
+  }
+
+  const ringCol = isSelected && hasBind ? cat.swatch : 'transparent';
+
+  const btnStyle: CSSProperties = {
+    position: 'relative',
+    width: w, height: 42,
+    padding: 0, border: 'none', background: 'transparent',
+    cursor: hasBind ? 'pointer' : 'default',
+    outline: 'none', flexShrink: 0,
+    fontFamily: '"Saira Condensed", "DM Sans", system-ui, sans-serif',
+  };
+
+  return (
+    <button type="button" onClick={() => { onPick(code); }} title={binding ? binding.label : label} style={btnStyle}>
+      {/* Skirt */}
+      <span style={{
+        position: 'absolute', inset: 0,
+        background: `linear-gradient(180deg, ${skirtTop} 0%, ${skirtBot} 100%)`,
+        borderRadius: '6px 6px 5px 5px',
+        boxShadow: `
+          inset 0 1px 0 rgba(255,255,255,0.22),
+          inset 0 -1px 0 rgba(0,0,0,0.30),
+          0 2px 0 rgba(0,0,0,0.18),
+          0 3px 5px rgba(28,26,22,0.20)
+        `,
+      }} />
+
+      {/* Category stripe */}
+      {binding && (
+        <span style={{
+          position: 'absolute', left: 4, right: 4, bottom: 1, height: 2,
+          background: cat.swatch, borderRadius: 2, opacity: 0.95,
+          boxShadow: `0 0 4px ${cat.swatch}`,
+        }} />
+      )}
+
+      {/* Face */}
+      <span className="keycap-face" style={{
+        position: 'absolute', left: 2, right: 2, top: 1, bottom: 6,
+        background: `linear-gradient(180deg, ${faceTop} 0%, ${faceBot} 100%)`,
+        borderRadius: '5px 5px 3px 3px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -1px 0 rgba(0,0,0,0.10)',
+        transition: 'transform 0.12s ease',
+      }} />
+
+      {/* Dish highlight */}
+      <span style={{
+        position: 'absolute', left: 4, right: 4, top: 2, height: 4,
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0))',
+        borderRadius: '4px 4px 0 0',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Legend */}
+      <span style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '0 0 5px',
+        color: legendCol, fontWeight: 700,
+        fontSize: isLong ? 8 : isMedium ? 10 : 12,
+        letterSpacing: isLong ? 0.4 : 0.5,
+        lineHeight: 1, pointerEvents: 'none', textTransform: 'uppercase',
+        textShadow: 'none',
+      }}>
+        {label}
+      </span>
+
+      {/* Selected ring */}
+      {isSelected && hasBind && (
+        <span className="kbd-pulse-ring" style={{
+          position: 'absolute', inset: -4,
+          borderRadius: 9,
+          border: `2px dashed ${ringCol}`,
+          pointerEvents: 'none',
+        }} />
+      )}
+    </button>
+  );
+}
+
+function Spacer({ widthU }: { widthU: number }): JSX.Element {
+  return <span aria-hidden="true" style={{ display: 'inline-block', width: unitPx(widthU), height: 42, flexShrink: 0 }} />;
+}
+
+export function VisualKeyboard({
+  bindings, capturing, onCaptureStart, selectedCode, onPick,
+}: Props): JSX.Element {
+  // Keep onCaptureStart accessible — it is used by the parent via keyboard pick + rebind button.
+  void capturing;
+  void onCaptureStart;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <style>{`
+        @keyframes kbd-pulse-anim {
+          0%, 100% { opacity: 0.85; }
+          50% { opacity: 0.3; }
+        }
+        .kbd-pulse-ring { animation: kbd-pulse-anim 1.6s ease-out infinite; }
+        button:hover .keycap-face { transform: translateY(-0.5px); }
+      `}</style>
+
+      <div style={{
+        position: 'relative',
+        padding: '12px 14px 16px',
+        borderRadius: 10,
+        background: 'linear-gradient(180deg, #d8d8d8 0%, #c4c4c4 100%)',
+        boxShadow: `
+          inset 0 1px 0 rgba(255,255,255,0.85),
+          inset 0 -1px 0 rgba(0,0,0,0.20),
+          inset 2px 0 0 rgba(0,0,0,0.06),
+          inset -2px 0 0 rgba(0,0,0,0.06),
+          0 18px 36px -12px rgba(28,26,22,0.45),
+          0 6px 14px -4px rgba(28,26,22,0.25),
+          0 0 0 1px rgba(0,0,0,0.18)
+        `,
+        width: 'max-content',
+      }}>
+        <TopPanel />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: KEY_GAP }}>
+          {KEYBOARD_ROWS.map((row, ri) => (
+            <div key={String(ri)} style={{ display: 'flex', gap: KEY_GAP }}>
+              {row.map((keyDef, ki) => {
+                if (keyDef.isSpacer) {
+                  return <Spacer key={`sp-${String(ri)}-${String(ki)}`} widthU={keyDef.width ?? 1} />;
+                }
+
+                const binding = findBindingForKey(keyDef, bindings);
+                const cat = getStyle(keyDef, binding);
+                const isSel = selectedCode === keyDef.code;
+
+                const cap = (
+                  <Keycap
+                    key={keyDef.code || `k-${String(ri)}-${String(ki)}`}
+                    code={keyDef.code}
+                    label={keyDef.label}
+                    widthU={keyDef.width ?? 1}
+                    isMod={keyDef.isModifier === true}
+                    binding={binding}
+                    isSelected={isSel}
+                    cat={cat}
+                    onPick={onPick}
+                  />
+                );
+
+                if (binding) {
+                  return (
+                    <Tooltip key={keyDef.code}>
+                      <TooltipTrigger asChild>{cap}</TooltipTrigger>
+                      <TooltipContent side="top">{binding.label}</TooltipContent>
+                    </Tooltip>
+                  );
+                }
+
+                return cap;
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
     </TooltipProvider>
   );
 }

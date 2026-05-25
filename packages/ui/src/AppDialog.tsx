@@ -37,7 +37,9 @@ export type AppDialogProps = {
   saveTone?: 'primary' | 'danger';
 
   width?: number;
+  height?: number;
   className?: string;
+  bodyClassName?: string;
 };
 
 export function AppDialog({
@@ -57,7 +59,9 @@ export function AppDialog({
   saveDisabled = false,
   saveTone = 'primary',
   width = 520,
+  height,
   className,
+  bodyClassName,
 }: AppDialogProps): JSX.Element {
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -73,7 +77,7 @@ export function AppDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn('flex max-w-none flex-col max-h-[calc(100vh-48px)]', className)}
-        style={{ width, maxWidth: 'calc(100vw - 48px)' }}
+        style={{ width, height, maxWidth: 'calc(100vw - 48px)' }}
       >
         {/* Header */}
         <DialogHeader className="relative flex-row items-start gap-3">
@@ -103,7 +107,7 @@ export function AppDialog({
         </DialogHeader>
 
         {/* Body */}
-        <DialogBody className="min-h-0 flex-1 overflow-y-auto">
+        <DialogBody className={cn('min-h-0 flex-1 overflow-y-auto', bodyClassName)}>
           {children}
         </DialogBody>
 

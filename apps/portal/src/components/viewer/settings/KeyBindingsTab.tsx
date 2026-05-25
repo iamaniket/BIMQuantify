@@ -5,7 +5,7 @@ import {
 } from 'react';
 
 import {
-  Select, Tabs, TabsContent, TabsList, TabsTrigger,
+  Button, Input, Select, Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
@@ -16,11 +16,16 @@ import {
 } from '@/lib/documentSettings';
 import type { CameraAction, ViewerSettings } from '@/lib/viewerSettings';
 
-import { classifyCommand } from './shortcutCategories';
+import {
+  CATEGORY_LABELS,
+  CATEGORY_STYLES,
+  classifyCommand,
+} from './shortcutCategories';
+import { KEYBOARD_ROWS, codeToComboKey } from './keyboardLayout';
 import { MouseDiagram } from './MouseDiagram';
 import { ShortcutList } from './ShortcutList';
 import { VisualKeyboard } from './VisualKeyboard';
-import type { NormalizedBinding } from './types';
+import type { NormalizedBinding, ShortcutCategory } from './types';
 
 type Binding3D = { combo: string; command: string };
 
@@ -139,48 +144,175 @@ function use2DBindings(settings: DocumentSettings): NormalizedBinding[] {
   );
 }
 
+// ── Inline helper components ────────────────────────────────────────
+
+const SearchIcon = (): JSX.Element => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
+
+const PencilIcon = (): JSX.Element => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </svg>
+);
+
+function ChipLegend({ filter, onFilter, counts }: {
+  filter: ShortcutCategory | null;
+  onFilter: (cat: ShortcutCategory | null) => void;
+  counts: Record<string, number>;
+}): JSX.Element {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const cats = Object.keys(CATEGORY_LABELS) as ShortcutCategory[];
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Button
+        variant="border" size="sm"
+        className="!gap-1.5 !px-2.5 !py-1 !text-caption"
+        style={!filter ? { background: 'var(--foreground)', borderColor: 'var(--foreground)', color: 'var(--foreground-inverse)' } : undefined}
+        onClick={() => { onFilter(null); }}
+      >
+        <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: !filter ? 'var(--foreground-inverse)' : 'var(--foreground-tertiary)' }} />
+        All <span className="opacity-60">{total}</span>
+      </Button>
+      {cats.map((id) => {
+        const cat = CATEGORY_STYLES[id];
+        const active = filter === id;
+        return (
+          <Button
+            key={id} variant="border" size="sm"
+            className="!gap-1.5 !px-2.5 !py-1 !text-caption"
+            style={active ? { background: cat.tint, borderColor: cat.swatch, color: cat.swatch } : undefined}
+            onClick={() => { onFilter(active ? null : id); }}
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: cat.swatch }} />
+            {CATEGORY_LABELS[id]} <span className="opacity-60">{counts[id] ?? 0}</span>
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+function prettyKey(combo: string): string {
+  if (!combo) return '—';
+  return combo
+    .replace('ArrowUp', '↑').replace('ArrowDown', '↓')
+    .replace('ArrowLeft', '←').replace('ArrowRight', '→');
+}
+
+function SelectedReadout({ code, binding, onRebind, capturing }: {
+  code: string;
+  binding: NormalizedBinding | null;
+  onRebind: () => void;
+  capturing: string | null;
+}): JSX.Element {
+  const cat = binding ? CATEGORY_STYLES[binding.category] : null;
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-low px-3 py-2">
+      <div
+        className="flex h-9 min-w-[44px] items-center justify-center rounded-md border-[1.5px] px-2 font-sans text-body3 font-bold"
+        style={{
+          background: cat ? cat.tint : 'var(--surface-high)',
+          borderColor: cat ? cat.swatch : 'var(--border)',
+          color: cat ? cat.swatch : 'var(--foreground-tertiary)',
+        }}
+      >
+        {prettyKey(binding?.combo ?? code)}
+      </div>
+      <div className="min-w-0">
+        <div className="text-caption font-bold uppercase tracking-widest text-foreground-tertiary">
+          {cat ? CATEGORY_LABELS[binding!.category] : 'Unassigned'}
+        </div>
+        <div className="mt-0.5 max-w-[220px] truncate text-body3 font-semibold text-foreground">
+          {binding ? binding.label : 'No action bound'}
+        </div>
+      </div>
+      {binding && (
+        <Button
+          variant="primary" size="sm"
+          className="ml-auto !gap-1.5"
+          disabled={capturing !== null}
+          onClick={onRebind}
+        >
+          <PencilIcon /> Rebind
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function CaptureOverlay({ action, combo, cat, onCancel }: {
+  action: string;
+  combo: string;
+  cat: { swatch: string } | null;
+  onCancel: () => void;
+}): JSX.Element {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', handler);
+    return () => { window.removeEventListener('keydown', handler); };
+  }, [onCancel]);
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ background: 'rgba(15,23,42,0.55)' }}>
+      <div className="w-full max-w-md rounded-xl border border-border bg-surface-main p-6 text-center shadow-lg">
+        <div className="text-caption font-bold uppercase tracking-widest text-primary">
+          Listening for keystroke
+        </div>
+        <div className="mt-2 text-lg font-medium text-foreground">
+          Press any key for{' '}
+          <span style={{ color: cat?.swatch ?? 'var(--primary)' }}>{action}</span>
+        </div>
+        <div className="mt-3 text-body3 text-foreground-tertiary">
+          Currently bound to{' '}
+          <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-mono text-caption font-semibold text-foreground">
+            {prettyKey(combo)}
+          </kbd>
+          {' '}· Press <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-mono text-caption font-semibold text-foreground">Esc</kbd> to cancel
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Mouse 3D Section (drag-action selects) ──────────────────────────
+
 function Mouse3DSection({
   settings,
   onSettingsChange,
+  selected,
+  onPick,
 }: {
   settings: ViewerSettings;
   onSettingsChange: (next: ViewerSettings) => void;
+  selected: string | null;
+  onPick: (id: string) => void;
 }): JSX.Element {
   const dragLabel = (action: CameraAction): string => {
-    const found = CAMERA_ACTIONS.find(
-      (a) => a.value === action,
-    );
+    const found = CAMERA_ACTIONS.find((a) => a.value === action);
     return found !== undefined ? found.label : action;
   };
 
   return (
     <>
       <MouseDiagram
-        leftButton={{
-          label: 'Select',
-          sublabel: `Drag: ${dragLabel(settings.controls.left)}`,
-        }}
-        middleButton={{
-          label: 'Zoom',
-          sublabel: `Drag: ${dragLabel(settings.controls.middle)}`,
-        }}
-        rightButton={{
-          label: 'Pan',
-          sublabel: `Drag: ${dragLabel(settings.controls.right)}`,
-        }}
-        scrollWheel={
-          `Zoom in/out (${dragLabel(settings.controls.wheel)})`
-        }
+        leftButton={{ label: 'Select', sublabel: `Drag: ${dragLabel(settings.controls.left)}` }}
+        middleButton={{ label: 'Zoom', sublabel: `Drag: ${dragLabel(settings.controls.middle)}` }}
+        rightButton={{ label: 'Pan', sublabel: `Drag: ${dragLabel(settings.controls.right)}` }}
+        scrollWheel={`Zoom in/out (${dragLabel(settings.controls.wheel)})`}
+        selected={selected}
+        onPick={onPick}
       />
       <div className="space-y-2">
         <h4 className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
           Drag actions
         </h4>
         {DRAG_BUTTONS.map((btn) => (
-          <label
-            key={btn.key}
-            className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary"
-          >
+          <label key={btn.key} className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
             <span>{btn.label}</span>
             <Select
               selectSize="sm"
@@ -189,17 +321,12 @@ function Mouse3DSection({
               onChange={(e) => {
                 onSettingsChange({
                   ...settings,
-                  controls: {
-                    ...settings.controls,
-                    [btn.key]: e.target.value as CameraAction,
-                  },
+                  controls: { ...settings.controls, [btn.key]: e.target.value as CameraAction },
                 });
               }}
             >
               {CAMERA_ACTIONS.map((a) => (
-                <option key={a.value} value={a.value}>
-                  {a.label}
-                </option>
+                <option key={a.value} value={a.value}>{a.label}</option>
               ))}
             </Select>
           </label>
@@ -233,13 +360,8 @@ function Mouse2DSection(): JSX.Element {
         </h4>
         <ul className="space-y-0.5">
           {rows.map((r) => (
-            <li
-              key={r.gesture}
-              className="flex items-center justify-between gap-2 rounded px-2 py-1 text-body3"
-            >
-              <span className="font-mono text-foreground-secondary">
-                {r.gesture}
-              </span>
+            <li key={r.gesture} className="flex items-center justify-between gap-2 rounded px-2 py-1 text-body3">
+              <span className="font-mono text-foreground-secondary">{r.gesture}</span>
               <span className="text-foreground">{r.action}</span>
             </li>
           ))}
@@ -248,6 +370,8 @@ function Mouse2DSection(): JSX.Element {
     </>
   );
 }
+
+// ── Main export ─────────────────────────────────────────────────────
 
 export function KeyBindingsTab(props: Props): JSX.Element {
   const { mode, settings, onSettingsChange } = props;
@@ -262,10 +386,45 @@ export function KeyBindingsTab(props: Props): JSX.Element {
 
   const bindings = mode === '3d' ? bindings3D : bindings2D;
   const [capturing, setCapturing] = useState<string | null>(null);
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ShortcutCategory | null>(null);
+  const [query, setQuery] = useState('');
+
+  const selectedBinding = useMemo(() => {
+    if (!selectedCode) return null;
+    const comboKey = codeToComboKey(selectedCode);
+    return bindings.find((b) => {
+      const parts = b.combo.split('+');
+      const mainKey = parts[parts.length - 1];
+      return mainKey === comboKey && parts.length === 1;
+    }) ?? null;
+  }, [selectedCode, bindings]);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const b of bindings) c[b.category] = (c[b.category] ?? 0) + 1;
+    return c;
+  }, [bindings]);
 
   const handleCaptureStart = useCallback((command: string) => {
     setCapturing(command);
   }, []);
+
+  const pickKey = useCallback((code: string) => {
+    if (capturing) return;
+    setSelectedCode(code);
+  }, [capturing]);
+
+  const selectFromList = useCallback((command: string) => {
+    const b = bindings.find((x) => x.command === command);
+    if (b) {
+      const parts = b.combo.split('+');
+      const mainKey = parts[parts.length - 1];
+      const allKeys = KEYBOARD_ROWS_FLAT();
+      const match = allKeys.find((k) => codeToComboKey(k) === mainKey);
+      if (match) setSelectedCode(match);
+    }
+  }, [bindings]);
 
   useEffect(() => {
     if (capturing === null) return undefined;
@@ -308,8 +467,12 @@ export function KeyBindingsTab(props: Props): JSX.Element {
     return () => { window.removeEventListener('keydown', onKey, true); };
   }, [capturing, mode, handle, bindings3D, settings, onSettingsChange, refresh3D]);
 
+  const capturingBinding = capturing
+    ? bindings.find((b) => b.command === capturing) ?? null
+    : null;
+
   return (
-    <Tabs defaultValue="keyboard">
+    <Tabs defaultValue="keyboard" className="flex flex-col flex-1">
       <TabsList className="shrink-0">
         <TabsTrigger value="keyboard" className="flex-1 text-caption">
           Keyboard
@@ -319,27 +482,89 @@ export function KeyBindingsTab(props: Props): JSX.Element {
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="keyboard" className="max-h-[28rem] overflow-y-auto">
-        <div className="space-y-4 pt-3">
-          <VisualKeyboard
-            bindings={bindings}
-            capturing={capturing}
-            onCaptureStart={handleCaptureStart}
-          />
-          <ShortcutList
-            bindings={bindings}
-            capturing={capturing}
-            onCaptureStart={handleCaptureStart}
-          />
+      <TabsContent value="keyboard" className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
+        <div className="flex flex-1 min-h-0 flex-col">
+          {/* Pinned: keyboard visual */}
+          <div className="flex shrink-0 justify-center overflow-x-auto pb-2 pt-3">
+            <VisualKeyboard
+              bindings={bindings}
+              capturing={capturing}
+              onCaptureStart={handleCaptureStart}
+              selectedCode={selectedCode}
+              onPick={pickKey}
+            />
+          </div>
+
+          {/* Scrollable region */}
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pt-2">
+            {/* Toolbar: chips + search */}
+            <div className="flex flex-wrap items-center gap-2 px-1">
+              <ChipLegend filter={filter} onFilter={setFilter} counts={counts} />
+              <div className="flex-1" />
+              <Input
+                inputSize="sm"
+                className="w-48"
+                leading={<SearchIcon />}
+                trailing={query ? (
+                  <button
+                    type="button"
+                    className="text-foreground-tertiary hover:text-foreground"
+                    onClick={() => { setQuery(''); }}
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                ) : undefined}
+                placeholder="Search actions…"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); }}
+              />
+            </div>
+
+            {/* Selected readout */}
+            {selectedCode && (
+              <SelectedReadout
+                code={selectedCode}
+                binding={selectedBinding}
+                capturing={capturing}
+                onRebind={() => {
+                  if (selectedBinding) handleCaptureStart(selectedBinding.command);
+                }}
+              />
+            )}
+
+            {/* List */}
+            <ShortcutList
+              bindings={bindings}
+              capturing={capturing}
+              onCaptureStart={handleCaptureStart}
+              filter={filter}
+              query={query}
+              selected={selectedBinding?.command ?? null}
+              onSelect={selectFromList}
+            />
+          </div>
+
+          {/* Capture overlay */}
+          {capturing && capturingBinding && (
+            <CaptureOverlay
+              action={capturingBinding.label}
+              combo={capturingBinding.combo}
+              cat={CATEGORY_STYLES[capturingBinding.category]}
+              onCancel={() => { setCapturing(null); }}
+            />
+          )}
         </div>
       </TabsContent>
 
-      <TabsContent value="mouse" className="max-h-[28rem] overflow-y-auto">
+      <TabsContent value="mouse" className="flex-1 min-h-0 overflow-y-auto">
         <div className="space-y-4 pt-3">
           {mode === '3d' ? (
             <Mouse3DSection
               settings={settings}
               onSettingsChange={onSettingsChange}
+              selected={selectedCode}
+              onPick={setSelectedCode}
             />
           ) : (
             <Mouse2DSection />
@@ -348,4 +573,14 @@ export function KeyBindingsTab(props: Props): JSX.Element {
       </TabsContent>
     </Tabs>
   );
+}
+
+function KEYBOARD_ROWS_FLAT(): string[] {
+  const codes: string[] = [];
+  for (const row of KEYBOARD_ROWS) {
+    for (const k of row) {
+      if (!k.isSpacer && k.code) codes.push(k.code);
+    }
+  }
+  return codes;
 }

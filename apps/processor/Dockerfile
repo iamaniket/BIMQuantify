@@ -1,5 +1,5 @@
 # Build stage — TypeScript compile only.
-FROM node:20-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 COPY package.json ./
 RUN npm install
@@ -10,7 +10,7 @@ RUN npm run build
 # Runtime stage — bookworm-slim because we need glibc + Chromium for
 # Puppeteer-driven PDF rendering. Alpine + chromium has poor font rendering
 # (Dutch diacritics in WKB rule titles fall back to tofu).
-FROM node:20-bookworm-slim AS runtime
+FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \

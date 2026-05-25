@@ -43,6 +43,8 @@ export type CategoryStyle = {
   bg: string;
   border: string;
   text: string;
+  swatch: string;
+  tint: string;
 };
 
 export const CATEGORY_STYLES: Record<ShortcutCategory, CategoryStyle> = {
@@ -50,21 +52,29 @@ export const CATEGORY_STYLES: Record<ShortcutCategory, CategoryStyle> = {
     bg: 'bg-warning-lighter',
     border: 'border-warning',
     text: 'text-warning',
+    swatch: 'var(--warning)',
+    tint: 'var(--warning-light)',
   },
   navigation: {
     bg: 'bg-primary-lighter',
     border: 'border-primary',
     text: 'text-primary',
+    swatch: 'var(--primary)',
+    tint: 'var(--primary-light)',
   },
   editing: {
     bg: 'bg-success-lighter',
     border: 'border-success',
     text: 'text-success',
+    swatch: 'var(--success)',
+    tint: 'var(--success-light)',
   },
   modifier: {
     bg: 'bg-info-lighter',
     border: 'border-info',
     text: 'text-info',
+    swatch: 'var(--info)',
+    tint: 'var(--info-light)',
   },
 };
 
@@ -72,6 +82,8 @@ export const UNBOUND_STYLE: CategoryStyle = {
   bg: 'bg-surface-high',
   border: 'border-border',
   text: 'text-foreground-tertiary',
+  swatch: 'var(--border)',
+  tint: 'var(--surface-high)',
 };
 
 export const CATEGORY_LABELS: Record<ShortcutCategory, string> = {

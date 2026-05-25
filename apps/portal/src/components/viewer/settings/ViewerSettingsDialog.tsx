@@ -347,11 +347,13 @@ export function ViewerSettingsDialog(props: Props): JSX.Element {
       open={open}
       onClose={handleOpenChange}
       title="Viewer Settings"
-      width={720}
+      width={900}
+      height={760}
+      bodyClassName="overflow-hidden"
       onReset={handleReset}
       resetLabel="Reset defaults"
     >
-      <Tabs defaultValue="keybindings">
+      <Tabs defaultValue="keybindings" className="flex flex-1 flex-col">
         <TabsList className="shrink-0">
           {mode === '3d' && (
             <TabsTrigger value="appearance" className="flex-1 text-caption">
@@ -374,7 +376,7 @@ export function ViewerSettingsDialog(props: Props): JSX.Element {
         </TabsList>
 
         {mode === '3d' && (
-          <TabsContent value="appearance" className="max-h-[28rem] overflow-y-auto">
+          <TabsContent value="appearance" className="flex-1 min-h-0 overflow-y-auto">
             <AppearanceTab
               settings={settings}
               onChange={update3D}
@@ -383,7 +385,7 @@ export function ViewerSettingsDialog(props: Props): JSX.Element {
         )}
 
         {mode === '2d' && (
-          <TabsContent value="general" className="max-h-[28rem] overflow-y-auto">
+          <TabsContent value="general" className="flex-1 min-h-0 overflow-y-auto">
             <GeneralTab
               settings={settings}
               onChange={update2D}
@@ -392,7 +394,7 @@ export function ViewerSettingsDialog(props: Props): JSX.Element {
         )}
 
         {mode === '3d' && (
-          <TabsContent value="performance" className="max-h-[28rem] overflow-y-auto">
+          <TabsContent value="performance" className="flex-1 min-h-0 overflow-y-auto">
             <PerformanceTab
               handle={props.handle}
               settings={settings}
@@ -401,7 +403,7 @@ export function ViewerSettingsDialog(props: Props): JSX.Element {
           </TabsContent>
         )}
 
-        <TabsContent value="keybindings">
+        <TabsContent value="keybindings" className="flex flex-1 min-h-0 flex-col overflow-hidden">
           {mode === '3d' ? (
             <KeyBindingsTab
               mode="3d"
