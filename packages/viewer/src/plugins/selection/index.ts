@@ -140,16 +140,6 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     log(`paintBulkColor(${on ? 'ON' : 'OFF'}) — ${modelCount} models`);
     log('fragments.settings:', JSON.stringify(ctxRef.fragments.settings));
     trackWorker(`paintBulkColor(${on ? 'ON' : 'OFF'})`, promises);
-
-    // Force-flush all pending tile updates after the worker resolves
-    // so the visual change lands in one frame instead of staggering.
-    const frags = ctxRef.fragments;
-    void Promise.all(promises).then(() => {
-      const t0 = performance.now();
-      return frags.update(true).then(() => {
-        log(`⚡ force update(true) done: ${(performance.now() - t0).toFixed(1)}ms`);
-      });
-    }).catch(() => undefined);
   };
 
   const paint = (items: ItemId[], on: boolean): void => {
