@@ -282,6 +282,9 @@ export default function ViewerPage(): JSX.Element {
         onProgress={onProgress}
         onReady={(handle) => {
           viewerHandleRef.current = handle;
+          if (process.env.NODE_ENV === 'development') {
+            (window as unknown as Record<string, unknown>).__viewer = handle;
+          }
           setViewerReady(true);
           setProgress(null);
         }}

@@ -57,7 +57,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
   let ctxRef: ViewerContext | null = null;
   let enabled = true;
-  const edges = new EdgeOverlay();
+  const edges = new EdgeOverlay({ lineWidth: 2 });
   let cachedSectionPlanes: Array<{ normal: { x: number; y: number; z: number }; point: { x: number; y: number; z: number }; active: boolean }> = [];
 
   const isClippedBySection = (pt: { x: number; y: number; z: number }): boolean =>

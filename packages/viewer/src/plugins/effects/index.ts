@@ -34,6 +34,7 @@ const DEFAULTS: Required<EffectsOptions> = {
   enabled: true,
   edges: true,
   quality: 'medium',
+  debugView: 0,
 };
 
 /**
@@ -58,7 +59,8 @@ const NormalEdgeShader = {
     uDepthScale: { value: 2.5 },
     uEdgeLow: { value: 0.15 },
     uEdgeHigh: { value: 0.6 },
-    uEdgeColor: { value: new THREE.Color(0.18, 0.2, 0.24) },
+    uEdgeColor: { value: new THREE.Color(0.05, 0.05, 0.08) },
+    uDebugView: { value: 0 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -76,74 +78,76 @@ const NormalEdgeShader = {
     uniform float uEdgeLow;
     uniform float uEdgeHigh;
     uniform vec3 uEdgeColor;
+    uniform int uDebugView;
     varying vec2 vUv;
 
     vec3 decN(vec4 s) { return normalize(s.rgb * 2.0 - 1.0); }
 
     void main() {
       vec4 col = texture2D(tDiffuse, vUv);
+
+      // Debug 3: pass-through (no edges)
+      if (uDebugView == 3) { gl_FragColor = col; return; }
+
       vec2 texel = 1.0 / resolution;
+      vec4 sC = texture2D(tNormal, vUv);
 
-      // --- Inner ring: 3x3 Sobel at 1x texel spacing ---
-      vec4 s00 = texture2D(tNormal, vUv + texel * vec2(-1.0, -1.0));
+      // Debug 1: show raw normal buffer
+      if (uDebugView == 1) { gl_FragColor = vec4(sC.rgb, 1.0); return; }
+
+      // Inner ring: 1-texel cross-difference
       vec4 s10 = texture2D(tNormal, vUv + texel * vec2( 0.0, -1.0));
-      vec4 s20 = texture2D(tNormal, vUv + texel * vec2( 1.0, -1.0));
       vec4 s01 = texture2D(tNormal, vUv + texel * vec2(-1.0,  0.0));
-      vec4 sC  = texture2D(tNormal, vUv);
       vec4 s21 = texture2D(tNormal, vUv + texel * vec2( 1.0,  0.0));
-      vec4 s02 = texture2D(tNormal, vUv + texel * vec2(-1.0,  1.0));
       vec4 s12 = texture2D(tNormal, vUv + texel * vec2( 0.0,  1.0));
+      vec4 s00 = texture2D(tNormal, vUv + texel * vec2(-1.0, -1.0));
       vec4 s22 = texture2D(tNormal, vUv + texel * vec2( 1.0,  1.0));
+      vec4 s20 = texture2D(tNormal, vUv + texel * vec2( 1.0, -1.0));
+      vec4 s02 = texture2D(tNormal, vUv + texel * vec2(-1.0,  1.0));
 
-      // --- Outer ring: cross at 2x texel spacing (wider, softer) ---
+      // Outer ring: 2-texel cross-difference — reaches past the
+      // MSAA blend zone so edges that fall exactly on pixel
+      // boundaries still produce a solid signal.
       vec4 wL = texture2D(tNormal, vUv + texel * vec2(-2.0,  0.0));
       vec4 wR = texture2D(tNormal, vUv + texel * vec2( 2.0,  0.0));
       vec4 wU = texture2D(tNormal, vUv + texel * vec2( 0.0, -2.0));
       vec4 wD = texture2D(tNormal, vUv + texel * vec2( 0.0,  2.0));
 
-      float aMin = min(min(min(min(min(min(min(min(
-        sC.a, s00.a), s10.a), s20.a), s01.a), s21.a), s02.a), s12.a), s22.a);
+      float aMin = min(min(min(min(sC.a, s01.a), s21.a), s10.a), s12.a);
       if (aMin < 0.001) {
         gl_FragColor = col;
         return;
       }
 
-      vec3 nC = decN(sC);
-      float d00 = 1.0 - dot(nC, decN(s00));
-      float d10 = 1.0 - dot(nC, decN(s10));
-      float d20 = 1.0 - dot(nC, decN(s20));
-      float d01 = 1.0 - dot(nC, decN(s01));
-      float d21 = 1.0 - dot(nC, decN(s21));
-      float d02 = 1.0 - dot(nC, decN(s02));
-      float d12 = 1.0 - dot(nC, decN(s12));
-      float d22 = 1.0 - dot(nC, decN(s22));
+      // Normal cross-difference at both scales
+      float nH1  = 1.0 - dot(decN(s01), decN(s21));
+      float nV1  = 1.0 - dot(decN(s10), decN(s12));
+      float nD1  = 1.0 - dot(decN(s00), decN(s22));
+      float nD2  = 1.0 - dot(decN(s20), decN(s02));
+      float nH2  = 1.0 - dot(decN(wL),  decN(wR));
+      float nV2  = 1.0 - dot(decN(wU),  decN(wD));
+      float gN   = max(max(max(nH1, nV1), max(nD1, nD2)),
+                       max(nH2, nV2)) * uNormalStrength;
 
-      // Inner Sobel 3x3
-      float gnX = -d00 + d20 - 2.0*d01 + 2.0*d21 - d02 + d22;
-      float gnY = -d00 - 2.0*d10 - d20 + d02 + 2.0*d12 + d22;
-      float gN1 = sqrt(gnX * gnX + gnY * gnY);
-
-      // Outer cross — extends the edge footprint to ~5 px so the
-      // transition spans multiple pixels instead of a hard 1-px step.
-      float wdx = 1.0 - dot(decN(wL), decN(wR));
-      float wdy = 1.0 - dot(decN(wU), decN(wD));
-      float gN2 = wdx + wdy;
-
-      float gN = max(gN1, gN2 * 0.75) * uNormalStrength;
-
-      // Depth — Laplacian inner + wide cross second-derivative
-      float lap = s00.a + s10.a + s20.a + s01.a + s21.a
-                + s02.a + s12.a + s22.a - 8.0 * sC.a;
-      float gD1 = abs(lap);
-      float gD2 = abs(sC.a - 0.5*(wL.a + wR.a))
-                + abs(sC.a - 0.5*(wU.a + wD.a));
-      float gD = max(gD1, gD2 * 0.75) * uDepthScale;
+      // Depth cross-difference at both scales
+      float dH1  = abs(s01.a - s21.a);
+      float dV1  = abs(s10.a - s12.a);
+      float dD1d = abs(s00.a - s22.a);
+      float dD2d = abs(s20.a - s02.a);
+      float dH2  = abs(wL.a  - wR.a);
+      float dV2  = abs(wU.a  - wD.a);
+      float gD   = max(max(max(dH1, dV1), max(dD1d, dD2d)),
+                       max(dH2, dV2)) * uDepthScale;
 
       float g = max(gN, gD);
-      float edge = smoothstep(uEdgeLow, uEdgeHigh, g);
+      // Tight smoothstep: MSAA gives smooth edge placement,
+      // narrow window snaps it to a crisp ~1px line.
+      float edge = smoothstep(uEdgeLow, uEdgeLow + 0.05, g);
 
-      vec3 edgeRgb = mix(col.rgb * 0.15, uEdgeColor, 0.35);
-      gl_FragColor = vec4(mix(col.rgb, edgeRgb, edge), col.a);
+      // Debug 2: show edge mask only (white = edge)
+      if (uDebugView == 2) { gl_FragColor = vec4(vec3(edge), 1.0); return; }
+
+      gl_FragColor = vec4(mix(col.rgb, uEdgeColor, edge * 0.75), col.a);
     }
   `,
 };
@@ -195,22 +199,26 @@ export function effectsPlugin(
     // Tuple per preset: (normalStrength, depthScale, edgeLow, edgeHigh).
     // Higher quality widens the smoothstep window and increases sensitivity
     // to both normal and depth gradients, picking up more subtle edges.
+    // lo = edge threshold (higher = fewer edges, only strong discontinuities).
+    // The shader uses smoothstep(lo, lo+0.05, g) for a near-binary cutoff.
     const preset =
       q === 'high'
-        ? { ns: 1.3, ds: 3.5, lo: 0.1, hi: 0.5 }
+        ? { ns: 1.2, ds: 3.0, lo: 0.2, hi: 0.25 }
         : q === 'low'
-          ? { ns: 0.7, ds: 1.4, lo: 0.2, hi: 0.7 }
-          : { ns: 1.0, ds: 2.5, lo: 0.15, hi: 0.6 };
+          ? { ns: 0.8, ds: 1.8, lo: 0.35, hi: 0.4 }
+          : { ns: 1.0, ds: 2.5, lo: 0.25, hi: 0.3 };
     const u = edgesPass.uniforms as {
       uNormalStrength: { value: number };
       uDepthScale: { value: number };
       uEdgeLow: { value: number };
       uEdgeHigh: { value: number };
+      uDebugView: { value: number };
     };
     u.uNormalStrength.value = preset.ns;
     u.uDepthScale.value = preset.ds;
     u.uEdgeLow.value = preset.lo;
     u.uEdgeHigh.value = preset.hi;
+    u.uDebugView.value = opts.debugView;
     if (fxaaPass) fxaaPass.setQuality(q);
   };
 
@@ -348,8 +356,13 @@ export function effectsPlugin(
         type: THREE.HalfFloatType,
       });
 
-      normalTarget = new THREE.WebGLRenderTarget(w, h, {
-        samples: msaaSamples,
+      // Normal buffer at 2x resolution, no MSAA. The 2x super-sample
+      // eliminates the dotted-line artifact: sub-pixel edge positions
+      // that fall between display pixels are captured at half-pixel
+      // precision, producing solid continuous edges once the edge
+      // shader samples back at display resolution.
+      const normalScale = 2;
+      normalTarget = new THREE.WebGLRenderTarget(w * normalScale, h * normalScale, {
         type: THREE.HalfFloatType,
       });
 
@@ -398,7 +411,7 @@ export function effectsPlugin(
         resolution: { value: THREE.Vector2 };
         tNormal: { value: THREE.Texture | null };
       };
-      eu.resolution.value = new THREE.Vector2(w, h);
+      eu.resolution.value = new THREE.Vector2(w * normalScale, h * normalScale);
       eu.tNormal.value = normalTarget.texture;
       composer.addPass(edgesPass);
 
@@ -439,12 +452,12 @@ export function effectsPlugin(
         composer.setSize(s.x, s.y);
         composer.setPixelRatio(r);
         if (fxaaPass) fxaaPass.setSize(nw, nh);
-        if (normalTarget) normalTarget.setSize(nw, nh);
+        if (normalTarget) normalTarget.setSize(nw * normalScale, nh * normalScale);
         if (edgesPass) {
           const u = edgesPass.uniforms as {
             resolution: { value: THREE.Vector2 };
           };
-          u.resolution.value.set(nw, nh);
+          u.resolution.value.set(nw * normalScale, nh * normalScale);
         }
       };
       const ro = new ResizeObserver(onResize);
@@ -482,6 +495,14 @@ export function effectsPlugin(
       ctx.commands.register('effects.get', () => api.getOptions(), {
         title: 'Get visual effects state',
       });
+      ctx.commands.register('effects.debugView', () => {
+        const next = ((opts.debugView + 1) % 4) as 0 | 1 | 2 | 3;
+        const labels = ['normal', 'normals buffer', 'edge mask', 'no edges'] as const;
+        api.setOptions({ debugView: next });
+        // eslint-disable-next-line no-console
+        console.log(`[effects] debug view: ${next} (${labels[next]})`);
+        return next;
+      }, { title: 'Cycle debug view (0=normal, 1=normals, 2=edge mask, 3=off)' });
 
       requestComposerFrame();
     },

@@ -52,7 +52,7 @@ export function hoverHighlightPlugin(
   let inFlight = false;
   let pending: { x: number; y: number } | null = null;
   let enabled = true;
-  const edges = new EdgeOverlay();
+  const edges = new EdgeOverlay({ lineWidth: 1.5 });
   let cachedSectionPlanes: Array<{ normal: { x: number; y: number; z: number }; point: { x: number; y: number; z: number }; active: boolean }> = [];
 
   const isClippedBySection = (pt: { x: number; y: number; z: number }): boolean =>
