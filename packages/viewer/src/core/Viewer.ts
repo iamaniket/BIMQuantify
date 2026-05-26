@@ -173,6 +173,11 @@ export class Viewer {
     // is visible from the start, not just the coarsest structural shell.
     fragmentsModels.settings.graphicsQuality = 2;
 
+    // Default maxUpdateRate is 100ms — way too slow for selection/highlight
+    // changes. Lowering to 0 lets every rAF tick drain pending tile updates.
+    // MeshManager's own updateThreshold (4ms) already caps per-frame cost.
+    fragmentsModels.settings.maxUpdateRate = 0;
+
     // Give every non-LOD material a unique polygon offset so coplanar BIM
     // surfaces (slab-on-wall, glazing-on-frame) resolve deterministically
     // instead of z-fighting.

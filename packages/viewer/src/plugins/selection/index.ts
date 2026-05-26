@@ -83,18 +83,73 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
   // individual LineSegments for thousands of items is too expensive.
   const EDGE_OVERLAY_THRESHOLD = 50;
 
+  const DEBUG = true;
+  const log = (...args: unknown[]): void => { if (DEBUG) console.log('[selection]', ...args); };
+  const time = (label: string): void => { if (DEBUG) console.time(`[selection] ${label}`); };
+  const timeEnd = (label: string): void => { if (DEBUG) console.timeEnd(`[selection] ${label}`); };
+
+  // Track when library promises actually resolve (the real visual cost).
+  const trackWorker = (label: string, promises: Promise<void>[]): void => {
+    if (!DEBUG || !promises.length) return;
+    const t0 = performance.now();
+    void Promise.all(promises).then(() => {
+      const dt = performance.now() - t0;
+      console.log(`[selection] ⏱ ${label} worker done: ${dt.toFixed(1)}ms`);
+    });
+    // Also measure time to next visual frame
+    requestAnimationFrame(() => {
+      const dt = performance.now() - t0;
+      console.log(`[selection] 🎨 ${label} next frame: ${dt.toFixed(1)}ms`);
+    });
+  };
+
   // Fire-and-forget per-model setColor / resetColor. The library's
   // MeshConnection batches multiple calls landing in the same tick so
   // there's no benefit to awaiting these.
   const paintColors = (items: ItemId[], on: boolean): void => {
     if (!ctxRef || !items.length) return;
     if (!enabled) return;
-    for (const [modelId, ids] of groupByModel(items)) {
+    const grouped = groupByModel(items);
+    log(`paintColors(${on ? 'ON' : 'OFF'}) — ${items.length} items across ${grouped.size} models`);
+    time(`paintColors(${on ? 'ON' : 'OFF'}, ${items.length})`);
+    const promises: Promise<void>[] = [];
+    for (const [modelId, ids] of grouped) {
       const model = ctxRef.models().get(modelId);
       if (!model) continue;
-      if (on) void model.setColor(ids, color).catch(() => undefined);
-      else    void model.resetColor(ids).catch(() => undefined);
+      const p = on ? model.setColor(ids, color) : model.resetColor(ids);
+      promises.push(p.catch(() => undefined));
     }
+    timeEnd(`paintColors(${on ? 'ON' : 'OFF'}, ${items.length})`);
+    trackWorker(`paintColors(${on ? 'ON' : 'OFF'}, ${items.length})`, promises);
+  };
+
+  // Bulk path: setColor(undefined) / resetColor(undefined) operates on
+  // ALL items in every loaded model without iterating individual IDs.
+  // O(1) per model — avoids the per-item stagger of large ID arrays.
+  const paintBulkColor = (on: boolean): void => {
+    if (!ctxRef || !enabled) return;
+    let modelCount = 0;
+    time(`paintBulkColor(${on ? 'ON' : 'OFF'})`);
+    const promises: Promise<void>[] = [];
+    for (const [, model] of ctxRef.models()) {
+      modelCount++;
+      const p = on ? model.setColor(undefined, color) : model.resetColor(undefined);
+      promises.push(p.catch(() => undefined));
+    }
+    timeEnd(`paintBulkColor(${on ? 'ON' : 'OFF'})`);
+    log(`paintBulkColor(${on ? 'ON' : 'OFF'}) — ${modelCount} models`);
+    log('fragments.settings:', JSON.stringify(ctxRef.fragments.settings));
+    trackWorker(`paintBulkColor(${on ? 'ON' : 'OFF'})`, promises);
+
+    // Force-flush all pending tile updates after the worker resolves
+    // so the visual change lands in one frame instead of staggering.
+    const frags = ctxRef.fragments;
+    void Promise.all(promises).then(() => {
+      const t0 = performance.now();
+      return frags.update(true).then(() => {
+        log(`⚡ force update(true) done: ${(performance.now() - t0).toFixed(1)}ms`);
+      });
+    }).catch(() => undefined);
   };
 
   const paint = (items: ItemId[], on: boolean): void => {
@@ -108,12 +163,16 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
   const emitChange = (added: ItemId[], removed: ItemId[]): void => {
     if (!ctxRef) return;
+    time('emitChange');
+    const sel = allSelected ? [] : [...itemMap.values()];
+    log(`emitChange — allSelected=${allSelected}, selected=${sel.length}, added=${added.length}, removed=${removed.length}`);
     ctxRef.events.emit('selection:change', {
-      selected: allSelected ? [] : [...itemMap.values()],
+      selected: sel,
       added,
       removed,
       allSelected,
     });
+    timeEnd('emitChange');
   };
 
   // Lazily materialise the "all selected" set into the real Set+Map.
@@ -121,6 +180,8 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
   // deselecting one item out of an "all" selection). Cost: O(N) once.
   const materializeAll = async (): Promise<void> => {
     if (!allSelected || !ctxRef) return;
+    log('materializeAll — start');
+    time('materializeAll');
     selected.clear();
     itemMap.clear();
     for (const [modelId, model] of ctxRef.models()) {
@@ -138,20 +199,20 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
       }
     }
     allSelected = false;
+    timeEnd('materializeAll');
+    log(`materializeAll — done, ${selected.size} items`);
   };
 
   const setSelection = (items: ItemId[]): void => {
-    // Caller has a concrete list of items, so any "all" invariant is
-    // broken. We don't materialize because we'll overwrite the set anyway.
+    log(`setSelection — ${items.length} items, wasAllSelected=${allSelected}`);
+    time('setSelection');
     const wasAllSelected = allSelected;
     allSelected = false;
+    time('setSelection:buildDelta');
     const nextKeys = new Set(items.map(key));
     const removed: ItemId[] = [];
     const added: ItemId[] = [];
     if (wasAllSelected) {
-      // Coming from all-selected: everything not in `items` is implicitly
-      // removed. Skip building the explicit removed[] (would be O(N) for
-      // little gain) — the visual reset uses the bulk path below.
       for (const it of items) added.push(it);
     } else {
       for (const k of selected) {
@@ -164,16 +225,18 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
         if (!selected.has(key(it))) added.push(it);
       }
     }
-    // Fire both in the same tick — library batches the underlying tile
-    // updates inside its MeshConnection window.
+    timeEnd('setSelection:buildDelta');
+    log(`setSelection — removed=${removed.length}, added=${added.length}`);
+    time('setSelection:paint');
     if (wasAllSelected) {
-      // Coming out of all-selected mode: nothing was painted, so just
-      // paint the kept items. No bulk reset needed.
+      paintBulkColor(false);
       paint(items, true);
     } else {
       paint(removed, false);
       paint(added, true);
     }
+    timeEnd('setSelection:paint');
+    time('setSelection:rebuildState');
     selected.clear();
     itemMap.clear();
     for (const it of items) {
@@ -181,7 +244,9 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
       selected.add(k);
       itemMap.set(k, it);
     }
+    timeEnd('setSelection:rebuildState');
     if (added.length || removed.length || wasAllSelected) emitChange(added, removed);
+    timeEnd('setSelection');
   };
 
   const addItems = (items: ItemId[]): void => {
@@ -215,12 +280,14 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
   const clear = (): void => {
     if (!allSelected && !selected.size) return;
+    log(`clear — allSelected=${allSelected}, selected.size=${selected.size}`);
+    time('clear');
     if (allSelected) {
-      // selectAll() didn't paint anything (see comment there), so clearing
-      // out of "all selected" is purely a flag flip — no worker round-trip.
+      paintBulkColor(false);
       if (ctxRef) edges.clear(ctxRef);
       allSelected = false;
       emitChange([], []);
+      timeEnd('clear');
       return;
     }
     const all = [...itemMap.values()];
@@ -229,30 +296,21 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     selected.clear();
     itemMap.clear();
     emitChange([], all);
+    timeEnd('clear');
   };
 
   const selectAll = (): void => {
     if (!enabled || !ctxRef) return;
     if (allSelected) return;
-    // Intentionally skip the 3D paint on select-all. The library's worker
-    // walks every item to update its virtual-mesh state — that's the ~1s
-    // floor that survived the bulk-API switch. The UI (status bar, tree,
-    // properties panel) already communicates "everything is selected" via
-    // the `selectedAll` flag, which is what users actually need from this
-    // command. Re-painting becomes visible again as soon as the user
-    // narrows the selection (pickSet on a single item paints just that
-    // one).
-    //
-    // If there was a partial selection before this, reset just those
-    // items' colors so they don't stay stuck in selection color.
-    if (selected.size) {
-      paintColors([...itemMap.values()], false);
-    }
+    log('selectAll — start');
+    time('selectAll');
+    paintBulkColor(true);
     if (ctxRef) edges.clear(ctxRef);
     selected.clear();
     itemMap.clear();
     allSelected = true;
     emitChange([], []);
+    timeEnd('selectAll');
   };
 
   // Pick-by-NDC helpers — used by the mouse-bindings dispatcher.
@@ -313,11 +371,10 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     if (enabled === next) return;
     enabled = next;
     if (!ctxRef) return;
-    // The `allSelected` branch never paints in either direction — selectAll
-    // already skipped the 3D paint, so there's nothing to unpaint/repaint
-    // when the feature flips.
     if (!enabled) {
-      if (!allSelected && selected.size) {
+      if (allSelected) {
+        paintBulkColor(false);
+      } else if (selected.size) {
         const all = [...itemMap.values()];
         for (const [modelId, ids] of groupByModel(all)) {
           const model = ctxRef.models().get(modelId);
@@ -325,8 +382,10 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
         }
       }
       edges.clear(ctxRef);
-    } else if (enabled) {
-      if (!allSelected && selected.size) {
+    } else {
+      if (allSelected) {
+        paintBulkColor(true);
+      } else if (selected.size) {
         paint([...itemMap.values()], true);
       }
     }
@@ -454,11 +513,24 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
       ctx.commands.register('selection.invert', async () => {
         if (!enabled) return;
+        log(`invert — allSelected=${allSelected}, selected.size=${selected.size}`);
+        time('invert');
         if (allSelected) {
-          // Inverting "everything" is "nothing".
+          log('invert → clear (all → nothing)');
           clear();
+          timeEnd('invert');
           return;
         }
+        if (selected.size === 0) {
+          log('invert → selectAll (nothing → all)');
+          selectAll();
+          timeEnd('invert');
+          return;
+        }
+        const previousItems = [...itemMap.values()];
+        log(`invert — building inverted set from ${previousItems.length} selected`);
+
+        time('invert:buildList');
         const inverted: ItemId[] = [];
         for (const [modelId, model] of ctx.models()) {
           let ids: Iterable<number>;
@@ -473,7 +545,29 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
             }
           }
         }
-        setSelection(inverted);
+        timeEnd('invert:buildList');
+        log(`invert — inverted set has ${inverted.length} items`);
+
+        time('invert:paint');
+        paintBulkColor(true);
+        paintColors(previousItems, false);
+        timeEnd('invert:paint');
+
+        if (ctxRef) edges.clear(ctxRef);
+
+        time('invert:rebuildState');
+        allSelected = false;
+        selected.clear();
+        itemMap.clear();
+        for (const it of inverted) {
+          const k = key(it);
+          selected.add(k);
+          itemMap.set(k, it);
+        }
+        timeEnd('invert:rebuildState');
+
+        emitChange(inverted, previousItems);
+        timeEnd('invert');
       }, { title: 'Invert selection' });
     },
 
