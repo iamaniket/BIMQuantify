@@ -61,6 +61,11 @@ export interface ControlsOptions {
   wheel?: CameraAction;
 }
 
+export interface ZoomOptions {
+  /** Max dolly distance as multiple of model size. Default: 4. */
+  maxFactor?: number;
+}
+
 export interface ViewerOptions {
   /** Plugins to register at construction. Order matters for dependencies. */
   plugins?: Plugin[];
@@ -68,6 +73,8 @@ export interface ViewerOptions {
   shadows?: ShadowOptions;
   /** Drag-mouse-button assignments (rotate/pan/zoom). */
   controls?: ControlsOptions;
+  /** Min/max zoom (dolly) distance limits. */
+  zoom?: ZoomOptions;
 }
 
 /** Camera idle window after which the `viewer:idle` event fires. */
@@ -92,6 +99,7 @@ export class Viewer {
   private modelMaxDim = 1;
   private lastAppliedNear = 0.01;
   private lastAppliedFar = 2000;
+  private zoomOutLimit = Infinity;
   modelId: string | null = null;
 
   constructor(private readonly options: ViewerOptions = {}) {}
@@ -106,12 +114,14 @@ export class Viewer {
     world.camera.controls.getTarget(target);
     const distance = cam.position.distanceTo(target);
 
+    // Keep the far/near ratio under ~2 000:1 to preserve depth-buffer
+    // precision and avoid z-fighting on coplanar BIM surfaces.
     const dynamicNear = Math.min(
-      Math.max(distance * 0.001, 0.001),
+      Math.max(distance * 0.02, 0.01),
       this.baseNear,
     );
     const dynamicFar = Math.min(
-      Math.max(distance * 100, this.modelMaxDim * 3),
+      Math.max(distance * 10, this.modelMaxDim * 3),
       this.baseFar,
     );
 
@@ -184,8 +194,8 @@ export class Viewer {
     fragmentsModels.models.materials.list.onItemSet.add(({ value: material }) => {
       if ('isLodMaterial' in material && material.isLodMaterial) return;
       material.polygonOffset = true;
-      material.polygonOffsetUnits = 1;
-      material.polygonOffsetFactor = Math.random();
+      material.polygonOffsetUnits = 4;
+      material.polygonOffsetFactor = 1 + Math.random();
       // BIM authoring tools export geometry with inconsistent face winding.
       // Without DoubleSide, back-facing triangles are culled and entire
       // elements disappear even though their geometry is present.
@@ -247,6 +257,18 @@ export class Viewer {
       const pos = camThree.position;
       const target = new THREE.Vector3();
       camControls.getTarget(target);
+
+      // Clamp zoom-out: with infinityDolly the target shifts, so measure
+      // the actual camera-to-scene-origin distance instead of controls.distance.
+      if (this.zoomOutLimit < Infinity) {
+        const dist = pos.distanceTo(target);
+        if (dist > this.zoomOutLimit) {
+          const dir = pos.clone().sub(target).normalize();
+          const clampedPos = target.clone().addScaledVector(dir, this.zoomOutLimit);
+          camControls.setPosition(clampedPos.x, clampedPos.y, clampedPos.z, false);
+        }
+      }
+
       this.events.emit('camera:change', {
         position: { x: pos.x, y: pos.y, z: pos.z },
         target: { x: target.x, y: target.y, z: target.z },
@@ -340,23 +362,28 @@ export class Viewer {
     const ny = 1 / len;
     const nz = 1 / len;
 
+    // Shift target down 10% of model height so the model appears
+    // vertically centered — the downward iso angle foreshortens the
+    // bottom and makes the model look low without this offset.
+    const targetY = center.y - size.y * 0.25;
+
     world.camera.controls.setLookAt(
       center.x + nx * distance,
-      center.y + ny * distance,
+      targetY + ny * distance,
       center.z + nz * distance,
       center.x,
-      center.y,
+      targetY,
       center.z,
       false,
     );
 
-    // Tighten depth range to the model's scale. Default near=0.1/far=2000
-    // wastes precision over BIM-scale geometry and produces z-fighting on
-    // coplanar surfaces.
+    // Tighten depth range to the model's scale. Keep the far/near ratio
+    // under ~2 000:1 so the 24-bit depth buffer has enough precision for
+    // coplanar BIM surfaces (slab-on-wall, glazing-on-frame).
     const cam = world.camera.three;
     if (cam instanceof THREE.PerspectiveCamera) {
-      cam.near = Math.max(maxDim / 1000, 0.01);
-      cam.far = maxDim * 100;
+      cam.near = Math.max(maxDim / 200, 0.05);
+      cam.far = maxDim * 10;
       this.baseNear = cam.near;
       this.baseFar = cam.far;
       this.modelMaxDim = maxDim;
@@ -364,6 +391,14 @@ export class Viewer {
       this.lastAppliedFar = cam.far;
       cam.updateProjectionMatrix();
     }
+
+    const controls = world.camera.controls;
+    // ThatOpen sets infinityDolly=true and minDistance=6. Keep infinityDolly
+    // so the orbit target shifts forward on zoom-in (needed to go inside the
+    // model). Max zoom-out is enforced manually in the camera update handler.
+    controls.minDistance = 0;
+    const maxF = this.options.zoom?.maxFactor ?? 4;
+    this.zoomOutLimit = maxDim * maxF;
   }
 
   /**

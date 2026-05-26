@@ -7,6 +7,8 @@ import {
 } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
+import type { ZoomOptions } from '@bimstitch/viewer';
+
 import {
   DEFAULT_VIEWER_SETTINGS,
   colorToHex,
@@ -65,6 +67,34 @@ function Toggle({ label, checked, onChange }: {
         onChange={(e) => { onChange(e.target.checked); }}
         className="h-4 w-4 cursor-pointer accent-primary"
       />
+    </label>
+  );
+}
+
+function RangeField({ label, value, min, max, step, format, onChange }: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  format: (v: number) => string;
+  onChange: (v: number) => void;
+}): JSX.Element {
+  return (
+    <label className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
+      <span className="shrink-0">{label}</span>
+      <span className="flex items-center gap-2">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => { onChange(Number(e.target.value)); }}
+          className="w-24 cursor-pointer accent-primary"
+        />
+        <span className="w-10 text-right tabular-nums">{format(value)}</span>
+      </span>
     </label>
   );
 }
@@ -149,6 +179,22 @@ function AppearanceTab({
             className="h-7 w-12 cursor-pointer rounded border border-border bg-transparent"
           />
         </Field>
+      </Section>
+      <Section title="Zoom limits" note={undefined}>
+        <RangeField
+          label="Max distance"
+          value={settings.zoom.maxFactor}
+          min={2}
+          max={20}
+          step={0.5}
+          format={(v) => `${String(v)}x`}
+          onChange={(maxFactor) => {
+            onChange({
+              ...settings,
+              zoom: { ...settings.zoom, maxFactor },
+            });
+          }}
+        />
       </Section>
     </div>
   );
@@ -300,6 +346,7 @@ function needsReload(prev: ViewerSettings, next: ViewerSettings): boolean {
   if (prev.controls.middle !== next.controls.middle) return true;
   if (prev.controls.right !== next.controls.right) return true;
   if (prev.controls.wheel !== next.controls.wheel) return true;
+  if (prev.zoom.maxFactor !== next.zoom.maxFactor) return true;
   return false;
 }
 

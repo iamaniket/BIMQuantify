@@ -12,7 +12,7 @@ import type {
   ShortcutMap,
   ViewerEvents,
 } from './core/types.js';
-import type { CameraAction, ControlsOptions } from './core/Viewer.js';
+import type { CameraAction, ControlsOptions, ZoomOptions } from './core/Viewer.js';
 import type { EffectsOptions } from './plugins/effects/types.js';
 import type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
 import type { InteractivePerformanceOptions } from './plugins/interactive-performance/index.js';
@@ -110,6 +110,8 @@ export type IfcViewerProps = {
   section?: SectionPluginOptions | false;
   /** First-person walkthrough. Pass `false` to disable. */
   walkthrough?: WalkthroughPluginOptions | false;
+  /** Min/max zoom (dolly) distance limits. Auto-computed from model size when omitted. */
+  zoom?: ZoomOptions;
   ref?: Ref<ViewerHandle>;
 };
 
@@ -117,7 +119,7 @@ export type { EffectsOptions, EffectsQuality } from './plugins/effects/types.js'
 
 export type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
 
-export type { CameraAction, ControlsOptions } from './core/Viewer.js';
+export type { CameraAction, ControlsOptions, ZoomOptions } from './core/Viewer.js';
 
 export type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
 

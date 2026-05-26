@@ -275,6 +275,7 @@ export default function ViewerPage(): JSX.Element {
         shortcuts={settings.shortcuts}
         mouseBindings={settings.mouseBindings}
         controls={settings.controls}
+        zoom={settings.zoom}
         interactivePerformance={settings.interactivePerformance}
         onSceneReady={() => {
           setSceneReady(true);

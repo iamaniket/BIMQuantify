@@ -12,8 +12,10 @@ from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.auth.tokens import TokenError, decode_token_full
 from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings
+from bimstitch_api.db import get_engine
 from bimstitch_api.deadlines.reminder_engine import DeadlineReminderSweeper
 from bimstitch_api.jobs.dispatcher import close_http_client
+from bimstitch_api.migrations_check import check_pending_migrations
 from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.observability import init_sentry
 from bimstitch_api.routers.access_requests import router as access_requests_router
@@ -70,6 +72,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await FastAPILimiter.init(redis)
     manager = get_manager()
     await manager.start(redis)
+    await check_pending_migrations(get_engine())
     try:
         await get_storage().ensure_bucket()
     except Exception:

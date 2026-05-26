@@ -6,6 +6,7 @@ import type {
   InteractivePerformanceOptions,
   MouseBindingMap,
   ShortcutMap,
+  ZoomOptions,
 } from '@bimstitch/viewer';
 
 const STORAGE_KEY = 'bimstitch.viewerSettings.v2';
@@ -29,6 +30,8 @@ export type ViewerSettings = {
   controls: ControlsSettings;
   /** Drop expensive work while the camera is moving. */
   interactivePerformance: InteractivePerformanceSettings;
+  /** Min/max zoom distance limits (factors of model size). */
+  zoom: Required<ZoomOptions>;
 };
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
@@ -44,6 +47,10 @@ export const DEFAULT_MOUSE_BINDINGS_SETTINGS: MouseBindingMap = {
   'click:Meta+left': 'selection.pickToggle',
   move: 'hover.pick',
   'move:leave': 'hover.clear',
+};
+
+export const DEFAULT_ZOOM: Required<ZoomOptions> = {
+  maxFactor: 4,
 };
 
 export const DEFAULT_CONTROLS: ControlsSettings = {
@@ -89,6 +96,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   mouseBindings: DEFAULT_MOUSE_BINDINGS_SETTINGS,
   controls: DEFAULT_CONTROLS,
   interactivePerformance: DEFAULT_INTERACTIVE_PERFORMANCE,
+  zoom: DEFAULT_ZOOM,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
@@ -105,6 +113,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
       ...d.interactivePerformance,
       ...(p.interactivePerformance ?? {}),
     },
+    zoom: { ...d.zoom, ...(p.zoom ?? {}) },
   };
 }
 

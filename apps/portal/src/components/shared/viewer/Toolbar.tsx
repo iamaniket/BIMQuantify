@@ -4,13 +4,10 @@ import {
   Axis3D,
   Box,
   Glasses,
-  Maximize,
+  Home,
   MousePointer2,
-  Move,
-  Orbit,
   Settings,
   User,
-  ZoomIn,
 } from 'lucide-react';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -59,6 +56,10 @@ export function Toolbar({
     {
       tools: [
         {
+          type: 'button', id: 'home', icon: Home, label: 'Home view',
+          onClick: () => { run('camera.home'); },
+        },
+        {
           type: 'button',
           id: 'select',
           icon: MousePointer2,
@@ -74,25 +75,6 @@ export function Toolbar({
               </span>
             ) : undefined,
           onClick: () => { setActiveTool('select'); },
-        },
-        {
-          type: 'button', id: 'pan', icon: Move, label: 'Pan',
-          isActive: activeTool === 'pan',
-          onClick: () => { setActiveTool('pan'); },
-        },
-        {
-          type: 'button', id: 'orbit', icon: Orbit, label: 'Orbit',
-          isActive: activeTool === 'orbit',
-          onClick: () => { setActiveTool('orbit'); },
-        },
-        {
-          type: 'button', id: 'zoom', icon: ZoomIn, label: 'Zoom',
-          isActive: activeTool === 'zoom',
-          onClick: () => { setActiveTool('zoom'); },
-        },
-        {
-          type: 'button', id: 'fit', icon: Maximize, label: 'Fit to view',
-          onClick: () => { run('camera.zoomExtents'); },
         },
       ],
     },

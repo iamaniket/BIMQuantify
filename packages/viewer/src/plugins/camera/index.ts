@@ -42,11 +42,23 @@ interface CameraPluginOptions {
 export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
   const padding = options.framePadding ?? 1.8;
 
+  let homeSaved = false;
+  let offModelLoaded: (() => void) | null = null;
+
   return {
     name: NAME,
 
     install(ctx: ViewerContext) {
       const { commands } = ctx;
+
+      offModelLoaded = ctx.events.on('model:loaded', () => {
+        // Defer one frame — Viewer.frameModel() sets the camera in
+        // the same tick as model:loaded, so we snapshot after it lands.
+        requestAnimationFrame(() => {
+          ctx.cameraControls.saveState();
+          homeSaved = true;
+        });
+      });
 
       const setView = async (view: ViewName): Promise<void> => {
         const box = computeSceneBox(ctx);
@@ -64,12 +76,14 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
           z: (dir[2] / len) * distance,
         };
 
+        const targetY = center.y - size.y * 0.25;
+
         await ctx.cameraControls.setLookAt(
           center.x + offset.x,
-          center.y + offset.y,
+          targetY + offset.y,
           center.z + offset.z,
           center.x,
-          center.y,
+          targetY,
           center.z,
           true,
         );
@@ -109,6 +123,10 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
       commands.register(
         'camera.home',
         async () => {
+          if (homeSaved) {
+            await ctx.cameraControls.reset(true);
+            return;
+          }
           const box = computeSceneBox(ctx);
           if (box.isEmpty()) return;
           await snapIsoAndFit(box);
@@ -178,7 +196,9 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
     },
 
     uninstall() {
-      // Commands cleaned up by ownership; nothing else to tear down.
+      offModelLoaded?.();
+      offModelLoaded = null;
+      homeSaved = false;
     },
   };
 }

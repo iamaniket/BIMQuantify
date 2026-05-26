@@ -142,6 +142,7 @@ function IfcViewerImpl(
       ...(props.background ? { background: props.background } : {}),
       ...(props.shadows ? { shadows: props.shadows } : {}),
       ...(props.controls ? { controls: props.controls } : {}),
+      ...(props.zoom ? { zoom: props.zoom } : {}),
     });
     viewerRef.current = viewer;
 
