@@ -1,18 +1,17 @@
 'use client';
 
-import { useRef, type JSX, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
 import {
   AppDialog, Select, Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
-import type { ZoomOptions } from '@bimstitch/viewer';
-
 import {
   DEFAULT_VIEWER_SETTINGS,
   colorToHex,
   hexToColor,
+  loadViewerSettings,
   saveViewerSettings,
   type EffectsQuality,
   type InteractivePerformanceSettings,
@@ -20,90 +19,19 @@ import {
 } from '@/lib/viewerSettings';
 import {
   DEFAULT_DOCUMENT_SETTINGS,
+  loadDocumentSettings,
   saveDocumentSettings,
   type DocumentSettings,
 } from '@/lib/documentSettings';
 
 import { KeyBindingsTab } from './KeyBindingsTab';
+import { ColorField, Field, RangeField, Section, Toggle } from './primitives';
 
-// ── Shared primitives ────────────────────────────────────────────────
-
-function Section({ title, note, children }: {
-  title: string;
-  note: string | undefined;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <section className="space-y-2">
-      <header className="flex items-baseline justify-between">
-        <h3 className="text-caption font-medium text-foreground">{title}</h3>
-        {note !== undefined && <span className="text-caption text-foreground-secondary">{note}</span>}
-      </header>
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }): JSX.Element {
-  return (
-    <label className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
-      <span>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Toggle({ label, checked, onChange }: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}): JSX.Element {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 text-body3 text-foreground-secondary">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => { onChange(e.target.checked); }}
-        className="h-4 w-4 cursor-pointer accent-primary"
-      />
-    </label>
-  );
-}
-
-function RangeField({ label, value, min, max, step, format, onChange }: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  format: (v: number) => string;
-  onChange: (v: number) => void;
-}): JSX.Element {
-  return (
-    <label className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
-      <span className="shrink-0">{label}</span>
-      <span className="flex items-center gap-2">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => { onChange(Number(e.target.value)); }}
-          className="w-24 cursor-pointer accent-primary"
-        />
-        <span className="w-10 text-right tabular-nums">{format(value)}</span>
-      </span>
-    </label>
-  );
-}
-
-// ── 3D Appearance tab ────────────────────────────────────────────────
+// ── Appearance sub-sections ─────────────────────────────────────────
 
 const EFFECTS_QUALITIES: EffectsQuality[] = ['low', 'medium', 'high'];
 
-function AppearanceTab({
+function Viewer3DSection({
   settings,
   onChange,
 }: {
@@ -111,7 +39,7 @@ function AppearanceTab({
   onChange: (next: ViewerSettings) => void;
 }): JSX.Element {
   return (
-    <div className="space-y-4 pt-3">
+    <div className="space-y-4">
       <Section title="Shadows" note={undefined}>
         <Toggle
           label="Enable shadows"
@@ -165,21 +93,6 @@ function AppearanceTab({
           </Select>
         </Field>
       </Section>
-      <Section title="Background" note={undefined}>
-        <Field label="Color">
-          <input
-            type="color"
-            value={colorToHex(settings.background.color)}
-            onChange={(e) => {
-              onChange({
-                ...settings,
-                background: { color: hexToColor(e.target.value) },
-              });
-            }}
-            className="h-7 w-12 cursor-pointer rounded border border-border bg-transparent"
-          />
-        </Field>
-      </Section>
       <Section title="Zoom limits" note={undefined}>
         <RangeField
           label="Max distance"
@@ -196,18 +109,126 @@ function AppearanceTab({
           }}
         />
       </Section>
+      <Section title="Behavior" note="Color changes reload the viewer">
+        <Toggle
+          label="Hover highlight"
+          checked={settings.behavior.hoverHighlight.enabled}
+          onChange={(enabled) => {
+            onChange({
+              ...settings,
+              behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, enabled } },
+            });
+          }}
+        />
+        <ColorField
+          label="Hover color"
+          value={colorToHex(settings.behavior.hoverHighlight.color)}
+          onChange={(hex) => {
+            onChange({
+              ...settings,
+              behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, color: hexToColor(hex) } },
+            });
+          }}
+        />
+        <Toggle
+          label="Click to select"
+          checked={settings.behavior.selection.enabled}
+          onChange={(enabled) => {
+            onChange({
+              ...settings,
+              behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, enabled } },
+            });
+          }}
+        />
+        <ColorField
+          label="Selection color"
+          value={colorToHex(settings.behavior.selection.color)}
+          onChange={(hex) => {
+            onChange({
+              ...settings,
+              behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, color: hexToColor(hex) } },
+            });
+          }}
+        />
+      </Section>
     </div>
   );
 }
 
-// ── 3D Performance tab ───────────────────────────────────────────────
+function DocumentSection(): JSX.Element {
+  return (
+    <div className="space-y-4">
+      <p className="text-body3 text-foreground-secondary">
+        No additional document-specific settings yet.
+      </p>
+    </div>
+  );
+}
+
+// ── Unified Appearance tab ──────────────────────────────────────────
+
+function AppearanceTab({
+  viewer3D,
+  doc2D,
+  activeMode,
+  onViewer3DChange,
+  onDoc2DChange,
+}: {
+  viewer3D: ViewerSettings;
+  doc2D: DocumentSettings;
+  activeMode: '3d' | '2d';
+  onViewer3DChange: (next: ViewerSettings) => void;
+  onDoc2DChange: (next: DocumentSettings) => void;
+}): JSX.Element {
+  const [subTab, setSubTab] = useState<string>(activeMode === '3d' ? '3d' : 'document');
+
+  return (
+    <div className="space-y-4">
+      <Section title="Common" note={undefined}>
+        <ColorField
+          label="Background"
+          value={colorToHex(viewer3D.background.color)}
+          onChange={(hex) => {
+            onViewer3DChange({ ...viewer3D, background: { color: hexToColor(hex) } });
+            onDoc2DChange({ ...doc2D, pageBackground: hex });
+          }}
+        />
+      </Section>
+
+      <Tabs value={subTab} onValueChange={setSubTab}>
+        <TabsList className="w-full rounded-none bg-transparent p-0 gap-0 border-b border-border">
+          <TabsTrigger
+            value="3d"
+            className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1.5 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+          >
+            3D Viewer
+          </TabsTrigger>
+          <TabsTrigger
+            value="document"
+            className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1.5 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+          >
+            Document
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="3d" className="pt-3">
+          <Viewer3DSection settings={viewer3D} onChange={onViewer3DChange} />
+        </TabsContent>
+
+        <TabsContent value="document" className="pt-3">
+          <DocumentSection />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ── 3D Performance tab ──────────────────────────────────────────────
 
 function PerformanceTab({
-  handle,
   settings,
   onChange,
 }: {
-  handle: ViewerHandle | null;
   settings: ViewerSettings;
   onChange: (next: ViewerSettings) => void;
 }): JSX.Element {
@@ -219,18 +240,13 @@ function PerformanceTab({
       ...ip, ...patch,
     };
     onChange({ ...settings, interactivePerformance: next });
-    if (handle) {
-      handle.commands
-        .execute('interactivePerformance.set', patch)
-        .catch(() => undefined);
-    }
   };
 
   return (
-    <div className="pt-3">
+    <div>
       <Section
         title="Performance during navigation"
-        note="Live"
+        note={undefined}
       >
         <p className="text-body3 text-foreground-secondary">
           Skip work while the camera is moving.
@@ -287,32 +303,7 @@ function PerformanceTab({
   );
 }
 
-// ── 2D General tab ───────────────────────────────────────────────────
-
-function GeneralTab({
-  settings,
-  onChange,
-}: {
-  settings: DocumentSettings;
-  onChange: (next: DocumentSettings) => void;
-}): JSX.Element {
-  return (
-    <div className="space-y-4 pt-3">
-      <Section title="Page background" note={undefined}>
-        <Field label="Colour">
-          <input
-            type="color"
-            value={settings.pageBackground}
-            onChange={(e) => { onChange({ ...settings, pageBackground: e.target.value }); }}
-            className="h-7 w-12 cursor-pointer rounded border border-border bg-transparent"
-          />
-        </Field>
-      </Section>
-    </div>
-  );
-}
-
-// ── Main dialog ──────────────────────────────────────────────────────
+// ── Main dialog ─────────────────────────────────────────────────────
 
 type Props3D = {
   mode: '3d';
@@ -347,71 +338,151 @@ function needsReload(prev: ViewerSettings, next: ViewerSettings): boolean {
   if (prev.controls.right !== next.controls.right) return true;
   if (prev.controls.wheel !== next.controls.wheel) return true;
   if (prev.zoom.maxFactor !== next.zoom.maxFactor) return true;
+  if (prev.behavior.hoverHighlight.color !== next.behavior.hoverHighlight.color) return true;
+  if (prev.behavior.selection.color !== next.behavior.selection.color) return true;
   return false;
 }
+
+// ── Live command dispatch on Save ───────────────────────────────────
+
+type LiveBinding = { combo: string; command: string };
+
+function applyLiveCommands3D(
+  handle: ViewerHandle | null,
+  snapshot: ViewerSettings,
+  draft: ViewerSettings,
+): void {
+  if (!handle) return;
+
+  if (snapshot.behavior.hoverHighlight.enabled !== draft.behavior.hoverHighlight.enabled) {
+    handle.commands.execute('hover.setEnabled', draft.behavior.hoverHighlight.enabled).catch(() => undefined);
+  }
+  if (snapshot.behavior.selection.enabled !== draft.behavior.selection.enabled) {
+    handle.commands.execute('selection.setEnabled', draft.behavior.selection.enabled).catch(() => undefined);
+  }
+
+  const snapIP = snapshot.interactivePerformance;
+  const draftIP = draft.interactivePerformance;
+  const ipPatch: Partial<InteractivePerformanceSettings> = {};
+  for (const key of Object.keys(draftIP) as (keyof InteractivePerformanceSettings)[]) {
+    if (snapIP[key] !== draftIP[key]) {
+      (ipPatch as Record<string, unknown>)[key] = draftIP[key];
+    }
+  }
+  if (Object.keys(ipPatch).length > 0) {
+    handle.commands.execute('interactivePerformance.set', ipPatch).catch(() => undefined);
+  }
+
+  const snapShortcuts = snapshot.shortcuts;
+  const draftShortcuts = draft.shortcuts;
+  const changedCmds = Object.keys(draftShortcuts).filter(
+    (cmd) => draftShortcuts[cmd] !== snapShortcuts[cmd],
+  );
+  if (changedCmds.length > 0) {
+    handle.commands.execute<LiveBinding[]>('shortcuts.list')
+      .then((live) => {
+        const liveMap = new Map(live.map((b) => [b.command, b.combo]));
+        for (const cmd of changedCmds) {
+          const oldCombo = liveMap.get(cmd);
+          const newCombo = draftShortcuts[cmd];
+          if (oldCombo) {
+            handle.commands.execute('shortcuts.unbind', { combo: oldCombo }).catch(() => undefined);
+          }
+          if (newCombo) {
+            handle.commands.execute('shortcuts.bind', { combo: newCombo, command: cmd }).catch(() => undefined);
+          }
+        }
+      })
+      .catch(() => undefined);
+  }
+}
+
+// ── Exported dialog ─────────────────────────────────────────────────
 
 export function SettingsDialog(props: Props): JSX.Element {
   const {
     mode, open, onClose, settings, onSettingsChange,
   } = props;
 
+  const [viewer3D, setViewer3D] = useState<ViewerSettings>(
+    mode === '3d' ? settings as ViewerSettings : loadViewerSettings,
+  );
+  const [doc2D, setDoc2D] = useState<DocumentSettings>(
+    mode === '2d' ? settings as DocumentSettings : loadDocumentSettings,
+  );
+  const [activeTab, setActiveTab] = useState('appearance');
   const snapshotRef = useRef<ViewerSettings | null>(null);
 
-  const handleOpenChange = (): void => {
-    if (mode === '3d' && snapshotRef.current) {
-      if (needsReload(snapshotRef.current, settings)) {
-        props.onReloadViewer();
+  useEffect(() => {
+    if (open) {
+      if (mode === '3d') {
+        setViewer3D(settings as ViewerSettings);
+        setDoc2D(loadDocumentSettings());
+        snapshotRef.current = structuredClone(settings as ViewerSettings);
+      } else {
+        setDoc2D(settings as DocumentSettings);
+        setViewer3D(loadViewerSettings());
       }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const updateViewer3D = useCallback((next: ViewerSettings): void => {
+    setViewer3D(next);
+  }, []);
+
+  const updateDoc2D = useCallback((next: DocumentSettings): void => {
+    setDoc2D(next);
+  }, []);
+
+  const handleCancel = (): void => {
+    snapshotRef.current = null;
+    onClose();
+  };
+
+  const handleSave = (): void => {
+    saveViewerSettings(viewer3D);
+    saveDocumentSettings(doc2D);
+
+    if (mode === '3d') {
+      (onSettingsChange as (s: ViewerSettings) => void)(viewer3D);
+      const snap = snapshotRef.current;
       snapshotRef.current = null;
+      if (snap && needsReload(snap, viewer3D)) {
+        props.onReloadViewer();
+        return;
+      }
+      if (snap) {
+        applyLiveCommands3D(props.handle, snap, viewer3D);
+      }
+    } else {
+      (onSettingsChange as (s: DocumentSettings) => void)(doc2D);
     }
     onClose();
   };
 
-  if (open && !snapshotRef.current && mode === '3d') {
-    snapshotRef.current = structuredClone(settings);
-  }
-
-  const update3D = (next: ViewerSettings): void => {
-    saveViewerSettings(next);
-    (onSettingsChange as (s: ViewerSettings) => void)(next);
-  };
-
-  const update2D = (next: DocumentSettings): void => {
-    saveDocumentSettings(next);
-    (onSettingsChange as (s: DocumentSettings) => void)(next);
-  };
-
   const handleReset = (): void => {
-    if (mode === '3d') {
-      update3D(DEFAULT_VIEWER_SETTINGS);
-    } else {
-      update2D(DEFAULT_DOCUMENT_SETTINGS);
-    }
+    setViewer3D(DEFAULT_VIEWER_SETTINGS);
+    setDoc2D(DEFAULT_DOCUMENT_SETTINGS);
   };
 
   return (
     <AppDialog
       open={open}
-      onClose={handleOpenChange}
+      onClose={handleCancel}
       title="Viewer Settings"
       width={900}
       height={760}
       bodyClassName="overflow-hidden"
       onReset={handleReset}
       resetLabel="Reset defaults"
+      onSave={handleSave}
     >
-      <Tabs defaultValue="keybindings" className="flex flex-1 flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col">
         <TabsList className="w-fit shrink-0">
-          {mode === '3d' && (
-            <TabsTrigger value="appearance">
-              Appearance
-            </TabsTrigger>
-          )}
-          {mode === '2d' && (
-            <TabsTrigger value="general">
-              General
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="appearance">
+            Appearance
+          </TabsTrigger>
           {mode === '3d' && (
             <TabsTrigger value="performance">
               Performance
@@ -422,30 +493,21 @@ export function SettingsDialog(props: Props): JSX.Element {
           </TabsTrigger>
         </TabsList>
 
-        {mode === '3d' && (
-          <TabsContent value="appearance" className="flex-1 min-h-0 overflow-y-auto pt-3">
-            <AppearanceTab
-              settings={settings}
-              onChange={update3D}
-            />
-          </TabsContent>
-        )}
-
-        {mode === '2d' && (
-          <TabsContent value="general" className="flex-1 min-h-0 overflow-y-auto pt-3">
-            <GeneralTab
-              settings={settings}
-              onChange={update2D}
-            />
-          </TabsContent>
-        )}
+        <TabsContent value="appearance" className="flex-1 min-h-0 pt-3">
+          <AppearanceTab
+            viewer3D={viewer3D}
+            doc2D={doc2D}
+            activeMode={mode}
+            onViewer3DChange={updateViewer3D}
+            onDoc2DChange={updateDoc2D}
+          />
+        </TabsContent>
 
         {mode === '3d' && (
-          <TabsContent value="performance" className="flex-1 min-h-0 overflow-y-auto pt-3">
+          <TabsContent value="performance" className="flex-1 min-h-0 pt-3">
             <PerformanceTab
-              handle={props.handle}
-              settings={settings}
-              onChange={update3D}
+              settings={viewer3D}
+              onChange={updateViewer3D}
             />
           </TabsContent>
         )}
@@ -455,15 +517,15 @@ export function SettingsDialog(props: Props): JSX.Element {
             <KeyBindingsTab
               mode="3d"
               handle={props.handle}
-              settings={settings}
-              onSettingsChange={update3D}
+              settings={viewer3D}
+              onSettingsChange={updateViewer3D}
             />
           ) : (
             <KeyBindingsTab
               mode="2d"
               handle={undefined}
-              settings={settings}
-              onSettingsChange={update2D}
+              settings={doc2D}
+              onSettingsChange={updateDoc2D}
             />
           )}
         </TabsContent>

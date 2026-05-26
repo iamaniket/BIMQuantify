@@ -14,6 +14,12 @@ export { Select } from './Select.js';
 export type { SelectProps, SelectSize } from './Select.js';
 export { Checkbox } from './Checkbox.js';
 export type { CheckboxProps } from './Checkbox.js';
+export { Switch } from './Switch.js';
+export type { SwitchProps } from './Switch.js';
+export { Slider } from './Slider.js';
+export type { SliderProps } from './Slider.js';
+export { ColorInput } from './ColorInput.js';
+export type { ColorInputProps } from './ColorInput.js';
 export {
   Card, CardHeader, CardBody, CardFooter,
 } from './Card.js';

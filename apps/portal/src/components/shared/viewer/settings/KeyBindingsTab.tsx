@@ -92,7 +92,10 @@ function comboFromEvent(ev: KeyboardEvent): string {
   return ordered.join('+');
 }
 
-function use3DBindings(handle: ViewerHandle | null): {
+function use3DBindings(
+  handle: ViewerHandle | null,
+  draftShortcuts?: Record<string, string>,
+): {
   bindings: NormalizedBinding[];
   refresh: () => void;
 } {
@@ -117,7 +120,7 @@ function use3DBindings(handle: ViewerHandle | null): {
         metaMap.set(entry.name, m ?? { title: undefined });
       }
     }
-    return raw.map((b): NormalizedBinding => {
+    const base = raw.map((b): NormalizedBinding => {
       const meta = metaMap.get(b.command);
       const title = meta !== undefined ? meta.title : undefined;
       return {
@@ -127,7 +130,13 @@ function use3DBindings(handle: ViewerHandle | null): {
         category: classifyCommand(b.command),
       };
     });
-  }, [raw, handle]);
+    if (!draftShortcuts) return base;
+    return base.map((b): NormalizedBinding => {
+      const draftCombo = draftShortcuts[b.command];
+      if (draftCombo !== undefined) return { ...b, combo: draftCombo };
+      return b;
+    });
+  }, [raw, handle, draftShortcuts]);
 
   return { bindings, refresh };
 }
@@ -377,8 +386,10 @@ export function KeyBindingsTab(props: Props): JSX.Element {
   const { mode, settings, onSettingsChange } = props;
   const handle = mode === '3d' ? props.handle : null;
 
-  const { bindings: bindings3D, refresh: refresh3D } = use3DBindings(
+  const draftShortcuts3D = mode === '3d' ? (settings).shortcuts : undefined;
+  const { bindings: bindings3D } = use3DBindings(
     mode === '3d' ? handle : null,
+    draftShortcuts3D,
   );
   const bindings2D = use2DBindings(
     mode === '2d' ? (settings) : { shortcuts: {}, mouseBindings: {}, pageBackground: '' },
@@ -437,25 +448,15 @@ export function KeyBindingsTab(props: Props): JSX.Element {
         return;
       }
 
-      if (mode === '3d' && handle) {
-        const existing = bindings3D.find((b) => b.command === capturing);
-        if (existing) {
-          handle.commands.execute('shortcuts.unbind', { combo: existing.combo }).catch(() => undefined);
-        }
-        handle.commands
-          .execute('shortcuts.bind', { combo, command: capturing })
-          .then(() => {
-            refresh3D();
-            const s = settings;
-            (onSettingsChange)({
-              ...s,
-              shortcuts: { ...s.shortcuts, [capturing]: combo },
-            });
-          })
-          .catch(() => undefined);
-      } else if (mode === '2d') {
-        const s = settings;
-        (onSettingsChange)({
+      if (mode === '3d') {
+        const s = settings as ViewerSettings;
+        (onSettingsChange as (n: ViewerSettings) => void)({
+          ...s,
+          shortcuts: { ...s.shortcuts, [capturing]: combo },
+        });
+      } else {
+        const s = settings as DocumentSettings;
+        (onSettingsChange as (n: DocumentSettings) => void)({
           ...s,
           shortcuts: { ...s.shortcuts, [capturing]: combo },
         });
@@ -465,7 +466,7 @@ export function KeyBindingsTab(props: Props): JSX.Element {
     };
     window.addEventListener('keydown', onKey, true);
     return () => { window.removeEventListener('keydown', onKey, true); };
-  }, [capturing, mode, handle, bindings3D, settings, onSettingsChange, refresh3D]);
+  }, [capturing, mode, settings, onSettingsChange]);
 
   const capturingBinding = capturing
     ? bindings.find((b) => b.command === capturing) ?? null

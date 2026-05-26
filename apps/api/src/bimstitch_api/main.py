@@ -58,9 +58,12 @@ from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
 from bimstitch_api.routers.public import router as public_router
 from bimstitch_api.routers.reports import router as reports_router
+from bimstitch_api.routers.capture_links import router as capture_links_router
+from bimstitch_api.routers.capture_public import router as capture_public_router
+from bimstitch_api.routers.documents import router as documents_router
 from bimstitch_api.routers.risks import router as risks_router
 from bimstitch_api.routers.ws_notifications import router as ws_notifications_router
-from bimstitch_api.storage import get_storage
+from bimstitch_api.storage import get_documents_bucket, get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +77,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await manager.start(redis)
     await check_pending_migrations(get_engine())
     try:
-        await get_storage().ensure_bucket()
+        storage = get_storage()
+        await storage.ensure_bucket()
+        await storage.ensure_bucket(bucket=get_documents_bucket())
     except Exception:
         logger.warning(
             "MinIO/S3 ensure_bucket failed; uploads will fail until storage is reachable",
@@ -87,9 +92,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
-        storage = get_storage()
-        if hasattr(storage, "close"):
-            await storage.close()
+        _storage = get_storage()
+        if hasattr(_storage, "close"):
+            await _storage.close()
         await close_http_client()
         await deadline_sweeper.stop()
         await invitation_sweeper.stop()
@@ -165,6 +170,9 @@ def create_app() -> FastAPI:
     app.include_router(risks_router)
     app.include_router(borgingsplan_plan_router)
     app.include_router(borgingsplan_moment_router)
+    app.include_router(documents_router)
+    app.include_router(capture_links_router)
+    app.include_router(capture_public_router)
     app.include_router(inspection_router)
     app.include_router(jobs_router)
     app.include_router(reports_router)

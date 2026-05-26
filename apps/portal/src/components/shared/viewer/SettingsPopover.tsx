@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
   type JSX,
-  type ReactNode,
 } from 'react';
 
 import { Button, Select, Tabs, TabsContent, TabsList, TabsTrigger } from '@bimstitch/ui';
@@ -23,7 +22,7 @@ import {
   type ViewerSettings,
 } from '@/lib/viewerSettings';
 
-
+import { ColorField, Field, Section, Toggle } from './settings/primitives';
 
 const EFFECTS_QUALITIES: EffectsQuality[] = ['low', 'medium', 'high'];
 
@@ -74,67 +73,6 @@ function comboFromEvent(ev: KeyboardEvent): string {
   if (key.length === 1) key = key.toUpperCase();
   ordered.push(key);
   return ordered.join('+');
-}
-
-function Section({
-  title,
-  note,
-  children,
-}: {
-  title: string;
-  note: string | undefined;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <section className="space-y-2">
-      <header className="flex items-baseline justify-between">
-        <h3 className="text-caption font-medium text-foreground">{title}</h3>
-        {note !== undefined ? (
-          <span className="text-caption text-foreground-secondary">{note}</span>
-        ) : null}
-      </header>
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <label className="flex items-center justify-between gap-3 text-caption text-foreground-secondary">
-      <span>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}): JSX.Element {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 text-caption text-foreground-secondary">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => {
-          onChange(e.target.checked);
-        }}
-        className="h-4 w-4 cursor-pointer accent-primary"
-      />
-    </label>
-  );
 }
 
 function ShortcutsSection({
@@ -595,19 +533,61 @@ export function SettingsPopover({
             </Section>
 
             <Section title="Background" note="Applies on next viewer reload">
-              <Field label="Color">
-                <input
-                  type="color"
-                  value={colorToHex(settings.background.color)}
-                  onChange={(e) => {
-                    update({
-                      ...settings,
-                      background: { color: hexToColor(e.target.value) },
-                    });
-                  }}
-                  className="h-7 w-12 cursor-pointer rounded border border-border bg-transparent"
-                />
-              </Field>
+              <ColorField
+                label="Color"
+                value={colorToHex(settings.background.color)}
+                onChange={(hex) => {
+                  update({
+                    ...settings,
+                    background: { color: hexToColor(hex) },
+                  });
+                }}
+              />
+            </Section>
+
+            <Section title="Behavior" note="Toggle: live · Color: reload">
+              <Toggle
+                label="Hover highlight"
+                checked={settings.behavior.hoverHighlight.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, enabled } },
+                  });
+                  handle?.commands.execute('hover.setEnabled', enabled).catch(() => undefined);
+                }}
+              />
+              <ColorField
+                label="Hover color"
+                value={colorToHex(settings.behavior.hoverHighlight.color)}
+                onChange={(hex) => {
+                  update({
+                    ...settings,
+                    behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, color: hexToColor(hex) } },
+                  });
+                }}
+              />
+              <Toggle
+                label="Click to select"
+                checked={settings.behavior.selection.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, enabled } },
+                  });
+                  handle?.commands.execute('selection.setEnabled', enabled).catch(() => undefined);
+                }}
+              />
+              <ColorField
+                label="Selection color"
+                value={colorToHex(settings.behavior.selection.color)}
+                onChange={(hex) => {
+                  update({
+                    ...settings,
+                    behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, color: hexToColor(hex) } },
+                  });
+                }}
+              />
             </Section>
           </div>
         </TabsContent>

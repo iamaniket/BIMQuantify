@@ -11,7 +11,7 @@ import {
   UNBOUND_STYLE,
   type CategoryStyle,
 } from './shortcutCategories';
-import { KEYBOARD_ROWS, KEY_GAP, KEY_UNIT, codeToComboKey, type KeyDef } from './keyboardLayout';
+import { FROW_GAP, KEYBOARD_ROWS, KEY_GAP, KEY_UNIT, codeToComboKey, type KeyDef } from './keyboardLayout';
 import type { NormalizedBinding } from './types';
 
 type Props = {
@@ -257,7 +257,7 @@ export function VisualKeyboard({
         <TopPanel />
         <div style={{ display: 'flex', flexDirection: 'column', gap: KEY_GAP }}>
           {KEYBOARD_ROWS.map((row, ri) => (
-            <div key={String(ri)} style={{ display: 'flex', gap: KEY_GAP }}>
+            <div key={String(ri)} style={{ display: 'flex', gap: KEY_GAP, marginTop: ri === 1 ? FROW_GAP : 0 }}>
               {row.map((keyDef, ki) => {
                 if (keyDef.isSpacer) {
                   return <Spacer key={`sp-${String(ri)}-${String(ki)}`} widthU={keyDef.width ?? 1} />;

@@ -143,6 +143,22 @@ export default function ViewerPage(): JSX.Element {
   }, [viewerReady]);
 
   useViewerBridge(viewerHandleRef.current);
+
+  // Apply persisted behavior toggles once the viewer is ready.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!viewerReady) return;
+    const handle = viewerHandleRef.current;
+    if (!handle) return;
+    const { behavior } = settings;
+    if (!behavior.hoverHighlight.enabled) {
+      handle.commands.execute('hover.setEnabled', false).catch(() => undefined);
+    }
+    if (!behavior.selection.enabled) {
+      handle.commands.execute('selection.setEnabled', false).catch(() => undefined);
+    }
+  }, [viewerReady]);
+
   const modeState = useViewerMode(viewerHandleRef.current);
   const isEditMode = modeState.mode === 'edit';
 
@@ -272,6 +288,8 @@ export default function ViewerPage(): JSX.Element {
         }}
         background={{ color: settings.background.color }}
         effects={settings.effects}
+        hoverHighlight={{ color: settings.behavior.hoverHighlight.color }}
+        selectionHighlight={{ color: settings.behavior.selection.color }}
         shortcuts={settings.shortcuts}
         mouseBindings={settings.mouseBindings}
         controls={settings.controls}

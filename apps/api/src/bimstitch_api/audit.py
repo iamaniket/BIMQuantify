@@ -32,6 +32,8 @@ REDACT_FIELDS_BY_TABLE: dict[str, frozenset[str]] = {
     "organization_members": frozenset(),
     "organizations": frozenset(),
     "project_members": frozenset(),
+    "documents": frozenset(),
+    "capture_links": frozenset({"token"}),
 }
 
 

@@ -74,7 +74,7 @@ export function RightColumnTabs({
         )}
         {tab === 'inspecties' && <InspectiesTab />}
         {tab === 'bevindingen' && <BevindingenTab />}
-        {tab === 'documenten' && <DocumentenTab />}
+        {tab === 'documenten' && <DocumentenTab projectId={projectId} />}
         {tab === 'rapporten' && <ReportsTab projectId={projectId} models={models} />}
       </div>
     </div>

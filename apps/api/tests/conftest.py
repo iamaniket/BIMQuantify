@@ -76,10 +76,12 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         AuditLog,
         Borgingsmoment,
         Borgingsplan,
+        CaptureLink,
         ChecklistItem,
         ChecklistItemResult,
         Contractor,
         Deadline,
+        Document,
         Job,
         Model,
         Notification,
@@ -149,6 +151,8 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS notificationeventtype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS inspectionverdict")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS deadlinestatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS documentcategory")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS documentstatus")
         await conn.run_sync(Base.metadata.create_all)
         # Partial unique index for "one active borgingsplan per project" — not
         # expressible in __table_args__, so mirror the migration here.
@@ -281,7 +285,8 @@ async def _clean_tables(
                 await session.execute(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
-                        "borgingsmomenten, borgingsplans, deadlines, "
+                        "borgingsmomenten, borgingsplans, deadlines, documents, "
+                        "capture_links, "
                         "risks, access_requests, reports, jobs, project_files, models, "
                         "project_members, projects, contractors, notification_reads, "
                         "notifications, audit_log, organization_members, users, "
@@ -450,32 +455,32 @@ class FakeStorage:
     def presign_ttl(self) -> int:
         return self.presign_ttl_value
 
-    async def presigned_put_url(self, key: str, content_type: str, content_length: int) -> str:
+    async def presigned_put_url(self, key: str, content_type: str, content_length: int, *, bucket: str | None = None) -> str:
         self.last_put_url = f"http://fake-storage/{key}?put"
         return self.last_put_url
 
-    async def presigned_get_url(self, key: str, filename: str) -> str:
+    async def presigned_get_url(self, key: str, filename: str, *, bucket: str | None = None) -> str:
         return f"http://fake-storage/{key}?download={filename}"
 
-    async def put_object(self, key: str, content_type: str, data: bytes) -> None:
+    async def put_object(self, key: str, content_type: str, data: bytes, *, bucket: str | None = None) -> None:
         self.objects[key] = data
 
-    async def head_object(self, key: str) -> dict[str, object]:
+    async def head_object(self, key: str, *, bucket: str | None = None) -> dict[str, object]:
         from bimstitch_api.storage.minio import ObjectNotFoundError
 
         if key not in self.objects:
             raise ObjectNotFoundError(key)
         return {"ContentLength": len(self.objects[key])}
 
-    async def get_object_range(self, key: str, start: int, end: int) -> bytes:
+    async def get_object_range(self, key: str, start: int, end: int, *, bucket: str | None = None) -> bytes:
         return self.objects[key][start : end + 1]
 
-    async def delete_object(self, key: str) -> None:
+    async def delete_object(self, key: str, *, bucket: str | None = None) -> None:
         if key in self.objects:
             del self.objects[key]
         self.deleted.append(key)
 
-    async def ensure_bucket(self) -> None:
+    async def ensure_bucket(self, *, bucket: str | None = None) -> None:
         return
 
 

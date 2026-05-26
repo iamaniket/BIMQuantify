@@ -72,11 +72,20 @@ class Settings(BaseSettings):
     s3_access_key_id: str = Field(default="bimstitch", alias="S3_ACCESS_KEY_ID")
     s3_secret_access_key: str = Field(default="bimstitch-secret", alias="S3_SECRET_ACCESS_KEY")
     s3_bucket_ifc: str = Field(default="ifc-files", alias="S3_BUCKET_IFC")
+    s3_bucket_documents: str = Field(default="documents", alias="S3_BUCKET_DOCUMENTS")
     s3_presign_ttl_seconds: int = Field(default=900, alias="S3_PRESIGN_TTL_SECONDS")
     upload_max_bytes: int = Field(default=2 * 1024 * 1024 * 1024, alias="UPLOAD_MAX_BYTES")
+    document_max_bytes: int = Field(
+        default=500 * 1024 * 1024, alias="DOCUMENT_MAX_BYTES"
+    )
     thumbnail_max_bytes: int = Field(default=2 * 1024 * 1024, alias="THUMBNAIL_MAX_BYTES")
     thumbnail_allowed_content_types: str = Field(
         default="image/jpeg,image/png,image/webp", alias="THUMBNAIL_ALLOWED_CONTENT_TYPES"
+    )
+    capture_link_max_ttl_hours: int = Field(default=720, alias="CAPTURE_LINK_MAX_TTL_HOURS")
+
+    frontend_capture_url: str = Field(
+        default="http://localhost:3001/capture", alias="FRONTEND_CAPTURE_URL"
     )
 
     processor_url: str = Field(default="http://localhost:8088", alias="PROCESSOR_URL")

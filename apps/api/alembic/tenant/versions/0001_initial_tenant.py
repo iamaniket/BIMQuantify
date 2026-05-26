@@ -1,5 +1,6 @@
 """Initial tenant schema: projects, project_members, models, project_files, jobs, reports,
-contractors, notifications, notification_reads, risks, borgingsplans, borgingsmomenten, checklist_items.
+contractors, notifications, notification_reads, risks, borgingsplans, borgingsmomenten,
+checklist_items, documents, capture_links.
 
 Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables (users)
 are emitted as `public.users(id)` so they resolve regardless of search_path.
@@ -39,12 +40,14 @@ def upgrade() -> None:
         AuditLog,
         Borgingsmoment,
         Borgingsplan,
+        CaptureLink,
         ChecklistItem,
         ChecklistItemResult,
         Contractor,
         Deadline,
         DeadlineNotificationLog,
         DeadlineNotificationSettings,
+        Document,
         Job,
         Model,
         Notification,
@@ -63,14 +66,20 @@ def upgrade() -> None:
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
     Base.metadata.create_all(bind, tables=tenant_tables)
 
-    # Partial unique index for "one active borgingsplan per project" — not
-    # expressible in __table_args__ (Alembic autogen ignores partials there).
     schema = _schema()
     bind.execute(
         text(
             f'CREATE UNIQUE INDEX IF NOT EXISTS ux_borgingsplans_one_active '
             f'ON "{schema}".borgingsplans(project_id) '
             f"WHERE status IN ('draft', 'published')"
+        )
+    )
+    bind.execute(
+        text(
+            f"CREATE UNIQUE INDEX IF NOT EXISTS ux_documents_project_sha256 "
+            f'ON "{schema}".documents(project_id, content_sha256) '
+            f"WHERE content_sha256 IS NOT NULL AND status IN ('pending', 'ready') "
+            f"AND deleted_at IS NULL"
         )
     )
 
@@ -82,12 +91,14 @@ def downgrade() -> None:
         AuditLog,
         Borgingsmoment,
         Borgingsplan,
+        CaptureLink,
         ChecklistItem,
         ChecklistItemResult,
         Contractor,
         Deadline,
         DeadlineNotificationLog,
         DeadlineNotificationSettings,
+        Document,
         Job,
         Model,
         Notification,
@@ -105,6 +116,7 @@ def downgrade() -> None:
     bind = op.get_bind()
     schema = _schema()
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_borgingsplans_one_active'))
+    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_documents_project_sha256'))
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
     Base.metadata.drop_all(bind, tables=tenant_tables)
     for enum in (
@@ -112,6 +124,8 @@ def downgrade() -> None:
         "borgingsmomentstatus",
         "borgingsplanstatus",
         "checklistitemtype",
+        "documentcategory",
+        "documentstatus",
         "evidencetype",
         "extractionstatus",
         "filetype",

@@ -41,11 +41,34 @@ const SPACER = (w: number): typeof DEFAULTS => ({
 export const KEY_UNIT = 34;
 export const KEY_GAP = 2;
 
+// Every row sums to 19u so the board is flush.
 export const KEYBOARD_ROWS: KeyDef[][] = [
-  // Row 0 — digit row + nav cluster
+  // Row 0 — function row
   [
-    k('Escape', 'Esc', W(1.5)),
+    k('Escape', 'Esc'),
+    k('', '', SPACER(1.5)),
+    k('F1', 'F1'),
+    k('F2', 'F2'),
+    k('F3', 'F3'),
+    k('F4', 'F4'),
     k('', '', SPACER(0.5)),
+    k('F5', 'F5'),
+    k('F6', 'F6'),
+    k('F7', 'F7'),
+    k('F8', 'F8'),
+    k('', '', SPACER(0.5)),
+    k('F9', 'F9'),
+    k('F10', 'F10'),
+    k('F11', 'F11'),
+    k('F12', 'F12'),
+    k('', '', SPACER(0.5)),
+    k('PrintScreen', 'PrtSc'),
+    k('ScrollLock', 'ScrLk'),
+    k('Pause', 'Pause'),
+  ],
+  // Row 1 — number row + nav
+  [
+    k('Backquote', '`'),
     k('Digit1', '1'),
     k('Digit2', '2'),
     k('Digit3', '3'),
@@ -58,13 +81,13 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('Digit0', '0'),
     k('Minus', '-'),
     k('Equal', '='),
-    k('Backspace', 'Bksp', W(1.5)),
-    k('', '', SPACER(0.5)),
+    k('Backspace', 'Bksp', W(2)),
+    k('', '', SPACER(1)),
     k('Insert', 'Ins'),
     k('Home', 'Home'),
     k('PageUp', 'PgUp'),
   ],
-  // Row 1 — QWERTY + nav cluster
+  // Row 2 — QWERTY + nav
   [
     k('Tab', 'Tab', W(1.5)),
     k('KeyQ', 'Q'),
@@ -80,12 +103,12 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('BracketLeft', '['),
     k('BracketRight', ']'),
     k('Backslash', '\\', W(1.5)),
-    k('', '', SPACER(0.5)),
+    k('', '', SPACER(1)),
     k('Delete', 'Del'),
     k('End', 'End'),
     k('PageDown', 'PgDn'),
   ],
-  // Row 2 — home row
+  // Row 3 — home row
   [
     k('CapsLock', 'Caps', W(1.75)),
     k('KeyA', 'A'),
@@ -100,8 +123,9 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('Semicolon', ';'),
     k('Quote', "'"),
     k('Enter', 'Enter', W(2.25)),
+    k('', '', SPACER(4)),
   ],
-  // Row 3 — shift row + arrow up
+  // Row 4 — shift row + arrow up
   [
     k('ShiftLeft', 'Shift', MOD(2.25)),
     k('KeyZ', 'Z'),
@@ -115,24 +139,28 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
     k('Period', '.'),
     k('Slash', '/'),
     k('ShiftRight', 'Shift', MOD(2.75)),
-    k('', '', SPACER(1.5)),
+    k('', '', SPACER(2)),
     k('ArrowUp', '↑'),
     k('', '', SPACER(1)),
   ],
-  // Row 4 — bottom row + arrows
+  // Row 5 — bottom row + arrows
   [
-    k('ControlLeft', 'Ctrl', MOD(1.5)),
+    k('ControlLeft', 'Ctrl', MOD(1.25)),
     k('MetaLeft', 'Win', MOD(1.25)),
     k('AltLeft', 'Alt', MOD(1.25)),
-    k('Space', 'Space', W(5.5)),
+    k('Space', 'Space', W(6.25)),
     k('AltRight', 'Alt', MOD(1.25)),
+    k('MetaRight', 'Win', MOD(1.25)),
+    k('ContextMenu', 'Menu', MOD(1.25)),
     k('ControlRight', 'Ctrl', MOD(1.25)),
-    k('', '', SPACER(1.5)),
+    k('', '', SPACER(1)),
     k('ArrowLeft', '←'),
     k('ArrowDown', '↓'),
     k('ArrowRight', '→'),
   ],
 ];
+
+export const FROW_GAP = 8;
 
 export function codeToComboKey(code: string): string {
   if (code.startsWith('Key') && code.length === 4) return code.slice(3);
@@ -150,9 +178,11 @@ export function codeToComboKey(code: string): string {
     AltRight: 'Alt',
     MetaLeft: 'Meta',
     MetaRight: 'Meta',
+    ContextMenu: 'ContextMenu',
     Space: 'Space',
     Enter: 'Enter',
     Backspace: 'Backspace',
+    Backquote: '`',
     Minus: '-',
     Equal: '+',
     BracketLeft: '[',
@@ -173,6 +203,21 @@ export function codeToComboKey(code: string): string {
     PageUp: 'PageUp',
     PageDown: 'PageDown',
     Insert: 'Insert',
+    PrintScreen: 'PrintScreen',
+    ScrollLock: 'ScrollLock',
+    Pause: 'Pause',
+    F1: 'F1',
+    F2: 'F2',
+    F3: 'F3',
+    F4: 'F4',
+    F5: 'F5',
+    F6: 'F6',
+    F7: 'F7',
+    F8: 'F8',
+    F9: 'F9',
+    F10: 'F10',
+    F11: 'F11',
+    F12: 'F12',
   };
   return map[code] ?? code;
 }

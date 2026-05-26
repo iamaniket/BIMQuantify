@@ -25,19 +25,25 @@ class ObjectNotFoundError(Exception):
 
 
 class StorageBackend(Protocol):
-    async def presigned_put_url(self, key: str, content_type: str, content_length: int) -> str: ...
+    async def presigned_put_url(
+        self, key: str, content_type: str, content_length: int, *, bucket: str | None = None
+    ) -> str: ...
 
-    async def presigned_get_url(self, key: str, filename: str) -> str: ...
+    async def presigned_get_url(self, key: str, filename: str, *, bucket: str | None = None) -> str: ...
 
-    async def put_object(self, key: str, content_type: str, data: bytes) -> None: ...
+    async def put_object(
+        self, key: str, content_type: str, data: bytes, *, bucket: str | None = None
+    ) -> None: ...
 
-    async def head_object(self, key: str) -> dict[str, object]: ...
+    async def head_object(self, key: str, *, bucket: str | None = None) -> dict[str, object]: ...
 
-    async def get_object_range(self, key: str, start: int, end: int) -> bytes: ...
+    async def get_object_range(
+        self, key: str, start: int, end: int, *, bucket: str | None = None
+    ) -> bytes: ...
 
-    async def delete_object(self, key: str) -> None: ...
+    async def delete_object(self, key: str, *, bucket: str | None = None) -> None: ...
 
-    async def ensure_bucket(self) -> None: ...
+    async def ensure_bucket(self, bucket: str | None = None) -> None: ...
 
     @property
     def presign_ttl(self) -> int: ...
@@ -92,12 +98,17 @@ class S3Storage:
                 self._s3 = None
                 self._client_ctx = None
 
-    async def presigned_put_url(self, key: str, content_type: str, content_length: int) -> str:
+    def _resolve_bucket(self, bucket: str | None) -> str:
+        return bucket if bucket is not None else self._bucket
+
+    async def presigned_put_url(
+        self, key: str, content_type: str, content_length: int, *, bucket: str | None = None
+    ) -> str:
         client = await self._get_client()
         url: str = await client.generate_presigned_url(
             "put_object",
             Params={
-                "Bucket": self._bucket,
+                "Bucket": self._resolve_bucket(bucket),
                 "Key": key,
                 "ContentType": content_type,
                 "ContentLength": content_length,
@@ -106,12 +117,14 @@ class S3Storage:
         )
         return url
 
-    async def presigned_get_url(self, key: str, filename: str) -> str:
+    async def presigned_get_url(
+        self, key: str, filename: str, *, bucket: str | None = None
+    ) -> str:
         client = await self._get_client()
         url: str = await client.generate_presigned_url(
             "get_object",
             Params={
-                "Bucket": self._bucket,
+                "Bucket": self._resolve_bucket(bucket),
                 "Key": key,
                 "ResponseContentDisposition": f'attachment; filename="{filename}"',
             },
@@ -119,20 +132,22 @@ class S3Storage:
         )
         return url
 
-    async def put_object(self, key: str, content_type: str, data: bytes) -> None:
+    async def put_object(
+        self, key: str, content_type: str, data: bytes, *, bucket: str | None = None
+    ) -> None:
         client = await self._get_client()
         await client.put_object(
-            Bucket=self._bucket,
+            Bucket=self._resolve_bucket(bucket),
             Key=key,
             Body=data,
             ContentType=content_type,
         )
 
-    async def head_object(self, key: str) -> dict[str, object]:
+    async def head_object(self, key: str, *, bucket: str | None = None) -> dict[str, object]:
         client = await self._get_client()
         try:
             response: dict[str, object] = await client.head_object(
-                Bucket=self._bucket, Key=key
+                Bucket=self._resolve_bucket(bucket), Key=key
             )
             return response
         except ClientError as exc:
@@ -141,27 +156,30 @@ class S3Storage:
                 raise ObjectNotFoundError(key) from exc
             raise
 
-    async def get_object_range(self, key: str, start: int, end: int) -> bytes:
+    async def get_object_range(
+        self, key: str, start: int, end: int, *, bucket: str | None = None
+    ) -> bytes:
         client = await self._get_client()
         response = await client.get_object(
-            Bucket=self._bucket, Key=key, Range=f"bytes={start}-{end}"
+            Bucket=self._resolve_bucket(bucket), Key=key, Range=f"bytes={start}-{end}"
         )
         body = response["Body"]
         data: bytes = await body.read()
         return data
 
-    async def delete_object(self, key: str) -> None:
+    async def delete_object(self, key: str, *, bucket: str | None = None) -> None:
         client = await self._get_client()
-        await client.delete_object(Bucket=self._bucket, Key=key)
+        await client.delete_object(Bucket=self._resolve_bucket(bucket), Key=key)
 
-    async def ensure_bucket(self) -> None:
+    async def ensure_bucket(self, bucket: str | None = None) -> None:
+        resolved = self._resolve_bucket(bucket)
         client = await self._get_client()
         try:
-            await client.head_bucket(Bucket=self._bucket)
+            await client.head_bucket(Bucket=resolved)
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
             if code in {"404", "NoSuchBucket", "NotFound"}:
-                await client.create_bucket(Bucket=self._bucket)
+                await client.create_bucket(Bucket=resolved)
             else:
                 raise
 
@@ -178,7 +196,7 @@ class S3Storage:
         }
         try:
             await client.put_bucket_cors(
-                Bucket=self._bucket, CORSConfiguration=cors_config
+                Bucket=resolved, CORSConfiguration=cors_config
             )
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")

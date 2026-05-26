@@ -170,6 +170,8 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read", "create", "update", "delete", "publish"},
             "completion_declaration": {"read"},
             "audit_log": {"read"},
+            "document": {"read", "create", "update", "delete"},
+            "capture_link": {"read", "create", "update", "delete"},
         },
         "editor": {
             "project": {"read", "update"},
@@ -184,6 +186,8 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read", "create", "update", "delete"},
             "completion_declaration": {"read"},
             "audit_log": set(),
+            "document": {"read", "create", "update", "delete"},
+            "capture_link": {"read", "create", "update"},
         },
         "viewer": {
             "project": {"read"},
@@ -198,6 +202,8 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),
+            "document": {"read"},
+            "capture_link": {"read"},
         },
         "inspector": {
             "project": {"read"},
@@ -212,6 +218,8 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read", "create", "update"},
             "completion_declaration": {"read", "create", "update", "sign"},
             "audit_log": {"read"},
+            "document": {"read", "create", "update"},
+            "capture_link": {"read"},
         },
         "contractor": {
             "project": {"read"},
@@ -226,6 +234,8 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),
+            "document": {"read", "create", "update"},
+            "capture_link": {"read"},
         },
         "client": {
             "project": {"read"},
@@ -240,6 +250,8 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),
+            "document": {"read"},
+            "capture_link": {"read"},
         },
     }
 

@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
   type JSX,
-  type ReactNode,
 } from 'react';
 
 import {
@@ -22,48 +21,13 @@ import {
   type DocumentSettings,
 } from '@/lib/documentSettings';
 
+import { ColorField, Section } from './settings/primitives';
+
 type Props = {
   settings: DocumentSettings;
   onSettingsChange: (next: DocumentSettings) => void;
   onClose: () => void;
 };
-
-function Section({
-  title,
-  note,
-  children,
-}: {
-  title: string;
-  note?: string;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <section className="space-y-2">
-      <header className="flex items-baseline justify-between">
-        <h3 className="text-caption font-medium text-foreground">{title}</h3>
-        {note !== undefined ? (
-          <span className="text-caption text-foreground-secondary">{note}</span>
-        ) : null}
-      </header>
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <label className="flex items-center justify-between gap-3 text-caption text-foreground-secondary">
-      <span>{label}</span>
-      {children}
-    </label>
-  );
-}
 
 const ACTION_ORDER: DocumentAction[] = [
   'zoomIn',
@@ -245,16 +209,13 @@ export function DocumentSettingsPopover({
         <TabsContent value="general" className="max-h-[24rem] overflow-y-auto">
           <div className="space-y-4 pt-3">
             <Section title="Page background">
-              <Field label="Colour">
-                <input
-                  type="color"
-                  value={settings.pageBackground}
-                  onChange={(e) => {
-                    update({ ...settings, pageBackground: e.target.value });
-                  }}
-                  className="h-7 w-12 cursor-pointer rounded border border-border bg-transparent"
-                />
-              </Field>
+              <ColorField
+                label="Colour"
+                value={settings.pageBackground}
+                onChange={(hex) => {
+                  update({ ...settings, pageBackground: hex });
+                }}
+              />
             </Section>
           </div>
         </TabsContent>

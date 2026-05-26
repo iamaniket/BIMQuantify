@@ -17,6 +17,11 @@ export type ControlsSettings = Required<ControlsOptions>;
 
 export type InteractivePerformanceSettings = Required<InteractivePerformanceOptions>;
 
+export type BehaviorSettings = {
+  hoverHighlight: { enabled: boolean; color: number };
+  selection: { enabled: boolean; color: number };
+};
+
 export type ViewerSettings = {
   viewCube: { enabled: boolean };
   shadows: { enabled: boolean };
@@ -32,6 +37,8 @@ export type ViewerSettings = {
   interactivePerformance: InteractivePerformanceSettings;
   /** Min/max zoom distance limits (factors of model size). */
   zoom: Required<ZoomOptions>;
+  /** Hover-highlight & click-to-select toggles and colors. */
+  behavior: BehaviorSettings;
 };
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
@@ -51,6 +58,11 @@ export const DEFAULT_MOUSE_BINDINGS_SETTINGS: MouseBindingMap = {
 
 export const DEFAULT_ZOOM: Required<ZoomOptions> = {
   maxFactor: 4,
+};
+
+export const DEFAULT_BEHAVIOR: BehaviorSettings = {
+  hoverHighlight: { enabled: true, color: 0xffd700 },
+  selection: { enabled: true, color: 0x4a90d9 },
 };
 
 export const DEFAULT_CONTROLS: ControlsSettings = {
@@ -97,6 +109,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   controls: DEFAULT_CONTROLS,
   interactivePerformance: DEFAULT_INTERACTIVE_PERFORMANCE,
   zoom: DEFAULT_ZOOM,
+  behavior: DEFAULT_BEHAVIOR,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
@@ -114,6 +127,10 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
       ...(p.interactivePerformance ?? {}),
     },
     zoom: { ...d.zoom, ...(p.zoom ?? {}) },
+    behavior: {
+      hoverHighlight: { ...d.behavior.hoverHighlight, ...(p.behavior?.hoverHighlight ?? {}) },
+      selection: { ...d.behavior.selection, ...(p.behavior?.selection ?? {}) },
+    },
   };
 }
 

@@ -6,6 +6,7 @@ from bimstitch_api.models.borgingsmoment import (
     BorgingsmomentStatus,
 )
 from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
+from bimstitch_api.models.capture_link import CaptureLink
 from bimstitch_api.models.checklist_item import (
     ChecklistItem,
     ChecklistItemType,
@@ -16,6 +17,7 @@ from bimstitch_api.models.checklist_item_result import (
     InspectionVerdict,
 )
 from bimstitch_api.models.contractor import Contractor
+from bimstitch_api.models.document import Document, DocumentCategory, DocumentStatus
 from bimstitch_api.models.deadline import Deadline, DeadlineStatus
 from bimstitch_api.models.deadline_notification_log import DeadlineNotificationLog
 from bimstitch_api.models.deadline_notification_settings import DeadlineNotificationSettings
@@ -59,6 +61,7 @@ __all__ = [
     "BorgingsmomentStatus",
     "Borgingsplan",
     "BorgingsplanStatus",
+    "CaptureLink",
     "ChecklistItem",
     "ChecklistItemResult",
     "ChecklistItemType",
@@ -67,6 +70,9 @@ __all__ = [
     "DeadlineNotificationLog",
     "DeadlineNotificationSettings",
     "DeadlineStatus",
+    "Document",
+    "DocumentCategory",
+    "DocumentStatus",
     "EvidenceType",
     "ExtractionStatus",
     "IfcSchema",
