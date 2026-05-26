@@ -7,20 +7,20 @@
 
 import * as THREE from 'three';
 
+import { LAYER_OVERLAY } from '../../core/layers.js';
 import type { ItemId, ViewerContext } from '../../core/types.js';
 
 const itemKey = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
 export class EdgeOverlay {
   private readonly lines = new Map<string, THREE.LineSegments[]>();
-  private readonly geoCache = new Map<string, THREE.EdgesGeometry>();
 
   async add(
     ctx: ViewerContext,
     items: ItemId[],
     color: THREE.Color,
   ): Promise<void> {
-    const mat = new THREE.LineBasicMaterial({ color, depthTest: true });
+    const mat = new THREE.LineBasicMaterial({ color, depthTest: false });
 
     for (const item of items) {
       const k = itemKey(item);
@@ -48,6 +48,7 @@ export class EdgeOverlay {
 
             const line = new THREE.LineSegments(edgesGeo, mat.clone());
             line.renderOrder = 999;
+            line.layers.set(LAYER_OVERLAY);
             line.name = `edge-overlay::${k}`;
 
             if (meshData.transform) {
@@ -95,7 +96,5 @@ export class EdgeOverlay {
 
   dispose(ctx: ViewerContext): void {
     this.clear(ctx);
-    for (const geo of this.geoCache.values()) geo.dispose();
-    this.geoCache.clear();
   }
 }

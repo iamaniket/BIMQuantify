@@ -73,7 +73,7 @@ export function UnifiedToolbar({
                 isActive={def.isActive ?? false}
                 data-testid={`${testIdPrefix}-tool-${def.id}`}
               >
-                <def.icon className="h-5 w-5" strokeWidth={1.75} />
+                <def.icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 {def.badge}
               </ToolButton>
             );

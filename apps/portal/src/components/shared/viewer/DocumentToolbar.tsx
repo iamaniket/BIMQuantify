@@ -256,7 +256,7 @@ export function DocumentToolbar({
                   }
                 }}
                 aria-label="Current page"
-                className="h-12 w-12 rounded-md border border-border bg-background px-1.5 text-center text-[14px] font-semibold tabular-nums text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                className="h-9 w-10 rounded-md border border-border bg-background px-1 text-center text-xs font-semibold tabular-nums text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               />
               <span className="text-caption font-medium text-foreground/55">
                 / {numPages ?? '—'}
@@ -294,7 +294,7 @@ export function DocumentToolbar({
                     aria-label={t('searchLabel')}
                     autoFocus
                     data-testid="document-search-input"
-                    className="h-12 w-44 rounded-md border border-border bg-background px-2 text-[14px] text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="h-9 w-40 rounded-md border border-border bg-background px-2 text-xs text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   />
                   <ToolbarReadout className="min-w-[64px]">
                     {searchPending
@@ -315,7 +315,7 @@ export function DocumentToolbar({
                     aria-label={t('searchPrev')}
                     data-testid="document-search-prev"
                   >
-                    <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
+                    <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
                   </ToolButton>
                   <ToolButton
                     type="button"
@@ -325,7 +325,7 @@ export function DocumentToolbar({
                     aria-label={t('searchNext')}
                     data-testid="document-search-next"
                   >
-                    <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
+                    <ChevronRight className="h-[18px] w-[18px]" strokeWidth={1.75} />
                   </ToolButton>
                   <ToolButton
                     type="button"
@@ -340,7 +340,7 @@ export function DocumentToolbar({
                     aria-label={t('searchClose')}
                     data-testid="document-search-close"
                   >
-                    <XIcon className="h-5 w-5" strokeWidth={1.75} />
+                    <XIcon className="h-[18px] w-[18px]" strokeWidth={1.75} />
                   </ToolButton>
                 </form>
               ),

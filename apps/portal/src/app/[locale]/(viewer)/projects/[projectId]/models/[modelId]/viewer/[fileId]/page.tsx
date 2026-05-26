@@ -364,7 +364,7 @@ export default function ViewerPage(): JSX.Element {
         {showToolbarPlaceholder ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute left-0 right-[51px] top-0 h-12 border-b border-border bg-background/95 backdrop-blur-sm"
+            className="pointer-events-none absolute left-0 right-[51px] top-0 h-8 border-b border-border bg-background/95 backdrop-blur-sm"
           />
         ) : null}
 
