@@ -101,6 +101,7 @@ export function mouseBindingsPlugin(
 
     install(ctx: ViewerContext) {
       const canvas = ctx.canvas;
+      const container = ctx.container;
 
       let downX = 0;
       let downY = 0;
@@ -128,8 +129,6 @@ export function mouseBindingsPlugin(
       const onMove = (ev: PointerEvent): void => {
         const ndc = clientToNdc(canvas, ev.clientX, ev.clientY);
         pendingMoveNdc = ndc;
-        // Re-emit with full payload (clientX/Y) — independent of the
-        // bound command, so listeners that just want the bus event work.
         ctx.events.emit('pointer:move', {
           ndc,
           clientX: ev.clientX,
@@ -144,10 +143,13 @@ export function mouseBindingsPlugin(
         if (cmd) runCommand(ctx, cmd, { ndc: null });
       };
 
+      // Register pointerdown on the container in capture phase.
+      // camera-controls (registered directly on the canvas by
+      // @thatopen/components) prevents our bubble-phase handler on
+      // the canvas from firing. Listening on the container in capture
+      // phase runs before the event reaches the canvas target.
       const onDown = (ev: PointerEvent): void => {
-        // If any click-binding uses this button, swallow native side-
-        // effects (browser back/forward on side buttons, autoscroll on
-        // middle, etc.).
+        if (ev.target !== canvas) return;
         if (anyClickBindingFor(bindings, ev)) ev.preventDefault();
         downX = ev.clientX;
         downY = ev.clientY;
@@ -186,14 +188,12 @@ export function mouseBindingsPlugin(
       };
 
       const onContextMenu = (ev: MouseEvent): void => {
-        // Only suppress the browser context menu when the user has bound
-        // a right-click gesture — otherwise leave default behaviour alone.
         if (hasRightClickGesture()) ev.preventDefault();
       };
 
       canvas.addEventListener('pointermove', onMove);
       canvas.addEventListener('pointerleave', onLeave);
-      canvas.addEventListener('pointerdown', onDown);
+      container.addEventListener('pointerdown', onDown, true);
       canvas.addEventListener('pointerup', onUp);
       canvas.addEventListener('contextmenu', onContextMenu);
 
@@ -220,7 +220,7 @@ export function mouseBindingsPlugin(
       cleanup = (): void => {
         canvas.removeEventListener('pointermove', onMove);
         canvas.removeEventListener('pointerleave', onLeave);
-        canvas.removeEventListener('pointerdown', onDown);
+        container.removeEventListener('pointerdown', onDown, true);
         canvas.removeEventListener('pointerup', onUp);
         canvas.removeEventListener('contextmenu', onContextMenu);
         if (raf) cancelAnimationFrame(raf);

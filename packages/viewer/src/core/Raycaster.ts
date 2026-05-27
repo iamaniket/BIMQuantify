@@ -31,11 +31,12 @@ export async function pick(
   // (it does its own client→NDC conversion using `getBoundingClientRect`
   // and `clientWidth`/`clientHeight`). Passing NDC here yields a silent
   // miss after the library's second conversion. Convert NDC → client
-  // pixels for the canvas.
+  // pixels for the canvas. Use `rect.width/height` (not `clientWidth/
+  // clientHeight`) to stay consistent with `clientToNdc`.
   const rect = canvas.getBoundingClientRect();
   const mouse = new THREE.Vector2(
-    ((ndc.x + 1) / 2) * canvas.clientWidth + rect.left,
-    ((1 - ndc.y) / 2) * canvas.clientHeight + rect.top,
+    ((ndc.x + 1) / 2) * rect.width + rect.left,
+    ((1 - ndc.y) / 2) * rect.height + rect.top,
   );
 
   let best: PickResult | null = null;
