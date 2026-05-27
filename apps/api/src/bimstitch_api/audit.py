@@ -91,6 +91,7 @@ async def record(
     after: dict[str, Any] | None = None,
     actor_user_id: UUID | None = None,
     organization_id: UUID | None = None,
+    project_id: UUID | None = None,
     request: Request | None = None,
     impersonator_user_id: UUID | None = None,
 ) -> None:
@@ -114,6 +115,7 @@ async def record(
         user_id=actor_user_id,
         impersonator_user_id=impersonator,
         organization_id=organization_id,
+        project_id=project_id,
         action=action,
         resource_type=resource_type,
         resource_id=str(resource_id) if resource_id is not None else None,

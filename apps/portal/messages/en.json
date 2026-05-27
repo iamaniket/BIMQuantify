@@ -1495,5 +1495,25 @@
     "errorTitle": "Upload failed",
     "errorDescription": "Something went wrong. Please try again.",
     "retry": "Try again"
+  },
+  "activity": {
+    "title": "Project activity",
+    "filterAll": "All",
+    "filterUploads": "Uploads",
+    "filterScans": "Scans",
+    "filterChanges": "Changes",
+    "noActivity": "No activity yet.",
+    "events": "{count} events",
+    "modelCreated": "Created model {name}",
+    "modelUpdated": "Updated model {name}",
+    "modelDeleted": "Deleted model {name}",
+    "fileInitiated": "Started upload {filename}",
+    "fileCompleted": "{filename} ready",
+    "fileRejected": "{filename} rejected",
+    "fileDeleted": "Deleted {filename}",
+    "extractionSucceeded": "{filename} extraction complete",
+    "extractionFailed": "{filename} extraction failed",
+    "complianceChecked": "Compliance check ({framework})",
+    "reportCreated": "Generated report: {title}"
   }
 }

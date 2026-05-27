@@ -19,6 +19,7 @@ from bimstitch_api.migrations_check import check_pending_migrations
 from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.observability import init_sentry
 from bimstitch_api.routers.access_requests import router as access_requests_router
+from bimstitch_api.routers.activity import router as activity_router
 from bimstitch_api.routers.admin_impersonate import router as admin_impersonate_router
 from bimstitch_api.routers.admin_organizations import router as admin_organizations_router
 from bimstitch_api.routers.borgingsplan import (
@@ -27,6 +28,8 @@ from bimstitch_api.routers.borgingsplan import (
 from bimstitch_api.routers.borgingsplan import (
     plan_router as borgingsplan_plan_router,
 )
+from bimstitch_api.routers.capture_links import router as capture_links_router
+from bimstitch_api.routers.capture_public import router as capture_public_router
 from bimstitch_api.routers.compliance import (
     project_router as compliance_project_router,
 )
@@ -41,6 +44,7 @@ from bimstitch_api.routers.deadline_notification_settings import (
     project_router as dl_notif_settings_project_router,
 )
 from bimstitch_api.routers.deadlines import router as deadlines_router
+from bimstitch_api.routers.documents import router as documents_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.inspection import router as inspection_router
 from bimstitch_api.routers.jobs import router as jobs_router
@@ -58,9 +62,6 @@ from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
 from bimstitch_api.routers.public import router as public_router
 from bimstitch_api.routers.reports import router as reports_router
-from bimstitch_api.routers.capture_links import router as capture_links_router
-from bimstitch_api.routers.capture_public import router as capture_public_router
-from bimstitch_api.routers.documents import router as documents_router
 from bimstitch_api.routers.risks import router as risks_router
 from bimstitch_api.routers.ws_notifications import router as ws_notifications_router
 from bimstitch_api.storage import get_documents_bucket, get_storage
@@ -176,6 +177,7 @@ def create_app() -> FastAPI:
     app.include_router(inspection_router)
     app.include_router(jobs_router)
     app.include_router(reports_router)
+    app.include_router(activity_router)
     app.include_router(notifications_router)
     app.include_router(ws_notifications_router)
     return app

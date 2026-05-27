@@ -56,6 +56,13 @@ class AuditLog(MasterBase):
         nullable=True,
     )
 
+    # Project context — null for non-project events (auth, org-level).
+    # No FK: audit_log is in public, projects live in tenant schemas.
+    project_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+    )
+
     # Dotted action code, e.g. 'organization.created', 'organization_member.invited'.
     action: Mapped[str] = mapped_column(String(100), nullable=False)
 
@@ -89,5 +96,6 @@ class AuditLog(MasterBase):
         Index("ix_audit_resource", "resource_type", "resource_id"),
         Index("ix_audit_action_time", "action", "created_at"),
         Index("ix_audit_impersonator_time", "impersonator_user_id", "created_at"),
+        Index("ix_audit_project_time", "project_id", "created_at"),
         {"schema": "public"},
     )

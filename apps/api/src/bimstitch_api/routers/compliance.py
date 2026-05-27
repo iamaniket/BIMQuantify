@@ -11,10 +11,11 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.compliance import ComplianceCheckError, run_compliance_check
 from bimstitch_api.config import Settings, get_settings
@@ -63,8 +64,10 @@ async def check_compliance(
     model_id: UUID,
     file_id: UUID,
     payload: ComplianceCheckRequest,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     settings: Settings = Depends(get_settings),
 ) -> ComplianceCheckResponse:
     """Trigger a compliance check for a file.
@@ -156,6 +159,28 @@ async def check_compliance(
             detail=f"COMPLIANCE_CHECK_FAILED: {exc}",
         ) from exc
 
+    rules = result.get("rules_summary", [])
+    pass_count = sum(1 for r in rules if r.get("status") == "pass")
+    warn_count = sum(1 for r in rules if r.get("status") == "warn")
+    fail_count = sum(1 for r in rules if r.get("status") == "fail")
+
+    await audit.record(
+        session,
+        action="compliance.checked",
+        resource_type="project_file",
+        resource_id=pf.id,
+        after={
+            "framework": payload.framework,
+            "pass_count": pass_count,
+            "warn_count": warn_count,
+            "fail_count": fail_count,
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        project_id=project.id,
+        request=request,
+    )
+
     return ComplianceCheckResponse(
         file_id=str(pf.id),
         job_id=job.id,
@@ -163,7 +188,7 @@ async def check_compliance(
         checked_at=result.get("checked_at", ""),
         total_rules=result.get("total_rules", 0),
         total_elements_checked=result.get("total_elements_checked", 0),
-        rules_summary=result.get("rules_summary", []),
+        rules_summary=rules,
         category_summary=result.get("category_summary", []),
         details=result.get("details", []),
     )

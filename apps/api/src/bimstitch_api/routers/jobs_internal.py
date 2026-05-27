@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api import audit
 from bimstitch_api.db import get_async_session
 from bimstitch_api.jobs import require_worker_secret
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
@@ -160,6 +161,38 @@ async def extraction_callback(
                 row.extraction_finished_at = payload.finished_at
             if payload.extractor_version is not None:
                 row.extractor_version = payload.extractor_version
+
+        # Audit terminal extraction states.
+        if row.extraction_status == ExtractionStatus.succeeded:
+            await audit.record(
+                session,
+                action="project_file.extraction_succeeded",
+                resource_type="project_file",
+                resource_id=row.id,
+                after={
+                    "original_filename": row.original_filename,
+                    "file_type": row.file_type.value if row.file_type else None,
+                    "extraction_status": "succeeded",
+                },
+                actor_user_id=row.uploaded_by_user_id,
+                organization_id=payload.organization_id,
+                project_id=row.project_id,
+            )
+        elif row.extraction_status == ExtractionStatus.failed:
+            await audit.record(
+                session,
+                action="project_file.extraction_failed",
+                resource_type="project_file",
+                resource_id=row.id,
+                after={
+                    "original_filename": row.original_filename,
+                    "file_type": row.file_type.value if row.file_type else None,
+                    "extraction_error": (row.extraction_error or "")[:200],
+                },
+                actor_user_id=row.uploaded_by_user_id,
+                organization_id=payload.organization_id,
+                project_id=row.project_id,
+            )
 
         # Also update the Job record if a job_id was provided.
         job: Job | None = None

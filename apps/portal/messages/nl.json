@@ -1495,5 +1495,25 @@
     "errorTitle": "Upload mislukt",
     "errorDescription": "Er is iets misgegaan. Probeer het opnieuw.",
     "retry": "Opnieuw proberen"
+  },
+  "activity": {
+    "title": "Projectactiviteit",
+    "filterAll": "Alle",
+    "filterUploads": "Uploads",
+    "filterScans": "Scans",
+    "filterChanges": "Wijzigingen",
+    "noActivity": "Nog geen activiteit.",
+    "events": "{count} gebeurtenissen",
+    "modelCreated": "Model aangemaakt: {name}",
+    "modelUpdated": "Model bijgewerkt: {name}",
+    "modelDeleted": "Model verwijderd: {name}",
+    "fileInitiated": "Upload gestart: {filename}",
+    "fileCompleted": "{filename} gereed",
+    "fileRejected": "{filename} afgewezen",
+    "fileDeleted": "Bestand verwijderd: {filename}",
+    "extractionSucceeded": "{filename} extractie voltooid",
+    "extractionFailed": "{filename} extractie mislukt",
+    "complianceChecked": "Nalevingscontrole ({framework})",
+    "reportCreated": "Rapport gegenereerd: {title}"
   }
 }

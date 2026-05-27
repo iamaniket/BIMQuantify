@@ -131,7 +131,7 @@ export default function ProjectDetailPage(): JSX.Element {
             models={models}
             onUpload={setUploadModelId}
           />
-          <ActivityPanel />
+          <ActivityPanel projectId={projectId} />
         </div>
       </div>
     </PageShell>

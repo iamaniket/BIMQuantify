@@ -14,11 +14,12 @@ import logging
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
@@ -101,8 +102,10 @@ async def initiate_upload(
     project_id: UUID,
     model_id: UUID,
     payload: InitiateUploadRequest,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> InitiateUploadResponse:
@@ -218,6 +221,24 @@ async def initiate_upload(
     upload_url = await storage.presigned_put_url(
         storage_key, payload.content_type, payload.size_bytes
     )
+
+    await audit.record(
+        session,
+        action="project_file.initiated",
+        resource_type="project_file",
+        resource_id=row.id,
+        after={
+            "original_filename": row.original_filename,
+            "file_type": row.file_type.value,
+            "version_number": row.version_number,
+            "model_id": str(model.id),
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        project_id=project.id,
+        request=request,
+    )
+
     return InitiateUploadResponse(
         file_id=row.id,
         upload_url=upload_url,
@@ -231,6 +252,7 @@ async def complete_upload(
     project_id: UUID,
     model_id: UUID,
     file_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -274,6 +296,17 @@ async def complete_upload(
                     row.storage_key,
                     exc_info=True,
                 )
+            await audit.record(
+                session,
+                action="project_file.rejected",
+                resource_type="project_file",
+                resource_id=row.id,
+                after={"rejection_reason": "FILE_NOT_VALID_PDF", "file_type": "pdf"},
+                actor_user_id=user.id,
+                organization_id=active_org_id,
+                project_id=project.id,
+                request=request,
+            )
             await session.flush()
             await session.refresh(row)
             return row
@@ -315,6 +348,22 @@ async def complete_upload(
             pdf_job.error = f"DISPATCH_FAILED: {exc}"[:500]
             logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
             await session.flush()
+
+        await audit.record(
+            session,
+            action="project_file.completed",
+            resource_type="project_file",
+            resource_id=row.id,
+            after={
+                "file_type": "pdf",
+                "original_filename": row.original_filename,
+                "version_number": row.version_number,
+            },
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            project_id=project.id,
+            request=request,
+        )
 
         await session.refresh(row)
         return row
@@ -364,6 +413,23 @@ async def complete_upload(
             logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
             await session.flush()
 
+        await audit.record(
+            session,
+            action="project_file.completed",
+            resource_type="project_file",
+            resource_id=row.id,
+            after={
+                "file_type": "ifc",
+                "original_filename": row.original_filename,
+                "version_number": row.version_number,
+                "ifc_schema": row.ifc_schema.value if row.ifc_schema else None,
+            },
+            actor_user_id=user.id,
+            organization_id=active_org_id,
+            project_id=project.id,
+            request=request,
+        )
+
         await session.refresh(row)
         return row
 
@@ -378,6 +444,20 @@ async def complete_upload(
             row.storage_key,
             exc_info=True,
         )
+    await audit.record(
+        session,
+        action="project_file.rejected",
+        resource_type="project_file",
+        resource_id=row.id,
+        after={
+            "rejection_reason": row.rejection_reason,
+            "file_type": "ifc",
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        project_id=project.id,
+        request=request,
+    )
     await session.flush()
     await session.refresh(row)
     return row
@@ -570,8 +650,10 @@ async def delete_file(
     project_id: UUID,
     model_id: UUID,
     file_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> Response:
     project = await _load_project_or_404(session, project_id)
@@ -581,6 +663,12 @@ async def delete_file(
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)
+    before = {
+        "original_filename": row.original_filename,
+        "file_type": row.file_type.value,
+        "version_number": row.version_number,
+    }
+
     try:
         await storage.delete_object(row.storage_key)
     except ObjectNotFoundError:
@@ -591,6 +679,18 @@ async def delete_file(
             row.storage_key,
             exc_info=True,
         )
+
+    await audit.record(
+        session,
+        action="project_file.deleted",
+        resource_type="project_file",
+        resource_id=row.id,
+        before=before,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        project_id=project.id,
+        request=request,
+    )
 
     await session.delete(row)
     await session.flush()

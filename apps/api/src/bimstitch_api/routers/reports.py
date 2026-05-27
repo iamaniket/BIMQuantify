@@ -22,10 +22,11 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jobs import (
@@ -174,6 +175,7 @@ async def _to_response(
 async def create_report(
     project_id: UUID,
     payload: ReportCreateRequest,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -301,6 +303,22 @@ async def create_report(
                 report.id,
                 exc_info=True,
             )
+
+    await audit.record(
+        session,
+        action="report.created",
+        resource_type="report",
+        resource_id=report.id,
+        after={
+            "report_type": report.report_type.value,
+            "locale": report.locale,
+            "title": report.title,
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        project_id=project.id,
+        request=request,
+    )
 
     await session.refresh(report)
     return await _to_response(report, storage)

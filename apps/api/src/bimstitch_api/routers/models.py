@@ -11,18 +11,19 @@ mutate; owner only can delete.
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.cache import CACHE_TTL_MODEL_DETAIL, CACHE_TTL_MODELS_LIST, cache_response
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.project_file import ProjectFile
 from bimstitch_api.models.user import User
-from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
@@ -60,8 +61,10 @@ async def _load_model_or_404(session: AsyncSession, project_id: UUID, model_id: 
 async def create_model(
     project_id: UUID,
     payload: ModelCreate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Model:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
@@ -82,6 +85,24 @@ async def create_model(
             status_code=status.HTTP_409_CONFLICT, detail="MODEL_NAME_CONFLICT"
         ) from exc
     await session.refresh(model)
+
+    await audit.record(
+        session,
+        action="model.created",
+        resource_type="model",
+        resource_id=model.id,
+        after={
+            "name": model.name,
+            "discipline": model.discipline.value if model.discipline else None,
+            "status": model.status.value,
+            "primary_file_type": model.primary_file_type.value if model.primary_file_type else None,
+        },
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        project_id=project.id,
+        request=request,
+    )
+
     return model
 
 
@@ -155,8 +176,10 @@ async def update_model(
     project_id: UUID,
     model_id: UUID,
     payload: ModelUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Model:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
@@ -166,6 +189,11 @@ async def update_model(
     model = await _load_model_or_404(session, project.id, model_id)
 
     updates = payload.model_dump(exclude_unset=True)
+
+    def _snap(attr: object) -> object:
+        return attr.value if hasattr(attr, "value") else attr
+
+    before = {k: _snap(getattr(model, k)) for k in updates}
     for field, value in updates.items():
         setattr(model, field, value)
     try:
@@ -175,6 +203,21 @@ async def update_model(
             status_code=status.HTTP_409_CONFLICT, detail="MODEL_NAME_CONFLICT"
         ) from exc
     await session.refresh(model)
+
+    after = {k: _snap(getattr(model, k)) for k in updates}
+    await audit.record(
+        session,
+        action="model.updated",
+        resource_type="model",
+        resource_id=model.id,
+        before=before,
+        after=after,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        project_id=project.id,
+        request=request,
+    )
+
     return model
 
 
@@ -182,8 +225,10 @@ async def update_model(
 async def delete_model(
     project_id: UUID,
     model_id: UUID,
+    request: Request,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> Response:
     project = await _load_project_or_404(session, project_id)
@@ -192,6 +237,12 @@ async def delete_model(
     _require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
+    before = {
+        "name": model.name,
+        "discipline": model.discipline.value if model.discipline else None,
+        "status": model.status.value,
+        "primary_file_type": model.primary_file_type.value if model.primary_file_type else None,
+    }
 
     storage_keys = [
         key
@@ -201,6 +252,18 @@ async def delete_model(
             )
         ).all()
     ]
+
+    await audit.record(
+        session,
+        action="model.deleted",
+        resource_type="model",
+        resource_id=model.id,
+        before=before,
+        actor_user_id=user.id,
+        organization_id=active_org_id,
+        project_id=project.id,
+        request=request,
+    )
 
     await session.delete(model)
     await session.flush()
