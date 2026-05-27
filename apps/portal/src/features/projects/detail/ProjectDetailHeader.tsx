@@ -7,7 +7,6 @@ import { useState, type JSX } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
 import { Link } from '@/i18n/navigation';
-import type { ComplianceSummary } from '@/features/compliance/types';
 import {
   daysUntil,
   formatAddress,
@@ -25,23 +24,16 @@ import { HeroShell } from '@/components/shared/layout/HeroShell';
 
 type Props = {
   project: Project;
-  compliance: ComplianceSummary | undefined;
-  issueCount: number;
-  dossierPct: number;
 };
 
 export function ProjectDetailHeader({
   project,
-  compliance,
-  issueCount,
-  dossierPct,
 }: Props): JSX.Element {
   const locale = useLocale() as Locale;
   const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
   const tHero = useTranslations('projectDetail.hero');
   const [aerialFailed, setAerialFailed] = useState(false);
-  const overall = compliance?.overallScore ?? 0;
   const address = formatAddress(project);
   const refLabel = project.reference_code ?? '—';
   const statusBadgeClass = projectBadgeClasses(project);
@@ -61,9 +53,6 @@ export function ProjectDetailHeader({
 
   let opleveringValue = '—';
   let opleveringSub = tHero('noDeliveryDate');
-  const wkbSub = compliance?.lastScanAt !== undefined && compliance.lastScanAt !== null
-    ? tHero('fromLatestScan')
-    : tHero('noScanYet');
   if (project.delivery_date !== null) {
     opleveringValue = formatDeliveryDate(project.delivery_date, locale);
     const days = daysUntil(project.delivery_date);
@@ -113,15 +102,6 @@ export function ProjectDetailHeader({
       >
         ● {formatProjectBadgeLabel(project, tStatuses(project.status))}
       </span>
-      {compliance?.lastScanAt !== undefined && compliance.lastScanAt !== null && (
-        <>
-          <span className="text-[10.5px] text-black/40 dark:text-white/55">·</span>
-          <span className="inline-flex items-center gap-1.5 text-[10.5px] text-black/60 dark:text-white/75">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400" />
-            Last scan 26 min ago
-          </span>
-        </>
-      )}
     </>
   );
 
@@ -167,9 +147,9 @@ export function ProjectDetailHeader({
       badge={badgeRow}
       subtitle={subtitleRow}
       kpis={[
-        { label: tHero('wkbScore'), value: `${overall}%`, color: 'var(--success)', sub: wkbSub },
-        { label: tHero('issuesOpen'), value: String(issueCount), color: 'var(--error)', sub: tHero('failWarn', { fail: compliance?.failCount ?? 0, warn: compliance?.warnCount ?? 0 }) },
-        { label: tHero('holdback'), value: '—', sub: tHero('dossierReady', { pct: dossierPct }) },
+        { label: tHero('deadlines'), value: tHero('noDeadlines'), sub: tHero('noDeadlines') },
+        { label: tHero('documents'), value: '—', sub: tHero('noDocuments') },
+        { label: tHero('holdback'), value: '—', sub: tHero('dossierReady', { pct: 0 }) },
         { label: tHero('delivery'), value: opleveringValue, sub: opleveringSub },
       ]}
       action={

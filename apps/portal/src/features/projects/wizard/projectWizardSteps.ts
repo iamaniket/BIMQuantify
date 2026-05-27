@@ -94,7 +94,7 @@ export const INSTRUMENT_OPTIONS: readonly {
 ];
 
 /** Stable step identifiers — used for React keys and step lookup. */
-export type ProjectWizardStepId = 'basics' | 'details' | 'address' | 'contractor';
+export type ProjectWizardStepId = 'basics' | 'address' | 'details';
 
 /** Field names per step, used to scope `form.trigger([...])` validation. */
 export const PROJECT_WIZARD_STEP_FIELDS: Record<
@@ -102,6 +102,16 @@ export const PROJECT_WIZARD_STEP_FIELDS: Record<
   readonly (keyof ProjectFormValues)[]
 > = {
   basics: ['name', 'description'],
+  address: [
+    'street',
+    'house_number',
+    'postal_code',
+    'city',
+    'municipality',
+    'bag_id',
+    'latitude',
+    'longitude',
+  ],
   details: [
     'reference_code',
     'status',
@@ -113,17 +123,6 @@ export const PROJECT_WIZARD_STEP_FIELDS: Record<
     'delivery_date',
     'permit_number',
   ],
-  address: [
-    'street',
-    'house_number',
-    'postal_code',
-    'city',
-    'municipality',
-    'bag_id',
-    'latitude',
-    'longitude',
-  ],
-  contractor: ['contractor_id'],
 } as const;
 
 /** Ordered step list rendered in the wizard stepper. */
@@ -134,19 +133,14 @@ export const PROJECT_WIZARD_STEPS: readonly (WizardStep & { id: ProjectWizardSte
     description: 'Name and description',
   },
   {
-    id: 'details',
-    title: 'Details',
-    description: 'Status, phase, dates',
-  },
-  {
     id: 'address',
     title: 'Address',
     description: 'Site location',
   },
   {
-    id: 'contractor',
-    title: 'Contractor',
-    description: 'Assign a company',
+    id: 'details',
+    title: 'Details',
+    description: 'Building info, dates, instrument',
   },
 ] as const;
 

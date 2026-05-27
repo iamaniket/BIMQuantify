@@ -7,13 +7,10 @@ import { Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
 
 import type { Model } from '@/lib/api/schemas';
 
-import { BevindingenTab } from './BevindingenTab';
-import { BorgingsplanTab } from './BorgingsplanTab';
-import { DeadlinesTab } from './DeadlinesTab';
 import { AttachmentsTab } from './AttachmentsTab';
-import { InspectiesTab } from './InspectiesTab';
+import { BevindingenTab } from './BevindingenTab';
 import { ModelsTab } from './ModelsTab';
-import { ReportsTab } from './ReportsTab';
+import { OverzichtTab } from './OverzichtTab';
 
 type Props = {
   projectId: string;
@@ -29,7 +26,7 @@ export function RightColumnTabs({
   onUpload,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
-  const [tab, setTab] = useState('models');
+  const [tab, setTab] = useState('overzicht');
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
@@ -45,37 +42,29 @@ export function RightColumnTabs({
           </div>
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="inline-flex w-auto">
+              <TabsTrigger value="overzicht">{t('overzicht.label')}</TabsTrigger>
+              <TabsTrigger value="documenten">{t('documenten.label')}</TabsTrigger>
+              <TabsTrigger value="bevindingen">{t('bevindingen.label')}</TabsTrigger>
               <TabsTrigger value="models">
                 {t('models.label')}
                 <span className="ml-1 rounded-full bg-background-secondary px-1.5 text-caption tabular-nums text-foreground-secondary">
                   {models.length}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="borgingsplan">{t('borgingsplan.label')}</TabsTrigger>
-              <TabsTrigger value="deadlines">{t('deadlines.label')}</TabsTrigger>
-              <TabsTrigger value="inspecties">{t('inspecties.label')}</TabsTrigger>
-              <TabsTrigger value="bevindingen">{t('bevindingen.label')}</TabsTrigger>
-              <TabsTrigger value="attachments">{t('attachments.label')}</TabsTrigger>
-              <TabsTrigger value="rapporten">{t('rapporten.label')}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
+        {tab === 'overzicht' && (
+          <OverzichtTab projectId={projectId} country={projectCountry} />
+        )}
+        {tab === 'documenten' && <AttachmentsTab projectId={projectId} />}
+        {tab === 'bevindingen' && <BevindingenTab />}
         {tab === 'models' && (
           <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />
         )}
-        {tab === 'borgingsplan' && (
-          <BorgingsplanTab projectId={projectId} country={projectCountry} />
-        )}
-        {tab === 'deadlines' && (
-          <DeadlinesTab projectId={projectId} country={projectCountry} />
-        )}
-        {tab === 'inspecties' && <InspectiesTab />}
-        {tab === 'bevindingen' && <BevindingenTab />}
-        {tab === 'attachments' && <AttachmentsTab projectId={projectId} />}
-        {tab === 'rapporten' && <ReportsTab projectId={projectId} models={models} />}
       </div>
     </div>
   );

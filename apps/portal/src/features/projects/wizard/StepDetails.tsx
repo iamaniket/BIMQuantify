@@ -167,13 +167,16 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             disabled={isReadOnly}
             {...useRegisterField(form, 'instrument_id')}
           >
-            <option value="">—</option>
+            <option value="">{t('fields.instrumentPlaceholder')}</option>
             {instrumentOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label} · {opt.provider}
               </option>
             ))}
           </Select>
+          <span className="text-caption text-foreground-tertiary">
+            {t('fields.instrumentHint')}
+          </span>
           <span className="text-caption text-foreground-tertiary">
             {t('source.prefix')}
             <a

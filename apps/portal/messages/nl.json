@@ -327,7 +327,9 @@
           "buildingType": "Type bouwwerk",
           "consequenceClass": "Gevolgklasse",
           "plannedStartDate": "Geplande startdatum",
-          "instrument": "Toegelaten instrument (Wkb)"
+          "instrument": "Toegelaten instrument (Wkb)",
+          "instrumentPlaceholder": "Nog niet bekend — wordt ingevuld door KB",
+          "instrumentHint": "Optioneel. Je kwaliteitsborger selecteert het instrument wanneer hij deelneemt."
         },
         "source": {
           "prefix": "Bron: TloKB-register (",
@@ -507,11 +509,35 @@
       "daysRemaining": "{count} dagen resterend",
       "daysOverdue": "{count} dagen te laat",
       "failWarn": "{fail} fout \u00b7 {warn} waarsch.",
-      "dossierReady": "{pct}% dossier gereed"
+      "dossierReady": "{pct}% dossier gereed",
+      "deadlines": "Deadlines",
+      "deadlinesMetCount": "{met} van {total} voldaan",
+      "noDeadlines": "Geen deadlines",
+      "documents": "Documenten",
+      "documentsCount": "{count} geüpload",
+      "noDocuments": "Nog geen"
     },
     "tabs": {
-      "eyebrow": "Projectbestanden",
+      "eyebrow": "Projectwerkruimte",
       "subtitle": "{count, plural, =0 {Nog geen modellen} =1 {1 model} other {# modellen}}",
+      "overzicht": {
+        "label": "Overzicht",
+        "deadlinesHeading": "Deadlines",
+        "emptyTitle": "Nog geen deadlines",
+        "emptyDescription": "Deadlines verschijnen automatisch zodra het project een geplande startdatum en opleverdatum heeft."
+      },
+      "documenten": {
+        "label": "Documenten"
+      },
+      "overviewCard": {
+        "address": "Adres",
+        "contractor": "Aannemer",
+        "status": "Status",
+        "plannedStart": "Geplande start",
+        "delivery": "Oplevering",
+        "reference": "Referentie",
+        "createdAt": "Aangemaakt {date}"
+      },
       "models": {
         "label": "Modellen",
         "columnName": "Naam",

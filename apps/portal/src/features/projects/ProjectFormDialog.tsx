@@ -26,8 +26,6 @@ import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';
 
 import { formatAddress, isProjectArchived } from '@/lib/formatting/projects';
-import { useContractors } from '@/features/contractors/useContractors';
-import { useCreateContractor } from '@/features/contractors/useCreateContractor';
 import {
   ProjectFormSchema,
   type ProjectFormValues,
@@ -40,7 +38,6 @@ import {
 } from './wizard/projectWizardSteps';
 import { StepAddress } from './wizard/StepAddress';
 import { StepBasics } from './wizard/StepBasics';
-import { StepContractor } from './wizard/StepContractor';
 import { StepDetails } from './wizard/StepDetails';
 
 const THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -161,12 +158,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   const updateMutation = useUpdateProject();
   const mutation = mode === 'create' ? createMutation : updateMutation;
 
-  const contractorsQuery = useContractors();
-  const createContractorMutation = useCreateContractor();
-  const [showAddContractor, setShowAddContractor] = useState(false);
-  const [newContractorName, setNewContractorName] = useState('');
-  const [contractorError, setContractorError] = useState<string | null>(null);
-
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
@@ -193,9 +184,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
       return null;
     });
     setThumbnailError(null);
-    setShowAddContractor(false);
-    setNewContractorName('');
-    setContractorError(null);
     setCurrentStep(0);
     setHighestVisited(mode === 'edit' ? LAST_STEP : 0);
   }, [open, project, mode, resetForm, resetCreateMutation, resetUpdateMutation]);
@@ -254,36 +242,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     });
     setThumbnailFile(null);
   };
-
-  const handleAddContractor = useCallback((): void => {
-    const trimmed = newContractorName.trim();
-    if (trimmed.length === 0) {
-      setContractorError(tWizard('errors.contractorNameRequired'));
-      return;
-    }
-    setContractorError(null);
-    createContractorMutation.mutate(
-      { name: trimmed },
-      {
-        onSuccess: (created) => {
-          form.setValue('contractor_id', created.id, {
-            shouldDirty: true,
-            shouldTouch: true,
-            shouldValidate: false,
-          });
-          setShowAddContractor(false);
-          setNewContractorName('');
-        },
-        onError: (error) => {
-          if (error instanceof ApiError && error.status === 409) {
-            setContractorError(tWizard('errors.contractorAlreadyExists'));
-          } else {
-            setContractorError(tWizard('errors.contractorCreateFailed'));
-          }
-        },
-      },
-    );
-  }, [createContractorMutation, form, newContractorName, tWizard]);
 
   const onSubmitImpl: SubmitHandler<ProjectFormValues> = (values) => {
     const description = nullableTrim(values.description);
@@ -404,7 +362,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     ? tWizard('actions.creating')
     : tWizard('actions.saving');
   const isSubmitting = mutation.isPending;
-  const contractors = contractorsQuery.data ?? [];
 
   const initialAddressLabel = project === null
     ? undefined
@@ -467,25 +424,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                 )}
                 {activeStepId === 'address' && (
                   <StepAddress initialLookupLabel={initialAddressLabel} isReadOnly={isReadOnly} />
-                )}
-                {activeStepId === 'contractor' && (
-                  <StepContractor
-                    contractors={contractors}
-                    contractorsLoading={contractorsQuery.isLoading}
-                    showAddContractor={showAddContractor}
-                    newContractorName={newContractorName}
-                    contractorError={contractorError}
-                    isAddingContractor={createContractorMutation.isPending}
-                    isReadOnly={isReadOnly}
-                    onShowAddContractor={() => { setShowAddContractor(true); }}
-                    onCancelAddContractor={() => {
-                      setShowAddContractor(false);
-                      setNewContractorName('');
-                      setContractorError(null);
-                    }}
-                    onChangeNewContractorName={setNewContractorName}
-                    onSubmitNewContractor={handleAddContractor}
-                  />
                 )}
               </div>
             </Wizard>

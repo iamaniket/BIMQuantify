@@ -11,16 +11,10 @@ import { ModelFiles } from '@/features/models/ModelFiles';
 import { ApiError } from '@/lib/api/client';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
-import {
-  useComplianceSummary,
-  useComplianceDomains,
-  useComplianceArticles,
-  useComplianceTrend,
-} from '@/features/compliance/hooks';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
-import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
+import { ProjectOverviewCard } from '@/features/projects/detail/ProjectOverviewCard';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
 import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
 
@@ -29,10 +23,6 @@ export default function ProjectDetailPage(): JSX.Element {
   const { projectId } = params;
   const projectQuery = useProject(projectId);
   const modelsQuery = useModels(projectId);
-  const summaryQuery = useComplianceSummary(projectId);
-  const domainsQuery = useComplianceDomains(projectId);
-  const articlesQuery = useComplianceArticles(projectId);
-  const trendQuery = useComplianceTrend(projectId);
 
   const [uploadModelId, setUploadModelId] = useState<string | null>(null);
 
@@ -69,12 +59,6 @@ export default function ProjectDetailPage(): JSX.Element {
   }
 
   const models = modelsQuery.data ?? [];
-  const summary = summaryQuery.data;
-  const domains = domainsQuery.data ?? [];
-  const articles = articlesQuery.data ?? [];
-  const trend = trendQuery.data ?? [];
-  const overallScore = summary?.overallScore ?? 0;
-  const dossierPct = summary?.dossierPercentage ?? 0;
 
   const uploadModel = uploadModelId !== null
     ? models.find((m) => m.id === uploadModelId)
@@ -85,9 +69,6 @@ export default function ProjectDetailPage(): JSX.Element {
       hero={
         <ProjectDetailHeader
           project={project}
-          compliance={summary}
-          issueCount={0}
-          dossierPct={dossierPct}
         />
       }
     >
@@ -114,15 +95,7 @@ export default function ProjectDetailPage(): JSX.Element {
       </Dialog>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 xl:grid-cols-2">
-        <ComplianceByDomainCard
-          domains={domains}
-          articles={articles}
-          models={models}
-          trend={trend}
-          overallScore={overallScore}
-          totalChecks={summary !== undefined ? summary.passCount + summary.warnCount + summary.failCount : 0}
-          failCount={summary?.failCount ?? 0}
-        />
+        <ProjectOverviewCard project={project} />
 
         <div className="grid min-h-0 grid-rows-[3fr_2fr] gap-3.5">
           <RightColumnTabs
