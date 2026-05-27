@@ -1542,6 +1542,8 @@
     "exhaustedDescription": "Deze link heeft het maximale aantal uploads bereikt.",
     "remainingUses": "{count, plural, one {# upload resterend} other {# uploads resterend}}",
     "linkLabel": "Voor: {label}",
+    "duplicateTitle": "Bestand al geüpload",
+    "duplicateDescription": "Dit bestand is al geüpload naar het project.",
     "errorTitle": "Upload mislukt",
     "errorDescription": "Er is iets misgegaan. Probeer het opnieuw.",
     "retry": "Opnieuw proberen"
@@ -1557,13 +1559,16 @@
     "modelCreated": "Model aangemaakt: {name}",
     "modelUpdated": "Model bijgewerkt: {name}",
     "modelDeleted": "Model verwijderd: {name}",
-    "fileInitiated": "Upload gestart: {filename}",
-    "fileCompleted": "{filename} gereed",
-    "fileRejected": "{filename} afgewezen",
-    "fileDeleted": "Bestand verwijderd: {filename}",
-    "extractionSucceeded": "{filename} extractie voltooid",
-    "extractionFailed": "{filename} extractie mislukt",
-    "complianceChecked": "Nalevingscontrole ({framework})",
-    "reportCreated": "Rapport gegenereerd: {title}"
+    "fileCompleted": "Toegevoegd: {filename}",
+    "fileRejected": "Afgewezen: {filename}",
+    "fileDeleted": "Verwijderd: {filename}",
+    "extractionSucceeded": "Geëxtraheerd: {filename}",
+    "extractionFailed": "Extractie mislukt: {filename}",
+    "complianceChecked": "{framework} nalevingscontrole uitgevoerd",
+    "reportCreated": "Rapport gegenereerd: {title}",
+    "attachmentCompleted": "Toegevoegd: {filename}",
+    "attachmentRejected": "Afgewezen: {filename}",
+    "attachmentUpdated": "Bijgewerkt: {filename}",
+    "attachmentDeleted": "Verwijderd: {filename}"
   }
 }

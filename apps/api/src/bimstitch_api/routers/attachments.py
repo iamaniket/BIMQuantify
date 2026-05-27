@@ -187,6 +187,7 @@ async def initiate_attachment_upload(
         after=_attachment_snapshot(att),
         actor_user_id=user.id,
         organization_id=active_org_id,
+        project_id=project.id,
         request=request,
     )
 
@@ -252,6 +253,7 @@ async def complete_attachment_upload(
             after={"status": "rejected", "rejection_reason": "SIZE_MISMATCH"},
             actor_user_id=user.id,
             organization_id=active_org_id,
+            project_id=project.id,
             request=request,
         )
         raise HTTPException(
@@ -273,6 +275,7 @@ async def complete_attachment_upload(
         after=_attachment_snapshot(att),
         actor_user_id=user.id,
         organization_id=active_org_id,
+        project_id=project.id,
         request=request,
     )
     return att
@@ -393,6 +396,7 @@ async def update_attachment(
         after=_attachment_snapshot(att),
         actor_user_id=user.id,
         organization_id=active_org_id,
+        project_id=project.id,
         request=request,
     )
     return att
@@ -436,6 +440,7 @@ async def delete_attachment(
         before=before,
         actor_user_id=user.id,
         organization_id=active_org_id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

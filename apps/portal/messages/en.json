@@ -1542,6 +1542,8 @@
     "exhaustedDescription": "This link has reached its maximum number of uploads.",
     "remainingUses": "{count, plural, one {# upload remaining} other {# uploads remaining}}",
     "linkLabel": "For: {label}",
+    "duplicateTitle": "File already uploaded",
+    "duplicateDescription": "This file has already been uploaded to the project.",
     "errorTitle": "Upload failed",
     "errorDescription": "Something went wrong. Please try again.",
     "retry": "Try again"
@@ -1557,13 +1559,16 @@
     "modelCreated": "Created model {name}",
     "modelUpdated": "Updated model {name}",
     "modelDeleted": "Deleted model {name}",
-    "fileInitiated": "Started upload {filename}",
-    "fileCompleted": "{filename} ready",
-    "fileRejected": "{filename} rejected",
-    "fileDeleted": "Deleted {filename}",
-    "extractionSucceeded": "{filename} extraction complete",
-    "extractionFailed": "{filename} extraction failed",
-    "complianceChecked": "Compliance check ({framework})",
-    "reportCreated": "Generated report: {title}"
+    "fileCompleted": "Added {filename}",
+    "fileRejected": "Rejected {filename}",
+    "fileDeleted": "Removed {filename}",
+    "extractionSucceeded": "Extracted {filename}",
+    "extractionFailed": "Extraction failed: {filename}",
+    "complianceChecked": "Ran {framework} compliance check",
+    "reportCreated": "Generated report: {title}",
+    "attachmentCompleted": "Added {filename}",
+    "attachmentRejected": "Rejected {filename}",
+    "attachmentUpdated": "Updated {filename}",
+    "attachmentDeleted": "Removed {filename}"
   }
 }

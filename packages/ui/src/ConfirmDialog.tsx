@@ -1,6 +1,6 @@
 'use client';
 
-import type { JSX } from 'react';
+import { useCallback, type JSX, type KeyboardEvent } from 'react';
 
 import { Button } from './Button.js';
 import {
@@ -39,9 +39,18 @@ export function ConfirmDialog({
   isPending,
   errorMessage,
 }: ConfirmDialogProps): JSX.Element {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || isPending) return;
+      e.preventDefault();
+      onConfirm();
+    },
+    [onConfirm, isPending],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent onKeyDown={handleKeyDown}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -56,7 +65,7 @@ export function ConfirmDialog({
             </div>
           </DialogBody>
         )}
-        <DialogFooter>
+        <DialogFooter className="justify-between">
           <DialogClose asChild>
             <Button type="button" variant="border" size="md" disabled={isPending}>
               {cancelLabel}

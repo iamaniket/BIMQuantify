@@ -23,7 +23,8 @@ type PageState =
   | { kind: 'uploading'; info: CaptureTokenValidation }
   | { kind: 'success'; info: CaptureTokenValidation; remainingUses: number | null }
   | { kind: 'exhausted' }
-  | { kind: 'error'; info: CaptureTokenValidation };
+  | { kind: 'error'; info: CaptureTokenValidation }
+  | { kind: 'duplicate'; info: CaptureTokenValidation };
 
 export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
   const t = useTranslations('capturePage');
@@ -56,7 +57,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
 
   const handleUpload = useCallback(
     async (file: File) => {
-      if (state.kind !== 'ready' && state.kind !== 'success' && state.kind !== 'error') return;
+      if (state.kind !== 'ready' && state.kind !== 'success' && state.kind !== 'error' && state.kind !== 'duplicate') return;
       const info = state.info;
 
       setState({ kind: 'uploading', info });
@@ -75,8 +76,12 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
         } else {
           setState({ kind: 'success', info, remainingUses: newRemaining });
         }
-      } catch {
-        setState({ kind: 'error', info });
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) {
+          setState({ kind: 'duplicate', info });
+        } else {
+          setState({ kind: 'error', info });
+        }
       }
     },
     [state, orgId, token],
@@ -102,7 +107,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
   }, [state]);
 
   const handleRetry = useCallback(() => {
-    if (state.kind === 'error') {
+    if (state.kind === 'error' || state.kind === 'duplicate') {
       setState({ kind: 'ready', info: state.info });
     }
   }, [state]);
@@ -147,6 +152,19 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-body3 text-foreground-secondary">{t('uploading')}</p>
+      </div>
+    );
+  }
+
+  if (state.kind === 'duplicate') {
+    return (
+      <div className="flex flex-col items-center gap-4 py-12 text-center">
+        <XCircle className="h-10 w-10 text-warning" />
+        <h1 className="text-h3 font-semibold text-foreground">{t('duplicateTitle')}</h1>
+        <p className="text-body3 text-foreground-secondary">{t('duplicateDescription')}</p>
+        <Button variant="primary" size="sm" onClick={handleRetry}>
+          {t('uploadAnother')}
+        </Button>
       </div>
     );
   }

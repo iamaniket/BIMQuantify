@@ -36,7 +36,6 @@ const ACTION_I18N_KEY: Record<string, string> = {
   'model.created': 'modelCreated',
   'model.updated': 'modelUpdated',
   'model.deleted': 'modelDeleted',
-  'project_file.initiated': 'fileInitiated',
   'project_file.completed': 'fileCompleted',
   'project_file.rejected': 'fileRejected',
   'project_file.deleted': 'fileDeleted',
@@ -44,6 +43,10 @@ const ACTION_I18N_KEY: Record<string, string> = {
   'project_file.extraction_failed': 'extractionFailed',
   'compliance.checked': 'complianceChecked',
   'report.created': 'reportCreated',
+  'attachment.completed': 'attachmentCompleted',
+  'attachment.rejected': 'attachmentRejected',
+  'attachment.updated': 'attachmentUpdated',
+  'attachment.deleted': 'attachmentDeleted',
 };
 
 function descriptionParams(entry: ProjectActivityEntry): Record<string, string> {

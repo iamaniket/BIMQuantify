@@ -140,6 +140,26 @@ async def initiate_capture_upload(
                 detail={"code": "FILE_TOO_LARGE", "max_bytes": settings.attachment_max_bytes},
             )
 
+        existing = (
+            await session.execute(
+                select(Attachment).where(
+                    Attachment.project_id == link.project_id,
+                    Attachment.content_sha256 == payload.content_sha256,
+                    Attachment.status.in_([AttachmentStatus.pending, AttachmentStatus.ready]),
+                    Attachment.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "DUPLICATE_CONTENT",
+                    "existing_attachment_id": str(existing.id),
+                    "existing_filename": existing.original_filename,
+                },
+            )
+
         storage_key = f"projects/{link.project_id}/attachments/{uuid4()}{ext}"
         bucket = get_attachments_bucket()
 

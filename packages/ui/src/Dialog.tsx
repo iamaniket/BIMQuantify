@@ -27,10 +27,18 @@ export type DialogContentProps = ComponentPropsWithoutRef<typeof RadixDialog.Con
 export const DialogContent = forwardRef<
   ElementRef<typeof RadixDialog.Content>,
   DialogContentProps
->(({ className, children, ...rest }, ref) => (
+>(({ className, children, onInteractOutside, ...rest }, ref) => (
   <RadixDialog.Portal>
     <RadixDialog.Overlay className={overlayStyles} />
-    <RadixDialog.Content ref={ref} className={cn(contentStyles, className)} {...rest}>
+    <RadixDialog.Content
+      ref={ref}
+      className={cn(contentStyles, className)}
+      onInteractOutside={(e) => {
+        e.preventDefault();
+        onInteractOutside?.(e);
+      }}
+      {...rest}
+    >
       {children}
     </RadixDialog.Content>
   </RadixDialog.Portal>
@@ -69,7 +77,7 @@ export const DialogFooter = forwardRef<HTMLDivElement, DialogSectionProps>(
     <div
       ref={ref}
       className={cn(
-        'flex justify-end gap-2 border-t border-border px-5 py-4',
+        'flex justify-end gap-2 border-t border-border mx-5 py-4',
         className,
       )}
       {...rest}

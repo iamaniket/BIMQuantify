@@ -44,7 +44,7 @@ export function CreateCaptureLinkDialog({
 
   const [label, setLabel] = useState('');
   const [ttlHours, setTtlHours] = useState('72');
-  const [maxUses, setMaxUses] = useState('');
+  const [maxUses, setMaxUses] = useState('9');
   const [createdUrl, setCreatedUrl] = useState<string | null>(null);
 
   const handleCreate = useCallback(() => {
@@ -76,7 +76,7 @@ export function CreateCaptureLinkDialog({
       if (!nextOpen) {
         setLabel('');
         setTtlHours('72');
-        setMaxUses('');
+        setMaxUses('9');
         setCreatedUrl(null);
       }
       onOpenChange(nextOpen);

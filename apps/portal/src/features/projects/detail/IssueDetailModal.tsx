@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, UserCog, CheckCircle2, X } from 'lucide-react';
+import { MapPin, UserCog, CheckCircle2 } from 'lucide-react';
 import type { JSX } from 'react';
 
 import {
@@ -12,7 +12,6 @@ import {
   DialogTitle,
   DialogBody,
   DialogFooter,
-  DialogClose,
 } from '@bimstitch/ui';
 
 import type { ComplianceIssue } from '@/features/compliance/types';
@@ -118,14 +117,6 @@ export function IssueDetailModal({ issue, open, onOpenChange }: Props): JSX.Elem
           </Button>
         </DialogFooter>
 
-        <DialogClose asChild>
-          <button
-            type="button"
-            className="absolute right-3 top-3 rounded-md p-1 text-foreground-tertiary transition-colors hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </DialogClose>
       </DialogContent>
     </Dialog>
   );

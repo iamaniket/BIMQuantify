@@ -1,4 +1,3 @@
-import { X } from 'lucide-react';
 import {
   type FormEventHandler, type JSX, type ReactNode,
 } from 'react';
@@ -19,7 +18,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description?: string;
+  description: string;
   onSubmit: FormEventHandler<HTMLFormElement>;
   submitLabel?: string;
   cancelLabel?: string;
@@ -47,44 +46,29 @@ export function FormDialog({
         style={{ width, maxWidth: 'calc(100vw - 48px)' }}
       >
         <form noValidate onSubmit={onSubmit}>
-          <DialogHeader className="relative flex-row items-start gap-3">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <DialogTitle>{title}</DialogTitle>
-              {description !== undefined && (
-                <DialogDescription>{description}</DialogDescription>
-              )}
-            </div>
-            <DialogClose asChild>
-              <button
-                type="button"
-                aria-label="Close"
-                className="shrink-0 rounded-md p-1 text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </DialogClose>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
           <DialogBody className="min-h-0 flex-1 overflow-y-auto">
             {children}
           </DialogBody>
 
-          <DialogFooter>
-            <div className="flex shrink-0 items-center gap-2">
-              <DialogClose asChild>
-                <Button type="button" variant="border" size="md">
-                  {cancelLabel}
-                </Button>
-              </DialogClose>
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                disabled={submitDisabled}
-              >
-                {submitLabel}
+          <DialogFooter className="justify-between">
+            <DialogClose asChild>
+              <Button type="button" variant="border" size="md">
+                {cancelLabel}
               </Button>
-            </div>
+            </DialogClose>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={submitDisabled}
+            >
+              {submitLabel}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

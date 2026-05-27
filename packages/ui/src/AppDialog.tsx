@@ -1,7 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
-import { useCallback, type JSX, type ReactNode } from 'react';
+import { useCallback, type JSX, type KeyboardEvent, type ReactNode } from 'react';
 
 import { Button } from './Button.js';
 import {
@@ -22,7 +21,7 @@ export type AppDialogProps = {
 
   eyebrow?: string;
   title: string;
-  subtitle?: string;
+  subtitle: string;
   headerMeta?: ReactNode;
 
   children?: ReactNode;
@@ -70,6 +69,17 @@ export function AppDialog({
     [onClose],
   );
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      if (e.target instanceof HTMLTextAreaElement) return;
+      if (onSave === undefined || saveDisabled) return;
+      e.preventDefault();
+      onSave();
+    },
+    [onSave, saveDisabled],
+  );
+
   const hasFooter =
     footerInfo !== undefined || onSave !== undefined || onReset !== undefined;
 
@@ -78,9 +88,10 @@ export function AppDialog({
       <DialogContent
         className={cn('flex max-w-none flex-col max-h-[calc(100vh-48px)]', className)}
         style={{ width, height, maxWidth: 'calc(100vw - 48px)' }}
+        onKeyDown={handleKeyDown}
       >
         {/* Header */}
-        <DialogHeader className="relative flex-row items-start gap-3">
+        <DialogHeader>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             {eyebrow !== undefined && (
               <span className="text-caption font-bold uppercase tracking-[0.14em] text-primary">
@@ -88,22 +99,11 @@ export function AppDialog({
               </span>
             )}
             <DialogTitle>{title}</DialogTitle>
-            {subtitle !== undefined && (
-              <DialogDescription>{subtitle}</DialogDescription>
-            )}
+            <DialogDescription>{subtitle}</DialogDescription>
           </div>
           {headerMeta !== undefined && (
             <div className="shrink-0">{headerMeta}</div>
           )}
-          <DialogClose asChild>
-            <button
-              type="button"
-              aria-label="Close"
-              className="shrink-0 rounded-md p-1 text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </DialogClose>
         </DialogHeader>
 
         {/* Body */}
@@ -113,23 +113,25 @@ export function AppDialog({
 
         {/* Footer */}
         {hasFooter && (
-          <DialogFooter className="items-center">
-            {footerInfo !== undefined && (
-              <div className="min-w-0 flex-1 text-body3 text-foreground-tertiary">
-                {footerInfo}
-              </div>
-            )}
-            <div className="flex shrink-0 items-center gap-2">
-              {onReset !== undefined && (
-                <Button type="button" variant="ghost" size="md" onClick={onReset}>
-                  {resetLabel}
-                </Button>
-              )}
+          <DialogFooter className="items-center justify-between">
+            <div className="flex min-w-0 items-center gap-3">
               <DialogClose asChild>
                 <Button type="button" variant="border" size="md">
                   {cancelLabel}
                 </Button>
               </DialogClose>
+              {onReset !== undefined && (
+                <Button type="button" variant="ghost" size="md" onClick={onReset}>
+                  {resetLabel}
+                </Button>
+              )}
+              {footerInfo !== undefined && (
+                <div className="min-w-0 text-body3 text-foreground-tertiary">
+                  {footerInfo}
+                </div>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
               {onSave !== undefined && (
                 <Button
                   type="button"

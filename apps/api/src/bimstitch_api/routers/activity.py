@@ -29,7 +29,6 @@ _CATEGORY_MAP: dict[str, str] = {
     "model.created": "change",
     "model.updated": "change",
     "model.deleted": "change",
-    "project_file.initiated": "upload",
     "project_file.completed": "upload",
     "project_file.rejected": "upload",
     "project_file.deleted": "upload",
@@ -37,6 +36,10 @@ _CATEGORY_MAP: dict[str, str] = {
     "project_file.extraction_failed": "scan",
     "compliance.checked": "scan",
     "report.created": "scan",
+    "attachment.completed": "upload",
+    "attachment.rejected": "upload",
+    "attachment.updated": "change",
+    "attachment.deleted": "change",
 }
 
 _KNOWN_ACTIONS = set(_CATEGORY_MAP.keys())

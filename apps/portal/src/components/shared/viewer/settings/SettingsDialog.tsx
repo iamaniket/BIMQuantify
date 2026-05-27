@@ -471,6 +471,7 @@ export function SettingsDialog(props: Props): JSX.Element {
       open={open}
       onClose={handleCancel}
       title="Viewer Settings"
+      subtitle="Customize rendering, controls, and display preferences."
       width={900}
       height={760}
       bodyClassName="overflow-hidden"
