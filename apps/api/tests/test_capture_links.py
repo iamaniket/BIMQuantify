@@ -437,3 +437,85 @@ async def test_public_initiate_rejects_bad_extension(
         json=_capture_upload_payload(filename="hack.exe"),
     )
     assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Public capture — capture metadata
+# ---------------------------------------------------------------------------
+
+_SAMPLE_METADATA: dict[str, object] = {
+    "captured_at": "2026-05-27T10:30:00.000Z",
+    "capture_method": "camera",
+    "device": {"user_agent": "MobileTestAgent/1.0"},
+    "geolocation": {
+        "latitude": 52.0907,
+        "longitude": 5.1214,
+        "accuracy": 8.0,
+        "low_accuracy": False,
+    },
+    "exif": {
+        "make": "Samsung",
+        "model": "Galaxy S24",
+        "orientation": 1,
+    },
+}
+
+
+@pytest.mark.asyncio
+async def test_public_capture_with_metadata(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    link = await _create_capture_link(client, org_user["access_token"], project["id"])
+    org_id = org_user["organization_id"]
+    payload = _capture_upload_payload(capture_metadata=_SAMPLE_METADATA)
+    initiated = (
+        await client.post(
+            f"/public/capture/{org_id}/{link['token']}/initiate",
+            json=payload,
+        )
+    ).json()
+    fake.objects[initiated["storage_key"]] = b"x" * 4096
+    await client.post(
+        f"/public/capture/{org_id}/{link['token']}/complete/{initiated['attachment_id']}",
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/attachments/{initiated['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert detail.status_code == 200
+    meta = detail.json()["capture_metadata"]
+    assert meta is not None
+    assert meta["capture_method"] == "camera"
+    assert meta["geolocation"]["latitude"] == 52.0907
+    assert meta["exif"]["make"] == "Samsung"
+    assert "server_received_at" in meta
+
+
+@pytest.mark.asyncio
+async def test_public_capture_without_metadata(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    link = await _create_capture_link(client, org_user["access_token"], project["id"])
+    org_id = org_user["organization_id"]
+    initiated = (
+        await client.post(
+            f"/public/capture/{org_id}/{link['token']}/initiate",
+            json=_capture_upload_payload(),
+        )
+    ).json()
+    fake.objects[initiated["storage_key"]] = b"x" * 4096
+    await client.post(
+        f"/public/capture/{org_id}/{link['token']}/complete/{initiated['attachment_id']}",
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/attachments/{initiated['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert detail.status_code == 200
+    assert detail.json()["capture_metadata"] is None

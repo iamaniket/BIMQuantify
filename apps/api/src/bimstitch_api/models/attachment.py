@@ -114,6 +114,8 @@ class Attachment(TimestampMixin, SoftDeleteMixin, TenantBase):
         nullable=True,
     )
 
+    capture_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
     version_number: Mapped[int] = mapped_column(default=1, nullable=False)
     parent_attachment_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),

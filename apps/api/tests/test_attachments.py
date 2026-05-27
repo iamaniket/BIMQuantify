@@ -651,3 +651,119 @@ async def test_initiate_categorizes_file_types(
         headers=_auth(org_user["access_token"]),
     )
     assert detail.json()["attachment_category"] == expected_category
+
+
+# ---------------------------------------------------------------------------
+# Capture metadata
+# ---------------------------------------------------------------------------
+
+_SAMPLE_METADATA: dict[str, object] = {
+    "captured_at": "2026-05-27T10:30:00.000Z",
+    "capture_method": "camera",
+    "device": {"user_agent": "TestAgent/1.0"},
+    "geolocation": {
+        "latitude": 52.3676,
+        "longitude": 4.9041,
+        "accuracy": 10.5,
+        "low_accuracy": False,
+    },
+    "exif": {
+        "make": "Apple",
+        "model": "iPhone 15 Pro",
+        "orientation": 1,
+        "image_width": 4032,
+        "image_height": 3024,
+    },
+}
+
+
+@pytest.mark.asyncio
+async def test_capture_metadata_round_trips(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(
+        client, org_user["access_token"], project["id"],
+        capture_metadata=_SAMPLE_METADATA,
+    )
+    body = await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    meta = body["capture_metadata"]
+    assert meta is not None
+    assert meta["capture_method"] == "camera"
+    assert meta["geolocation"]["latitude"] == 52.3676
+    assert meta["exif"]["make"] == "Apple"
+    assert "server_received_at" in meta
+
+
+@pytest.mark.asyncio
+async def test_capture_metadata_null_is_ok(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    body = await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    assert body["capture_metadata"] is None
+
+
+@pytest.mark.asyncio
+async def test_capture_metadata_geolocation_null_ok(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    meta = {
+        "captured_at": "2026-05-27T10:30:00.000Z",
+        "capture_method": "file_picker",
+        "device": {"user_agent": "TestAgent/1.0"},
+        "geolocation": None,
+        "exif": None,
+    }
+    att = await _initiate_att(
+        client, org_user["access_token"], project["id"],
+        capture_metadata=meta,
+    )
+    body = await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    assert body["capture_metadata"] is not None
+    assert body["capture_metadata"]["geolocation"] is None
+    assert body["capture_metadata"]["exif"] is None
+    assert "server_received_at" in body["capture_metadata"]
+
+
+@pytest.mark.asyncio
+async def test_capture_metadata_server_received_at_stamped(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(
+        client, org_user["access_token"], project["id"],
+        capture_metadata=_SAMPLE_METADATA,
+    )
+    body = await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    server_ts = body["capture_metadata"]["server_received_at"]
+    assert server_ts.startswith("2")
+    assert "T" in server_ts
+
+
+@pytest.mark.asyncio
+async def test_capture_metadata_audit_snapshot(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    await _initiate_att(
+        client, org_user["access_token"], project["id"],
+        capture_metadata=_SAMPLE_METADATA,
+    )
+    row = await _latest_audit(session_maker, "attachment.initiated")
+    assert row is not None
+    assert row.after is not None
+    assert row.after["has_capture_metadata"] is True

@@ -6,6 +6,7 @@ provides the tenant context, and the token authenticates the request.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -163,6 +164,11 @@ async def initiate_capture_upload(
         storage_key = f"projects/{link.project_id}/attachments/{uuid4()}{ext}"
         bucket = get_attachments_bucket()
 
+        capture_meta = None
+        if payload.capture_metadata is not None:
+            capture_meta = payload.capture_metadata.model_dump(mode="json")
+            capture_meta["server_received_at"] = datetime.now(UTC).isoformat()
+
         att = Attachment(
             project_id=link.project_id,
             uploaded_by_user_id=None,
@@ -174,6 +180,7 @@ async def initiate_capture_upload(
             content_sha256=payload.content_sha256,
             attachment_category=category,
             status=AttachmentStatus.pending,
+            capture_metadata=capture_meta,
         )
         session.add(att)
 

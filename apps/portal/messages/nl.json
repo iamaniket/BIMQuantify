@@ -1546,7 +1546,10 @@
     "duplicateDescription": "Dit bestand is al geüpload naar het project.",
     "errorTitle": "Upload mislukt",
     "errorDescription": "Er is iets misgegaan. Probeer het opnieuw.",
-    "retry": "Opnieuw proberen"
+    "retry": "Opnieuw proberen",
+    "geolocationRequesting": "Locatietoegang aanvragen…",
+    "geolocationGranted": "Locatie vastgelegd",
+    "geolocationDenied": "Locatie niet beschikbaar"
   },
   "activity": {
     "title": "Projectactiviteit",

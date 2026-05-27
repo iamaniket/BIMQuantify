@@ -79,6 +79,7 @@ export async function initiateCaptureUpload(
     size_bytes: number;
     content_type: string;
     content_sha256: string;
+    capture_metadata?: Record<string, unknown> | null;
   },
 ): Promise<CaptureUploadResponse> {
   return publicPost<CaptureUploadResponse>(
@@ -105,13 +106,24 @@ export async function uploadViaCaptureLink(
   token: string,
   file: File,
   contentSha256: string,
+  captureMetadata?: Record<string, unknown> | null,
 ): Promise<CaptureCompleteResponse> {
-  const initResponse = await initiateCaptureUpload(orgId, token, {
+  const initInput: {
+    filename: string;
+    size_bytes: number;
+    content_type: string;
+    content_sha256: string;
+    capture_metadata?: Record<string, unknown> | null;
+  } = {
     filename: file.name,
     size_bytes: file.size,
     content_type: file.type === '' ? 'image/jpeg' : file.type,
     content_sha256: contentSha256,
-  });
+  };
+  if (captureMetadata !== undefined) {
+    initInput.capture_metadata = captureMetadata;
+  }
+  const initResponse = await initiateCaptureUpload(orgId, token, initInput);
 
   await fetch(initResponse.upload_url, {
     method: 'PUT',

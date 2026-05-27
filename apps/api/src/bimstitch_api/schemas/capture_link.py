@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from bimstitch_api.schemas.attachment import CaptureMetadataInput
+
 
 class CreateCaptureLinkRequest(BaseModel):
     label: str | None = Field(default=None, max_length=255)
@@ -48,6 +50,7 @@ class CaptureUploadRequest(BaseModel):
     size_bytes: int = Field(ge=1)
     content_type: str = Field(min_length=1, max_length=255)
     content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    capture_metadata: CaptureMetadataInput | None = None
 
 
 class CaptureUploadResponse(BaseModel):

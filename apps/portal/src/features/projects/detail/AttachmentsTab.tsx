@@ -14,7 +14,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useCallback, useRef, useState, type JSX } from 'react';
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -29,6 +29,11 @@ import {
 
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment, AttachmentCategoryValue } from '@/lib/api/schemas';
+import {
+  buildCaptureMetadata,
+  requestGeolocation,
+  type GeolocationResult,
+} from '@/lib/upload/captureMetadata';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
@@ -72,6 +77,11 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
   const [showCaptureLinks, setShowCaptureLinks] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const geoRef = useRef<GeolocationResult>({ status: 'unavailable' });
+
+  useEffect(() => {
+    void requestGeolocation().then((result) => { geoRef.current = result; });
+  }, []);
 
   const attachmentsQuery = useAttachments(projectId, categoryFilter);
   const uploadMutation = useUploadAttachment(projectId);
@@ -86,9 +96,14 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file !== undefined) {
-          uploadMutation.mutate({ file }, {
-            onSuccess: () => { toast.success(t('uploadSuccess', { name: file.name })); },
-          });
+          void buildCaptureMetadata(file, 'file_picker', geoRef.current).then(
+            (metadata) => {
+              uploadMutation.mutate(
+                { file, capture_metadata: metadata as unknown as Record<string, unknown> },
+                { onSuccess: () => { toast.success(t('uploadSuccess', { name: file.name })); } },
+              );
+            },
+          );
         }
       }
       if (fileInputRef.current !== null) {

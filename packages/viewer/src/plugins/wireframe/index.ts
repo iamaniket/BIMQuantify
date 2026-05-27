@@ -18,15 +18,32 @@ export function wireframePlugin(): Plugin & WireframePluginAPI {
   let active = false;
   let materialHookDispose: (() => void) | null = null;
 
+  const canEnableWireframe = (mesh: THREE.Mesh): boolean => {
+    const geom = mesh.geometry as THREE.BufferGeometry | undefined;
+    if (!geom || typeof geom.getAttribute !== 'function') return false;
+
+    const pos = geom.getAttribute('position') as THREE.BufferAttribute | undefined;
+    const posArray = (pos as { array?: unknown } | undefined)?.array;
+    if (!pos || !ArrayBuffer.isView(posArray)) return false;
+
+    const index = geom.index as THREE.BufferAttribute | null;
+    if (!index) return true;
+
+    const indexArray = (index as { array?: unknown }).array;
+    return ArrayBuffer.isView(indexArray);
+  };
+
   const setWireframeOnAllMaterials = (wireframe: boolean): void => {
     if (!ctxRef) return;
     for (const model of ctxRef.models().values()) {
       model.object.traverse((obj) => {
         const mesh = obj as THREE.Mesh;
         if (!mesh.isMesh) return;
+        const supportsWireframe = canEnableWireframe(mesh);
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         for (const mat of mats) {
           if (mat && 'wireframe' in mat) {
+            if (wireframe && !supportsWireframe) continue;
             (mat as THREE.MeshBasicMaterial).wireframe = wireframe;
           }
         }
@@ -76,11 +93,9 @@ export function wireframePlugin(): Plugin & WireframePluginAPI {
         title: 'Get wireframe state',
       });
 
-      // Apply wireframe to materials that stream in while mode is active.
-      const handler = ({ value: mat }: { value: THREE.Material }): void => {
-        if (active && 'wireframe' in mat) {
-          (mat as THREE.MeshBasicMaterial).wireframe = true;
-        }
+      // Re-run safe application when materials stream in.
+      const handler = (_: { value: THREE.Material }): void => {
+        if (active) setWireframeOnAllMaterials(true);
       };
       ctx.fragments.models.materials.list.onItemSet.add(handler);
       materialHookDispose = () => {

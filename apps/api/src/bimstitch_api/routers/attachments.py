@@ -61,6 +61,7 @@ def _attachment_snapshot(att: Attachment) -> dict:
         "linked_file_id": str(att.linked_file_id) if att.linked_file_id else None,
         "linked_point": att.linked_point,
         "capture_link_id": str(att.capture_link_id) if att.capture_link_id else None,
+        "has_capture_metadata": att.capture_metadata is not None,
     }
 
 
@@ -155,6 +156,11 @@ async def initiate_attachment_upload(
     storage_key = f"projects/{project.id}/attachments/{uuid4()}{ext}"
     bucket = get_attachments_bucket()
 
+    capture_meta = None
+    if payload.capture_metadata is not None:
+        capture_meta = payload.capture_metadata.model_dump(mode="json")
+        capture_meta["server_received_at"] = datetime.now(UTC).isoformat()
+
     att = Attachment(
         project_id=project.id,
         uploaded_by_user_id=user.id,
@@ -170,6 +176,7 @@ async def initiate_attachment_upload(
         linked_model_id=payload.linked_model_id,
         linked_point=payload.linked_point,
         linked_file_id=payload.linked_file_id,
+        capture_metadata=capture_meta,
     )
     session.add(att)
     await session.flush()

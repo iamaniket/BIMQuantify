@@ -15,6 +15,7 @@ type UploadVars = {
   linked_model_id?: string | null;
   linked_point?: Record<string, unknown> | null;
   linked_file_id?: string | null;
+  capture_metadata?: Record<string, unknown> | null;
   onProgress?: (event: AttachmentUploadProgressEvent) => void;
 };
 
@@ -29,12 +30,14 @@ export function useUploadAttachment(
         linked_model_id?: string | null;
         linked_point?: Record<string, unknown> | null;
         linked_file_id?: string | null;
+        capture_metadata?: Record<string, unknown> | null;
       } = {};
       if (vars.description !== undefined) extra.description = vars.description;
       if (vars.linked_element_global_id !== undefined) extra.linked_element_global_id = vars.linked_element_global_id;
       if (vars.linked_model_id !== undefined) extra.linked_model_id = vars.linked_model_id;
       if (vars.linked_point !== undefined) extra.linked_point = vars.linked_point;
       if (vars.linked_file_id !== undefined) extra.linked_file_id = vars.linked_file_id;
+      if (vars.capture_metadata !== undefined) extra.capture_metadata = vars.capture_metadata;
       return uploadAttachmentEnd2End(
         accessToken,
         projectId,

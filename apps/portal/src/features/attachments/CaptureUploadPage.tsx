@@ -9,6 +9,12 @@ import { Button } from '@bimstitch/ui';
 import { ApiError } from '@/lib/api/client';
 import { validateCaptureToken, uploadViaCaptureLink } from '@/lib/api/capturePublic';
 import type { CaptureTokenValidation } from '@/lib/api/schemas';
+import {
+  buildCaptureMetadata,
+  requestGeolocation,
+  type CaptureMethod,
+  type GeolocationResult,
+} from '@/lib/upload/captureMetadata';
 import { computeFileSha256 } from '@/lib/upload/sha256';
 
 type Props = {
@@ -31,6 +37,12 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const geoRef = useRef<GeolocationResult>({ status: 'unavailable' });
+  const captureMethodRef = useRef<CaptureMethod>('file_picker');
+
+  useEffect(() => {
+    void requestGeolocation().then((result) => { geoRef.current = result; });
+  }, []);
 
   useEffect(() => {
     void validateCaptureToken(orgId, token)
@@ -63,8 +75,11 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
       setState({ kind: 'uploading', info });
 
       try {
-        const sha256 = await computeFileSha256(file);
-        await uploadViaCaptureLink(orgId, token, file, sha256);
+        const [sha256, metadata] = await Promise.all([
+          computeFileSha256(file),
+          buildCaptureMetadata(file, captureMethodRef.current, geoRef.current),
+        ]);
+        await uploadViaCaptureLink(orgId, token, file, sha256, metadata as unknown as Record<string, unknown>);
 
         const currentRemaining = state.kind === 'success'
           ? state.remainingUses
@@ -237,7 +252,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
         <Button
           variant="primary"
           className="w-full py-4"
-          onClick={() => { cameraInputRef.current?.click(); }}
+          onClick={() => { captureMethodRef.current = 'camera'; cameraInputRef.current?.click(); }}
         >
           <Camera className="mr-2 h-5 w-5" />
           {t('takePhoto')}
@@ -245,7 +260,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
         <Button
           variant="border"
           className="w-full py-4"
-          onClick={() => { fileInputRef.current?.click(); }}
+          onClick={() => { captureMethodRef.current = 'file_picker'; fileInputRef.current?.click(); }}
         >
           <FileUp className="mr-2 h-5 w-5" />
           {t('chooseFile')}

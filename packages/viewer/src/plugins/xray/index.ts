@@ -1,18 +1,22 @@
 /**
- * X-ray plugin. Applies a "ghosted" look by lowering item opacity via
- * `FragmentsModel.setOpacity`. Because opacity is independent of color
- * in the library's API, x-ray composes naturally with selection and
- * hover (which use `setColor`).
+ * X-ray plugin — xeokit-style emphasis approximation.
+ *
+ * Instead of triangle wireframe, this uses:
+ * 1) near-zero fill opacity on xrayed items
+ * 2) explicit edge overlays extracted from geometry
  */
 
+import * as THREE from 'three';
+
 import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
+import { EdgeOverlay } from '../shared/edge-overlay.js';
 
 const NAME = 'xray' as const;
 
 export interface XrayPluginOptions {
-  /** Reserved — color is preserved by the library when only opacity changes. */
+  /** Edge line color used while x-ray is active. */
   color?: number;
-  /** Opacity for ghosted items (0..1). Default: 0.15. */
+  /** Fill opacity for xrayed items (0..1). Default: 0.02 for line-dominant view. */
   opacity?: number;
 }
 
@@ -27,7 +31,9 @@ export interface XrayPluginAPI {
 const itemKey = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
 export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPluginAPI {
-  const defaultOpacity = options.opacity ?? 0.15;
+  const defaultOpacity = options.opacity ?? 0.02;
+  const edgeColor = new THREE.Color(options.color ?? 0x6f7784);
+  const edges = new EdgeOverlay({ lineWidth: 1.3 });
 
   const xrayed = new Set<string>();
   const itemMap = new Map<string, ItemId>();
@@ -90,6 +96,7 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
       itemMap.set(k, it);
     }
     if (fresh.length) applyOpacity(fresh);
+    if (ctxRef && fresh.length) void edges.add(ctxRef, fresh, edgeColor);
     emitChange();
   };
 
@@ -104,6 +111,7 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
       present.push(it);
     }
     if (present.length) restoreOrResetOpacity(present);
+    if (ctxRef && present.length) edges.remove(ctxRef, present);
     emitChange();
   };
 
@@ -206,7 +214,16 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     restoreOrResetOpacity(all);
     xrayed.clear();
     itemMap.clear();
+    edges.clear(ctxRef);
     emitChange();
+  };
+
+  const toggleAll = async (): Promise<void> => {
+    if (xrayed.size > 0) {
+      clearXray();
+      return;
+    }
+    await xrayAll();
   };
 
   const setEnabled = (next: boolean): void => {
@@ -216,11 +233,13 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     const all = [...itemMap.values()];
     if (!enabled && all.length) {
       restoreOrResetOpacity(all);
+      edges.clear(ctxRef);
     } else if (enabled && all.length) {
       for (const [modelId, ids] of groupByModel(all)) {
         const model = ctxRef.models().get(modelId);
         if (model) void model.setOpacity(ids, defaultOpacity).catch(() => undefined);
       }
+      void edges.add(ctxRef, all, edgeColor);
     }
     ctxRef.events.emit('feature:enabled', { name: NAME, enabled });
   };
@@ -247,6 +266,9 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
       });
       ctx.commands.register('xray.all', () => xrayAll(), {
         title: 'X-ray all elements',
+      });
+      ctx.commands.register('xray.toggleAll', () => toggleAll(), {
+        title: 'Toggle x-ray all',
       });
       ctx.commands.register('xray.allExcept', () => xrayAllExcept(), {
         title: 'X-ray all except selected',
@@ -340,6 +362,7 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
 
     uninstall() {
       clearXray();
+      if (ctxRef) edges.dispose(ctxRef);
       opacityMap.clear();
       ctxRef = null;
     },

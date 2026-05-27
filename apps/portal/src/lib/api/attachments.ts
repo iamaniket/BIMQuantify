@@ -39,6 +39,7 @@ export async function initiateAttachmentUpload(
     linked_model_id?: string | null;
     linked_point?: Record<string, unknown> | null;
     linked_file_id?: string | null;
+    capture_metadata?: Record<string, unknown> | null;
   },
 ): Promise<AttachmentInitiateResponse> {
   return apiClient.post<AttachmentInitiateResponse>(
@@ -153,6 +154,7 @@ export async function uploadAttachmentEnd2End(
     linked_model_id?: string | null;
     linked_point?: Record<string, unknown> | null;
     linked_file_id?: string | null;
+    capture_metadata?: Record<string, unknown> | null;
   },
   onProgress?: (event: AttachmentUploadProgressEvent) => void,
 ): Promise<Attachment> {

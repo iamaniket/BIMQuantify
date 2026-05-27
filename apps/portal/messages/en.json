@@ -1546,7 +1546,10 @@
     "duplicateDescription": "This file has already been uploaded to the project.",
     "errorTitle": "Upload failed",
     "errorDescription": "Something went wrong. Please try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "geolocationRequesting": "Requesting location access…",
+    "geolocationGranted": "Location captured",
+    "geolocationDenied": "Location not available"
   },
   "activity": {
     "title": "Project activity",

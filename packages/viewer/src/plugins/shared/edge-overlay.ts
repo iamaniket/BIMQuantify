@@ -50,18 +50,33 @@ export class EdgeOverlay {
       resolution: new THREE.Vector2(size.x * dpr, size.y * dpr),
     });
 
+    const grouped = new Map<string, ItemId[]>();
     for (const item of items) {
       const k = itemKey(item);
       if (this.lines.has(k)) continue;
+      let arr = grouped.get(item.modelId);
+      if (!arr) {
+        arr = [];
+        grouped.set(item.modelId, arr);
+      }
+      arr.push(item);
+    }
 
-      const model = ctx.models().get(item.modelId);
+    for (const [modelId, modelItems] of grouped) {
+      const model = ctx.models().get(modelId);
       if (!model) continue;
 
-      try {
-        const meshDataArrays = await model.getItemsGeometry([item.localId]);
-        const segments: LineSegments2[] = [];
+      const localIds = modelItems.map((i) => i.localId);
 
-        for (const meshDataArr of meshDataArrays) {
+      try {
+        const meshDataArrays = await model.getItemsGeometry(localIds);
+
+        for (let idx = 0; idx < modelItems.length; idx++) {
+          const item = modelItems[idx]!;
+          const k = itemKey(item);
+          const meshDataArr = meshDataArrays[idx] ?? [];
+          const segments: LineSegments2[] = [];
+
           for (const meshData of meshDataArr) {
             if (!meshData.positions) continue;
 
@@ -89,13 +104,13 @@ export class EdgeOverlay {
             ctx.scene.add(line);
             segments.push(line);
           }
-        }
 
-        if (segments.length) {
-          this.lines.set(k, segments);
+          if (segments.length) {
+            this.lines.set(k, segments);
+          }
         }
       } catch {
-        // Item may not have geometry (e.g. spatial structure node).
+        // Some items may not resolve geometry (eg spatial tree nodes).
       }
     }
   }
