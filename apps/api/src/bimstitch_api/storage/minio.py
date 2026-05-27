@@ -29,7 +29,9 @@ class StorageBackend(Protocol):
         self, key: str, content_type: str, content_length: int, *, bucket: str | None = None
     ) -> str: ...
 
-    async def presigned_get_url(self, key: str, filename: str, *, bucket: str | None = None) -> str: ...
+    async def presigned_get_url(
+        self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None
+    ) -> str: ...
 
     async def put_object(
         self, key: str, content_type: str, data: bytes, *, bucket: str | None = None
@@ -118,7 +120,7 @@ class S3Storage:
         return url
 
     async def presigned_get_url(
-        self, key: str, filename: str, *, bucket: str | None = None
+        self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None
     ) -> str:
         client = await self._get_client()
         url: str = await client.generate_presigned_url(
@@ -126,7 +128,7 @@ class S3Storage:
             Params={
                 "Bucket": self._resolve_bucket(bucket),
                 "Key": key,
-                "ResponseContentDisposition": f'attachment; filename="{filename}"',
+                "ResponseContentDisposition": f'{disposition}; filename="{filename}"',
             },
             ExpiresIn=self._ttl,
         )

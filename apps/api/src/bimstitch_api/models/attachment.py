@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from bimstitch_api.models.user import User
 
 
-class DocumentCategory(StrEnum):
+class AttachmentCategory(StrEnum):
     image = "image"
     video = "video"
     audio = "audio"
@@ -28,35 +28,35 @@ class DocumentCategory(StrEnum):
     other = "other"
 
 
-class DocumentStatus(StrEnum):
+class AttachmentStatus(StrEnum):
     pending = "pending"
     ready = "ready"
     rejected = "rejected"
 
 
-DOCUMENT_ALLOWED_EXTENSIONS: dict[str, DocumentCategory] = {
-    ".jpg": DocumentCategory.image,
-    ".jpeg": DocumentCategory.image,
-    ".png": DocumentCategory.image,
-    ".webp": DocumentCategory.image,
-    ".heic": DocumentCategory.image,
-    ".mp4": DocumentCategory.video,
-    ".mov": DocumentCategory.video,
-    ".webm": DocumentCategory.video,
-    ".mp3": DocumentCategory.audio,
-    ".m4a": DocumentCategory.audio,
-    ".wav": DocumentCategory.audio,
-    ".ogg": DocumentCategory.audio,
-    ".pdf": DocumentCategory.office,
-    ".docx": DocumentCategory.office,
-    ".xlsx": DocumentCategory.office,
-    ".pptx": DocumentCategory.office,
-    ".txt": DocumentCategory.office,
+ATTACHMENT_ALLOWED_EXTENSIONS: dict[str, AttachmentCategory] = {
+    ".jpg": AttachmentCategory.image,
+    ".jpeg": AttachmentCategory.image,
+    ".png": AttachmentCategory.image,
+    ".webp": AttachmentCategory.image,
+    ".heic": AttachmentCategory.image,
+    ".mp4": AttachmentCategory.video,
+    ".mov": AttachmentCategory.video,
+    ".webm": AttachmentCategory.video,
+    ".mp3": AttachmentCategory.audio,
+    ".m4a": AttachmentCategory.audio,
+    ".wav": AttachmentCategory.audio,
+    ".ogg": AttachmentCategory.audio,
+    ".pdf": AttachmentCategory.office,
+    ".docx": AttachmentCategory.office,
+    ".xlsx": AttachmentCategory.office,
+    ".pptx": AttachmentCategory.office,
+    ".txt": AttachmentCategory.office,
 }
 
 
-class Document(TimestampMixin, SoftDeleteMixin, TenantBase):
-    __tablename__ = "documents"
+class Attachment(TimestampMixin, SoftDeleteMixin, TenantBase):
+    __tablename__ = "attachments"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     project_id: Mapped[UUID] = mapped_column(
@@ -81,22 +81,22 @@ class Document(TimestampMixin, SoftDeleteMixin, TenantBase):
     content_type: Mapped[str] = mapped_column(String(255), nullable=False)
     content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
-    document_category: Mapped[DocumentCategory] = mapped_column(
+    attachment_category: Mapped[AttachmentCategory] = mapped_column(
         SAEnum(
-            DocumentCategory,
-            name="documentcategory",
+            AttachmentCategory,
+            name="attachmentcategory",
             values_callable=lambda enum: [m.value for m in enum],
         ),
         nullable=False,
     )
-    status: Mapped[DocumentStatus] = mapped_column(
+    status: Mapped[AttachmentStatus] = mapped_column(
         SAEnum(
-            DocumentStatus,
-            name="documentstatus",
+            AttachmentStatus,
+            name="attachmentstatus",
             values_callable=lambda enum: [m.value for m in enum],
         ),
         nullable=False,
-        default=DocumentStatus.pending,
+        default=AttachmentStatus.pending,
     )
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -115,9 +115,9 @@ class Document(TimestampMixin, SoftDeleteMixin, TenantBase):
     )
 
     version_number: Mapped[int] = mapped_column(default=1, nullable=False)
-    parent_document_id: Mapped[UUID | None] = mapped_column(
+    parent_attachment_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("documents.id", ondelete="SET NULL"),
+        ForeignKey("attachments.id", ondelete="SET NULL"),
         nullable=True,
     )
 
@@ -134,24 +134,30 @@ class Document(TimestampMixin, SoftDeleteMixin, TenantBase):
     linked_file: Mapped[ProjectFile | None] = relationship(
         foreign_keys=[linked_file_id], lazy="raise"
     )
-    parent_document: Mapped[Document | None] = relationship(
-        foreign_keys=[parent_document_id], remote_side=[id], lazy="raise"
+    parent_attachment: Mapped[Attachment | None] = relationship(
+        foreign_keys=[parent_attachment_id], remote_side=[id], lazy="raise"
     )
 
+    @property
+    def uploaded_by_name(self) -> str | None:
+        if self.uploaded_by_user is None:
+            return None
+        return self.uploaded_by_user.full_name
+
     __table_args__ = (
-        CheckConstraint("size_bytes >= 0", name="ck_documents_size_non_negative"),
-        Index("ix_documents_project_id", "project_id"),
-        Index("ix_documents_project_category", "project_id", "document_category"),
-        Index("ix_documents_capture_link_id", "capture_link_id"),
-        Index("ix_documents_uploaded_by", "uploaded_by_user_id"),
+        CheckConstraint("size_bytes >= 0", name="ck_attachments_size_non_negative"),
+        Index("ix_attachments_project_id", "project_id"),
+        Index("ix_attachments_project_category", "project_id", "attachment_category"),
+        Index("ix_attachments_capture_link_id", "capture_link_id"),
+        Index("ix_attachments_uploaded_by", "uploaded_by_user_id"),
         Index(
-            "ix_documents_linked_element",
+            "ix_attachments_linked_element",
             "linked_model_id",
             "linked_element_global_id",
             postgresql_where="linked_model_id IS NOT NULL AND linked_element_global_id IS NOT NULL",
         ),
         Index(
-            "ix_documents_active",
+            "ix_attachments_active",
             "project_id",
             "created_at",
             postgresql_where="deleted_at IS NULL",

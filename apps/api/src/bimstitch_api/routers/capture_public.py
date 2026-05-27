@@ -16,10 +16,10 @@ from bimstitch_api import audit
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.db import get_session_maker
 from bimstitch_api.models.capture_link import CaptureLink
-from bimstitch_api.models.document import (
-    DOCUMENT_ALLOWED_EXTENSIONS,
-    Document,
-    DocumentStatus,
+from bimstitch_api.models.attachment import (
+    ATTACHMENT_ALLOWED_EXTENSIONS,
+    Attachment,
+    AttachmentStatus,
 )
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.project import Project
@@ -28,7 +28,7 @@ from bimstitch_api.schemas.capture_link import (
     CaptureUploadRequest,
     CaptureUploadResponse,
 )
-from bimstitch_api.storage import StorageBackend, get_documents_bucket, get_storage
+from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
 from bimstitch_api.storage.minio import ObjectNotFoundError
 from bimstitch_api.tenancy import schema_name_for
 
@@ -124,26 +124,26 @@ async def initiate_capture_upload(
         fname_lower = payload.filename.lower()
         dot_pos = fname_lower.rfind(".")
         ext = fname_lower[dot_pos:] if dot_pos >= 0 else ""
-        category = DOCUMENT_ALLOWED_EXTENSIONS.get(ext)
+        category = ATTACHMENT_ALLOWED_EXTENSIONS.get(ext)
         if category is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "code": "INVALID_FILE_EXTENSION",
-                    "allowed": sorted(DOCUMENT_ALLOWED_EXTENSIONS.keys()),
+                    "allowed": sorted(ATTACHMENT_ALLOWED_EXTENSIONS.keys()),
                 },
             )
 
-        if payload.size_bytes > settings.document_max_bytes:
+        if payload.size_bytes > settings.attachment_max_bytes:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail={"code": "FILE_TOO_LARGE", "max_bytes": settings.document_max_bytes},
+                detail={"code": "FILE_TOO_LARGE", "max_bytes": settings.attachment_max_bytes},
             )
 
-        storage_key = f"projects/{link.project_id}/documents/{uuid4()}{ext}"
-        bucket = get_documents_bucket()
+        storage_key = f"projects/{link.project_id}/attachments/{uuid4()}{ext}"
+        bucket = get_attachments_bucket()
 
-        doc = Document(
+        att = Attachment(
             project_id=link.project_id,
             uploaded_by_user_id=None,
             capture_link_id=link.id,
@@ -152,14 +152,14 @@ async def initiate_capture_upload(
             size_bytes=payload.size_bytes,
             content_type=payload.content_type,
             content_sha256=payload.content_sha256,
-            document_category=category,
-            status=DocumentStatus.pending,
+            attachment_category=category,
+            status=AttachmentStatus.pending,
         )
-        session.add(doc)
+        session.add(att)
 
         link.use_count += 1
         await session.flush()
-        await session.refresh(doc)
+        await session.refresh(att)
 
         upload_url = await storage.presigned_put_url(
             storage_key, payload.content_type, payload.size_bytes, bucket=bucket
@@ -167,13 +167,13 @@ async def initiate_capture_upload(
 
         await audit.record(
             session,
-            action="document.initiated",
-            resource_type="documents",
-            resource_id=doc.id,
+            action="attachment.initiated",
+            resource_type="attachments",
+            resource_id=att.id,
             after={
-                "original_filename": doc.original_filename,
+                "original_filename": att.original_filename,
                 "capture_link_id": str(link.id),
-                "document_category": doc.document_category.value,
+                "attachment_category": att.attachment_category.value,
             },
             actor_user_id=None,
             organization_id=org_id,
@@ -183,7 +183,7 @@ async def initiate_capture_upload(
         await session.commit()
 
         return CaptureUploadResponse(
-            document_id=doc.id,
+            attachment_id=att.id,
             upload_url=upload_url,
             storage_key=storage_key,
             expires_in=storage.presign_ttl,
@@ -195,11 +195,11 @@ async def initiate_capture_upload(
         await session.close()
 
 
-@router.post("/{org_id}/{token}/complete/{document_id}", response_model=None, status_code=status.HTTP_200_OK)
+@router.post("/{org_id}/{token}/complete/{attachment_id}", response_model=None, status_code=status.HTTP_200_OK)
 async def complete_capture_upload(
     org_id: UUID,
     token: str,
-    document_id: UUID,
+    attachment_id: UUID,
     request: Request,
     storage: StorageBackend = Depends(get_storage),
 ) -> dict:
@@ -207,24 +207,24 @@ async def complete_capture_upload(
     try:
         link = await _load_and_validate_link(session, token)
 
-        doc = (
+        att = (
             await session.execute(
-                select(Document).where(
-                    Document.id == document_id,
-                    Document.capture_link_id == link.id,
-                    Document.deleted_at.is_(None),
+                select(Attachment).where(
+                    Attachment.id == attachment_id,
+                    Attachment.capture_link_id == link.id,
+                    Attachment.deleted_at.is_(None),
                 )
             )
         ).scalar_one_or_none()
-        if doc is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="DOCUMENT_NOT_FOUND")
+        if att is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ATTACHMENT_NOT_FOUND")
 
-        if doc.status != DocumentStatus.pending:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="DOCUMENT_NOT_PENDING")
+        if att.status != AttachmentStatus.pending:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="ATTACHMENT_NOT_PENDING")
 
-        bucket = get_documents_bucket()
+        bucket = get_attachments_bucket()
         try:
-            head = await storage.head_object(doc.storage_key, bucket=bucket)
+            head = await storage.head_object(att.storage_key, bucket=bucket)
         except ObjectNotFoundError:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -232,15 +232,15 @@ async def complete_capture_upload(
             )
 
         actual_size = head.get("ContentLength", 0)
-        if actual_size != doc.size_bytes:
-            doc.status = DocumentStatus.rejected
-            doc.rejection_reason = "SIZE_MISMATCH"
+        if actual_size != att.size_bytes:
+            att.status = AttachmentStatus.rejected
+            att.rejection_reason = "SIZE_MISMATCH"
             await session.flush()
             await audit.record(
                 session,
-                action="document.rejected",
-                resource_type="documents",
-                resource_id=doc.id,
+                action="attachment.rejected",
+                resource_type="attachments",
+                resource_id=att.id,
                 after={"status": "rejected", "rejection_reason": "SIZE_MISMATCH"},
                 actor_user_id=None,
                 organization_id=org_id,
@@ -252,14 +252,14 @@ async def complete_capture_upload(
                 detail="SIZE_MISMATCH",
             )
 
-        doc.status = DocumentStatus.ready
+        att.status = AttachmentStatus.ready
         await session.flush()
 
         await audit.record(
             session,
-            action="document.completed",
-            resource_type="documents",
-            resource_id=doc.id,
+            action="attachment.completed",
+            resource_type="attachments",
+            resource_id=att.id,
             before={"status": "pending"},
             after={"status": "ready"},
             actor_user_id=None,
@@ -268,7 +268,7 @@ async def complete_capture_upload(
         )
 
         await session.commit()
-        return {"status": "ok", "document_id": str(doc.id)}
+        return {"status": "ok", "attachment_id": str(att.id)}
     except Exception:
         await session.rollback()
         raise

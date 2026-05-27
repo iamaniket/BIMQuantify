@@ -10,7 +10,7 @@ from functools import lru_cache
 from bimstitch_api.config import get_settings
 from bimstitch_api.storage.minio import S3Storage, StorageBackend
 
-__all__ = ["S3Storage", "StorageBackend", "get_storage", "get_documents_bucket"]
+__all__ = ["S3Storage", "StorageBackend", "get_storage", "get_attachments_bucket"]
 
 
 @lru_cache
@@ -18,5 +18,5 @@ def get_storage() -> StorageBackend:
     return S3Storage(get_settings())
 
 
-def get_documents_bucket() -> str:
-    return get_settings().s3_bucket_documents
+def get_attachments_bucket() -> str:
+    return get_settings().s3_bucket_attachments

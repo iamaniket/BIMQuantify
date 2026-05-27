@@ -3,30 +3,30 @@ import { apiClient } from './client';
 import {
   CaptureLinkListSchema,
   CreateCaptureLinkResponseSchema,
-  DocumentDownloadResponseSchema,
-  DocumentInitiateResponseSchema,
-  DocumentListSchema,
-  DocumentSchema,
+  AttachmentDownloadResponseSchema,
+  AttachmentInitiateResponseSchema,
+  AttachmentListSchema,
+  AttachmentSchema,
   type CaptureLink,
   type CaptureLinkList,
   type CreateCaptureLinkResponse,
-  type Document,
-  type DocumentCategoryValue,
-  type DocumentDownloadResponse,
-  type DocumentInitiateResponse,
-  type DocumentList,
+  type Attachment,
+  type AttachmentCategoryValue,
+  type AttachmentDownloadResponse,
+  type AttachmentInitiateResponse,
+  type AttachmentList,
 } from './schemas';
 
-export type DocumentUploadProgressEvent =
+export type AttachmentUploadProgressEvent =
   | { phase: 'hashing'; fraction: number }
   | { phase: 'uploading' }
   | { phase: 'completing' };
 
 // ---------------------------------------------------------------------------
-// Documents (authenticated)
+// Attachments (authenticated)
 // ---------------------------------------------------------------------------
 
-export async function initiateDocumentUpload(
+export async function initiateAttachmentUpload(
   accessToken: string,
   projectId: string,
   input: {
@@ -40,73 +40,85 @@ export async function initiateDocumentUpload(
     linked_point?: Record<string, unknown> | null;
     linked_file_id?: string | null;
   },
-): Promise<DocumentInitiateResponse> {
-  return apiClient.post<DocumentInitiateResponse>(
-    `/projects/${projectId}/documents/initiate`,
+): Promise<AttachmentInitiateResponse> {
+  return apiClient.post<AttachmentInitiateResponse>(
+    `/projects/${projectId}/attachments/initiate`,
     input,
-    DocumentInitiateResponseSchema,
+    AttachmentInitiateResponseSchema,
     accessToken,
   );
 }
 
-export async function completeDocumentUpload(
+export async function completeAttachmentUpload(
   accessToken: string,
   projectId: string,
-  documentId: string,
-): Promise<Document> {
-  return apiClient.post<Document>(
-    `/projects/${projectId}/documents/${documentId}/complete`,
+  attachmentId: string,
+): Promise<Attachment> {
+  return apiClient.post<Attachment>(
+    `/projects/${projectId}/attachments/${attachmentId}/complete`,
     {},
-    DocumentSchema,
+    AttachmentSchema,
     accessToken,
   );
 }
 
-export async function listDocuments(
+export async function listAttachments(
   accessToken: string,
   projectId: string,
-  category?: DocumentCategoryValue,
+  category?: AttachmentCategoryValue,
   linkedElementGlobalId?: string,
-): Promise<DocumentList> {
+): Promise<AttachmentList> {
   const params = new URLSearchParams();
   if (category !== undefined) params.set('category', category);
   if (linkedElementGlobalId !== undefined) params.set('linked_element_global_id', linkedElementGlobalId);
   const query = params.size === 0 ? '' : `?${params.toString()}`;
-  return apiClient.get<DocumentList>(
-    `/projects/${projectId}/documents${query}`,
-    DocumentListSchema,
+  return apiClient.get<AttachmentList>(
+    `/projects/${projectId}/attachments${query}`,
+    AttachmentListSchema,
     accessToken,
   );
 }
 
-export async function getDocument(
+export async function getAttachment(
   accessToken: string,
   projectId: string,
-  documentId: string,
-): Promise<Document> {
-  return apiClient.get<Document>(
-    `/projects/${projectId}/documents/${documentId}`,
-    DocumentSchema,
+  attachmentId: string,
+): Promise<Attachment> {
+  return apiClient.get<Attachment>(
+    `/projects/${projectId}/attachments/${attachmentId}`,
+    AttachmentSchema,
     accessToken,
   );
 }
 
-export async function getDocumentDownloadUrl(
+export async function getAttachmentDownloadUrl(
   accessToken: string,
   projectId: string,
-  documentId: string,
-): Promise<DocumentDownloadResponse> {
-  return apiClient.get<DocumentDownloadResponse>(
-    `/projects/${projectId}/documents/${documentId}/download`,
-    DocumentDownloadResponseSchema,
+  attachmentId: string,
+): Promise<AttachmentDownloadResponse> {
+  return apiClient.get<AttachmentDownloadResponse>(
+    `/projects/${projectId}/attachments/${attachmentId}/download`,
+    AttachmentDownloadResponseSchema,
     accessToken,
   );
 }
 
-export async function updateDocument(
+export async function getAttachmentViewUrl(
   accessToken: string,
   projectId: string,
-  documentId: string,
+  attachmentId: string,
+): Promise<AttachmentDownloadResponse> {
+  return apiClient.get<AttachmentDownloadResponse>(
+    `/projects/${projectId}/attachments/${attachmentId}/download?disposition=inline`,
+    AttachmentDownloadResponseSchema,
+    accessToken,
+  );
+}
+
+export async function updateAttachment(
+  accessToken: string,
+  projectId: string,
+  attachmentId: string,
   input: {
     description?: string | null;
     linked_element_global_id?: string | null;
@@ -114,24 +126,24 @@ export async function updateDocument(
     linked_point?: Record<string, unknown> | null;
     linked_file_id?: string | null;
   },
-): Promise<Document> {
-  return apiClient.patch<Document>(
-    `/projects/${projectId}/documents/${documentId}`,
+): Promise<Attachment> {
+  return apiClient.patch<Attachment>(
+    `/projects/${projectId}/attachments/${attachmentId}`,
     input,
-    DocumentSchema,
+    AttachmentSchema,
     accessToken,
   );
 }
 
-export async function deleteDocument(
+export async function deleteAttachment(
   accessToken: string,
   projectId: string,
-  documentId: string,
+  attachmentId: string,
 ): Promise<void> {
-  return apiClient.delete(`/projects/${projectId}/documents/${documentId}`, accessToken);
+  return apiClient.delete(`/projects/${projectId}/attachments/${attachmentId}`, accessToken);
 }
 
-export async function uploadDocumentEnd2End(
+export async function uploadAttachmentEnd2End(
   accessToken: string,
   projectId: string,
   file: File,
@@ -142,15 +154,15 @@ export async function uploadDocumentEnd2End(
     linked_point?: Record<string, unknown> | null;
     linked_file_id?: string | null;
   },
-  onProgress?: (event: DocumentUploadProgressEvent) => void,
-): Promise<Document> {
+  onProgress?: (event: AttachmentUploadProgressEvent) => void,
+): Promise<Attachment> {
   onProgress?.({ phase: 'hashing', fraction: 0 });
   const contentSha256 = await computeFileSha256(file, (fraction) => {
     onProgress?.({ phase: 'hashing', fraction });
   });
 
   onProgress?.({ phase: 'uploading' });
-  const initResponse = await initiateDocumentUpload(accessToken, projectId, {
+  const initResponse = await initiateAttachmentUpload(accessToken, projectId, {
     filename: file.name,
     size_bytes: file.size,
     content_type: file.type === '' ? 'application/octet-stream' : file.type,
@@ -164,7 +176,7 @@ export async function uploadDocumentEnd2End(
   );
 
   onProgress?.({ phase: 'completing' });
-  return completeDocumentUpload(accessToken, projectId, initResponse.document_id);
+  return completeAttachmentUpload(accessToken, projectId, initResponse.attachment_id);
 }
 
 // ---------------------------------------------------------------------------

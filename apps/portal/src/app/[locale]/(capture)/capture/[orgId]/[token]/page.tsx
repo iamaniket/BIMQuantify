@@ -1,7 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import type { JSX } from 'react';
 
-import { CaptureUploadPage } from '@/features/documents/CaptureUploadPage';
+import { CaptureUploadPage } from '@/features/attachments/CaptureUploadPage';
 
 type Props = {
   params: Promise<{ locale: string; orgId: string; token: string }>;

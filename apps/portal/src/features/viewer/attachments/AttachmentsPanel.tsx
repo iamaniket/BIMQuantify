@@ -12,7 +12,7 @@ import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 
 type DocsScope = 'all' | 'entity' | 'project';
 
-export function DocumentsPanel(): JSX.Element {
+export function AttachmentsPanel(): JSX.Element {
   const partialCount = useViewerEntityStore((s) => s.selected.size);
   const selectedAll = useViewerEntityStore((s) => s.selectedAll);
   const hasSelection = selectedAll || partialCount > 0;
@@ -33,14 +33,14 @@ export function DocumentsPanel(): JSX.Element {
             {hasSelection ? 'Attached to selection' : 'Project library'}
           </div>
           <div className="mt-1 truncate text-body2 font-medium leading-tight text-foreground">
-            {hasSelection ? 'Selected element' : 'All documents'}
+            {hasSelection ? 'Selected element' : 'All attachments'}
           </div>
         </div>
         <Button
           variant="primary"
           size="sm"
           disabled
-          title="Attach document (coming soon)"
+          title="Attach file (coming soon)"
           className="shrink-0"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -57,7 +57,7 @@ export function DocumentsPanel(): JSX.Element {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search documents…"
+            placeholder="Search attachments…"
             inputSize="sm"
             className="pl-7"
           />
@@ -67,7 +67,7 @@ export function DocumentsPanel(): JSX.Element {
       <div className="min-h-0 flex-1 overflow-auto">
         <PanelEmptyState
           icon={FileText}
-          message="No documents yet. Document attachments will appear here."
+          message="No attachments yet. File attachments will appear here."
         />
       </div>
     </div>

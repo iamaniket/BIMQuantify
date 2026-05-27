@@ -29,7 +29,7 @@ function isExhausted(link: CaptureLink): boolean {
 }
 
 export function CaptureLinksList({ projectId }: Props): JSX.Element {
-  const t = useTranslations('projectDetail.tabs.documenten');
+  const t = useTranslations('projectDetail.tabs.attachments');
   const linksQuery = useCaptureLinks(projectId);
   const revokeMutation = useRevokeCaptureLink(projectId);
 

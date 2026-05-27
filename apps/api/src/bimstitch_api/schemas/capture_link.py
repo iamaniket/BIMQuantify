@@ -51,7 +51,7 @@ class CaptureUploadRequest(BaseModel):
 
 
 class CaptureUploadResponse(BaseModel):
-    document_id: UUID
+    attachment_id: UUID
     upload_url: str
     storage_key: str
     expires_in: int

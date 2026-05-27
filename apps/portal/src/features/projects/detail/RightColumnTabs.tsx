@@ -10,7 +10,7 @@ import type { Model } from '@/lib/api/schemas';
 import { BevindingenTab } from './BevindingenTab';
 import { BorgingsplanTab } from './BorgingsplanTab';
 import { DeadlinesTab } from './DeadlinesTab';
-import { DocumentenTab } from './DocumentenTab';
+import { AttachmentsTab } from './AttachmentsTab';
 import { InspectiesTab } from './InspectiesTab';
 import { ModelsTab } from './ModelsTab';
 import { ReportsTab } from './ReportsTab';
@@ -55,7 +55,7 @@ export function RightColumnTabs({
               <TabsTrigger value="deadlines">{t('deadlines.label')}</TabsTrigger>
               <TabsTrigger value="inspecties">{t('inspecties.label')}</TabsTrigger>
               <TabsTrigger value="bevindingen">{t('bevindingen.label')}</TabsTrigger>
-              <TabsTrigger value="documenten">{t('documenten.label')}</TabsTrigger>
+              <TabsTrigger value="attachments">{t('attachments.label')}</TabsTrigger>
               <TabsTrigger value="rapporten">{t('rapporten.label')}</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -74,7 +74,7 @@ export function RightColumnTabs({
         )}
         {tab === 'inspecties' && <InspectiesTab />}
         {tab === 'bevindingen' && <BevindingenTab />}
-        {tab === 'documenten' && <DocumentenTab projectId={projectId} />}
+        {tab === 'attachments' && <AttachmentsTab projectId={projectId} />}
         {tab === 'rapporten' && <ReportsTab projectId={projectId} models={models} />}
       </div>
     </div>

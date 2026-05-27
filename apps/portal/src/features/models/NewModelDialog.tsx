@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 
 import {
   Input,
@@ -26,20 +27,6 @@ const DEFAULTS: ModelFormValues = {
   status: 'active',
 };
 
-function formatApiError(error: unknown): string | null {
-  if (error === null || error === undefined) return null;
-  if (error instanceof ApiError) {
-    if (error.status === 409) {
-      return 'A document with that name already exists in this project.';
-    }
-    if (error.status === 403) {
-      return 'You do not have permission to create documents in this project.';
-    }
-    return `Create failed: ${error.detail}`;
-  }
-  return 'Could not create document.';
-}
-
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -47,6 +34,7 @@ type Props = {
 };
 
 export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.Element {
+  const t = useTranslations('projectDetail.tabs.models.newModelDialog');
   const createMutation = useCreateModel();
   const { reset: resetMutation } = createMutation;
 
@@ -86,8 +74,8 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="New document"
-      description="Group file versions by discipline. You can upload a file into the document after creating it."
+      title={t('title')}
+      description={t('description')}
       onSubmit={form.handleSubmit(onSubmit)}
       submitLabel={isSubmitting ? 'Creating…' : 'Create'}
       submitDisabled={isSubmitting}

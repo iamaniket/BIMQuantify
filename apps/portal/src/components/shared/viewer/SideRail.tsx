@@ -19,7 +19,7 @@ import { cn } from '@bimstitch/ui';
 export type PanelId =
   | 'explorer'
   | 'properties'
-  | 'documents'
+  | 'attachments'
   | 'issues'
   | 'compliance'
   | 'measure'
@@ -44,7 +44,7 @@ type RailButton = {
 const IFC_BUTTONS: RailButton[] = [
   { id: 'explorer', label: 'Model Tree', icon: ListTree },
   { id: 'properties', label: 'Properties', icon: Info },
-  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'attachments', label: 'Attachments', icon: FileText },
   { id: 'issues', label: 'Issues', icon: AlertCircle },
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
   { id: 'measure', label: 'Measurement', icon: Ruler },
@@ -54,7 +54,7 @@ const IFC_BUTTONS: RailButton[] = [
 
 const PDF_BUTTONS: RailButton[] = [
   { id: 'pages', label: 'Pages', icon: Files },
-  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'attachments', label: 'Attachments', icon: FileText },
   { id: 'issues', label: 'Issues', icon: AlertCircle },
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
 ];

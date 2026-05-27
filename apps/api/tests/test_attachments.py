@@ -1,4 +1,4 @@
-"""Integration tests for project document storage.
+"""Integration tests for project attachment storage.
 
 Storage is mocked via dependency override so tests run without MinIO.
 Shared fixtures (FakeStorage, fake_storage_client, _auth, _create_project,
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
-def _doc_payload(**overrides: object) -> dict[str, object]:
+def _att_payload(**overrides: object) -> dict[str, object]:
     base: dict[str, object] = {
         "filename": "photo.jpg",
         "size_bytes": 2048,
@@ -38,32 +38,32 @@ def _doc_payload(**overrides: object) -> dict[str, object]:
     return base
 
 
-async def _initiate_doc(
+async def _initiate_att(
     client: AsyncClient,
     token: str,
     project_id: str,
     **overrides: object,
 ) -> dict:
     resp = await client.post(
-        f"/projects/{project_id}/documents/initiate",
-        json=_doc_payload(**overrides),
+        f"/projects/{project_id}/attachments/initiate",
+        json=_att_payload(**overrides),
         headers=_auth(token),
     )
     assert resp.status_code == 201, resp.text
     return resp.json()
 
 
-async def _complete_doc(
+async def _complete_att(
     client: AsyncClient,
     fake: FakeStorage,
     token: str,
     project_id: str,
-    doc: dict,
+    att: dict,
     size: int = 2048,
 ) -> dict:
-    fake.objects[doc["storage_key"]] = b"x" * size
+    fake.objects[att["storage_key"]] = b"x" * size
     resp = await client.post(
-        f"/projects/{project_id}/documents/{doc['document_id']}/complete",
+        f"/projects/{project_id}/attachments/{att['attachment_id']}/complete",
         headers=_auth(token),
     )
     assert resp.status_code == 200, resp.text
@@ -97,11 +97,11 @@ async def test_initiate_succeeds(
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    body = await _initiate_doc(client, org_user["access_token"], project["id"])
+    body = await _initiate_att(client, org_user["access_token"], project["id"])
     assert body["upload_url"].startswith("http://fake-storage/")
-    assert body["storage_key"].startswith(f"projects/{project['id']}/documents/")
+    assert body["storage_key"].startswith(f"projects/{project['id']}/attachments/")
     assert body["storage_key"].endswith(".jpg")
-    assert "document_id" in body
+    assert "attachment_id" in body
     assert body["expires_in"] == fake.presign_ttl_value
 
 
@@ -113,8 +113,8 @@ async def test_initiate_rejects_bad_extension(
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
     resp = await client.post(
-        f"/projects/{project['id']}/documents/initiate",
-        json=_doc_payload(filename="evil.exe"),
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(filename="evil.exe"),
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 400
@@ -129,8 +129,8 @@ async def test_initiate_rejects_oversized_file(
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
     resp = await client.post(
-        f"/projects/{project['id']}/documents/initiate",
-        json=_doc_payload(size_bytes=999_999_999_999),
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(size_bytes=999_999_999_999),
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 413
@@ -145,10 +145,10 @@ async def test_initiate_rejects_duplicate_sha256(
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
     sha = _new_hash()
-    await _initiate_doc(client, org_user["access_token"], project["id"], content_sha256=sha)
+    await _initiate_att(client, org_user["access_token"], project["id"], content_sha256=sha)
     resp = await client.post(
-        f"/projects/{project['id']}/documents/initiate",
-        json=_doc_payload(content_sha256=sha, filename="dupe.jpg"),
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(content_sha256=sha, filename="dupe.jpg"),
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 409
@@ -163,13 +163,13 @@ async def test_initiate_emits_audit(
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    await _initiate_doc(client, org_user["access_token"], project["id"])
-    row = await _latest_audit(session_maker, "document.initiated")
+    await _initiate_att(client, org_user["access_token"], project["id"])
+    row = await _latest_audit(session_maker, "attachment.initiated")
     assert row is not None
-    assert row.resource_type == "documents"
+    assert row.resource_type == "attachments"
     assert row.after is not None
     assert row.after["original_filename"] == "photo.jpg"
-    assert row.after["document_category"] == "image"
+    assert row.after["attachment_category"] == "image"
 
 
 # ---------------------------------------------------------------------------
@@ -184,8 +184,8 @@ async def test_complete_sets_ready(
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
-    body = await _complete_doc(client, fake, org_user["access_token"], project["id"], doc)
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    body = await _complete_att(client, fake, org_user["access_token"], project["id"], att)
     assert body["status"] == "ready"
 
 
@@ -196,10 +196,10 @@ async def test_complete_rejects_size_mismatch(
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
-    fake.objects[doc["storage_key"]] = b"x" * 999
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    fake.objects[att["storage_key"]] = b"x" * 999
     resp = await client.post(
-        f"/projects/{project['id']}/documents/{doc['document_id']}/complete",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 422
@@ -213,9 +213,9 @@ async def test_complete_rejects_missing_object(
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
     resp = await client.post(
-        f"/projects/{project['id']}/documents/{doc['document_id']}/complete",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 422
@@ -230,11 +230,11 @@ async def test_complete_emits_audit(
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
-    await _complete_doc(client, fake, org_user["access_token"], project["id"], doc)
-    row = await _latest_audit(session_maker, "document.completed")
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    row = await _latest_audit(session_maker, "attachment.completed")
     assert row is not None
-    assert row.resource_type == "documents"
+    assert row.resource_type == "attachments"
     assert row.before is not None
     assert row.after is not None
     assert row.before["status"] == "pending"
@@ -247,23 +247,23 @@ async def test_complete_emits_audit(
 
 
 @pytest.mark.asyncio
-async def test_list_returns_only_ready_documents(
+async def test_list_returns_only_ready_attachments(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc1 = await _initiate_doc(client, org_user["access_token"], project["id"])
-    await _complete_doc(client, fake, org_user["access_token"], project["id"], doc1)
-    await _initiate_doc(client, org_user["access_token"], project["id"])
+    att1 = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att1)
+    await _initiate_att(client, org_user["access_token"], project["id"])
     resp = await client.get(
-        f"/projects/{project['id']}/documents",
+        f"/projects/{project['id']}/attachments",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
-    docs = resp.json()
-    assert len(docs) == 1
-    assert docs[0]["status"] == "ready"
+    items = resp.json()
+    assert len(items) == 1
+    assert items[0]["status"] == "ready"
 
 
 @pytest.mark.asyncio
@@ -273,29 +273,29 @@ async def test_list_filters_by_category(
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    img = await _initiate_doc(client, org_user["access_token"], project["id"], filename="a.jpg")
-    await _complete_doc(client, fake, org_user["access_token"], project["id"], img)
-    pdf = await _initiate_doc(client, org_user["access_token"], project["id"], filename="b.pdf")
-    await _complete_doc(client, fake, org_user["access_token"], project["id"], pdf)
+    img = await _initiate_att(client, org_user["access_token"], project["id"], filename="a.jpg")
+    await _complete_att(client, fake, org_user["access_token"], project["id"], img)
+    pdf = await _initiate_att(client, org_user["access_token"], project["id"], filename="b.pdf")
+    await _complete_att(client, fake, org_user["access_token"], project["id"], pdf)
     resp = await client.get(
-        f"/projects/{project['id']}/documents?category=image",
+        f"/projects/{project['id']}/attachments?category=image",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
     assert len(resp.json()) == 1
-    assert resp.json()[0]["document_category"] == "image"
+    assert resp.json()[0]["attachment_category"] == "image"
 
 
 @pytest.mark.asyncio
-async def test_get_single_document(
+async def test_get_single_attachment(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
     resp = await client.get(
-        f"/projects/{project['id']}/documents/{doc['document_id']}",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
@@ -309,10 +309,10 @@ async def test_download_returns_presigned_url(
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
-    await _complete_doc(client, fake, org_user["access_token"], project["id"], doc)
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
     resp = await client.get(
-        f"/projects/{project['id']}/documents/{doc['document_id']}/download",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}/download",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
@@ -320,19 +320,19 @@ async def test_download_returns_presigned_url(
 
 
 @pytest.mark.asyncio
-async def test_download_rejects_pending_document(
+async def test_download_rejects_pending_attachment(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
     resp = await client.get(
-        f"/projects/{project['id']}/documents/{doc['document_id']}/download",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}/download",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 409
-    assert resp.json()["detail"] == "DOCUMENT_NOT_READY"
+    assert resp.json()["detail"] == "ATTACHMENT_NOT_READY"
 
 
 # ---------------------------------------------------------------------------
@@ -347,9 +347,9 @@ async def test_update_description(
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
     resp = await client.patch(
-        f"/projects/{project['id']}/documents/{doc['document_id']}",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
         json={"description": "Updated description"},
         headers=_auth(org_user["access_token"]),
     )
@@ -365,15 +365,15 @@ async def test_update_emits_audit(
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
     await client.patch(
-        f"/projects/{project['id']}/documents/{doc['document_id']}",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
         json={"description": "New desc"},
         headers=_auth(org_user["access_token"]),
     )
-    row = await _latest_audit(session_maker, "document.updated")
+    row = await _latest_audit(session_maker, "attachment.updated")
     assert row is not None
-    assert row.resource_type == "documents"
+    assert row.resource_type == "attachments"
     assert row.before is not None
     assert row.after is not None
     assert row.after["description"] == "New desc"
@@ -391,14 +391,14 @@ async def test_delete_soft_deletes(
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
     resp = await client.delete(
-        f"/projects/{project['id']}/documents/{doc['document_id']}",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 204
     resp2 = await client.get(
-        f"/projects/{project['id']}/documents/{doc['document_id']}",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
         headers=_auth(org_user["access_token"]),
     )
     assert resp2.status_code == 404
@@ -412,14 +412,14 @@ async def test_delete_emits_audit(
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
     await client.delete(
-        f"/projects/{project['id']}/documents/{doc['document_id']}",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
         headers=_auth(org_user["access_token"]),
     )
-    row = await _latest_audit(session_maker, "document.deleted")
+    row = await _latest_audit(session_maker, "attachment.deleted")
     assert row is not None
-    assert row.resource_type == "documents"
+    assert row.resource_type == "attachments"
     assert row.before is not None
     assert row.after is None
 
@@ -430,7 +430,7 @@ async def test_delete_emits_audit(
 
 
 @pytest.mark.asyncio
-async def test_viewer_cannot_initiate_document(
+async def test_viewer_cannot_initiate_attachment(
     org_user: dict[str, str],
     same_org_non_admin_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
@@ -445,22 +445,22 @@ async def test_viewer_cannot_initiate_document(
         "viewer",
     )
     resp = await client.post(
-        f"/projects/{project['id']}/documents/initiate",
-        json=_doc_payload(),
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(),
         headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_viewer_cannot_delete_document(
+async def test_viewer_cannot_delete_attachment(
     org_user: dict[str, str],
     same_org_non_admin_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
     await _add_member(
         client,
         org_user["access_token"],
@@ -469,22 +469,22 @@ async def test_viewer_cannot_delete_document(
         "viewer",
     )
     resp = await client.delete(
-        f"/projects/{project['id']}/documents/{doc['document_id']}",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
         headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_viewer_can_list_documents(
+async def test_viewer_can_list_attachments(
     org_user: dict[str, str],
     same_org_non_admin_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(client, org_user["access_token"], project["id"])
-    await _complete_doc(client, fake, org_user["access_token"], project["id"], doc)
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
     await _add_member(
         client,
         org_user["access_token"],
@@ -493,7 +493,7 @@ async def test_viewer_can_list_documents(
         "viewer",
     )
     resp = await client.get(
-        f"/projects/{project['id']}/documents",
+        f"/projects/{project['id']}/attachments",
         headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 200
@@ -506,17 +506,116 @@ async def test_viewer_can_list_documents(
 
 
 @pytest.mark.asyncio
-async def test_get_nonexistent_document_404(
+async def test_get_nonexistent_attachment_404(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
     resp = await client.get(
-        f"/projects/{project['id']}/documents/{uuid4()}",
+        f"/projects/{project['id']}/attachments/{uuid4()}",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# uploaded_by_name
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_includes_uploaded_by_name(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    resp = await client.get(
+        f"/projects/{project['id']}/attachments",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 1
+    assert items[0]["uploaded_by_name"] is not None
+    assert isinstance(items[0]["uploaded_by_name"], str)
+
+
+@pytest.mark.asyncio
+async def test_get_includes_uploaded_by_name(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    resp = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
+    assert "uploaded_by_name" in resp.json()
+    assert resp.json()["uploaded_by_name"] is not None
+
+
+# ---------------------------------------------------------------------------
+# Download — disposition param
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_download_inline_disposition(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    resp = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}/download?disposition=inline",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
+    url = resp.json()["download_url"]
+    assert "disposition=inline" in url
+
+
+@pytest.mark.asyncio
+async def test_download_default_disposition_is_attachment(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    resp = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}/download",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
+    url = resp.json()["download_url"]
+    assert "disposition=attachment" in url
+
+
+@pytest.mark.asyncio
+async def test_download_rejects_invalid_disposition(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    resp = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}/download?disposition=badvalue",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------
@@ -544,11 +643,11 @@ async def test_initiate_categorizes_file_types(
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    doc = await _initiate_doc(
+    att = await _initiate_att(
         client, org_user["access_token"], project["id"], filename=filename
     )
     detail = await client.get(
-        f"/projects/{project['id']}/documents/{doc['document_id']}",
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
         headers=_auth(org_user["access_token"]),
     )
-    assert detail.json()["document_category"] == expected_category
+    assert detail.json()["attachment_category"] == expected_category

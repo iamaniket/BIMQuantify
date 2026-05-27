@@ -170,7 +170,7 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read", "create", "update", "delete", "publish"},
             "completion_declaration": {"read"},
             "audit_log": {"read"},
-            "document": {"read", "create", "update", "delete"},
+            "attachment": {"read", "create", "update", "delete"},
             "capture_link": {"read", "create", "update", "delete"},
         },
         "editor": {
@@ -186,7 +186,7 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read", "create", "update", "delete"},
             "completion_declaration": {"read"},
             "audit_log": set(),
-            "document": {"read", "create", "update", "delete"},
+            "attachment": {"read", "create", "update", "delete"},
             "capture_link": {"read", "create", "update"},
         },
         "viewer": {
@@ -202,7 +202,7 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),
-            "document": {"read"},
+            "attachment": {"read"},
             "capture_link": {"read"},
         },
         "inspector": {
@@ -218,7 +218,7 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read", "create", "update"},
             "completion_declaration": {"read", "create", "update", "sign"},
             "audit_log": {"read"},
-            "document": {"read", "create", "update"},
+            "attachment": {"read", "create", "update"},
             "capture_link": {"read"},
         },
         "contractor": {
@@ -234,7 +234,7 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),
-            "document": {"read", "create", "update"},
+            "attachment": {"read", "create", "update"},
             "capture_link": {"read"},
         },
         "client": {
@@ -250,7 +250,7 @@ def test_matrix_snapshot() -> None:
             "assurance_plan": {"read"},
             "completion_declaration": {"read"},
             "audit_log": set(),
-            "document": {"read"},
+            "attachment": {"read"},
             "capture_link": {"read"},
         },
     }

@@ -3,6 +3,7 @@
 import {
   Camera,
   Download,
+  Eye,
   FileAudio,
   FileText,
   FileVideo,
@@ -26,15 +27,16 @@ import {
   Skeleton,
 } from '@bimstitch/ui';
 
-import { getDocumentDownloadUrl } from '@/lib/api/documents';
-import type { Document, DocumentCategoryValue } from '@/lib/api/schemas';
+import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
+import type { Attachment, AttachmentCategoryValue } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
-import { CaptureLinksList } from '@/features/documents/CaptureLinksList';
-import { CreateCaptureLinkDialog } from '@/features/documents/CreateCaptureLinkDialog';
-import { useDeleteDocument } from '@/features/documents/useDeleteDocument';
-import { useDocuments } from '@/features/documents/useDocuments';
-import { useUploadDocument } from '@/features/documents/useUploadDocument';
+import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
+import { CaptureLinksList } from '@/features/attachments/CaptureLinksList';
+import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLinkDialog';
+import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
+import { useAttachments } from '@/features/attachments/useAttachments';
+import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 
 type Props = {
   projectId: string;
@@ -48,7 +50,7 @@ const CATEGORY_ICONS: Record<string, typeof FileText> = {
   other: FileText,
 };
 
-const CATEGORY_FILTERS: Array<{ value: DocumentCategoryValue | 'all'; labelKey: string }> = [
+const CATEGORY_FILTERS: Array<{ value: AttachmentCategoryValue | 'all'; labelKey: string }> = [
   { value: 'all', labelKey: 'filterAll' },
   { value: 'image', labelKey: 'filterImage' },
   { value: 'video', labelKey: 'filterVideo' },
@@ -62,19 +64,20 @@ function formatFileSize(bytes: number): string {
   return `${String((bytes / (1024 * 1024)).toFixed(1))} MB`;
 }
 
-export function DocumentenTab({ projectId }: Props): JSX.Element {
-  const t = useTranslations('projectDetail.tabs.documenten');
+export function AttachmentsTab({ projectId }: Props): JSX.Element {
+  const t = useTranslations('projectDetail.tabs.attachments');
   const { tokens } = useAuth();
-  const [categoryFilter, setCategoryFilter] = useState<DocumentCategoryValue | undefined>(undefined);
+  const [categoryFilter, setCategoryFilter] = useState<AttachmentCategoryValue | undefined>(undefined);
   const [captureLinkDialogOpen, setCaptureLinkDialogOpen] = useState(false);
   const [showCaptureLinks, setShowCaptureLinks] = useState(false);
+  const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const documentsQuery = useDocuments(projectId, categoryFilter);
-  const uploadMutation = useUploadDocument(projectId);
-  const deleteMutation = useDeleteDocument(projectId);
+  const attachmentsQuery = useAttachments(projectId, categoryFilter);
+  const uploadMutation = useUploadAttachment(projectId);
+  const deleteMutation = useDeleteAttachment(projectId);
 
-  const documents = documentsQuery.data ?? [];
+  const attachments = attachmentsQuery.data ?? [];
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,10 +99,10 @@ export function DocumentenTab({ projectId }: Props): JSX.Element {
   );
 
   const handleDownload = useCallback(
-    async (doc: Document) => {
+    async (doc: Attachment) => {
       if (tokens === null) return;
       try {
-        const { download_url } = await getDocumentDownloadUrl(
+        const { download_url } = await getAttachmentDownloadUrl(
           tokens.access_token,
           projectId,
           doc.id,
@@ -113,7 +116,7 @@ export function DocumentenTab({ projectId }: Props): JSX.Element {
   );
 
   const handleDelete = useCallback(
-    (doc: Document) => {
+    (doc: Attachment) => {
       deleteMutation.mutate(doc.id, {
         onSuccess: () => { toast.success(t('deleteSuccess', { name: doc.original_filename })); },
       });
@@ -121,7 +124,7 @@ export function DocumentenTab({ projectId }: Props): JSX.Element {
     [deleteMutation, t],
   );
 
-  if (documentsQuery.isLoading) {
+  if (attachmentsQuery.isLoading) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-16 w-full" />
@@ -191,7 +194,7 @@ export function DocumentenTab({ projectId }: Props): JSX.Element {
       )}
 
       {/* Empty state */}
-      {documents.length === 0 && !uploadMutation.isPending && (
+      {attachments.length === 0 && !uploadMutation.isPending && (
         <EmptyState
           icon={FileText}
           title={t('title')}
@@ -209,13 +212,17 @@ export function DocumentenTab({ projectId }: Props): JSX.Element {
         />
       )}
 
-      {/* Document list */}
-      {documents.map((doc) => {
-        const Icon = CATEGORY_ICONS[doc.document_category] ?? FileText;
+      {/* Attachment list */}
+      {attachments.map((doc) => {
+        const Icon = CATEGORY_ICONS[doc.attachment_category] ?? FileText;
         return (
           <div
             key={doc.id}
-            className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 transition-colors hover:bg-background-secondary"
+            role="button"
+            tabIndex={0}
+            onClick={() => { setViewingAttachment(doc); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setViewingAttachment(doc); }}
+            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 transition-colors hover:bg-background-secondary"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background-secondary">
               <Icon className="h-4.5 w-4.5 text-foreground-secondary" />
@@ -252,18 +259,23 @@ export function DocumentenTab({ projectId }: Props): JSX.Element {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
+                  onClick={(e) => { e.stopPropagation(); }}
                   className="rounded-md p-1.5 text-foreground-tertiary hover:bg-background-tertiary hover:text-foreground"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => { void handleDownload(doc); }}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setViewingAttachment(doc); }}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  {t('view')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); void handleDownload(doc); }}>
                   <Download className="mr-2 h-4 w-4" />
                   {t('download')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => { handleDelete(doc); }}
+                  onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}
                   className="text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -296,6 +308,13 @@ export function DocumentenTab({ projectId }: Props): JSX.Element {
         projectId={projectId}
         open={captureLinkDialogOpen}
         onOpenChange={setCaptureLinkDialogOpen}
+      />
+
+      <AttachmentViewerDialog
+        attachment={viewingAttachment}
+        projectId={projectId}
+        open={viewingAttachment !== null}
+        onOpenChange={(open) => { if (!open) setViewingAttachment(null); }}
       />
     </div>
   );

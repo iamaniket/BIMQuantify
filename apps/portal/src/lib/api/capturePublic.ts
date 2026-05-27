@@ -119,5 +119,5 @@ export async function uploadViaCaptureLink(
     headers: { 'Content-Type': file.type === '' ? 'image/jpeg' : file.type },
   });
 
-  return completeCaptureUpload(orgId, token, initResponse.document_id);
+  return completeCaptureUpload(orgId, token, initResponse.attachment_id);
 }

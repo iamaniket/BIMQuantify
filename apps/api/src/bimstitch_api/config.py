@@ -72,11 +72,11 @@ class Settings(BaseSettings):
     s3_access_key_id: str = Field(default="bimstitch", alias="S3_ACCESS_KEY_ID")
     s3_secret_access_key: str = Field(default="bimstitch-secret", alias="S3_SECRET_ACCESS_KEY")
     s3_bucket_ifc: str = Field(default="ifc-files", alias="S3_BUCKET_IFC")
-    s3_bucket_documents: str = Field(default="documents", alias="S3_BUCKET_DOCUMENTS")
+    s3_bucket_attachments: str = Field(default="attachments", alias="S3_BUCKET_ATTACHMENTS")
     s3_presign_ttl_seconds: int = Field(default=900, alias="S3_PRESIGN_TTL_SECONDS")
     upload_max_bytes: int = Field(default=2 * 1024 * 1024 * 1024, alias="UPLOAD_MAX_BYTES")
-    document_max_bytes: int = Field(
-        default=500 * 1024 * 1024, alias="DOCUMENT_MAX_BYTES"
+    attachment_max_bytes: int = Field(
+        default=500 * 1024 * 1024, alias="ATTACHMENT_MAX_BYTES"
     )
     thumbnail_max_bytes: int = Field(default=2 * 1024 * 1024, alias="THUMBNAIL_MAX_BYTES")
     thumbnail_allowed_content_types: str = Field(

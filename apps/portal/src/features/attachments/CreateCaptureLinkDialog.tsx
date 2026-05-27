@@ -39,7 +39,7 @@ export function CreateCaptureLinkDialog({
   open,
   onOpenChange,
 }: Props): JSX.Element {
-  const t = useTranslations('projectDetail.tabs.documenten');
+  const t = useTranslations('projectDetail.tabs.attachments');
   const createMutation = useCreateCaptureLink(projectId);
 
   const [label, setLabel] = useState('');

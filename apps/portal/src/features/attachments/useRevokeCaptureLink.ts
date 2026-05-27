@@ -2,7 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { revokeCaptureLink } from '@/lib/api/documents';
+import { revokeCaptureLink } from '@/lib/api/attachments';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { captureLinksKey } from './queryKeys';

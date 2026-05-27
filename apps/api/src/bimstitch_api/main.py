@@ -44,7 +44,7 @@ from bimstitch_api.routers.deadline_notification_settings import (
     project_router as dl_notif_settings_project_router,
 )
 from bimstitch_api.routers.deadlines import router as deadlines_router
-from bimstitch_api.routers.documents import router as documents_router
+from bimstitch_api.routers.attachments import router as attachments_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.inspection import router as inspection_router
 from bimstitch_api.routers.jobs import router as jobs_router
@@ -64,7 +64,7 @@ from bimstitch_api.routers.public import router as public_router
 from bimstitch_api.routers.reports import router as reports_router
 from bimstitch_api.routers.risks import router as risks_router
 from bimstitch_api.routers.ws_notifications import router as ws_notifications_router
-from bimstitch_api.storage import get_documents_bucket, get_storage
+from bimstitch_api.storage import get_attachments_bucket, get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         storage = get_storage()
         await storage.ensure_bucket()
-        await storage.ensure_bucket(bucket=get_documents_bucket())
+        await storage.ensure_bucket(bucket=get_attachments_bucket())
     except Exception:
         logger.warning(
             "MinIO/S3 ensure_bucket failed; uploads will fail until storage is reachable",
@@ -171,7 +171,7 @@ def create_app() -> FastAPI:
     app.include_router(risks_router)
     app.include_router(borgingsplan_plan_router)
     app.include_router(borgingsplan_moment_router)
-    app.include_router(documents_router)
+    app.include_router(attachments_router)
     app.include_router(capture_links_router)
     app.include_router(capture_public_router)
     app.include_router(inspection_router)

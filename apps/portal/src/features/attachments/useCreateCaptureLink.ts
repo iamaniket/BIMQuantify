@@ -2,7 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { createCaptureLink } from '@/lib/api/documents';
+import { createCaptureLink } from '@/lib/api/attachments';
 import type { CreateCaptureLinkResponse } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 

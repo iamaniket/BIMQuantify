@@ -512,7 +512,16 @@
     "tabs": {
       "eyebrow": "Project files",
       "subtitle": "{count, plural, =0 {No models yet} =1 {1 model} other {# models}}",
-      "models": { "label": "Models" },
+      "models": {
+        "label": "Models",
+        "columnName": "Name",
+        "newModel": "New model",
+        "emptyState": "No models yet. Create one to get started.",
+        "newModelDialog": {
+          "title": "New model",
+          "description": "Group file versions by discipline. You can upload a file into the model after creating it."
+        }
+      },
       "borgingsplan": {
         "label": "Assurance plan",
         "title": "No assurance plan yet",
@@ -617,11 +626,11 @@
         "description": "Findings from failed checklist items will show up here with their resolution and verification trail.",
         "ctaLabel": "Log finding"
       },
-      "documenten": {
-        "label": "Documents",
-        "title": "No project documents yet",
-        "description": "Upload drawings, certificates and other supporting documents to reference them from inspections and findings.",
-        "ctaLabel": "Upload document",
+      "attachments": {
+        "label": "Attachments",
+        "title": "No project attachments yet",
+        "description": "Upload drawings, certificates and other supporting files to reference them from inspections and findings.",
+        "ctaLabel": "Upload attachment",
         "uploadButton": "Upload",
         "uploading": "Uploading...",
         "uploadSuccess": "{name} uploaded",
@@ -653,7 +662,22 @@
         "captureLinkRevokedBadge": "Revoked",
         "captureLinkUses": "{count} / {max} uses",
         "captureLinkUsesUnlimited": "{count} uses",
-        "captureLinkNoLinks": "No capture links yet"
+        "captureLinkNoLinks": "No capture links yet",
+        "view": "View",
+        "viewerTitle": "Attachment details",
+        "viewerSubtitle": "Preview the file and view its metadata.",
+        "viewerFilename": "Filename",
+        "viewerSize": "Size",
+        "viewerType": "Type",
+        "viewerCategory": "Category",
+        "viewerUploadedAt": "Uploaded",
+        "viewerUploadedBy": "Uploaded by",
+        "viewerDescription": "Description",
+        "viewerLinkedElement": "Linked element",
+        "viewerLinkedModel": "Linked model",
+        "viewerVersion": "Version",
+        "viewerNoPreview": "Preview not available for this file type. Download to view.",
+        "viewerLoadingPreview": "Loading preview..."
       },
       "deadlines": {
         "label": "Deadlines",

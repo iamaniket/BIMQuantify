@@ -79,9 +79,9 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         CaptureLink,
         ChecklistItem,
         ChecklistItemResult,
+        Attachment,
         Contractor,
         Deadline,
-        Document,
         Job,
         Model,
         Notification,
@@ -151,8 +151,8 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS notificationeventtype")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS inspectionverdict")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS deadlinestatus")
-        await conn.exec_driver_sql("DROP TYPE IF EXISTS documentcategory")
-        await conn.exec_driver_sql("DROP TYPE IF EXISTS documentstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS attachmentcategory")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS attachmentstatus")
         await conn.run_sync(Base.metadata.create_all)
         # Partial unique index for "one active borgingsplan per project" — not
         # expressible in __table_args__, so mirror the migration here.
@@ -285,7 +285,7 @@ async def _clean_tables(
                 await session.execute(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
-                        "borgingsmomenten, borgingsplans, deadlines, documents, "
+                        "borgingsmomenten, borgingsplans, deadlines, attachments, "
                         "capture_links, "
                         "risks, access_requests, reports, jobs, project_files, models, "
                         "project_members, projects, contractors, notification_reads, "
@@ -459,8 +459,8 @@ class FakeStorage:
         self.last_put_url = f"http://fake-storage/{key}?put"
         return self.last_put_url
 
-    async def presigned_get_url(self, key: str, filename: str, *, bucket: str | None = None) -> str:
-        return f"http://fake-storage/{key}?download={filename}"
+    async def presigned_get_url(self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None) -> str:
+        return f"http://fake-storage/{key}?download={filename}&disposition={disposition}"
 
     async def put_object(self, key: str, content_type: str, data: bytes, *, bucket: str | None = None) -> None:
         self.objects[key] = data

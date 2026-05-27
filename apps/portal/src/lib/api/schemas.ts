@@ -13,5 +13,5 @@ export * from './schemas/inspection';
 export * from './schemas/admin';
 export * from './schemas/invitations';
 export * from './schemas/deadlines';
-export * from './schemas/documents';
+export * from './schemas/attachments';
 export * from './schemas/activity';

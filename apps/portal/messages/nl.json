@@ -512,7 +512,16 @@
     "tabs": {
       "eyebrow": "Projectbestanden",
       "subtitle": "{count, plural, =0 {Nog geen modellen} =1 {1 model} other {# modellen}}",
-      "models": { "label": "Modellen" },
+      "models": {
+        "label": "Modellen",
+        "columnName": "Naam",
+        "newModel": "Nieuw model",
+        "emptyState": "Nog geen modellen. Maak er een aan om te beginnen.",
+        "newModelDialog": {
+          "title": "Nieuw model",
+          "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in het model."
+        }
+      },
       "borgingsplan": {
         "label": "Borgingsplan",
         "title": "Nog geen borgingsplan",
@@ -617,11 +626,11 @@
         "description": "Bevindingen uit afgekeurde checklistitems verschijnen hier met hun afhandeling en verificatie.",
         "ctaLabel": "Bevinding vastleggen"
       },
-      "documenten": {
-        "label": "Documenten",
-        "title": "Nog geen projectdocumenten",
-        "description": "Upload tekeningen, certificaten en overige documenten zodat je ze kunt koppelen aan inspecties en bevindingen.",
-        "ctaLabel": "Document uploaden",
+      "attachments": {
+        "label": "Bijlagen",
+        "title": "Nog geen projectbijlagen",
+        "description": "Upload tekeningen, certificaten en overige bestanden zodat je ze kunt koppelen aan inspecties en bevindingen.",
+        "ctaLabel": "Bijlage uploaden",
         "uploadButton": "Uploaden",
         "uploading": "Bezig met uploaden...",
         "uploadSuccess": "{name} geüpload",
@@ -653,7 +662,22 @@
         "captureLinkRevokedBadge": "Ingetrokken",
         "captureLinkUses": "{count} / {max} keer gebruikt",
         "captureLinkUsesUnlimited": "{count} keer gebruikt",
-        "captureLinkNoLinks": "Nog geen opnamelinks"
+        "captureLinkNoLinks": "Nog geen opnamelinks",
+        "view": "Bekijken",
+        "viewerTitle": "Bijlage details",
+        "viewerSubtitle": "Bekijk het bestand en de bijbehorende metadata.",
+        "viewerFilename": "Bestandsnaam",
+        "viewerSize": "Grootte",
+        "viewerType": "Type",
+        "viewerCategory": "Categorie",
+        "viewerUploadedAt": "Geüpload",
+        "viewerUploadedBy": "Geüpload door",
+        "viewerDescription": "Beschrijving",
+        "viewerLinkedElement": "Gekoppeld element",
+        "viewerLinkedModel": "Gekoppeld model",
+        "viewerVersion": "Versie",
+        "viewerNoPreview": "Voorbeeld niet beschikbaar voor dit bestandstype. Download om te bekijken.",
+        "viewerLoadingPreview": "Voorbeeld laden..."
       },
       "deadlines": {
         "label": "Deadlines",

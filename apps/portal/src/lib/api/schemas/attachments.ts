@@ -1,22 +1,23 @@
 import { z } from 'zod';
 
-export const DocumentCategoryEnum = z.enum(['image', 'video', 'audio', 'office', 'other']);
-export type DocumentCategoryValue = z.infer<typeof DocumentCategoryEnum>;
+export const AttachmentCategoryEnum = z.enum(['image', 'video', 'audio', 'office', 'other']);
+export type AttachmentCategoryValue = z.infer<typeof AttachmentCategoryEnum>;
 
-export const DocumentStatusEnum = z.enum(['pending', 'ready', 'rejected']);
-export type DocumentStatusValue = z.infer<typeof DocumentStatusEnum>;
+export const AttachmentStatusEnum = z.enum(['pending', 'ready', 'rejected']);
+export type AttachmentStatusValue = z.infer<typeof AttachmentStatusEnum>;
 
-export const DocumentSchema = z.object({
+export const AttachmentSchema = z.object({
   id: z.string().uuid(),
   project_id: z.string().uuid(),
   uploaded_by_user_id: z.union([z.string().uuid(), z.null()]),
+  uploaded_by_name: z.union([z.string(), z.null()]),
   capture_link_id: z.union([z.string().uuid(), z.null()]),
   original_filename: z.string(),
   size_bytes: z.number(),
   content_type: z.string(),
   content_sha256: z.union([z.string(), z.null()]),
-  document_category: DocumentCategoryEnum,
-  status: DocumentStatusEnum,
+  attachment_category: AttachmentCategoryEnum,
+  status: AttachmentStatusEnum,
   rejection_reason: z.union([z.string(), z.null()]),
   description: z.union([z.string(), z.null()]),
   linked_element_global_id: z.union([z.string(), z.null()]),
@@ -24,28 +25,28 @@ export const DocumentSchema = z.object({
   linked_point: z.union([z.record(z.unknown()), z.null()]),
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   version_number: z.number(),
-  parent_document_id: z.union([z.string().uuid(), z.null()]),
+  parent_attachment_id: z.union([z.string().uuid(), z.null()]),
   created_at: z.string(),
   updated_at: z.string(),
 });
-export type Document = z.infer<typeof DocumentSchema>;
+export type Attachment = z.infer<typeof AttachmentSchema>;
 
-export const DocumentListSchema = z.array(DocumentSchema);
-export type DocumentList = z.infer<typeof DocumentListSchema>;
+export const AttachmentListSchema = z.array(AttachmentSchema);
+export type AttachmentList = z.infer<typeof AttachmentListSchema>;
 
-export const DocumentInitiateResponseSchema = z.object({
-  document_id: z.string().uuid(),
+export const AttachmentInitiateResponseSchema = z.object({
+  attachment_id: z.string().uuid(),
   upload_url: z.string(),
   storage_key: z.string(),
   expires_in: z.number(),
 });
-export type DocumentInitiateResponse = z.infer<typeof DocumentInitiateResponseSchema>;
+export type AttachmentInitiateResponse = z.infer<typeof AttachmentInitiateResponseSchema>;
 
-export const DocumentDownloadResponseSchema = z.object({
+export const AttachmentDownloadResponseSchema = z.object({
   download_url: z.string(),
   expires_in: z.number(),
 });
-export type DocumentDownloadResponse = z.infer<typeof DocumentDownloadResponseSchema>;
+export type AttachmentDownloadResponse = z.infer<typeof AttachmentDownloadResponseSchema>;
 
 // --- Capture Links ---
 
@@ -87,7 +88,7 @@ export const CaptureTokenValidationSchema = z.object({
 export type CaptureTokenValidation = z.infer<typeof CaptureTokenValidationSchema>;
 
 export const CaptureUploadResponseSchema = z.object({
-  document_id: z.string().uuid(),
+  attachment_id: z.string().uuid(),
   upload_url: z.string(),
   storage_key: z.string(),
   expires_in: z.number(),
@@ -96,6 +97,6 @@ export type CaptureUploadResponse = z.infer<typeof CaptureUploadResponseSchema>;
 
 export const CaptureCompleteResponseSchema = z.object({
   status: z.string(),
-  document_id: z.string(),
+  attachment_id: z.string(),
 });
 export type CaptureCompleteResponse = z.infer<typeof CaptureCompleteResponseSchema>;

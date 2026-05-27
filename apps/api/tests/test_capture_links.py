@@ -290,7 +290,7 @@ async def test_public_initiate_upload(
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert "upload_url" in body
-    assert "document_id" in body
+    assert "attachment_id" in body
     assert body["storage_key"].endswith(".jpg")
 
 
@@ -308,7 +308,7 @@ async def test_public_initiate_emits_audit_without_user(
         f"/public/capture/{org_id}/{link['token']}/initiate",
         json=_capture_upload_payload(),
     )
-    row = await _latest_audit(session_maker, "document.initiated")
+    row = await _latest_audit(session_maker, "attachment.initiated")
     assert row is not None
     assert row.user_id is None
     assert row.after is not None
@@ -332,7 +332,7 @@ async def test_public_complete_upload(
     ).json()
     fake.objects[initiated["storage_key"]] = b"x" * 4096
     resp = await client.post(
-        f"/public/capture/{org_id}/{link['token']}/complete/{initiated['document_id']}",
+        f"/public/capture/{org_id}/{link['token']}/complete/{initiated['attachment_id']}",
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
@@ -356,9 +356,9 @@ async def test_public_complete_emits_audit(
     ).json()
     fake.objects[initiated["storage_key"]] = b"x" * 4096
     await client.post(
-        f"/public/capture/{org_id}/{link['token']}/complete/{initiated['document_id']}",
+        f"/public/capture/{org_id}/{link['token']}/complete/{initiated['attachment_id']}",
     )
-    row = await _latest_audit(session_maker, "document.completed")
+    row = await _latest_audit(session_maker, "attachment.completed")
     assert row is not None
     assert row.user_id is None
 
@@ -400,7 +400,7 @@ async def test_public_exhausted_link_returns_410(
     ).json()
     fake.objects[initiated["storage_key"]] = b"x" * 4096
     await client.post(
-        f"/public/capture/{org_id}/{link['token']}/complete/{initiated['document_id']}",
+        f"/public/capture/{org_id}/{link['token']}/complete/{initiated['attachment_id']}",
     )
     resp = await client.get(f"/public/capture/{org_id}/{link['token']}/validate")
     assert resp.status_code == 410

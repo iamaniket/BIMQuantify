@@ -4,7 +4,7 @@ import { type JSX, type ReactNode, useCallback, useRef, useState } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
-import { DocumentsPanel } from './documents/DocumentsPanel';
+import { AttachmentsPanel } from './attachments/AttachmentsPanel';
 import type { PanelId } from '@/components/shared/viewer/SideRail';
 
 export type { PanelId } from '@/components/shared/viewer/SideRail';
@@ -12,7 +12,7 @@ export type { PanelId } from '@/components/shared/viewer/SideRail';
 const PANEL_TITLES: Record<PanelId, string> = {
   explorer: 'Model Tree',
   properties: 'Properties',
-  documents: 'Documents',
+  attachments: 'Attachments',
   issues: 'Issues',
   compliance: 'BBL Compliance',
   measure: 'Measurement',
@@ -123,7 +123,7 @@ export function SidePanel({
             <div className="min-h-0 flex-1 overflow-auto">
               {activePanel === 'explorer' && explorerContent}
               {activePanel === 'properties' && propertiesContent}
-              {activePanel === 'documents' && <DocumentsPanel />}
+              {activePanel === 'attachments' && <AttachmentsPanel />}
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
               {activePanel === 'bcf' && bcfContent}
