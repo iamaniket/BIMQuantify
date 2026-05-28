@@ -44,6 +44,7 @@ services:
     environment:
       MINIO_ROOT_USER: bimstitch
       MINIO_ROOT_PASSWORD: bimstitch-secret
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000,http://localhost:3001
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -70,7 +71,7 @@ services:
       S3_SECRET_ACCESS_KEY: bimstitch-secret
       S3_BUCKET_IFC: ifc-files
       # apps/api still runs on the host during dev, so the worker reaches
-      # it via host.docker.internal. Override to http://api:8000 if/when the
+      # it via host.docker.internal. Override to http://api:8000 if/when 
       # API is containerised.
       API_BASE_URL: http://host.docker.internal:8000
       PROCESSOR_SHARED_SECRET: ${PROCESSOR_SHARED_SECRET:-dev-shared-secret-change-me}
