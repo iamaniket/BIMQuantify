@@ -1,8 +1,8 @@
 # Build stage — TypeScript compile only.
 FROM node:24-bookworm-slim AS builder
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
@@ -32,8 +32,8 @@ RUN apt-get update \
        dumb-init \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 # Copy web-ifc.wasm next to the compiled JS so the resolver finds it. The

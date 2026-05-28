@@ -13,6 +13,8 @@ type TreeToolbarProps = {
   onToggleExpand: () => void;
   allChecked: boolean;
   onToggleCheckAll: () => void;
+  allSelected: boolean;
+  onToggleSelectAll: () => void;
 };
 
 const toolBtnClass = [
@@ -28,6 +30,8 @@ export function TreeToolbar({
   onToggleExpand,
   allChecked,
   onToggleCheckAll,
+  allSelected,
+  onToggleSelectAll,
 }: TreeToolbarProps): JSX.Element {
   const t = useTranslations('viewer.explorer');
 
@@ -90,6 +94,31 @@ export function TreeToolbar({
         ) : (
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="1.5" y="1.5" width="13" height="13" rx="2" />
+          </svg>
+        )}
+      </button>
+
+      {/* Separator */}
+      <div className="h-4 w-px" style={{ background: 'var(--border)' }} />
+
+      {/* Select all / deselect all */}
+      <button
+        type="button"
+        title={allSelected ? t('deselectAll') : t('selectAll')}
+        onClick={onToggleSelectAll}
+        className={toolBtnClass}
+        style={{ color: allSelected ? 'var(--primary)' : 'var(--fg-3)' }}
+      >
+        {allSelected ? (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" fill="currentColor" opacity="0.15" />
+            <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" fill="none" />
+            <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" />
+            <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" opacity="0.3" />
           </svg>
         )}
       </button>

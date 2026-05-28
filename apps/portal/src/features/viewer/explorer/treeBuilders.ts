@@ -73,6 +73,16 @@ export function filterTree(
   return nodes.map(walk).filter(Boolean) as TreeNodeData[];
 }
 
+export function collectSpatialExpressIDs(node: SpatialNode): Set<number> {
+  const ids = new Set<number>([node.expressID]);
+  for (const child of node.children) {
+    for (const id of collectSpatialExpressIDs(child)) {
+      ids.add(id);
+    }
+  }
+  return ids;
+}
+
 export function collectAllKeys(nodes: TreeNodeData[]): string[] {
   const keys: string[] = [];
   const walk = (n: TreeNodeData): void => {

@@ -13,6 +13,7 @@ import { VirtualizedTree } from './VirtualizedTree';
 import type { TreeNodeData } from './TreeNode';
 import {
   elementToLeaf, groupElementsBy, filterTree, collectExpandedKeys,
+  collectSpatialExpressIDs,
 } from './treeBuilders';
 import { TreeToolbar } from './TreeToolbar';
 import { useTreeExpansion } from './useTreeExpansion';
@@ -65,11 +66,23 @@ export function ObjectsTab({
   const showItems = useViewerEntityStore((s) => s.showItems);
   const hideItems = useViewerEntityStore((s) => s.hideItems);
   const hidden = useViewerEntityStore((s) => s.hidden);
+  const selected = useViewerEntityStore((s) => s.selected);
+  const selectedAll = useViewerEntityStore((s) => s.selectedAll);
+  const select = useViewerEntityStore((s) => s.select);
+  const clearSelection = useViewerEntityStore((s) => s.clearSelection);
   const [filter, setFilter] = useState('');
 
+  const spatialIDs = useMemo(
+    () => (spatialTree ? collectSpatialExpressIDs(spatialTree) : new Set<number>()),
+    [spatialTree],
+  );
+
   const elementsByContainer = useMemo(
-    () => groupElementsBy(elements ?? [], (el) => el.containedIn),
-    [elements],
+    () => groupElementsBy(
+      (elements ?? []).filter((el) => !spatialIDs.has(el.expressID)),
+      (el) => el.containedIn,
+    ),
+    [elements, spatialIDs],
   );
 
   const tree = useMemo(() => {
@@ -120,6 +133,20 @@ export function ObjectsTab({
     }
   }, [allChecked, showItems, hideItems, allEntityKeys]);
 
+  const allSelected = useMemo(
+    () => selectedAll || (allEntityKeys.length > 0 && allEntityKeys.every((k) => selected.has(k))),
+    [selectedAll, allEntityKeys, selected],
+  );
+
+  const handleToggleSelectAll = useCallback(() => {
+    if (allEntityKeys.length === 0) return;
+    if (allSelected) {
+      clearSelection();
+    } else {
+      select(allEntityKeys);
+    }
+  }, [allSelected, clearSelection, select, allEntityKeys]);
+
   const filtered = useMemo(
     () => (tree ? filterTree([tree], filter) : []),
     [tree, filter],
@@ -138,6 +165,8 @@ export function ObjectsTab({
         onToggleExpand={handleToggleExpand}
         allChecked={allChecked}
         onToggleCheckAll={handleToggleCheckAll}
+        allSelected={allSelected}
+        onToggleSelectAll={handleToggleSelectAll}
       />
       <div className="min-h-0 flex-1 overflow-hidden">
         <VirtualizedTree

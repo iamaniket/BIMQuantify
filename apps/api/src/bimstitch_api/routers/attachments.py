@@ -310,11 +310,10 @@ async def complete_attachment_upload(
         await session.flush()
         try:
             await dispatch_job(job, settings, active_org_id)
-        except DispatchJobError as exc:
+        except Exception as exc:
             job.status = JobStatus.failed
             job.error = f"DISPATCH_FAILED: {exc}"[:500]
             logger.warning("Image metadata dispatch failed for %s: %s", att.storage_key, exc)
-            await session.flush()
 
     return att
 

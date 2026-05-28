@@ -34,6 +34,10 @@ export function StoriesTab({
   const showItems = useViewerEntityStore((s) => s.showItems);
   const hideItems = useViewerEntityStore((s) => s.hideItems);
   const hidden = useViewerEntityStore((s) => s.hidden);
+  const selected = useViewerEntityStore((s) => s.selected);
+  const selectedAll = useViewerEntityStore((s) => s.selectedAll);
+  const select = useViewerEntityStore((s) => s.select);
+  const clearSelection = useViewerEntityStore((s) => s.clearSelection);
   const [filter, setFilter] = useState('');
 
   const storeyNodes = useMemo((): TreeNodeData[] => {
@@ -99,6 +103,20 @@ export function StoriesTab({
     }
   }, [allChecked, showItems, hideItems, allEntityKeys]);
 
+  const allSelected = useMemo(
+    () => selectedAll || (allEntityKeys.length > 0 && allEntityKeys.every((k) => selected.has(k))),
+    [selectedAll, allEntityKeys, selected],
+  );
+
+  const handleToggleSelectAll = useCallback(() => {
+    if (allEntityKeys.length === 0) return;
+    if (allSelected) {
+      clearSelection();
+    } else {
+      select(allEntityKeys);
+    }
+  }, [allSelected, clearSelection, select, allEntityKeys]);
+
   const filtered = useMemo(() => filterTree(storeyNodes, filter), [storeyNodes, filter]);
 
   if (storeyNodes.length === 0) {
@@ -114,6 +132,8 @@ export function StoriesTab({
         onToggleExpand={handleToggleExpand}
         allChecked={allChecked}
         onToggleCheckAll={handleToggleCheckAll}
+        allSelected={allSelected}
+        onToggleSelectAll={handleToggleSelectAll}
       />
       <div className="min-h-0 flex-1 overflow-hidden">
         <VirtualizedTree
