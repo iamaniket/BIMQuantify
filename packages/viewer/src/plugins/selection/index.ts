@@ -320,7 +320,12 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     if (!ndc) { clear(); return; }
     const hit = await pick(ctxRef, ndc);
     if (!hit || isClippedBySection(hit.point)) { clear(); return; }
-    setSelection([hit.item]);
+    // Toggle: if the clicked item is already the sole selection, deselect it.
+    if (!allSelected && selected.size === 1 && selected.has(key(hit.item))) {
+      clear();
+    } else {
+      setSelection([hit.item]);
+    }
   };
 
   const pickAdd = async (args: PickArgs): Promise<void> => {

@@ -1613,6 +1613,12 @@
       "clear": "wissen"
     }
   },
+  "viewerInspector": {
+    "panelTitle": "Eigenschappen & Bijlagen",
+    "tabProperties": "Eigenschappen",
+    "tabAttachments": "Bijlagen",
+    "pdfPageHeader": "Pagina {page}"
+  },
   "viewerInspections": {
     "panelTitle": "Inspecties",
     "emptyNoSelection": "Selecteer een element om gekoppelde inspecties te bekijken.",

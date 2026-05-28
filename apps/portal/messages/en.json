@@ -1613,6 +1613,12 @@
       "clear": "clear"
     }
   },
+  "viewerInspector": {
+    "panelTitle": "Properties & Attachments",
+    "tabProperties": "Properties",
+    "tabAttachments": "Attachments",
+    "pdfPageHeader": "Page {page}"
+  },
   "viewerInspections": {
     "panelTitle": "Inspections",
     "emptyNoSelection": "Select an element to view linked inspections.",

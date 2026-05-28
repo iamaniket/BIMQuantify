@@ -35,12 +35,12 @@ const VIEW_SHORTCUTS: Partial<Record<ViewName, string>> = {
 };
 
 interface CameraPluginOptions {
-  /** Padding multiplier when framing geometry. Default: 1.8 (matches initial mount). */
+  /** Padding multiplier when framing geometry. Default: 1.2 (matches initial mount). */
   framePadding?: number;
 }
 
 export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
-  const padding = options.framePadding ?? 1.8;
+  const padding = options.framePadding ?? 1.2;
 
   let homeSaved = false;
   let offModelLoaded: (() => void) | null = null;

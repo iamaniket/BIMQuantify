@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  Box,
-  Download,
-  Eye,
-  FileText,
-  Link as LinkIcon,
-  MapPin,
-  Trash2,
-} from 'lucide-react';
+import { MapPin, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -121,17 +113,11 @@ function formatCoord(lat: number, lon: number): string {
 
 type Props = {
   attachment: Attachment;
-  onView: () => void;
-  onLink: () => void;
-  onDownload: () => void;
   onDelete: () => void;
 };
 
 export function ExpandedBody({
   attachment,
-  onView,
-  onLink,
-  onDownload,
   onDelete,
 }: Props): JSX.Element {
   const t = useTranslations('viewerAttachments');
@@ -175,12 +161,6 @@ export function ExpandedBody({
     ? pdokAerialThumbnailUrl(exif.gps.latitude, exif.gps.longitude, { width: 400, height: 200 })
     : null;
 
-  const hasElementLink = attachment.linked_element_global_id !== null;
-  const hasPdfLink = attachment.linked_point !== null
-    && typeof attachment.linked_point === 'object'
-    && 'page' in attachment.linked_point;
-  const linkCount = (hasElementLink ? 1 : 0) + (hasPdfLink ? 1 : 0);
-
   return (
     <div className="border-t border-border bg-surface-low px-3.5 pb-3 pt-1" style={{ paddingLeft: 64 }}>
       {/* Description */}
@@ -223,64 +203,11 @@ export function ExpandedBody({
         </div>
       )}
 
-      {/* Linked targets */}
-      <div className="border-t border-dashed border-border pt-2">
-        <div className="mb-1.5 flex items-center justify-between font-mono text-[10.5px] uppercase tracking-wide text-foreground-tertiary">
-          <span>{t('expandedLinkedTo')}</span>
-          <span className="text-foreground-secondary">{linkCount}</span>
-        </div>
-
-        {linkCount === 0 && (
-          <p className="py-1.5 font-mono text-[11px] italic text-foreground-tertiary">
-            {t('expandedNotLinked')}
-          </p>
-        )}
-
-        {hasElementLink && (
-          <div className="flex items-center gap-2 border-b border-dashed border-border py-1.5 last:border-b-0">
-            <Box className="h-3.5 w-3.5 shrink-0 text-primary" />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-medium text-foreground">
-                {t('expandedElement')}
-              </div>
-              <div className="truncate font-mono text-[10.5px] text-foreground-tertiary">
-                {attachment.linked_element_global_id}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {hasPdfLink && (
-          <div className="flex items-center gap-2 py-1.5">
-            <FileText className="h-3.5 w-3.5 shrink-0 text-info-hover" />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-medium text-foreground">
-                {t('expandedPdfPage', { page: attachment.linked_point !== null ? String((attachment.linked_point as Record<string, number>)['page']) : '' })}
-              </div>
-              <div className="truncate font-mono text-[10.5px] text-foreground-tertiary">
-                {t('expandedPdfRegion')}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Footer actions */}
-      <div className="mt-1.5 flex gap-1.5 border-t border-border pt-2.5">
-        <Button variant="primary" size="sm" onClick={onView}>
-          <Eye className="h-3.5 w-3.5" />
-          {t('expandedView')}
-        </Button>
-        <Button variant="border" size="sm" onClick={onLink}>
-          <LinkIcon className="h-3.5 w-3.5" />
-          {t('expandedLink')}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onDownload} title={t('expandedDownload')}>
-          <Download className="h-3.5 w-3.5" />
-        </Button>
-        <div className="flex-1" />
-        <Button variant="ghost" size="sm" onClick={onDelete} title={t('expandedRemove')} className="text-error hover:text-error">
+      <div className="mt-1.5 flex justify-end border-t border-border pt-2.5">
+        <Button variant="ghost" size="sm" onClick={onDelete} className="text-error hover:text-error">
           <Trash2 className="h-3.5 w-3.5" />
+          {t('expandedRemove')}
         </Button>
       </div>
     </div>

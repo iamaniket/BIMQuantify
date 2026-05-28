@@ -1,6 +1,8 @@
 'use client';
 
-import { type JSX, type ReactNode, useCallback, useRef, useState } from 'react';
+import {
+  type JSX, type ReactNode, useCallback, useRef, useState,
+} from 'react';
 
 import { cn } from '@bimstitch/ui';
 
@@ -10,8 +12,7 @@ export type { PanelId } from '@/components/shared/viewer/SideRail';
 
 const PANEL_TITLES: Record<PanelId, string> = {
   explorer: 'Model Tree',
-  properties: 'Properties',
-  attachments: 'Attachments',
+  inspector: 'Properties & Attachments',
   issues: 'Inspections',
   compliance: 'BBL Compliance',
   measure: 'Measurement',
@@ -23,8 +24,7 @@ const PANEL_TITLES: Record<PanelId, string> = {
 type SidePanelProps = {
   activePanel: PanelId | null;
   explorerContent?: ReactNode | undefined;
-  propertiesContent?: ReactNode | undefined;
-  attachmentsContent?: ReactNode | undefined;
+  inspectorContent?: ReactNode | undefined;
   measureContent?: ReactNode | undefined;
   sectionContent?: ReactNode | undefined;
   bcfContent?: ReactNode | undefined;
@@ -53,8 +53,7 @@ const DEFAULT_WIDTH = 360;
 export function SidePanel({
   activePanel,
   explorerContent,
-  propertiesContent,
-  attachmentsContent,
+  inspectorContent,
   inspectionsContent,
   measureContent,
   sectionContent,
@@ -125,8 +124,7 @@ export function SidePanel({
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
               {activePanel === 'explorer' && explorerContent}
-              {activePanel === 'properties' && propertiesContent}
-              {activePanel === 'attachments' && (attachmentsContent ?? <PlaceholderContent label="Attachments" />)}
+              {activePanel === 'inspector' && (inspectorContent ?? <PlaceholderContent label="Properties & Attachments" />)}
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
               {activePanel === 'bcf' && bcfContent}

@@ -2,8 +2,8 @@
 
 import {
   ChevronDown,
+  Download,
   Eye,
-  Link as LinkIcon,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
@@ -40,9 +40,7 @@ type Props = {
   expanded: boolean;
   onToggle: () => void;
   onView: () => void;
-  onLink: () => void;
   onDelete: () => void;
-  linkingId: string | null;
 };
 
 export function AttachmentRow({
@@ -51,14 +49,11 @@ export function AttachmentRow({
   expanded,
   onToggle,
   onView,
-  onLink,
   onDelete,
-  linkingId,
 }: Props): JSX.Element {
   const t = useTranslations('viewerAttachments');
   const { tokens } = useAuth();
   const [hovered, setHovered] = useState(false);
-  const isLinking = linkingId === attachment.id;
 
   const handleDownload = useCallback(async () => {
     if (tokens === null) return;
@@ -144,17 +139,16 @@ export function AttachmentRow({
           </button>
           <button
             type="button"
-            title={t('expandedLink')}
-            onClick={(e) => { e.stopPropagation(); onLink(); }}
+            title={t('expandedDownload')}
+            // eslint-disable-next-line no-void
+            onClick={(e) => { e.stopPropagation(); void handleDownload(); }}
             className={cn(
-              'inline-grid h-6 w-6 place-items-center rounded border transition-all',
-              isLinking
-                ? 'border-primary bg-primary-lighter text-primary opacity-100'
-                : 'border-transparent text-foreground-tertiary hover:bg-background-hover hover:text-foreground',
-              (hovered || expanded || isLinking) ? 'opacity-100' : 'opacity-0',
+              'inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all',
+              'hover:bg-background-hover hover:text-foreground',
+              (hovered || expanded) ? 'opacity-100' : 'opacity-0',
             )}
           >
-            <LinkIcon className="h-3.5 w-3.5" />
+            <Download className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
@@ -174,10 +168,6 @@ export function AttachmentRow({
       {expanded && (
         <ExpandedBody
           attachment={attachment}
-          onView={onView}
-          onLink={onLink}
-          // eslint-disable-next-line no-void
-          onDownload={() => { void handleDownload(); }}
           onDelete={onDelete}
         />
       )}

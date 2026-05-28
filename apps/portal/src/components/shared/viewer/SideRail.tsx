@@ -2,7 +2,6 @@
 
 import {
   ClipboardCheck,
-  FileText,
   Files,
   Info,
   ListTree,
@@ -18,8 +17,7 @@ import { cn } from '@bimstitch/ui';
 
 export type PanelId =
   | 'explorer'
-  | 'properties'
-  | 'attachments'
+  | 'inspector'
   | 'issues'
   | 'compliance'
   | 'measure'
@@ -43,8 +41,7 @@ type RailButton = {
 
 const IFC_BUTTONS: RailButton[] = [
   { id: 'explorer', label: 'Model Tree', icon: ListTree },
-  { id: 'properties', label: 'Properties', icon: Info },
-  { id: 'attachments', label: 'Attachments', icon: FileText },
+  { id: 'inspector', label: 'Properties & Attachments', icon: Info },
   { id: 'issues', label: 'Inspections', icon: ClipboardCheck },
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
   { id: 'measure', label: 'Measurement', icon: Ruler },
@@ -54,7 +51,7 @@ const IFC_BUTTONS: RailButton[] = [
 
 const PDF_BUTTONS: RailButton[] = [
   { id: 'pages', label: 'Pages', icon: Files },
-  { id: 'attachments', label: 'Attachments', icon: FileText },
+  { id: 'inspector', label: 'Properties & Attachments', icon: Info },
   { id: 'issues', label: 'Inspections', icon: ClipboardCheck },
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
 ];
@@ -79,7 +76,7 @@ export function SideRail({
             key={id}
             type="button"
             aria-pressed={isActive}
-            onClick={() => onTogglePanel(id)}
+            onClick={() => { onTogglePanel(id); }}
             title={label}
             className={cn(
               'flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150',

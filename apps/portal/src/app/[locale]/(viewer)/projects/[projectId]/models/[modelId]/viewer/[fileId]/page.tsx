@@ -34,9 +34,7 @@ import { SectionPanel } from '@/components/shared/viewer/section/SectionPanel';
 import { PagesPanel } from '@/components/shared/viewer/pages/PagesPanel';
 import { ContextMenu } from '@/features/viewer/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/explorer/ModelExplorer';
-import { PropertiesPanel } from '@/features/viewer/properties/PropertiesPanel';
-import { PropertiesCounter } from '@/features/viewer/properties/PropertiesCounter';
-import { AttachmentsPanel } from '@/features/viewer/attachments/AttachmentsPanel';
+import { EntityInspectorPanel } from '@/features/viewer/inspector/EntityInspectorPanel';
 import { PdfAnnotationLayer, type PdfPin } from '@/features/viewer/attachments/PdfAnnotationLayer';
 import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
@@ -156,7 +154,7 @@ export default function ViewerPage(): JSX.Element {
   useViewerBridge(viewerHandleRef.current);
 
   // Apply persisted behavior toggles once the viewer is ready.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!viewerReady) return;
     const handle = viewerHandleRef.current;
@@ -182,7 +180,7 @@ export default function ViewerPage(): JSX.Element {
     : partialSelectionCount;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,
-    activePanel === 'properties' && hasSelection && !isAllSelected,
+    activePanel === 'inspector' && hasSelection && !isAllSelected,
   );
 
   useAppHeader({
@@ -253,9 +251,11 @@ export default function ViewerPage(): JSX.Element {
       setPdfPinMode(false);
       // TODO: open upload dialog with pre-filled point — for now, store the intent
       // in sessionStorage so AttachmentsPanel can pick it up.
-      const pinData = JSON.stringify({ type: 'pdf', page: pdfCurrentPage, x: point.x, y: point.y });
+      const pinData = JSON.stringify({
+        type: 'pdf', page: pdfCurrentPage, x: point.x, y: point.y,
+      });
       sessionStorage.setItem('bimstitch.pendingPdfPin', pinData);
-      setActivePanel('attachments');
+      setActivePanel('inspector');
     },
     [pdfCurrentPage],
   );
@@ -301,13 +301,13 @@ export default function ViewerPage(): JSX.Element {
       prevPage: () => {
         setPdfCurrentPage((p) => Math.max(1, p - 1));
       },
-      firstPage: () => setPdfCurrentPage(1),
+      firstPage: () => { setPdfCurrentPage(1); },
       lastPage: () => {
         if (pdfNumPages !== null) setPdfCurrentPage(pdfNumPages);
       },
-      toolSelect: () => setPdfActiveTool('select'),
-      toolPan: () => setPdfActiveTool('pan'),
-      toolZoom: () => setPdfActiveTool('zoom'),
+      toolSelect: () => { setPdfActiveTool('select'); },
+      toolPan: () => { setPdfActiveTool('pan'); },
+      toolZoom: () => { setPdfActiveTool('zoom'); },
     },
   });
 
@@ -397,15 +397,17 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
 
-        {isIfc ? <ContextMenu handle={viewerHandleRef.current} onInspectProperties={() => setActivePanel('properties')} /> : null}
+        {isIfc ? <ContextMenu handle={viewerHandleRef.current} onInspectProperties={() => { setActivePanel('inspector'); }} /> : null}
 
         {showChrome ? (
           <>
             <SidePanel
               activePanel={activePanel}
-              attachmentsContent={
-                <AttachmentsPanel
+              inspectorContent={
+                <EntityInspectorPanel
                   metadata={metadata}
+                  properties={properties}
+                  isLoadingProperties={isLoadingProperties}
                   projectId={projectId}
                   modelId={modelId}
                   fileId={fileId}
@@ -430,13 +432,6 @@ export default function ViewerPage(): JSX.Element {
                   isLoading={isLoadingMetadata}
                 />
               ) : undefined}
-              propertiesContent={isIfc ? (
-                <PropertiesPanel
-                  metadata={metadata}
-                  properties={properties}
-                  isLoadingProperties={isLoadingProperties}
-                />
-              ) : undefined}
               measureContent={isIfc ? (
                 <MeasurementPanel handle={viewerHandleRef.current} />
               ) : undefined}
@@ -455,7 +450,6 @@ export default function ViewerPage(): JSX.Element {
               ) : undefined}
               headerActions={isIfc ? {
                 explorer: <ExplorerCounter metadata={metadata} />,
-                properties: <PropertiesCounter metadata={metadata} properties={properties} />,
                 measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
                 bcf: <BcfHeaderActions handle={viewerHandleRef.current} />,
               } : undefined}

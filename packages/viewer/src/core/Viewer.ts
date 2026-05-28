@@ -353,8 +353,8 @@ export class Viewer {
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 1);
-    // Padding 1.8 matches camera plugin's default framePadding.
-    const distance = maxDim * 1.8;
+    // Padding 1.2 matches camera plugin's default framePadding.
+    const distance = maxDim * 1.2;
 
     // Iso direction: top-front-right [1,1,1] normalised — matches camera.home.
     const len = Math.sqrt(3);
