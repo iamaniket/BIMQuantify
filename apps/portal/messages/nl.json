@@ -1587,6 +1587,27 @@
     "attachmentUpdated": "Bijgewerkt: {filename}",
     "attachmentDeleted": "Verwijderd: {filename}"
   },
+  "viewer": {
+    "explorer": {
+      "filter": "Filter…",
+      "expandAll": "Alles uitvouwen",
+      "collapseAll": "Alles invouwen",
+      "checkAll": "Alles selecteren",
+      "uncheckAll": "Alles deselecteren",
+      "noMatches": "Geen resultaten voor \"{query}\"",
+      "selected": "Geselecteerd",
+      "clear": "wissen",
+      "isolate": "Isoleren",
+      "select": "Selecteren",
+      "hide": "Verbergen",
+      "show": "Tonen",
+      "filterActive": "Filter actief",
+      "showAll": "Alles tonen",
+      "hideAll": "Alles verbergen",
+      "selectAll": "Alles selecteren",
+      "deselectAll": "Alles deselecteren"
+    }
+  },
   "viewerInspections": {
     "panelTitle": "Inspecties",
     "emptyNoSelection": "Selecteer een element om gekoppelde inspecties te bekijken.",
@@ -1598,5 +1619,40 @@
     "verdictPending": "In afwachting",
     "momentLabel": "Borgingsmoment",
     "loading": "Inspecties laden..."
+  },
+  "viewerAttachments": {
+    "panelTitle": "Bijlagen",
+    "tabAll": "Alles",
+    "tabOnEntity": "Op element",
+    "tabProject": "Project",
+    "emptyNoSelection": "Selecteer een element om bijlagen te bekijken.",
+    "emptyMultiSelection": "Selecteer een enkel element om bijlagen te bekijken.",
+    "emptyNoItems": "Geen bijlagen op dit element.",
+    "emptyAllEmpty": "Nog geen bijlagen.",
+    "emptyProjectEmpty": "Geen projectbijlagen.",
+    "loading": "Bijlagen laden…",
+    "attachButton": "Toevoegen",
+    "attachToElement": "Toevoegen aan element",
+    "attachToProject": "Toevoegen aan project",
+    "addNote": "Notitie toevoegen",
+    "notePlaceholder": "Typ een notitie…",
+    "noteSubmit": "Notitie opslaan",
+    "uploadHashing": "Hashen…",
+    "uploadUploading": "Uploaden…",
+    "uploadCompleting": "Voltooien…",
+    "uploadSuccess": "Bijlage geüpload.",
+    "uploadError": "Upload mislukt.",
+    "noteSuccess": "Notitie opgeslagen.",
+    "noteError": "Notitie opslaan mislukt.",
+    "deleteConfirm": "Deze bijlage verwijderen?",
+    "deleteSuccess": "Bijlage verwijderd.",
+    "by": "door {name}",
+    "viaCapture": "via opnamelink",
+    "tabOnPage": "Op pagina",
+    "emptyNoPage": "Geen bijlagen op deze pagina.",
+    "pinModeOn": "Pin plaatsen",
+    "pinModeOff": "Pin annuleren",
+    "pinUploading": "Pinbijlage uploaden…",
+    "pinSuccess": "Pinbijlage geüpload."
   }
 }

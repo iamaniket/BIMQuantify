@@ -1587,6 +1587,27 @@
     "attachmentUpdated": "Updated {filename}",
     "attachmentDeleted": "Removed {filename}"
   },
+  "viewer": {
+    "explorer": {
+      "filter": "Filter…",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "checkAll": "Check all",
+      "uncheckAll": "Uncheck all",
+      "noMatches": "No matches for \"{query}\"",
+      "selected": "Selected",
+      "clear": "clear",
+      "isolate": "Isolate",
+      "select": "Select",
+      "hide": "Hide",
+      "show": "Show",
+      "filterActive": "Filter active",
+      "showAll": "Show all",
+      "hideAll": "Hide all",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all"
+    }
+  },
   "viewerInspections": {
     "panelTitle": "Inspections",
     "emptyNoSelection": "Select an element to view linked inspections.",
@@ -1598,5 +1619,40 @@
     "verdictPending": "Pending",
     "momentLabel": "Inspection moment",
     "loading": "Loading inspections..."
+  },
+  "viewerAttachments": {
+    "panelTitle": "Attachments",
+    "tabAll": "All",
+    "tabOnEntity": "On element",
+    "tabProject": "Project",
+    "emptyNoSelection": "Select an element to view its attachments.",
+    "emptyMultiSelection": "Select a single element to view attachments.",
+    "emptyNoItems": "No attachments on this element.",
+    "emptyAllEmpty": "No attachments yet.",
+    "emptyProjectEmpty": "No project-level attachments.",
+    "loading": "Loading attachments…",
+    "attachButton": "Attach",
+    "attachToElement": "Attach to element",
+    "attachToProject": "Attach to project",
+    "addNote": "Add note",
+    "notePlaceholder": "Type a note…",
+    "noteSubmit": "Save note",
+    "uploadHashing": "Hashing…",
+    "uploadUploading": "Uploading…",
+    "uploadCompleting": "Completing…",
+    "uploadSuccess": "Attachment uploaded.",
+    "uploadError": "Upload failed.",
+    "noteSuccess": "Note saved.",
+    "noteError": "Failed to save note.",
+    "deleteConfirm": "Delete this attachment?",
+    "deleteSuccess": "Attachment deleted.",
+    "by": "by {name}",
+    "viaCapture": "via capture link",
+    "tabOnPage": "On page",
+    "emptyNoPage": "No attachments pinned on this page.",
+    "pinModeOn": "Place pin",
+    "pinModeOff": "Cancel pin",
+    "pinUploading": "Uploading pin attachment…",
+    "pinSuccess": "Pin attachment uploaded."
   }
 }

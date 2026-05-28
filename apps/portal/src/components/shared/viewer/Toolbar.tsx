@@ -20,7 +20,6 @@ import { SettingsDialog } from './settings/SettingsDialog';
 
 type Props = {
   handle: ViewerHandle | null;
-  selectionCount: number;
   settings: ViewerSettings;
   onSettingsChange: (next: ViewerSettings) => void;
   onReloadViewer: () => void;
@@ -28,7 +27,6 @@ type Props = {
 
 export function Toolbar({
   handle,
-  selectionCount,
   settings,
   onSettingsChange,
   onReloadViewer,
@@ -65,15 +63,6 @@ export function Toolbar({
           icon: MousePointer2,
           label: 'Select',
           isActive: activeTool === 'select',
-          badge:
-            selectionCount > 0 ? (
-              <span
-                data-testid="viewer-selection-badge"
-                className="absolute -right-1 -top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-caption font-bold leading-[16px] text-primary-foreground shadow-[0_2px_8px_rgba(59,130,246,0.4)]"
-              >
-                {selectionCount}
-              </span>
-            ) : undefined,
           onClick: () => { setActiveTool('select'); },
         },
       ],

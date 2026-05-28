@@ -17,6 +17,7 @@ import type {
   DocumentActiveTool,
   DocumentRotation,
   DocumentViewerHandle,
+  PageDimensions,
   ViewerBundle,
   ViewerHandle,
 } from '@bimstitch/viewer';
@@ -31,8 +32,12 @@ import { MeasurementPanel, MeasurementHeaderActions } from '@/components/shared/
 import { SectionPanel } from '@/components/shared/viewer/section/SectionPanel';
 import { PagesPanel } from '@/components/shared/viewer/pages/PagesPanel';
 import { ContextMenu } from '@/features/viewer/ContextMenu';
-import { ModelExplorer } from '@/features/viewer/explorer/ModelExplorer';
+import { ModelExplorer, ExplorerCounter } from '@/features/viewer/explorer/ModelExplorer';
 import { PropertiesPanel } from '@/features/viewer/properties/PropertiesPanel';
+import { AttachmentsPanel } from '@/features/viewer/attachments/AttachmentsPanel';
+import { PdfAnnotationLayer, type PdfPin } from '@/features/viewer/attachments/PdfAnnotationLayer';
+import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
+import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { InspectionsPanel } from '@/features/viewer/inspections/InspectionsPanel';
 import { SidePanel } from '@/features/viewer/SidePanel';
 import { StatusBar } from '@/features/viewer/StatusBar';
@@ -127,6 +132,8 @@ export default function ViewerPage(): JSX.Element {
   const [pdfRotation, setPdfRotation] = useState<DocumentRotation>(0);
   const [pdfSettings, setPdfSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
+  const [pdfPinMode, setPdfPinMode] = useState(false);
+  const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
 
   const togglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -222,6 +229,54 @@ export default function ViewerPage(): JSX.Element {
   const showChrome = error === null;
   const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady;
 
+  // PDF pin annotations
+  const pdfPinsQuery = usePdfPageAttachments(
+    projectId,
+    fileId,
+    isPdf ? pdfCurrentPage : null,
+  );
+  const pdfPins: PdfPin[] = (pdfPinsQuery.data ?? [])
+    .filter((a): a is typeof a & { linked_point: Record<string, unknown> } => a.linked_point !== null)
+    .map((a) => ({
+      attachmentId: a.id,
+      x: Number(a.linked_point['x'] ?? 0),
+      y: Number(a.linked_point['y'] ?? 0),
+      attachment: a,
+    }));
+
+  const handlePdfPinPlace = useCallback(
+    (point: { x: number; y: number }) => {
+      setPdfPinMode(false);
+      // TODO: open upload dialog with pre-filled point — for now, store the intent
+      // in sessionStorage so AttachmentsPanel can pick it up.
+      const pinData = JSON.stringify({ type: 'pdf', page: pdfCurrentPage, x: point.x, y: point.y });
+      sessionStorage.setItem('bimstitch.pendingPdfPin', pinData);
+      setActivePanel('attachments');
+    },
+    [pdfCurrentPage],
+  );
+
+  const handlePdfPinClick = useCallback(
+    (attachmentId: string) => {
+      const att = pdfPins.find((p) => p.attachmentId === attachmentId);
+      if (att) setPdfPinViewAttachment(att.attachment);
+    },
+    [pdfPins],
+  );
+
+  const renderPdfOverlay = useCallback(
+    (dims: PageDimensions) => (
+      <PdfAnnotationLayer
+        pins={pdfPins}
+        dims={dims}
+        pinMode={pdfPinMode}
+        onPinClick={handlePdfPinClick}
+        onPinPlace={handlePdfPinPlace}
+      />
+    ),
+    [pdfPins, pdfPinMode, handlePdfPinClick, handlePdfPinPlace],
+  );
+
   useDocumentShortcuts({
     enabled: isPdf && documentHandle !== null,
     shortcuts: pdfSettings.shortcuts,
@@ -273,6 +328,7 @@ export default function ViewerPage(): JSX.Element {
         onError={handlePdfError}
         onScaleChange={setPdfScale}
         onRotationChange={setPdfRotation}
+        renderOverlay={renderPdfOverlay}
       />
     );
   } else {
@@ -342,6 +398,20 @@ export default function ViewerPage(): JSX.Element {
           <>
             <SidePanel
               activePanel={activePanel}
+              attachmentsContent={
+                <AttachmentsPanel
+                  metadata={metadata}
+                  projectId={projectId}
+                  modelId={modelId}
+                  fileId={fileId}
+                  {...(isPdf ? {
+                    isPdf: true,
+                    pdfCurrentPage,
+                    pdfPinMode,
+                    onPdfPinModeChange: setPdfPinMode,
+                  } : {})}
+                />
+              }
               inspectionsContent={isIfc ? (
                 <InspectionsPanel
                   metadata={metadata}
@@ -379,6 +449,7 @@ export default function ViewerPage(): JSX.Element {
                 />
               ) : undefined}
               headerActions={isIfc ? {
+                explorer: <ExplorerCounter metadata={metadata} />,
                 measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
                 bcf: <BcfHeaderActions handle={viewerHandleRef.current} />,
               } : undefined}
@@ -402,7 +473,6 @@ export default function ViewerPage(): JSX.Element {
           <div className={isEditMode ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
             <Toolbar
               handle={viewerHandleRef.current}
-              selectionCount={selectionCount}
               settings={settings}
               onSettingsChange={setSettings}
               onReloadViewer={() => {
@@ -449,6 +519,14 @@ export default function ViewerPage(): JSX.Element {
         viewerReady={viewerReady}
         currentPage={pdfCurrentPage}
         numPages={pdfNumPages}
+      />
+
+      {/* PDF pin attachment viewer */}
+      <AttachmentViewerDialog
+        attachment={pdfPinViewAttachment}
+        projectId={projectId}
+        open={pdfPinViewAttachment !== null}
+        onOpenChange={(open) => { if (!open) setPdfPinViewAttachment(null); }}
       />
     </main>
   );

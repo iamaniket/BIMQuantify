@@ -82,6 +82,20 @@ def upgrade() -> None:
             f"AND deleted_at IS NULL"
         )
     )
+    bind.execute(
+        text(
+            f"CREATE INDEX IF NOT EXISTS ix_checklist_items_element_link "
+            f'ON "{schema}".checklist_items (linked_file_id, linked_element_global_id) '
+            f"WHERE linked_element_global_id IS NOT NULL"
+        )
+    )
+    bind.execute(
+        text(
+            f"CREATE INDEX IF NOT EXISTS ix_attachments_element_link "
+            f'ON "{schema}".attachments (project_id, linked_file_id, linked_element_global_id) '
+            f"WHERE linked_element_global_id IS NOT NULL AND deleted_at IS NULL"
+        )
+    )
 
 
 def downgrade() -> None:
@@ -115,6 +129,8 @@ def downgrade() -> None:
 
     bind = op.get_bind()
     schema = _schema()
+    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_attachments_element_link'))
+    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_checklist_items_element_link'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_borgingsplans_one_active'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_attachments_project_sha256'))
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]

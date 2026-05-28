@@ -54,6 +54,11 @@ export type DocumentViewerHandle = {
   searchText(query: string): Promise<DocumentSearchHit[]>;
 };
 
+export type PageDimensions = {
+  width: number;
+  height: number;
+};
+
 export type DocumentViewerProps = {
   fileUrl: string;
   currentPage: number;
@@ -61,6 +66,7 @@ export type DocumentViewerProps = {
   rotation?: DocumentRotation;
   activeTool?: DocumentActiveTool;
   className?: string;
+  renderOverlay?: (dims: PageDimensions) => React.ReactNode;
   onLoaded?: (info: DocumentLoadedInfo) => void;
   onError?: (err: Error) => void;
   onScaleChange?: (scale: number) => void;
@@ -89,6 +95,7 @@ function DocumentViewerInner(
     rotation = 0,
     activeTool = 'select',
     className,
+    renderOverlay,
     onLoaded,
     onError,
     onScaleChange,
@@ -109,6 +116,7 @@ function DocumentViewerInner(
     width: number;
     height: number;
   } | null>(null);
+  const [pageDims, setPageDims] = useState<PageDimensions | null>(null);
 
   // Live refs so the handle / event listeners always read current values
   // without stale closures.
@@ -267,8 +275,11 @@ function DocumentViewerInner(
         const viewport = page.getViewport({ scale, rotation });
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        const cssW = Math.floor(viewport.width);
+        const cssH = Math.floor(viewport.height);
+        canvas.style.width = `${cssW}px`;
+        canvas.style.height = `${cssH}px`;
+        setPageDims({ width: cssW, height: cssH });
 
         const ctx = canvas.getContext('2d');
         if (ctx === null) return;
@@ -561,15 +572,30 @@ function DocumentViewerInner(
         touchAction: 'pan-x pan-y',
       }}
     >
-      <canvas
-        ref={canvasRef}
-        style={{
-          display: 'block',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-          // Disable image dragging; we own pan via pointer events.
-          pointerEvents: activeTool === 'pan' ? 'none' : 'auto',
-        }}
-      />
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <canvas
+          ref={canvasRef}
+          style={{
+            display: 'block',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+            pointerEvents: activeTool === 'pan' ? 'none' : 'auto',
+          }}
+        />
+        {renderOverlay !== undefined && pageDims !== null && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: pageDims.width,
+              height: pageDims.height,
+              pointerEvents: 'none',
+            }}
+          >
+            {renderOverlay(pageDims)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

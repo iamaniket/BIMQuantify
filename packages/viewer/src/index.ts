@@ -6,6 +6,7 @@ export type {
   DocumentActiveTool,
   DocumentRotation,
   DocumentSearchHit,
+  PageDimensions,
 } from './DocumentViewer.js';
 export { IfcViewer } from './IfcViewer.js';
 export {

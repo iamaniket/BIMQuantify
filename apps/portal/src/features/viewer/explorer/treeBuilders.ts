@@ -27,13 +27,16 @@ export function groupElementsBy<K extends string | number>(
   const map = new Map<K, ElementEntry[]>();
   for (const el of elements) {
     const k = getKey(el);
-    if (k === null) continue;
-    let arr = map.get(k);
-    if (!arr) {
-      arr = [];
-      map.set(k, arr);
+    if (k === null) {
+      // skip elements without a group key
+    } else {
+      let arr = map.get(k);
+      if (!arr) {
+        arr = [];
+        map.set(k, arr);
+      }
+      arr.push(el);
     }
-    arr.push(el);
   }
   return map;
 }
@@ -51,6 +54,37 @@ export function collectStoreys(node: SpatialNode): Map<number, SpatialNode> {
   return map;
 }
 
+export function filterTree(
+  nodes: TreeNodeData[],
+  query: string,
+): TreeNodeData[] {
+  if (!query.trim()) return nodes;
+  const needle = query.toLowerCase();
+  const walk = (n: TreeNodeData): TreeNodeData | null => {
+    const hit = n.label.toLowerCase().includes(needle);
+    const kids = n.children
+      ? (n.children.map(walk).filter(Boolean) as TreeNodeData[])
+      : null;
+    if (hit || (kids && kids.length > 0)) {
+      return kids ? { ...n, children: kids } : { ...n };
+    }
+    return null;
+  };
+  return nodes.map(walk).filter(Boolean) as TreeNodeData[];
+}
+
+export function collectAllKeys(nodes: TreeNodeData[]): string[] {
+  const keys: string[] = [];
+  const walk = (n: TreeNodeData): void => {
+    if (n.children && n.children.length > 0) {
+      keys.push(n.key);
+      n.children.forEach(walk);
+    }
+  };
+  nodes.forEach(walk);
+  return keys;
+}
+
 /** Collect spatial-tree node keys down to `maxDepth` levels (0 = root only). */
 export function collectExpandedKeys(
   node: SpatialNode,
@@ -59,8 +93,8 @@ export function collectExpandedKeys(
 ): string[] {
   if (depth > maxDepth) return [];
   const key = `sp-${String(node.expressID)}`;
-  const childKeys = node.children.flatMap((c) =>
-    collectExpandedKeys(c, maxDepth, depth + 1),
+  const childKeys = node.children.flatMap(
+    (c) => collectExpandedKeys(c, maxDepth, depth + 1),
   );
   return [key, ...childKeys];
 }

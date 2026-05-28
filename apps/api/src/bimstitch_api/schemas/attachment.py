@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from bimstitch_api.models.attachment import AttachmentCategory, AttachmentStatus
 
@@ -45,6 +45,33 @@ class CaptureMetadataInput(BaseModel):
     exif: ExifData | None = None
 
 
+class LinkedPointIfc(BaseModel):
+    type: str = Field(pattern=r"^ifc$")
+    x: float
+    y: float
+    z: float
+
+
+class LinkedPointPdf(BaseModel):
+    type: str = Field(pattern=r"^pdf$")
+    page: int = Field(ge=1)
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+
+
+def _validate_linked_point(v: dict[str, Any] | None) -> dict[str, Any] | None:
+    if v is None:
+        return None
+    point_type = v.get("type")
+    if point_type == "ifc":
+        LinkedPointIfc.model_validate(v)
+    elif point_type == "pdf":
+        LinkedPointPdf.model_validate(v)
+    else:
+        raise ValueError(f"linked_point.type must be 'ifc' or 'pdf', got '{point_type}'")
+    return v
+
+
 class AttachmentInitiateRequest(BaseModel):
     filename: str = Field(min_length=1, max_length=512)
     size_bytes: int = Field(ge=1)
@@ -56,6 +83,11 @@ class AttachmentInitiateRequest(BaseModel):
     linked_point: dict[str, Any] | None = None
     linked_file_id: UUID | None = None
     capture_metadata: CaptureMetadataInput | None = None
+
+    @field_validator("linked_point")
+    @classmethod
+    def validate_linked_point(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _validate_linked_point(v)
 
 
 class AttachmentInitiateResponse(BaseModel):

@@ -4,7 +4,6 @@ import { type JSX, type ReactNode, useCallback, useRef, useState } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
-import { AttachmentsPanel } from './attachments/AttachmentsPanel';
 import type { PanelId } from '@/components/shared/viewer/SideRail';
 
 export type { PanelId } from '@/components/shared/viewer/SideRail';
@@ -25,6 +24,7 @@ type SidePanelProps = {
   activePanel: PanelId | null;
   explorerContent?: ReactNode | undefined;
   propertiesContent?: ReactNode | undefined;
+  attachmentsContent?: ReactNode | undefined;
   measureContent?: ReactNode | undefined;
   sectionContent?: ReactNode | undefined;
   bcfContent?: ReactNode | undefined;
@@ -54,6 +54,7 @@ export function SidePanel({
   activePanel,
   explorerContent,
   propertiesContent,
+  attachmentsContent,
   inspectionsContent,
   measureContent,
   sectionContent,
@@ -125,7 +126,7 @@ export function SidePanel({
             <div className="min-h-0 flex-1 overflow-auto">
               {activePanel === 'explorer' && explorerContent}
               {activePanel === 'properties' && propertiesContent}
-              {activePanel === 'attachments' && <AttachmentsPanel />}
+              {activePanel === 'attachments' && (attachmentsContent ?? <PlaceholderContent label="Attachments" />)}
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
               {activePanel === 'bcf' && bcfContent}

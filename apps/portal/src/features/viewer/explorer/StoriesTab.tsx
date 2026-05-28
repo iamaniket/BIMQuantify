@@ -1,7 +1,9 @@
 'use client';
 
 import { Building } from 'lucide-react';
-import { useMemo, type JSX } from 'react';
+import {
+  useState, useMemo, useCallback, type JSX,
+} from 'react';
 
 import type { ElementEntry, SpatialNode } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
@@ -13,7 +15,10 @@ import {
   collectStoreys,
   elementToLeaf,
   groupElementsBy,
+  filterTree,
 } from './treeBuilders';
+import { ifcClassColor } from './ifcClassColors';
+import { TreeToolbar } from './TreeToolbar';
 import { useTreeExpansion } from './useTreeExpansion';
 
 type StoriesTabProps = {
@@ -26,7 +31,10 @@ export function StoriesTab({
   elements,
 }: StoriesTabProps): JSX.Element {
   const modelId = useViewerEntityStore((s) => s.modelId);
-  const { expanded, toggle } = useTreeExpansion();
+  const showItems = useViewerEntityStore((s) => s.showItems);
+  const hideItems = useViewerEntityStore((s) => s.hideItems);
+  const hidden = useViewerEntityStore((s) => s.hidden);
+  const [filter, setFilter] = useState('');
 
   const storeyNodes = useMemo((): TreeNodeData[] => {
     if (!spatialTree || !elements || !modelId) return [];
@@ -36,27 +44,78 @@ export function StoriesTab({
 
     return [...grouped.entries()].map(([storeyId, items]): TreeNodeData => {
       const storey = storeys.get(storeyId);
-      const label = storey?.name ?? `Storey #${String(storeyId)}`;
-      const children = items.map((el) => elementToLeaf(el, modelId, 'sty'));
+      const storeyName = storey != null ? storey.name : null;
+      const label = storeyName ?? `Storey #${String(storeyId)}`;
+      const children = items.map((el) => ({
+        ...elementToLeaf(el, modelId, 'sty'),
+        color: ifcClassColor(el.type),
+      }));
 
       return {
         key: `storey-${String(storeyId)}`,
-        label: `${label} (${String(items.length)})`,
+        label,
         entityKeys: children.flatMap((c) => c.entityKeys),
         children,
+        count: items.length,
       };
     });
   }, [spatialTree, elements, modelId]);
+
+  const allKeys = useMemo(
+    () => storeyNodes.map((n) => n.key),
+    [storeyNodes],
+  );
+
+  const {
+    expanded, toggle, expandAll, collapseAll,
+  } = useTreeExpansion();
+
+  const handleExpandAll = useCallback(() => {
+    expandAll(allKeys);
+  }, [expandAll, allKeys]);
+
+  const allEntityKeys = useMemo(
+    () => storeyNodes.flatMap((n) => n.entityKeys),
+    [storeyNodes],
+  );
+
+  const allChecked = useMemo(
+    () => allEntityKeys.length > 0 && allEntityKeys.every((k) => !hidden.has(k)),
+    [allEntityKeys, hidden],
+  );
+
+  const handleToggleCheckAll = useCallback(() => {
+    if (allEntityKeys.length === 0) return;
+    if (allChecked) {
+      hideItems(allEntityKeys);
+    } else {
+      showItems(allEntityKeys);
+    }
+  }, [allChecked, showItems, hideItems, allEntityKeys]);
+
+  const filtered = useMemo(() => filterTree(storeyNodes, filter), [storeyNodes, filter]);
 
   if (storeyNodes.length === 0) {
     return <PanelEmptyState icon={Building} message="No storey data available." />;
   }
 
   return (
-    <VirtualizedTree
-      roots={storeyNodes}
-      expanded={expanded}
-      onToggleExpand={toggle}
-    />
+    <>
+      <TreeToolbar
+        query={filter}
+        onQueryChange={setFilter}
+        onExpandAll={handleExpandAll}
+        onCollapseAll={collapseAll}
+        allChecked={allChecked}
+        onToggleCheckAll={handleToggleCheckAll}
+      />
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <VirtualizedTree
+          roots={filtered}
+          expanded={expanded}
+          onToggleExpand={toggle}
+        />
+      </div>
+    </>
   );
 }

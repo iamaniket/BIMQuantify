@@ -88,12 +88,28 @@ function IfcStatusBar({
   const visibleCount = totalElements - hiddenCount;
   const selectionCount = selectedAll ? totalElements : partialCount;
 
+  const hasSelection = selectionCount > 0;
+
   return (
     <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-mono', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
       <span className="flex min-w-0 flex-1 items-center overflow-hidden">
-        <Label>selected</Label>
-        <span>&nbsp;</span>
-        <Value>{selectionCount > 0 ? selectionCount : '—'}</Value>
+        {hasSelection ? (
+          <span className="inline-flex items-center rounded-sm bg-white/15 px-1.5">
+            <span className="text-caption font-bold uppercase tracking-widest text-amber-300">
+              selected
+            </span>
+            <span>&nbsp;</span>
+            <span className="text-caption font-bold tabular-nums tracking-tight text-amber-200">
+              {selectionCount.toLocaleString()}
+            </span>
+          </span>
+        ) : (
+          <>
+            <Label>selected</Label>
+            <span>&nbsp;</span>
+            <Value>—</Value>
+          </>
+        )}
         <Separator />
         <Label>units</Label>
         <span>&nbsp;</span>

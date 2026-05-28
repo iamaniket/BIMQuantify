@@ -31,5 +31,7 @@ export function useTreeExpansion(initial?: Iterable<string>): TreeExpansion {
     setExpanded(new Set());
   }, []);
 
-  return { expanded, toggle, expandAll, collapseAll };
+  return {
+    expanded, toggle, expandAll, collapseAll,
+  };
 }

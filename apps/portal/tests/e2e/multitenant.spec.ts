@@ -525,7 +525,9 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.getByRole('link', { name: /forgot/i }).click();
     await expect(page).toHaveURL(/\/forgot-password/);
 
-    await page.getByLabel(/work email/i).fill(state.memberEmail);
+    const memberEmailInput = page.getByLabel(/work email/i);
+    await memberEmailInput.waitFor({ state: 'visible' });
+    await memberEmailInput.fill(state.memberEmail);
 
     // Intercept the API call so a 429 or 5xx surfaces immediately instead of
     // the UI silently swallowing it and showing "check your inbox" regardless.
@@ -591,7 +593,9 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.getByRole('link', { name: /forgot/i }).click();
     await expect(page).toHaveURL(/\/forgot-password/);
 
-    await page.getByLabel(/work email/i).fill(state.adminEmail);
+    const adminEmailInput = page.getByLabel(/work email/i);
+    await adminEmailInput.waitFor({ state: 'visible' });
+    await adminEmailInput.fill(state.adminEmail);
 
     const [forgotResp] = await Promise.all([
       page.waitForResponse(

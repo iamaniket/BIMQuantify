@@ -6,7 +6,7 @@ import { cn } from '@bimstitch/ui';
 
 type TreeContainerProps = {
   children: ReactNode;
-  className?: string;
+  className?: string; // eslint-disable-line no-restricted-syntax -- optional with cn() fallback
 };
 
 export function TreeContainer({

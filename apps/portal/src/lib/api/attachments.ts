@@ -66,12 +66,22 @@ export async function completeAttachmentUpload(
 export async function listAttachments(
   accessToken: string,
   projectId: string,
-  category?: AttachmentCategoryValue,
-  linkedElementGlobalId?: string,
+  filters?: {
+    category?: AttachmentCategoryValue;
+    linkedElementGlobalId?: string;
+    linkedFileId?: string;
+    unlinked?: boolean;
+    linkedPointType?: string;
+    linkedPointPage?: number;
+  },
 ): Promise<AttachmentList> {
   const params = new URLSearchParams();
-  if (category !== undefined) params.set('category', category);
-  if (linkedElementGlobalId !== undefined) params.set('linked_element_global_id', linkedElementGlobalId);
+  if (filters?.category !== undefined) params.set('category', filters.category);
+  if (filters?.linkedElementGlobalId !== undefined) params.set('linked_element_global_id', filters.linkedElementGlobalId);
+  if (filters?.linkedFileId !== undefined) params.set('linked_file_id', filters.linkedFileId);
+  if (filters?.unlinked === true) params.set('unlinked', 'true');
+  if (filters?.linkedPointType !== undefined) params.set('linked_point_type', filters.linkedPointType);
+  if (filters?.linkedPointPage !== undefined) params.set('linked_point_page', String(filters.linkedPointPage));
   const query = params.size === 0 ? '' : `?${params.toString()}`;
   return apiClient.get<AttachmentList>(
     `/projects/${projectId}/attachments${query}`,

@@ -1,6 +1,8 @@
 'use client';
 
-import { type CSSProperties, type JSX, type ReactElement, useMemo } from 'react';
+import {
+  type CSSProperties, type JSX, type ReactElement, useMemo,
+} from 'react';
 import { List } from 'react-window';
 
 import { TreeRow } from './TreeRow';
@@ -25,7 +27,7 @@ function flattenTree(
   return rows;
 }
 
-const ROW_HEIGHT = 28;
+const ROW_HEIGHT = 30;
 
 type RowProps = {
   rows: FlatRow[];
@@ -44,12 +46,13 @@ function VirtualRow({
   style: CSSProperties;
   ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' };
 } & RowProps): ReactElement {
-  const { node, depth } = rows[index]!;
+  const row = rows[index];
+  if (!row) return <div style={style} />;
   return (
     <TreeRow
       style={style}
-      node={node}
-      depth={depth}
+      node={row.node}
+      depth={row.depth}
       expanded={expanded}
       onToggleExpand={onToggleExpand}
     />

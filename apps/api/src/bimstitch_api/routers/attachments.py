@@ -13,7 +13,7 @@ from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import Integer, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -293,6 +293,10 @@ async def list_attachments(
     project_id: UUID,
     category: Annotated[AttachmentCategory | None, Query()] = None,
     linked_element_global_id: Annotated[str | None, Query(max_length=22)] = None,
+    linked_file_id: Annotated[UUID | None, Query()] = None,
+    unlinked: Annotated[bool, Query()] = False,
+    linked_point_type: Annotated[str | None, Query(max_length=10)] = None,
+    linked_point_page: Annotated[int | None, Query(ge=1)] = None,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -314,6 +318,16 @@ async def list_attachments(
         stmt = stmt.where(Attachment.attachment_category == category)
     if linked_element_global_id is not None:
         stmt = stmt.where(Attachment.linked_element_global_id == linked_element_global_id)
+    if linked_file_id is not None:
+        stmt = stmt.where(Attachment.linked_file_id == linked_file_id)
+    if unlinked:
+        stmt = stmt.where(Attachment.linked_element_global_id.is_(None))
+    if linked_point_type is not None:
+        stmt = stmt.where(Attachment.linked_point["type"].astext == linked_point_type)
+    if linked_point_page is not None:
+        stmt = stmt.where(
+            Attachment.linked_point["page"].astext.cast(Integer) == linked_point_page
+        )
 
     result = await session.execute(stmt)
     return list(result.scalars().all())

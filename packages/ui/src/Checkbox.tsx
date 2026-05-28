@@ -5,7 +5,7 @@ import { cn } from './lib/cn.js';
 export type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>;
 
 const baseStyles =
-  'size-4 cursor-pointer rounded border border-border bg-background accent-primary '
+  'size-[18px] cursor-pointer rounded border border-border bg-background accent-primary '
   + 'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 '
   + 'disabled:cursor-not-allowed disabled:opacity-60';
 
