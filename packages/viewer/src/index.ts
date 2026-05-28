@@ -96,6 +96,7 @@ export { effectsPlugin } from './plugins/effects/index.js';
 export { interactivePerformancePlugin } from './plugins/interactive-performance/index.js';
 export { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
 export { visibilityPlugin } from './plugins/visibility/index.js';
+export { eraserPlugin } from './plugins/eraser/index.js';
 export { contextMenuPlugin } from './plugins/context-menu/index.js';
 export { xrayPlugin } from './plugins/xray/index.js';
 export { sectionPlugin } from './plugins/section/index.js';

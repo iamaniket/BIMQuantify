@@ -3,6 +3,7 @@
 import {
   Axis3D,
   Box,
+  Eraser,
   Glasses,
   Home,
   MousePointer2,
@@ -36,11 +37,15 @@ export function Toolbar({
 
   useEffect(() => {
     if (!handle) return;
-    return handle.events.on('mode:exit', ({ toolName }) => {
+    const offMode = handle.events.on('mode:exit', ({ toolName }) => {
       if (toolName.startsWith('walkthrough')) {
         setActiveTool('select');
       }
     });
+    const offEraser = handle.events.on('eraser:change', ({ active }) => {
+      if (!active) setActiveTool('select');
+    });
+    return () => { offMode(); offEraser(); };
   }, [handle]);
 
   const run = (cmd: string): void => {
@@ -63,7 +68,28 @@ export function Toolbar({
           icon: MousePointer2,
           label: 'Select',
           isActive: activeTool === 'select',
-          onClick: () => { setActiveTool('select'); },
+          onClick: () => {
+            if (activeTool === 'eraser') run('eraser.exit');
+            if (activeTool === 'walkthrough') run('walkthrough.exit');
+            setActiveTool('select');
+          },
+        },
+        {
+          type: 'button',
+          id: 'eraser',
+          icon: Eraser,
+          label: 'Eraser',
+          isActive: activeTool === 'eraser',
+          onClick: () => {
+            if (activeTool === 'eraser') {
+              run('eraser.exit');
+              setActiveTool('select');
+            } else {
+              if (activeTool === 'walkthrough') run('walkthrough.exit');
+              run('eraser.enter');
+              setActiveTool('eraser');
+            }
+          },
         },
       ],
     },
@@ -89,6 +115,7 @@ export function Toolbar({
               run('walkthrough.exit');
               setActiveTool('select');
             } else {
+              if (activeTool === 'eraser') run('eraser.exit');
               run('walkthrough.enter');
               setActiveTool('walkthrough');
             }

@@ -56,12 +56,18 @@ export function ClassesTab({
   );
 
   const {
-    expanded, toggle, expandAll, collapseAll,
+    expanded, toggle, expandAll, collapseAll, isAllExpanded,
   } = useTreeExpansion();
 
-  const handleExpandAll = useCallback(() => {
-    expandAll(allKeys);
-  }, [expandAll, allKeys]);
+  const allExpanded = isAllExpanded(allKeys);
+
+  const handleToggleExpand = useCallback(() => {
+    if (allExpanded) {
+      collapseAll();
+    } else {
+      expandAll(allKeys);
+    }
+  }, [allExpanded, collapseAll, expandAll, allKeys]);
 
   const allEntityKeys = useMemo(
     () => classNodes.flatMap((n) => n.entityKeys),
@@ -93,8 +99,8 @@ export function ClassesTab({
       <TreeToolbar
         query={filter}
         onQueryChange={setFilter}
-        onExpandAll={handleExpandAll}
-        onCollapseAll={collapseAll}
+        isAllExpanded={allExpanded}
+        onToggleExpand={handleToggleExpand}
         allChecked={allChecked}
         onToggleCheckAll={handleToggleCheckAll}
       />

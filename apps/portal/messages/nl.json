@@ -1606,6 +1606,12 @@
       "hideAll": "Alles verbergen",
       "selectAll": "Alles selecteren",
       "deselectAll": "Alles deselecteren"
+    },
+    "properties": {
+      "filter": "Eigenschappen filteren…",
+      "expandAll": "Alles uitklappen",
+      "collapseAll": "Alles inklappen",
+      "clear": "wissen"
     }
   },
   "viewerInspections": {

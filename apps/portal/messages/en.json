@@ -1606,6 +1606,12 @@
       "hideAll": "Hide all",
       "selectAll": "Select all",
       "deselectAll": "Deselect all"
+    },
+    "properties": {
+      "filter": "Filter properties…",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "clear": "clear"
     }
   },
   "viewerInspections": {

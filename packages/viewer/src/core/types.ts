@@ -69,6 +69,7 @@ export interface ViewerEvents {
   'marker:change': { markers: Array<{ id: string; label: string; position: Vec3 }> };
   'marker:click': { id: string; position: Vec3 };
   'grid:change': { visible: boolean };
+  'eraser:change': { active: boolean };
   'command:executed': { name: string; ok: boolean; error?: string };
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };

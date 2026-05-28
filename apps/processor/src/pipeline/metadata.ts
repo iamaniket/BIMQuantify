@@ -10,6 +10,7 @@ import {
   IFCBUILDING,
   IFCBUILDINGSTOREY,
   IFCPROJECT,
+  IFCRELAGGREGATES,
   IFCRELCONTAINEDINSPATIALSTRUCTURE,
   IFCSITE,
   IFCSPACE,
@@ -223,6 +224,55 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
       });
     }
   }
+
+  // Some elements only exist as decomposed parts via IfcRelAggregates, never
+  // in IfcRelContainedInSpatialStructure (e.g. IfcSpace decomposed from a
+  // storey, IfcStairFlight from a stair, IfcMember/IfcPlate from a curtain
+  // wall). Walk aggregation relationships and collect any element that wasn't
+  // already gathered via containment, excluding spatial container types that
+  // form the tree hierarchy (Project/Site/Building/Storey).
+  const SPATIAL_CONTAINERS = new Set([IFCPROJECT, IFCSITE, IFCBUILDING, IFCBUILDINGSTOREY]);
+  const seen = new Set(elements.map((e) => e.expressID));
+  const aggIds = api.GetLineIDsWithType(modelID, IFCRELAGGREGATES);
+  for (let i = 0; i < aggIds.size(); i += 1) {
+    const rel = api.GetLine(modelID, aggIds.get(i), true) as Record<
+      string,
+      unknown
+    >;
+    const relating = rel['RelatingObject'] as
+      | Record<string, unknown>
+      | undefined;
+    const containedIn = relating ? numberValue(relating['expressID']) : null;
+    const related = rel['RelatedObjects'];
+    if (!Array.isArray(related)) continue;
+    for (const obj of related) {
+      const child = obj as Record<string, unknown>;
+      const childID = numberValue(child['expressID']);
+      if (childID === null || seen.has(childID)) continue;
+      const code = api.GetLineType(modelID, childID);
+      if (SPATIAL_CONTAINERS.has(code)) continue;
+      const rawName = (
+        api as unknown as {
+          GetNameFromTypeCode?: (c: number) => string;
+        }
+      ).GetNameFromTypeCode?.(code);
+      if (typeof rawName !== 'string') continue;
+      const type = IFC_UPPERCASE_TO_PASCAL.get(rawName) ?? rawName;
+      const line = api.GetLine(modelID, childID, true) as Record<
+        string,
+        unknown
+      >;
+      seen.add(childID);
+      elements.push({
+        expressID: childID,
+        globalId: stringValue(line['GlobalId']),
+        type,
+        name: stringValue(line['Name']),
+        containedIn,
+      });
+    }
+  }
+
   return elements;
 }
 

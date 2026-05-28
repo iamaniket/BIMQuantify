@@ -25,6 +25,7 @@ type MenuItem = {
   icon?: JSX.Element;
   command?: string;
   commandArgs?: unknown;
+  action?: () => void;
   disabled?: boolean;
   children?: MenuItem[];
   separator?: boolean;
@@ -32,63 +33,43 @@ type MenuItem = {
 
 type Props = {
   handle: ViewerHandle | null;
+  onInspectProperties?: (item: ContextMenuData['item']) => void;
 };
 
 const ICON_CLASS = 'h-4 w-4 shrink-0 text-foreground-secondary';
 
 function buildMenu(
   hasSelection: boolean,
+  isAllSelected: boolean,
   hasHidden: boolean,
   hasXray: boolean,
   item: ContextMenuData['item'],
+  onInspect?: () => void,
 ): MenuItem[] {
   const hasItem = item !== null;
 
-  const visibilityChildren: MenuItem[] = [
-    hasHidden ? { label: 'Show All', command: 'visibility.showAll' } : null,
-    { label: 'Hide All', command: 'visibility.hideAll' },
-    ...(hasItem
-      ? [
-          { label: '', separator: true } as MenuItem,
-          { label: 'Hide', command: 'visibility.hideItem', commandArgs: item } as MenuItem,
-          { label: 'Show Only This', command: 'visibility.isolateItem', commandArgs: item } as MenuItem,
-        ]
-      : []),
-  ].filter(Boolean) as MenuItem[];
-
-  const xrayChildren: MenuItem[] = [
-    { label: 'X-Ray All', command: 'xray.all' },
-    hasXray ? { label: 'Clear X-Ray', command: 'xray.clear' } : null,
-    ...(hasItem
-      ? [
-          { label: '', separator: true } as MenuItem,
-          { label: 'X-Ray', command: 'xray.set', commandArgs: item } as MenuItem,
-          { label: 'X-Ray Others', command: 'xray.allExceptItem', commandArgs: item } as MenuItem,
-        ]
-      : []),
-  ].filter(Boolean) as MenuItem[];
-
   return [
-    {
-      label: 'Inspect Properties',
-      icon: <Search className={ICON_CLASS} />,
-      disabled: !hasItem,
-    },
+    hasItem
+      ? {
+          label: 'Inspect Properties',
+          icon: <Search className={ICON_CLASS} />,
+          action: onInspect,
+        }
+      : null,
+    hasItem ? { label: '', separator: true } : null,
+    hasHidden ? { label: 'Show All', icon: <Eye className={ICON_CLASS} />, command: 'visibility.showAll' } : null,
+    !hasHidden ? { label: 'Hide All', icon: <Eye className={ICON_CLASS} />, command: 'visibility.hideAll' } : null,
+    hasItem ? { label: 'Hide', icon: <Eye className={ICON_CLASS} />, command: 'visibility.hideItem', commandArgs: item } : null,
+    hasItem ? { label: 'Show Only This', icon: <Eye className={ICON_CLASS} />, command: 'visibility.isolateItem', commandArgs: item } : null,
     { label: '', separator: true },
-    {
-      label: 'Visibility',
-      icon: <Eye className={ICON_CLASS} />,
-      children: visibilityChildren,
-    },
-    {
-      label: 'X-Ray',
-      icon: <Glasses className={ICON_CLASS} />,
-      children: xrayChildren,
-    },
+    !hasXray ? { label: 'X-Ray All', icon: <Glasses className={ICON_CLASS} />, command: 'xray.all' } : null,
+    hasXray ? { label: 'Clear X-Ray', icon: <Glasses className={ICON_CLASS} />, command: 'xray.clear' } : null,
+    hasItem ? { label: 'X-Ray', icon: <Glasses className={ICON_CLASS} />, command: 'xray.set', commandArgs: item } : null,
+    hasItem ? { label: 'X-Ray Others', icon: <Glasses className={ICON_CLASS} />, command: 'xray.allExceptItem', commandArgs: item } : null,
     { label: '', separator: true },
-    { label: 'Select All', command: 'selection.selectAll' },
+    !isAllSelected ? { label: 'Select All', command: 'selection.selectAll' } : null,
     hasSelection ? { label: 'Clear Selection', command: 'selection.clear' } : null,
-    hasSelection ? { label: 'Invert Selection', command: 'selection.invert' } : null,
+    hasSelection && !isAllSelected ? { label: 'Invert Selection', command: 'selection.invert' } : null,
   ].filter(Boolean) as MenuItem[];
 }
 
@@ -127,7 +108,9 @@ function MenuItemRow({
 
   const handleClick = (): void => {
     if (isDisabled) return;
-    if (item.command) {
+    if (item.action) {
+      item.action();
+    } else if (item.command) {
       onCommand(item.command, item.commandArgs);
     }
   };
@@ -218,7 +201,7 @@ function SubMenu({
   );
 }
 
-export function ContextMenu({ handle }: Props): JSX.Element | null {
+export function ContextMenu({ handle, onInspectProperties }: Props): JSX.Element | null {
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -268,13 +251,22 @@ export function ContextMenu({ handle }: Props): JSX.Element | null {
     [handle],
   );
 
+  const handleInspect = useCallback(() => {
+    if (!handle || !menu?.item) return;
+    handle.commands.execute('selection.set', menu.item).catch(() => undefined);
+    handle.commands.execute('contextMenu.close').catch(() => undefined);
+    onInspectProperties?.(menu.item);
+  }, [handle, menu, onInspectProperties]);
+
   if (!menu) return null;
 
   const items = buildMenu(
     viewerState.selectionCount > 0,
+    viewerState.selectionCount === Number.MAX_SAFE_INTEGER,
     viewerState.hasHidden || viewerState.isIsolated,
     viewerState.hasXray,
     menu.item,
+    handleInspect,
   );
 
   return (

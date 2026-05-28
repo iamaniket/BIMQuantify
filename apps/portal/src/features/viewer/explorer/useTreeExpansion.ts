@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 export type TreeExpansion = {
   expanded: Set<string>;
   toggle: (key: string) => void;
   expandAll: (keys: string[]) => void;
   collapseAll: () => void;
+  isAllExpanded: (allKeys: string[]) => boolean;
 };
 
 export function useTreeExpansion(initial?: Iterable<string>): TreeExpansion {
@@ -31,7 +32,11 @@ export function useTreeExpansion(initial?: Iterable<string>): TreeExpansion {
     setExpanded(new Set());
   }, []);
 
+  const isAllExpanded = useCallback((allKeys: string[]) => (
+    allKeys.length > 0 && allKeys.every((k) => expanded.has(k))
+  ), [expanded]);
+
   return {
-    expanded, toggle, expandAll, collapseAll,
+    expanded, toggle, expandAll, collapseAll, isAllExpanded,
   };
 }

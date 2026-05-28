@@ -170,6 +170,8 @@ export type { MarkerPluginAPI, MarkerPluginOptions, MarkerData } from './plugins
 
 export type { GridPluginAPI, GridPluginOptions } from './plugins/grid/index.js';
 
+export type { EraserPluginAPI } from './plugins/eraser/index.js';
+
 export type {
   Plugin,
   ViewerContext,

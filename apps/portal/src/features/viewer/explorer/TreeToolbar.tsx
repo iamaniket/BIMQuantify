@@ -9,8 +9,8 @@ import { Input } from '@bimstitch/ui';
 type TreeToolbarProps = {
   query: string;
   onQueryChange: (q: string) => void;
-  onExpandAll: () => void;
-  onCollapseAll: () => void;
+  isAllExpanded: boolean;
+  onToggleExpand: () => void;
   allChecked: boolean;
   onToggleCheckAll: () => void;
 };
@@ -24,8 +24,8 @@ const toolBtnClass = [
 export function TreeToolbar({
   query,
   onQueryChange,
-  onExpandAll,
-  onCollapseAll,
+  isAllExpanded,
+  onToggleExpand,
   allChecked,
   onToggleCheckAll,
 }: TreeToolbarProps): JSX.Element {
@@ -59,24 +59,15 @@ export function TreeToolbar({
       {/* Expand / collapse all */}
       <button
         type="button"
-        title={t('expandAll')}
-        onClick={onExpandAll}
+        title={isAllExpanded ? t('collapseAll') : t('expandAll')}
+        onClick={onToggleExpand}
         className={toolBtnClass}
         style={{ color: 'var(--fg-3)' }}
       >
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="3,6 8,11 13,6" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        title={t('collapseAll')}
-        onClick={onCollapseAll}
-        className={toolBtnClass}
-        style={{ color: 'var(--fg-3)' }}
-      >
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="3,10 8,5 13,10" />
+          {isAllExpanded
+            ? <polyline points="3,10 8,5 13,10" />
+            : <polyline points="3,6 8,11 13,6" />}
         </svg>
       </button>
 

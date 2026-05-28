@@ -34,6 +34,7 @@ import { PagesPanel } from '@/components/shared/viewer/pages/PagesPanel';
 import { ContextMenu } from '@/features/viewer/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/explorer/ModelExplorer';
 import { PropertiesPanel } from '@/features/viewer/properties/PropertiesPanel';
+import { PropertiesCounter } from '@/features/viewer/properties/PropertiesCounter';
 import { AttachmentsPanel } from '@/features/viewer/attachments/AttachmentsPanel';
 import { PdfAnnotationLayer, type PdfPin } from '@/features/viewer/attachments/PdfAnnotationLayer';
 import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
@@ -392,7 +393,7 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
 
-        {isIfc ? <ContextMenu handle={viewerHandleRef.current} /> : null}
+        {isIfc ? <ContextMenu handle={viewerHandleRef.current} onInspectProperties={() => setActivePanel('properties')} /> : null}
 
         {showChrome ? (
           <>
@@ -450,6 +451,7 @@ export default function ViewerPage(): JSX.Element {
               ) : undefined}
               headerActions={isIfc ? {
                 explorer: <ExplorerCounter metadata={metadata} />,
+                properties: <PropertiesCounter metadata={metadata} properties={properties} />,
                 measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
                 bcf: <BcfHeaderActions handle={viewerHandleRef.current} />,
               } : undefined}

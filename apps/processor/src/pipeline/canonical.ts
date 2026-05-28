@@ -112,6 +112,11 @@ const EXTRA_PRODUCT_TYPES: readonly string[] = [
   'IfcPipeSegment',
   'IfcFlowFitting',
   'IfcFlowTerminal',
+  'IfcFooting',
+  'IfcPile',
+  'IfcRamp',
+  'IfcFlowSegment',
+  'IfcDistributionPort',
 ];
 
 export const IFC_UPPERCASE_TO_PASCAL: ReadonlyMap<string, string> = new Map([
