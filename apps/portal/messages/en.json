@@ -538,6 +538,19 @@
         "reference": "Reference",
         "createdAt": "Created {date}"
       },
+      "chartsPanel": {
+        "dossierTitle": "Dossier",
+        "deadlinesTitle": "Deadlines",
+        "documentsTitle": "Documents",
+        "activityTitle": "Activity",
+        "noData": "No data yet",
+        "met": "Met",
+        "pending": "Pending",
+        "overdue": "Overdue",
+        "photos": "Photos",
+        "documents": "Documents",
+        "of": "{count} files"
+      },
       "models": {
         "label": "Models",
         "columnName": "Name",

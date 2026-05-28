@@ -81,6 +81,8 @@ export const ViewerBundleResponseSchema = z.object({
   file_type: FileTypeEnum,
   fragments_url: z.union([z.string().url(), z.null()]),
   fragments_key: z.union([z.string(), z.null()]),
+  edges_url: z.union([z.string().url(), z.null()]),
+  edges_key: z.union([z.string(), z.null()]),
   metadata_url: z.union([z.string().url(), z.null()]),
   properties_url: z.union([z.string().url(), z.null()]),
   file_url: z.union([z.string().url(), z.null()]),

@@ -125,11 +125,14 @@ export async function uploadViaCaptureLink(
   }
   const initResponse = await initiateCaptureUpload(orgId, token, initInput);
 
-  await fetch(initResponse.upload_url, {
+  const putResponse = await fetch(initResponse.upload_url, {
     method: 'PUT',
     body: file,
     headers: { 'Content-Type': file.type === '' ? 'image/jpeg' : file.type },
   });
+  if (!putResponse.ok) {
+    throw new ApiError(putResponse.status, `Upload to storage failed: ${putResponse.statusText}`);
+  }
 
   return completeCaptureUpload(orgId, token, initResponse.attachment_id);
 }

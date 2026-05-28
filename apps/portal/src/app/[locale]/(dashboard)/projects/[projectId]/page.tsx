@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 
-import { useState, type JSX } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, Skeleton } from '@bimstitch/ui';
 
@@ -11,20 +11,53 @@ import { ModelFiles } from '@/features/models/ModelFiles';
 import { ApiError } from '@/lib/api/client';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
+import { useAttachments } from '@/features/attachments/useAttachments';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
-import { ProjectOverviewCard } from '@/features/projects/detail/ProjectOverviewCard';
+import { ProjectChartsPanel } from '@/features/projects/detail/ProjectChartsPanel';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
 import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
+import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
+import { useProjectActivity } from '@/features/projects/detail/useProjectActivity';
+import { computeDossierCompleteness } from '@/features/projects/detail/dossierTemplate';
 
 export default function ProjectDetailPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
   const projectQuery = useProject(projectId);
   const modelsQuery = useModels(projectId);
+  const deadlinesQuery = useDeadlines(projectId);
+  const attachmentsQuery = useAttachments(projectId);
+  const activityQuery = useProjectActivity(projectId);
 
   const [uploadModelId, setUploadModelId] = useState<string | null>(null);
+
+  const deadlines = deadlinesQuery.data ?? [];
+  const attachments = attachmentsQuery.data ?? [];
+  const activityEntries = activityQuery.data ?? [];
+
+  const deadlinesSummary = useMemo(() => {
+    let met = 0;
+    let overdue = 0;
+    for (const d of deadlines) {
+      if (d.status === 'met') met++;
+      else if (d.is_overdue) overdue++;
+    }
+    return { met, total: deadlines.length, overdue };
+  }, [deadlines]);
+
+  const documentCount = useMemo(
+    () => attachments.filter((a) => a.status === 'ready').length,
+    [attachments],
+  );
+
+  const buildingType = projectQuery.data?.building_type ?? null;
+
+  const dossierPct = useMemo(
+    () => computeDossierCompleteness(buildingType, attachments).pct,
+    [buildingType, attachments],
+  );
 
   if (projectQuery.isLoading) {
     return (
@@ -69,6 +102,9 @@ export default function ProjectDetailPage(): JSX.Element {
       hero={
         <ProjectDetailHeader
           project={project}
+          deadlinesSummary={deadlinesSummary}
+          documentCount={documentCount}
+          dossierPct={dossierPct}
         />
       }
     >
@@ -95,7 +131,12 @@ export default function ProjectDetailPage(): JSX.Element {
       </Dialog>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 xl:grid-cols-2">
-        <ProjectOverviewCard project={project} />
+        <ProjectChartsPanel
+          buildingType={buildingType}
+          deadlines={deadlines}
+          attachments={attachments}
+          activityEntries={activityEntries}
+        />
 
         <div className="grid min-h-0 grid-rows-[3fr_2fr] gap-3.5">
           <RightColumnTabs

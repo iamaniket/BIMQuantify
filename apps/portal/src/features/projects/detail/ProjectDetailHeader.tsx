@@ -22,12 +22,24 @@ import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdic
 import { INSTRUMENT_OPTIONS } from '@/features/projects/wizard/projectWizardSteps';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 
+type DeadlinesSummary = {
+  met: number;
+  total: number;
+  overdue: number;
+};
+
 type Props = {
   project: Project;
+  deadlinesSummary?: DeadlinesSummary;
+  documentCount?: number;
+  dossierPct?: number;
 };
 
 export function ProjectDetailHeader({
   project,
+  deadlinesSummary,
+  documentCount,
+  dossierPct,
 }: Props): JSX.Element {
   const locale = useLocale() as Locale;
   const tStatuses = useTranslations('projects.statuses');
@@ -147,9 +159,37 @@ export function ProjectDetailHeader({
       badge={badgeRow}
       subtitle={subtitleRow}
       kpis={[
-        { label: tHero('deadlines'), value: tHero('noDeadlines'), sub: tHero('noDeadlines') },
-        { label: tHero('documents'), value: '—', sub: tHero('noDocuments') },
-        { label: tHero('holdback'), value: '—', sub: tHero('dossierReady', { pct: 0 }) },
+        {
+          label: tHero('deadlines'),
+          value: deadlinesSummary !== undefined && deadlinesSummary.total > 0
+            ? `${String(deadlinesSummary.met)}/${String(deadlinesSummary.total)}`
+            : tHero('noDeadlines'),
+          sub: deadlinesSummary !== undefined && deadlinesSummary.total > 0
+            ? tHero('deadlinesMetCount', { met: deadlinesSummary.met, total: deadlinesSummary.total })
+            : tHero('noDeadlines'),
+          ...(deadlinesSummary !== undefined && deadlinesSummary.overdue > 0
+            ? { color: 'var(--error)' }
+            : {}),
+        },
+        {
+          label: tHero('documents'),
+          value: documentCount !== undefined && documentCount > 0
+            ? String(documentCount)
+            : '—',
+          sub: documentCount !== undefined && documentCount > 0
+            ? tHero('documentsCount', { count: documentCount })
+            : tHero('noDocuments'),
+        },
+        {
+          label: tHero('holdback'),
+          value: dossierPct !== undefined ? `${String(dossierPct)}%` : '—',
+          sub: tHero('dossierReady', { pct: dossierPct ?? 0 }),
+          ...(dossierPct !== undefined && dossierPct >= 85
+            ? { color: 'var(--success)' }
+            : dossierPct !== undefined && dossierPct >= 70
+              ? { color: 'var(--warning)' }
+              : {}),
+        },
         { label: tHero('delivery'), value: opleveringValue, sub: opleveringSub },
       ]}
       action={

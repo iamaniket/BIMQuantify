@@ -538,6 +538,19 @@
         "reference": "Referentie",
         "createdAt": "Aangemaakt {date}"
       },
+      "chartsPanel": {
+        "dossierTitle": "Dossier",
+        "deadlinesTitle": "Deadlines",
+        "documentsTitle": "Documenten",
+        "activityTitle": "Activiteit",
+        "noData": "Nog geen gegevens",
+        "met": "Voldaan",
+        "pending": "In afwachting",
+        "overdue": "Te laat",
+        "photos": "Foto's",
+        "documents": "Documenten",
+        "of": "{count} bestanden"
+      },
       "models": {
         "label": "Modellen",
         "columnName": "Naam",
