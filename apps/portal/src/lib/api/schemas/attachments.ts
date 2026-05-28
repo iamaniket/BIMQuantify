@@ -25,6 +25,7 @@ export const AttachmentSchema = z.object({
   linked_point: z.union([z.record(z.unknown()), z.null()]),
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   capture_metadata: z.union([z.record(z.unknown()), z.null()]),
+  server_metadata: z.union([z.record(z.unknown()), z.null()]),
   version_number: z.number(),
   parent_attachment_id: z.union([z.string().uuid(), z.null()]),
   created_at: z.string(),

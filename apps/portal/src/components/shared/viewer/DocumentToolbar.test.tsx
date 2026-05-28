@@ -44,6 +44,7 @@ describe('DocumentToolbar search', () => {
       { pageIndex: 5, matchesOnPage: 1 },
     ]);
 
+    const onSearchHighlightChange = vi.fn();
     render(
       <IntlWrapper locale="en">
         <DocumentToolbar
@@ -58,6 +59,7 @@ describe('DocumentToolbar search', () => {
           onScaleChange={vi.fn()}
           onActiveToolChange={vi.fn()}
           onSettingsChange={vi.fn()}
+          onSearchHighlightChange={onSearchHighlightChange}
         />
       </IntlWrapper>,
     );
@@ -75,10 +77,12 @@ describe('DocumentToolbar search', () => {
     await waitFor(() => {
       expect(onPageChange).toHaveBeenCalledWith(2);
     });
-    // Match count rendered (4 total matches on 2 pages).
+    // Match count rendered as "current / total".
     await waitFor(() => {
-      expect(screen.getByText('4 matches on 2 pages')).toBeInTheDocument();
+      expect(screen.getByText('1 / 4')).toBeInTheDocument();
     });
+    // Highlight callback should have been called.
+    expect(onSearchHighlightChange).toHaveBeenCalledWith({ query: 'fire', activeMatchIndex: 0 });
   });
 
   it('renders empty-state when there are no matches', async () => {
@@ -99,6 +103,7 @@ describe('DocumentToolbar search', () => {
           onScaleChange={vi.fn()}
           onActiveToolChange={vi.fn()}
           onSettingsChange={vi.fn()}
+          onSearchHighlightChange={vi.fn()}
         />
       </IntlWrapper>,
     );
@@ -114,8 +119,9 @@ describe('DocumentToolbar search', () => {
     expect(onPageChange).not.toHaveBeenCalled();
   });
 
-  it('cycles through hits with next/prev buttons', async () => {
+  it('cycles through individual matches with next/prev buttons', async () => {
     const onPageChange = vi.fn();
+    const onSearchHighlightChange = vi.fn();
     const handle = buildHandle([
       { pageIndex: 2, matchesOnPage: 1 },
       { pageIndex: 7, matchesOnPage: 2 },
@@ -136,6 +142,7 @@ describe('DocumentToolbar search', () => {
           onScaleChange={vi.fn()}
           onActiveToolChange={vi.fn()}
           onSettingsChange={vi.fn()}
+          onSearchHighlightChange={onSearchHighlightChange}
         />
       </IntlWrapper>,
     );
@@ -145,18 +152,31 @@ describe('DocumentToolbar search', () => {
     fireEvent.change(input, { target: { value: 'wall' } });
     fireEvent.submit(input.closest('form')!);
 
+    // First match: page 2, local index 0.
     await waitFor(() => {
       expect(onPageChange).toHaveBeenLastCalledWith(2);
     });
 
+    // Next → page 7, local 0 (second match globally).
     fireEvent.click(screen.getByTestId('document-search-next'));
     expect(onPageChange).toHaveBeenLastCalledWith(7);
+    expect(onSearchHighlightChange).toHaveBeenLastCalledWith({ query: 'wall', activeMatchIndex: 0 });
+
+    // Next → page 7, local 1 (third match, still same page).
+    fireEvent.click(screen.getByTestId('document-search-next'));
+    expect(onPageChange).toHaveBeenLastCalledWith(7);
+    expect(onSearchHighlightChange).toHaveBeenLastCalledWith({ query: 'wall', activeMatchIndex: 1 });
+
+    // Next → page 9, local 0.
     fireEvent.click(screen.getByTestId('document-search-next'));
     expect(onPageChange).toHaveBeenLastCalledWith(9);
-    // Wraps back to first.
+    expect(onSearchHighlightChange).toHaveBeenLastCalledWith({ query: 'wall', activeMatchIndex: 0 });
+
+    // Wraps back to page 2, local 0.
     fireEvent.click(screen.getByTestId('document-search-next'));
     expect(onPageChange).toHaveBeenLastCalledWith(2);
-    // Prev wraps backward.
+
+    // Prev wraps backward to page 9.
     fireEvent.click(screen.getByTestId('document-search-prev'));
     expect(onPageChange).toHaveBeenLastCalledWith(9);
   });

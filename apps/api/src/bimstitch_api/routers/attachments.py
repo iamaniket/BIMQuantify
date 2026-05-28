@@ -17,17 +17,23 @@ from sqlalchemy import Integer, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+import logging
+
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.jobs import DispatchJobError, dispatch_job
 from bimstitch_api.models.attachment import (
     ATTACHMENT_ALLOWED_EXTENSIONS,
     Attachment,
     AttachmentCategory,
     AttachmentStatus,
 )
+from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.user import User
+
+logger = logging.getLogger(__name__)
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
@@ -215,6 +221,7 @@ async def complete_attachment_upload(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
+    settings: Settings = Depends(get_settings),
 ) -> Attachment:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
@@ -285,6 +292,30 @@ async def complete_attachment_upload(
         project_id=project.id,
         request=request,
     )
+
+    if att.attachment_category == AttachmentCategory.image:
+        job = Job(
+            project_id=project.id,
+            job_type=JobType.image_metadata_extraction,
+            status=JobStatus.pending,
+            payload={
+                "attachment_id": str(att.id),
+                "project_id": str(project.id),
+                "storage_key": att.storage_key,
+                "bucket": bucket,
+            },
+            created_by_user_id=user.id,
+        )
+        session.add(job)
+        await session.flush()
+        try:
+            await dispatch_job(job, settings, active_org_id)
+        except DispatchJobError as exc:
+            job.status = JobStatus.failed
+            job.error = f"DISPATCH_FAILED: {exc}"[:500]
+            logger.warning("Image metadata dispatch failed for %s: %s", att.storage_key, exc)
+            await session.flush()
+
     return att
 
 

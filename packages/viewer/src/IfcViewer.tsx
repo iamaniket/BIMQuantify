@@ -38,6 +38,9 @@ import { viewpointsPlugin } from './plugins/viewpoints/index.js';
 import { bcfPlugin } from './plugins/bcf/index.js';
 import { markerPlugin } from './plugins/marker/index.js';
 import { gridPlugin } from './plugins/grid/index.js';
+import { screenshotPlugin } from './plugins/screenshot/index.js';
+import { colorCodingPlugin } from './plugins/color-coding/index.js';
+import { exploderPlugin } from './plugins/exploder/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
 
 /**
@@ -137,6 +140,9 @@ function IfcViewerImpl(
       bcfPlugin(),
       markerPlugin(),
       gridPlugin(),
+      screenshotPlugin(),
+      colorCodingPlugin(),
+      exploderPlugin(),
     ];
 
     const viewer = new Viewer({

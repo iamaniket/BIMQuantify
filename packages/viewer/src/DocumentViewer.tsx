@@ -15,6 +15,8 @@ import {
 } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 
+type PdfTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy['getTextContent']>>;
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
@@ -30,6 +32,11 @@ export type DocumentRotation = 0 | 90 | 180 | 270;
 export type DocumentSearchHit = {
   pageIndex: number; // 1-indexed
   matchesOnPage: number;
+};
+
+export type SearchHighlight = {
+  query: string;
+  activeMatchIndex: number; // 0-based within the current page's matches
 };
 
 export type DocumentViewerHandle = {
@@ -48,8 +55,7 @@ export type DocumentViewerHandle = {
   /**
    * Case-insensitive search across all pages. Returns the list of pages that
    * contain the query, with match counts. Empty / whitespace query returns [].
-   * Note: returns page hits only — no in-page highlight rendering (text-layer
-   * highlighting is a separate, expensive pipeline we haven't built yet).
+   * Visual highlighting is handled by the `searchHighlight` prop.
    */
   searchText(query: string): Promise<DocumentSearchHit[]>;
 };
@@ -66,11 +72,13 @@ export type DocumentViewerProps = {
   rotation?: DocumentRotation;
   activeTool?: DocumentActiveTool;
   className?: string;
+  searchHighlight?: SearchHighlight | null;
   renderOverlay?: (dims: PageDimensions) => React.ReactNode;
   onLoaded?: (info: DocumentLoadedInfo) => void;
   onError?: (err: Error) => void;
   onScaleChange?: (scale: number) => void;
   onRotationChange?: (rotation: DocumentRotation) => void;
+  onPageMatchCount?: (count: number) => void;
 };
 
 const MIN_SCALE = 0.1;
@@ -95,23 +103,31 @@ function DocumentViewerInner(
     rotation = 0,
     activeTool = 'select',
     className,
+    searchHighlight,
     renderOverlay,
     onLoaded,
     onError,
     onScaleChange,
     onRotationChange,
+    onPageMatchCount,
   }: DocumentViewerProps,
   ref: ForwardedRef<DocumentViewerHandle>,
 ): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
   const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
+  const textLayerInstanceRef = useRef<pdfjsLib.TextLayer | null>(null);
   const pageRef = useRef<pdfjsLib.PDFPageProxy | null>(null);
   const [doc, setDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   // Mirror of `doc` for imperative handle access without stale closures.
   const docRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
-  // Per-document text cache so repeated searches don't re-fetch text content.
+  // Per-document text content cache (full TextContent for TextLayer + search).
+  const textContentCacheRef = useRef<Map<number, PdfTextContent>>(new Map());
+  // Per-document joined-string cache for searchText().
   const pageTextCacheRef = useRef<Map<number, string>>(new Map());
+  // Incremented after every TextLayer render so the highlight effect re-runs.
+  const [textLayerEpoch, setTextLayerEpoch] = useState(0);
   const [unscaledViewport, setUnscaledViewport] = useState<{
     width: number;
     height: number;
@@ -126,6 +142,7 @@ function DocumentViewerInner(
   const onRotationChangeRef = useRef(onRotationChange);
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
+  const onPageMatchCountRef = useRef(onPageMatchCount);
   useEffect(() => {
     scaleRef.current = scale;
     rotationRef.current = rotation;
@@ -133,6 +150,7 @@ function DocumentViewerInner(
     onRotationChangeRef.current = onRotationChange;
     onLoadedRef.current = onLoaded;
     onErrorRef.current = onError;
+    onPageMatchCountRef.current = onPageMatchCount;
   });
 
   // Pan-drag state. We use document-level pointermove/up so the drag survives
@@ -175,6 +193,7 @@ function DocumentViewerInner(
         }
         loaded = newDoc;
         docRef.current = newDoc;
+        textContentCacheRef.current.clear();
         pageTextCacheRef.current.clear();
         setDoc(newDoc);
         onLoadedRef.current?.({ numPages: newDoc.numPages });
@@ -198,6 +217,7 @@ function DocumentViewerInner(
         loaded.destroy().catch(() => undefined);
       }
       docRef.current = null;
+      textContentCacheRef.current.clear();
       pageTextCacheRef.current.clear();
       setDoc(null);
       setUnscaledViewport(null);
@@ -218,7 +238,7 @@ function DocumentViewerInner(
         try {
           const page = await d.getPage(i);
           const content = await page.getTextContent();
-          // pdf.js TextItem has `str`; ignore TextMarkedContent items.
+          textContentCacheRef.current.set(i, content);
           pageText = content.items
             .map((item) => ('str' in item ? item.str : ''))
             .join(' ')
@@ -229,7 +249,6 @@ function DocumentViewerInner(
           pageTextCacheRef.current.set(i, pageText);
         }
       }
-      // Count overlapping-free occurrences.
       if (pageText.length === 0) continue;
       let count = 0;
       let idx = pageText.indexOf(needle);
@@ -246,12 +265,17 @@ function DocumentViewerInner(
   useEffect(() => {
     let cancelled = false;
     const canvas = canvasRef.current;
+    const textLayerDiv = textLayerRef.current;
     if (canvas === null || doc === null) return undefined;
 
     (async () => {
       if (renderTaskRef.current !== null) {
         renderTaskRef.current.cancel();
         renderTaskRef.current = null;
+      }
+      if (textLayerInstanceRef.current !== null) {
+        textLayerInstanceRef.current.cancel();
+        textLayerInstanceRef.current = null;
       }
       if (pageRef.current !== null) {
         pageRef.current.cleanup();
@@ -295,6 +319,30 @@ function DocumentViewerInner(
         if (renderTaskRef.current === task) {
           renderTaskRef.current = null;
         }
+
+        // ---- Render TextLayer over the canvas ----
+        if (textLayerDiv !== null && !cancelled) {
+          textLayerDiv.innerHTML = '';
+          textLayerDiv.style.setProperty('--scale-factor', String(scale));
+
+          let textContent = textContentCacheRef.current.get(safePage);
+          if (textContent === undefined) {
+            textContent = await page.getTextContent();
+            if (cancelled) return;
+            textContentCacheRef.current.set(safePage, textContent);
+          }
+
+          const tl = new pdfjsLib.TextLayer({
+            textContentSource: textContent,
+            container: textLayerDiv,
+            viewport,
+          });
+          textLayerInstanceRef.current = tl;
+          await tl.render();
+          if (!cancelled) {
+            setTextLayerEpoch((n) => n + 1);
+          }
+        }
       } catch (err) {
         if (cancelled) return;
         const e = err as { name?: string };
@@ -307,6 +355,85 @@ function DocumentViewerInner(
       cancelled = true;
     };
   }, [doc, currentPage, scale, rotation]);
+
+  // ---- Apply search highlights on the text layer ----
+  useEffect(() => {
+    const el = textLayerRef.current;
+    const container = containerRef.current;
+    if (el === null || textLayerEpoch === 0) return;
+
+    // Clear previous highlights — restore original text nodes.
+    for (const mark of Array.from(el.querySelectorAll('mark.bq-highlight'))) {
+      const parent = mark.parentNode;
+      if (parent !== null) {
+        parent.replaceChild(document.createTextNode(mark.textContent ?? ''), mark);
+        parent.normalize();
+      }
+    }
+
+    if (
+      searchHighlight === null ||
+      searchHighlight === undefined ||
+      searchHighlight.query.trim().length === 0
+    ) {
+      onPageMatchCountRef.current?.(0);
+      return;
+    }
+
+    const needle = searchHighlight.query.trim().toLowerCase();
+    const activeIdx = searchHighlight.activeMatchIndex;
+    let matchCount = 0;
+
+    const spans = el.querySelectorAll<HTMLSpanElement>('span');
+    for (const span of Array.from(spans)) {
+      const text = span.textContent ?? '';
+      const lower = text.toLowerCase();
+      let idx = lower.indexOf(needle);
+      if (idx === -1) continue;
+
+      const fragment = document.createDocumentFragment();
+      let lastEnd = 0;
+
+      while (idx !== -1) {
+        if (idx > lastEnd) {
+          fragment.appendChild(document.createTextNode(text.slice(lastEnd, idx)));
+        }
+        const mark = document.createElement('mark');
+        mark.className =
+          matchCount === activeIdx ? 'bq-highlight active' : 'bq-highlight';
+        mark.textContent = text.slice(idx, idx + needle.length);
+        fragment.appendChild(mark);
+        matchCount += 1;
+        lastEnd = idx + needle.length;
+        idx = lower.indexOf(needle, lastEnd);
+      }
+
+      if (lastEnd < text.length) {
+        fragment.appendChild(document.createTextNode(text.slice(lastEnd)));
+      }
+
+      span.textContent = '';
+      span.appendChild(fragment);
+    }
+
+    onPageMatchCountRef.current?.(matchCount);
+
+    // Scroll the active highlight into view inside the scrollable container.
+    const activeMark = el.querySelector<HTMLElement>('mark.bq-highlight.active');
+    if (activeMark !== null && container !== null) {
+      const cRect = container.getBoundingClientRect();
+      const mRect = activeMark.getBoundingClientRect();
+      const outOfView =
+        mRect.top < cRect.top ||
+        mRect.bottom > cRect.bottom ||
+        mRect.left < cRect.left ||
+        mRect.right > cRect.right;
+      if (outOfView) {
+        activeMark.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchHighlight?.query, searchHighlight?.activeMatchIndex, textLayerEpoch]);
 
   // ---- Imperative handle ----
   const setScalePreserveOrigin = useCallback(
@@ -581,6 +708,17 @@ function DocumentViewerInner(
             pointerEvents: activeTool === 'pan' ? 'none' : 'auto',
           }}
         />
+        {pageDims !== null && (
+          <div
+            ref={textLayerRef}
+            className="bq-text-layer"
+            style={{
+              width: pageDims.width,
+              height: pageDims.height,
+              pointerEvents: activeTool === 'select' ? 'auto' : 'none',
+            }}
+          />
+        )}
         {renderOverlay !== undefined && pageDims !== null && (
           <div
             style={{

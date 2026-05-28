@@ -36,10 +36,10 @@ export type DownloadResult = {
   sha256: string;
 };
 
-export async function downloadObjectWithHash(key: string): Promise<DownloadResult> {
+export async function downloadObjectWithHash(key: string, bucket?: string): Promise<DownloadResult> {
   const cfg = getConfig();
   const response = await getS3().send(
-    new GetObjectCommand({ Bucket: cfg.S3_BUCKET_IFC, Key: key }),
+    new GetObjectCommand({ Bucket: bucket ?? cfg.S3_BUCKET_IFC, Key: key }),
   );
   const body = response.Body;
   if (!(body instanceof Readable)) {

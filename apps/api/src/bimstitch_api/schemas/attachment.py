@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from bimstitch_api.models.attachment import AttachmentCategory, AttachmentStatus
@@ -118,6 +120,7 @@ class AttachmentRead(BaseModel):
     linked_point: dict[str, Any] | None
     linked_file_id: UUID | None
     capture_metadata: dict[str, Any] | None
+    server_metadata: dict[str, Any] | None
     version_number: int
     parent_attachment_id: UUID | None
     created_at: datetime
@@ -130,6 +133,17 @@ class AttachmentUpdateRequest(BaseModel):
     linked_model_id: UUID | None = None
     linked_point: dict[str, Any] | None = None
     linked_file_id: UUID | None = None
+
+
+class AttachmentCallbackRequest(BaseModel):
+    attachment_id: UUID
+    organization_id: UUID
+    job_id: UUID
+    status: Literal["running", "succeeded", "failed"]
+    server_metadata: dict[str, Any] | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
 
 
 class AttachmentDownloadResponse(BaseModel):

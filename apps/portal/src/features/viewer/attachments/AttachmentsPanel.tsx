@@ -1,18 +1,12 @@
 'use client';
 
 import {
-  Camera,
-  FileAudio,
-  FileText,
-  FileVideo,
-  Image,
   Loader2,
   MapPin,
   MousePointerClick,
   Paperclip,
   Plus,
   StickyNote,
-  Trash2,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -38,13 +32,15 @@ import {
 } from '@/features/attachments/useAttachments';
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
-import { useAttachmentViewUrl } from '@/features/attachments/useAttachmentViewUrl';
 import type { Attachment } from '@/lib/api/schemas';
 import type { ModelMetadata, ElementEntry } from '@/lib/api/viewerTypes';
 import {
   useViewerEntityStore,
   parseEntityKey,
 } from '@/stores/viewerEntityStore';
+
+import { AttachmentRow } from './AttachmentRow';
+import { LinkPrompt } from './LinkPrompt';
 
 type AttachmentsPanelProps = {
   metadata: ModelMetadata | undefined;
@@ -59,103 +55,101 @@ type AttachmentsPanelProps = {
 
 type Scope = 'all' | 'entity' | 'project' | 'page';
 
-const CATEGORY_ICONS: Record<string, typeof FileText> = {
-  image: Image,
-  video: FileVideo,
-  audio: FileAudio,
-  office: FileText,
-  other: FileText,
+function headerLabel(
+  t: ReturnType<typeof useTranslations>,
+  scope: Scope,
+  hasSelection: boolean,
+): string {
+  if (scope === 'entity' && hasSelection) return t('attachToElement');
+  if (scope === 'page') return t('tabOnPage');
+  if (scope === 'project') return t('tabProject');
+  return t('tabAll');
+}
+
+function emptyMessage(
+  t: ReturnType<typeof useTranslations>,
+  query: string,
+  scope: Scope,
+): string {
+  if (query.trim() !== '') return t('emptyNoMatches', { query });
+  if (scope === 'entity') return t('emptyNoItems');
+  if (scope === 'page') return t('emptyNoPage');
+  if (scope === 'project') return t('emptyProjectEmpty');
+  return t('emptyAllEmpty');
+}
+
+type PanelContentProps = {
+  scope: Scope;
+  hasSelection: boolean;
+  selectedAll: boolean;
+  selectedSize: number;
+  isLoading: boolean;
+  filteredItems: Attachment[];
+  query: string;
+  projectId: string;
+  expandedId: string | null;
+  setExpandedId: (fn: (prev: string | null) => string | null) => void;
+  setViewingAttachment: (att: Attachment) => void;
+  linkingId: string | null;
+  setLinkingId: (fn: (prev: string | null) => string | null) => void;
+  handleDelete: (id: string) => void;
+  t: ReturnType<typeof useTranslations>;
 };
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${String(bytes)} B`;
-  if (bytes < 1024 * 1024) return `${String(Math.round(bytes / 1024))} KB`;
-  return `${String((bytes / (1024 * 1024)).toFixed(1))} MB`;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function AttachmentThumbnail({
-  attachment,
+function PanelContent({
+  scope,
+  hasSelection,
+  selectedAll,
+  selectedSize,
+  isLoading,
+  filteredItems,
+  query,
   projectId,
-}: {
-  attachment: Attachment;
-  projectId: string;
-}): JSX.Element {
-  const viewUrlQuery = useAttachmentViewUrl(
-    projectId,
-    attachment.attachment_category === 'image' ? attachment.id : null,
-  );
-  const Icon = CATEGORY_ICONS[attachment.attachment_category] ?? FileText;
-
-  if (attachment.attachment_category === 'image' && viewUrlQuery.data?.download_url) {
+  expandedId,
+  setExpandedId,
+  setViewingAttachment,
+  linkingId,
+  setLinkingId,
+  handleDelete,
+  t,
+}: PanelContentProps): JSX.Element {
+  if (scope === 'entity' && !hasSelection) {
+    return <PanelEmptyState icon={MousePointerClick} message={t('emptyNoSelection')} />;
+  }
+  if (scope === 'entity' && (selectedAll || selectedSize > 1)) {
+    return <PanelEmptyState icon={Paperclip} message={t('emptyMultiSelection')} />;
+  }
+  if (isLoading) {
+    return <PanelEmptyState icon={Loader2} message={t('loading')} />;
+  }
+  if (filteredItems.length === 0) {
     return (
-      <img
-        src={viewUrlQuery.data.download_url}
-        alt={attachment.original_filename}
-        className="h-full w-full object-cover"
+      <PanelEmptyState
+        icon={scope === 'page' ? MapPin : Paperclip}
+        message={emptyMessage(t, query, scope)}
       />
     );
   }
-
   return (
-    <div className="flex h-full w-full items-center justify-center bg-background-secondary">
-      <Icon className="h-5 w-5 text-foreground-tertiary" />
-    </div>
-  );
-}
-
-function AttachmentCard({
-  attachment,
-  projectId,
-  onView,
-  onDelete,
-}: {
-  attachment: Attachment;
-  projectId: string;
-  onView: () => void;
-  onDelete: () => void;
-}): JSX.Element {
-  const t = useTranslations('viewerAttachments');
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onView}
-      onKeyDown={(e) => { if (e.key === 'Enter') onView(); }}
-      className="group flex cursor-pointer gap-2.5 rounded-md border border-border bg-background p-2 transition-colors hover:bg-background-secondary"
-    >
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded">
-        <AttachmentThumbnail attachment={attachment} projectId={projectId} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-body3 font-medium text-foreground">
-          {attachment.original_filename}
-        </p>
-        <p className="text-caption text-foreground-tertiary">
-          {formatSize(attachment.size_bytes)} · {formatDate(attachment.created_at)}
-          {attachment.uploaded_by_name !== null
-            ? ` · ${attachment.uploaded_by_name}`
-            : attachment.capture_link_id !== null
-              ? ` · ${t('viaCapture')}`
-              : ''}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="shrink-0 self-center rounded p-1 text-foreground-tertiary opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
-        title={t('deleteConfirm')}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+    <div className="flex flex-col">
+      {filteredItems.map((att) => (
+        <AttachmentRow
+          key={att.id}
+          attachment={att}
+          projectId={projectId}
+          expanded={expandedId === att.id}
+          onToggle={() => {
+            setExpandedId((prev) => (prev === att.id ? null : att.id));
+          }}
+          onView={() => { setViewingAttachment(att); }}
+          onLink={() => {
+            setLinkingId((prev) => (prev === att.id ? null : att.id));
+          }}
+          onDelete={() => { handleDelete(att.id); }}
+          linkingId={linkingId}
+        />
+      ))}
+      <div className="border-t border-border" />
     </div>
   );
 }
@@ -201,6 +195,8 @@ export function AttachmentsPanel({
   const [scope, setScope] = useState<Scope>(isPdf ? 'all' : hasSelection ? 'entity' : 'all');
   const [query, setQuery] = useState('');
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [uploadPhase, setUploadPhase] = useState<string | null>(null);
@@ -225,29 +221,41 @@ export function AttachmentsPanel({
   const pageItems = pageQuery.data ?? [];
 
   const filteredItems = useMemo(() => {
-    const items = scope === 'entity' ? entityItems : scope === 'project' ? projectItems : scope === 'page' ? pageItems : allItems;
+    let items: Attachment[];
+    if (scope === 'entity') items = entityItems;
+    else if (scope === 'project') items = projectItems;
+    else if (scope === 'page') items = pageItems;
+    else items = allItems;
     if (query.trim() === '') return items;
     const q = query.toLowerCase();
-    return items.filter(
-      (a) =>
-        a.original_filename.toLowerCase().includes(q) ||
-        a.description?.toLowerCase().includes(q),
-    );
+    return items.filter((a) => {
+      if (a.original_filename.toLowerCase().includes(q)) return true;
+      // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+      return a.description !== null && a.description.toLowerCase().includes(q);
+    });
   }, [scope, entityItems, projectItems, pageItems, allItems, query]);
 
   const tabs: TabDef<Scope>[] = isPdf
     ? [
-        { id: 'all', label: t('tabAll'), count: allItems.length },
-        { id: 'page', label: t('tabOnPage'), count: pageItems.length },
-        { id: 'project', label: t('tabProject'), count: projectItems.length },
-      ]
+      { id: 'all', label: t('tabAll'), count: allItems.length },
+      { id: 'page', label: t('tabOnPage'), count: pageItems.length },
+      { id: 'project', label: t('tabProject'), count: projectItems.length },
+    ]
     : [
-        { id: 'all', label: t('tabAll'), count: allItems.length },
-        { id: 'entity', label: t('tabOnEntity'), count: entityItems.length, disabled: !hasSelection },
-        { id: 'project', label: t('tabProject'), count: projectItems.length },
-      ];
+      { id: 'all', label: t('tabAll'), count: allItems.length },
+      {
+        id: 'entity',
+        label: t('tabOnEntity'),
+        count: entityItems.length,
+        disabled: !hasSelection,
+      },
+      { id: 'project', label: t('tabProject'), count: projectItems.length },
+    ];
 
-  // Handle pending PDF pin from sessionStorage (set by PdfAnnotationLayer click)
+  const linkingAttachment = linkingId !== null
+    ? filteredItems.find((a) => a.id === linkingId) ?? null
+    : null;
+
   useEffect(() => {
     const raw = sessionStorage.getItem(PENDING_PIN_KEY);
     if (raw === null) return;
@@ -255,15 +263,15 @@ export function AttachmentsPanel({
     try {
       const pinData = JSON.parse(raw) as { type: string; page: number; x: number; y: number };
       if (pinData.type !== 'pdf') return;
-      // Open file picker — once a file is selected, upload with linked_point
       const input = fileInputRef.current;
       if (!input) return;
       pinUploadRef.current = true;
       const handler = () => {
         pinUploadRef.current = false;
-        const files = input.files;
-        if (!files || files.length === 0) return;
-        const file = files[0]!;
+        const { files } = input;
+        if (files === null || files.length === 0) return;
+        const [file] = files;
+        if (file === undefined) return;
         uploadMutation.mutate(
           {
             file,
@@ -273,7 +281,7 @@ export function AttachmentsPanel({
             onProgress: (event) => {
               if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
               else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
-              else if (event.phase === 'completing') setUploadPhase(t('uploadCompleting'));
+              else setUploadPhase(t('uploadCompleting'));
             },
           },
           {
@@ -301,8 +309,9 @@ export function AttachmentsPanel({
   const handleFileUpload = useCallback(
     (files: FileList | null) => {
       if (pinUploadRef.current) return;
-      if (!files || files.length === 0) return;
-      const file = files[0]!;
+      if (files === null || files.length === 0) return;
+      const [file] = files;
+      if (file === undefined) return;
       uploadMutation.mutate(
         {
           file,
@@ -312,7 +321,7 @@ export function AttachmentsPanel({
           onProgress: (event) => {
             if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
             else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
-            else if (event.phase === 'completing') setUploadPhase(t('uploadCompleting'));
+            else setUploadPhase(t('uploadCompleting'));
           },
         },
         {
@@ -346,7 +355,7 @@ export function AttachmentsPanel({
         onProgress: (event) => {
           if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
           else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
-          else if (event.phase === 'completing') setUploadPhase(t('uploadCompleting'));
+          else setUploadPhase(t('uploadCompleting'));
         },
       },
       {
@@ -373,11 +382,10 @@ export function AttachmentsPanel({
     [deleteMutation, t],
   );
 
-  const isLoading =
-    (scope === 'all' && allQuery.isLoading) ||
-    (scope === 'entity' && entityQuery.isLoading) ||
-    (scope === 'project' && projectQuery.isLoading) ||
-    (scope === 'page' && pageQuery.isLoading);
+  const isLoading = (scope === 'all' && allQuery.isLoading)
+    || (scope === 'entity' && entityQuery.isLoading)
+    || (scope === 'project' && projectQuery.isLoading)
+    || (scope === 'page' && pageQuery.isLoading);
 
   return (
     <div className="flex h-full flex-col">
@@ -385,13 +393,7 @@ export function AttachmentsPanel({
       <div className="flex items-start justify-between gap-2 border-b border-border bg-background px-3.5 py-3">
         <div className="min-w-0">
           <div className="font-mono text-caption font-bold uppercase tracking-[0.1em] text-foreground-secondary">
-            {scope === 'entity' && hasSelection
-              ? t('attachToElement')
-              : scope === 'page'
-                ? t('tabOnPage')
-                : scope === 'project'
-                  ? t('tabProject')
-                  : t('tabAll')}
+            {headerLabel(t, scope, hasSelection)}
           </div>
         </div>
         <div className="flex shrink-0 gap-1">
@@ -399,7 +401,7 @@ export function AttachmentsPanel({
             <Button
               variant={pdfPinMode ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => onPdfPinModeChange(!pdfPinMode)}
+              onClick={() => { onPdfPinModeChange(!pdfPinMode); }}
               title={pdfPinMode ? t('pinModeOff') : t('pinModeOn')}
             >
               <MapPin className="h-3.5 w-3.5" />
@@ -408,7 +410,7 @@ export function AttachmentsPanel({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setShowNoteInput(!showNoteInput)}
+            onClick={() => { setShowNoteInput(!showNoteInput); }}
             title={t('addNote')}
           >
             <StickyNote className="h-3.5 w-3.5" />
@@ -417,7 +419,7 @@ export function AttachmentsPanel({
             variant="primary"
             size="sm"
             disabled={uploadMutation.isPending}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => { if (fileInputRef.current !== null) fileInputRef.current.click(); }}
             title={scope === 'entity' && hasSelection ? t('attachToElement') : t('attachToProject')}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -428,7 +430,7 @@ export function AttachmentsPanel({
           ref={fileInputRef}
           type="file"
           className="hidden"
-          onChange={(e) => handleFileUpload(e.target.files)}
+          onChange={(e) => { handleFileUpload(e.target.files); }}
           onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
         />
       </div>
@@ -446,7 +448,7 @@ export function AttachmentsPanel({
         <div className="flex flex-col gap-2 border-b border-border bg-background px-3 py-2.5">
           <textarea
             value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
+            onChange={(e) => { setNoteText(e.target.value); }}
             placeholder={t('notePlaceholder')}
             rows={3}
             className="w-full resize-none rounded-md border border-border bg-background-secondary px-2.5 py-2 text-body3 text-foreground placeholder:text-foreground-tertiary focus:border-primary focus:outline-none"
@@ -474,14 +476,14 @@ export function AttachmentsPanel({
       <PanelTabs tabs={tabs} active={scope} onChange={setScope} />
 
       {/* Search */}
-      <div className="border-b border-border bg-background px-2.5 py-2">
+      <div className="border-b border-border bg-surface-low px-2.5 py-2">
         <div className="relative">
           <Paperclip className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-secondary" />
           <Input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('loading').replace('…', '')}
+            onChange={(e) => { setQuery(e.target.value); }}
+            placeholder={t('filterPlaceholder')}
             inputSize="sm"
             className="pl-7"
           />
@@ -490,39 +492,34 @@ export function AttachmentsPanel({
 
       {/* Content */}
       <div className="min-h-0 flex-1 overflow-auto">
-        {scope === 'entity' && !hasSelection ? (
-          <PanelEmptyState icon={MousePointerClick} message={t('emptyNoSelection')} />
-        ) : scope === 'entity' && (selectedAll || selected.size > 1) ? (
-          <PanelEmptyState icon={Paperclip} message={t('emptyMultiSelection')} />
-        ) : isLoading ? (
-          <PanelEmptyState icon={Loader2} message={t('loading')} />
-        ) : filteredItems.length === 0 ? (
-          <PanelEmptyState
-            icon={scope === 'page' ? MapPin : Paperclip}
-            message={
-              scope === 'entity'
-                ? t('emptyNoItems')
-                : scope === 'page'
-                  ? t('emptyNoPage')
-                  : scope === 'project'
-                    ? t('emptyProjectEmpty')
-                    : t('emptyAllEmpty')
-            }
-          />
-        ) : (
-          <div className="flex flex-col gap-1 p-1.5">
-            {filteredItems.map((att) => (
-              <AttachmentCard
-                key={att.id}
-                attachment={att}
-                projectId={projectId}
-                onView={() => setViewingAttachment(att)}
-                onDelete={() => handleDelete(att.id)}
-              />
-            ))}
-          </div>
-        )}
+        <PanelContent
+          scope={scope}
+          hasSelection={hasSelection}
+          selectedAll={selectedAll}
+          selectedSize={selected.size}
+          isLoading={isLoading}
+          filteredItems={filteredItems}
+          query={query}
+          projectId={projectId}
+          expandedId={expandedId}
+          setExpandedId={setExpandedId}
+          setViewingAttachment={setViewingAttachment}
+          linkingId={linkingId}
+          setLinkingId={setLinkingId}
+          handleDelete={handleDelete}
+          t={t}
+        />
       </div>
+
+      {/* Link-mode footer prompt */}
+      {linkingAttachment !== null && (
+        <LinkPrompt
+          attachment={linkingAttachment}
+          onCancel={() => { setLinkingId(null); }}
+          onPickElement={() => { /* TODO: integrate with viewer pick mode */ }}
+          onPickPdf={() => { /* TODO: integrate with PDF region draw */ }}
+        />
+      )}
 
       {/* Viewer dialog */}
       <AttachmentViewerDialog

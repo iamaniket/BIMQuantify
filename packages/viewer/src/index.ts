@@ -6,6 +6,7 @@ export type {
   DocumentActiveTool,
   DocumentRotation,
   DocumentSearchHit,
+  SearchHighlight,
   PageDimensions,
 } from './DocumentViewer.js';
 export { IfcViewer } from './IfcViewer.js';
@@ -73,6 +74,17 @@ export type {
   MarkerData,
   GridPluginAPI,
   GridPluginOptions,
+  ScreenshotPluginAPI,
+  ScreenshotPluginOptions,
+  ScreenshotCaptureOptions,
+  ScreenshotResult,
+  ColorCodingPluginAPI,
+  ColorCodingOptions,
+  ColorScheme,
+  LegendEntry,
+  ExploderPluginAPI,
+  ExploderPluginOptions,
+  ExplodeMode,
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
@@ -112,3 +124,6 @@ export { viewpointsPlugin } from './plugins/viewpoints/index.js';
 export { bcfPlugin } from './plugins/bcf/index.js';
 export { markerPlugin } from './plugins/marker/index.js';
 export { gridPlugin } from './plugins/grid/index.js';
+export { screenshotPlugin } from './plugins/screenshot/index.js';
+export { colorCodingPlugin } from './plugins/color-coding/index.js';
+export { exploderPlugin } from './plugins/exploder/index.js';

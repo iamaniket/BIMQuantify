@@ -19,6 +19,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
 from bimstitch_api.db import get_async_session
@@ -26,10 +27,12 @@ from bimstitch_api.jobs import require_worker_secret
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.organization import Organization
+from bimstitch_api.models.attachment import Attachment
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile, ProjectFileStatus
 from bimstitch_api.models.report import _REPORT_TERMINAL, Report, ReportStatus
 from bimstitch_api.notifications.service import create_notification, publish_notification
 from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
+from bimstitch_api.schemas.attachment import AttachmentCallbackRequest, AttachmentRead
 from bimstitch_api.schemas.report import ReportCallbackRequest, ReportResponse
 from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.tenancy import schema_name_for
@@ -446,6 +449,66 @@ async def report_callback(
         await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
         await session.refresh(report)
     return report
+
+
+# ---------------------------------------------------------------------------
+# Attachment callback (image_metadata_extraction)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/attachments/callback", response_model=AttachmentRead)
+async def attachment_metadata_callback(
+    payload: AttachmentCallbackRequest,
+    session: AsyncSession = Depends(get_async_session),
+) -> Attachment:
+    """Worker → API callback for `image_metadata_extraction` jobs.
+
+    Same auth + RLS-bypass as the extraction callback (the worker has no
+    tenant context). Idempotent on terminal statuses.
+    """
+    async with session.begin():
+        await _set_tenant_schema(session, payload.organization_id)
+        att = (
+            await session.execute(
+                select(Attachment)
+                .where(Attachment.id == payload.attachment_id)
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if att is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="ATTACHMENT_NOT_FOUND",
+            )
+
+        if payload.status == "succeeded" and payload.server_metadata is not None:
+            att.server_metadata = payload.server_metadata
+
+        job = await _load_job_optional(session, payload.job_id)
+        if job is not None and job.status not in _JOB_TERMINAL:
+            if payload.status == "running":
+                job.status = JobStatus.running
+                job.started_at = payload.started_at
+            elif payload.status == "succeeded":
+                job.status = JobStatus.succeeded
+                job.finished_at = payload.finished_at
+                job.result = payload.server_metadata or {}
+            else:
+                job.status = JobStatus.failed
+                job.error = payload.error
+                job.finished_at = payload.finished_at
+
+    async with session.begin():
+        schema = schema_name_for(payload.organization_id)
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        att = (
+            await session.execute(
+                select(Attachment)
+                .options(selectinload(Attachment.uploaded_by_user))
+                .where(Attachment.id == payload.attachment_id)
+            )
+        ).scalar_one()
+    return att
 
 
 __all__ = ["router"]

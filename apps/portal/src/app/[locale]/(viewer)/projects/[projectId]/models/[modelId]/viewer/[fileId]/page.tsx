@@ -18,6 +18,7 @@ import type {
   DocumentRotation,
   DocumentViewerHandle,
   PageDimensions,
+  SearchHighlight,
   ViewerBundle,
   ViewerHandle,
 } from '@bimstitch/viewer';
@@ -133,6 +134,7 @@ export default function ViewerPage(): JSX.Element {
   const [pdfRotation, setPdfRotation] = useState<DocumentRotation>(0);
   const [pdfSettings, setPdfSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
+  const [pdfSearchHighlight, setPdfSearchHighlight] = useState<SearchHighlight | null>(null);
   const [pdfPinMode, setPdfPinMode] = useState(false);
   const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
 
@@ -207,6 +209,7 @@ export default function ViewerPage(): JSX.Element {
     setPdfScale(1);
     setPdfRotation(0);
     setPdfActiveTool('select');
+    setPdfSearchHighlight(null);
   }, [fileId]);
 
   const handlePdfLoaded = useCallback(({ numPages }: { numPages: number }) => {
@@ -324,6 +327,7 @@ export default function ViewerPage(): JSX.Element {
         scale={pdfScale}
         rotation={pdfRotation}
         activeTool={pdfActiveTool}
+        searchHighlight={pdfSearchHighlight}
         className="absolute inset-0"
         onLoaded={handlePdfLoaded}
         onError={handlePdfError}
@@ -499,6 +503,7 @@ export default function ViewerPage(): JSX.Element {
             onScaleChange={setPdfScale}
             onActiveToolChange={setPdfActiveTool}
             onSettingsChange={setPdfSettings}
+            onSearchHighlightChange={setPdfSearchHighlight}
           />
         ) : null}
 

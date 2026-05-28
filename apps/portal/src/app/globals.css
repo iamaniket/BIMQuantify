@@ -45,3 +45,30 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* PDF text layer — invisible text for selection + search highlights */
+.bq-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+}
+.bq-text-layer span,
+.bq-text-layer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  transform-origin: 0% 0%;
+}
+.bq-text-layer ::selection {
+  background: rgba(0, 100, 255, 0.3);
+}
+.bq-text-layer mark.bq-highlight {
+  color: transparent;
+  background: rgba(255, 213, 0, 0.45);
+  border-radius: 2px;
+  padding: 1px 0;
+}
+.bq-text-layer mark.bq-highlight.active {
+  background: rgba(255, 140, 0, 0.65);
+}

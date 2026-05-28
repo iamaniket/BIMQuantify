@@ -24,6 +24,12 @@ from tests.conftest import (
     _new_hash,
 )
 
+SECRET = "dev-shared-secret-change-me"
+
+
+def _bearer(secret: str = SECRET) -> dict[str, str]:
+    return {"Authorization": f"Bearer {secret}"}
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -1029,3 +1035,190 @@ async def test_initiate_accepts_valid_pdf_point(
     lp = detail.json()["linked_point"]
     assert lp["type"] == "pdf"
     assert lp["page"] == 3
+
+
+# ---------------------------------------------------------------------------
+# Image metadata extraction dispatch
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_complete_image_dispatches_extraction(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+
+    img_calls = [c for c in job_dispatch_calls if c["job_type"] == "image_metadata_extraction"]
+    assert len(img_calls) == 1
+    payload = img_calls[0]["payload"]
+    assert isinstance(payload, dict)
+    assert payload["attachment_id"] == att["attachment_id"]
+    assert payload["project_id"] == project["id"]
+    assert "storage_key" in payload
+    assert "bucket" in payload
+
+
+@pytest.mark.asyncio
+async def test_complete_non_image_does_not_dispatch(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(
+        client, org_user["access_token"], project["id"], filename="report.pdf"
+    )
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+
+    img_calls = [c for c in job_dispatch_calls if c["job_type"] == "image_metadata_extraction"]
+    assert len(img_calls) == 0
+
+
+# ---------------------------------------------------------------------------
+# Attachment metadata callback
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_attachment_callback_succeeded(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    body = await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    assert body["server_metadata"] is None
+
+    metadata = {
+        "gps": {"latitude": 52.3676, "longitude": 4.9041, "altitude": 3.5},
+        "camera": {"make": "Apple", "model": "iPhone 15 Pro", "software": None},
+        "image": {"width": 4032, "height": 3024, "orientation": 1, "color_space": 1},
+        "capture": {"date_time_original": "2026-05-27T10:30:00.000Z"},
+        "extracted_at": "2026-05-27T10:30:05.000Z",
+        "extractor_version": "0.1.0",
+    }
+    resp = await client.post(
+        "/internal/jobs/attachments/callback",
+        json={
+            "attachment_id": att["attachment_id"],
+            "organization_id": org_user["organization_id"],
+            "job_id": str(uuid4()),
+            "status": "succeeded",
+            "server_metadata": metadata,
+            "finished_at": "2026-05-27T10:30:05Z",
+        },
+        headers=_bearer(),
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["server_metadata"] is not None
+    assert data["server_metadata"]["gps"]["latitude"] == 52.3676
+    assert data["server_metadata"]["camera"]["make"] == "Apple"
+
+
+@pytest.mark.asyncio
+async def test_attachment_callback_failed(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+
+    resp = await client.post(
+        "/internal/jobs/attachments/callback",
+        json={
+            "attachment_id": att["attachment_id"],
+            "organization_id": org_user["organization_id"],
+            "job_id": str(uuid4()),
+            "status": "failed",
+            "error": "EXIF_PARSE_ERROR: invalid JPEG",
+            "finished_at": "2026-05-27T10:30:05Z",
+        },
+        headers=_bearer(),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["server_metadata"] is None
+
+
+@pytest.mark.asyncio
+async def test_attachment_callback_not_found(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    resp = await client.post(
+        "/internal/jobs/attachments/callback",
+        json={
+            "attachment_id": str(uuid4()),
+            "organization_id": org_user["organization_id"],
+            "job_id": str(uuid4()),
+            "status": "succeeded",
+            "server_metadata": {"gps": None},
+        },
+        headers=_bearer(),
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_attachment_callback_requires_auth(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+
+    resp = await client.post(
+        "/internal/jobs/attachments/callback",
+        json={
+            "attachment_id": att["attachment_id"],
+            "organization_id": org_user["organization_id"],
+            "job_id": str(uuid4()),
+            "status": "succeeded",
+            "server_metadata": {},
+        },
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_server_metadata_in_response(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """After callback, the GET endpoint includes server_metadata."""
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+
+    metadata = {"gps": {"latitude": 51.5, "longitude": 5.4}, "camera": None}
+    await client.post(
+        "/internal/jobs/attachments/callback",
+        json={
+            "attachment_id": att["attachment_id"],
+            "organization_id": org_user["organization_id"],
+            "job_id": str(uuid4()),
+            "status": "succeeded",
+            "server_metadata": metadata,
+        },
+        headers=_bearer(),
+    )
+
+    resp = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["server_metadata"]["gps"]["latitude"] == 51.5

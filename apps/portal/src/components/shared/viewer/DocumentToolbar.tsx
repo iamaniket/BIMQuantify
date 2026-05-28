@@ -32,6 +32,7 @@ import type {
   DocumentActiveTool,
   DocumentSearchHit,
   DocumentViewerHandle,
+  SearchHighlight,
 } from '@bimstitch/viewer';
 
 import type { DocumentSettings } from '@/lib/documentSettings';
@@ -51,7 +52,22 @@ type Props = {
   onScaleChange: (scale: number) => void;
   onActiveToolChange: (tool: DocumentActiveTool) => void;
   onSettingsChange: (next: DocumentSettings) => void;
+  onSearchHighlightChange: (highlight: SearchHighlight | null) => void;
 };
+
+function globalToLocal(
+  globalIdx: number,
+  hits: DocumentSearchHit[],
+): { pageIndex: number; localIndex: number } | null {
+  let cumulative = 0;
+  for (const hit of hits) {
+    if (cumulative + hit.matchesOnPage > globalIdx) {
+      return { pageIndex: hit.pageIndex, localIndex: globalIdx - cumulative };
+    }
+    cumulative += hit.matchesOnPage;
+  }
+  return null;
+}
 
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 4;
@@ -73,6 +89,7 @@ export function DocumentToolbar({
   onScaleChange,
   onActiveToolChange,
   onSettingsChange,
+  onSearchHighlightChange,
 }: Props): JSX.Element {
   const t = useTranslations('documentToolbar');
   const [pageInput, setPageInput] = useState(String(currentPage));
@@ -80,7 +97,7 @@ export function DocumentToolbar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchHits, setSearchHits] = useState<DocumentSearchHit[]>([]);
-  const [searchIndex, setSearchIndex] = useState(0);
+  const [globalMatchIndex, setGlobalMatchIndex] = useState(0);
   const [searchPending, setSearchPending] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
@@ -92,8 +109,10 @@ export function DocumentToolbar({
 
   useEffect(() => {
     setSearchHits([]);
-    setSearchIndex(0);
+    setGlobalMatchIndex(0);
     setSearchPerformed(false);
+    onSearchHighlightChange(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentHandle]);
 
   const runSearch = useCallback(
@@ -101,34 +120,45 @@ export function DocumentToolbar({
       if (documentHandle === null) return;
       if (query.trim().length === 0) {
         setSearchHits([]);
-        setSearchIndex(0);
+        setGlobalMatchIndex(0);
         setSearchPerformed(false);
+        onSearchHighlightChange(null);
         return;
       }
       setSearchPending(true);
       try {
         const hits = await documentHandle.searchText(query);
         setSearchHits(hits);
-        setSearchIndex(0);
+        setGlobalMatchIndex(0);
         setSearchPerformed(true);
         const first = hits[0];
-        if (first !== undefined) onPageChange(first.pageIndex);
+        if (first !== undefined) {
+          onPageChange(first.pageIndex);
+          onSearchHighlightChange({ query, activeMatchIndex: 0 });
+        } else {
+          onSearchHighlightChange(null);
+        }
       } finally {
         setSearchPending(false);
       }
     },
-    [documentHandle, onPageChange],
+    [documentHandle, onPageChange, onSearchHighlightChange],
   );
+
+  const totalMatches = searchHits.reduce((sum, h) => sum + h.matchesOnPage, 0);
 
   const stepSearch = useCallback(
     (delta: 1 | -1): void => {
-      if (searchHits.length === 0) return;
-      const next = (searchIndex + delta + searchHits.length) % searchHits.length;
-      setSearchIndex(next);
-      const hit = searchHits[next];
-      if (hit !== undefined) onPageChange(hit.pageIndex);
+      if (totalMatches === 0) return;
+      const nextGlobal = (globalMatchIndex + delta + totalMatches) % totalMatches;
+      setGlobalMatchIndex(nextGlobal);
+      const loc = globalToLocal(nextGlobal, searchHits);
+      if (loc !== null) {
+        onPageChange(loc.pageIndex);
+        onSearchHighlightChange({ query: searchQuery, activeMatchIndex: loc.localIndex });
+      }
     },
-    [searchHits, searchIndex, onPageChange],
+    [totalMatches, globalMatchIndex, searchHits, searchQuery, onPageChange, onSearchHighlightChange],
   );
 
   const handlePageSubmit = (event: FormEvent<HTMLFormElement>): void => {
@@ -141,7 +171,6 @@ export function DocumentToolbar({
     }
   };
 
-  const totalMatches = searchHits.reduce((sum, h) => sum + h.matchesOnPage, 0);
   const canPrev = currentPage > 1;
   const canNext = numPages === null ? false : currentPage < numPages;
   const ThemeIcon = isDark ? Moon : Sun;
@@ -300,17 +329,15 @@ export function DocumentToolbar({
                     {searchPending
                       ? t('searchRunning')
                       : searchPerformed
-                        ? searchHits.length === 0
+                        ? totalMatches === 0
                           ? t('searchEmpty')
-                          : totalMatches === 1 && searchHits.length === 1
-                            ? t('searchMatchCountOne')
-                            : t('searchMatchCount', { matches: totalMatches, pages: searchHits.length })
+                          : t('searchMatchCount', { current: globalMatchIndex + 1, total: totalMatches })
                         : ''}
                   </ToolbarReadout>
                   <ToolButton
                     type="button"
                     onClick={() => { stepSearch(-1); }}
-                    disabled={searchHits.length === 0}
+                    disabled={totalMatches === 0}
                     title={t('searchPrev')}
                     aria-label={t('searchPrev')}
                     data-testid="document-search-prev"
@@ -320,7 +347,7 @@ export function DocumentToolbar({
                   <ToolButton
                     type="button"
                     onClick={() => { stepSearch(1); }}
-                    disabled={searchHits.length === 0}
+                    disabled={totalMatches === 0}
                     title={t('searchNext')}
                     aria-label={t('searchNext')}
                     data-testid="document-search-next"
@@ -333,8 +360,9 @@ export function DocumentToolbar({
                       setSearchOpen(false);
                       setSearchQuery('');
                       setSearchHits([]);
-                      setSearchIndex(0);
+                      setGlobalMatchIndex(0);
                       setSearchPerformed(false);
+                      onSearchHighlightChange(null);
                     }}
                     title={t('searchClose')}
                     aria-label={t('searchClose')}

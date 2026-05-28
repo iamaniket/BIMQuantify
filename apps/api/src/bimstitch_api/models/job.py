@@ -17,6 +17,7 @@ class JobType(StrEnum):
     pdf_extraction = "pdf_extraction"
     verification = "verification"
     batch_update = "batch_update"
+    image_metadata_extraction = "image_metadata_extraction"
     compliance_check = "compliance_check"
     compliance_report = "compliance_report"
 

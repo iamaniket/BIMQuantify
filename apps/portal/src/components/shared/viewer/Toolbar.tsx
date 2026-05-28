@@ -3,10 +3,13 @@
 import {
   Axis3D,
   Box,
+  Camera,
   Eraser,
+  Expand,
   Glasses,
   Home,
   MousePointer2,
+  Palette,
   Settings,
   User,
 } from 'lucide-react';
@@ -34,6 +37,8 @@ export function Toolbar({
 }: Props): JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTool, setActiveTool] = useState('select');
+  const [colorCodingActive, setColorCodingActive] = useState(false);
+  const [exploded, setExploded] = useState(false);
 
   useEffect(() => {
     if (!handle) return;
@@ -45,7 +50,13 @@ export function Toolbar({
     const offEraser = handle.events.on('eraser:change', ({ active }) => {
       if (!active) setActiveTool('select');
     });
-    return () => { offMode(); offEraser(); };
+    const offColorCoding = handle.events.on('colorCoding:change', ({ active }) => {
+      setColorCodingActive(active);
+    });
+    const offExploder = handle.events.on('exploder:change', ({ active }) => {
+      setExploded(active);
+    });
+    return () => { offMode(); offEraser(); offColorCoding(); offExploder(); };
   }, [handle]);
 
   const run = (cmd: string): void => {
@@ -120,6 +131,20 @@ export function Toolbar({
               setActiveTool('walkthrough');
             }
           },
+        },
+        {
+          type: 'button', id: 'colorCoding', icon: Palette, label: 'Color coding',
+          isActive: colorCodingActive,
+          onClick: () => { run('colorCoding.toggle'); },
+        },
+        {
+          type: 'button', id: 'explode', icon: Expand, label: 'Explode',
+          isActive: exploded,
+          onClick: () => { run('exploder.toggle'); },
+        },
+        {
+          type: 'button', id: 'screenshot', icon: Camera, label: 'Screenshot',
+          onClick: () => { run('screenshot.download'); },
         },
       ],
     },

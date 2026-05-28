@@ -3,6 +3,7 @@ import { Worker } from 'bullmq';
 import { getConfig, QUEUE_NAME } from '../config.js';
 import { logger } from '../log.js';
 import { runExtraction } from '../pipeline/extract.js';
+import { runImageMetadataExtraction } from '../pipeline/image.js';
 import { runPdfExtraction } from '../pipeline/pdf.js';
 import { runComplianceReport } from '../pipeline/report/index.js';
 import { getRedis, type WorkerJob } from './queue.js';
@@ -19,6 +20,9 @@ export function startWorker(): Worker<WorkerJob> {
           break;
         case 'pdf_extraction':
           await runPdfExtraction(job.data);
+          break;
+        case 'image_metadata_extraction':
+          await runImageMetadataExtraction(job.data);
           break;
         case 'compliance_report':
           await runComplianceReport(job.data);

@@ -172,6 +172,12 @@ export type { GridPluginAPI, GridPluginOptions } from './plugins/grid/index.js';
 
 export type { EraserPluginAPI } from './plugins/eraser/index.js';
 
+export type { ScreenshotPluginAPI, ScreenshotPluginOptions, ScreenshotCaptureOptions, ScreenshotResult } from './plugins/screenshot/index.js';
+
+export type { ColorCodingPluginAPI, ColorCodingOptions, ColorScheme, LegendEntry } from './plugins/color-coding/index.js';
+
+export type { ExploderPluginAPI, ExploderPluginOptions, ExplodeMode } from './plugins/exploder/index.js';
+
 export type {
   Plugin,
   ViewerContext,
