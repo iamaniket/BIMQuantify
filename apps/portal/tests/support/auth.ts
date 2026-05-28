@@ -19,16 +19,24 @@ export async function loginViaUI(
   password: string,
   { expectedPathPattern = /\/(projects|account)/ }: { expectedPathPattern?: RegExp } = {},
 ): Promise<void> {
+  const t0 = Date.now();
+  const log = (msg: string) => console.log(`[loginViaUI] ${msg} (+${Date.now() - t0}ms)`);
+
+  log('goto /en/login');
   await page.goto('/en/login');
+  log('goto done');
   await page.waitForLoadState('domcontentloaded');
+  log('domcontentloaded');
   // Triple-click selects any existing value before fill so React controlled inputs
   // don't accumulate a doubled value on repeated calls (fill alone can append).
   const emailInput = page.locator('input[name="username"]');
   await emailInput.click({ clickCount: 3 });
   await emailInput.fill(email);
+  log('email filled');
   const passwordInput = page.locator('input[name="password"]');
   await passwordInput.click({ clickCount: 3 });
   await passwordInput.fill(password);
+  log('password filled');
 
   // Intercept the login response so rate-limit (429) or credential errors surface
   // immediately rather than timing out after 20 s on a stuck login page.
@@ -39,16 +47,20 @@ export async function loginViaUI(
     ),
     page.getByRole('button', { name: 'Sign in', exact: true }).click(),
   ]);
+  log(`login response status=${loginResp.status()}`);
   if (!loginResp.ok()) {
     const body = await loginResp.text();
     throw new Error(`loginViaUI: POST /auth/jwt/login returned ${loginResp.status()} for ${email}: ${body}`);
   }
 
+  log('waiting for URL redirect');
   await page.waitForURL(expectedPathPattern, { timeout: 20_000 });
+  log('redirect done');
 
   // Cache tokens so subsequent tests can reuse them without an API call.
   const stored = await page.evaluate((key: string) => window.localStorage.getItem(key), STORAGE_KEY);
   if (stored) tokenCache.set(email, stored);
+  log('complete');
 }
 
 /**

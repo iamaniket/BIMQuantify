@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  AlertCircle,
+  ClipboardCheck,
   FileText,
   Files,
   Info,
@@ -45,7 +45,7 @@ const IFC_BUTTONS: RailButton[] = [
   { id: 'explorer', label: 'Model Tree', icon: ListTree },
   { id: 'properties', label: 'Properties', icon: Info },
   { id: 'attachments', label: 'Attachments', icon: FileText },
-  { id: 'issues', label: 'Issues', icon: AlertCircle },
+  { id: 'issues', label: 'Inspections', icon: ClipboardCheck },
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
   { id: 'measure', label: 'Measurement', icon: Ruler },
   { id: 'section', label: 'Section Planes', icon: Scan },
@@ -55,7 +55,7 @@ const IFC_BUTTONS: RailButton[] = [
 const PDF_BUTTONS: RailButton[] = [
   { id: 'pages', label: 'Pages', icon: Files },
   { id: 'attachments', label: 'Attachments', icon: FileText },
-  { id: 'issues', label: 'Issues', icon: AlertCircle },
+  { id: 'issues', label: 'Inspections', icon: ClipboardCheck },
   { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
 ];
 

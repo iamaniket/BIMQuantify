@@ -38,7 +38,7 @@ import { expect, test } from '@playwright/test';
 
 import { injectSavedAuth, loginViaAPI, loginViaUI, updateTokenCacheFromPage } from '../support/auth';
 import { clearAllEmails, extractUrlFromEmail, waitForEmail } from '../support/mailhog';
-import { requireSuperAdminCreds } from '../support/env';
+import { requireSuperAdminCreds, E2E_ENV } from '../support/env';
 import { state } from '../support/state';
 
 // ---------------------------------------------------------------------------
@@ -54,7 +54,14 @@ const REDIS_DB = process.env['E2E_REDIS_DB'] ?? '2';
 function flushRedis(): void {
   const { execSync } = require('child_process');
   const dbFlag = REDIS_DB === '0' ? '' : `-n ${REDIS_DB}`;
-  execSync(`docker exec ${REDIS_CONTAINER} redis-cli ${dbFlag} FLUSHDB`, { stdio: 'ignore' });
+  try {
+    execSync(`docker exec ${REDIS_CONTAINER} redis-cli ${dbFlag} FLUSHDB`, {
+      stdio: 'ignore',
+      timeout: 10_000, // Prevent hanging if Docker is unresponsive
+    });
+  } catch (err) {
+    console.warn(`[flushRedis] Redis flush failed (non-fatal): ${err}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -63,12 +70,83 @@ function flushRedis(): void {
 
 test.describe.serial('Multitenant E2E Journey', () => {
 
-  // Flush Redis rate-limit counters and JWT blocklist entries left over from
-  // previous runs so the suite starts clean.  Without this, accumulated
-  // forgot-password hits (3/hour limit) cause suites E/F to silently fail.
-  test.beforeAll(async () => {
+  // Pre-flight checks and warm-up.  In --ui mode the Playwright UI browser
+  // competes for CPU during the first Next.js cold compile, which can easily
+  // take 60-90 s.  We absorb that cost here so individual test timeouts stay
+  // tight.  Give beforeAll 4 minutes — the warm-up poll + two route compiles
+  // can legitimately need that on slower machines.
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(240_000);
+
+    const t0 = Date.now();
+    const log = (msg: string) => console.log(`[beforeAll] ${msg} (+${Date.now() - t0}ms)`);
+
+    // 1. API health gate — fail fast if globalSetup didn't start the API.
+    log('checking API health');
+    const healthRes = await fetch(`${E2E_ENV.API_URL}/health`, {
+      signal: AbortSignal.timeout(10_000),
+    }).catch((err: unknown) => {
+      throw new Error(
+        `API unreachable at ${E2E_ENV.API_URL}/health — is globalSetup running? ` +
+        `(${err instanceof Error ? err.message : err})`,
+      );
+    });
+    if (!healthRes.ok) {
+      throw new Error(`API returned HTTP ${healthRes.status} — expected 200`);
+    }
+    log('API healthy');
+
+    // 2. Flush Redis rate-limit counters and JWT blocklist entries left over
+    //    from previous runs so the suite starts clean.
+    log('flushing Redis');
     flushRedis();
+    log('Redis flushed');
+
+    // 3. Clear MailHog so activation emails are isolated.
+    log('clearing MailHog');
     await clearAllEmails();
+    log('MailHog cleared');
+
+    // 4. Pre-warm the Next.js dev server.  In --ui mode the first navigation
+    //    triggers lazy page compilation that can take 30-90 s per route.
+    //    First poll with a lightweight Node fetch so we don't waste a browser
+    //    page on a server that isn't up yet.
+    const portalUrl = 'http://localhost:3001';
+    log('waiting for portal to be reachable');
+    let portalReady = false;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      try {
+        await fetch(portalUrl, { signal: AbortSignal.timeout(2_000) });
+        portalReady = true;
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 2_000));
+      }
+    }
+    if (!portalReady) {
+      log('portal not reachable after 60 s — skipping pre-warm (tests may be slow)');
+    } else {
+      log('portal reachable — pre-warming routes');
+      // browser.newPage() doesn't inherit config baseURL, so use full URL.
+      // Warm both /en/login (A1 entry) and /en/projects (post-login redirect).
+      const warmup = await browser.newPage();
+      try {
+        log('pre-warming /en/login');
+        await warmup.goto(`${portalUrl}/en/login`, { timeout: 90_000 });
+        await warmup.waitForLoadState('networkidle', { timeout: 30_000 });
+        log('/en/login warm');
+
+        log('pre-warming /en/projects');
+        await warmup.goto(`${portalUrl}/en/projects`, { timeout: 90_000 });
+        await warmup.waitForLoadState('networkidle', { timeout: 30_000 });
+        log('/en/projects warm');
+      } catch (err) {
+        // Non-fatal — first test will just be slower.
+        log(`pre-warm failed (non-fatal): ${err instanceof Error ? err.message : err}`);
+      } finally {
+        await warmup.close();
+      }
+    }
   });
 
   // =========================================================================
@@ -76,15 +154,15 @@ test.describe.serial('Multitenant E2E Journey', () => {
   // =========================================================================
 
   test('A1: super admin logs in via UI', async ({ page }) => {
-    // First navigation triggers Next.js cold compilation of the login page.
-    // In UI mode (--ui) this is significantly slower due to Playwright UI
-    // overhead + lazy page compilation. Triple the test timeout and give
-    // navigations 120 s so the cold compile doesn't hit the default 30 s cap.
-    test.slow();
-    page.setDefaultNavigationTimeout(120_000);
+    const t0 = Date.now();
+    const log = (msg: string) => console.log(`[A1] ${msg} (+${Date.now() - t0}ms)`);
+    log('start');
     const { email, password } = requireSuperAdminCreds();
+    log('calling loginViaUI');
     await loginViaUI(page, email, password);
+    log('loginViaUI done');
     await expect(page).toHaveURL(/\/projects/);
+    log('URL assertion passed');
   });
 
   test('A2: super admin navigates to /admin/organizations', async ({ page }) => {

@@ -15,3 +15,4 @@ export * from './schemas/invitations';
 export * from './schemas/deadlines';
 export * from './schemas/attachments';
 export * from './schemas/activity';
+export * from './schemas/elementInspections';

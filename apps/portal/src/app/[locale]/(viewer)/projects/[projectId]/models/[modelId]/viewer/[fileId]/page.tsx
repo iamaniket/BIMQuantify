@@ -33,6 +33,7 @@ import { PagesPanel } from '@/components/shared/viewer/pages/PagesPanel';
 import { ContextMenu } from '@/features/viewer/ContextMenu';
 import { ModelExplorer } from '@/features/viewer/explorer/ModelExplorer';
 import { PropertiesPanel } from '@/features/viewer/properties/PropertiesPanel';
+import { InspectionsPanel } from '@/features/viewer/inspections/InspectionsPanel';
 import { SidePanel } from '@/features/viewer/SidePanel';
 import { StatusBar } from '@/features/viewer/StatusBar';
 import { useDocumentShortcuts } from '@/features/viewer/useDocumentShortcuts';
@@ -342,6 +343,13 @@ export default function ViewerPage(): JSX.Element {
           <>
             <SidePanel
               activePanel={activePanel}
+              inspectionsContent={isIfc ? (
+                <InspectionsPanel
+                  metadata={metadata}
+                  projectId={projectId}
+                  fileId={fileId}
+                />
+              ) : undefined}
               explorerContent={isIfc ? (
                 <ModelExplorer
                   metadata={metadata}

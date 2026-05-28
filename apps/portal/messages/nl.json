@@ -1586,5 +1586,17 @@
     "attachmentRejected": "Afgewezen: {filename}",
     "attachmentUpdated": "Bijgewerkt: {filename}",
     "attachmentDeleted": "Verwijderd: {filename}"
+  },
+  "viewerInspections": {
+    "panelTitle": "Inspecties",
+    "emptyNoSelection": "Selecteer een element om gekoppelde inspecties te bekijken.",
+    "emptyMultiSelection": "Selecteer een enkel element om de inspecties te bekijken.",
+    "emptyNoItems": "Geen inspecties gekoppeld aan dit element.",
+    "verdictPass": "Voldoet",
+    "verdictFail": "Voldoet niet",
+    "verdictNa": "N.v.t.",
+    "verdictPending": "In afwachting",
+    "momentLabel": "Borgingsmoment",
+    "loading": "Inspecties laden..."
   }
 }

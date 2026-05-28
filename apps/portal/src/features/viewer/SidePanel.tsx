@@ -13,7 +13,7 @@ const PANEL_TITLES: Record<PanelId, string> = {
   explorer: 'Model Tree',
   properties: 'Properties',
   attachments: 'Attachments',
-  issues: 'Issues',
+  issues: 'Inspections',
   compliance: 'BBL Compliance',
   measure: 'Measurement',
   section: 'Section Planes',
@@ -28,6 +28,7 @@ type SidePanelProps = {
   measureContent?: ReactNode | undefined;
   sectionContent?: ReactNode | undefined;
   bcfContent?: ReactNode | undefined;
+  inspectionsContent?: ReactNode | undefined;
   pagesContent?: ReactNode | undefined;
   headerActions?: Partial<Record<PanelId, ReactNode>> | undefined;
 };
@@ -53,6 +54,7 @@ export function SidePanel({
   activePanel,
   explorerContent,
   propertiesContent,
+  inspectionsContent,
   measureContent,
   sectionContent,
   bcfContent,
@@ -128,7 +130,7 @@ export function SidePanel({
               {activePanel === 'section' && sectionContent}
               {activePanel === 'bcf' && bcfContent}
               {activePanel === 'pages' && pagesContent}
-              {activePanel === 'issues' && <PlaceholderContent label="Issues" />}
+              {activePanel === 'issues' && (inspectionsContent ?? <PlaceholderContent label="Issues" />)}
               {activePanel === 'compliance' && <PlaceholderContent label="BBL Compliance" />}
             </div>
           </>

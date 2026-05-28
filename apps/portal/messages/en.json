@@ -1586,5 +1586,17 @@
     "attachmentRejected": "Rejected {filename}",
     "attachmentUpdated": "Updated {filename}",
     "attachmentDeleted": "Removed {filename}"
+  },
+  "viewerInspections": {
+    "panelTitle": "Inspections",
+    "emptyNoSelection": "Select an element to view linked inspections.",
+    "emptyMultiSelection": "Select a single element to view its inspections.",
+    "emptyNoItems": "No inspections linked to this element.",
+    "verdictPass": "Pass",
+    "verdictFail": "Fail",
+    "verdictNa": "N/A",
+    "verdictPending": "Pending",
+    "momentLabel": "Inspection moment",
+    "loading": "Loading inspections..."
   }
 }

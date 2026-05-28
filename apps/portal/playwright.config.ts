@@ -16,9 +16,14 @@ export default defineConfig({
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
   ],
   outputDir: './test-results',
-  timeout: 60_000,
+  /* 120 s per test — gives headroom in --ui mode where the Playwright UI
+   * browser competes for resources during the first Next.js cold compile. */
+  timeout: 120_000,
   use: {
     baseURL: 'http://localhost:3001',
+    /* First navigation in --ui mode triggers lazy Next.js page compilation.
+     * Default 30 s is too tight on slower machines; 60 s covers cold starts. */
+    navigationTimeout: 60_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from sqlalchemy import ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -88,4 +88,10 @@ class ChecklistItem(TimestampMixin, TenantBase):
         Index("ix_checklist_items_moment_id", "borgingsmoment_id"),
         Index("ix_checklist_items_project_id", "project_id"),
         Index("ix_checklist_items_moment_sequence", "borgingsmoment_id", "sequence"),
+        Index(
+            "ix_checklist_items_element_link",
+            "linked_file_id",
+            "linked_element_global_id",
+            postgresql_where=text("linked_element_global_id IS NOT NULL"),
+        ),
     )
