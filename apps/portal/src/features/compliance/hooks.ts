@@ -33,7 +33,7 @@ import type {
   ComplianceArticle,
   ComplianceIssue,
   ComplianceTrend,
-} from './types.js';
+} from './types';
 
 import {
   MOCK_TREND,

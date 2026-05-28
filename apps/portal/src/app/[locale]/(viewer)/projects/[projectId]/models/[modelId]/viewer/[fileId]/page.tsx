@@ -71,7 +71,6 @@ const DocumentViewer = dynamic(
 
 function buildBundle(response: ViewerBundleResponse): ViewerBundle {
   const out: ViewerBundle = { fragmentsUrl: response.fragments_url! };
-  if (response.edges_url !== null) out.edgesUrl = response.edges_url;
   if (response.metadata_url !== null) out.metadataUrl = response.metadata_url;
   if (response.properties_url !== null) out.propertiesUrl = response.properties_url;
   if (response.fragments_key !== null) out.cacheKey = response.fragments_key;

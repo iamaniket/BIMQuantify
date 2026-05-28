@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
-import { getElementInspections } from '@/lib/api/elementInspections.js';
+import { getElementInspections } from '@/lib/api/elementInspections';
 import type { ModelMetadata, ElementEntry } from '@/lib/api/viewerTypes';
 import { useAuth } from '@/providers/AuthProvider';
 import {
@@ -14,9 +14,9 @@ import {
   parseEntityKey,
   toEntityKey,
 } from '@/stores/viewerEntityStore';
-import { viewerKeys } from '@/features/viewer/queryKeys.js';
+import { viewerKeys } from '@/features/viewer/queryKeys';
 
-import { InspectionItemRow } from './InspectionItemRow.js';
+import { InspectionItemRow } from './InspectionItemRow';
 
 type InspectionsPanelProps = {
   metadata: ModelMetadata | undefined;

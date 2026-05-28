@@ -1,8 +1,8 @@
-import { apiClient } from './client.js';
+import { apiClient } from './client';
 import {
   ElementInspectionsResponseSchema,
   type ElementInspectionsResponse,
-} from './schemas/elementInspections.js';
+} from './schemas/elementInspections';
 
 /**
  * Fetch all checklist items linked to a specific IFC element in a file,

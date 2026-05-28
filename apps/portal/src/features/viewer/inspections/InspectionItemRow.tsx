@@ -6,7 +6,7 @@ import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
-import type { ElementInspectionItem } from '@/lib/api/schemas/elementInspections.js';
+import type { ElementInspectionItem } from '@/lib/api/schemas/elementInspections';
 
 type InspectionItemRowProps = {
   item: ElementInspectionItem;
