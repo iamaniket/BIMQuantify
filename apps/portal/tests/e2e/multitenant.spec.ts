@@ -76,6 +76,12 @@ test.describe.serial('Multitenant E2E Journey', () => {
   // =========================================================================
 
   test('A1: super admin logs in via UI', async ({ page }) => {
+    // First navigation triggers Next.js cold compilation of the login page.
+    // In UI mode (--ui) this is significantly slower due to Playwright UI
+    // overhead + lazy page compilation. Triple the test timeout and give
+    // navigations 120 s so the cold compile doesn't hit the default 30 s cap.
+    test.slow();
+    page.setDefaultNavigationTimeout(120_000);
     const { email, password } = requireSuperAdminCreds();
     await loginViaUI(page, email, password);
     await expect(page).toHaveURL(/\/projects/);
@@ -226,18 +232,11 @@ test.describe.serial('Multitenant E2E Journey', () => {
     // Advance through the optional steps, waiting for each transition before clicking again.
     // handleNext() calls form.trigger() asynchronously; rapid clicks fire before the step
     // transition completes if we don't wait for the active-step indicator to update.
-    await dialog.getByRole('button', { name: 'Next' }).click();
-    await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
-
-    // Step 2: building_type select defaults to "" which fails Zod enum validation.
-    // Select a real value so form.trigger() passes and Next can advance.
-    await dialog.locator('select[name="building_type"]').selectOption('dwelling');
-    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
-
+    // Wizard order: Basics → Address → Details.
     await dialog.getByRole('button', { name: 'Next' }).click();
     await expect(dialog.locator('[aria-current="step"]')).toContainText('Address');
 
-    // latitude/longitude hidden inputs are registered with `valueAsNumber: true`.
+    // Step 2 (Address): latitude/longitude hidden inputs are registered with `valueAsNumber: true`.
     // At mount RHF reads the empty DOM value "" → parseFloat("") = NaN, overwriting
     // the `undefined` defaultValue. NaN fails z.number().optional() validation.
     // Fix: directly mutate _formValues in the RHF form context via React fiber
@@ -266,6 +265,12 @@ test.describe.serial('Multitenant E2E Journey', () => {
     });
 
     await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
+
+    // Step 3 (Details): building_type select defaults to "" which fails Zod enum validation.
+    // Select a real value so form.trigger() passes and Create can submit.
+    await dialog.locator('select[name="building_type"]').selectOption('dwelling');
+    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
 
     await dialog.getByRole('button', { name: 'Create project' }).click();
 
@@ -292,7 +297,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await expect(editDialog).toBeVisible();
 
     // In edit mode highestVisited = LAST_STEP (all steps unlocked).
-    // Fill name on the Basics step, then jump to the final Contractor step
+    // Fill name on the Basics step, then jump to the final Details step
     // via its header button — "Save changes" only appears on the last step.
     const nameInput = editDialog.locator('input[name="name"]');
     // Triple-click selects any existing value before fill so the React-controlled
@@ -300,9 +305,9 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await nameInput.click({ clickCount: 3 });
     await nameInput.fill(`${state.projectName} (edited)`);
 
-    // Jump to Contractor (last step) — aria-label is the step title
-    await editDialog.locator('button[aria-label="Contractor"]').click();
-    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+    // Jump to Details (last step) — aria-label is the step title
+    await editDialog.locator('button[aria-label="Details"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Details');
 
     // Intercept the PATCH response so a failure surfaces immediately with details
     // instead of silently keeping the dialog open until the assertion timeout.
@@ -686,18 +691,13 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await expect(dialog).toBeVisible();
 
     // Walk through the wizard to trigger the API call.
+    // Wizard order: Basics → Address → Details.
     // Step 1 — Basics
     await dialog.locator('input[name="name"]').fill('Should-Fail-Guest-Create');
     await dialog.getByRole('button', { name: 'Next' }).click();
-    await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
-
-    // Step 2 — Details
-    await dialog.locator('select[name="building_type"]').selectOption('dwelling');
-    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
-    await dialog.getByRole('button', { name: 'Next' }).click();
     await expect(dialog.locator('[aria-current="step"]')).toContainText('Address');
 
-    // Step 3 — Address (fix lat/lng NaN issue, same as C3)
+    // Step 2 — Address (fix lat/lng NaN issue, same as C3)
     await page.evaluate(() => {
       const el = document.querySelector('input[name="latitude"]') as HTMLElement | null;
       if (!el) throw new Error('latitude input not found');
@@ -721,8 +721,13 @@ test.describe.serial('Multitenant E2E Journey', () => {
       throw new Error('RHF form context not found in fiber tree');
     });
     await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
 
-    // Step 4 — Contractor → "Create project"
+    // Step 3 — Details
+    await dialog.locator('select[name="building_type"]').selectOption('dwelling');
+    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
+
+    // "Create project" on the last step
     const [createResp] = await Promise.all([
       page.waitForResponse(
         (r) => r.url().includes('/projects') && r.request().method() === 'POST',
@@ -754,8 +759,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await nameInput.click({ clickCount: 3 });
     await nameInput.fill('Guest-Edit-Should-Fail');
 
-    await editDialog.locator('button[aria-label="Contractor"]').click();
-    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+    await editDialog.locator('button[aria-label="Details"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Details');
 
     const [editResp] = await Promise.all([
       page.waitForResponse(
@@ -843,8 +848,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await nameInput.click({ clickCount: 3 });
     await nameInput.fill(editedName);
 
-    await editDialog.locator('button[aria-label="Contractor"]').click();
-    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+    await editDialog.locator('button[aria-label="Details"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Details');
 
     const [saveResp] = await Promise.all([
       page.waitForResponse(
@@ -877,8 +882,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await restoreInput.click({ clickCount: 3 });
     await restoreInput.fill(state.projectName);
 
-    await editDialog.locator('button[aria-label="Contractor"]').click();
-    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+    await editDialog.locator('button[aria-label="Details"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Details');
 
     const [restoreResp] = await Promise.all([
       page.waitForResponse(
@@ -1732,12 +1737,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await dialog.locator('input[name="name"]').fill(state.lifecycleProjectName);
     await dialog.locator('textarea').first().fill('Project for archive/delete tests');
 
-    await dialog.getByRole('button', { name: 'Next' }).click();
-    await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
-
-    await dialog.locator('select[name="building_type"]').selectOption('dwelling');
-    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
-
+    // Wizard order: Basics → Address → Details.
     await dialog.getByRole('button', { name: 'Next' }).click();
     await expect(dialog.locator('[aria-current="step"]')).toContainText('Address');
 
@@ -1766,6 +1766,11 @@ test.describe.serial('Multitenant E2E Journey', () => {
     });
 
     await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
+
+    await dialog.locator('select[name="building_type"]').selectOption('dwelling');
+    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
+
     await dialog.getByRole('button', { name: 'Create project' }).click();
 
     await page.waitForURL(/\/projects\/[0-9a-f-]+/, { timeout: 20_000 });
@@ -2027,8 +2032,8 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await nameInput.click({ clickCount: 3 });
     await nameInput.fill('Viewer-Edit-Should-Fail');
 
-    await editDialog.locator('button[aria-label="Contractor"]').click();
-    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Contractor');
+    await editDialog.locator('button[aria-label="Details"]').click();
+    await expect(editDialog.locator('[aria-current="step"]')).toContainText('Details');
 
     const [editResp] = await Promise.all([
       page.waitForResponse(
