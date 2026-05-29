@@ -86,9 +86,10 @@ export const UNBOUND_STYLE: CategoryStyle = {
   tint: 'var(--surface-high)',
 };
 
-export const CATEGORY_LABELS: Record<ShortcutCategory, string> = {
-  global: 'Global',
-  navigation: 'Navigation',
-  editing: 'Editing',
-  modifier: 'Modifier',
+// i18n key suffixes under `viewer.shortcuts.*`; resolve at React render sites.
+export const CATEGORY_LABEL_KEYS: Record<ShortcutCategory, string> = {
+  global: 'categoryGlobal',
+  navigation: 'categoryNavigation',
+  editing: 'categoryEditing',
+  modifier: 'categoryModifier',
 };

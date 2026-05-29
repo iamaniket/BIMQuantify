@@ -5,6 +5,7 @@ import {
   type JSX,
   type MouseEvent,
   useCallback,
+  useRef,
   memo,
 } from 'react';
 import { useTranslations } from 'next-intl';
@@ -74,15 +75,22 @@ function TreeRowInner({
   const showAll = useViewerEntityStore((s) => s.showAll);
   const requestFrame = useViewerEntityStore((s) => s.requestFrame);
 
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleSelect = useCallback(
     (e: MouseEvent) => {
       e.stopPropagation();
       if (node.entityKeys.length === 0) return;
-      if (isRowSelected) {
-        clearSelection();
-      } else {
-        select(node.entityKeys);
-      }
+      if (e.detail === 2) return; // double-click — let handleDoubleClick handle it
+      if (clickTimer.current) clearTimeout(clickTimer.current);
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        if (isRowSelected) {
+          clearSelection();
+        } else {
+          select(node.entityKeys);
+        }
+      }, 200);
     },
     [node.entityKeys, isRowSelected, select, clearSelection],
   );
@@ -90,6 +98,10 @@ function TreeRowInner({
   const handleDoubleClick = useCallback(
     (e: MouseEvent) => {
       e.stopPropagation();
+      if (clickTimer.current) {
+        clearTimeout(clickTimer.current);
+        clickTimer.current = null;
+      }
       if (node.entityKeys.length === 0) return;
       select(node.entityKeys);
       isolateItems(node.entityKeys);

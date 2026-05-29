@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useMemo, useState, type JSX,
 } from 'react';
@@ -10,14 +11,13 @@ import {
 import type { ViewerHandle } from '@bimstitch/viewer';
 
 import {
-  DOCUMENT_ACTION_LABELS,
   type DocumentAction,
   type DocumentSettings,
 } from '@/lib/documentSettings';
 import type { CameraAction, ViewerSettings } from '@/lib/viewerSettings';
 
 import {
-  CATEGORY_LABELS,
+  CATEGORY_LABEL_KEYS,
   CATEGORY_STYLES,
   classifyCommand,
 } from './shortcutCategories';
@@ -45,20 +45,20 @@ type Props2D = {
 
 type Props = Props3D | Props2D;
 
-const CAMERA_ACTIONS: { value: CameraAction; label: string }[] = [
-  { value: 'rotate', label: 'Rotate (orbit)' },
-  { value: 'truck', label: 'Truck (pan)' },
-  { value: 'dolly', label: 'Dolly (zoom)' },
-  { value: 'zoom', label: 'Zoom' },
-  { value: 'offset', label: 'Offset' },
-  { value: 'none', label: 'None' },
+const CAMERA_ACTIONS: { value: CameraAction; labelKey: string }[] = [
+  { value: 'rotate', labelKey: 'cameraRotate' },
+  { value: 'truck', labelKey: 'cameraTruck' },
+  { value: 'dolly', labelKey: 'cameraDolly' },
+  { value: 'zoom', labelKey: 'cameraZoom' },
+  { value: 'offset', labelKey: 'cameraOffset' },
+  { value: 'none', labelKey: 'cameraNone' },
 ];
 
-const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; label: string }[] = [
-  { key: 'left', label: 'Left button' },
-  { key: 'middle', label: 'Middle button' },
-  { key: 'right', label: 'Right button' },
-  { key: 'wheel', label: 'Wheel' },
+const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; labelKey: string }[] = [
+  { key: 'left', labelKey: 'leftButton' },
+  { key: 'middle', labelKey: 'middleButton' },
+  { key: 'right', labelKey: 'rightButton' },
+  { key: 'wheel', labelKey: 'wheel' },
 ];
 
 const ACTION_ORDER: DocumentAction[] = [
@@ -141,15 +141,18 @@ function use3DBindings(
   return { bindings, refresh };
 }
 
-function use2DBindings(settings: DocumentSettings): NormalizedBinding[] {
+function use2DBindings(
+  settings: DocumentSettings,
+  actionLabel: (action: DocumentAction) => string,
+): NormalizedBinding[] {
   return useMemo(
     () => ACTION_ORDER.map((action): NormalizedBinding => ({
       command: action,
-      label: DOCUMENT_ACTION_LABELS[action],
+      label: actionLabel(action),
       combo: settings.shortcuts[action] ?? '',
       category: classifyCommand(action),
     })),
-    [settings],
+    [settings, actionLabel],
   );
 }
 
@@ -172,8 +175,9 @@ function ChipLegend({ filter, onFilter, counts }: {
   onFilter: (cat: ShortcutCategory | null) => void;
   counts: Record<string, number>;
 }): JSX.Element {
+  const t = useTranslations('viewer.shortcuts');
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  const cats = Object.keys(CATEGORY_LABELS) as ShortcutCategory[];
+  const cats = Object.keys(CATEGORY_LABEL_KEYS) as ShortcutCategory[];
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <Button
@@ -183,7 +187,7 @@ function ChipLegend({ filter, onFilter, counts }: {
         onClick={() => { onFilter(null); }}
       >
         <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: !filter ? 'var(--foreground-inverse)' : 'var(--foreground-tertiary)' }} />
-        All <span className="opacity-60">{total}</span>
+        {t('all')} <span className="opacity-60">{total}</span>
       </Button>
       {cats.map((id) => {
         const cat = CATEGORY_STYLES[id];
@@ -196,7 +200,7 @@ function ChipLegend({ filter, onFilter, counts }: {
             onClick={() => { onFilter(active ? null : id); }}
           >
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: cat.swatch }} />
-            {CATEGORY_LABELS[id]} <span className="opacity-60">{counts[id] ?? 0}</span>
+            {t(CATEGORY_LABEL_KEYS[id])} <span className="opacity-60">{counts[id] ?? 0}</span>
           </Button>
         );
       })}
@@ -217,6 +221,7 @@ function SelectedReadout({ code, binding, onRebind, capturing }: {
   onRebind: () => void;
   capturing: string | null;
 }): JSX.Element {
+  const t = useTranslations('viewer.shortcuts');
   const cat = binding ? CATEGORY_STYLES[binding.category] : null;
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-low px-3 py-2">
@@ -232,10 +237,10 @@ function SelectedReadout({ code, binding, onRebind, capturing }: {
       </div>
       <div className="min-w-0">
         <div className="text-caption font-bold uppercase tracking-widest text-foreground-tertiary">
-          {cat ? CATEGORY_LABELS[binding!.category] : 'Unassigned'}
+          {cat ? t(CATEGORY_LABEL_KEYS[binding!.category]) : t('unassigned')}
         </div>
         <div className="mt-0.5 max-w-[220px] truncate text-body3 font-semibold text-foreground">
-          {binding ? binding.label : 'No action bound'}
+          {binding ? binding.label : t('noActionBound')}
         </div>
       </div>
       {binding && (
@@ -245,7 +250,7 @@ function SelectedReadout({ code, binding, onRebind, capturing }: {
           disabled={capturing !== null}
           onClick={onRebind}
         >
-          <PencilIcon /> Rebind
+          <PencilIcon /> {t('rebind')}
         </Button>
       )}
     </div>
@@ -258,6 +263,7 @@ function CaptureOverlay({ action, combo, cat, onCancel }: {
   cat: { swatch: string } | null;
   onCancel: () => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.shortcuts');
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onCancel();
@@ -270,18 +276,26 @@ function CaptureOverlay({ action, combo, cat, onCancel }: {
     <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ background: 'rgba(15,23,42,0.55)' }}>
       <div className="w-full max-w-md rounded-xl border border-border bg-surface-main p-6 text-center shadow-lg">
         <div className="text-caption font-bold uppercase tracking-widest text-primary">
-          Listening for keystroke
+          {t('listeningTitle')}
         </div>
         <div className="mt-2 text-lg font-medium text-foreground">
-          Press any key for{' '}
-          <span style={{ color: cat?.swatch ?? 'var(--primary)' }}>{action}</span>
+          {t.rich('pressAnyKeyFor', {
+            action: (chunks) => (
+              <span style={{ color: cat?.swatch ?? 'var(--primary)' }}>{chunks}</span>
+            ),
+            name: action,
+          })}
         </div>
         <div className="mt-3 text-body3 text-foreground-tertiary">
-          Currently bound to{' '}
+          {t('currentlyBoundTo')}{' '}
           <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-sans text-caption font-semibold text-foreground">
             {prettyKey(combo)}
           </kbd>
-          {' '}· Press <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-sans text-caption font-semibold text-foreground">Esc</kbd> to cancel
+          {' '}· {t.rich('pressEscToCancel', {
+            key: () => (
+              <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-sans text-caption font-semibold text-foreground">Esc</kbd>
+            ),
+          })}
         </div>
       </div>
     </div>
@@ -301,28 +315,30 @@ function Mouse3DSection({
   selected: string | null;
   onPick: (id: string) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.shortcuts');
+  const ts = useTranslations('viewer.settings');
   const dragLabel = (action: CameraAction): string => {
     const found = CAMERA_ACTIONS.find((a) => a.value === action);
-    return found !== undefined ? found.label : action;
+    return found !== undefined ? ts(found.labelKey) : action;
   };
 
   return (
     <>
       <MouseDiagram
-        leftButton={{ label: 'Select', sublabel: `Drag: ${dragLabel(settings.controls.left)}` }}
-        middleButton={{ label: 'Zoom', sublabel: `Drag: ${dragLabel(settings.controls.middle)}` }}
-        rightButton={{ label: 'Pan', sublabel: `Drag: ${dragLabel(settings.controls.right)}` }}
-        scrollWheel={`Zoom in/out (${dragLabel(settings.controls.wheel)})`}
+        leftButton={{ label: t('selectLabel'), sublabel: t('dragSublabel', { action: dragLabel(settings.controls.left) }) }}
+        middleButton={{ label: t('zoomLabel'), sublabel: t('dragSublabel', { action: dragLabel(settings.controls.middle) }) }}
+        rightButton={{ label: t('panLabel'), sublabel: t('dragSublabel', { action: dragLabel(settings.controls.right) }) }}
+        scrollWheel={t('zoomInOut', { action: dragLabel(settings.controls.wheel) })}
         selected={selected}
         onPick={onPick}
       />
       <div className="space-y-2">
         <h4 className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
-          Drag actions
+          {t('dragActions')}
         </h4>
         {DRAG_BUTTONS.map((btn) => (
           <label key={btn.key} className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
-            <span>{btn.label}</span>
+            <span>{ts(btn.labelKey)}</span>
             <Select
               selectSize="sm"
               className="w-40"
@@ -335,7 +351,7 @@ function Mouse3DSection({
               }}
             >
               {CAMERA_ACTIONS.map((a) => (
-                <option key={a.value} value={a.value}>{a.label}</option>
+                <option key={a.value} value={a.value}>{ts(a.labelKey)}</option>
               ))}
             </Select>
           </label>
@@ -346,26 +362,28 @@ function Mouse3DSection({
 }
 
 function Mouse2DSection(): JSX.Element {
+  const t = useTranslations('viewer.shortcuts');
+  const td = useTranslations('viewer.documentSettings');
   const rows: { gesture: string; action: string }[] = [
-    { gesture: 'Ctrl + Wheel', action: 'Zoom in / out toward cursor' },
-    { gesture: 'Middle drag', action: 'Pan' },
-    { gesture: 'Left drag (Pan tool)', action: 'Pan' },
-    { gesture: 'Left click (Zoom tool)', action: 'Zoom in toward cursor' },
-    { gesture: 'Alt + left click (Zoom)', action: 'Zoom out toward cursor' },
-    { gesture: 'Double-click (Pan/Zoom)', action: 'Fit to page' },
+    { gesture: td('gesture.ctrlWheel'), action: td('gesture.actionZoomCursor') },
+    { gesture: td('gesture.middleDrag'), action: td('gesture.actionPan') },
+    { gesture: td('gesture.leftDragPan'), action: td('gesture.actionPan') },
+    { gesture: td('gesture.leftClickZoom'), action: td('gesture.actionZoomInCursor') },
+    { gesture: td('gesture.altLeftClickZoom'), action: td('gesture.actionZoomOutCursor') },
+    { gesture: td('gesture.doubleClick'), action: td('gesture.actionFitPage') },
   ];
 
   return (
     <>
       <MouseDiagram
-        leftButton={{ label: 'Select', sublabel: undefined }}
-        middleButton={{ label: 'Zoom', sublabel: 'Zoom In/Out' }}
-        rightButton={{ label: 'Pan', sublabel: undefined }}
-        scrollWheel="Zoom in/out (always available)"
+        leftButton={{ label: t('selectLabel'), sublabel: undefined }}
+        middleButton={{ label: t('zoomLabel'), sublabel: t('zoomInOutShort') }}
+        rightButton={{ label: t('panLabel'), sublabel: undefined }}
+        scrollWheel={t('zoomInOutAlways')}
       />
       <div className="space-y-2">
         <h4 className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
-          Mouse gestures
+          {t('mouseGestures')}
         </h4>
         <ul className="space-y-0.5">
           {rows.map((r) => (
@@ -383,8 +401,15 @@ function Mouse2DSection(): JSX.Element {
 // ── Main export ─────────────────────────────────────────────────────
 
 export function KeyBindingsTab(props: Props): JSX.Element {
+  const t = useTranslations('viewer.shortcuts');
+  const td = useTranslations('viewer.documentSettings');
   const { mode, settings, onSettingsChange } = props;
   const handle = mode === '3d' ? props.handle : null;
+
+  const documentActionLabel = useCallback(
+    (action: DocumentAction): string => td(`action.${action}`),
+    [td],
+  );
 
   const draftShortcuts3D = mode === '3d' ? (settings).shortcuts : undefined;
   const { bindings: bindings3D } = use3DBindings(
@@ -393,6 +418,7 @@ export function KeyBindingsTab(props: Props): JSX.Element {
   );
   const bindings2D = use2DBindings(
     mode === '2d' ? (settings) : { shortcuts: {}, mouseBindings: {}, pageBackground: '' },
+    documentActionLabel,
   );
 
   const bindings = mode === '3d' ? bindings3D : bindings2D;
@@ -479,13 +505,13 @@ export function KeyBindingsTab(props: Props): JSX.Element {
           value="keyboard"
           className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1.5 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
         >
-          Keyboard
+          {t('tabKeyboard')}
         </TabsTrigger>
         <TabsTrigger
           value="mouse"
           className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1.5 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
         >
-          Mouse
+          {t('tabMouse')}
         </TabsTrigger>
       </TabsList>
 
@@ -517,12 +543,12 @@ export function KeyBindingsTab(props: Props): JSX.Element {
                     type="button"
                     className="text-foreground-tertiary hover:text-foreground"
                     onClick={() => { setQuery(''); }}
-                    aria-label="Clear search"
+                    aria-label={t('clearSearch')}
                   >
                     ×
                   </button>
                 ) : undefined}
-                placeholder="Search actions…"
+                placeholder={t('searchActions')}
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); }}
               />

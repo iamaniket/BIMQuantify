@@ -187,7 +187,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
           )}
         >
           <Crosshair className="h-3.5 w-3.5" />
-          Place
+          {t('place')}
         </button>
       </div>
 
@@ -196,7 +196,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
         {planes.length === 0 ? (
           <PanelEmptyState
             icon={Crosshair}
-            message="Add section planes using the buttons above or click surfaces in placement mode"
+            message={t('emptyMessage')}
           />
         ) : (
           <ul className="divide-y divide-border">
@@ -220,7 +220,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
                   >
                     <span className={cn('h-2 w-2 shrink-0 rounded-full', dominantAxisColor(p.normal))} />
                     <span className="flex-1 truncate text-xs font-medium text-foreground">
-                      Plane {idx + 1}
+                      {t('planeLabel', { index: idx + 1 })}
                       <span className="ml-1.5 text-foreground-secondary">
                         {dominantAxisLabel(p.normal)}
                       </span>
@@ -228,7 +228,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); flipPlane(p.id); }}
-                      title="Flip direction"
+                      title={t('flip')}
                       className="shrink-0 rounded p-0.5 text-foreground-secondary transition-colors hover:bg-background-tertiary"
                     >
                       <FlipVertical className="h-3.5 w-3.5" />
@@ -236,7 +236,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); toggleVisibility(p.id); }}
-                      title={p.active ? 'Hide plane' : 'Show plane'}
+                      title={p.active ? t('hide') : t('show')}
                       className="shrink-0 rounded p-0.5 text-foreground-secondary transition-colors hover:bg-background-tertiary"
                     >
                       {p.active ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -244,7 +244,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); removePlane(p.id); }}
-                      title="Remove plane"
+                      title={t('remove')}
                       className="shrink-0 rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -277,24 +277,24 @@ export function SectionPanel({ handle }: Props): JSX.Element {
         {isPlacing ? (
           <div className="flex items-center gap-2">
             <p className="flex-1 text-body3 text-foreground-secondary">
-              Click a surface to place a section plane
+              {t('placeHint')}
             </p>
             <button
               type="button"
               onClick={togglePlacement}
               className="shrink-0 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-secondary"
             >
-              Done
+              {t('done')}
             </button>
           </div>
         ) : planes.length > 0 ? (
           <div className="flex items-center gap-3 text-xs text-foreground-secondary">
-            <span>{planes.length} plane{planes.length !== 1 ? 's' : ''}</span>
+            <span>{t('count', { count: planes.length })}</span>
             <span className="ml-auto" />
             <button
               type="button"
               onClick={() => { setShowClearConfirm(true); }}
-              title="Clear all planes"
+              title={t('clearAll')}
               className="shrink-0 rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
             >
               <Eraser className="h-3.5 w-3.5" />
@@ -306,10 +306,10 @@ export function SectionPanel({ handle }: Props): JSX.Element {
       <ConfirmDialog
         open={showClearConfirm}
         onOpenChange={setShowClearConfirm}
-        title="Clear all section planes"
-        description={`This will remove all ${planes.length} section plane${planes.length !== 1 ? 's' : ''}. This cannot be undone.`}
-        confirmLabel="Clear all"
-        cancelLabel="Cancel"
+        title={t('clearConfirmTitle')}
+        description={t('clearConfirmDescription', { count: planes.length })}
+        confirmLabel={t('clearConfirm')}
+        cancelLabel={t('cancel')}
         onConfirm={clearAll}
         variant="destructive"
         isPending={false}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
 import {
@@ -38,11 +39,12 @@ function Viewer3DSection({
   settings: ViewerSettings;
   onChange: (next: ViewerSettings) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.settings');
   return (
     <div className="space-y-4">
-      <Section title="Shadows" note={undefined}>
+      <Section title={t('shadows')} note={undefined}>
         <Toggle
-          label="Enable shadows"
+          label={t('enableShadows')}
           checked={settings.shadows.enabled}
           onChange={(enabled) => {
             onChange({
@@ -52,9 +54,9 @@ function Viewer3DSection({
           }}
         />
       </Section>
-      <Section title="Visual effects" note={undefined}>
+      <Section title={t('visualEffects')} note={undefined}>
         <Toggle
-          label="Enable effects"
+          label={t('enableEffects')}
           checked={settings.effects.enabled}
           onChange={(enabled) => {
             onChange({
@@ -64,7 +66,7 @@ function Viewer3DSection({
           }}
         />
         <Toggle
-          label="Edges (outline)"
+          label={t('edgesOutline')}
           checked={settings.outline.enabled}
           onChange={(enabled) => {
             onChange({
@@ -73,7 +75,7 @@ function Viewer3DSection({
             });
           }}
         />
-        <Field label="Quality">
+        <Field label={t('quality')}>
           <Select
             selectSize="sm"
             value={settings.effects.quality}
@@ -93,9 +95,9 @@ function Viewer3DSection({
           </Select>
         </Field>
       </Section>
-      <Section title="Zoom limits" note={undefined}>
+      <Section title={t('zoomLimits')} note={undefined}>
         <RangeField
-          label="Max distance"
+          label={t('maxDistance')}
           value={settings.zoom.maxFactor}
           min={2}
           max={20}
@@ -109,9 +111,9 @@ function Viewer3DSection({
           }}
         />
       </Section>
-      <Section title="Behavior" note="Color changes reload the viewer">
+      <Section title={t('behavior')} note={t('behaviorNoteColor')}>
         <Toggle
-          label="Hover highlight"
+          label={t('hoverHighlight')}
           checked={settings.behavior.hoverHighlight.enabled}
           onChange={(enabled) => {
             onChange({
@@ -121,7 +123,7 @@ function Viewer3DSection({
           }}
         />
         <ColorField
-          label="Hover color"
+          label={t('hoverColor')}
           value={colorToHex(settings.behavior.hoverHighlight.color)}
           onChange={(hex) => {
             onChange({
@@ -131,7 +133,7 @@ function Viewer3DSection({
           }}
         />
         <Toggle
-          label="Click to select"
+          label={t('clickToSelect')}
           checked={settings.behavior.selection.enabled}
           onChange={(enabled) => {
             onChange({
@@ -141,7 +143,7 @@ function Viewer3DSection({
           }}
         />
         <ColorField
-          label="Selection color"
+          label={t('selectionColor')}
           value={colorToHex(settings.behavior.selection.color)}
           onChange={(hex) => {
             onChange({
@@ -156,10 +158,11 @@ function Viewer3DSection({
 }
 
 function DocumentSection(): JSX.Element {
+  const t = useTranslations('viewer.settings');
   return (
     <div className="space-y-4">
       <p className="text-body3 text-foreground-secondary">
-        No additional document-specific settings yet.
+        {t('noDocumentSettings')}
       </p>
     </div>
   );
@@ -180,13 +183,14 @@ function AppearanceTab({
   onViewer3DChange: (next: ViewerSettings) => void;
   onDoc2DChange: (next: DocumentSettings) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.settings');
   const [subTab, setSubTab] = useState<string>(activeMode === '3d' ? '3d' : 'document');
 
   return (
     <div className="space-y-4">
-      <Section title="Common" note={undefined}>
+      <Section title={t('common')} note={undefined}>
         <ColorField
-          label="Background"
+          label={t('background')}
           value={colorToHex(viewer3D.background.color)}
           onChange={(hex) => {
             onViewer3DChange({ ...viewer3D, background: { color: hexToColor(hex) } });
@@ -201,13 +205,13 @@ function AppearanceTab({
             value="3d"
             className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1.5 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
           >
-            3D Viewer
+            {t('sub3dViewer')}
           </TabsTrigger>
           <TabsTrigger
             value="document"
             className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1.5 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
           >
-            Document
+            {t('subDocument')}
           </TabsTrigger>
         </TabsList>
 
@@ -232,6 +236,7 @@ function PerformanceTab({
   settings: ViewerSettings;
   onChange: (next: ViewerSettings) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.settings');
   const ip = settings.interactivePerformance;
   const update = (
     patch: Partial<InteractivePerformanceSettings>,
@@ -245,56 +250,55 @@ function PerformanceTab({
   return (
     <div>
       <Section
-        title="Performance during navigation"
+        title={t('performanceDuringNav')}
         note={undefined}
       >
         <p className="text-body3 text-foreground-secondary">
-          Skip work while the camera is moving.
-          Restored on idle.
+          {t('performanceDescription')}
         </p>
         <Toggle
-          label="Hide small items"
+          label={t('hideSmall')}
           checked={ip.hideSmall}
           onChange={(v) => { update({ hideSmall: v }); }}
         />
         <Toggle
-          label="Envelope only (walls/slabs/roof/doors/windows)"
+          label={t('envelopeOnly')}
           checked={ip.envelopeOnly}
           onChange={(v) => { update({ envelopeOnly: v }); }}
         />
         <Toggle
-          label="Hide transparent items"
+          label={t('hideTransparent')}
           checked={ip.hideTransparent}
           onChange={(v) => { update({ hideTransparent: v }); }}
         />
         <Toggle
-          label="Cull sub-pixel items"
+          label={t('cullSubPixel')}
           checked={ip.pixelSizeCull}
           onChange={(v) => { update({ pixelSizeCull: v }); }}
         />
         <Toggle
-          label="Lower resolution while moving"
+          label={t('lowerResolution')}
           checked={ip.dynamicPixelRatio}
           onChange={(v) => {
             update({ dynamicPixelRatio: v });
           }}
         />
         <Toggle
-          label="Tighten far plane"
+          label={t('tightenFarPlane')}
           checked={ip.tightenFarPlane}
           onChange={(v) => {
             update({ tightenFarPlane: v });
           }}
         />
         <Toggle
-          label="Flat shading override"
+          label={t('flatShading')}
           checked={ip.flatShadeOverride}
           onChange={(v) => {
             update({ flatShadeOverride: v });
           }}
         />
         <Toggle
-          label="Pause hover-highlight"
+          label={t('pauseHover')}
           checked={ip.pauseHover}
           onChange={(v) => { update({ pauseHover: v }); }}
         />
@@ -400,6 +404,7 @@ function applyLiveCommands3D(
 // ── Exported dialog ─────────────────────────────────────────────────
 
 export function SettingsDialog(props: Props): JSX.Element {
+  const t = useTranslations('viewer.settings');
   const {
     mode, open, onClose, settings, onSettingsChange,
   } = props;
@@ -470,27 +475,27 @@ export function SettingsDialog(props: Props): JSX.Element {
     <AppDialog
       open={open}
       onClose={handleCancel}
-      title="Viewer Settings"
-      subtitle="Customize rendering, controls, and display preferences."
+      title={t('viewerTitle')}
+      subtitle={t('viewerSubtitle')}
       width={900}
       height={760}
       bodyClassName="overflow-hidden"
       onReset={handleReset}
-      resetLabel="Reset defaults"
+      resetLabel={t('resetDefaults')}
       onSave={handleSave}
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col">
         <TabsList className="w-fit shrink-0">
           <TabsTrigger value="appearance">
-            Appearance
+            {t('tabAppearance')}
           </TabsTrigger>
           {mode === '3d' && (
             <TabsTrigger value="performance">
-              Performance
+              {t('tabPerformance')}
             </TabsTrigger>
           )}
           <TabsTrigger value="keybindings">
-            Key Bindings
+            {t('tabKeyBindings')}
           </TabsTrigger>
         </TabsList>
 

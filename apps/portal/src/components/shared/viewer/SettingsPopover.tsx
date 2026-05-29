@@ -1,6 +1,7 @@
 'use client';
 
 import { RotateCcw, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   useEffect,
   useRef,
@@ -26,20 +27,20 @@ import { ColorField, Field, Section, Toggle } from './settings/primitives';
 
 const EFFECTS_QUALITIES: EffectsQuality[] = ['low', 'medium', 'high'];
 
-const CAMERA_ACTIONS: { value: CameraAction; label: string }[] = [
-  { value: 'rotate', label: 'Rotate (orbit)' },
-  { value: 'truck', label: 'Truck (pan)' },
-  { value: 'dolly', label: 'Dolly (zoom)' },
-  { value: 'zoom', label: 'Zoom' },
-  { value: 'offset', label: 'Offset' },
-  { value: 'none', label: 'None' },
+const CAMERA_ACTIONS: { value: CameraAction; labelKey: string }[] = [
+  { value: 'rotate', labelKey: 'cameraRotate' },
+  { value: 'truck', labelKey: 'cameraTruck' },
+  { value: 'dolly', labelKey: 'cameraDolly' },
+  { value: 'zoom', labelKey: 'cameraZoom' },
+  { value: 'offset', labelKey: 'cameraOffset' },
+  { value: 'none', labelKey: 'cameraNone' },
 ];
 
-const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; label: string }[] = [
-  { key: 'left', label: 'Left button' },
-  { key: 'middle', label: 'Middle button' },
-  { key: 'right', label: 'Right button' },
-  { key: 'wheel', label: 'Wheel' },
+const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; labelKey: string }[] = [
+  { key: 'left', labelKey: 'leftButton' },
+  { key: 'middle', labelKey: 'middleButton' },
+  { key: 'right', labelKey: 'rightButton' },
+  { key: 'wheel', labelKey: 'wheel' },
 ];
 
 type Props = {
@@ -84,6 +85,7 @@ function ShortcutsSection({
   settings: ViewerSettings;
   onChange: (next: ViewerSettings) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.settings');
   const [bindings, setBindings] = useState<Binding[]>([]);
   const [capturing, setCapturing] = useState<string | null>(null);
 
@@ -133,13 +135,13 @@ function ShortcutsSection({
   }, [capturing]);
 
   return (
-    <Section title="Keyboard shortcuts" note="Live">
+    <Section title={t('keyboardShortcuts')} note={t('noteLive')}>
       <ul
         className="max-h-40 space-y-1 overflow-y-auto"
         data-testid="viewer-settings-shortcuts"
       >
         {bindings.length === 0 ? (
-          <li className="text-caption text-foreground-secondary">No shortcuts.</li>
+          <li className="text-caption text-foreground-secondary">{t('noShortcuts')}</li>
         ) : (
           bindings.map((b) => (
             <li
@@ -156,7 +158,7 @@ function ShortcutsSection({
                 }}
                 className="min-w-[5rem] rounded border border-border px-2 py-0.5 font-sans text-foreground hover:bg-background-secondary"
               >
-                {capturing === b.command ? 'Press a key…' : b.combo}
+                {capturing === b.command ? t('pressKey') : b.combo}
               </button>
             </li>
           ))
@@ -177,6 +179,7 @@ function MouseBindingsSection({
   settings: ViewerSettings;
   onChange: (next: ViewerSettings) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.settings');
   const [bindings, setBindings] = useState<MouseBinding[]>([]);
   const [commandList, setCommandList] = useState<string[]>([]);
 
@@ -252,7 +255,7 @@ function MouseBindingsSection({
   };
 
   return (
-    <Section title="Mouse bindings" note="Live">
+    <Section title={t('mouseBindings')} note={t('noteLive')}>
       <ul
         className="max-h-48 space-y-1 overflow-y-auto"
         data-testid="viewer-settings-mouse-bindings"
@@ -272,7 +275,7 @@ function MouseBindingsSection({
                 rebind(g, e.target.value).catch(() => undefined);
               }}
             >
-              <option value="__unbind__">— none —</option>
+              <option value="__unbind__">{t('mouseBindingNone')}</option>
               {commandList.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -295,6 +298,7 @@ function PerformanceSection({
   settings: ViewerSettings;
   onChange: (next: ViewerSettings) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.settings');
   const ip = settings.interactivePerformance;
 
   const update = (patch: Partial<InteractivePerformanceSettings>): void => {
@@ -306,61 +310,61 @@ function PerformanceSection({
   };
 
   return (
-    <Section title="Performance during navigation" note="Live">
+    <Section title={t('performanceDuringNav')} note={t('noteLive')}>
       <p className="text-caption text-foreground-secondary">
-        Skip work while the camera is moving. Restored on idle.
+        {t('performanceDescription')}
       </p>
       <Toggle
-        label="Hide small items"
+        label={t('hideSmall')}
         checked={ip.hideSmall}
         onChange={(hideSmall) => {
           update({ hideSmall });
         }}
       />
       <Toggle
-        label="Envelope only (walls/slabs/roof/doors/windows)"
+        label={t('envelopeOnly')}
         checked={ip.envelopeOnly}
         onChange={(envelopeOnly) => {
           update({ envelopeOnly });
         }}
       />
       <Toggle
-        label="Hide transparent items"
+        label={t('hideTransparent')}
         checked={ip.hideTransparent}
         onChange={(hideTransparent) => {
           update({ hideTransparent });
         }}
       />
       <Toggle
-        label="Cull sub-pixel items"
+        label={t('cullSubPixel')}
         checked={ip.pixelSizeCull}
         onChange={(pixelSizeCull) => {
           update({ pixelSizeCull });
         }}
       />
       <Toggle
-        label="Lower resolution while moving"
+        label={t('lowerResolution')}
         checked={ip.dynamicPixelRatio}
         onChange={(dynamicPixelRatio) => {
           update({ dynamicPixelRatio });
         }}
       />
       <Toggle
-        label="Tighten far plane"
+        label={t('tightenFarPlane')}
         checked={ip.tightenFarPlane}
         onChange={(tightenFarPlane) => {
           update({ tightenFarPlane });
         }}
       />
       <Toggle
-        label="Flat shading override"
+        label={t('flatShading')}
         checked={ip.flatShadeOverride}
         onChange={(flatShadeOverride) => {
           update({ flatShadeOverride });
         }}
       />
       <Toggle
-        label="Pause hover-highlight"
+        label={t('pauseHover')}
         checked={ip.pauseHover}
         onChange={(pauseHover) => {
           update({ pauseHover });
@@ -377,10 +381,11 @@ function MouseControlsSection({
   settings: ViewerSettings;
   onChange: (next: ViewerSettings) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.settings');
   return (
-    <Section title="Mouse drag actions" note="Applies on next viewer reload">
+    <Section title={t('mouseDragActions')} note={t('noteApplyOnReload')}>
       {DRAG_BUTTONS.map((btn) => (
-        <Field key={btn.key} label={btn.label}>
+        <Field key={btn.key} label={t(btn.labelKey)}>
           <Select
             value={settings.controls[btn.key]}
             onChange={(e) => {
@@ -395,7 +400,7 @@ function MouseControlsSection({
           >
             {CAMERA_ACTIONS.map((a) => (
               <option key={a.value} value={a.value}>
-                {a.label}
+                {t(a.labelKey)}
               </option>
             ))}
           </Select>
@@ -412,6 +417,7 @@ export function SettingsPopover({
   onClose,
   onReloadViewer,
 }: Props): JSX.Element {
+  const t = useTranslations('viewer.settings');
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -440,7 +446,7 @@ export function SettingsPopover({
     <div
       ref={ref}
       role="dialog"
-      aria-label="Viewer settings"
+      aria-label={t('viewerSettingsAria')}
       data-testid="viewer-settings-popover"
       className="absolute bottom-12 left-1/2 z-20 w-[26rem] -translate-x-1/2 rounded-md border border-border bg-background p-4 shadow-lg"
       onMouseDown={(e) => {
@@ -448,11 +454,11 @@ export function SettingsPopover({
       }}
     >
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-body2 font-medium text-foreground">Viewer settings</h2>
+        <h2 className="text-body2 font-medium text-foreground">{t('viewerSettingsShort')}</h2>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close settings"
+          aria-label={t('closeSettings')}
           className="inline-flex h-10 w-10 items-center justify-center rounded text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
         >
           <X className="h-4 w-4" />
@@ -462,13 +468,13 @@ export function SettingsPopover({
       <Tabs defaultValue="appearance">
         <TabsList className="shrink-0">
           <TabsTrigger value="appearance" className="flex-1 text-caption">
-            Appearance
+            {t('tabAppearance')}
           </TabsTrigger>
           <TabsTrigger value="performance" className="flex-1 text-caption">
-            Performance
+            {t('tabPerformance')}
           </TabsTrigger>
           <TabsTrigger value="controls" className="flex-1 text-caption">
-            Controls
+            {t('tabControls')}
           </TabsTrigger>
         </TabsList>
 
@@ -476,9 +482,9 @@ export function SettingsPopover({
           <div className="space-y-4 pt-3">
 
 
-            <Section title="Shadows" note="Applies on next viewer reload">
+            <Section title={t('shadows')} note={t('noteApplyOnReload')}>
               <Toggle
-                label="Enable shadows"
+                label={t('enableShadows')}
                 checked={settings.shadows.enabled}
                 onChange={(enabled) => {
                   update({
@@ -489,9 +495,9 @@ export function SettingsPopover({
               />
             </Section>
 
-            <Section title="Visual effects" note="Applies on next viewer reload">
+            <Section title={t('visualEffects')} note={t('noteApplyOnReload')}>
               <Toggle
-                label="Enable effects"
+                label={t('enableEffects')}
                 checked={settings.effects.enabled}
                 onChange={(enabled) => {
                   update({
@@ -501,7 +507,7 @@ export function SettingsPopover({
                 }}
               />
               <Toggle
-                label="Edges (outline)"
+                label={t('edgesOutline')}
                 checked={settings.outline.enabled}
                 onChange={(enabled) => {
                   update({
@@ -510,7 +516,7 @@ export function SettingsPopover({
                   });
                 }}
               />
-              <Field label="Quality">
+              <Field label={t('quality')}>
                 <Select
                   value={settings.effects.quality}
                   onChange={(e) => {
@@ -532,9 +538,9 @@ export function SettingsPopover({
               </Field>
             </Section>
 
-            <Section title="Background" note="Applies on next viewer reload">
+            <Section title={t('background')} note={t('noteApplyOnReload')}>
               <ColorField
-                label="Color"
+                label={t('backgroundColor')}
                 value={colorToHex(settings.background.color)}
                 onChange={(hex) => {
                   update({
@@ -545,9 +551,9 @@ export function SettingsPopover({
               />
             </Section>
 
-            <Section title="Behavior" note="Toggle: live · Color: reload">
+            <Section title={t('behavior')} note={t('behaviorNoteToggle')}>
               <Toggle
-                label="Hover highlight"
+                label={t('hoverHighlight')}
                 checked={settings.behavior.hoverHighlight.enabled}
                 onChange={(enabled) => {
                   update({
@@ -558,7 +564,7 @@ export function SettingsPopover({
                 }}
               />
               <ColorField
-                label="Hover color"
+                label={t('hoverColor')}
                 value={colorToHex(settings.behavior.hoverHighlight.color)}
                 onChange={(hex) => {
                   update({
@@ -568,7 +574,7 @@ export function SettingsPopover({
                 }}
               />
               <Toggle
-                label="Click to select"
+                label={t('clickToSelect')}
                 checked={settings.behavior.selection.enabled}
                 onChange={(enabled) => {
                   update({
@@ -579,7 +585,7 @@ export function SettingsPopover({
                 }}
               />
               <ColorField
-                label="Selection color"
+                label={t('selectionColor')}
                 value={colorToHex(settings.behavior.selection.color)}
                 onChange={(hex) => {
                   update({
@@ -613,9 +619,9 @@ export function SettingsPopover({
                 onChange={update}
               />
             ) : (
-              <Section title="Keyboard shortcuts" note={undefined}>
+              <Section title={t('keyboardShortcuts')} note={undefined}>
                 <p className="text-caption text-foreground-secondary">
-                  Viewer not ready.
+                  {t('viewerNotReady')}
                 </p>
               </Section>
             )}
@@ -627,9 +633,9 @@ export function SettingsPopover({
                 onChange={update}
               />
             ) : (
-              <Section title="Mouse bindings" note={undefined}>
+              <Section title={t('mouseBindings')} note={undefined}>
                 <p className="text-caption text-foreground-secondary">
-                  Viewer not ready.
+                  {t('viewerNotReady')}
                 </p>
               </Section>
             )}
@@ -647,7 +653,7 @@ export function SettingsPopover({
           className="text-caption text-foreground-secondary"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          Reset defaults
+          {t('resetDefaults')}
         </Button>
         <Button
           variant="primary"
@@ -656,7 +662,7 @@ export function SettingsPopover({
           data-testid="viewer-settings-reload"
           className="text-caption"
         >
-          Reload viewer
+          {t('reloadViewer')}
         </Button>
       </div>
     </div>

@@ -1,7 +1,8 @@
 'use client';
 
-import { Fragment, type JSX, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Fragment, type JSX, type ReactNode } from 'react';
 
 import { ToolButton, ToolbarGroup, ToolbarShell } from './_toolbarPrimitives';
 
@@ -50,6 +51,7 @@ export function UnifiedToolbar({
   testIdPrefix = 'toolbar',
   className,
 }: Props): JSX.Element {
+  const t = useTranslations('viewer.toolbar');
   return (
     <ToolbarShell testId={testId} className={className}>
       {children}
@@ -61,7 +63,7 @@ export function UnifiedToolbar({
             }
             const title =
               def.disabled && def.comingSoon
-                ? `${def.tooltip ?? def.label} (coming soon)`
+                ? t('comingSoonSuffix', { label: def.tooltip ?? def.label })
                 : (def.tooltip ?? def.label);
             return (
               <ToolButton

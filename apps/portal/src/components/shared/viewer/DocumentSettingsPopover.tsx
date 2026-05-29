@@ -1,6 +1,7 @@
 'use client';
 
 import { RotateCcw, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   useEffect,
   useRef,
@@ -15,7 +16,7 @@ import {
 import {
   comboFromKeyboardEvent,
   DEFAULT_DOCUMENT_SETTINGS,
-  DOCUMENT_ACTION_LABELS,
+  DOCUMENT_ACTION_LABEL_KEYS,
   saveDocumentSettings,
   type DocumentAction,
   type DocumentSettings,
@@ -53,6 +54,7 @@ function ShortcutsSection({
   settings: DocumentSettings;
   onChange: (next: DocumentSettings) => void;
 }): JSX.Element {
+  const t = useTranslations('viewer.documentSettings');
   const [capturing, setCapturing] = useState<DocumentAction | null>(null);
 
   useEffect(() => {
@@ -79,7 +81,7 @@ function ShortcutsSection({
   }, [capturing]);
 
   return (
-    <Section title="Keyboard shortcuts" note="Live">
+    <Section title={t('keyboardShortcuts')} note={t('noteLive')}>
       <ul
         className="max-h-64 space-y-1 overflow-y-auto"
         data-testid="document-settings-shortcuts"
@@ -92,14 +94,14 @@ function ShortcutsSection({
               className="flex items-center justify-between gap-2 text-caption"
             >
               <span className="truncate text-foreground-secondary">
-                {DOCUMENT_ACTION_LABELS[action]}
+                {t(DOCUMENT_ACTION_LABEL_KEYS[action])}
               </span>
               <button
                 type="button"
                 onClick={() => { setCapturing(action); }}
                 className="min-w-[5rem] rounded border border-border px-2 py-0.5 font-sans text-foreground hover:bg-background-secondary"
               >
-                {capturing === action ? 'Press a key…' : combo || '—'}
+                {capturing === action ? t('pressKey') : combo || '—'}
               </button>
             </li>
           );
@@ -110,17 +112,18 @@ function ShortcutsSection({
 }
 
 function MouseSection(): JSX.Element {
+  const t = useTranslations('viewer.documentSettings');
   const rows: { gesture: string; action: string }[] = [
-    { gesture: 'Ctrl + Wheel', action: 'Zoom in / out toward cursor' },
-    { gesture: 'Middle drag', action: 'Pan' },
-    { gesture: 'Left drag (Pan tool)', action: 'Pan' },
-    { gesture: 'Left click (Zoom tool)', action: 'Zoom in toward cursor' },
-    { gesture: 'Alt + left click (Zoom tool)', action: 'Zoom out toward cursor' },
-    { gesture: 'Double-click (Pan/Zoom)', action: 'Fit to page' },
+    { gesture: t('gesture.ctrlWheel'), action: t('gesture.actionZoomCursor') },
+    { gesture: t('gesture.middleDrag'), action: t('gesture.actionPan') },
+    { gesture: t('gesture.leftDragPan'), action: t('gesture.actionPan') },
+    { gesture: t('gesture.leftClickZoom'), action: t('gesture.actionZoomInCursor') },
+    { gesture: t('gesture.altLeftClickZoom'), action: t('gesture.actionZoomOutCursor') },
+    { gesture: t('gesture.doubleClick'), action: t('gesture.actionFitPage') },
   ];
 
   return (
-    <Section title="Mouse bindings" note="Built-in">
+    <Section title={t('mouseBindings')} note={t('noteBuiltIn')}>
       <ul
         className="max-h-64 space-y-1 overflow-y-auto"
         data-testid="document-settings-mouse"
@@ -146,6 +149,7 @@ export function DocumentSettingsPopover({
   onSettingsChange,
   onClose,
 }: Props): JSX.Element {
+  const t = useTranslations('viewer.documentSettings');
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -174,7 +178,7 @@ export function DocumentSettingsPopover({
     <div
       ref={ref}
       role="dialog"
-      aria-label="Document viewer settings"
+      aria-label={t('ariaLabel')}
       data-testid="document-settings-popover"
       className="absolute bottom-12 left-1/2 z-20 w-[26rem] -translate-x-1/2 rounded-md border border-border bg-background p-4 shadow-lg"
       onMouseDown={(e) => {
@@ -182,11 +186,11 @@ export function DocumentSettingsPopover({
       }}
     >
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-body2 font-medium text-foreground">Document settings</h2>
+        <h2 className="text-body2 font-medium text-foreground">{t('title')}</h2>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close settings"
+          aria-label={t('closeSettings')}
           className="inline-flex h-8 w-8 items-center justify-center rounded text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
         >
           <X className="h-4 w-4" />
@@ -196,21 +200,21 @@ export function DocumentSettingsPopover({
       <Tabs defaultValue="general">
         <TabsList className="shrink-0">
           <TabsTrigger value="general" className="flex-1 text-caption">
-            General
+            {t('tabGeneral')}
           </TabsTrigger>
           <TabsTrigger value="keyboard" className="flex-1 text-caption">
-            Keyboard
+            {t('tabKeyboard')}
           </TabsTrigger>
           <TabsTrigger value="mouse" className="flex-1 text-caption">
-            Mouse
+            {t('tabMouse')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="max-h-[24rem] overflow-y-auto">
           <div className="space-y-4 pt-3">
-            <Section title="Page background">
+            <Section title={t('pageBackground')}>
               <ColorField
-                label="Colour"
+                label={t('pageBackgroundColor')}
                 value={settings.pageBackground}
                 onChange={(hex) => {
                   update({ ...settings, pageBackground: hex });
@@ -243,7 +247,7 @@ export function DocumentSettingsPopover({
           className="text-caption text-foreground-secondary"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          Reset defaults
+          {t('resetDefaults')}
         </Button>
       </div>
     </div>

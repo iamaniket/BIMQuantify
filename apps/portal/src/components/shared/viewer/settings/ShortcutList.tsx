@@ -1,17 +1,18 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';
 
-import { CATEGORY_STYLES, CATEGORY_LABELS } from './shortcutCategories';
+import { CATEGORY_STYLES, CATEGORY_LABEL_KEYS } from './shortcutCategories';
 import type { NormalizedBinding, ShortcutCategory } from './types';
 
-const SHORTCUT_ORDER: { id: ShortcutCategory; title: string; subtitle: string }[] = [
-  { id: 'global', title: 'Global', subtitle: 'Tools and canvas commands' },
-  { id: 'editing', title: 'Editing', subtitle: 'Manipulate elements and quantities' },
-  { id: 'navigation', title: 'Navigation', subtitle: 'Move through views and pan the viewport' },
-  { id: 'modifier', title: 'Modifier', subtitle: 'Hold-down keys that change pick behaviour' },
+const SHORTCUT_ORDER: { id: ShortcutCategory; subtitleKey: string }[] = [
+  { id: 'global', subtitleKey: 'sectionGlobalSubtitle' },
+  { id: 'editing', subtitleKey: 'sectionEditingSubtitle' },
+  { id: 'navigation', subtitleKey: 'sectionNavigationSubtitle' },
+  { id: 'modifier', subtitleKey: 'sectionModifierSubtitle' },
 ];
 
 function prettyKey(combo: string): string {
@@ -41,6 +42,7 @@ type Props = {
 export function ShortcutList({
   bindings, capturing, onCaptureStart, filter, query, selected, onSelect,
 }: Props): JSX.Element {
+  const t = useTranslations('viewer.shortcuts');
   const grouped = useMemo(() => {
     const out: Record<string, NormalizedBinding[]> = {};
     for (const sec of SHORTCUT_ORDER) out[sec.id] = [];
@@ -60,7 +62,7 @@ export function ShortcutList({
   if (!hasAny) {
     return (
       <p className="py-4 text-center text-body3 text-foreground-tertiary">
-        {query ? 'No shortcuts match your search.' : 'No shortcuts registered.'}
+        {query ? t('noMatch') : t('noneRegistered')}
       </p>
     );
   }
@@ -76,9 +78,9 @@ export function ShortcutList({
             <div className="mb-2 flex items-baseline gap-2.5">
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: cat.swatch }} />
               <span className="text-caption font-bold uppercase tracking-widest text-foreground-secondary">
-                {CATEGORY_LABELS[sec.id]}
+                {t(CATEGORY_LABEL_KEYS[sec.id])}
               </span>
-              <span className="text-caption text-foreground-tertiary">{sec.subtitle}</span>
+              <span className="text-caption text-foreground-tertiary">{t(sec.subtitleKey)}</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {rows.map((b) => {
@@ -123,14 +125,14 @@ export function ShortcutList({
                             : `${rowCat.bg} ${rowCat.border} ${rowCat.text}`,
                         ].join(' ')}
                       >
-                        {isCapturing ? 'Press…' : prettyKey(b.combo)}
+                        {isCapturing ? t('press') : prettyKey(b.combo)}
                       </kbd>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="!h-6 !w-6 !p-0"
                         onClick={(e) => { e.stopPropagation(); onCaptureStart(b.command); }}
-                        aria-label="Rebind"
+                        aria-label={t('rebind')}
                       >
                         <PencilIcon />
                       </Button>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
@@ -11,10 +12,11 @@ type Props = {
 };
 
 export function PagesPanel({ numPages, currentPage, onSelect }: Props): JSX.Element {
+  const t = useTranslations('viewer.pages');
   if (numPages === null) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
-        <p className="text-body3 text-foreground-secondary">Loading pages…</p>
+        <p className="text-body3 text-foreground-secondary">{t('loading')}</p>
       </div>
     );
   }
@@ -36,10 +38,10 @@ export function PagesPanel({ numPages, currentPage, onSelect }: Props): JSX.Elem
                   : 'border-transparent text-foreground hover:border-border hover:bg-background-secondary',
               )}
             >
-              <span>Page {page}</span>
+              <span>{t('pageLabel', { page })}</span>
               {isActive ? (
                 <span className="text-caption font-medium uppercase tracking-wide text-primary">
-                  current
+                  {t('current')}
                 </span>
               ) : null}
             </button>

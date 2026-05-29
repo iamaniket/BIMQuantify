@@ -92,6 +92,7 @@ export function DocumentToolbar({
   onSearchHighlightChange,
 }: Props): JSX.Element {
   const t = useTranslations('documentToolbar');
+  const tb = useTranslations('viewer.toolbar');
   const [pageInput, setPageInput] = useState(String(currentPage));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -179,19 +180,19 @@ export function DocumentToolbar({
     {
       tools: [
         {
-          type: 'button', id: 'select', icon: MousePointer2, label: 'Select',
+          type: 'button', id: 'select', icon: MousePointer2, label: tb('select'),
           isActive: activeTool === 'select',
           onClick: () => { onActiveToolChange('select'); },
         },
         {
-          type: 'button', id: 'pan', icon: Move, label: 'Pan',
-          tooltip: 'Pan (drag to move)',
+          type: 'button', id: 'pan', icon: Move, label: tb('pan'),
+          tooltip: tb('panTooltip'),
           isActive: activeTool === 'pan',
           onClick: () => { onActiveToolChange('pan'); },
         },
         {
-          type: 'button', id: 'zoom', icon: ZoomIn, label: 'Zoom',
-          tooltip: 'Zoom (click to zoom in, Alt+click to zoom out)',
+          type: 'button', id: 'zoom', icon: ZoomIn, label: tb('zoom'),
+          tooltip: tb('zoomTooltip'),
           isActive: activeTool === 'zoom',
           onClick: () => { onActiveToolChange('zoom'); },
         },
@@ -200,12 +201,12 @@ export function DocumentToolbar({
     {
       tools: [
         {
-          type: 'button', id: 'fit-page', icon: Maximize, label: 'Fit to page',
+          type: 'button', id: 'fit-page', icon: Maximize, label: tb('fitPage'),
           disabled: documentHandle === null,
           onClick: () => { documentHandle?.fitPage(); },
         },
         {
-          type: 'button', id: 'fit-width', icon: Monitor, label: 'Fit to width',
+          type: 'button', id: 'fit-width', icon: Monitor, label: tb('fitWidth'),
           disabled: documentHandle === null,
           onClick: () => { documentHandle?.fitWidth(); },
         },
@@ -216,8 +217,8 @@ export function DocumentToolbar({
             <ToolButton
               onClick={() => { documentHandle?.actualSize(); }}
               disabled={documentHandle === null}
-              title="Actual size (100%)"
-              aria-label="Actual size"
+              title={tb('actualSizeTooltip')}
+              aria-label={tb('actualSize')}
               data-testid="document-tool-actual-size"
             >
               <span className="text-caption font-bold">1:1</span>
@@ -229,12 +230,12 @@ export function DocumentToolbar({
     {
       tools: [
         {
-          type: 'button', id: 'rotate-left', icon: RotateCcw, label: 'Rotate left',
+          type: 'button', id: 'rotate-left', icon: RotateCcw, label: tb('rotateLeft'),
           disabled: documentHandle === null,
           onClick: () => { documentHandle?.rotateBy(-90); },
         },
         {
-          type: 'button', id: 'rotate-right', icon: RotateCw, label: 'Rotate right',
+          type: 'button', id: 'rotate-right', icon: RotateCw, label: tb('rotateRight'),
           disabled: documentHandle === null,
           onClick: () => { documentHandle?.rotateBy(90); },
         },
@@ -243,7 +244,7 @@ export function DocumentToolbar({
     {
       tools: [
         {
-          type: 'button', id: 'zoom-out', icon: Minus, label: 'Zoom out',
+          type: 'button', id: 'zoom-out', icon: Minus, label: tb('zoomOut'),
           disabled: scale <= MIN_SCALE,
           onClick: () => { onScaleChange(Math.max(MIN_SCALE, scale - SCALE_STEP)); },
         },
@@ -253,7 +254,7 @@ export function DocumentToolbar({
           node: <ToolbarReadout>{Math.round(scale * 100)}%</ToolbarReadout>,
         },
         {
-          type: 'button', id: 'zoom-in', icon: Plus, label: 'Zoom in',
+          type: 'button', id: 'zoom-in', icon: Plus, label: tb('zoomIn'),
           disabled: scale >= MAX_SCALE,
           onClick: () => { onScaleChange(Math.min(MAX_SCALE, scale + SCALE_STEP)); },
         },
@@ -262,7 +263,7 @@ export function DocumentToolbar({
     {
       tools: [
         {
-          type: 'button', id: 'prev-page', icon: ChevronLeft, label: 'Previous page',
+          type: 'button', id: 'prev-page', icon: ChevronLeft, label: tb('prevPage'),
           disabled: !canPrev,
           onClick: () => { onPageChange(clampPage(currentPage - 1, numPages)); },
         },
@@ -284,7 +285,7 @@ export function DocumentToolbar({
                     setPageInput(String(currentPage));
                   }
                 }}
-                aria-label="Current page"
+                aria-label={tb('currentPage')}
                 className="h-9 w-10 rounded-md border border-border bg-background px-1 text-center text-xs font-semibold tabular-nums text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               />
               <span className="text-caption font-medium text-foreground/55">
@@ -294,7 +295,7 @@ export function DocumentToolbar({
           ),
         },
         {
-          type: 'button', id: 'next-page', icon: ChevronRight, label: 'Next page',
+          type: 'button', id: 'next-page', icon: ChevronRight, label: tb('nextPage'),
           disabled: !canNext,
           onClick: () => { onPageChange(clampPage(currentPage + 1, numPages)); },
         },
@@ -386,12 +387,12 @@ export function DocumentToolbar({
     {
       tools: [
         {
-          type: 'button', id: 'settings', icon: Settings, label: 'Settings',
+          type: 'button', id: 'settings', icon: Settings, label: tb('settings'),
           isActive: settingsOpen,
           onClick: () => { setSettingsOpen((v) => !v); },
         },
         {
-          type: 'button', id: 'theme', icon: ThemeIcon, label: 'Toggle theme',
+          type: 'button', id: 'theme', icon: ThemeIcon, label: tb('toggleTheme'),
           onClick: () => { setTheme(isDark ? 'light' : 'dark'); },
         },
       ],

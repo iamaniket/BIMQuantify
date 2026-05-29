@@ -13,6 +13,7 @@ import {
   Settings,
   User,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
 import type { ViewerHandle } from '@bimstitch/viewer';
@@ -35,6 +36,7 @@ export function Toolbar({
   onSettingsChange,
   onReloadViewer,
 }: Props): JSX.Element {
+  const t = useTranslations('viewer.toolbar');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTool, setActiveTool] = useState('select');
   const [colorCodingActive, setColorCodingActive] = useState(false);
@@ -70,14 +72,14 @@ export function Toolbar({
     {
       tools: [
         {
-          type: 'button', id: 'home', icon: Home, label: 'Home view',
+          type: 'button', id: 'home', icon: Home, label: t('homeView'),
           onClick: () => { run('camera.home'); },
         },
         {
           type: 'button',
           id: 'select',
           icon: MousePointer2,
-          label: 'Select',
+          label: t('select'),
           isActive: activeTool === 'select',
           onClick: () => {
             if (activeTool === 'eraser') run('eraser.exit');
@@ -89,7 +91,7 @@ export function Toolbar({
           type: 'button',
           id: 'eraser',
           icon: Eraser,
-          label: 'Eraser',
+          label: t('eraser'),
           isActive: activeTool === 'eraser',
           onClick: () => {
             if (activeTool === 'eraser') {
@@ -107,19 +109,19 @@ export function Toolbar({
     {
       tools: [
         {
-          type: 'button', id: 'wireframe', icon: Axis3D, label: 'Wireframe',
+          type: 'button', id: 'wireframe', icon: Axis3D, label: t('wireframe'),
           onClick: () => { run('wireframe.toggle'); },
         },
         {
-          type: 'button', id: 'xray', icon: Glasses, label: 'X-Ray',
+          type: 'button', id: 'xray', icon: Glasses, label: t('xray'),
           onClick: () => { run('xray.toggleAll'); },
         },
         {
-          type: 'button', id: 'isolate', icon: Box, label: 'Isolate',
+          type: 'button', id: 'isolate', icon: Box, label: t('isolate'),
           onClick: () => { run('isolation.toggle'); },
         },
         {
-          type: 'button', id: 'walkthrough', icon: User, label: 'First person',
+          type: 'button', id: 'walkthrough', icon: User, label: t('firstPerson'),
           isActive: activeTool === 'walkthrough',
           onClick: () => {
             if (activeTool === 'walkthrough') {
@@ -133,17 +135,17 @@ export function Toolbar({
           },
         },
         {
-          type: 'button', id: 'colorCoding', icon: Palette, label: 'Color coding',
+          type: 'button', id: 'colorCoding', icon: Palette, label: t('colorCoding'),
           isActive: colorCodingActive,
           onClick: () => { run('colorCoding.toggle'); },
         },
         {
-          type: 'button', id: 'explode', icon: Expand, label: 'Explode',
+          type: 'button', id: 'explode', icon: Expand, label: t('explode'),
           isActive: exploded,
           onClick: () => { run('exploder.toggle'); },
         },
         {
-          type: 'button', id: 'screenshot', icon: Camera, label: 'Screenshot',
+          type: 'button', id: 'screenshot', icon: Camera, label: t('screenshot'),
           onClick: () => { run('screenshot.download'); },
         },
       ],
@@ -151,7 +153,7 @@ export function Toolbar({
     {
       tools: [
         {
-          type: 'button', id: 'settings', icon: Settings, label: 'Settings',
+          type: 'button', id: 'settings', icon: Settings, label: t('settings'),
           isActive: settingsOpen,
           onClick: () => { setSettingsOpen((v) => !v); },
         },

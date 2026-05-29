@@ -112,20 +112,24 @@ export function comboFromKeyboardEvent(ev: KeyboardEvent): string {
   return ordered.join('+');
 }
 
-/** Display labels for actions in the settings UI. */
-export const DOCUMENT_ACTION_LABELS: Record<DocumentAction, string> = {
-  zoomIn: 'Zoom in',
-  zoomOut: 'Zoom out',
-  fitPage: 'Fit to page',
-  fitWidth: 'Fit to width',
-  actualSize: 'Actual size (100%)',
-  rotateRight: 'Rotate right',
-  rotateLeft: 'Rotate left',
-  nextPage: 'Next page',
-  prevPage: 'Previous page',
-  firstPage: 'First page',
-  lastPage: 'Last page',
-  toolSelect: 'Select tool',
-  toolPan: 'Pan tool',
-  toolZoom: 'Zoom tool',
+/**
+ * i18n key suffixes for action labels, resolved at React render sites under
+ * the `viewer.documentSettings.action.*` namespace. Storing keys (not literals)
+ * keeps this module free of `useTranslations`.
+ */
+export const DOCUMENT_ACTION_LABEL_KEYS: Record<DocumentAction, string> = {
+  zoomIn: 'action.zoomIn',
+  zoomOut: 'action.zoomOut',
+  fitPage: 'action.fitPage',
+  fitWidth: 'action.fitWidth',
+  actualSize: 'action.actualSize',
+  rotateRight: 'action.rotateRight',
+  rotateLeft: 'action.rotateLeft',
+  nextPage: 'action.nextPage',
+  prevPage: 'action.prevPage',
+  firstPage: 'action.firstPage',
+  lastPage: 'action.lastPage',
+  toolSelect: 'action.toolSelect',
+  toolPan: 'action.toolPan',
+  toolZoom: 'action.toolZoom',
 };

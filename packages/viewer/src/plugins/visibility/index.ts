@@ -52,38 +52,65 @@ export function visibilityPlugin(
     }
   };
 
-  const isolate = async (): Promise<void> => {
-    if (!ctxRef || !enabled) return;
-    const selected = await getSelection();
-    if (!selected.length) return;
+  // Isolation is "hide everything except these". It records every non-kept
+  // element in `hiddenSet`/`hiddenItemMap` so the emitted `hidden` set is
+  // authoritative — consumers (the portal's checkboxes/counts) can read
+  // visibility from `hidden` alone, without a separate isolation rule. The
+  // `isolated`/`isolationActive` fields are still emitted for plugins that
+  // treat isolation as a distinct concept (outline, viewpoints, perf).
+  const applyIsolation = async (items: ItemId[]): Promise<void> => {
+    if (!ctxRef) return;
 
-    const selectedByModel = new Map<string, number[]>();
-    for (const it of selected) {
-      let arr = selectedByModel.get(it.modelId);
-      if (!arr) {
-        arr = [];
-        selectedByModel.set(it.modelId, arr);
-      }
-      arr.push(it.localId);
+    const keepByModel = new Map<string, Set<number>>();
+    for (const it of items) {
+      let keep = keepByModel.get(it.modelId);
+      if (!keep) { keep = new Set(); keepByModel.set(it.modelId, keep); }
+      keep.add(it.localId);
     }
 
+    hiddenSet.clear();
+    hiddenItemMap.clear();
+
     for (const [modelId, model] of ctxRef.models()) {
+      const keep = keepByModel.get(modelId) ?? new Set<number>();
       await model.setVisible(undefined, false).catch(() => undefined);
-      const ids = selectedByModel.get(modelId);
-      if (ids?.length) {
-        await model.setVisible(ids, true).catch(() => undefined);
+
+      let allIds: Iterable<number> | null = null;
+      try {
+        allIds = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
+      } catch {
+        allIds = null;
+      }
+      if (allIds) {
+        for (const localId of allIds) {
+          if (keep.has(localId)) continue;
+          const k = itemKey({ modelId, localId });
+          hiddenSet.add(k);
+          hiddenItemMap.set(k, { modelId, localId });
+        }
+      }
+
+      if (keep.size) {
+        await model.setVisible([...keep], true).catch(() => undefined);
       }
     }
 
     isolatedSet.clear();
     isolatedItems.clear();
-    for (const it of selected) {
+    for (const it of items) {
       const k = itemKey(it);
       isolatedSet.add(k);
       isolatedItems.set(k, it);
     }
     isolationActive = true;
     emitChange();
+  };
+
+  const isolate = async (): Promise<void> => {
+    if (!ctxRef || !enabled) return;
+    const selected = await getSelection();
+    if (!selected.length) return;
+    await applyIsolation(selected);
   };
 
   const hide = async (): Promise<void> => {
@@ -163,29 +190,7 @@ export function visibilityPlugin(
     if (!ctxRef || !enabled) return;
     const items = toItems(args);
     if (!items.length) return;
-
-    const itemsByModel = new Map<string, number[]>();
-    for (const it of items) {
-      let arr = itemsByModel.get(it.modelId);
-      if (!arr) { arr = []; itemsByModel.set(it.modelId, arr); }
-      arr.push(it.localId);
-    }
-
-    for (const [modelId, model] of ctxRef.models()) {
-      await model.setVisible(undefined, false).catch(() => undefined);
-      const ids = itemsByModel.get(modelId);
-      if (ids?.length) await model.setVisible(ids, true).catch(() => undefined);
-    }
-
-    isolatedSet.clear();
-    isolatedItems.clear();
-    for (const it of items) {
-      const k = itemKey(it);
-      isolatedSet.add(k);
-      isolatedItems.set(k, it);
-    }
-    isolationActive = true;
-    emitChange();
+    await applyIsolation(items);
   };
 
   const showItem = async (args: unknown): Promise<void> => {

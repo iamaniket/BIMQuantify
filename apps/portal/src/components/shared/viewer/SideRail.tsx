@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
@@ -35,25 +36,25 @@ type SideRailProps = {
 
 type RailButton = {
   id: PanelId;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
 };
 
 const IFC_BUTTONS: RailButton[] = [
-  { id: 'explorer', label: 'Model Tree', icon: ListTree },
-  { id: 'inspector', label: 'Properties & Attachments', icon: Info },
-  { id: 'issues', label: 'Inspections', icon: ClipboardCheck },
-  { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
-  { id: 'measure', label: 'Measurement', icon: Ruler },
-  { id: 'section', label: 'Section Planes', icon: Scan },
-  { id: 'bcf', label: 'BCF Topics', icon: MessageSquare },
+  { id: 'explorer', labelKey: 'titleExplorer', icon: ListTree },
+  { id: 'inspector', labelKey: 'titleInspector', icon: Info },
+  { id: 'issues', labelKey: 'titleIssues', icon: ClipboardCheck },
+  { id: 'compliance', labelKey: 'titleCompliance', icon: ShieldCheck },
+  { id: 'measure', labelKey: 'titleMeasure', icon: Ruler },
+  { id: 'section', labelKey: 'titleSection', icon: Scan },
+  { id: 'bcf', labelKey: 'titleBcf', icon: MessageSquare },
 ];
 
 const PDF_BUTTONS: RailButton[] = [
-  { id: 'pages', label: 'Pages', icon: Files },
-  { id: 'inspector', label: 'Properties & Attachments', icon: Info },
-  { id: 'issues', label: 'Inspections', icon: ClipboardCheck },
-  { id: 'compliance', label: 'BBL Compliance', icon: ShieldCheck },
+  { id: 'pages', labelKey: 'titlePages', icon: Files },
+  { id: 'inspector', labelKey: 'titleInspector', icon: Info },
+  { id: 'issues', labelKey: 'titleIssues', icon: ClipboardCheck },
+  { id: 'compliance', labelKey: 'titleCompliance', icon: ShieldCheck },
 ];
 
 export function SideRail({
@@ -61,6 +62,7 @@ export function SideRail({
   activePanel,
   onTogglePanel,
 }: SideRailProps): JSX.Element {
+  const t = useTranslations('viewer.sidePanel');
   const buttons = mode === 'pdf' ? PDF_BUTTONS : IFC_BUTTONS;
   return (
     <div
@@ -69,8 +71,9 @@ export function SideRail({
         background: 'linear-gradient(180deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
       }}
     >
-      {buttons.map(({ id, label, icon: Icon }) => {
+      {buttons.map(({ id, labelKey, icon: Icon }) => {
         const isActive = activePanel === id;
+        const label = t(labelKey);
         return (
           <button
             key={id}
