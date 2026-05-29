@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   type JSX, type ReactNode, useCallback, useRef, useState,
 } from 'react';
@@ -10,15 +11,15 @@ import type { PanelId } from '@/components/shared/viewer/SideRail';
 
 export type { PanelId } from '@/components/shared/viewer/SideRail';
 
-const PANEL_TITLES: Record<PanelId, string> = {
-  explorer: 'Model Tree',
-  inspector: 'Properties & Attachments',
-  issues: 'Inspections',
-  compliance: 'BBL Compliance',
-  measure: 'Measurement',
-  section: 'Section Planes',
-  bcf: 'BCF Topics',
-  pages: 'Pages',
+const PANEL_TITLE_KEYS: Record<PanelId, string> = {
+  explorer: 'titleExplorer',
+  inspector: 'titleInspector',
+  issues: 'titleIssues',
+  compliance: 'titleCompliance',
+  measure: 'titleMeasure',
+  section: 'titleSection',
+  bcf: 'titleBcf',
+  pages: 'titlePages',
 };
 
 type SidePanelProps = {
@@ -34,12 +35,13 @@ type SidePanelProps = {
 };
 
 function PlaceholderContent({ label }: { label: string }): JSX.Element {
+  const t = useTranslations('viewer.sidePanel');
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <div className="text-center">
         <p className="text-body2 font-medium text-foreground-secondary">{label}</p>
         <p className="mt-1 font-sans text-caption text-foreground-secondary/60">
-          Coming soon
+          {t('comingSoon')}
         </p>
       </div>
     </div>
@@ -61,6 +63,7 @@ export function SidePanel({
   pagesContent,
   headerActions,
 }: SidePanelProps): JSX.Element {
+  const t = useTranslations('viewer.sidePanel');
   const isOpen = activePanel !== null;
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const dragging = useRef(false);
@@ -114,7 +117,7 @@ export function SidePanel({
               }}
             >
               <span className="text-xs font-bold uppercase tracking-wider text-white">
-                {PANEL_TITLES[activePanel]}
+                {t(PANEL_TITLE_KEYS[activePanel])}
               </span>
               {headerActions?.[activePanel] && (
                 <div className="flex items-center gap-0.5">
@@ -124,13 +127,13 @@ export function SidePanel({
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
               {activePanel === 'explorer' && explorerContent}
-              {activePanel === 'inspector' && (inspectorContent ?? <PlaceholderContent label="Properties & Attachments" />)}
+              {activePanel === 'inspector' && (inspectorContent ?? <PlaceholderContent label={t('titleInspector')} />)}
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
               {activePanel === 'bcf' && bcfContent}
               {activePanel === 'pages' && pagesContent}
-              {activePanel === 'issues' && (inspectionsContent ?? <PlaceholderContent label="Issues" />)}
-              {activePanel === 'compliance' && <PlaceholderContent label="BBL Compliance" />}
+              {activePanel === 'issues' && (inspectionsContent ?? <PlaceholderContent label={t('titleIssues')} />)}
+              {activePanel === 'compliance' && <PlaceholderContent label={t('titleCompliance')} />}
             </div>
           </>
         )}

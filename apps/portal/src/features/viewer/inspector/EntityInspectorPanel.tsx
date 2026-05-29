@@ -11,11 +11,12 @@ import { ElementHeader } from '@/features/viewer/properties/ElementHeader';
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
 
 import { EntityAttachmentsBody, useEntityAttachmentCount } from './EntityAttachmentsBody';
+import { EntityFindingsBody, useEntityFindingCount } from './EntityFindingsBody';
 import { PdfAttachmentsBody } from './PdfAttachmentsBody';
 import { PropertiesBody, countPsetProperties } from './PropertiesBody';
 import { useSelectedElement } from './useSelectedElement';
 
-type Tab = 'properties' | 'attachments';
+type Tab = 'properties' | 'attachments' | 'findings';
 
 type EntityInspectorPanelProps = {
   metadata: ModelMetadata | undefined;
@@ -62,13 +63,18 @@ function IfcInspector({
     fileId,
     element?.globalId ?? null,
   );
+  const findingCount = useEntityFindingCount(
+    projectId,
+    fileId,
+    element?.globalId ?? null,
+  );
 
   if (selectedAll) {
     const count = metadata?.totalElements ?? 0;
     return (
       <PanelEmptyState
         icon={Info}
-        message={`All ${count.toLocaleString()} elements selected. Select a single element to inspect it.`}
+        message={t('messages.allSelected', { count })}
       />
     );
   }
@@ -95,7 +101,7 @@ function IfcInspector({
     return (
       <PanelEmptyState
         icon={Info}
-        message="Element data not available. Re-extract the model to inspect this element."
+        message={t('messages.noElementData')}
       />
     );
   }
@@ -105,6 +111,7 @@ function IfcInspector({
   const tabs: TabDef<Tab>[] = [
     { id: 'properties', label: t('tabProperties'), count: propertiesCount },
     { id: 'attachments', label: t('tabAttachments'), count: attachmentCount },
+    { id: 'findings', label: t('tabFindings'), count: findingCount },
   ];
 
   return (
@@ -124,12 +131,18 @@ function IfcInspector({
         ) : element.globalId === null ? (
           <PanelEmptyState
             icon={Info}
-            message="This element has no GlobalId; attachments cannot be linked."
+            message={t('messages.noGlobalId')}
           />
-        ) : (
+        ) : tab === 'attachments' ? (
           <EntityAttachmentsBody
             projectId={projectId}
             modelId={modelId}
+            fileId={fileId}
+            globalId={element.globalId}
+          />
+        ) : (
+          <EntityFindingsBody
+            projectId={projectId}
             fileId={fileId}
             globalId={element.globalId}
           />
@@ -157,7 +170,7 @@ function PdfInspector({
     return (
       <PanelEmptyState
         icon={Info}
-        message="PDF state not initialized."
+        message={t('messages.pdfNotInitialized')}
       />
     );
   }

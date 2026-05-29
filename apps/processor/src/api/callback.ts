@@ -14,6 +14,7 @@ export type CallbackPayload = {
   fragments_key?: string;
   metadata_key?: string;
   properties_key?: string;
+  geometry_key?: string;
   page_count?: number;
   error?: string;
   extractor_version?: string;

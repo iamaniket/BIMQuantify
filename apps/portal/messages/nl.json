@@ -226,6 +226,10 @@
         "title": "Nog geen projecttoegang",
         "description": "U zit in deze organisatie, maar u bent nog niet toegevoegd aan een project. Vraag een organisatiebeheerder of projecteigenaar om toegang."
       },
+      "emptyAll": {
+        "title": "Nog geen projecten",
+        "description": "Projecten die u aanmaakt of waaraan u wordt toegevoegd, verschijnen hier."
+      },
       "emptyFiltered": {
         "title": "Geen overeenkomende projecten",
         "descriptionNoSearch": "Geen projecten komen overeen met het geselecteerde filter.",
@@ -251,7 +255,25 @@
     },
     "card": {
       "phaseLabel": "Fase:",
-      "permitLabel": "Vergunning:"
+      "permitLabel": "Vergunning:",
+      "menu": {
+        "actions": "Projectacties",
+        "view": "Bekijken",
+        "edit": "Bewerken",
+        "reactivate": "Heractiveren",
+        "archive": "Archiveren",
+        "remove": "Verwijderen",
+        "deleteTitle": "Project verwijderen",
+        "deleteDescription": "\"{name}\" verwijderen uit actieve weergaven? Het wordt verborgen in normale projectlijsten.",
+        "deleteConfirm": "Verwijderen",
+        "cancel": "Annuleren",
+        "errors": {
+          "forbidden": "U heeft geen rechten om dit project te verwijderen.",
+          "notFound": "Project niet gevonden. Het is mogelijk al verwijderd.",
+          "deleteFailed": "Verwijderen mislukt: {detail}",
+          "deleteUnknown": "Project kon niet worden verwijderd."
+        }
+      }
     },
     "filters": {
       "all": "Alle",
@@ -515,7 +537,12 @@
       "noDeadlines": "Geen deadlines",
       "documents": "Documenten",
       "documentsCount": "{count} geüpload",
-      "noDocuments": "Nog geen"
+      "noDocuments": "Nog geen",
+      "shareProject": "Project delen",
+      "noAddress": "Geen adres ingesteld",
+      "instrumentTooltip": "Toegelaten instrument · {provider}",
+      "thumbnailAlt": "Miniatuur van {name}",
+      "mapPreviewAlt": "Kaartvoorbeeld van {name}"
     },
     "tabs": {
       "eyebrow": "Projectwerkruimte",
@@ -558,7 +585,75 @@
         "emptyState": "Nog geen modellen. Maak er een aan om te beginnen.",
         "newModelDialog": {
           "title": "Nieuw model",
-          "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in het model."
+          "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in het model.",
+          "submitCreate": "Aanmaken",
+          "submitCreating": "Bezig met aanmaken…",
+          "errors": {
+            "nameTaken": "Deze naam is al in gebruik"
+          },
+          "fields": {
+            "name": "Naam",
+            "discipline": "Discipline",
+            "status": "Status"
+          },
+          "disciplines": {
+            "architectural": "Architectuur",
+            "structural": "Constructie",
+            "mep": "Installaties",
+            "coordination": "Coördinatie",
+            "other": "Overig"
+          },
+          "statuses": {
+            "active": "Actief",
+            "draft": "Concept",
+            "archived": "Gearchiveerd"
+          }
+        },
+        "row": {
+          "noFiles": "Geen bestanden",
+          "viewFile": "Bestand bekijken",
+          "noViewableFile": "Nog geen weergeefbaar bestand",
+          "uploadFile": "Bestand uploaden",
+          "checkBbl": "BBL controleren",
+          "view": "Bekijken",
+          "upload": "Uploaden",
+          "remove": "Verwijderen",
+          "versionHistory": "Versiegeschiedenis · {count} versies",
+          "noVersionsUploaded": "Nog geen versies geüpload.",
+          "latest": "LAATSTE",
+          "justNow": "zojuist",
+          "minutesAgo": "{count} min geleden",
+          "hoursAgo": "{count} u geleden",
+          "daysAgo": "{count} d geleden"
+        },
+        "files": {
+          "extractionFailed": "Extractie is mislukt.",
+          "failed": "Mislukt",
+          "retry": "Opnieuw",
+          "retryAria": "Extractie opnieuw uitvoeren voor {filename}",
+          "view3d": "Bekijk 3D",
+          "view": "Bekijken",
+          "viewAria": "{filename} bekijken",
+          "viewAria3d": "{filename} in 3D bekijken",
+          "checkBbl": "BBL controleren",
+          "checkBblAria": "BBL-conformiteit controleren voor {filename}",
+          "downloadAria": "{filename} downloaden",
+          "fileActions": "Bestandsacties",
+          "delete": "Verwijderen",
+          "removeAria": "{filename} verwijderen",
+          "duplicateContent": "Dit bestand bestaat al in dit project.",
+          "uploadFailed": "Uploaden is mislukt.",
+          "loadFailed": "Bestanden laden is mislukt.",
+          "hintLockedSuffix": "alleen — vergrendeld door eerste upload",
+          "hintAllTypes": ".ifc- en .pdf-bestanden",
+          "noVersions": "Nog geen versies. Upload een bestand om de eerste versie aan te maken.",
+          "latestVersion": "Laatste versie",
+          "olderVersions": "Oudere versies ({count})",
+          "rejectedFiles": "{count, plural, =1 {1 geweigerd bestand} other {# geweigerde bestanden}}",
+          "deleteTitle": "Bestand verwijderen",
+          "deleteDescription": "\"{filename}\" verwijderen? Dit kan niet ongedaan worden gemaakt.",
+          "deleteConfirm": "Verwijderen",
+          "cancel": "Annuleren"
         }
       },
       "borgingsplan": {
@@ -663,7 +758,8 @@
         "label": "Bevindingen",
         "title": "Nog geen bevindingen vastgelegd",
         "description": "Bevindingen uit afgekeurde checklistitems verschijnen hier met hun afhandeling en verificatie.",
-        "ctaLabel": "Bevinding vastleggen"
+        "ctaLabel": "Bevinding vastleggen",
+        "count": "{count, plural, one {# bevinding} other {# bevindingen}}"
       },
       "attachments": {
         "label": "Bijlagen",
@@ -758,6 +854,71 @@
         }
       },
       "rapporten": { "label": "Rapporten" }
+    }
+  },
+  "findings": {
+    "severity": {
+      "low": "Laag",
+      "medium": "Middel",
+      "high": "Hoog"
+    },
+    "status": {
+      "draft": "Concept",
+      "open": "Open",
+      "in_progress": "In behandeling",
+      "resolved": "Opgelost",
+      "verified": "Geverifieerd"
+    },
+    "form": {
+      "createTitle": "Bevinding vastleggen",
+      "createSubtitle": "Leg een inspectiebevinding vast zodat deze tot oplossing kan worden gevolgd.",
+      "submit": "Bevinding aanmaken",
+      "fields": {
+        "title": "Titel",
+        "description": "Omschrijving",
+        "severity": "Ernst",
+        "bblArticleRef": "Bbl-artikelverwijzing"
+      },
+      "placeholders": {
+        "title": "Korte samenvatting van de bevinding",
+        "description": "Beschrijf het gebrek en waar het is geconstateerd",
+        "bblArticleRef": "bv. 4.51"
+      },
+      "hints": {
+        "bblArticleRef": "Optionele verwijzing naar het relevante Bbl-artikel."
+      }
+    },
+    "detail": {
+      "title": "Bevinding",
+      "subtitle": "Bewerk de bevinding, wijs een verantwoordelijke en deadline toe en promoot deze.",
+      "save": "Wijzigingen opslaan",
+      "fields": {
+        "title": "Titel",
+        "description": "Omschrijving",
+        "severity": "Ernst",
+        "bblArticleRef": "Bbl-artikelverwijzing",
+        "assignee": "Verantwoordelijke",
+        "deadline": "Deadline"
+      },
+      "placeholders": {
+        "assignee": "Niet toegewezen"
+      },
+      "promote": {
+        "title": "Promoveren naar open",
+        "hint": "Stel zowel een verantwoordelijke als een deadline in om dit concept naar een open bevinding te promoveren.",
+        "action": "Promoveren naar open"
+      },
+      "delete": {
+        "action": "Bevinding verwijderen",
+        "confirm": "Deze bevinding verwijderen?",
+        "confirmAction": "Verwijderen",
+        "cancel": "Annuleren"
+      },
+      "linkedElement": {
+        "title": "Gekoppeld element",
+        "description": "Deze bevinding is gekoppeld aan een BIM-element in het model.",
+        "unlink": "Element ontkoppelen"
+      }
     }
   },
   "reports": {
@@ -1619,14 +1780,326 @@
       "filter": "Eigenschappen filteren…",
       "expandAll": "Alles uitklappen",
       "collapseAll": "Alles inklappen",
-      "clear": "wissen"
+      "clear": "wissen",
+      "copyValue": "Waarde kopiëren",
+      "boolYes": "Ja",
+      "boolNo": "Nee"
+    },
+    "sidePanel": {
+      "titleExplorer": "Modelboom",
+      "titleInspector": "Eigenschappen & Bijlagen",
+      "titleIssues": "Inspecties",
+      "titleCompliance": "BBL-toetsing",
+      "titleMeasure": "Meten",
+      "titleSection": "Snijvlakken",
+      "titleBcf": "BCF-onderwerpen",
+      "titlePages": "Pagina's",
+      "comingSoon": "Binnenkort beschikbaar"
+    },
+    "modeIndicator": {
+      "exitHint": "Druk op ESC om af te sluiten"
+    },
+    "pages": {
+      "loading": "Pagina's laden…",
+      "pageLabel": "Pagina {page}",
+      "current": "huidige"
+    },
+    "toolbar": {
+      "homeView": "Beginaanzicht",
+      "select": "Selecteren",
+      "eraser": "Gum",
+      "wireframe": "Draadmodel",
+      "xray": "Röntgen",
+      "isolate": "Isoleren",
+      "firstPerson": "Eerste persoon",
+      "colorCoding": "Kleurcodering",
+      "explode": "Uiteenzetten",
+      "screenshot": "Schermafbeelding",
+      "settings": "Instellingen",
+      "comingSoonSuffix": "{label} (binnenkort beschikbaar)",
+      "pan": "Verschuiven",
+      "panTooltip": "Verschuiven (sleep om te verplaatsen)",
+      "zoom": "Zoomen",
+      "zoomTooltip": "Zoomen (klik om in te zoomen, Alt+klik om uit te zoomen)",
+      "fitPage": "Pagina passend maken",
+      "fitWidth": "Breedte passend maken",
+      "actualSize": "Werkelijke grootte",
+      "actualSizeTooltip": "Werkelijke grootte (100%)",
+      "rotateLeft": "Linksom draaien",
+      "rotateRight": "Rechtsom draaien",
+      "zoomOut": "Uitzoomen",
+      "zoomIn": "Inzoomen",
+      "prevPage": "Vorige pagina",
+      "nextPage": "Volgende pagina",
+      "currentPage": "Huidige pagina",
+      "toggleTheme": "Thema wisselen"
+    },
+    "measurement": {
+      "modeDistance": "Afstand",
+      "modeAngle": "Hoek",
+      "modeArea": "Oppervlakte",
+      "modeVolume": "Volume",
+      "helpDistance": "Klik op twee punten om de afstand te meten",
+      "helpAngle": "Klik op drie punten om de hoek te meten (het 2e punt is het hoekpunt)",
+      "helpArea": "Klik op punten om een veelhoek te definiëren, sluit af bij het eerste punt of klik met rechts om te voltooien",
+      "helpVolume": "Klik op punten voor de basisveelhoek, sluit af om te voltooien en klik vervolgens om de hoogte in te stellen",
+      "emptyMessage": "Selecteer hierboven een modus om afstanden, hoeken, oppervlakten of volumes te meten",
+      "hide": "Meting verbergen",
+      "show": "Meting tonen",
+      "remove": "Meting verwijderen",
+      "cancel": "Annuleren",
+      "cancelPending": "Openstaande punten annuleren",
+      "done": "Klaar",
+      "stop": "Stoppen met meten",
+      "count": "{count, plural, one {# meting} other {# metingen}}",
+      "clearAll": "Alle metingen wissen",
+      "clearConfirmDescription": "Hiermee worden alle {count, plural, one {# meting} other {# metingen}} verwijderd. Dit kan niet ongedaan worden gemaakt.",
+      "clearConfirm": "Alles wissen",
+      "csvType": "Type",
+      "csvValue": "Waarde",
+      "csvUnit": "Eenheid",
+      "csvPoints": "Punten",
+      "settingsTitle": "Meetinstellingen",
+      "settingsSubtitle": "Configureer hoe metingen in de viewer worden weergegeven",
+      "sectionColors": "Kleuren",
+      "directLine": "Directe lijn",
+      "xAxis": "X-as",
+      "yAxis": "Y-as",
+      "zAxis": "Z-as",
+      "sectionAppearance": "Weergave",
+      "showHeightHorizontal": "Hoogte en horizontaal tonen",
+      "labelSize": "Labelgrootte — {size}",
+      "dotSize": "Puntgrootte — {size}",
+      "sectionPrecision": "Precisie",
+      "decimalPlaces": "Decimalen",
+      "sectionSnapping": "Vastklikken",
+      "snapThreshold": "Vastklikdrempel — {value}px",
+      "snapThresholdHint": "Pixelafstand voor vastklikdetectie",
+      "sizeSmall": "Klein",
+      "sizeMedium": "Gemiddeld",
+      "sizeLarge": "Groot",
+      "sizeExtraLarge": "Extra groot",
+      "snappingTooltip": "Vastklikken (S) — {state}",
+      "snappingOn": "aan",
+      "snappingOff": "uit",
+      "exportCsv": "Metingen exporteren als CSV",
+      "settings": "Meetinstellingen"
+    },
+    "section": {
+      "place": "Plaatsen",
+      "emptyMessage": "Voeg snijvlakken toe met de knoppen hierboven of klik op oppervlakken in de plaatsingsmodus",
+      "planeLabel": "Vlak {index}",
+      "flip": "Richting omkeren",
+      "hide": "Vlak verbergen",
+      "show": "Vlak tonen",
+      "remove": "Vlak verwijderen",
+      "placeHint": "Klik op een oppervlak om een snijvlak te plaatsen",
+      "done": "Klaar",
+      "count": "{count, plural, one {# vlak} other {# vlakken}}",
+      "clearAll": "Alle vlakken wissen",
+      "clearConfirmTitle": "Alle snijvlakken wissen",
+      "clearConfirmDescription": "Hiermee worden alle {count, plural, one {# snijvlak} other {# snijvlakken}} verwijderd. Dit kan niet ongedaan worden gemaakt.",
+      "clearConfirm": "Alles wissen",
+      "cancel": "Annuleren"
+    },
+    "bcf": {
+      "viewerNotReady": "Viewer niet gereed",
+      "topicCount": "{count, plural, one {# onderwerp} other {# onderwerpen}}",
+      "newTopic": "Nieuw onderwerp",
+      "cancel": "Annuleren",
+      "titlePlaceholder": "Titel",
+      "descriptionPlaceholder": "Omschrijving (optioneel)",
+      "typeLabel": "Type",
+      "statusLabel": "Status",
+      "priorityLabel": "Prioriteit",
+      "capturesViewpoint": "Legt het huidige gezichtspunt vast",
+      "creating": "Aanmaken…",
+      "create": "Aanmaken",
+      "emptyMessage": "Nog geen onderwerpen. Klik op Nieuw onderwerp om het huidige aanzicht vast te leggen, of importeer een .bcf-bestand vanuit de kopregel.",
+      "deleteTopic": "Onderwerp verwijderen",
+      "import": "BCF-bestand importeren",
+      "importShort": "BCF importeren",
+      "export": "BCF exporteren",
+      "noTopicsToExport": "Geen onderwerpen om te exporteren",
+      "exportTooltip": "Onderwerpen exporteren als .bcf",
+      "errorParse": "Kan BCF-bestand niet verwerken",
+      "errorNoData": "Export leverde geen gegevens op",
+      "errorExport": "Exporteren mislukt",
+      "typeIssue": "Issue",
+      "typeRequest": "Verzoek",
+      "typeRemark": "Opmerking",
+      "typeClash": "Conflict",
+      "typeInformation": "Informatie",
+      "statusOpen": "Open",
+      "statusInProgress": "In behandeling",
+      "statusResolved": "Opgelost",
+      "statusClosed": "Gesloten",
+      "priorityLow": "Laag",
+      "priorityNormal": "Normaal",
+      "priorityHigh": "Hoog",
+      "priorityCritical": "Kritiek"
+    },
+    "settings": {
+      "viewerTitle": "Viewer-instellingen",
+      "viewerSubtitle": "Pas rendering, besturing en weergavevoorkeuren aan.",
+      "resetDefaults": "Standaardwaarden herstellen",
+      "reloadViewer": "Viewer opnieuw laden",
+      "tabAppearance": "Weergave",
+      "tabPerformance": "Prestaties",
+      "tabKeyBindings": "Sneltoetsen",
+      "tabControls": "Besturing",
+      "viewerSettingsShort": "Viewer-instellingen",
+      "closeSettings": "Instellingen sluiten",
+      "viewerSettingsAria": "Viewer-instellingen",
+      "sub3dViewer": "3D-viewer",
+      "subDocument": "Document",
+      "common": "Algemeen",
+      "background": "Achtergrond",
+      "backgroundColor": "Kleur",
+      "shadows": "Schaduwen",
+      "enableShadows": "Schaduwen inschakelen",
+      "visualEffects": "Visuele effecten",
+      "enableEffects": "Effecten inschakelen",
+      "edgesOutline": "Randen (omlijning)",
+      "quality": "Kwaliteit",
+      "zoomLimits": "Zoomlimieten",
+      "maxDistance": "Maximale afstand",
+      "behavior": "Gedrag",
+      "behaviorNoteColor": "Kleurwijzigingen laden de viewer opnieuw",
+      "behaviorNoteToggle": "Schakelaar: live · Kleur: opnieuw laden",
+      "hoverHighlight": "Markering bij aanwijzen",
+      "hoverColor": "Aanwijskleur",
+      "clickToSelect": "Klikken om te selecteren",
+      "selectionColor": "Selectiekleur",
+      "noDocumentSettings": "Nog geen aanvullende documentspecifieke instellingen.",
+      "performanceDuringNav": "Prestaties tijdens navigatie",
+      "performanceDescription": "Werk overslaan terwijl de camera beweegt. Hersteld in rust.",
+      "hideSmall": "Kleine items verbergen",
+      "envelopeOnly": "Alleen schil (wanden/vloeren/dak/deuren/ramen)",
+      "hideTransparent": "Transparante items verbergen",
+      "cullSubPixel": "Subpixel-items weglaten",
+      "lowerResolution": "Lagere resolutie tijdens beweging",
+      "tightenFarPlane": "Achtervlak aanscherpen",
+      "flatShading": "Vlakke arcering forceren",
+      "pauseHover": "Aanwijsmarkering pauzeren",
+      "noteLive": "Live",
+      "noteApplyOnReload": "Wordt toegepast bij volgende herlaadbeurt van de viewer",
+      "keyboardShortcuts": "Sneltoetsen",
+      "noShortcuts": "Geen sneltoetsen.",
+      "pressKey": "Druk op een toets…",
+      "viewerNotReady": "Viewer niet gereed.",
+      "mouseBindings": "Muiskoppelingen",
+      "mouseBindingNone": "— geen —",
+      "mouseDragActions": "Muissleepacties",
+      "leftButton": "Linkerknop",
+      "middleButton": "Middelste knop",
+      "rightButton": "Rechterknop",
+      "wheel": "Wiel",
+      "cameraRotate": "Draaien (orbit)",
+      "cameraTruck": "Verschuiven (pan)",
+      "cameraDolly": "Dolly (zoom)",
+      "cameraZoom": "Zoomen",
+      "cameraOffset": "Verspringing",
+      "cameraNone": "Geen"
+    },
+    "documentSettings": {
+      "title": "Documentinstellingen",
+      "ariaLabel": "Documentviewer-instellingen",
+      "closeSettings": "Instellingen sluiten",
+      "tabGeneral": "Algemeen",
+      "tabKeyboard": "Toetsenbord",
+      "tabMouse": "Muis",
+      "pageBackground": "Pagina-achtergrond",
+      "pageBackgroundColor": "Kleur",
+      "keyboardShortcuts": "Sneltoetsen",
+      "pressKey": "Druk op een toets…",
+      "mouseBindings": "Muiskoppelingen",
+      "noteLive": "Live",
+      "noteBuiltIn": "Ingebouwd",
+      "resetDefaults": "Standaardwaarden herstellen",
+      "action": {
+        "zoomIn": "Inzoomen",
+        "zoomOut": "Uitzoomen",
+        "fitPage": "Pagina passend maken",
+        "fitWidth": "Breedte passend maken",
+        "actualSize": "Werkelijke grootte (100%)",
+        "rotateRight": "Rechtsom draaien",
+        "rotateLeft": "Linksom draaien",
+        "nextPage": "Volgende pagina",
+        "prevPage": "Vorige pagina",
+        "firstPage": "Eerste pagina",
+        "lastPage": "Laatste pagina",
+        "toolSelect": "Selectiegereedschap",
+        "toolPan": "Verschuifgereedschap",
+        "toolZoom": "Zoomgereedschap"
+      },
+      "gesture": {
+        "ctrlWheel": "Ctrl + Wiel",
+        "middleDrag": "Middelste slepen",
+        "leftDragPan": "Links slepen (Verschuifgereedschap)",
+        "leftClickZoom": "Links klikken (Zoomgereedschap)",
+        "altLeftClickZoom": "Alt + links klikken (Zoomgereedschap)",
+        "doubleClick": "Dubbelklikken (Verschuiven/Zoomen)",
+        "actionZoomCursor": "In-/uitzoomen richting cursor",
+        "actionPan": "Verschuiven",
+        "actionZoomInCursor": "Inzoomen richting cursor",
+        "actionZoomOutCursor": "Uitzoomen richting cursor",
+        "actionFitPage": "Pagina passend maken"
+      }
+    },
+    "shortcuts": {
+      "categoryGlobal": "Globaal",
+      "categoryNavigation": "Navigatie",
+      "categoryEditing": "Bewerken",
+      "categoryModifier": "Modificatie",
+      "unassigned": "Niet toegewezen",
+      "noActionBound": "Geen actie gekoppeld",
+      "rebind": "Opnieuw koppelen",
+      "listeningTitle": "Luisteren naar toetsaanslag",
+      "pressAnyKeyFor": "Druk op een toets voor {action}",
+      "currentlyBoundTo": "Momenteel gekoppeld aan",
+      "pressEscToCancel": "Druk op {key} om te annuleren",
+      "searchActions": "Acties zoeken…",
+      "clearSearch": "Zoekopdracht wissen",
+      "all": "Alle",
+      "tabKeyboard": "Toetsenbord",
+      "tabMouse": "Muis",
+      "noMatch": "Geen sneltoetsen komen overeen met uw zoekopdracht.",
+      "noneRegistered": "Geen sneltoetsen geregistreerd.",
+      "sectionGlobalSubtitle": "Gereedschappen en canvas-opdrachten",
+      "sectionEditingSubtitle": "Elementen en hoeveelheden bewerken",
+      "sectionNavigationSubtitle": "Door aanzichten bewegen en de viewport verschuiven",
+      "sectionModifierSubtitle": "Ingedrukt te houden toetsen die het selectiegedrag wijzigen",
+      "press": "Druk…",
+      "dragActions": "Sleepacties",
+      "selectLabel": "Selecteren",
+      "zoomLabel": "Zoomen",
+      "panLabel": "Verschuiven",
+      "dragSublabel": "Slepen: {action}",
+      "zoomInOut": "In-/uitzoomen ({action})",
+      "zoomInOutAlways": "In-/uitzoomen (altijd beschikbaar)",
+      "zoomInOutShort": "In-/uitzoomen",
+      "mouseGestures": "Muisgebaren"
     }
   },
   "viewerInspector": {
     "panelTitle": "Eigenschappen & Bijlagen",
     "tabProperties": "Eigenschappen",
     "tabAttachments": "Bijlagen",
-    "pdfPageHeader": "Pagina {page}"
+    "tabFindings": "Bevindingen",
+    "pdfPageHeader": "Pagina {page}",
+    "messages": {
+      "allSelected": "Alle {count, number} elementen geselecteerd. Selecteer één element om het te inspecteren.",
+      "noElementData": "Elementgegevens niet beschikbaar. Extraheer het model opnieuw om dit element te inspecteren.",
+      "noGlobalId": "Dit element heeft geen GlobalId; bijlagen kunnen niet worden gekoppeld.",
+      "pdfNotInitialized": "PDF-status niet geïnitialiseerd."
+    }
+  },
+  "viewerFindings": {
+    "count": "{count, plural, =0 {Geen bevindingen} one {# bevinding} other {# bevindingen}}",
+    "createButton": "Nieuwe bevinding",
+    "loading": "Bevindingen laden…",
+    "emptyNoItems": "Nog geen bevindingen gekoppeld aan dit element."
   },
   "viewerInspections": {
     "panelTitle": "Inspecties",
@@ -1705,5 +2178,16 @@
     "linkingElementSub": "Klik in de viewer",
     "linkingPdf": "PDF-regio",
     "linkingPdfSub": "Teken kader op pagina"
+  },
+  "notifications": {
+    "title": "Meldingen",
+    "loading": "Laden…",
+    "allCaughtUp": "U bent helemaal bij.",
+    "summary": "{unread} ongelezen · {total} totaal",
+    "markAllRead": "Alles als gelezen markeren",
+    "justNow": "zojuist",
+    "minutesAgo": "{count} min geleden",
+    "hoursAgo": "{count} u geleden",
+    "daysAgo": "{count} d geleden"
   }
 }

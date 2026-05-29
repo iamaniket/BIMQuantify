@@ -14,6 +14,7 @@ import { Link } from '@/i18n/navigation';
 import {
   useCallback, useState, type JSX,
 } from 'react';
+import { useTranslations } from 'next-intl';
 
 import {
   Button,
@@ -92,6 +93,7 @@ function ExtractionBadge({
   status: ExtractionStatusValue;
   error: string | null;
 }): JSX.Element | null {
+  const t = useTranslations('projectDetail.tabs.models.files');
   if (status === 'succeeded' || status === 'not_started') return null;
   if (status === 'queued' || status === 'running') {
     return (
@@ -106,11 +108,11 @@ function ExtractionBadge({
   }
   return (
     <span
-      title={error ?? 'Extraction failed.'}
+      title={error ?? t('extractionFailed')}
       className="inline-flex items-center gap-1 text-caption text-error"
     >
       <AlertTriangle className="h-3.5 w-3.5" />
-      Failed
+      {t('failed')}
     </span>
   );
 }
@@ -126,6 +128,7 @@ function FileRow({
   file: ProjectFile;
   onDeleteRequest: (file: ProjectFile) => void;
 }): JSX.Element {
+  const t = useTranslations('projectDetail.tabs.models.files');
   const { tokens } = useAuth();
   const retryMutation = useRetryExtraction();
   const complianceMutation = useCheckCompliance(projectId, modelId);
@@ -161,14 +164,14 @@ function FileRow({
           type="button"
           variant="ghost"
           size="sm"
-          aria-label={`Retry extraction for ${file.original_filename}`}
+          aria-label={t('retryAria', { filename: file.original_filename })}
           disabled={retryMutation.isPending}
           onClick={() => {
             retryMutation.mutate({ projectId, modelId, fileId: file.id });
           }}
         >
           <RotateCcw className="mr-2 h-4 w-4" />
-          Retry
+          {t('retry')}
         </Button>
       ) : null}
       {file.extraction_status === 'succeeded' || (file.file_type === 'pdf' && file.status === 'ready') ? (
@@ -176,13 +179,15 @@ function FileRow({
           href={`/projects/${projectId}/models/${modelId}/viewer/${file.id}`}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`View ${file.original_filename}${file.file_type === 'ifc' ? ' in 3D' : ''}`}
+          aria-label={file.file_type === 'ifc'
+            ? t('viewAria3d', { filename: file.original_filename })
+            : t('viewAria', { filename: file.original_filename })}
           className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-caption font-medium text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
         >
           {file.file_type === 'ifc' ? (
-            <><Box className="h-4 w-4" /> View 3D</>
+            <><Box className="h-4 w-4" /> {t('view3d')}</>
           ) : (
-            <><FileText className="h-4 w-4" /> View</>
+            <><FileText className="h-4 w-4" /> {t('view')}</>
           )}
         </Link>
       ) : null}
@@ -191,7 +196,7 @@ function FileRow({
           type="button"
           variant="border"
           size="sm"
-          aria-label={`Check BBL compliance for ${file.original_filename}`}
+          aria-label={t('checkBblAria', { filename: file.original_filename })}
           disabled={complianceMutation.isPending}
           onClick={() => {
             complianceMutation.mutate({ fileId: file.id });
@@ -202,14 +207,14 @@ function FileRow({
           ) : (
             <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
           )}
-          Check BBL
+          {t('checkBbl')}
         </Button>
       ) : null}
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        aria-label={`Download ${file.original_filename}`}
+        aria-label={t('downloadAria', { filename: file.original_filename })}
         onClick={() => { handleDownload().catch(() => undefined); }}
       >
         <Download className="h-4 w-4" />
@@ -220,7 +225,7 @@ function FileRow({
             type="button"
             variant="ghost"
             size="sm"
-            aria-label="File actions"
+            aria-label={t('fileActions')}
             className="h-8 w-8 p-0"
           >
             <MoreVertical className="h-4 w-4" />
@@ -235,7 +240,7 @@ function FileRow({
             }}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            {t('delete')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -244,6 +249,7 @@ function FileRow({
 }
 
 export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.Element {
+  const t = useTranslations('projectDetail.tabs.models.files');
   const filesQuery = useModelFiles(projectId, modelId, 'all');
   const uploadMutation = useUploadModelFile();
   const deleteMutation = useDeleteModelFile();
@@ -310,12 +316,12 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
               const msg = obj['message'];
               message = typeof msg === 'string'
                 ? msg
-                : 'This file already exists in this project.';
+                : t('duplicateContent');
             } else {
               message = error.detail;
             }
           } else {
-            message = 'Upload failed.';
+            message = t('uploadFailed');
           }
           setPending((prev) => prev.map((p) => (
             p.id === id ? { ...p, state: { kind: 'error', message } } : p
@@ -323,7 +329,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
         },
       },
     );
-  }, [projectId, modelId, uploadMutation, lockedFileType]);
+  }, [projectId, modelId, uploadMutation, lockedFileType, t]);
 
   const handleDeleteConfirm = (): void => {
     if (deleteTarget === null) return;
@@ -354,8 +360,8 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
         onFiles={(files) => { Array.from(files).forEach(startUpload); }}
         hint={
           lockedFileType !== null
-            ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> only — locked by first upload</>
-            : '.ifc and .pdf files'
+            ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> {t('hintLockedSuffix')}</>
+            : t('hintAllTypes')
         }
       />
 
@@ -379,21 +385,21 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
 
       {fileError === null ? null : (
         <ErrorBanner
-          message={fileError instanceof ApiError ? fileError.detail : 'Failed to load files.'}
+          message={fileError instanceof ApiError ? fileError.detail : t('loadFailed')}
           tone="soft"
         />
       )}
 
       {!filesQuery.isLoading && readyFiles.length === 0 && pending.length === 0 ? (
         <p className="px-1 text-caption text-foreground-tertiary">
-          No versions yet. Upload a file to create the first version.
+          {t('noVersions')}
         </p>
       ) : null}
 
       {latest === undefined ? null : (
         <div className="flex flex-col">
           <span className="px-1 text-caption font-medium uppercase tracking-wide text-foreground-tertiary">
-            Latest version
+            {t('latestVersion')}
           </span>
           <ul className="flex flex-col rounded-md border border-border bg-background">
             <FileRow
@@ -409,7 +415,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
       {history.length === 0 ? null : (
         <details className="rounded-md border border-border bg-background">
           <summary className="cursor-pointer px-4 py-2 text-body3 font-medium text-foreground-secondary">
-            Older versions ({history.length})
+            {t('olderVersions', { count: history.length })}
           </summary>
           <ul className="flex flex-col divide-y divide-border border-t border-border">
             {history.map((file) => (
@@ -428,7 +434,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
       {rejectedFiles.length === 0 ? null : (
         <details className="rounded-md border border-border bg-background px-4 py-2">
           <summary className="cursor-pointer text-body3 font-medium text-foreground-secondary">
-            {rejectedFiles.length} rejected file{rejectedFiles.length === 1 ? '' : 's'}
+            {t('rejectedFiles', { count: rejectedFiles.length })}
           </summary>
           <ul className="mt-2 flex flex-col gap-1">
             {rejectedFiles.map((file) => (
@@ -442,7 +448,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
                   type="button"
                   variant="ghost"
                   size="sm"
-                  aria-label={`Remove ${file.original_filename}`}
+                  aria-label={t('removeAria', { filename: file.original_filename })}
                   className="h-8 w-8 p-0"
                   onClick={() => { setDeleteTarget(file); }}
                 >
@@ -457,14 +463,14 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
       <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-        title="Delete file"
+        title={t('deleteTitle')}
         description={
           deleteTarget === null
             ? ''
-            : `Delete "${deleteTarget.original_filename}"? This cannot be undone.`
+            : t('deleteDescription', { filename: deleteTarget.original_filename })
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('deleteConfirm')}
+        cancelLabel={t('cancel')}
         onConfirm={handleDeleteConfirm}
         variant="destructive"
         isPending={deleteMutation.isPending}

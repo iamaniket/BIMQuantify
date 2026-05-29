@@ -1,6 +1,7 @@
 'use client';
 
 import { Copy } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type JSX, useCallback } from 'react';
 
 import { cn } from '@bimstitch/ui';
@@ -14,9 +15,12 @@ type PropertyRowProps = {
   onSelect?: (() => void) | undefined;
 };
 
-function formatDisplay(value: PropertyValue): string {
+function formatDisplay(
+  value: PropertyValue,
+  t: ReturnType<typeof useTranslations>,
+): string {
   if (value === null || value === undefined) return '—';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'boolean') return value ? t('boolYes') : t('boolNo');
   return String(value);
 }
 
@@ -33,7 +37,8 @@ export function PropertyRow({
   selected = false,
   onSelect,
 }: PropertyRowProps): JSX.Element {
-  const display = formatDisplay(value);
+  const t = useTranslations('viewer.properties');
+  const display = formatDisplay(value, t);
   const kind = valueKind(value);
 
   const handleCopy = useCallback(
@@ -77,7 +82,7 @@ export function PropertyRow({
           <span
             className={cn(
               'inline-block size-[7px] shrink-0 -translate-y-px rounded-full',
-              display === 'Yes' ? 'bg-success' : 'bg-foreground-disabled',
+              value === true ? 'bg-success' : 'bg-foreground-disabled',
             )}
           />
         )}
@@ -88,7 +93,7 @@ export function PropertyRow({
       <button
         type="button"
         onClick={handleCopy}
-        title="Copy value"
+        title={t('copyValue')}
         className="inline-grid size-[22px] cursor-pointer place-items-center rounded-[3px] border-none bg-transparent p-0 text-foreground-tertiary opacity-0 transition-opacity duration-100 group-hover:opacity-100"
       >
         <Copy className="h-3 w-3" />

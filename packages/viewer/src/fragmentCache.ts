@@ -106,11 +106,13 @@ function getAllEntries(db: IDBDatabase): Promise<Pick<CacheEntry, 'key' | 'size'
     const store = tx.objectStore(STORE_NAME);
     const request = store.getAll();
     request.onsuccess = () => {
-      const results = (request.result as CacheEntry[]).map(({ key, size, accessedAt }) => ({
-        key,
-        size,
-        accessedAt,
-      }));
+      const results = (request.result as CacheEntry[])
+        .filter((entry): entry is CacheEntry => entry != null)
+        .map(({ key, size, accessedAt }) => ({
+          key,
+          size,
+          accessedAt,
+        }));
       resolve(results);
     };
     request.onerror = () => resolve([]);

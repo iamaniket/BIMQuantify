@@ -72,6 +72,7 @@ function TreeRowInner({
   const showItems = useViewerEntityStore((s) => s.showItems);
   const isolateItems = useViewerEntityStore((s) => s.isolateItems);
   const showAll = useViewerEntityStore((s) => s.showAll);
+  const requestFrame = useViewerEntityStore((s) => s.requestFrame);
 
   const handleSelect = useCallback(
     (e: MouseEvent) => {
@@ -84,6 +85,17 @@ function TreeRowInner({
       }
     },
     [node.entityKeys, isRowSelected, select, clearSelection],
+  );
+
+  const handleDoubleClick = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      if (node.entityKeys.length === 0) return;
+      select(node.entityKeys);
+      isolateItems(node.entityKeys);
+      requestFrame();
+    },
+    [node.entityKeys, select, isolateItems, requestFrame],
   );
 
   const handleCheckboxChange = useCallback(() => {
@@ -123,6 +135,7 @@ function TreeRowInner({
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={isRowSelected}
         onClick={handleSelect}
+        onDoubleClick={handleDoubleClick}
         className={cn(
           'group flex h-full select-none items-center gap-2 pr-2 text-[13px]',
           'cursor-pointer',

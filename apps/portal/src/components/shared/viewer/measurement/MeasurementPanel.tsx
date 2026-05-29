@@ -1,6 +1,7 @@
 'use client';
 
 import { Box, Crosshair, DraftingCompass, Download, Eraser, Eye, EyeOff, Ruler, Settings, Square, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
 import { AppDialog, ConfirmDialog, DialogField, DialogSection, Select, cn } from '@bimstitch/ui';
@@ -12,18 +13,18 @@ type Props = {
   handle: ViewerHandle | null;
 };
 
-const MODE_DEFS: Array<{ id: MeasurementMode; label: string; icon: typeof Ruler }> = [
-  { id: 'distance', label: 'Distance', icon: Ruler },
-  { id: 'angle', label: 'Angle', icon: DraftingCompass },
-  { id: 'area', label: 'Area', icon: Square },
-  { id: 'volume', label: 'Volume', icon: Box },
+const MODE_DEFS: Array<{ id: MeasurementMode; labelKey: string; icon: typeof Ruler }> = [
+  { id: 'distance', labelKey: 'modeDistance', icon: Ruler },
+  { id: 'angle', labelKey: 'modeAngle', icon: DraftingCompass },
+  { id: 'area', labelKey: 'modeArea', icon: Square },
+  { id: 'volume', labelKey: 'modeVolume', icon: Box },
 ];
 
-const HELP_TEXT: Record<MeasurementMode, string> = {
-  distance: 'Click two points to measure distance',
-  angle: 'Click three points to measure angle (2nd point is the vertex)',
-  area: 'Click points to define a polygon, close near the first point or right-click to finish',
-  volume: 'Click points for base polygon, close to finish, then click to set height',
+const HELP_KEYS: Record<MeasurementMode, string> = {
+  distance: 'helpDistance',
+  angle: 'helpAngle',
+  area: 'helpArea',
+  volume: 'helpVolume',
 };
 
 const AXIS_COLORS: Record<string, string> = {
@@ -48,8 +49,11 @@ function formatValue(m: Measurement): string {
   return `${m.value.toFixed(1)} m`;
 }
 
-function exportMeasurementsCSV(measurements: Measurement[]): void {
-  const rows = [['Type', 'Value', 'Unit', 'Points']];
+function exportMeasurementsCSV(
+  measurements: Measurement[],
+  headers: { type: string; value: string; unit: string; points: string },
+): void {
+  const rows = [[headers.type, headers.value, headers.unit, headers.points]];
   for (const m of measurements) {
     const pts = m.points.map((p) => `(${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)})`).join(';');
     rows.push([m.type, String(m.value), m.unit, pts]);
@@ -65,6 +69,7 @@ function exportMeasurementsCSV(measurements: Measurement[]): void {
 }
 
 export function MeasurementPanel({ handle }: Props): JSX.Element {
+  const t = useTranslations('viewer.measurement');
   const [activeMode, setActiveMode] = useState<MeasurementMode | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -184,7 +189,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
     <div className="flex h-full flex-col">
       {/* Mode toggle */}
       <div className="flex shrink-0 gap-1.5 border-b border-border px-3 py-2.5">
-        {MODE_DEFS.map(({ id, label, icon: Icon }) => {
+        {MODE_DEFS.map(({ id, labelKey, icon: Icon }) => {
           const isActive = activeMode === id;
           return (
             <button
@@ -199,7 +204,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
               )}
             >
               <Icon className="h-3.5 w-3.5" />
-              {label}
+              {t(labelKey)}
             </button>
           );
         })}
@@ -210,7 +215,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
         {measurements.length === 0 ? (
           <PanelEmptyState
             icon={Ruler}
-            message="Select a mode above to measure distances, angles, areas, or volumes"
+            message={t('emptyMessage')}
           />
         ) : (
           <ul className="divide-y divide-border">
@@ -232,7 +237,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
                   <button
                     type="button"
                     onClick={() => toggleVisibility(m.id, isVisible)}
-                    title={isVisible ? 'Hide measurement' : 'Show measurement'}
+                    title={isVisible ? t('hide') : t('show')}
                     className={cn(
                       'shrink-0 rounded p-0.5 transition-colors hover:!bg-background-tertiary',
                       isVisible
@@ -249,7 +254,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
                   <button
                     type="button"
                     onClick={() => remove(m.id)}
-                    title="Remove measurement"
+                    title={t('remove')}
                     className="shrink-0 rounded p-1 text-foreground-secondary transition-colors hover:text-error"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -266,7 +271,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
         {activeMode !== null ? (
           <div className="flex items-center gap-2">
             <p className="flex-1 text-body3 text-foreground-secondary">
-              {HELP_TEXT[activeMode]}
+              {t(HELP_KEYS[activeMode])}
             </p>
             {axisLock.active && axisLock.axis !== null && (
               <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-white', AXIS_COLORS[axisLock.axis] ?? 'bg-foreground-secondary')}>
@@ -276,23 +281,23 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
             <button
               type="button"
               onClick={cancelPending}
-              title="Cancel pending points"
+              title={t('cancelPending')}
               className="shrink-0 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-secondary"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="button"
               onClick={stopMeasuring}
-              title="Stop measuring"
+              title={t('stop')}
               className="shrink-0 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-secondary"
             >
-              Done
+              {t('done')}
             </button>
           </div>
         ) : measurements.length > 0 ? (
           <div className="flex items-center gap-3 text-xs text-foreground-secondary">
-            <span>{measurements.length} measurement{measurements.length !== 1 ? 's' : ''}</span>
+            <span>{t('count', { count: measurements.length })}</span>
             {measurements.some((m) => m.type === 'distance') && (
               <span className="flex items-center gap-1">
                 <Ruler className="h-3 w-3" />
@@ -321,7 +326,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
             <button
               type="button"
               onClick={() => setShowClearConfirm(true)}
-              title="Clear all measurements"
+              title={t('clearAll')}
               className="shrink-0 rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
             >
               <Eraser className="h-3.5 w-3.5" />
@@ -333,10 +338,10 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
       <ConfirmDialog
         open={showClearConfirm}
         onOpenChange={setShowClearConfirm}
-        title="Clear all measurements"
-        description={`This will remove all ${measurements.length} measurement${measurements.length !== 1 ? 's' : ''}. This cannot be undone.`}
-        confirmLabel="Clear all"
-        cancelLabel="Cancel"
+        title={t('clearAll')}
+        description={t('clearConfirmDescription', { count: measurements.length })}
+        confirmLabel={t('clearConfirm')}
+        cancelLabel={t('cancel')}
         onConfirm={clearAll}
         variant="destructive"
         isPending={false}
@@ -372,6 +377,7 @@ type SettingsDialogProps = {
 };
 
 function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProps): JSX.Element {
+  const t = useTranslations('viewer.measurement');
   const [cfg, setCfg] = useState<MeasurementConfig | null>(null);
 
   useEffect(() => {
@@ -396,13 +402,13 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
     <AppDialog
       open={open}
       onClose={onClose}
-      title="Measurement Settings"
-      subtitle="Configure how measurements appear in the viewer"
+      title={t('settingsTitle')}
+      subtitle={t('settingsSubtitle')}
       width={400}
     >
       <div className="flex flex-col gap-5">
-        <DialogSection title="Colors">
-          <DialogField label="Direct line">
+        <DialogSection title={t('sectionColors')}>
+          <DialogField label={t('directLine')}>
             <input
               type="color"
               value={hexFromNumber(cfg.directColor)}
@@ -410,7 +416,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
               className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
             />
           </DialogField>
-          <DialogField label="X axis">
+          <DialogField label={t('xAxis')}>
             <input
               type="color"
               value={hexFromNumber(cfg.xColor)}
@@ -418,7 +424,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
               className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
             />
           </DialogField>
-          <DialogField label="Y axis">
+          <DialogField label={t('yAxis')}>
             <input
               type="color"
               value={hexFromNumber(cfg.yColor)}
@@ -426,7 +432,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
               className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
             />
           </DialogField>
-          <DialogField label="Z axis">
+          <DialogField label={t('zAxis')}>
             <input
               type="color"
               value={hexFromNumber(cfg.zColor)}
@@ -436,8 +442,8 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
           </DialogField>
         </DialogSection>
 
-        <DialogSection title="Appearance">
-          <DialogField label="Show height & horizontal">
+        <DialogSection title={t('sectionAppearance')}>
+          <DialogField label={t('showHeightHorizontal')}>
             <button
               type="button"
               role="switch"
@@ -457,7 +463,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
             </button>
           </DialogField>
 
-          <DialogField label={`Label size — ${labelSizeLabel(cfg.labelScale)}`}>
+          <DialogField label={t('labelSize', { size: t(labelSizeKey(cfg.labelScale)) })}>
             <input
               type="range"
               min="0.5"
@@ -469,7 +475,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
             />
           </DialogField>
 
-          <DialogField label={`Dot size — ${dotSizeLabel(cfg.dotScale)}`}>
+          <DialogField label={t('dotSize', { size: t(dotSizeKey(cfg.dotScale)) })}>
             <input
               type="range"
               min="0.5"
@@ -482,8 +488,8 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
           </DialogField>
         </DialogSection>
 
-        <DialogSection title="Precision">
-          <DialogField label="Decimal places">
+        <DialogSection title={t('sectionPrecision')}>
+          <DialogField label={t('decimalPlaces')}>
             <Select
               value={cfg.precision}
               onChange={(e) => update({ precision: parseInt(e.target.value, 10) })}
@@ -496,10 +502,10 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
           </DialogField>
         </DialogSection>
 
-        <DialogSection title="Snapping">
+        <DialogSection title={t('sectionSnapping')}>
           <DialogField
-            label={`Snap threshold — ${String(cfg.snapThreshold)}px`}
-            hint="Pixel distance for snap detection"
+            label={t('snapThreshold', { value: cfg.snapThreshold })}
+            hint={t('snapThresholdHint')}
           >
             <input
               type="range"
@@ -517,18 +523,18 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
   );
 }
 
-function labelSizeLabel(scale: number): string {
-  if (scale <= 0.6) return 'Small';
-  if (scale <= 1.1) return 'Medium';
-  if (scale <= 1.5) return 'Large';
-  return 'Extra Large';
+function labelSizeKey(scale: number): string {
+  if (scale <= 0.6) return 'sizeSmall';
+  if (scale <= 1.1) return 'sizeMedium';
+  if (scale <= 1.5) return 'sizeLarge';
+  return 'sizeExtraLarge';
 }
 
-function dotSizeLabel(scale: number): string {
-  if (scale <= 0.6) return 'Small';
-  if (scale <= 1.2) return 'Medium';
-  if (scale <= 2.0) return 'Large';
-  return 'Extra Large';
+function dotSizeKey(scale: number): string {
+  if (scale <= 0.6) return 'sizeSmall';
+  if (scale <= 1.2) return 'sizeMedium';
+  if (scale <= 2.0) return 'sizeLarge';
+  return 'sizeExtraLarge';
 }
 
 // ---- header actions (snapping toggle + export + settings) ----
@@ -536,6 +542,7 @@ function dotSizeLabel(scale: number): string {
 const headerBtnClass = 'inline-flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-background hover:text-foreground';
 
 export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | null }): JSX.Element {
+  const t = useTranslations('viewer.measurement');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [snappingEnabled, setSnappingEnabled] = useState(false);
 
@@ -558,7 +565,7 @@ export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | nu
       <button
         type="button"
         onClick={() => { handle.commands.execute('snapping.toggle').catch(() => undefined); }}
-        title={`Snapping (S) — ${snappingEnabled ? 'on' : 'off'}`}
+        title={t('snappingTooltip', { state: snappingEnabled ? t('snappingOn') : t('snappingOff') })}
         className={cn(
           headerBtnClass,
           snappingEnabled ? 'text-primary' : 'text-foreground-secondary',
@@ -570,10 +577,19 @@ export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | nu
         type="button"
         onClick={() => {
           handle.commands.execute<Measurement[]>('measure.list')
-            .then((list) => { if (list && list.length > 0) exportMeasurementsCSV(list); })
+            .then((list) => {
+              if (list && list.length > 0) {
+                exportMeasurementsCSV(list, {
+                  type: t('csvType'),
+                  value: t('csvValue'),
+                  unit: t('csvUnit'),
+                  points: t('csvPoints'),
+                });
+              }
+            })
             .catch(() => undefined);
         }}
-        title="Export measurements as CSV"
+        title={t('exportCsv')}
         className={cn(headerBtnClass, 'text-foreground-secondary')}
       >
         <Download className="h-3.5 w-3.5" />
@@ -581,7 +597,7 @@ export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | nu
       <button
         type="button"
         onClick={() => setSettingsOpen(true)}
-        title="Measurement settings"
+        title={t('settings')}
         className={cn(headerBtnClass, 'text-foreground-secondary')}
       >
         <Settings className="h-3.5 w-3.5" />

@@ -226,6 +226,10 @@
         "title": "No project access yet",
         "description": "You are in this organization, but you have not been added to any project yet. Ask an organization admin or project owner to grant access."
       },
+      "emptyAll": {
+        "title": "No projects yet",
+        "description": "Projects you create or are added to will show up here."
+      },
       "emptyFiltered": {
         "title": "No matching projects",
         "descriptionNoSearch": "No projects match the selected filter.",
@@ -251,7 +255,25 @@
     },
     "card": {
       "phaseLabel": "Phase:",
-      "permitLabel": "Permit:"
+      "permitLabel": "Permit:",
+      "menu": {
+        "actions": "Project actions",
+        "view": "View",
+        "edit": "Edit",
+        "reactivate": "Reactivate",
+        "archive": "Archive",
+        "remove": "Remove",
+        "deleteTitle": "Delete project",
+        "deleteDescription": "Remove \"{name}\" from active views? It will be hidden from normal project lists.",
+        "deleteConfirm": "Remove",
+        "cancel": "Cancel",
+        "errors": {
+          "forbidden": "You do not have permission to delete this project.",
+          "notFound": "Project not found. It may have been deleted already.",
+          "deleteFailed": "Delete failed: {detail}",
+          "deleteUnknown": "Could not delete project."
+        }
+      }
     },
     "filters": {
       "all": "All",
@@ -515,7 +537,12 @@
       "noDeadlines": "No deadlines",
       "documents": "Documents",
       "documentsCount": "{count} uploaded",
-      "noDocuments": "None yet"
+      "noDocuments": "None yet",
+      "shareProject": "Share project",
+      "noAddress": "No address set",
+      "instrumentTooltip": "Approved instrument · {provider}",
+      "thumbnailAlt": "{name} thumbnail",
+      "mapPreviewAlt": "{name} map preview"
     },
     "tabs": {
       "eyebrow": "Project workspace",
@@ -558,7 +585,75 @@
         "emptyState": "No models yet. Create one to get started.",
         "newModelDialog": {
           "title": "New model",
-          "description": "Group file versions by discipline. You can upload a file into the model after creating it."
+          "description": "Group file versions by discipline. You can upload a file into the model after creating it.",
+          "submitCreate": "Create",
+          "submitCreating": "Creating…",
+          "errors": {
+            "nameTaken": "This name is taken"
+          },
+          "fields": {
+            "name": "Name",
+            "discipline": "Discipline",
+            "status": "Status"
+          },
+          "disciplines": {
+            "architectural": "Architectural",
+            "structural": "Structural",
+            "mep": "MEP",
+            "coordination": "Coordination",
+            "other": "Other"
+          },
+          "statuses": {
+            "active": "Active",
+            "draft": "Draft",
+            "archived": "Archived"
+          }
+        },
+        "row": {
+          "noFiles": "No files",
+          "viewFile": "View file",
+          "noViewableFile": "No viewable file yet",
+          "uploadFile": "Upload file",
+          "checkBbl": "Check BBL",
+          "view": "View",
+          "upload": "Upload",
+          "remove": "Remove",
+          "versionHistory": "Version history · {count} versions",
+          "noVersionsUploaded": "No versions uploaded yet.",
+          "latest": "LATEST",
+          "justNow": "just now",
+          "minutesAgo": "{count}m ago",
+          "hoursAgo": "{count}h ago",
+          "daysAgo": "{count}d ago"
+        },
+        "files": {
+          "extractionFailed": "Extraction failed.",
+          "failed": "Failed",
+          "retry": "Retry",
+          "retryAria": "Retry extraction for {filename}",
+          "view3d": "View 3D",
+          "view": "View",
+          "viewAria": "View {filename}",
+          "viewAria3d": "View {filename} in 3D",
+          "checkBbl": "Check BBL",
+          "checkBblAria": "Check BBL compliance for {filename}",
+          "downloadAria": "Download {filename}",
+          "fileActions": "File actions",
+          "delete": "Delete",
+          "removeAria": "Remove {filename}",
+          "duplicateContent": "This file already exists in this project.",
+          "uploadFailed": "Upload failed.",
+          "loadFailed": "Failed to load files.",
+          "hintLockedSuffix": "only — locked by first upload",
+          "hintAllTypes": ".ifc and .pdf files",
+          "noVersions": "No versions yet. Upload a file to create the first version.",
+          "latestVersion": "Latest version",
+          "olderVersions": "Older versions ({count})",
+          "rejectedFiles": "{count, plural, =1 {1 rejected file} other {# rejected files}}",
+          "deleteTitle": "Delete file",
+          "deleteDescription": "Delete \"{filename}\"? This cannot be undone.",
+          "deleteConfirm": "Delete",
+          "cancel": "Cancel"
         }
       },
       "borgingsplan": {
@@ -663,7 +758,8 @@
         "label": "Findings",
         "title": "No findings logged",
         "description": "Findings from failed checklist items will show up here with their resolution and verification trail.",
-        "ctaLabel": "Log finding"
+        "ctaLabel": "Log finding",
+        "count": "{count, plural, one {# finding} other {# findings}}"
       },
       "attachments": {
         "label": "Attachments",
@@ -758,6 +854,71 @@
         }
       },
       "rapporten": { "label": "Reports" }
+    }
+  },
+  "findings": {
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "status": {
+      "draft": "Draft",
+      "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved",
+      "verified": "Verified"
+    },
+    "form": {
+      "createTitle": "Log finding",
+      "createSubtitle": "Record an inspection finding so it can be tracked to resolution.",
+      "submit": "Create finding",
+      "fields": {
+        "title": "Title",
+        "description": "Description",
+        "severity": "Severity",
+        "bblArticleRef": "Bbl article reference"
+      },
+      "placeholders": {
+        "title": "Short summary of the finding",
+        "description": "Describe the defect and where it was observed",
+        "bblArticleRef": "e.g. 4.51"
+      },
+      "hints": {
+        "bblArticleRef": "Optional reference to the relevant Bbl article."
+      }
+    },
+    "detail": {
+      "title": "Finding",
+      "subtitle": "Edit the finding, assign an owner and a deadline, then promote it.",
+      "save": "Save changes",
+      "fields": {
+        "title": "Title",
+        "description": "Description",
+        "severity": "Severity",
+        "bblArticleRef": "Bbl article reference",
+        "assignee": "Assignee",
+        "deadline": "Deadline"
+      },
+      "placeholders": {
+        "assignee": "Unassigned"
+      },
+      "promote": {
+        "title": "Promote to open",
+        "hint": "Set both an assignee and a deadline to promote this draft to an open finding.",
+        "action": "Promote to open"
+      },
+      "delete": {
+        "action": "Delete finding",
+        "confirm": "Delete this finding?",
+        "confirmAction": "Delete",
+        "cancel": "Cancel"
+      },
+      "linkedElement": {
+        "title": "Linked element",
+        "description": "This finding is linked to a BIM element in the model.",
+        "unlink": "Unlink element"
+      }
     }
   },
   "reports": {
@@ -1619,14 +1780,326 @@
       "filter": "Filter properties…",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all",
-      "clear": "clear"
+      "clear": "clear",
+      "copyValue": "Copy value",
+      "boolYes": "Yes",
+      "boolNo": "No"
+    },
+    "sidePanel": {
+      "titleExplorer": "Model Tree",
+      "titleInspector": "Properties & Attachments",
+      "titleIssues": "Inspections",
+      "titleCompliance": "BBL Compliance",
+      "titleMeasure": "Measurement",
+      "titleSection": "Section Planes",
+      "titleBcf": "BCF Topics",
+      "titlePages": "Pages",
+      "comingSoon": "Coming soon"
+    },
+    "modeIndicator": {
+      "exitHint": "Press ESC to exit"
+    },
+    "pages": {
+      "loading": "Loading pages…",
+      "pageLabel": "Page {page}",
+      "current": "current"
+    },
+    "toolbar": {
+      "homeView": "Home view",
+      "select": "Select",
+      "eraser": "Eraser",
+      "wireframe": "Wireframe",
+      "xray": "X-Ray",
+      "isolate": "Isolate",
+      "firstPerson": "First person",
+      "colorCoding": "Color coding",
+      "explode": "Explode",
+      "screenshot": "Screenshot",
+      "settings": "Settings",
+      "comingSoonSuffix": "{label} (coming soon)",
+      "pan": "Pan",
+      "panTooltip": "Pan (drag to move)",
+      "zoom": "Zoom",
+      "zoomTooltip": "Zoom (click to zoom in, Alt+click to zoom out)",
+      "fitPage": "Fit to page",
+      "fitWidth": "Fit to width",
+      "actualSize": "Actual size",
+      "actualSizeTooltip": "Actual size (100%)",
+      "rotateLeft": "Rotate left",
+      "rotateRight": "Rotate right",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "prevPage": "Previous page",
+      "nextPage": "Next page",
+      "currentPage": "Current page",
+      "toggleTheme": "Toggle theme"
+    },
+    "measurement": {
+      "modeDistance": "Distance",
+      "modeAngle": "Angle",
+      "modeArea": "Area",
+      "modeVolume": "Volume",
+      "helpDistance": "Click two points to measure distance",
+      "helpAngle": "Click three points to measure angle (2nd point is the vertex)",
+      "helpArea": "Click points to define a polygon, close near the first point or right-click to finish",
+      "helpVolume": "Click points for base polygon, close to finish, then click to set height",
+      "emptyMessage": "Select a mode above to measure distances, angles, areas, or volumes",
+      "hide": "Hide measurement",
+      "show": "Show measurement",
+      "remove": "Remove measurement",
+      "cancel": "Cancel",
+      "cancelPending": "Cancel pending points",
+      "done": "Done",
+      "stop": "Stop measuring",
+      "count": "{count, plural, one {# measurement} other {# measurements}}",
+      "clearAll": "Clear all measurements",
+      "clearConfirmDescription": "This will remove all {count, plural, one {# measurement} other {# measurements}}. This cannot be undone.",
+      "clearConfirm": "Clear all",
+      "csvType": "Type",
+      "csvValue": "Value",
+      "csvUnit": "Unit",
+      "csvPoints": "Points",
+      "settingsTitle": "Measurement Settings",
+      "settingsSubtitle": "Configure how measurements appear in the viewer",
+      "sectionColors": "Colors",
+      "directLine": "Direct line",
+      "xAxis": "X axis",
+      "yAxis": "Y axis",
+      "zAxis": "Z axis",
+      "sectionAppearance": "Appearance",
+      "showHeightHorizontal": "Show height & horizontal",
+      "labelSize": "Label size — {size}",
+      "dotSize": "Dot size — {size}",
+      "sectionPrecision": "Precision",
+      "decimalPlaces": "Decimal places",
+      "sectionSnapping": "Snapping",
+      "snapThreshold": "Snap threshold — {value}px",
+      "snapThresholdHint": "Pixel distance for snap detection",
+      "sizeSmall": "Small",
+      "sizeMedium": "Medium",
+      "sizeLarge": "Large",
+      "sizeExtraLarge": "Extra Large",
+      "snappingTooltip": "Snapping (S) — {state}",
+      "snappingOn": "on",
+      "snappingOff": "off",
+      "exportCsv": "Export measurements as CSV",
+      "settings": "Measurement settings"
+    },
+    "section": {
+      "place": "Place",
+      "emptyMessage": "Add section planes using the buttons above or click surfaces in placement mode",
+      "planeLabel": "Plane {index}",
+      "flip": "Flip direction",
+      "hide": "Hide plane",
+      "show": "Show plane",
+      "remove": "Remove plane",
+      "placeHint": "Click a surface to place a section plane",
+      "done": "Done",
+      "count": "{count, plural, one {# plane} other {# planes}}",
+      "clearAll": "Clear all planes",
+      "clearConfirmTitle": "Clear all section planes",
+      "clearConfirmDescription": "This will remove all {count, plural, one {# section plane} other {# section planes}}. This cannot be undone.",
+      "clearConfirm": "Clear all",
+      "cancel": "Cancel"
+    },
+    "bcf": {
+      "viewerNotReady": "Viewer not ready",
+      "topicCount": "{count, plural, one {# topic} other {# topics}}",
+      "newTopic": "New Topic",
+      "cancel": "Cancel",
+      "titlePlaceholder": "Title",
+      "descriptionPlaceholder": "Description (optional)",
+      "typeLabel": "Type",
+      "statusLabel": "Status",
+      "priorityLabel": "Priority",
+      "capturesViewpoint": "Captures current viewpoint",
+      "creating": "Creating…",
+      "create": "Create",
+      "emptyMessage": "No topics yet. Click New Topic to capture the current view, or import a .bcf file from the header.",
+      "deleteTopic": "Delete topic",
+      "import": "Import BCF file",
+      "importShort": "Import BCF",
+      "export": "Export BCF",
+      "noTopicsToExport": "No topics to export",
+      "exportTooltip": "Export topics as .bcf",
+      "errorParse": "Could not parse BCF file",
+      "errorNoData": "Export returned no data",
+      "errorExport": "Export failed",
+      "typeIssue": "Issue",
+      "typeRequest": "Request",
+      "typeRemark": "Remark",
+      "typeClash": "Clash",
+      "typeInformation": "Information",
+      "statusOpen": "Open",
+      "statusInProgress": "In Progress",
+      "statusResolved": "Resolved",
+      "statusClosed": "Closed",
+      "priorityLow": "Low",
+      "priorityNormal": "Normal",
+      "priorityHigh": "High",
+      "priorityCritical": "Critical"
+    },
+    "settings": {
+      "viewerTitle": "Viewer Settings",
+      "viewerSubtitle": "Customize rendering, controls, and display preferences.",
+      "resetDefaults": "Reset defaults",
+      "reloadViewer": "Reload viewer",
+      "tabAppearance": "Appearance",
+      "tabPerformance": "Performance",
+      "tabKeyBindings": "Key Bindings",
+      "tabControls": "Controls",
+      "viewerSettingsShort": "Viewer settings",
+      "closeSettings": "Close settings",
+      "viewerSettingsAria": "Viewer settings",
+      "sub3dViewer": "3D Viewer",
+      "subDocument": "Document",
+      "common": "Common",
+      "background": "Background",
+      "backgroundColor": "Color",
+      "shadows": "Shadows",
+      "enableShadows": "Enable shadows",
+      "visualEffects": "Visual effects",
+      "enableEffects": "Enable effects",
+      "edgesOutline": "Edges (outline)",
+      "quality": "Quality",
+      "zoomLimits": "Zoom limits",
+      "maxDistance": "Max distance",
+      "behavior": "Behavior",
+      "behaviorNoteColor": "Color changes reload the viewer",
+      "behaviorNoteToggle": "Toggle: live · Color: reload",
+      "hoverHighlight": "Hover highlight",
+      "hoverColor": "Hover color",
+      "clickToSelect": "Click to select",
+      "selectionColor": "Selection color",
+      "noDocumentSettings": "No additional document-specific settings yet.",
+      "performanceDuringNav": "Performance during navigation",
+      "performanceDescription": "Skip work while the camera is moving. Restored on idle.",
+      "hideSmall": "Hide small items",
+      "envelopeOnly": "Envelope only (walls/slabs/roof/doors/windows)",
+      "hideTransparent": "Hide transparent items",
+      "cullSubPixel": "Cull sub-pixel items",
+      "lowerResolution": "Lower resolution while moving",
+      "tightenFarPlane": "Tighten far plane",
+      "flatShading": "Flat shading override",
+      "pauseHover": "Pause hover-highlight",
+      "noteLive": "Live",
+      "noteApplyOnReload": "Applies on next viewer reload",
+      "keyboardShortcuts": "Keyboard shortcuts",
+      "noShortcuts": "No shortcuts.",
+      "pressKey": "Press a key…",
+      "viewerNotReady": "Viewer not ready.",
+      "mouseBindings": "Mouse bindings",
+      "mouseBindingNone": "— none —",
+      "mouseDragActions": "Mouse drag actions",
+      "leftButton": "Left button",
+      "middleButton": "Middle button",
+      "rightButton": "Right button",
+      "wheel": "Wheel",
+      "cameraRotate": "Rotate (orbit)",
+      "cameraTruck": "Truck (pan)",
+      "cameraDolly": "Dolly (zoom)",
+      "cameraZoom": "Zoom",
+      "cameraOffset": "Offset",
+      "cameraNone": "None"
+    },
+    "documentSettings": {
+      "title": "Document settings",
+      "ariaLabel": "Document viewer settings",
+      "closeSettings": "Close settings",
+      "tabGeneral": "General",
+      "tabKeyboard": "Keyboard",
+      "tabMouse": "Mouse",
+      "pageBackground": "Page background",
+      "pageBackgroundColor": "Colour",
+      "keyboardShortcuts": "Keyboard shortcuts",
+      "pressKey": "Press a key…",
+      "mouseBindings": "Mouse bindings",
+      "noteLive": "Live",
+      "noteBuiltIn": "Built-in",
+      "resetDefaults": "Reset defaults",
+      "action": {
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out",
+        "fitPage": "Fit to page",
+        "fitWidth": "Fit to width",
+        "actualSize": "Actual size (100%)",
+        "rotateRight": "Rotate right",
+        "rotateLeft": "Rotate left",
+        "nextPage": "Next page",
+        "prevPage": "Previous page",
+        "firstPage": "First page",
+        "lastPage": "Last page",
+        "toolSelect": "Select tool",
+        "toolPan": "Pan tool",
+        "toolZoom": "Zoom tool"
+      },
+      "gesture": {
+        "ctrlWheel": "Ctrl + Wheel",
+        "middleDrag": "Middle drag",
+        "leftDragPan": "Left drag (Pan tool)",
+        "leftClickZoom": "Left click (Zoom tool)",
+        "altLeftClickZoom": "Alt + left click (Zoom tool)",
+        "doubleClick": "Double-click (Pan/Zoom)",
+        "actionZoomCursor": "Zoom in / out toward cursor",
+        "actionPan": "Pan",
+        "actionZoomInCursor": "Zoom in toward cursor",
+        "actionZoomOutCursor": "Zoom out toward cursor",
+        "actionFitPage": "Fit to page"
+      }
+    },
+    "shortcuts": {
+      "categoryGlobal": "Global",
+      "categoryNavigation": "Navigation",
+      "categoryEditing": "Editing",
+      "categoryModifier": "Modifier",
+      "unassigned": "Unassigned",
+      "noActionBound": "No action bound",
+      "rebind": "Rebind",
+      "listeningTitle": "Listening for keystroke",
+      "pressAnyKeyFor": "Press any key for {action}",
+      "currentlyBoundTo": "Currently bound to",
+      "pressEscToCancel": "Press {key} to cancel",
+      "searchActions": "Search actions…",
+      "clearSearch": "Clear search",
+      "all": "All",
+      "tabKeyboard": "Keyboard",
+      "tabMouse": "Mouse",
+      "noMatch": "No shortcuts match your search.",
+      "noneRegistered": "No shortcuts registered.",
+      "sectionGlobalSubtitle": "Tools and canvas commands",
+      "sectionEditingSubtitle": "Manipulate elements and quantities",
+      "sectionNavigationSubtitle": "Move through views and pan the viewport",
+      "sectionModifierSubtitle": "Hold-down keys that change pick behaviour",
+      "press": "Press…",
+      "dragActions": "Drag actions",
+      "selectLabel": "Select",
+      "zoomLabel": "Zoom",
+      "panLabel": "Pan",
+      "dragSublabel": "Drag: {action}",
+      "zoomInOut": "Zoom in/out ({action})",
+      "zoomInOutAlways": "Zoom in/out (always available)",
+      "zoomInOutShort": "Zoom In/Out",
+      "mouseGestures": "Mouse gestures"
     }
   },
   "viewerInspector": {
     "panelTitle": "Properties & Attachments",
     "tabProperties": "Properties",
     "tabAttachments": "Attachments",
-    "pdfPageHeader": "Page {page}"
+    "tabFindings": "Findings",
+    "pdfPageHeader": "Page {page}",
+    "messages": {
+      "allSelected": "All {count, number} elements selected. Select a single element to inspect it.",
+      "noElementData": "Element data not available. Re-extract the model to inspect this element.",
+      "noGlobalId": "This element has no GlobalId; attachments cannot be linked.",
+      "pdfNotInitialized": "PDF state not initialized."
+    }
+  },
+  "viewerFindings": {
+    "count": "{count, plural, =0 {No findings} one {# finding} other {# findings}}",
+    "createButton": "New finding",
+    "loading": "Loading findings…",
+    "emptyNoItems": "No findings linked to this element yet."
   },
   "viewerInspections": {
     "panelTitle": "Inspections",
@@ -1705,5 +2178,16 @@
     "linkingElementSub": "Click in viewer",
     "linkingPdf": "PDF region",
     "linkingPdfSub": "Draw box on page"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "loading": "Loading…",
+    "allCaughtUp": "You're all caught up.",
+    "summary": "{unread} unread · {total} total",
+    "markAllRead": "Mark all read",
+    "justNow": "just now",
+    "minutesAgo": "{count} min ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
   }
 }

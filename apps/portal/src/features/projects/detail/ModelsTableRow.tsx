@@ -4,6 +4,7 @@ import { Eye, ShieldCheck, Upload, Trash2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState, type JSX } from 'react';
+import { useTranslations } from 'next-intl';
 
 import { Badge, Button, Spinner } from '@bimstitch/ui';
 
@@ -16,15 +17,15 @@ import { getViewerBundle } from '@/lib/api/projectFiles';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 import { useAuth } from '@/providers/AuthProvider';
 
-function formatRelativeTime(iso: string): string {
+function formatRelativeTime(iso: string, t: ReturnType<typeof useTranslations>): string {
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${String(minutes)}m ago`;
+  if (minutes < 1) return t('justNow');
+  if (minutes < 60) return t('minutesAgo', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${String(hours)}h ago`;
+  if (hours < 24) return t('hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${String(days)}d ago`;
+  return t('daysAgo', { count: days });
 }
 
 function fileExt(filename: string): string {
@@ -51,6 +52,7 @@ type Props = {
 };
 
 export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Element {
+  const t = useTranslations('projectDetail.tabs.models.row');
   const [isOpen, setIsOpen] = useState(false);
   const filesQuery = useModelFiles(projectId, model.id);
   const complianceMutation = useCheckCompliance(projectId, model.id);
@@ -115,7 +117,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                   <span className="truncate">{latestFile.original_filename} · {(latestFile.size_bytes / 1048576).toFixed(0)} MB</span>
                 </>
               ) : (
-                'No files'
+                t('noFiles')
               )}
             </div>
           </div>
@@ -125,7 +127,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
         </span>
         <span className="text-center font-sans text-body3 font-semibold tabular-nums">{files.length}</span>
         <span className="text-caption text-foreground-tertiary whitespace-nowrap">
-          {latestFile !== undefined ? formatRelativeTime(latestFile.updated_at) : '—'}
+          {latestFile !== undefined ? formatRelativeTime(latestFile.updated_at, t) : '—'}
         </span>
         <div className="flex justify-end gap-1.5">
           {!isOpen ? (
@@ -136,7 +138,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                   onClick={(e) => { e.stopPropagation(); }}
                   onMouseEnter={prewarmViewer}
                   onFocus={prewarmViewer}
-                  title="View file"
+                  title={t('viewFile')}
                   className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary"
                 >
                   <Eye className="h-3.5 w-3.5" />
@@ -147,7 +149,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                   disabled
                   aria-disabled="true"
                   onClick={(e) => { e.stopPropagation(); }}
-                  title="No viewable file yet"
+                  title={t('noViewableFile')}
                   className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Eye className="h-3.5 w-3.5" />
@@ -156,7 +158,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
-                title="Upload file"
+                title={t('uploadFile')}
                 className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary"
               >
                 <Upload className="h-3.5 w-3.5" />
@@ -171,7 +173,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                       complianceMutation.mutate({ fileId: latestFile.id });
                     }
                   }}
-                  title="Check BBL"
+                  title={t('checkBbl')}
                   className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {complianceMutation.isPending ? (
@@ -193,7 +195,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
         <div className="border-l-[3px] border-l-primary bg-primary-lighter px-4 pb-4 pl-9 pt-2 dark:bg-foreground/[0.03]">
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="text-micro font-bold uppercase tracking-[0.12em] text-primary">
-              Version history · {files.length} versions
+              {t('versionHistory', { count: files.length })}
             </span>
             <div className="flex flex-wrap gap-1.5">
               {isViewable && latestFile !== undefined ? (
@@ -205,13 +207,13 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                 >
                   <Button variant="border" size="sm">
                     <Eye className="mr-1.5 h-3 w-3" />
-                    View
+                    {t('view')}
                   </Button>
                 </Link>
               ) : latestFile !== undefined ? (
                 <Button variant="border" size="sm" disabled>
                   <Eye className="mr-1.5 h-3 w-3" />
-                  View
+                  {t('view')}
                 </Button>
               ) : null}
               <Button
@@ -220,7 +222,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                 onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
               >
                 <Upload className="mr-1.5 h-3 w-3" />
-                Upload
+                {t('upload')}
               </Button>
               {canCheckBbl && latestFile !== undefined ? (
                 <Button
@@ -237,12 +239,12 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                   ) : (
                     <ShieldCheck className="mr-1.5 h-3 w-3" />
                   )}
-                  Check BBL
+                  {t('checkBbl')}
                 </Button>
               ) : null}
               <Button variant="border" size="sm" className="text-error hover:border-error">
                 <Trash2 className="mr-1.5 h-3 w-3" />
-                Remove
+                {t('remove')}
               </Button>
             </div>
           </div>
@@ -250,7 +252,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
           <div className="rounded-md border border-border bg-background">
             {files.length === 0 ? (
               <div className="px-3 py-4 text-center text-body3 text-foreground-tertiary">
-                No versions uploaded yet.
+                {t('noVersionsUploaded')}
               </div>
             ) : (
               files.map((f: ProjectFile, i: number) => {
@@ -269,7 +271,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                       </span>
                       {isLatest && (
                         <span className="rounded-sm bg-primary px-1.5 py-px text-caption font-bold text-primary-foreground">
-                          LATEST
+                          {t('latest')}
                         </span>
                       )}
                     </div>

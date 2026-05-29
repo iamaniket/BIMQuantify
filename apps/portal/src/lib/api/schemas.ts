@@ -16,3 +16,4 @@ export * from './schemas/deadlines';
 export * from './schemas/attachments';
 export * from './schemas/activity';
 export * from './schemas/elementInspections';
+export * from './schemas/findings';

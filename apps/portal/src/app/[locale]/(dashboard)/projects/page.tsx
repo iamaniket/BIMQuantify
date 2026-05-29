@@ -2,6 +2,7 @@
 
 import { Search } from 'lucide-react';
 import { useState, type JSX } from 'react';
+import { useTranslations } from 'next-intl';
 
 import { Input } from '@bimstitch/ui';
 
@@ -11,6 +12,7 @@ import { ProjectStatusFilter, type StatusFilter } from '@/features/projects/Proj
 import { useProjects } from '@/features/projects/useProjects';
 
 export default function ProjectsPage(): JSX.Element {
+  const t = useTranslations('projects.page');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const projectsQuery = useProjects();
@@ -23,11 +25,11 @@ export default function ProjectsPage(): JSX.Element {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-tertiary" />
           <Input
             type="search"
-            placeholder="Search projects…"
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => { setSearch(e.target.value); }}
             className="w-full pl-9"
-            aria-label="Search projects"
+            aria-label={t('searchAriaLabel')}
           />
         </div>
         <ProjectStatusFilter

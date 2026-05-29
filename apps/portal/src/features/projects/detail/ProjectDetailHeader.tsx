@@ -79,14 +79,14 @@ export function ProjectDetailHeader({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={project.thumbnail_url}
-          alt={`${project.name} thumbnail`}
+          alt={tHero('thumbnailAlt', { name: project.name })}
           className="h-full w-full object-cover"
         />
       ) : aerialUrl !== null ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={aerialUrl}
-          alt={`${project.name} map preview`}
+          alt={tHero('mapPreviewAlt', { name: project.name })}
           className="h-full w-full object-cover"
           onError={() => setAerialFailed(true)}
         />
@@ -121,7 +121,7 @@ export function ProjectDetailHeader({
     <>
       <span className="inline-flex items-center gap-1">
         <MapPin className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
-        {address ?? 'No address set'}
+        {address ?? tHero('noAddress')}
       </span>
       {project.contractor_name !== null && (
         <>
@@ -135,7 +135,7 @@ export function ProjectDetailHeader({
       {instrument !== undefined && (
         <>
           <span className="text-black/30 dark:text-white/60">·</span>
-          <span className="inline-flex items-center gap-1" title={`Toegelaten instrument · ${instrument.provider}`}>
+          <span className="inline-flex items-center gap-1" title={tHero('instrumentTooltip', { provider: instrument.provider })}>
             <Scale className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
             <a
               href={instrument.methodology_url}
@@ -195,8 +195,8 @@ export function ProjectDetailHeader({
       action={
         <Link
           href={`/projects/${project.id}/access`}
-          title="Share project"
-          aria-label="Share project"
+          title={tHero('shareProject')}
+          aria-label={tHero('shareProject')}
           className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border-0 bg-transparent text-foreground-secondary transition-colors hover:bg-surface-low hover:text-primary"
         >
           <Share2 className="h-3.5 w-3.5" />

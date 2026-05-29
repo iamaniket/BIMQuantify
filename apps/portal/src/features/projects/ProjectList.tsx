@@ -3,6 +3,7 @@
 import { FolderOpen, Search } from 'lucide-react';
 import { type JSX } from 'react';
 import { useQueries } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 
 import {
   Card, CardBody, CardFooter, EmptyState, Skeleton,
@@ -46,6 +47,7 @@ type ProjectListProps = {
 };
 
 export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Element {
+  const t = useTranslations('projects.list');
   const { tokens } = useAuth();
   const query = useProjects();
   const accessToken = tokens === null ? null : tokens.access_token;
@@ -112,7 +114,7 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
   if (query.isError) {
     const message = query.error instanceof ApiError
       ? query.error.detail
-      : 'Failed to load projects.';
+      : t('errors.loadFailed');
     return <ErrorBanner message={message} tone="soft" className="text-body2" />;
   }
 
@@ -120,8 +122,8 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
     return (
       <EmptyState
         icon={FolderOpen}
-        title="No projects yet"
-        description="Projects you create or are added to will show up here."
+        title={t('emptyAll.title')}
+        description={t('emptyAll.description')}
         action={undefined}
         className={undefined}
       />
@@ -132,11 +134,11 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
     return (
       <EmptyState
         icon={Search}
-        title="No matching projects"
+        title={t('emptyFiltered.title')}
         description={
           term.length === 0
-            ? 'No projects match the selected filter.'
-            : `No projects match "${search}". Try a different search.`
+            ? t('emptyFiltered.descriptionNoSearch')
+            : t('emptyFiltered.descriptionWithSearch', { search })
         }
         action={undefined}
         className={undefined}

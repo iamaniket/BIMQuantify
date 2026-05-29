@@ -16,7 +16,13 @@ import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mj
 import { postCallback } from '../api/callback.js';
 import { logger } from '../log.js';
 import type { WorkerJob } from '../queue/queue.js';
-import { downloadObjectWithHash, pdfMetadataKeyFor, uploadObject } from '../storage/s3.js';
+import {
+  downloadObjectWithHash,
+  pdfGeometryKeyFor,
+  pdfMetadataKeyFor,
+  uploadObject,
+} from '../storage/s3.js';
+import { buildPageGeometry, type GeometryArtifact } from './pdf-geometry.js';
 
 /** Payload shape for `pdf_extraction` jobs. */
 export type PdfExtractionPayload = {
@@ -92,12 +98,28 @@ export async function runPdfExtraction(job: WorkerJob): Promise<void> {
     logger.info({ metadataKey, pageCount }, 'uploading PDF metadata');
     await uploadObject(metadataKey, JSON.stringify(metadata), 'application/json');
 
+    // Extract vector geometry + text, one page at a time so we never hold the
+    // whole document's operator lists in memory (100s of large PDFs).
+    const artifact: GeometryArtifact = { v: 1, p: [] };
+    for (let n = 1; n <= pageCount; n += 1) {
+      const page = await doc.getPage(n);
+      try {
+        artifact.p.push(await buildPageGeometry(page, n - 1));
+      } finally {
+        page.cleanup();
+      }
+    }
+    const geometryKey = pdfGeometryKeyFor(payload.storage_key);
+    logger.info({ geometryKey, pageCount }, 'uploading PDF geometry');
+    await uploadObject(geometryKey, JSON.stringify(artifact), 'application/json');
+
     await postCallback({
       file_id: payload.file_id,
       organization_id: job.organization_id,
       job_id: job.job_id,
       status: 'succeeded',
       metadata_key: metadataKey,
+      geometry_key: geometryKey,
       page_count: pageCount,
       started_at: startedAt,
       finished_at: new Date().toISOString(),

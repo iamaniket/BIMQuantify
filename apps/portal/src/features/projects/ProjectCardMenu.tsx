@@ -2,6 +2,7 @@
 
 import { MoreVertical } from 'lucide-react';
 import { useState, type JSX } from 'react';
+import { useTranslations } from 'next-intl';
 
 import {
   Button,
@@ -25,21 +26,25 @@ type Props = {
   project: Project;
 };
 
-function formatDeleteError(error: unknown): string | null {
+function formatDeleteError(
+  error: unknown,
+  t: ReturnType<typeof useTranslations>,
+): string | null {
   if (error === null || error === undefined) return null;
   if (error instanceof ApiError) {
     if (error.status === 403) {
-      return 'You do not have permission to delete this project.';
+      return t('errors.forbidden');
     }
     if (error.status === 404) {
-      return 'Project not found. It may have been deleted already.';
+      return t('errors.notFound');
     }
-    return `Delete failed: ${error.detail}`;
+    return t('errors.deleteFailed', { detail: error.detail });
   }
-  return 'Could not delete project.';
+  return t('errors.deleteUnknown');
 }
 
 export function ProjectCardMenu({ project }: Props): JSX.Element {
+  const t = useTranslations('projects.card.menu');
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const archived = isProjectArchived(project);
@@ -74,7 +79,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
             type="button"
             variant="ghost"
             size="sm"
-            aria-label="Project actions"
+            aria-label={t('actions')}
             className="absolute right-2 top-2 z-20 h-8 w-8 rounded-full bg-black/25 p-0 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
             onPointerDown={(event) => {
               event.stopPropagation();
@@ -95,7 +100,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
               }
             }}
           >
-            {archived ? 'View' : 'Edit'}
+            {archived ? t('view') : t('edit')}
           </DropdownMenuItem>
           {archived ? (
             <DropdownMenuItem
@@ -104,7 +109,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
                 reactivateMutation.mutate({ id: project.id });
               }}
             >
-              Reactivate
+              {t('reactivate')}
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem
@@ -113,7 +118,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
                 archiveMutation.mutate({ id: project.id });
               }}
             >
-              Archive
+              {t('archive')}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
@@ -123,7 +128,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
               setDeleteOpen(true);
             }}
           >
-            Remove
+            {t('remove')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -138,14 +143,14 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={handleDeleteOpenChange}
-        title="Delete project"
-        description={`Remove "${project.name}" from active views? It will be hidden from normal project lists.`}
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        title={t('deleteTitle')}
+        description={t('deleteDescription', { name: project.name })}
+        confirmLabel={t('deleteConfirm')}
+        cancelLabel={t('cancel')}
         onConfirm={handleConfirmDelete}
         variant="destructive"
         isPending={deleteMutation.isPending}
-        errorMessage={formatDeleteError(deleteMutation.error)}
+        errorMessage={formatDeleteError(deleteMutation.error, t)}
       />
     </>
   );

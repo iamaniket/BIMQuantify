@@ -1044,7 +1044,64 @@ async def test_viewer_bundle_pdf_returns_file_url(
     assert body["file_url"] is not None
     assert "?download=plan.pdf" in body["file_url"]
     assert body["fragments_url"] is None
+    assert body["geometry_url"] is None
     assert body["expires_in"] == fake.presign_ttl_value
+
+
+async def test_pdf_callback_persists_geometry_and_bundle_serves_it(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A PDF extractor callback carrying geometry_key persists it, and the
+    viewer-bundle then presigns a geometry_url."""
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="PdfGeometry"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "plan.pdf",
+                "size_bytes": len(VALID_PDF_BYTES),
+                "content_type": "application/pdf",
+                "content_sha256": "a7570660cf84bb15a36183bee1ce0dd866576a6be25a9744cd37744a440e80e5",
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_PDF_BYTES
+    await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+
+    geometry_key = init["storage_key"].replace(".pdf", ".geometry.json")
+    callback = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": init["file_id"],
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+            "metadata_key": "meta.json",
+            "geometry_key": geometry_key,
+            "page_count": 1,
+        },
+        headers={"Authorization": "Bearer dev-shared-secret-change-me"},
+    )
+    assert callback.status_code == 200, callback.text
+    assert callback.json()["extraction_status"] == "succeeded"
+
+    resp = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/viewer-bundle",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["file_type"] == "pdf"
+    assert body["geometry_url"] is not None
+    assert "geometry.json" in body["geometry_url"]
 
 
 # ---------------------------------------------------------------------------

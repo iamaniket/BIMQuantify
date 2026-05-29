@@ -1,6 +1,7 @@
 'use client';
 
 import { Crosshair, Eraser, Eye, EyeOff, FlipVertical, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
 import { ConfirmDialog, cn } from '@bimstitch/ui';
@@ -39,6 +40,7 @@ function dominantAxisColor(n: { x: number; y: number; z: number }): string {
 }
 
 export function SectionPanel({ handle }: Props): JSX.Element {
+  const t = useTranslations('viewer.section');
   const [planes, setPlanes] = useState<SectionPlane[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isPlacing, setIsPlacing] = useState(false);

@@ -599,9 +599,15 @@ async def get_viewer_bundle(
                 status_code=status.HTTP_404_NOT_FOUND, detail="VIEWER_BUNDLE_NOT_READY"
             )
         file_url = await storage.presigned_get_url(row.storage_key, row.original_filename)
+        geometry_url: str | None = None
+        if row.geometry_storage_key is not None:
+            geometry_url = await storage.presigned_get_url(
+                row.geometry_storage_key, "geometry.json"
+            )
         return ViewerBundleResponse(
             file_type=row.file_type,
             file_url=file_url,
+            geometry_url=geometry_url,
             expires_in=storage.presign_ttl,
         )
 

@@ -11,6 +11,7 @@ import {
 import {
   useEffect, useRef, useState, type JSX,
 } from 'react';
+import { useTranslations } from 'next-intl';
 
 import {
   useMarkAllRead,
@@ -40,16 +41,16 @@ const TONE_BY_TYPE: Record<NotificationEventTypeValue, string> = {
   deadline_missed: 'bg-error-lighter text-error',
 };
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, t: ReturnType<typeof useTranslations>): string {
   const then = new Date(iso).getTime();
   const diff = Math.max(0, Date.now() - then);
   const m = Math.floor(diff / 60_000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${String(m)} min ago`;
+  if (m < 1) return t('justNow');
+  if (m < 60) return t('minutesAgo', { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${String(h)}h ago`;
+  if (h < 24) return t('hoursAgo', { count: h });
   const d = Math.floor(h / 24);
-  return `${String(d)}d ago`;
+  return t('daysAgo', { count: d });
 }
 
 function NotificationListBody({
@@ -59,17 +60,18 @@ function NotificationListBody({
   isLoading: boolean;
   items: Notification[];
 }): JSX.Element {
+  const t = useTranslations('notifications');
   if (isLoading) {
     return (
       <div className="px-7 py-7 text-center text-xs text-foreground-tertiary">
-        Loading…
+        {t('loading')}
       </div>
     );
   }
   if (items.length === 0) {
     return (
       <div className="px-7 py-7 text-center text-xs text-foreground-tertiary">
-        You&apos;re all caught up.
+        {t('allCaughtUp')}
       </div>
     );
   }
@@ -93,7 +95,7 @@ function NotificationListBody({
               </div>
             ) : null}
             <div className="mt-1 font-sans text-[10px] tracking-[0.02em] text-foreground-tertiary">
-              {formatRelative(n.created_at)}
+              {formatRelative(n.created_at, t)}
             </div>
           </div>
           {n.is_read ? null : (
@@ -106,6 +108,7 @@ function NotificationListBody({
 }
 
 export function NotificationsBell(): JSX.Element {
+  const t = useTranslations('notifications');
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const unreadQuery = useUnreadCount();
@@ -136,8 +139,8 @@ export function NotificationsBell(): JSX.Element {
         onClick={() => {
           setOpen((o) => !o);
         }}
-        title="Notifications"
-        aria-label="Notifications"
+        title={t('title')}
+        aria-label={t('title')}
         className="relative grid h-[30px] w-[30px] place-items-center rounded-md text-white/80 hover:bg-white/10 hover:text-white"
       >
         <Bell className="h-[14px] w-[14px]" aria-hidden />
@@ -153,10 +156,10 @@ export function NotificationsBell(): JSX.Element {
           <div className="flex items-center justify-between border-b border-border px-3.5 py-3">
             <div>
               <div className="font-sans text-sm font-semibold tracking-[-0.01em] text-foreground">
-                Notifications
+                {t('title')}
               </div>
               <div className="mt-0.5 text-[10.5px] text-foreground-tertiary">
-                {String(unreadCount)} unread · {String(total)} total
+                {t('summary', { unread: unreadCount, total })}
               </div>
             </div>
             <button
@@ -167,7 +170,7 @@ export function NotificationsBell(): JSX.Element {
               }}
               className="rounded p-1 text-[11px] font-semibold text-primary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
             >
-              Mark all read
+              {t('markAllRead')}
             </button>
           </div>
           <NotificationListBody isLoading={listQuery.isLoading} items={items} />

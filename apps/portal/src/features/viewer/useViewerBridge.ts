@@ -188,6 +188,10 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
           }
         }
       }
+
+      if (state._frameRequested !== prev._frameRequested) {
+        void handle.commands.execute('camera.frameSelection');
+      }
     });
 
     return () => {

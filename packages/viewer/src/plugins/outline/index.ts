@@ -19,7 +19,7 @@ import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
 import { LAYER_DEFAULT } from '../../core/layers.js';
-import type { Plugin, ViewerContext } from '../../core/types.js';
+import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
 import { OutlineCache } from '../shared/outline-cache.js';
 import {
   applyClippingPlanes,
@@ -59,9 +59,31 @@ export function outlinePlugin(
   let currentPlanes: THREE.Plane[] = [];
   let clipCount = 0;
 
+  // Mirrored visibility state, keyed by modelId. When isolation is active the
+  // visible set is `isolated`; otherwise it's everything minus `hidden`.
+  const hiddenByModel = new Map<string, Set<number>>();
+  const isolatedByModel = new Map<string, Set<number>>();
+  let isolationActive = false;
+  // Set when visibility changes; the filtered geometry is rebuilt lazily on
+  // the next idle frame (the outline only draws on idle anyway).
+  let dirty = false;
+
   const updateVisibility = (): void => {
     const show = enabled && isIdle;
     for (const line of lines) line.visible = show;
+  };
+
+  const indexByModel = (items: ItemId[]): Map<string, Set<number>> => {
+    const map = new Map<string, Set<number>>();
+    for (const it of items) {
+      let set = map.get(it.modelId);
+      if (!set) {
+        set = new Set();
+        map.set(it.modelId, set);
+      }
+      set.add(it.localId);
+    }
+    return map;
   };
 
   const ensureMaterial = (ctx: ViewerContext): LineMaterial => {
@@ -91,26 +113,51 @@ export function outlinePlugin(
     if (material) clipCount = applyClippingPlanes(material, currentPlanes, clipCount);
   };
 
-  const buildLines = (modelId: string): void => {
+  // Rebuild every model's outline lines from the current visible set. The
+  // geometries are filtered copies OWNED by this plugin, so the old ones must
+  // be disposed here (never the cache's memoized full set used by x-ray).
+  const rebuildLines = (): void => {
     if (!ctxRef) return;
-    const geos = cache.getGeometries(modelId);
-    if (!geos || geos.length === 0) return;
+    clearLines();
     const mat = ensureMaterial(ctxRef);
-    for (const geo of geos) {
-      const line = new LineSegments2(geo, mat);
-      line.layers.set(LAYER_DEFAULT);
-      line.renderOrder = 998;
-      line.frustumCulled = false;
-      line.visible = enabled && isIdle;
-      line.name = `outline::${modelId}`;
-      ctxRef.scene.add(line);
-      lines.push(line);
+    for (const [modelId] of ctxRef.models()) {
+      if (!cache.has(modelId)) continue;
+      const filter = filterFor(modelId);
+      const geos = cache.buildGeometries(modelId, filter);
+      for (const geo of geos) {
+        const line = new LineSegments2(geo, mat);
+        line.layers.set(LAYER_DEFAULT);
+        line.renderOrder = 998;
+        line.frustumCulled = false;
+        line.visible = enabled && isIdle;
+        line.name = `outline::${modelId}`;
+        ctxRef.scene.add(line);
+        lines.push(line);
+      }
     }
+    dirty = false;
+  };
+
+  // Resolve the visible-element filter for a model from mirrored state:
+  // isolation wins (only isolated items), otherwise everything minus hidden.
+  // Returns `null` (full model) when nothing is hidden — the common case,
+  // which skips the per-element hidden check during the merge.
+  const filterFor = (
+    modelId: string,
+  ): { visible?: Set<number>; hidden?: Set<number> } | null => {
+    if (isolationActive) {
+      return { visible: isolatedByModel.get(modelId) ?? new Set() };
+    }
+    const hidden = hiddenByModel.get(modelId);
+    return hidden && hidden.size > 0 ? { hidden } : null;
   };
 
   const clearLines = (): void => {
-    if (!ctxRef) return;
-    for (const line of lines) ctxRef.scene.remove(line);
+    if (ctxRef) {
+      for (const line of lines) ctxRef.scene.remove(line);
+    }
+    // Geometries here are per-call filtered copies owned by this plugin.
+    for (const line of lines) line.geometry.dispose();
     lines = [];
   };
 
@@ -135,18 +182,38 @@ export function outlinePlugin(
       const offLoaded = ctx.events.on('model:loaded', ({ modelId }) => {
         void cache.build(ctx, modelId).then(() => {
           ctx.events.emit('outline:ready', { modelId });
-          buildLines(modelId);
+          rebuildLines();
           updateVisibility();
         });
       });
       const offIdle = ctx.events.on('viewer:idle', () => {
         isIdle = true;
+        // Visibility changes only repaint the outline on the idle frame, so
+        // coalesce rapid tree-toggling into a single rebuild here.
+        if (dirty) rebuildLines();
         updateVisibility();
       });
       const offCam = ctx.events.on('camera:change', () => {
         isIdle = false;
         updateVisibility();
       });
+      const offVisibility = ctx.events.on(
+        'visibility:change',
+        ({ hidden, isolated, isolationActive: active }) => {
+          hiddenByModel.clear();
+          for (const [m, s] of indexByModel(hidden)) hiddenByModel.set(m, s);
+          isolatedByModel.clear();
+          for (const [m, s] of indexByModel(isolated)) isolatedByModel.set(m, s);
+          isolationActive = active;
+          dirty = true;
+          // Repaint immediately if already settled; otherwise the next idle
+          // frame picks it up.
+          if (isIdle) {
+            rebuildLines();
+            updateVisibility();
+          }
+        },
+      );
       const offSection = ctx.events.on('section:change', ({ planes }) => {
         syncClipping(planes);
       });
@@ -199,6 +266,7 @@ export function outlinePlugin(
         offLoaded();
         offIdle();
         offCam();
+        offVisibility();
         offSection();
         ro.disconnect();
       };

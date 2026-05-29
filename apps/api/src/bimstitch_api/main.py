@@ -46,6 +46,7 @@ from bimstitch_api.routers.deadline_notification_settings import (
 )
 from bimstitch_api.routers.deadlines import router as deadlines_router
 from bimstitch_api.routers.attachments import router as attachments_router
+from bimstitch_api.routers.finding import router as finding_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.inspection import router as inspection_router
 from bimstitch_api.routers.jobs import router as jobs_router
@@ -170,6 +171,7 @@ def create_app() -> FastAPI:
     app.include_router(dl_notif_settings_org_router)
     app.include_router(dl_notif_settings_project_router)
     app.include_router(risks_router)
+    app.include_router(finding_router)
     app.include_router(borgingsplan_plan_router)
     app.include_router(borgingsplan_moment_router)
     app.include_router(attachments_router)

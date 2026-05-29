@@ -89,3 +89,7 @@ export function propertiesKeyFor(sourceKey: string): string {
 export function pdfMetadataKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.pdf$/i, '.metadata.json');
 }
+
+export function pdfGeometryKeyFor(sourceKey: string): string {
+  return sourceKey.replace(/\.pdf$/i, '.geometry.json');
+}

@@ -1,6 +1,10 @@
 """Initial tenant schema: projects, project_members, models, project_files, jobs, reports,
 contractors, notifications, notification_reads, risks, borgingsplans, borgingsmomenten,
-checklist_items, attachments, capture_links, audit_log.
+checklist_items, attachments, capture_links, findings, audit_log.
+
+project_files carries `geometry_storage_key` (PDF vector-geometry artifact) and
+findings (bevindingen) ship in this baseline — both squashed in from the former
+0002/0003 increments.
 
 Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables (users)
 are emitted as `public.users(id)` so they resolve regardless of search_path —
@@ -49,6 +53,7 @@ def upgrade() -> None:
         DeadlineNotificationLog,
         DeadlineNotificationSettings,
         Attachment,
+        Finding,
         Job,
         Model,
         Notification,
@@ -97,6 +102,16 @@ def upgrade() -> None:
             f"WHERE linked_element_global_id IS NOT NULL AND deleted_at IS NULL"
         )
     )
+    # One auto-draft finding per failed checklist item (the future #22 hook
+    # relies on this). Partial so manually-created findings (null source) are
+    # unconstrained.
+    bind.execute(
+        text(
+            f"CREATE UNIQUE INDEX IF NOT EXISTS uq_findings_source_item "
+            f'ON "{schema}".findings (source_checklist_item_id) '
+            f"WHERE source_checklist_item_id IS NOT NULL"
+        )
+    )
 
 
 def downgrade() -> None:
@@ -114,6 +129,7 @@ def downgrade() -> None:
         DeadlineNotificationLog,
         DeadlineNotificationSettings,
         Attachment,
+        Finding,
         Job,
         Model,
         Notification,
@@ -130,6 +146,7 @@ def downgrade() -> None:
 
     bind = op.get_bind()
     schema = _schema()
+    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".uq_findings_source_item'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_attachments_element_link'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_checklist_items_element_link'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_borgingsplans_one_active'))
@@ -145,6 +162,8 @@ def downgrade() -> None:
         "attachmentstatus",
         "evidencetype",
         "extractionstatus",
+        "findingseverity",
+        "findingstatus",
         "filetype",
         "ifcschema",
         "jobstatus",

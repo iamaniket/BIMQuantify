@@ -61,7 +61,7 @@ export function RightColumnTabs({
           <OverzichtTab projectId={projectId} country={projectCountry} />
         )}
         {tab === 'documenten' && <AttachmentsTab projectId={projectId} />}
-        {tab === 'bevindingen' && <BevindingenTab />}
+        {tab === 'bevindingen' && <BevindingenTab projectId={projectId} />}
         {tab === 'models' && (
           <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />
         )}

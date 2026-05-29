@@ -46,6 +46,7 @@ interface ViewerEntityState {
   enabled: ViewerFeatureFlags;
 
   _syncDepth: number;
+  _frameRequested: number;
 
   select: (keys: EntityKey[]) => void;
   addToSelection: (keys: EntityKey[]) => void;
@@ -65,6 +66,7 @@ interface ViewerEntityState {
   resetOpacity: (keys: EntityKey[]) => void;
 
   setFeatureEnabled: (feature: ViewerFeature, on: boolean) => void;
+  requestFrame: () => void;
 
   _applyViewerSelection: (keys: EntityKey[], allSelected: boolean) => void;
   _applyViewerVisibility: (
@@ -102,6 +104,7 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
   enabled: DEFAULT_FEATURES,
 
   _syncDepth: 0,
+  _frameRequested: 0,
 
   select: (keys) => set({ selected: new Set(keys), selectedAll: false }),
   addToSelection: (keys) =>
@@ -171,6 +174,7 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
 
   setFeatureEnabled: (feature, on) =>
     set((s) => ({ enabled: { ...s.enabled, [feature]: on } })),
+  requestFrame: () => set((s) => ({ _frameRequested: s._frameRequested + 1 })),
 
   _applyViewerSelection: (keys, allSelected) =>
     set((s) => ({
@@ -223,6 +227,7 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
       isolationActive: false,
       enabled: DEFAULT_FEATURES,
       _syncDepth: 0,
+      _frameRequested: 0,
     }),
 }));
 

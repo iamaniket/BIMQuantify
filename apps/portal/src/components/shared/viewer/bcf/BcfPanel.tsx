@@ -19,6 +19,8 @@ import {
   type JSX,
 } from 'react';
 
+import { useTranslations } from 'next-intl';
+
 import { Select, cn } from '@bimstitch/ui';
 import type { BcfTopicSummary, ViewerHandle } from '@bimstitch/viewer';
 
@@ -28,9 +30,27 @@ type Props = {
   handle: ViewerHandle | null;
 };
 
-const TOPIC_TYPES = ['Issue', 'Request', 'Remark', 'Clash', 'Information'] as const;
-const TOPIC_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'] as const;
-const TOPIC_PRIORITIES = ['Low', 'Normal', 'High', 'Critical'] as const;
+// Values are persisted/serialised identifiers (BCF data), not UI strings.
+// Display labels are resolved via i18n keys at render time.
+const TOPIC_TYPES: { value: string; labelKey: string }[] = [
+  { value: 'Issue', labelKey: 'typeIssue' },
+  { value: 'Request', labelKey: 'typeRequest' },
+  { value: 'Remark', labelKey: 'typeRemark' },
+  { value: 'Clash', labelKey: 'typeClash' },
+  { value: 'Information', labelKey: 'typeInformation' },
+];
+const TOPIC_STATUSES: { value: string; labelKey: string }[] = [
+  { value: 'Open', labelKey: 'statusOpen' },
+  { value: 'In Progress', labelKey: 'statusInProgress' },
+  { value: 'Resolved', labelKey: 'statusResolved' },
+  { value: 'Closed', labelKey: 'statusClosed' },
+];
+const TOPIC_PRIORITIES: { value: string; labelKey: string }[] = [
+  { value: 'Low', labelKey: 'priorityLow' },
+  { value: 'Normal', labelKey: 'priorityNormal' },
+  { value: 'High', labelKey: 'priorityHigh' },
+  { value: 'Critical', labelKey: 'priorityCritical' },
+];
 
 type FormState = {
   title: string;
@@ -68,6 +88,7 @@ function priorityClass(priority?: string): string {
 }
 
 export function BcfPanel({ handle }: Props): JSX.Element {
+  const t = useTranslations('viewer.bcf');
   const [topics, setTopics] = useState<BcfTopicSummary[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -139,14 +160,14 @@ export function BcfPanel({ handle }: Props): JSX.Element {
   };
 
   if (!handle) {
-    return <PanelEmptyState icon={MessageSquare} message="Viewer not ready" />;
+    return <PanelEmptyState icon={MessageSquare} message={t('viewerNotReady')} />;
   }
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-background-secondary/50 px-3 py-2">
         <span className="text-caption font-medium text-foreground-secondary">
-          {topics.length} topic{topics.length === 1 ? '' : 's'}
+          {t('topicCount', { count: topics.length })}
         </span>
         {!isCreating ? (
           <button
@@ -155,7 +176,7 @@ export function BcfPanel({ handle }: Props): JSX.Element {
             className="inline-flex items-center gap-1 rounded-md border border-primary-light bg-primary-lighter px-2 py-1 text-caption font-medium text-primary transition-colors hover:bg-primary/10"
           >
             <Plus className="h-3.5 w-3.5" />
-            New Topic
+            {t('newTopic')}
           </button>
         ) : null}
       </div>
@@ -167,7 +188,7 @@ export function BcfPanel({ handle }: Props): JSX.Element {
         >
           <div className="flex items-center justify-between">
             <span className="text-caption font-bold uppercase tracking-wider text-foreground-secondary">
-              New Topic
+              {t('newTopic')}
             </span>
             <button
               type="button"
@@ -176,7 +197,7 @@ export function BcfPanel({ handle }: Props): JSX.Element {
                 setForm(EMPTY_FORM);
               }}
               className="text-foreground-tertiary hover:text-foreground"
-              aria-label="Cancel"
+              aria-label={t('cancel')}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -187,13 +208,13 @@ export function BcfPanel({ handle }: Props): JSX.Element {
             autoFocus
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            placeholder="Title"
+            placeholder={t('titlePlaceholder')}
             className="h-8 rounded border border-border bg-background px-2 text-xs text-foreground placeholder:text-foreground-tertiary"
           />
           <textarea
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Description (optional)"
+            placeholder={t('descriptionPlaceholder')}
             rows={2}
             className="resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-foreground-tertiary"
           />
@@ -202,11 +223,11 @@ export function BcfPanel({ handle }: Props): JSX.Element {
               value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
               className="h-8 px-1.5 text-xs"
-              aria-label="Type"
+              aria-label={t('typeLabel')}
             >
-              {TOPIC_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {TOPIC_TYPES.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {t(opt.labelKey)}
                 </option>
               ))}
             </Select>
@@ -214,11 +235,11 @@ export function BcfPanel({ handle }: Props): JSX.Element {
               value={form.status}
               onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
               className="h-8 px-1.5 text-xs"
-              aria-label="Status"
+              aria-label={t('statusLabel')}
             >
-              {TOPIC_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {TOPIC_STATUSES.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {t(opt.labelKey)}
                 </option>
               ))}
             </Select>
@@ -226,11 +247,11 @@ export function BcfPanel({ handle }: Props): JSX.Element {
               value={form.priority}
               onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
               className="h-8 px-1.5 text-xs"
-              aria-label="Priority"
+              aria-label={t('priorityLabel')}
             >
-              {TOPIC_PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {p}
+              {TOPIC_PRIORITIES.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {t(opt.labelKey)}
                 </option>
               ))}
             </Select>
@@ -238,14 +259,14 @@ export function BcfPanel({ handle }: Props): JSX.Element {
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-1 text-caption text-foreground-tertiary">
               <Camera className="h-3 w-3" />
-              Captures current viewpoint
+              {t('capturesViewpoint')}
             </span>
             <button
               type="submit"
               disabled={!form.title.trim() || submitting}
               className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1 text-caption font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? 'Creating…' : 'Create'}
+              {submitting ? t('creating') : t('create')}
             </button>
           </div>
         </form>
@@ -255,7 +276,7 @@ export function BcfPanel({ handle }: Props): JSX.Element {
         {topics.length === 0 && !isCreating ? (
           <PanelEmptyState
             icon={MessageSquare}
-            message="No topics yet. Click New Topic to capture the current view, or import a .bcf file from the header."
+            message={t('emptyMessage')}
           />
         ) : (
           <ul className="divide-y divide-border">
@@ -310,8 +331,8 @@ export function BcfPanel({ handle }: Props): JSX.Element {
                         e.stopPropagation();
                         remove(topic.guid);
                       }}
-                      title="Delete topic"
-                      aria-label="Delete topic"
+                      title={t('deleteTopic')}
+                      aria-label={t('deleteTopic')}
                       className="opacity-0 text-foreground-tertiary transition-opacity hover:text-error group-hover:opacity-100"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -331,6 +352,7 @@ const headerBtnClass =
   'inline-flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent';
 
 export function BcfHeaderActions({ handle }: { handle: ViewerHandle | null }): JSX.Element {
+  const t = useTranslations('viewer.bcf');
   const [topicCount, setTopicCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -371,7 +393,7 @@ export function BcfHeaderActions({ handle }: { handle: ViewerHandle | null }): J
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn('[bcf] import failed:', err);
-      flashError('Could not parse BCF file');
+      flashError(t('errorParse'));
     }
   };
 
@@ -380,7 +402,7 @@ export function BcfHeaderActions({ handle }: { handle: ViewerHandle | null }): J
     try {
       const blob = await handle.commands.execute<Blob>('bcf.export');
       if (!blob) {
-        flashError('Export returned no data');
+        flashError(t('errorNoData'));
         return;
       }
       const url = URL.createObjectURL(blob);
@@ -394,7 +416,7 @@ export function BcfHeaderActions({ handle }: { handle: ViewerHandle | null }): J
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn('[bcf] export failed:', err);
-      flashError('Export failed');
+      flashError(t('errorExport'));
     }
   };
 
@@ -423,8 +445,8 @@ export function BcfHeaderActions({ handle }: { handle: ViewerHandle | null }): J
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        title="Import BCF file"
-        aria-label="Import BCF"
+        title={t('import')}
+        aria-label={t('importShort')}
         className={cn(headerBtnClass, 'text-foreground-secondary')}
       >
         <Upload className="h-3.5 w-3.5" />
@@ -435,8 +457,8 @@ export function BcfHeaderActions({ handle }: { handle: ViewerHandle | null }): J
           handleExport().catch(() => undefined);
         }}
         disabled={topicCount === 0}
-        title={topicCount === 0 ? 'No topics to export' : 'Export topics as .bcf'}
-        aria-label="Export BCF"
+        title={topicCount === 0 ? t('noTopicsToExport') : t('exportTooltip')}
+        aria-label={t('export')}
         className={cn(headerBtnClass, 'text-foreground-secondary')}
       >
         <Download className="h-3.5 w-3.5" />

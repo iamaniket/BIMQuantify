@@ -61,7 +61,7 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
         },
         onError: (error) => {
           if (error instanceof ApiError && error.status === 409) {
-            form.setError('name', { type: 'server', message: 'This name is taken' });
+            form.setError('name', { type: 'server', message: t('errors.nameTaken') });
           }
         },
       },
@@ -77,11 +77,11 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
       title={t('title')}
       description={t('description')}
       onSubmit={form.handleSubmit(onSubmit)}
-      submitLabel={isSubmitting ? 'Creating…' : 'Create'}
+      submitLabel={isSubmitting ? t('submitCreating') : t('submitCreate')}
       submitDisabled={isSubmitting}
     >
       <div className="flex flex-col gap-4">
-        <Field form={form} name="name" label="Name">
+        <Field form={form} name="name" label={t('fields.name')}>
           {({ id, invalid }) => (
             <Input
               id={id}
@@ -94,7 +94,7 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
           )}
         </Field>
 
-        <Field form={form} name="discipline" label="Discipline">
+        <Field form={form} name="discipline" label={t('fields.discipline')}>
           {({ id }) => (
             <Select
               id={id}
@@ -103,14 +103,14 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
             >
               {DISCIPLINE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(`disciplines.${opt.value}`)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
 
-        <Field form={form} name="status" label="Status">
+        <Field form={form} name="status" label={t('fields.status')}>
           {({ id }) => (
             <Select
               id={id}
@@ -119,7 +119,7 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(`statuses.${opt.value}`)}
                 </option>
               ))}
             </Select>

@@ -136,6 +136,7 @@ class ProjectFile(TimestampMixin, SoftDeleteMixin, TenantBase):
     fragments_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     metadata_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     properties_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    geometry_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     model: Mapped["Model"] = relationship(back_populates="files")
 
