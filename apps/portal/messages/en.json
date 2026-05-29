@@ -62,6 +62,24 @@
     "acceptSuccess": "Invitation accepted — welcome to the team!",
     "declineSuccess": "Invitation declined."
   },
+  "onboarding": {
+    "title": "Welcome to {org}!",
+    "roleDescriptionAdmin": "You've joined as an admin. You have full access to manage the team and all projects.",
+    "roleDescriptionMember": "You've joined as a team member. Here's what you can do:",
+    "getStarted": "Get started",
+    "capabilities": {
+      "admin": {
+        "manageTeam": "Invite and manage team members",
+        "createProjects": "Create and configure projects",
+        "fullAccess": "Full access to documents, findings, and reports"
+      },
+      "member": {
+        "viewProjects": "View and collaborate on projects",
+        "uploadDocuments": "Upload documents and certificates",
+        "trackFindings": "Track and resolve findings"
+      }
+    }
+  },
   "resetPassword": {
     "eyebrow": "Set new password",
     "title": "Choose a new password",

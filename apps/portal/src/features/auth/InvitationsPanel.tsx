@@ -9,6 +9,7 @@ import { Button } from '@bimstitch/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
+import { WelcomeDialog } from '@/features/auth/WelcomeDialog';
 import { useRouter } from '@/i18n/navigation';
 import { ApiError } from '@/lib/api/client';
 import {
@@ -24,6 +25,12 @@ type LoadState =
   | { kind: 'ready'; invitations: InvitationRead[] }
   | { kind: 'error'; message: string };
 
+type WelcomeState = {
+  open: boolean;
+  organizationName: string;
+  isAdmin: boolean;
+};
+
 export function InvitationsPanel(): JSX.Element {
   const t = useTranslations('invitations');
   const router = useRouter();
@@ -31,6 +38,11 @@ export function InvitationsPanel(): JSX.Element {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [welcome, setWelcome] = useState<WelcomeState>({
+    open: false,
+    organizationName: '',
+    isAdmin: false,
+  });
 
   const accessToken = tokens?.access_token ?? null;
 
@@ -60,10 +72,17 @@ export function InvitationsPanel(): JSX.Element {
     setActionError(null);
     setPendingOrgId(organizationId);
     try {
+      const inv = state.kind === 'ready'
+        ? state.invitations.find((i) => i.organization_id === organizationId)
+        : undefined;
       await acceptInvitation(accessToken, organizationId);
       await refreshMe();
       await load();
-      toast.success(t('acceptSuccess'));
+      setWelcome({
+        open: true,
+        organizationName: inv?.organization_name ?? '',
+        isAdmin: inv?.is_org_admin ?? false,
+      });
     } catch (err) {
       const message = err instanceof ApiError ? err.detail : t('errors.acceptFailed');
       setActionError(message);
@@ -189,6 +208,12 @@ export function InvitationsPanel(): JSX.Element {
         })}
       </ul>
       <ErrorBanner message={actionError} tone="soft" className="mt-3" />
+      <WelcomeDialog
+        open={welcome.open}
+        organizationName={welcome.organizationName}
+        isAdmin={welcome.isAdmin}
+        onClose={() => setWelcome((w) => ({ ...w, open: false }))}
+      />
     </>
   );
 }

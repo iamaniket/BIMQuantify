@@ -62,6 +62,24 @@
     "acceptSuccess": "Uitnodiging geaccepteerd — welkom bij het team!",
     "declineSuccess": "Uitnodiging afgewezen."
   },
+  "onboarding": {
+    "title": "Welkom bij {org}!",
+    "roleDescriptionAdmin": "U bent toegetreden als beheerder. U heeft volledige toegang om het team en alle projecten te beheren.",
+    "roleDescriptionMember": "U bent toegetreden als teamlid. Dit kunt u doen:",
+    "getStarted": "Aan de slag",
+    "capabilities": {
+      "admin": {
+        "manageTeam": "Teamleden uitnodigen en beheren",
+        "createProjects": "Projecten aanmaken en configureren",
+        "fullAccess": "Volledige toegang tot documenten, bevindingen en rapporten"
+      },
+      "member": {
+        "viewProjects": "Projecten bekijken en samenwerken",
+        "uploadDocuments": "Documenten en certificaten uploaden",
+        "trackFindings": "Bevindingen bijhouden en oplossen"
+      }
+    }
+  },
   "resetPassword": {
     "eyebrow": "Nieuw wachtwoord",
     "title": "Kies een nieuw wachtwoord",
