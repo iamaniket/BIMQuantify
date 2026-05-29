@@ -1021,7 +1021,7 @@ const PHASE_COLOR: Record<BorgingsmomentPhaseValue, string> = {
   roof: 'bg-emerald-500',
   finishing: 'bg-rose-500',
   handover: 'bg-violet-500',
-  other: 'bg-slate-500',
+  other: 'bg-foreground-tertiary',
 };
 
 function BorgingsplanTimelineView({ country, plan }: TimelineViewProps): JSX.Element {

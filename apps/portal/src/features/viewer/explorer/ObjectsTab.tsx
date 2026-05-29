@@ -13,7 +13,7 @@ import { VirtualizedTree } from './VirtualizedTree';
 import type { TreeNodeData } from './TreeNode';
 import {
   elementToLeaf, groupElementsBy, filterTree, collectExpandedKeys,
-  collectSpatialExpressIDs,
+  collectSpatialExpressIDs, collectAllKeys,
 } from './treeBuilders';
 import { TreeToolbar } from './TreeToolbar';
 import { useTreeExpansion } from './useTreeExpansion';
@@ -23,18 +23,47 @@ type ObjectsTabProps = {
   elements: ElementEntry[] | undefined;
 };
 
+// Build an element node, recursively nesting any element decomposed from it
+// (e.g. IfcMember/IfcPlate under a curtain wall, IfcBuildingElementPart under
+// an assembly). `placed` guards against re-attaching an element that an
+// ancestor already claimed.
+function buildElementNode(
+  el: ElementEntry,
+  elementsByContainer: Map<number, ElementEntry[]>,
+  modelId: string,
+  placed: Set<number>,
+): TreeNodeData {
+  placed.add(el.expressID);
+  const leaf = elementToLeaf(el, modelId, 'obj');
+
+  const childEls = (elementsByContainer.get(el.expressID) ?? [])
+    .filter((c) => !placed.has(c.expressID))
+    .map((c) => buildElementNode(c, elementsByContainer, modelId, placed));
+
+  if (childEls.length === 0) return leaf;
+
+  const childKeys = childEls.flatMap((c) => c.entityKeys);
+  return {
+    ...leaf,
+    entityKeys: [...leaf.entityKeys, ...childKeys],
+    count: childKeys.length,
+    children: childEls,
+  };
+}
+
 function buildTree(
   node: SpatialNode,
   elementsByContainer: Map<number, ElementEntry[]>,
   modelId: string,
+  placed: Set<number>,
 ): TreeNodeData {
   const childNodes = node.children.map(
-    (c) => buildTree(c, elementsByContainer, modelId),
+    (c) => buildTree(c, elementsByContainer, modelId, placed),
   );
 
-  const elementNodes = (elementsByContainer.get(node.expressID) ?? []).map(
-    (el) => elementToLeaf(el, modelId, 'obj'),
-  );
+  const elementNodes = (elementsByContainer.get(node.expressID) ?? [])
+    .filter((el) => !placed.has(el.expressID))
+    .map((el) => buildElementNode(el, elementsByContainer, modelId, placed));
 
   const allChildren = [...childNodes, ...elementNodes];
   const count = allChildren.reduce((s, c) => s + (c.entityKeys.length), 0);
@@ -48,14 +77,6 @@ function buildTree(
   };
   if (allChildren.length > 0) result.children = allChildren;
   return result;
-}
-
-function collectAllKeysFromSpatial(node: SpatialNode): string[] {
-  const keys: string[] = [`sp-${String(node.expressID)}`];
-  for (const child of node.children) {
-    keys.push(...collectAllKeysFromSpatial(child));
-  }
-  return keys;
 }
 
 export function ObjectsTab({
@@ -87,18 +108,32 @@ export function ObjectsTab({
 
   const tree = useMemo(() => {
     if (!spatialTree || !modelId) return null;
-    return buildTree(spatialTree, elementsByContainer, modelId);
-  }, [spatialTree, elementsByContainer, modelId]);
+    const placed = new Set<number>();
+    const root = buildTree(spatialTree, elementsByContainer, modelId, placed);
+
+    // Elements whose containedIn never resolves to a node in the tree (null
+    // container, or a parent outside the spatial structure) would otherwise
+    // vanish — surface them under the root so nothing is silently hidden.
+    const orphanNodes: TreeNodeData[] = [];
+    for (const el of elements ?? []) {
+      if (spatialIDs.has(el.expressID) || placed.has(el.expressID)) continue;
+      orphanNodes.push(buildElementNode(el, elementsByContainer, modelId, placed));
+    }
+    if (orphanNodes.length > 0) {
+      const merged = [...(root.children ?? []), ...orphanNodes];
+      root.children = merged;
+      root.entityKeys = merged.flatMap((c) => c.entityKeys);
+      root.count = root.entityKeys.length;
+    }
+    return root;
+  }, [spatialTree, elementsByContainer, modelId, elements, spatialIDs]);
 
   const defaultExpanded = useMemo(() => {
     if (spatialTree == null) return [];
     return collectExpandedKeys(spatialTree, 3);
   }, [spatialTree]);
 
-  const allKeys = useMemo(() => {
-    if (spatialTree == null) return [];
-    return collectAllKeysFromSpatial(spatialTree);
-  }, [spatialTree]);
+  const allKeys = useMemo(() => (tree ? collectAllKeys([tree]) : []), [tree]);
 
   const {
     expanded, toggle, expandAll, collapseAll, isAllExpanded,

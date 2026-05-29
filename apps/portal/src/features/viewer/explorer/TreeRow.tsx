@@ -180,7 +180,7 @@ function TreeRowInner({
         {/* Color dot */}
         {node.color != null && (
           <span
-            className="shrink-0 rounded-[2px]"
+            className="shrink-0 rounded-xs"
             style={{
               width: 10,
               height: 10,

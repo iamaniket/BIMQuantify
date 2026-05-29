@@ -12,18 +12,20 @@ import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 import { ClassesTab } from './ClassesTab';
 import { ObjectsTab } from './ObjectsTab';
 import { StoriesTab } from './StoriesTab';
+import { ZonesTab } from './ZonesTab';
 
 type ModelExplorerProps = {
   metadata: ModelMetadata | undefined;
   isLoading: boolean;
 };
 
-type ExplorerTab = 'objects' | 'classes' | 'stories';
+type ExplorerTab = 'objects' | 'classes' | 'stories' | 'zones';
 
 const TABS: TabDef<ExplorerTab>[] = [
   { id: 'objects', label: 'Model' },
   { id: 'classes', label: 'Classes' },
   { id: 'stories', label: 'Stories' },
+  { id: 'zones', label: 'Zones' },
 ];
 
 function SelectedLabel(): JSX.Element {
@@ -77,6 +79,12 @@ export function ModelExplorer({
       {tab === 'stories' && (
         <StoriesTab
           spatialTree={metadata.spatialTree}
+          elements={metadata.elements}
+        />
+      )}
+      {tab === 'zones' && (
+        <ZonesTab
+          zones={metadata.zones}
           elements={metadata.elements}
         />
       )}

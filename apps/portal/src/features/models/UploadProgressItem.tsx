@@ -1,11 +1,11 @@
 'use client';
 
 import {
-  AlertCircle, CheckCircle2, Loader2, X,
+  AlertCircle, CheckCircle2, X,
 } from 'lucide-react';
 import type { JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Button, Spinner } from '@bimstitch/ui';
 
 import { formatFileSize, formatRejection } from '@/lib/formatting/files';
 
@@ -26,7 +26,7 @@ type Props = {
 
 function StateIcon({ state }: { state: UploadState }): JSX.Element {
   if (state.kind === 'hashing' || state.kind === 'uploading') {
-    return <Loader2 className="h-4 w-4 animate-spin text-foreground-secondary" />;
+    return <Spinner className="h-4 w-4 text-foreground-secondary" />;
   }
   if (state.kind === 'success') {
     return <CheckCircle2 className="h-4 w-4 text-success" />;

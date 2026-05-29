@@ -2,6 +2,7 @@
  * Walk a parsed IFC model and emit:
  *   - Project header (GUID, name, length unit, schema)
  *   - Spatial tree (Project → Site → Building → Storey → Space)
+ *   - Zones (IfcZone → IfcSpace membership via IfcRelAssignsToGroup)
  *   - Element counts grouped by IFC class
  *   - Axis-aligned bounding box (world coords)
  */
@@ -11,9 +12,11 @@ import {
   IFCBUILDINGSTOREY,
   IFCPROJECT,
   IFCRELAGGREGATES,
+  IFCRELASSIGNSTOGROUP,
   IFCRELCONTAINEDINSPATIALSTRUCTURE,
   IFCSITE,
   IFCSPACE,
+  IFCZONE,
   type IfcAPI,
 } from 'web-ifc';
 
@@ -40,6 +43,13 @@ export type ElementEntry = {
   containedIn: number | null;
 };
 
+export type ZoneNode = {
+  expressID: number;
+  globalId: string | null;
+  name: string | null;
+  spaces: { expressID: number; name: string | null }[];
+};
+
 export type Metadata = {
   source_format: 'ifc';
   schema: SupportedSchema;
@@ -51,6 +61,7 @@ export type Metadata = {
     lengthUnit: string | null;
   };
   spatialTree: SpatialNode | null;
+  zones: ZoneNode[];
   elements: ElementEntry[];
   elementCounts: Record<string, number>;
   canonicalElementCounts: Record<CanonicalElementType, number>;
@@ -68,6 +79,7 @@ export async function buildMetadata(
 ): Promise<Metadata> {
   const project = readProject(api, modelID);
   const spatialTree = buildSpatialTree(api, modelID);
+  const zones = buildZones(api, modelID);
   const elements = collectElements(api, modelID);
   const elementCounts = countElements(api, modelID);
   const canonicalElementCounts = buildCanonicalCounts(elementCounts);
@@ -78,6 +90,7 @@ export async function buildMetadata(
     schema,
     project,
     spatialTree,
+    zones,
     elements,
     elementCounts,
     canonicalElementCounts,
@@ -108,12 +121,48 @@ function readProject(api: IfcAPI, modelID: number): Metadata['project'] {
   };
 }
 
+type AggregationMap = Map<number, { id: number; type: string }[]>;
+
 function buildSpatialTree(api: IfcAPI, modelID: number): SpatialNode | null {
   const projectIds = api.GetLineIDsWithType(modelID, IFCPROJECT);
   if (projectIds.size() === 0) return null;
 
+  const aggregations = buildAggregationMap(api, modelID);
   const projectID = projectIds.get(0);
-  return readSpatialNode(api, modelID, projectID, 'IfcProject');
+  return readSpatialNode(api, modelID, projectID, 'IfcProject', aggregations);
+}
+
+// Forward IfcRelAggregates: RelatingObject (parent) → RelatedObjects (children).
+// Read forward rather than via the inverse IsDecomposedBy attribute, which
+// web-ifc only populates when GetLine is called with inverse=true.
+function buildAggregationMap(api: IfcAPI, modelID: number): AggregationMap {
+  const map: AggregationMap = new Map();
+  const relIds = api.GetLineIDsWithType(modelID, IFCRELAGGREGATES);
+  for (let i = 0; i < relIds.size(); i += 1) {
+    const rel = api.GetLine(modelID, relIds.get(i), true) as Record<
+      string,
+      unknown
+    >;
+    const relating = rel['RelatingObject'] as Record<string, unknown> | undefined;
+    const parentID = relating ? numberValue(relating['expressID']) : null;
+    if (parentID === null) continue;
+    const related = rel['RelatedObjects'];
+    if (!Array.isArray(related)) continue;
+    for (const obj of related) {
+      const child = obj as Record<string, unknown>;
+      const childID = numberValue(child['expressID']);
+      if (childID === null) continue;
+      const childType = childIfcTypeName(api, modelID, childID);
+      if (childType === null) continue;
+      let arr = map.get(parentID);
+      if (!arr) {
+        arr = [];
+        map.set(parentID, arr);
+      }
+      arr.push({ id: childID, type: childType });
+    }
+  }
+  return map;
 }
 
 function readSpatialNode(
@@ -121,33 +170,13 @@ function readSpatialNode(
   modelID: number,
   expressID: number,
   type: string,
+  aggregations: AggregationMap,
 ): SpatialNode {
-  const line = api.GetLine(modelID, expressID, true) as Record<string, unknown>;
+  const line = api.GetLine(modelID, expressID) as Record<string, unknown>;
 
-  const childrenIDs: { id: number; type: string }[] = [];
-  // IsDecomposedBy → IfcRelAggregates → RelatedObjects
-  const decomposedBy = line['IsDecomposedBy'];
-  if (Array.isArray(decomposedBy)) {
-    for (const rel of decomposedBy) {
-      const related = (rel as Record<string, unknown>)['RelatedObjects'];
-      if (!Array.isArray(related)) continue;
-      for (const obj of related) {
-        const child = obj as Record<string, unknown>;
-        const childID = numberValue(child['expressID']);
-        if (childID === null) continue;
-        const childType = childIfcTypeName(api, modelID, childID);
-        if (childType === null) continue;
-        childrenIDs.push({ id: childID, type: childType });
-      }
-    }
-  }
-
-  // ContainsElements → IfcRelContainedInSpatialStructure (skipped — those are
-  // physical elements, captured by counts instead of in the tree).
-
-  const children = childrenIDs
+  const children = (aggregations.get(expressID) ?? [])
     .filter(({ type: t }) => isSpatialType(t))
-    .map(({ id, type: t }) => readSpatialNode(api, modelID, id, t));
+    .map(({ id, type: t }) => readSpatialNode(api, modelID, id, t, aggregations));
 
   return {
     expressID,
@@ -162,6 +191,53 @@ function isSpatialType(type: string): boolean {
   return ['IfcSite', 'IfcBuilding', 'IfcBuildingStorey', 'IfcSpace'].includes(
     type,
   );
+}
+
+// IfcZone groups IfcSpaces via IfcRelAssignsToGroup (RelatingGroup = the zone,
+// RelatedObjects = the spaces). This is separate from the IfcRelAggregates
+// spatial tree, so zones never appear in buildSpatialTree(). A single zone can
+// be split across multiple relationship lines, so we merge by zone expressID.
+function buildZones(api: IfcAPI, modelID: number): ZoneNode[] {
+  const byZone = new Map<number, ZoneNode>();
+  const relIds = api.GetLineIDsWithType(modelID, IFCRELASSIGNSTOGROUP);
+  for (let i = 0; i < relIds.size(); i += 1) {
+    const rel = api.GetLine(modelID, relIds.get(i), true) as Record<
+      string,
+      unknown
+    >;
+    const relating = rel['RelatingGroup'] as Record<string, unknown> | undefined;
+    const zoneID = relating ? numberValue(relating['expressID']) : null;
+    if (zoneID === null) continue;
+    if (api.GetLineType(modelID, zoneID) !== IFCZONE) continue;
+
+    let zone = byZone.get(zoneID);
+    if (!zone) {
+      const zoneLine = api.GetLine(modelID, zoneID) as Record<string, unknown>;
+      zone = {
+        expressID: zoneID,
+        globalId: stringValue(zoneLine['GlobalId']),
+        name: stringValue(zoneLine['Name']),
+        spaces: [],
+      };
+      byZone.set(zoneID, zone);
+    }
+
+    const related = rel['RelatedObjects'];
+    if (!Array.isArray(related)) continue;
+    for (const obj of related) {
+      const member = obj as Record<string, unknown>;
+      const spaceID = numberValue(member['expressID']);
+      if (spaceID === null) continue;
+      if (api.GetLineType(modelID, spaceID) !== IFCSPACE) continue;
+      if (zone.spaces.some((s) => s.expressID === spaceID)) continue;
+      const spaceLine = api.GetLine(modelID, spaceID) as Record<string, unknown>;
+      zone.spaces.push({
+        expressID: spaceID,
+        name: stringValue(spaceLine['Name']),
+      });
+    }
+  }
+  return [...byZone.values()];
 }
 
 function childIfcTypeName(

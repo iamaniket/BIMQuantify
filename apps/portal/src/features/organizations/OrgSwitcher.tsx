@@ -1,8 +1,17 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
+
+import {
+  Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@bimstitch/ui';
 
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -19,7 +28,6 @@ export function OrgSwitcher(): JSX.Element | null {
   const t = useTranslations('org.switcher');
   const { me, activeMembership, switchOrganization } = useAuth();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
 
   if (me === null) return null;
@@ -27,10 +35,7 @@ export function OrgSwitcher(): JSX.Element | null {
   if (memberships.length < 2) return null;
 
   const onSelect = async (organizationId: string): Promise<void> => {
-    if (organizationId === me.active_organization_id) {
-      setOpen(false);
-      return;
-    }
+    if (organizationId === me.active_organization_id) return;
     setPending(organizationId);
     try {
       await switchOrganization(organizationId);
@@ -39,59 +44,44 @@ export function OrgSwitcher(): JSX.Element | null {
       await queryClient.invalidateQueries();
     } finally {
       setPending(null);
-      setOpen(false);
     }
   };
 
   const label = activeMembership?.organization_name ?? t('empty');
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-body2 font-medium text-foreground transition-colors hover:bg-background-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={t('label')}
       >
-        <span className="truncate max-w-[16ch]">{label}</span>
-        <span aria-hidden>▾</span>
-      </button>
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute right-0 z-30 mt-1 max-h-72 w-64 overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg"
-        >
-          {memberships.map((m) => {
-            const isActive = m.organization_id === me.active_organization_id;
-            const isPending = pending === m.organization_id;
-            return (
-              <li key={m.organization_id} role="option" aria-selected={isActive}>
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => {
-                    void onSelect(m.organization_id);
-                  }}
-                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:opacity-50 ${
-                    isActive ? 'font-semibold text-slate-900' : 'text-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate">{m.organization_name}</span>
-                    {m.is_org_admin && (
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
-                        {t('adminBadge')}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+        <span className="max-w-[16ch] truncate">{label}</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" aria-hidden />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="max-h-72 w-64 overflow-auto">
+        {memberships.map((m) => {
+          const isActive = m.organization_id === me.active_organization_id;
+          const isPending = pending === m.organization_id;
+          return (
+            <DropdownMenuItem
+              key={m.organization_id}
+              disabled={isPending}
+              onSelect={(event) => {
+                event.preventDefault();
+                void onSelect(m.organization_id);
+              }}
+              className={isActive ? 'font-semibold' : undefined}
+            >
+              <span className="flex-1 truncate">{m.organization_name}</span>
+              {m.is_org_admin && (
+                <Badge variant="default" size="sm" bordered={false}>
+                  {t('adminBadge')}
+                </Badge>
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

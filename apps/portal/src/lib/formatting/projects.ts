@@ -7,7 +7,7 @@ import type { Locale } from '@bimstitch/i18n';
 
 // Tailwind classes for the colored dot + badge per status.
 const STATUS_BADGE_CLASSES: Record<ProjectStatusValue, string> = {
-  planning: 'border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-400/35 dark:bg-slate-400/20 dark:text-slate-200',
+  planning: 'border-border bg-background-tertiary text-foreground-secondary',
   design: 'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-400/35 dark:bg-sky-400/20 dark:text-sky-200',
   permit_review: 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/35 dark:bg-amber-400/20 dark:text-amber-200',
   construction: 'border-green-300 bg-green-100 text-green-800 dark:border-green-400/35 dark:bg-green-400/20 dark:text-green-300',
@@ -18,7 +18,7 @@ const STATUS_BADGE_CLASSES: Record<ProjectStatusValue, string> = {
 
 // Light-background dot color for project cards.
 const STATUS_DOT_CLASSES: Record<ProjectStatusValue, string> = {
-  planning: 'bg-slate-400',
+  planning: 'bg-foreground-tertiary',
   design: 'bg-sky-500',
   permit_review: 'bg-amber-500',
   construction: 'bg-green-500',
@@ -28,14 +28,14 @@ const STATUS_DOT_CLASSES: Record<ProjectStatusValue, string> = {
 };
 
 const LIFECYCLE_BADGE_CLASSES: Record<ProjectLifecycleStateValue, string> = {
-  active: 'border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-400/35 dark:bg-slate-400/20 dark:text-slate-200',
-  archived: 'border-slate-300 bg-slate-100 text-slate-800 dark:border-white/30 dark:bg-white/16 dark:text-white',
+  active: 'border-border bg-background-tertiary text-foreground-secondary',
+  archived: 'border-border bg-background-tertiary text-foreground-secondary',
   removed: 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-400/35 dark:bg-rose-400/20 dark:text-rose-200',
 };
 
 const LIFECYCLE_DOT_CLASSES: Record<ProjectLifecycleStateValue, string> = {
-  active: 'bg-slate-400',
-  archived: 'bg-white',
+  active: 'bg-foreground-tertiary',
+  archived: 'bg-foreground-tertiary',
   removed: 'bg-rose-500',
 };
 

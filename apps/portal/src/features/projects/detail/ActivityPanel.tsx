@@ -108,10 +108,10 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
                 key={key}
                 type="button"
                 onClick={() => { setFilter(key); }}
-                className={`rounded-[5px] px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                className={`rounded-md px-3 py-1.5 text-body3 font-semibold transition-colors ${
                   active
                     ? 'bg-primary text-primary-foreground font-bold'
-                    : 'text-primary hover:bg-primary-light/60 dark:text-[#9bbce8]'
+                    : 'text-primary hover:bg-primary-light/60 dark:text-primary-light'
                 }`}
               >
                 {filterLabels[key]}

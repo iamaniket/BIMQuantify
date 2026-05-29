@@ -5,11 +5,85 @@
 :root {
   --brand-gradient-start: #2c5697;
   --brand-gradient-end: #224579;
+
+  /* Sidebar is an always-dark surface, independent of the light/dark theme.
+     These stay constant across themes by design. */
+  --sidebar-accent: #5fa8ff;
+  --sidebar-accent-strong: #2c5697;
+  --sidebar-surface: #254a82;
+  --sidebar-fg: #ffffff;
+  --sidebar-fg-subtle: rgba(255, 255, 255, 0.82);
+  --sidebar-fg-muted: rgba(255, 255, 255, 0.55);
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-raised: rgba(255, 255, 255, 0.04);
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-active: rgba(255, 255, 255, 0.16);
+
+  /* Discipline category palette — pastel chip per BIM discipline. */
+  --disc-architectural-bg: #ede8f7;
+  --disc-architectural-fg: #5a3fa6;
+  --disc-structural-bg: #e5edf7;
+  --disc-structural-fg: #2c5697;
+  --disc-mep-bg: #f8ecd9;
+  --disc-mep-fg: #a97428;
+  --disc-coordination-bg: #eaf6ef;
+  --disc-coordination-fg: #3f8f65;
+  --disc-other-bg: #f1f3f6;
+  --disc-other-fg: #4b5563;
+
+  /* Issue-category chips reuse the discipline palette plus two extras. */
+  --issue-fire-bg: #fde2e2;
+  --issue-fire-fg: #b91c1c;
+  --issue-env-bg: #e0f2fe;
+  --issue-env-fg: #0369a1;
+
+  /* App header is an always-dark brand surface (same family as the sidebar).
+     These status-pill tones are tuned for the dark-blue header background and
+     stay constant across light/dark themes. */
+  --header-notify-dot: #c94736;
+  --header-status-success-bg: rgba(95, 217, 158, 0.20);
+  --header-status-success-fg: #9ff0bf;
+  --header-status-success-border: rgba(95, 217, 158, 0.35);
+  --header-status-success-dot: #5fd99e;
+  --header-status-warning-bg: rgba(244, 196, 91, 0.18);
+  --header-status-warning-fg: #ffe2a3;
+  --header-status-warning-border: rgba(244, 196, 91, 0.32);
+  --header-status-warning-dot: #f4c45b;
+  --header-status-error-bg: rgba(255, 141, 118, 0.18);
+  --header-status-error-fg: #ffb3a3;
+  --header-status-error-border: rgba(255, 141, 118, 0.32);
+  --header-status-error-dot: #ff8d76;
+  --header-status-info-bg: rgba(155, 188, 232, 0.18);
+  --header-status-info-fg: #cfe1f7;
+  --header-status-info-border: rgba(155, 188, 232, 0.32);
+  --header-status-info-dot: #9bbce8;
 }
 
 [data-theme="dark"] {
   --brand-gradient-start: #1e3e72;
   --brand-gradient-end: #16315e;
+
+  --disc-architectural-bg: rgba(122, 90, 200, 0.18);
+  --disc-architectural-fg: #b9a4ec;
+  --disc-structural-bg: rgba(60, 110, 200, 0.18);
+  --disc-structural-fg: #9cc0f0;
+  --disc-mep-bg: rgba(180, 130, 50, 0.18);
+  --disc-mep-fg: #e0b773;
+  --disc-coordination-bg: rgba(70, 160, 110, 0.18);
+  --disc-coordination-fg: #8fd3ad;
+  --disc-other-bg: rgba(120, 130, 150, 0.18);
+  --disc-other-fg: #b8c0cc;
+
+  --issue-fire-bg: rgba(220, 60, 60, 0.18);
+  --issue-fire-fg: #f0a3a3;
+  --issue-env-bg: rgba(40, 120, 190, 0.18);
+  --issue-env-fg: #92c8ef;
+
+  /* Compliance health hero — dark "blueprint" gradient (dark theme only;
+     the light card uses bg-background). */
+  --health-card-from: #0e141c;
+  --health-card-via: #152035;
+  --health-card-to: #1e3253;
 }
 
 @font-face {

@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { Button, Input } from '@bimstitch/ui';
+import { Button, Input, Spinner } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
@@ -170,7 +170,7 @@ export function EntityAttachmentsBody({
       {/* Upload progress */}
       {uploadPhase !== null && (
         <div className="flex items-center gap-2 border-b border-border bg-primary/5 px-3.5 py-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+          <Spinner size="sm" className="text-primary" />
           <span className="text-caption text-primary">{uploadPhase}</span>
         </div>
       )}

@@ -67,6 +67,154 @@ describe('buildMetadata countElements integration', () => {
     expect(metadata.totalElements).toBe(3);
   });
 
+  it('builds the spatial tree from forward IfcRelAggregates', async () => {
+    const { buildMetadata } = await import('../src/pipeline/metadata.js');
+    const {
+      IFCPROJECT,
+      IFCRELAGGREGATES,
+      IFCSITE,
+      IFCBUILDING,
+      IFCBUILDINGSTOREY,
+    } = await import('web-ifc');
+
+    // expressID → IFC type code (Project 1 ⊃ Site 2 ⊃ Building 3 ⊃ Storey 4)
+    const typeByID: Record<number, number> = {
+      1: IFCPROJECT,
+      2: IFCSITE,
+      3: IFCBUILDING,
+      4: IFCBUILDINGSTOREY,
+    };
+    const nameByID: Record<number, string> = {
+      1: 'Test Building',
+      2: 'Default Site',
+      3: 'Building A',
+      4: 'Ground Floor',
+    };
+    // IfcRelAggregates lines: id → { parent, children }
+    const rels: Record<number, { parent: number; children: number[] }> = {
+      100: { parent: 1, children: [2] },
+      101: { parent: 2, children: [3] },
+      102: { parent: 3, children: [4] },
+    };
+
+    const idList = (ids: number[]): { size: () => number; get: (i: number) => number } => ({
+      size: () => ids.length,
+      get: (i: number) => ids[i] as number,
+    });
+
+    const mockApi = {
+      GetAllLines: vi.fn().mockReturnValue(idList([])),
+      GetLineType: vi.fn().mockImplementation((_: number, id: number) => typeByID[id] ?? 0),
+      GetNameFromTypeCode: vi.fn().mockReturnValue('IFCPROJECT'),
+      GetLineIDsWithType: vi.fn().mockImplementation((_: number, code: number) => {
+        if (code === IFCPROJECT) return idList([1]);
+        if (code === IFCRELAGGREGATES) return idList([100, 101, 102]);
+        return idList([]);
+      }),
+      GetLine: vi.fn().mockImplementation((_: number, id: number) => {
+        const rel = rels[id];
+        if (rel) {
+          return {
+            RelatingObject: { expressID: rel.parent },
+            RelatedObjects: rel.children.map((c) => ({ expressID: c })),
+          };
+        }
+        return { GlobalId: `guid-${String(id)}`, Name: nameByID[id] ?? null };
+      }),
+      StreamAllMeshes: vi.fn(),
+    } as never;
+
+    const metadata = await buildMetadata(mockApi, 0, 'IFC4');
+    const tree = metadata.spatialTree;
+    expect(tree).not.toBeNull();
+    expect(tree?.type).toBe('IfcProject');
+    expect(tree?.name).toBe('Test Building');
+
+    const site = tree?.children[0];
+    expect(site?.type).toBe('IfcSite');
+    const building = site?.children[0];
+    expect(building?.type).toBe('IfcBuilding');
+    const storey = building?.children[0];
+    expect(storey?.type).toBe('IfcBuildingStorey');
+    expect(storey?.name).toBe('Ground Floor');
+    expect(storey?.children).toEqual([]);
+  });
+
+  it('builds zones from IfcRelAssignsToGroup', async () => {
+    const { buildMetadata } = await import('../src/pipeline/metadata.js');
+    const { IFCRELASSIGNSTOGROUP, IFCZONE, IFCSPACE } = await import('web-ifc');
+
+    // expressID → IFC type code. Zone 10 ⊃ spaces 11, 12 (object 13 is not a
+    // space and must be ignored). Object 20 is a non-zone group to be skipped.
+    const typeByID: Record<number, number> = {
+      10: IFCZONE,
+      11: IFCSPACE,
+      12: IFCSPACE,
+      13: 0,
+      20: 0,
+    };
+    const nameByID: Record<number, string> = {
+      10: 'Office 01',
+      11: 'CHIMIE',
+      12: 'LABORATOIRE',
+    };
+    // IfcRelAssignsToGroup lines: split the zone across two rels to exercise merging.
+    const rels: Record<number, { group: number; members: number[] }> = {
+      100: { group: 10, members: [11, 13] },
+      101: { group: 10, members: [12] },
+      102: { group: 20, members: [11] },
+    };
+
+    const idList = (ids: number[]): { size: () => number; get: (i: number) => number } => ({
+      size: () => ids.length,
+      get: (i: number) => ids[i] as number,
+    });
+
+    const mockApi = {
+      GetAllLines: vi.fn().mockReturnValue(idList([])),
+      GetLineType: vi.fn().mockImplementation((_: number, id: number) => typeByID[id] ?? 0),
+      GetNameFromTypeCode: vi.fn().mockReturnValue('IFCSPACE'),
+      GetLineIDsWithType: vi.fn().mockImplementation((_: number, code: number) => {
+        if (code === IFCRELASSIGNSTOGROUP) return idList([100, 101, 102]);
+        return idList([]);
+      }),
+      GetLine: vi.fn().mockImplementation((_: number, id: number) => {
+        const rel = rels[id];
+        if (rel) {
+          return {
+            RelatingGroup: { expressID: rel.group },
+            RelatedObjects: rel.members.map((m) => ({ expressID: m })),
+          };
+        }
+        return { GlobalId: `guid-${String(id)}`, Name: nameByID[id] ?? null };
+      }),
+      StreamAllMeshes: vi.fn(),
+    } as never;
+
+    const metadata = await buildMetadata(mockApi, 0, 'IFC4');
+    expect(metadata.zones).toHaveLength(1);
+    const zone = metadata.zones[0];
+    expect(zone?.expressID).toBe(10);
+    expect(zone?.name).toBe('Office 01');
+    expect(zone?.spaces.map((s) => s.expressID)).toEqual([11, 12]);
+    expect(zone?.spaces.map((s) => s.name)).toEqual(['CHIMIE', 'LABORATOIRE']);
+  });
+
+  it('returns no zones when the model has none', async () => {
+    const { buildMetadata } = await import('../src/pipeline/metadata.js');
+    const mockApi = {
+      GetAllLines: vi.fn().mockReturnValue({ size: () => 0, get: () => 0 }),
+      GetLineType: vi.fn().mockReturnValue(0),
+      GetNameFromTypeCode: vi.fn().mockReturnValue(undefined),
+      GetLineIDsWithType: vi.fn().mockReturnValue({ size: () => 0, get: () => 0 }),
+      GetLine: vi.fn().mockReturnValue({}),
+      StreamAllMeshes: vi.fn(),
+    } as never;
+
+    const metadata = await buildMetadata(mockApi, 0, 'IFC2X3');
+    expect(metadata.zones).toEqual([]);
+  });
+
   it('counts mixed IfcWall and IfcWallStandardCase', async () => {
     const { buildMetadata } = await import('../src/pipeline/metadata.js');
 

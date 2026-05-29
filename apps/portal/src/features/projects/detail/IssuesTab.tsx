@@ -9,21 +9,13 @@ import { Badge, Button, Input } from '@bimstitch/ui';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
 import type { ComplianceIssue } from '@/features/compliance/types';
+import { issueChipColors } from '@/lib/formatting/disciplineColors';
 
 import { IssueDetailModal } from './IssueDetailModal';
 
 type Props = {
   issues: ComplianceIssue[];
   onDownloadCsv?: () => Promise<void> | void;
-};
-
-const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
-  FIRE: { bg: '#fde2e2', fg: '#b91c1c' },
-  ARCH: { bg: '#ede8f7', fg: '#5a3fa6' },
-  STR: { bg: '#e5edf7', fg: '#2c5697' },
-  MEP: { bg: '#f8ecd9', fg: '#a97428' },
-  ACC: { bg: '#eaf6ef', fg: '#3f8f65' },
-  ENV: { bg: '#e0f2fe', fg: '#0369a1' },
 };
 
 type FilterValue = 'all' | 'fail' | 'warn';
@@ -129,7 +121,7 @@ export function IssuesTab({ issues, onDownloadCsv }: Props): JSX.Element {
           </div>
         ) : (
           filtered.map((issue) => {
-            const colors = DISC_COLORS[issue.modelDiscipline] ?? { bg: '#f1f3f6', fg: '#4b5563' };
+            const colors = issueChipColors(issue.modelDiscipline);
             return (
               <div
                 key={issue.id}

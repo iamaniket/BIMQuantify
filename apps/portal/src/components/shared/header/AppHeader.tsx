@@ -32,24 +32,24 @@ type Props = {
 };
 
 const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
-  success: 'bg-[rgba(95,217,158,0.20)] text-[#9ff0bf] border-[rgba(95,217,158,0.35)]',
-  warning: 'bg-[rgba(244,196,91,0.18)] text-[#ffe2a3] border-[rgba(244,196,91,0.32)]',
-  error: 'bg-[rgba(255,141,118,0.18)] text-[#ffb3a3] border-[rgba(255,141,118,0.32)]',
-  info: 'bg-[rgba(155,188,232,0.18)] text-[#cfe1f7] border-[rgba(155,188,232,0.32)]',
+  success: 'bg-[var(--header-status-success-bg)] text-[var(--header-status-success-fg)] border-[var(--header-status-success-border)]',
+  warning: 'bg-[var(--header-status-warning-bg)] text-[var(--header-status-warning-fg)] border-[var(--header-status-warning-border)]',
+  error: 'bg-[var(--header-status-error-bg)] text-[var(--header-status-error-fg)] border-[var(--header-status-error-border)]',
+  info: 'bg-[var(--header-status-info-bg)] text-[var(--header-status-info-fg)] border-[var(--header-status-info-border)]',
 };
 
 const STATUS_DOT_CLASSES: Record<StatusTone, string> = {
-  success: 'bg-[#5fd99e]',
-  warning: 'bg-[#f4c45b]',
-  error: 'bg-[#ff8d76]',
-  info: 'bg-[#9bbce8]',
+  success: 'bg-[var(--header-status-success-dot)]',
+  warning: 'bg-[var(--header-status-warning-dot)]',
+  error: 'bg-[var(--header-status-error-dot)]',
+  info: 'bg-[var(--header-status-info-dot)]',
 };
 
 function StatusPill({ status }: { status: AppHeaderStatus }): JSX.Element {
   const tone: StatusTone = status.tone ?? 'info';
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.06em] ${STATUS_TONE_CLASSES[tone]}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-micro font-bold uppercase tracking-[0.06em] ${STATUS_TONE_CLASSES[tone]}`}
     >
       <span className={`h-[5px] w-[5px] rounded-full ${STATUS_DOT_CLASSES[tone]}`} />
       {status.label}
@@ -90,10 +90,10 @@ function CrumbItem({ crumb, isLast }: { crumb: Crumb; isLast: boolean }): JSX.El
 function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }): JSX.Element | null {
   if (crumbs.length === 0) return null;
   return (
-    <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] font-medium">
+    <div className="flex min-w-0 items-center gap-1.5 text-body3 font-medium">
       {crumbs.map((c, i) => (
         <span key={`${String(i)}-${c.label}`} className="flex items-center gap-1.5">
-          {i > 0 ? <span className="text-[11px] text-white/55">/</span> : null}
+          {i > 0 ? <span className="text-caption text-white/55">/</span> : null}
           <CrumbItem crumb={c} isLast={i === crumbs.length - 1} />
         </span>
       ))}
@@ -106,7 +106,7 @@ export function AppHeader({
 }: Props): JSX.Element {
   return (
     <header
-      className="relative flex h-[52px] shrink-0 items-center gap-3.5 border-b border-white/10 bg-[#2c5697] px-4 text-white dark:bg-[#1e3e72]"
+      className="relative flex h-[52px] shrink-0 items-center gap-3.5 border-b border-white/10 bg-[var(--brand-gradient-start)] px-4 text-white"
     >
       <GridTexture />
 
@@ -122,10 +122,10 @@ export function AppHeader({
           <button
             type="button"
             onClick={action.onClick}
-            className="ml-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-white px-3.5 text-[12.5px] font-bold text-[#2c5697] shadow-[0_2px_6px_rgba(0,0,0,0.18)] hover:bg-white/90"
+            className="ml-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-white px-3.5 text-body3 font-bold text-[var(--brand-gradient-start)] shadow-[0_2px_6px_rgba(0,0,0,0.18)] hover:bg-white/90"
           >
             {action.icon === undefined ? (
-              <span className="text-[13px] font-extrabold">+</span>
+              <span className="text-body2 font-extrabold">+</span>
             ) : (
               action.icon
             )}

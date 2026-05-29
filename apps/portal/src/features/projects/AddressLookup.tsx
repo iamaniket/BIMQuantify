@@ -1,12 +1,12 @@
 'use client';
 
-import { Loader2, MapPin, Search } from 'lucide-react';
+import { MapPin, Search } from 'lucide-react';
 import {
   useEffect, useId, useRef, useState, type JSX,
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Input, Label } from '@bimstitch/ui';
+import { Input, Label, Spinner } from '@bimstitch/ui';
 
 import {
   lookupAddress, suggestAddresses, type AddressSuggestion, type ResolvedAddress,
@@ -139,7 +139,7 @@ export function AddressLookup({ onSelect, initialLabel, disabled = false }: Prop
           className="pl-8 pr-8"
         />
         {isLoading && (
-          <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-foreground-tertiary" />
+          <Spinner size="sm" className="absolute right-2.5 top-1/2 -translate-y-1/2" />
         )}
       </div>
       {open && suggestions.length > 0 && (

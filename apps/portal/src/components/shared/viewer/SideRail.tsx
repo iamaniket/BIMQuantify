@@ -85,7 +85,7 @@ export function SideRail({
                 : 'text-white/[0.82] border border-transparent hover:bg-white/10 hover:text-white',
             )}
           >
-            <Icon className="h-[18px] w-[18px]" style={isActive ? { color: '#ffffff' } : { color: 'rgba(255,255,255,0.55)' }} />
+            <Icon className={cn('h-[18px] w-[18px]', isActive ? 'text-white' : 'text-white/55')} />
           </button>
         );
       })}

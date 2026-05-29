@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Skeleton, Spinner } from '@bimstitch/ui';
 
 /**
  * Shown instantly by Next.js during the route transition from dashboard → viewer.
@@ -24,7 +24,7 @@ export default function ViewerLoading(): JSX.Element {
         {/* Side rail placeholder — matches w-[51px] right-aligned rail */}
         <div
           aria-hidden
-          className="pointer-events-none absolute bottom-0 right-0 top-0 w-[51px] border-l border-white/12"
+          className="pointer-events-none absolute bottom-0 right-0 top-0 w-[51px] border-l border-sidebar-border"
           style={{
             background: 'linear-gradient(180deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
           }}
@@ -32,7 +32,7 @@ export default function ViewerLoading(): JSX.Element {
 
         {/* Centered "Preparing viewer…" spinner */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-primary" />
+          <Spinner size="lg" className="text-primary" />
           <span className="text-body3 text-foreground-secondary">
             Preparing viewer…
           </span>

@@ -1,10 +1,10 @@
 'use client';
 
-import { Camera, CheckCircle, FileUp, Loader2, XCircle } from 'lucide-react';
+import { Camera, CheckCircle, FileUp, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Button, Spinner } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
 import { validateCaptureToken, uploadViaCaptureLink } from '@/lib/api/capturePublic';
@@ -130,7 +130,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
   if (state.kind === 'loading') {
     return (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-foreground-tertiary" />
+        <Spinner size="lg" />
         <p className="text-body3 text-foreground-secondary">{t('loading')}</p>
       </div>
     );
@@ -165,7 +165,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
   if (state.kind === 'uploading') {
     return (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Spinner size="lg" className="text-primary" />
         <p className="text-body3 text-foreground-secondary">{t('uploading')}</p>
       </div>
     );

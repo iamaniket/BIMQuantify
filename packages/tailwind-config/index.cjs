@@ -76,6 +76,18 @@ const preset = {
           inverse: 'var(--surface-inverse)',
         },
         ring: 'var(--ring)',
+        sidebar: {
+          accent: 'var(--sidebar-accent)',
+          'accent-strong': 'var(--sidebar-accent-strong)',
+          surface: 'var(--sidebar-surface)',
+          fg: 'var(--sidebar-fg)',
+          'fg-subtle': 'var(--sidebar-fg-subtle)',
+          'fg-muted': 'var(--sidebar-fg-muted)',
+          border: 'var(--sidebar-border)',
+          raised: 'var(--sidebar-raised)',
+          hover: 'var(--sidebar-hover)',
+          active: 'var(--sidebar-active)',
+        },
       },
       fontFamily: {
         sans: ['Geist', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
@@ -98,6 +110,7 @@ const preset = {
         '4.5': '18px',
       },
       fontSize: {
+        micro: ['9px', { lineHeight: '11px', letterSpacing: '0' }],
         caption: ['10px', { lineHeight: '12px', letterSpacing: '-0.01em' }],
         body3: ['12px', { lineHeight: '16px', letterSpacing: '-0.01em' }],
         body2: ['14px', { lineHeight: '18px', letterSpacing: '-0.01em' }],

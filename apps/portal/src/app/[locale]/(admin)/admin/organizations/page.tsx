@@ -304,9 +304,9 @@ export default function AdminOrganizationsPage(): JSX.Element {
           <TabsTrigger value="organizations" className={TAB_CLASS}>
             <Table2 className="h-3.5 w-3.5" />
             {t('tabs.organizations')}
-            <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
+            <Badge variant="primary" size="sm" bordered={false}>
               {allOrgs.length}
-            </span>
+            </Badge>
           </TabsTrigger>
         </TabsList>
 

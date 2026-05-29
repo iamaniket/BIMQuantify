@@ -91,8 +91,8 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
     ? 'h-36 w-full object-cover grayscale transition-transform duration-300 group-hover:scale-[1.03]'
     : 'h-36 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]';
   const emptyStateClassName = archived
-    ? 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-slate-50 to-slate-100 grayscale'
-    : 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-slate-50 to-slate-100';
+    ? 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-background-secondary to-background-tertiary grayscale'
+    : 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-background-secondary to-background-tertiary';
 
   const prefetchProject = useCallback(() => {
     if (tokens === null) return;
@@ -132,7 +132,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
       >
         <div className="relative bg-background-secondary">
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 py-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground shadow-sm shadow-primary/20 transition-colors duration-200 group-hover:bg-primary-hover">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-primary px-2.5 py-1 text-caption font-semibold uppercase tracking-wider text-primary-foreground shadow-sm shadow-primary/20 transition-colors duration-200 group-hover:bg-primary-hover">
               <span className={`h-1.5 w-1.5 rounded-full ${projectDotClasses(project)}`} />
               {formatProjectBadgeLabel(project, tStatuses(project.status))}
             </span>
@@ -155,9 +155,9 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
             />
           ) : (
             <div className={emptyStateClassName}>
-              <Building2 className="h-10 w-10 text-slate-300" />
-              <Layers className="h-7 w-7 text-slate-200" />
-              <Ruler className="h-6 w-6 text-slate-200" />
+              <Building2 className="h-10 w-10 text-foreground-tertiary" />
+              <Layers className="h-7 w-7 text-border" />
+              <Ruler className="h-6 w-6 text-border" />
             </div>
           )}
         </div>

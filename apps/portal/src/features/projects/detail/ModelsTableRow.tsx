@@ -1,11 +1,11 @@
 'use client';
 
-import { Eye, Loader2, ShieldCheck, Upload, Trash2 } from 'lucide-react';
+import { Eye, ShieldCheck, Upload, Trash2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState, type JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Badge, Button, Spinner } from '@bimstitch/ui';
 
 import type { Model, ProjectFile } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
@@ -13,15 +13,8 @@ import { formatExtractionStatus } from '@/lib/formatting/files';
 import { useModelFiles } from '@/features/models/useModelFiles';
 import { viewerKeys } from '@/features/viewer/queryKeys';
 import { getViewerBundle } from '@/lib/api/projectFiles';
+import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 import { useAuth } from '@/providers/AuthProvider';
-
-const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
-  architectural: { bg: '#ede8f7', fg: '#5a3fa6' },
-  structural: { bg: '#e5edf7', fg: '#2c5697' },
-  mep: { bg: '#f8ecd9', fg: '#a97428' },
-  coordination: { bg: '#eaf6ef', fg: '#3f8f65' },
-  other: { bg: '#f1f3f6', fg: '#4b5563' },
-};
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -45,15 +38,9 @@ function FileTypePill({ fileType, schema }: FileTypePillProps): JSX.Element {
   const isPdf = fileType === 'pdf';
   const label = isPdf ? 'PDF' : (schema ?? 'IFC');
   return (
-    <span
-      className={`shrink-0 rounded-sm px-1 py-px text-[9px] font-bold uppercase tracking-wide ${
-        isPdf
-          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-          : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'
-      }`}
-    >
+    <Badge variant={isPdf ? 'error' : 'info'} size="sm" bordered={false} className="shrink-0 uppercase">
       {label}
-    </span>
+    </Badge>
   );
 }
 
@@ -70,7 +57,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
   const queryClient = useQueryClient();
   const { tokens } = useAuth();
   const files = filesQuery.data ?? [];
-  const colors = DISC_COLORS[model.discipline] ?? DISC_COLORS['other']!;
+  const colors = disciplineChipColors(model.discipline);
   const latestFile = files.length > 0 ? files[0] : undefined;
   const isViewable = latestFile !== undefined && (
     latestFile.file_type === 'pdf'
@@ -104,17 +91,17 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
       <div
         className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_64px_56px_88px_144px] items-center gap-4 px-4 py-3 text-body3 transition-colors ${
           isOpen
-            ? 'border-l-[3px] border-l-primary bg-primary-lighter pl-[13px] dark:bg-white/5'
+            ? 'border-l-[3px] border-l-primary bg-primary-lighter pl-[13px] dark:bg-foreground/5'
             : 'border-l-[3px] border-l-transparent hover:bg-background-hover'
         }`}
         onClick={() => { setIsOpen(!isOpen); }}
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className={`w-2 text-[9px] font-bold ${isOpen ? 'text-primary' : 'text-foreground-tertiary'}`}>
+          <span className={`w-2 text-micro font-bold ${isOpen ? 'text-primary' : 'text-foreground-tertiary'}`}>
             {isOpen ? '▾' : '▸'}
           </span>
           <span
-            className="shrink-0 rounded-sm px-1 py-px text-center text-[9.5px] font-bold"
+            className="shrink-0 rounded-sm px-1 py-px text-center text-micro font-bold"
             style={{ background: colors.bg, color: colors.fg, width: 30 }}
           >
             {model.discipline.slice(0, 4).toUpperCase()}
@@ -188,7 +175,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                   className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {complianceMutation.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Spinner size="sm" className="text-current" />
                   ) : (
                     <ShieldCheck className="h-3.5 w-3.5" />
                   )}
@@ -203,9 +190,9 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
 
       {/* Expanded section */}
       {isOpen && (
-        <div className="border-l-[3px] border-l-primary bg-primary-lighter px-4 pb-4 pl-9 pt-2 dark:bg-white/[0.03]">
+        <div className="border-l-[3px] border-l-primary bg-primary-lighter px-4 pb-4 pl-9 pt-2 dark:bg-foreground/[0.03]">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-primary">
+            <span className="text-micro font-bold uppercase tracking-[0.12em] text-primary">
               Version history · {files.length} versions
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -246,7 +233,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                   }}
                 >
                   {complianceMutation.isPending ? (
-                    <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                    <Spinner size="sm" className="mr-1.5 text-current" />
                   ) : (
                     <ShieldCheck className="mr-1.5 h-3 w-3" />
                   )}
@@ -281,7 +268,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                         v{String(f.version_number).padStart(2, '0')}{ext}
                       </span>
                       {isLatest && (
-                        <span className="rounded-sm bg-primary px-1.5 py-px text-[9px] font-bold text-white">
+                        <span className="rounded-sm bg-primary px-1.5 py-px text-caption font-bold text-primary-foreground">
                           LATEST
                         </span>
                       )}

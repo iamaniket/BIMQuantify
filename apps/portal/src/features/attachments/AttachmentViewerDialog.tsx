@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
   Skeleton,
+  Spinner,
 } from '@bimstitch/ui';
 
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
@@ -82,7 +83,7 @@ function ContentPreview({
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center text-body3 text-foreground-tertiary">
-          <div className="mx-auto mb-2 h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <Spinner className="mx-auto mb-2 text-primary" />
           {t('viewerLoadingPreview')}
         </div>
       </div>

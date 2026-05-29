@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
 
+import { frameView } from '../../core/framing.js';
 import type { ItemId, Plugin, Vec3, ViewerContext } from '../../core/types.js';
 
 const NAME = 'camera' as const;
@@ -61,30 +62,13 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
       });
 
       const setView = async (view: ViewName): Promise<void> => {
-        const box = computeSceneBox(ctx);
-        const fallback = box.isEmpty();
-        const center = fallback ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
-        const size = fallback ? new THREE.Vector3(10, 10, 10) : box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z, 1);
-        const distance = maxDim * padding;
-
         const dir = VIEW_DIRECTIONS[view];
-        const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
-        const offset = {
-          x: (dir[0] / len) * distance,
-          y: (dir[1] / len) * distance,
-          z: (dir[2] / len) * distance,
-        };
-
-        const targetY = center.y - size.y * 0.25;
-
-        await ctx.cameraControls.setLookAt(
-          center.x + offset.x,
-          targetY + offset.y,
-          center.z + offset.z,
-          center.x,
-          targetY,
-          center.z,
+        await frameView(
+          ctx.cameraControls,
+          ctx.camera,
+          sceneOrFallbackBox(ctx),
+          new THREE.Vector3(dir[0], dir[1], dir[2]),
+          padding,
           true,
         );
       };
@@ -115,9 +99,9 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         { title: 'Orbit camera by delta' },
       );
 
-      /** Snap to iso (top-front-right) and fit — reuses the same setView logic. */
-      const snapIsoAndFit = async (_box: THREE.Box3): Promise<void> => {
-        await setView('iso');
+      /** Snap to iso (top-front-right) and fit the given box. */
+      const snapIsoAndFit = async (box: THREE.Box3): Promise<void> => {
+        await frameView(ctx.cameraControls, ctx.camera, box, new THREE.Vector3(1, 1, 1), padding, true);
       };
 
       commands.register(
@@ -142,23 +126,12 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         async (args) => {
           const a = args as { direction: Vec3 } | undefined;
           if (!a?.direction) return;
-          const len = Math.hypot(a.direction.x, a.direction.y, a.direction.z) || 1;
-          const dx = a.direction.x / len;
-          const dy = a.direction.y / len;
-          const dz = a.direction.z / len;
-          const box = computeSceneBox(ctx);
-          const fallback = box.isEmpty();
-          const center = fallback ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
-          const size = fallback ? new THREE.Vector3(10, 10, 10) : box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z, 1);
-          const distance = maxDim * padding;
-          await ctx.cameraControls.setLookAt(
-            center.x + dx * distance,
-            center.y + dy * distance,
-            center.z + dz * distance,
-            center.x,
-            center.y,
-            center.z,
+          await frameView(
+            ctx.cameraControls,
+            ctx.camera,
+            sceneOrFallbackBox(ctx),
+            new THREE.Vector3(a.direction.x, a.direction.y, a.direction.z),
+            padding,
             true,
           );
         },
@@ -248,28 +221,8 @@ async function computeSelectionBox(
   return out;
 }
 
-async function frameBox(
-  ctx: ViewerContext,
-  box: THREE.Box3,
-  padding: number,
-): Promise<void> {
-  const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z, 1);
-  const distance = maxDim * padding;
-  // Preserve current view direction.
-  const camPos = ctx.camera.position.clone();
-  const target = new THREE.Vector3();
-  ctx.cameraControls.getTarget(target);
-  const dir = camPos.clone().sub(target).normalize();
-  if (dir.lengthSq() === 0) dir.set(1, 1, 1).normalize();
-  await ctx.cameraControls.setLookAt(
-    center.x + dir.x * distance,
-    center.y + dir.y * distance,
-    center.z + dir.z * distance,
-    center.x,
-    center.y,
-    center.z,
-    true,
-  );
+function sceneOrFallbackBox(ctx: ViewerContext): THREE.Box3 {
+  const box = computeSceneBox(ctx);
+  if (!box.isEmpty()) return box;
+  return new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5));
 }

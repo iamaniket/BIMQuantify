@@ -48,10 +48,10 @@ export function SidebarUserChip(): JSX.Element {
         <UserAvatar
           name={userName}
           src={avatarSrc}
-          className="h-[30px] w-[30px] text-[11px] font-extrabold"
+          className="h-[30px] w-[30px] text-caption font-extrabold"
         />
         {pendingCount > 0 && (
-          <span className="absolute -right-[3px] -top-[3px] grid h-[14px] min-w-[14px] place-items-center rounded-full border-[1.5px] border-[#1e293b] bg-[#c94736] px-[3px] text-[9px] font-extrabold leading-[14px] tabular-nums text-white">
+          <span className="absolute -right-[3px] -top-[3px] grid h-[14px] min-w-[14px] place-items-center rounded-full border-[1.5px] border-sidebar-surface bg-[var(--header-notify-dot)] px-[3px] text-micro font-extrabold leading-[14px] tabular-nums text-white">
             {pendingCount > 9 ? '9+' : String(pendingCount)}
           </span>
         )}

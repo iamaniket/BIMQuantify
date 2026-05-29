@@ -32,12 +32,12 @@ const ICON_BY_TYPE: Record<NotificationEventTypeValue, JSX.Element> = {
 };
 
 const TONE_BY_TYPE: Record<NotificationEventTypeValue, string> = {
-  job_started: 'bg-[rgba(95,136,178,0.12)] text-[#3f668f]',
-  job_progress: 'bg-[rgba(95,136,178,0.12)] text-[#3f668f]',
-  job_succeeded: 'bg-[rgba(95,217,158,0.14)] text-[#2f7350]',
-  job_failed: 'bg-[rgba(201,71,54,0.10)] text-[#c94736]',
-  deadline_upcoming: 'bg-[rgba(217,169,40,0.14)] text-[#8f6d1e]',
-  deadline_missed: 'bg-[rgba(201,71,54,0.10)] text-[#c94736]',
+  job_started: 'bg-info-lighter text-info-hover',
+  job_progress: 'bg-info-lighter text-info-hover',
+  job_succeeded: 'bg-success-lighter text-success',
+  job_failed: 'bg-error-lighter text-error',
+  deadline_upcoming: 'bg-warning-lighter text-warning',
+  deadline_missed: 'bg-error-lighter text-error',
 };
 
 function formatRelative(iso: string): string {
@@ -142,7 +142,7 @@ export function NotificationsBell(): JSX.Element {
       >
         <Bell className="h-[14px] w-[14px]" aria-hidden />
         {unreadCount > 0 ? (
-          <span className="absolute -right-[3px] -top-[3px] grid h-[14px] min-w-[14px] place-items-center rounded-full border-[1.5px] border-[#2c5697] bg-[#c94736] px-[3px] text-[9px] font-extrabold leading-[14px] tabular-nums text-white dark:border-[#1e3e72]">
+          <span className="absolute -right-[3px] -top-[3px] grid h-[14px] min-w-[14px] place-items-center rounded-full border-[1.5px] border-[var(--brand-gradient-start)] bg-[var(--header-notify-dot)] px-[3px] text-micro font-extrabold leading-[14px] tabular-nums text-white">
             {unreadCount > 9 ? '9+' : String(unreadCount)}
           </span>
         ) : null}

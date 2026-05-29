@@ -75,7 +75,7 @@ export function SidebarTenantCard(): JSX.Element | null {
             <button
               type="button"
               aria-label={ariaLabel}
-              className="grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-md bg-gradient-to-br from-[#5fa8ff] to-[#2c5697] text-[10.5px] font-extrabold text-white"
+              className="grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-md bg-gradient-to-br from-sidebar-accent to-sidebar-accent-strong text-[10.5px] font-extrabold text-sidebar-fg"
             >
               {acronym}
             </button>
@@ -88,13 +88,13 @@ export function SidebarTenantCard(): JSX.Element | null {
 
   return (
     <div className="px-3 pb-2 pt-3">
-      <div className="mb-1.5 px-2.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-white/55">
+      <div className="mb-1.5 px-2.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-sidebar-fg-muted">
         {t('label')}
       </div>
       <div className="relative">
         <button
           type="button"
-          className={`flex w-full items-center gap-[11px] rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-2 text-left transition-colors ${canSwitch ? 'cursor-pointer hover:bg-white/10' : 'cursor-default'}`}
+          className={`flex w-full items-center gap-[11px] rounded-lg border border-sidebar-border bg-sidebar-raised px-2.5 py-2 text-left transition-colors ${canSwitch ? 'cursor-pointer hover:bg-sidebar-hover' : 'cursor-default'}`}
           aria-label={ariaLabel}
           aria-haspopup={canSwitch ? 'listbox' : undefined}
           aria-expanded={canSwitch ? open : undefined}
@@ -104,16 +104,16 @@ export function SidebarTenantCard(): JSX.Element | null {
             }
           }}
         >
-          <div className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded bg-gradient-to-br from-[#5fa8ff] to-[#2c5697] text-[8px] font-extrabold text-white">
+          <div className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded bg-gradient-to-br from-sidebar-accent to-sidebar-accent-strong text-[8px] font-extrabold text-sidebar-fg">
             {acronym}
           </div>
-          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-white">{name}</span>
-          {canSwitch && <ChevronDown className="h-3 w-3 shrink-0 text-white/55" />}
+          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-sidebar-fg">{name}</span>
+          {canSwitch && <ChevronDown className="h-3 w-3 shrink-0 text-sidebar-fg-muted" />}
         </button>
         {canSwitch && open && (
           <ul
             role="listbox"
-            className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-auto rounded-md border border-white/12 bg-[#254a82] py-1 shadow-lg"
+            className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-auto rounded-md border border-sidebar-border bg-sidebar-surface py-1 shadow-lg"
           >
             {memberships.map((membership) => {
               const isActive = membership.organization_id === me?.active_organization_id;
@@ -126,14 +126,14 @@ export function SidebarTenantCard(): JSX.Element | null {
                     onClick={() => {
                       void onSelect(membership.organization_id);
                     }}
-                    className={`block w-full px-3 py-2 text-left text-xs hover:bg-white/10 disabled:opacity-50 ${
-                      isActive ? 'font-semibold text-white' : 'text-white/80'
+                    className={`block w-full px-3 py-2 text-left text-xs hover:bg-sidebar-hover disabled:opacity-50 ${
+                      isActive ? 'font-semibold text-sidebar-fg' : 'text-sidebar-fg-subtle'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate">{membership.organization_name}</span>
                       {membership.is_org_admin && (
-                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
+                        <span className="rounded bg-sidebar-hover px-1.5 py-0.5 text-[10px] text-sidebar-fg-subtle">
                           {tOrgSwitcher('adminBadge')}
                         </span>
                       )}

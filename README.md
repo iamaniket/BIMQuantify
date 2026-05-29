@@ -83,6 +83,9 @@ pnpm --filter=@bimstitch/ifc-parser build
 pnpm test
 ```
 
+```bash
+pnpm --filter=portal test:e2e:full  
+```  
 ---
 
 ## Apps

@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, FileText } from 'lucide-react';
+import { Box, FileText, type LucideIcon } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
@@ -12,38 +12,36 @@ type Props = {
   compact: boolean | undefined;
 };
 
+type ChipConfig = {
+  icon: LucideIcon;
+  label: string;
+  colors: string;
+};
+
 export function LinkChip({ attachment, compact = false }: Props): JSX.Element | null {
   const isElement = attachment.linked_element_global_id !== null;
-  const isPdfPin = attachment.linked_point !== null
-    && typeof attachment.linked_point === 'object'
-    && 'page' in attachment.linked_point;
+  const lp = attachment.linked_point;
+  const isPdfPin = lp !== null && typeof lp === 'object' && 'page' in lp;
 
-  if (!isElement && !isPdfPin) return null;
-
+  let config: ChipConfig | null = null;
   if (isElement) {
-    return (
-      <span className={cn(
-        'inline-flex items-center gap-1 rounded',
-        'bg-primary-lighter font-mono text-[10.5px] font-bold leading-tight tracking-wide text-primary',
-        compact ? 'px-1 py-px' : 'px-1.5 py-0.5',
-      )}>
-        <Box className="h-[11px] w-[11px]" />
-        <span className="uppercase">3D</span>
-      </span>
-    );
+    config = { icon: Box, label: '3D', colors: 'bg-primary-lighter text-primary' };
+  } else if (isPdfPin) {
+    const { page } = lp as Record<string, number>;
+    config = { icon: FileText, label: `p.${String(page)}`, colors: 'bg-info-lighter text-info-hover' };
   }
 
-  const lp = attachment.linked_point;
-  if (lp === null) return null;
-  const { page } = lp as Record<string, number>;
+  if (config === null) return null;
+  const { icon: ChipIcon, label, colors } = config;
+
   return (
     <span className={cn(
-      'inline-flex items-center gap-1 rounded',
-      'bg-info-lighter font-mono text-[10.5px] font-bold leading-tight tracking-wide text-info-hover',
+      'inline-flex items-center gap-1 rounded font-mono text-[10.5px] font-bold leading-tight tracking-wide',
+      colors,
       compact ? 'px-1 py-px' : 'px-1.5 py-0.5',
     )}>
-      <FileText className="h-[11px] w-[11px]" />
-      <span className="uppercase">p.{String(page)}</span>
+      <ChipIcon className="h-[11px] w-[11px]" />
+      <span className="uppercase">{label}</span>
     </span>
   );
 }

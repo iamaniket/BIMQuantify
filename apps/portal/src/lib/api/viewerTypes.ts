@@ -14,6 +14,13 @@ export type ElementEntry = {
   containedIn: number | null;
 };
 
+export type ZoneNode = {
+  expressID: number;
+  globalId: string | null;
+  name: string | null;
+  spaces: { expressID: number; name: string | null }[];
+};
+
 export type ModelMetadata = {
   source_format: 'ifc';
   schema: string;
@@ -25,6 +32,7 @@ export type ModelMetadata = {
     lengthUnit: string | null;
   };
   spatialTree: SpatialNode | null;
+  zones?: ZoneNode[];
   elements?: ElementEntry[];
   elementCounts: Record<string, number>;
   canonicalElementCounts: Record<string, number>;

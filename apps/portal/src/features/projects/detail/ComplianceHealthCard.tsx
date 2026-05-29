@@ -29,7 +29,7 @@ export function ComplianceHealthCard({ summary, holdbackAmount, embedded = false
       className={`relative overflow-hidden ${
         embedded
           ? 'bg-transparent'
-          : 'rounded-xl border border-border bg-background shadow-sm dark:border-none dark:bg-gradient-to-br dark:from-[#0e141c] dark:via-[#152035] dark:to-[#1e3253]'
+          : 'rounded-xl border border-border bg-background shadow-sm dark:border-none dark:bg-gradient-to-br dark:from-[var(--health-card-from)] dark:via-[var(--health-card-via)] dark:to-[var(--health-card-to)]'
       }`}
     >
       <BlueprintTexture />

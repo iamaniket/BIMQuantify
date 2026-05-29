@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, ExternalLink, FileText, Loader2, Sparkles, X } from 'lucide-react';
+import { Download, ExternalLink, FileText, Sparkles, X } from 'lucide-react';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  Spinner,
 } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
@@ -86,7 +87,7 @@ export function ComplianceReportsSection({ projectId }: Props): JSX.Element {
           onClick={handleGenerate}
         >
           {generate.isPending ? (
-            <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            <Spinner size="sm" className="mr-1.5 h-3 w-3 text-current" />
           ) : (
             <Sparkles className="mr-1.5 h-3 w-3" />
           )}
@@ -214,11 +215,11 @@ function ReportPreviewDrawer({
         <DialogBody className="min-h-[60vh]">
           {isPending ? (
             <div className="flex h-full min-h-[60vh] items-center justify-center text-caption text-foreground-tertiary">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('loading')}
+              <Spinner className="mr-2 h-4 w-4" /> {t('loading')}
             </div>
           ) : isInProgress ? (
             <div className="flex h-full min-h-[60vh] flex-col items-center justify-center gap-2 text-caption text-foreground-tertiary">
-              <Loader2 className="h-6 w-6 animate-spin" />
+              <Spinner className="h-6 w-6" />
               <div>{t('generating')}</div>
             </div>
           ) : report.status === 'failed' ? (

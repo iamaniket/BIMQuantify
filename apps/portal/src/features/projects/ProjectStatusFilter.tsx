@@ -26,7 +26,7 @@ type Props = {
   onChange: (next: StatusFilter) => void;
 };
 
-const ARCHIVED_DOT_CLASSES = 'bg-slate-500 dark:bg-white';
+const ARCHIVED_DOT_CLASSES = 'bg-foreground-tertiary';
 
 function countsByFilter(projects: readonly Project[]): Record<StatusFilter, number> {
   const counts: Record<StatusFilter, number> = {

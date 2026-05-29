@@ -23,6 +23,7 @@ import { getWorkerUrl } from '../wasm.js';
 import { CommandRegistry } from './CommandRegistry.js';
 import { EventBus } from './EventBus.js';
 import { PluginManager } from './PluginManager.js';
+import { frameView } from './framing.js';
 import { LAYER_OVERLAY } from './layers.js';
 import type { Plugin, ViewerContext, ViewerEvents } from './types.js';
 
@@ -350,30 +351,19 @@ export class Viewer {
       box = new THREE.Box3().setFromObject(model.object);
     }
     if (box.isEmpty()) return;
-    const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 1);
-    // Padding 1.2 matches camera plugin's default framePadding.
-    const distance = maxDim * 1.2;
 
-    // Iso direction: top-front-right [1,1,1] normalised — matches camera.home.
-    const len = Math.sqrt(3);
-    const nx = 1 / len;
-    const ny = 1 / len;
-    const nz = 1 / len;
-
-    // Shift target down 10% of model height so the model appears
-    // vertically centered — the downward iso angle foreshortens the
-    // bottom and makes the model look low without this offset.
-    const targetY = center.y - size.y * 0.25;
-
-    world.camera.controls.setLookAt(
-      center.x + nx * distance,
-      targetY + ny * distance,
-      center.z + nz * distance,
-      center.x,
-      targetY,
-      center.z,
+    // Iso direction [1,1,1], centered on the box, sized from the box's
+    // projected width AND height against the live FOV/aspect — matches
+    // camera.home. Models of any proportion frame to the same on-screen
+    // size and sit centered. Padding 1.2 matches the camera plugin default.
+    await frameView(
+      world.camera.controls,
+      world.camera.three,
+      box,
+      new THREE.Vector3(1, 1, 1),
+      1.2,
       false,
     );
 

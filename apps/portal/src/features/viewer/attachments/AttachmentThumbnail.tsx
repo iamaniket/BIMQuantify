@@ -33,7 +33,7 @@ const FILE_TYPE_META: Record<string, FileTypeMeta> = {
   xls: { label: 'XLS', tintClass: 'text-success', bgClass: 'bg-success/10' },
   xlsx: { label: 'XLS', tintClass: 'text-success', bgClass: 'bg-success/10' },
   dwg: { label: 'DWG', tintClass: 'text-warning', bgClass: 'bg-warning/10' },
-  rvt: { label: 'RVT', tintClass: 'text-[#7a3aa6]', bgClass: 'bg-[#7a3aa6]/10' },
+  rvt: { label: 'RVT', tintClass: 'text-[var(--disc-architectural-fg)]', bgClass: 'bg-[var(--disc-architectural-bg)]' },
   ifc: { label: 'IFC', tintClass: 'text-info', bgClass: 'bg-info/10' },
   zip: { label: 'ZIP', tintClass: 'text-foreground-secondary', bgClass: 'bg-background-secondary' },
 };

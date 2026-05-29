@@ -5,7 +5,6 @@ import {
   Box,
   Download,
   FileText,
-  Loader2,
   MoreVertical,
   RotateCcw,
   ShieldCheck,
@@ -24,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Skeleton,
+  Spinner,
 } from '@bimstitch/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
@@ -99,7 +99,7 @@ function ExtractionBadge({
         title={formatExtractionStatus(status)}
         className="inline-flex items-center gap-1 text-caption text-foreground-tertiary"
       >
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <Spinner size="sm" className="text-foreground-tertiary" />
         {formatExtractionStatus(status)}
       </span>
     );
@@ -198,7 +198,7 @@ function FileRow({
           }}
         >
           {complianceMutation.isPending ? (
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            <Spinner size="sm" className="mr-1.5 text-current" />
           ) : (
             <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
           )}
