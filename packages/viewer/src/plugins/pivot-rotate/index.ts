@@ -138,6 +138,7 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         return;
       }
       const ROTATE = ACTION.ROTATE;
+      const TRUCK = ACTION.TRUCK;
 
       const defaultTruckSpeed = controls.truckSpeed;
       let referenceDistance = controls.distance > 0 ? controls.distance : 1;
@@ -220,6 +221,7 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       let spriteTex: THREE.CanvasTexture | null = null;
       let pivotWorld = new THREE.Vector3();
       let isHolding = false; // mouse currently down on a rotate gesture
+      let isPanning = false;  // mouse currently down on a truck gesture
       let fadeStartedAt = 0; // 0 means "not fading"
       let raf = 0;
 
@@ -296,13 +298,40 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         if (!raf) raf = requestAnimationFrame(tick);
       };
 
+      /**
+       * Calibrate truckSpeed for 1:1 cursor tracking.
+       *
+       * camera-controls' _truckInternal computes:
+       *   Δworld = truckSpeed × Δpx × (targetDist × tan(fov/2)) / height
+       *
+       * For a geometry point at depth `geoDist` to follow the cursor 1:1:
+       *   Δworld = 2 × Δpx × (geoDist × tan(fov/2)) / height
+       *
+       * ⇒ truckSpeed = 2 × geoDist / targetDist
+       */
+      const calibrateTruckSpeed = (depthPoint: THREE.Vector3 | null): void => {
+        const target = new THREE.Vector3();
+        controls.getTarget(target);
+        const targetDist = camera.position.distanceTo(target);
+        if (targetDist < 1e-6) return;
+        if (depthPoint) {
+          const geoDist = camera.position.distanceTo(depthPoint);
+          const raw = defaultTruckSpeed * (geoDist / targetDist);
+          const [lo, hi] = opts.truckSpeedClamp;
+          controls.truckSpeed = Math.min(hi, Math.max(lo, raw));
+        } else {
+          // No geometry under cursor — 1:1 at target depth.
+          controls.truckSpeed = defaultTruckSpeed;
+        }
+      };
+
       const applyPivot = (p: THREE.Vector3, source: string): void => {
         controls.setOrbitPoint(p.x, p.y, p.z);
-        const dist = camera.position.distanceTo(p);
-        const raw = defaultTruckSpeed * (dist / referenceDistance) * opts.truckSpeedFactor;
-        const [lo, hi] = opts.truckSpeedClamp;
-        controls.truckSpeed = Math.min(hi, Math.max(lo, raw));
+        // setOrbitPoint moves the target to `p`, so targetDist == geoDist.
+        // 1:1 tracking → truckSpeed = defaultTruckSpeed (2.0).
+        controls.truckSpeed = defaultTruckSpeed;
         if (opts.debug) {
+          const dist = camera.position.distanceTo(p);
           console.log(
             `[pivot-rotate] pivot=${source} (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}) dist=${dist.toFixed(2)} truckSpeed=${controls.truckSpeed.toFixed(3)}`,
           );
@@ -313,7 +342,17 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       const onPointerDown = (ev: PointerEvent): void => {
         const buttonName = BUTTON_NAME[ev.button];
         if (!buttonName) return;
-        if (controls.mouseButtons[buttonName] !== ROTATE) return;
+        const action = controls.mouseButtons[buttonName];
+
+        // ── TRUCK (pan): calibrate speed + cursor, let camera-controls handle drag ──
+        if (action === TRUCK) {
+          calibrateTruckSpeed(lastHit);
+          canvas.style.cursor = 'grabbing';
+          isPanning = true;
+          return; // don't stopImmediatePropagation — camera-controls needs the event
+        }
+
+        if (action !== ROTATE) return;
 
         // Snapshot the hover-cache pivot but don't apply yet — wait for
         // the pointer to move past the dead zone to confirm a drag.
@@ -390,6 +429,11 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         deferredPivot = null;
         deferredSource = '';
         gestureButton = -1;
+
+        if (isPanning) {
+          canvas.style.cursor = '';
+          isPanning = false;
+        }
 
         if (!isHolding) return;
         isHolding = false;

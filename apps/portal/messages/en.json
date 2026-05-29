@@ -2043,6 +2043,20 @@
       "zoomInOutAlways": "Zoom in/out (always available)",
       "zoomInOutShort": "Zoom In/Out",
       "mouseGestures": "Mouse gestures"
+    },
+    "contextMenu": {
+      "inspectProperties": "Inspect Properties",
+      "attach": "Attach",
+      "addFindings": "Add Findings",
+      "showAll": "Show All",
+      "hideAll": "Hide All",
+      "hide": "Hide",
+      "isolate": "Isolate",
+      "xrayAll": "X-Ray All",
+      "clearXray": "Clear X-Ray",
+      "selectAll": "Select All",
+      "clearSelection": "Clear Selection",
+      "invertSelection": "Invert Selection"
     }
   },
   "viewerInspector": {

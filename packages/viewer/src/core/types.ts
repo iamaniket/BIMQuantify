@@ -32,6 +32,7 @@ export interface ViewerEvents {
   'viewer:mounted': { container: HTMLElement };
   'viewer:unmounted': undefined;
   'model:loaded': { modelId: string };
+  'model:elementCount': { modelId: string; count: number };
   'pointer:move': { ndc: { x: number; y: number }; clientX: number; clientY: number };
   'pointer:click': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean; clientX: number; clientY: number };
   'pointer:doubleclick': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean; clientX: number; clientY: number };
@@ -52,6 +53,12 @@ export interface ViewerEvents {
   'camera:change': { position: Vec3; target: Vec3 };
   'viewer:idle': undefined;
   'visibility:change': { hidden: ItemId[]; isolated: ItemId[]; isolationActive: boolean };
+  /**
+   * Request from a viewer command (or the context menu) to open the host's
+   * inspector on a specific tab for `item`. The viewer itself has no
+   * inspector UI — the portal listens for this and drives its panel.
+   */
+  'inspect:request': { item: ItemId | null; view: 'properties' | 'attachments' | 'findings' };
   'contextmenu:open': { position: { x: number; y: number }; item: ItemId | null; point: Vec3 | null };
   'contextmenu:close': undefined;
   'xray:change': { xrayed: ItemId[]; opacityOverrides: Array<{ item: ItemId; opacity: number }> };

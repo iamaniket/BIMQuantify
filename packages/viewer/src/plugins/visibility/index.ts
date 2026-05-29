@@ -195,15 +195,28 @@ export function visibilityPlugin(
   };
 
   // Double-click handler bound to `doubleclick:left` by default. Raycast
-  // under the cursor: a hit isolates that element; a miss leaves isolation
-  // untouched. Either way we re-frame the camera to the visible set, so a
-  // hit zooms to the isolated element and a miss fits the current view.
+  // under the cursor and branch:
+  //   - hit, and that element is already the sole isolated one → show all
+  //     (toggle back to the full model);
+  //   - hit, otherwise → isolate that element;
+  //   - miss (empty space) → leave isolation untouched.
+  // Either way we re-frame the camera to the resulting visible set, so a
+  // first hit zooms to the isolated element, a second hit on it fits the
+  // whole model, and a miss fits the current view.
   const isolateAtPointer = async (args: unknown): Promise<void> => {
     if (!ctxRef || !enabled) return;
     const ndc = ndcOf(args as PickArgs);
     if (ndc) {
       const hit = await pick(ctxRef, ndc);
-      if (hit) await applyIsolation([hit.item]);
+      if (hit) {
+        const alreadySoleIsolated =
+          isolationActive && isolatedSet.size === 1 && isolatedSet.has(itemKey(hit.item));
+        if (alreadySoleIsolated) {
+          await showAll();
+        } else {
+          await applyIsolation([hit.item]);
+        }
+      }
     }
     if (ctxRef.commands.has('camera.frameVisible')) {
       await ctxRef.commands.execute('camera.frameVisible').catch(() => undefined);
@@ -290,6 +303,7 @@ export function visibilityPlugin(
 
       ctx.commands.register('visibility.hideAll', () => hideAll(), {
         title: 'Hide all elements',
+        defaultShortcut: 'Alt+H',
       });
 
       ctx.commands.register(

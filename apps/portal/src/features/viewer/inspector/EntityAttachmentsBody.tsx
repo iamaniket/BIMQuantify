@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
-  useCallback, useMemo, useRef, useState, type JSX,
+  useCallback, useEffect, useMemo, useRef, useState, type JSX,
 } from 'react';
 import { toast } from 'sonner';
 
@@ -24,6 +24,8 @@ type EntityAttachmentsBodyProps = {
   modelId: string;
   fileId: string;
   globalId: string;
+  /** When this nonce changes, auto-click the file picker to start the attach flow. */
+  autoOpenNonce?: number | undefined;
 };
 
 export function EntityAttachmentsBody({
@@ -31,6 +33,7 @@ export function EntityAttachmentsBody({
   modelId,
   fileId,
   globalId,
+  autoOpenNonce,
 }: EntityAttachmentsBodyProps): JSX.Element {
   const t = useTranslations('viewerAttachments');
 
@@ -41,6 +44,15 @@ export function EntityAttachmentsBody({
   const [noteText, setNoteText] = useState('');
   const [uploadPhase, setUploadPhase] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-open the native file picker when triggered from a context-menu command.
+  // Note: the browser may block this if transient user activation has expired;
+  // in that case the Attach button is right there as a one-click fallback.
+  useEffect(() => {
+    if (autoOpenNonce !== undefined) {
+      fileInputRef.current?.click();
+    }
+  }, [autoOpenNonce]);
 
   const entityQuery = useElementAttachments(projectId, fileId, globalId);
   const uploadMutation = useUploadAttachment(projectId);

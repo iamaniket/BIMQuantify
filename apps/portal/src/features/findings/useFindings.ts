@@ -14,3 +14,19 @@ export function useFindings(projectId: string): UseQueryResult<FindingList> {
     queryFn: (accessToken) => listFindings(accessToken, projectId),
   });
 }
+
+export function useFileFindingCount(
+  projectId: string,
+  fileId: string | null,
+): number {
+  const query = useAuthQuery({
+    queryKey: [...findingsKey(projectId), 'file', fileId ?? ''] as const,
+    queryFn: (accessToken) => {
+      if (fileId === null) throw new Error('Missing fileId');
+      return listFindings(accessToken, projectId, { linkedFileId: fileId });
+    },
+    enabled: fileId !== null,
+    staleTime: 30_000,
+  });
+  return query.data?.length ?? 0;
+}

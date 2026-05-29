@@ -23,6 +23,7 @@ import { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
 import { selectionPlugin } from './plugins/selection/index.js';
 import { viewCubePlugin } from './plugins/viewcube/index.js';
 import { visibilityPlugin } from './plugins/visibility/index.js';
+import { inspectPlugin } from './plugins/inspect/index.js';
 import { eraserPlugin } from './plugins/eraser/index.js';
 import { contextMenuPlugin } from './plugins/context-menu/index.js';
 import { xrayPlugin } from './plugins/xray/index.js';
@@ -109,7 +110,14 @@ function IfcViewerImpl(
       hoverHighlightPlugin(props.hoverHighlight ?? {}),
       selectionPlugin(props.selectionHighlight ?? {}),
       visibilityPlugin(),
+      inspectPlugin(),
       modePlugin(),
+      // Outline + x-ray install BEFORE keyboard-shortcuts so their command
+      // `defaultShortcut`s (e.g. xray.toggleAll → X) get seeded and user
+      // overrides resolve to a real command. x-ray depends on selection +
+      // outline, both of which precede it here.
+      outlinePlugin(props.outline ?? {}),
+      xrayPlugin(),
       keyboardShortcutsPlugin(shortcuts ? { overrides: shortcuts } : {}),
       // Mouse-bindings registers AFTER selection/hover so the default
       // bindings can resolve `selection.pickSet` etc. at install time.
@@ -119,8 +127,6 @@ function IfcViewerImpl(
       eraserPlugin(),
       snappingPlugin(props.snapping ?? {}),
       contextMenuPlugin(),
-      outlinePlugin(props.outline ?? {}),
-      xrayPlugin(),
       ...(viewCubeEnabled
         ? [
             viewCubePlugin({

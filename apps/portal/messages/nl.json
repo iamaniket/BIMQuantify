@@ -2043,6 +2043,20 @@
       "zoomInOutAlways": "In-/uitzoomen (altijd beschikbaar)",
       "zoomInOutShort": "In-/uitzoomen",
       "mouseGestures": "Muisgebaren"
+    },
+    "contextMenu": {
+      "inspectProperties": "Eigenschappen",
+      "attach": "Bijlagen",
+      "addFindings": "Bevindingen",
+      "showAll": "Alles tonen",
+      "hideAll": "Alles verbergen",
+      "hide": "Verbergen",
+      "isolate": "Isoleren",
+      "xrayAll": "Alles röntgen",
+      "clearXray": "Röntgen wissen",
+      "selectAll": "Alles selecteren",
+      "clearSelection": "Selectie wissen",
+      "invertSelection": "Selectie omkeren"
     }
   },
   "viewerInspector": {

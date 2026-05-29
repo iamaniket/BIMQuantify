@@ -430,12 +430,14 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
             let n = 0;
             for (const _ of ids) n++;
             modelCounts.set(modelId, n);
+            ctx.events.emit('model:elementCount', { modelId, count: totalLoadedItems() });
           })
           .catch(() => undefined);
       });
 
       ctx.commands.register('selection.clear', () => clear(), {
         title: 'Clear selection',
+        defaultShortcut: 'Alt+A',
       });
       ctx.commands.register(
         'selection.set',
@@ -500,6 +502,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
       ctx.commands.register('selection.selectAll', () => selectAll(), {
         title: 'Select all elements',
+        defaultShortcut: 'Ctrl+A',
       });
 
       ctx.commands.register('selection.materializeAll', async () => {
@@ -563,7 +566,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
         emitChange(inverted, previousItems);
         timeEnd('invert');
-      }, { title: 'Invert selection' });
+      }, { title: 'Invert selection', defaultShortcut: 'Alt+I' });
     },
 
     uninstall() {

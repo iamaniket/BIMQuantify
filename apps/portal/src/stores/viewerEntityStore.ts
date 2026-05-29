@@ -29,6 +29,7 @@ export interface ViewerFeatureFlags {
 
 interface ViewerEntityState {
   modelId: string | null;
+  totalElements: number;
 
   selected: Set<EntityKey>;
   /**
@@ -78,6 +79,7 @@ interface ViewerEntityState {
   _applyViewerOpacity: (overrides: Array<[EntityKey, number]>) => void;
   _applyViewerFeatureEnabled: (feature: ViewerFeature, on: boolean) => void;
   _setModelId: (id: string) => void;
+  _setTotalElements: (count: number) => void;
   _reset: () => void;
 }
 
@@ -92,6 +94,7 @@ const DEFAULT_FEATURES: ViewerFeatureFlags = {
 
 export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
   modelId: null,
+  totalElements: 0,
 
   selected: EMPTY_SET,
   selectedAll: false,
@@ -215,9 +218,11 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
     })),
 
   _setModelId: (id) => set({ modelId: id }),
+  _setTotalElements: (count) => set({ totalElements: count }),
   _reset: () =>
     set({
       modelId: null,
+      totalElements: 0,
       selected: EMPTY_SET,
       selectedAll: false,
       hidden: EMPTY_SET,

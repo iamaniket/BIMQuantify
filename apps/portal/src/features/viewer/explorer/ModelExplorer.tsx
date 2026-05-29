@@ -116,7 +116,8 @@ export function ExplorerCounter({
   metadata: ModelMetadata | undefined;
 }): JSX.Element {
   const hiddenCount = useViewerEntityStore((s) => s.hidden.size);
-  const total = metadata != null ? metadata.totalElements : 0;
+  const storeTotalElements = useViewerEntityStore((s) => s.totalElements);
+  const total = storeTotalElements > 0 ? storeTotalElements : (metadata != null ? metadata.totalElements : 0);
   const shown = Math.max(0, total - hiddenCount);
 
   return (

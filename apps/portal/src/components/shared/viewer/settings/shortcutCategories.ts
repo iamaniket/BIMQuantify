@@ -11,6 +11,7 @@ const EDITING_PREFIXES = [
   'selection.',
   'visibility.',
   'isolation.',
+  'inspect.',
   'snapping.',
   'rotateRight', 'rotateLeft',
   'hover.',

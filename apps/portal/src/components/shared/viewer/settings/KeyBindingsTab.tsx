@@ -16,6 +16,7 @@ import {
 } from '@/lib/documentSettings';
 import type { CameraAction, ViewerSettings } from '@/lib/viewerSettings';
 
+import { prettyKey } from './prettyKey';
 import {
   CATEGORY_LABEL_KEYS,
   CATEGORY_STYLES,
@@ -228,13 +229,6 @@ function ChipLegend({ filter, onFilter, counts }: {
       })}
     </div>
   );
-}
-
-function prettyKey(combo: string): string {
-  if (!combo) return '—';
-  return combo
-    .replace('ArrowUp', '↑').replace('ArrowDown', '↓')
-    .replace('ArrowLeft', '←').replace('ArrowRight', '→');
 }
 
 function SelectedReadout({ code, binding, onRebind, capturing }: {

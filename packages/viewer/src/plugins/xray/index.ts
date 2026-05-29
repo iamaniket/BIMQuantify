@@ -353,6 +353,7 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
       });
       ctx.commands.register('xray.toggleAll', () => toggleAll(), {
         title: 'Toggle x-ray all',
+        defaultShortcut: 'X',
       });
       ctx.commands.register('xray.allExcept', () => xrayAllExcept(), {
         title: 'X-ray all except selected',

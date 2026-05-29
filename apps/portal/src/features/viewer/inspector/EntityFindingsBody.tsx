@@ -2,7 +2,7 @@
 
 import { AlertTriangle, Loader2, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 
 import { Badge, Button } from '@bimstitch/ui';
 
@@ -20,12 +20,15 @@ type EntityFindingsBodyProps = {
   projectId: string;
   fileId: string;
   globalId: string;
+  /** When this nonce changes, auto-open the new-finding dialog. */
+  autoOpenNonce?: number | undefined;
 };
 
 export function EntityFindingsBody({
   projectId,
   fileId,
   globalId,
+  autoOpenNonce,
 }: EntityFindingsBodyProps): JSX.Element {
   const t = useTranslations('viewerFindings');
   const tSeverity = useTranslations('findings.severity');
@@ -34,6 +37,13 @@ export function EntityFindingsBody({
   const query = useElementFindings(projectId, fileId, globalId);
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
+
+  // Auto-open the new-finding dialog when triggered from a context-menu command.
+  useEffect(() => {
+    if (autoOpenNonce !== undefined) {
+      setCreateOpen(true);
+    }
+  }, [autoOpenNonce]);
 
   const findings = query.data ?? [];
 

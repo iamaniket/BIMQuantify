@@ -5,6 +5,7 @@ import { useMemo, type JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';
 
+import { prettyKey } from './prettyKey';
 import { CATEGORY_STYLES, CATEGORY_LABEL_KEYS } from './shortcutCategories';
 import type { NormalizedBinding, ShortcutCategory } from './types';
 
@@ -14,13 +15,6 @@ const SHORTCUT_ORDER: { id: ShortcutCategory; subtitleKey: string }[] = [
   { id: 'navigation', subtitleKey: 'sectionNavigationSubtitle' },
   { id: 'modifier', subtitleKey: 'sectionModifierSubtitle' },
 ];
-
-function prettyKey(combo: string): string {
-  if (!combo) return '—';
-  return combo
-    .replace('ArrowUp', '↑').replace('ArrowDown', '↓')
-    .replace('ArrowLeft', '←').replace('ArrowRight', '→');
-}
 
 const PencilIcon = (): JSX.Element => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

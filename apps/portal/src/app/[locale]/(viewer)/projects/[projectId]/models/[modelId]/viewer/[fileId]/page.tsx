@@ -134,6 +134,13 @@ export default function ViewerPage(): JSX.Element {
   const [pdfPinMode, setPdfPinMode] = useState(false);
   const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
 
+  // Inspector-request state — set when an inspect.* command fires. The nonce
+  // increments so repeated requests for the same view still re-trigger effects.
+  const [inspectorRequest, setInspectorRequest] = useState<{
+    view: 'properties' | 'attachments' | 'findings';
+    nonce: number;
+  } | null>(null);
+
   const togglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
@@ -146,6 +153,16 @@ export default function ViewerPage(): JSX.Element {
       if (toolName === 'section.place') {
         setActivePanel('section');
       }
+    });
+  }, [viewerReady]);
+
+  // Open inspector panel when an inspect.* command fires
+  useEffect(() => {
+    const handle = viewerHandleRef.current;
+    if (!handle) return undefined;
+    return handle.events.on('inspect:request', ({ view }) => {
+      setActivePanel('inspector');
+      setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
     });
   }, [viewerReady]);
 
@@ -173,18 +190,12 @@ export default function ViewerPage(): JSX.Element {
   const propertiesUrl = bundle?.properties_url ?? null;
   const { data: metadata, isLoading: isLoadingMetadata } = useModelMetadata(metadataUrl);
   const hasSelection = isAllSelected || partialSelectionCount > 0;
-  const selectionCount = isAllSelected
-    ? metadata?.totalElements ?? 0
-    : partialSelectionCount;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,
     activePanel === 'inspector' && hasSelection && !isAllSelected,
   );
 
-  useAppHeader({
-    statusLabel: hasSelection ? `${String(selectionCount)} selected` : null,
-    statusTone: 'warning',
-  });
+  useAppHeader({ statusLabel: null, statusTone: undefined });
 
   const [sceneReady, setSceneReady] = useState(false);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
@@ -376,7 +387,8 @@ export default function ViewerPage(): JSX.Element {
   }
 
   return (
-    <main className="flex min-h-0 w-full flex-1 flex-col">
+    <main className="flex min-h-0 w-full flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="relative min-h-0 flex-1">
         {canvas}
 
@@ -396,10 +408,9 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
 
-        {isIfc ? <ContextMenu handle={viewerHandleRef.current} onInspectProperties={() => { setActivePanel('inspector'); }} /> : null}
+        {isIfc ? <ContextMenu handle={viewerHandleRef.current} /> : null}
 
         {showChrome ? (
-          <>
             <SidePanel
               activePanel={activePanel}
               inspectorContent={
@@ -410,6 +421,8 @@ export default function ViewerPage(): JSX.Element {
                   projectId={projectId}
                   modelId={modelId}
                   fileId={fileId}
+                  requestedView={inspectorRequest?.view}
+                  requestNonce={inspectorRequest?.nonce}
                   {...(isPdf ? {
                     isPdf: true,
                     pdfCurrentPage,
@@ -442,18 +455,12 @@ export default function ViewerPage(): JSX.Element {
                 measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
               } : undefined}
             />
-            <SideRail
-              mode={mode}
-              activePanel={activePanel}
-              onTogglePanel={togglePanel}
-            />
-          </>
         ) : null}
 
         {showToolbarPlaceholder ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute left-0 right-[51px] top-0 h-8 border-b border-border bg-background/95 backdrop-blur-sm"
+            className="pointer-events-none absolute inset-x-0 top-0 h-8 border-b border-border bg-background/95 backdrop-blur-sm"
           />
         ) : null}
 
@@ -508,6 +515,8 @@ export default function ViewerPage(): JSX.Element {
         viewerReady={viewerReady}
         currentPage={pdfCurrentPage}
         numPages={pdfNumPages}
+        projectId={projectId}
+        fileId={fileId}
       />
 
       {/* PDF pin attachment viewer */}
@@ -517,6 +526,14 @@ export default function ViewerPage(): JSX.Element {
         open={pdfPinViewAttachment !== null}
         onOpenChange={(open) => { if (!open) setPdfPinViewAttachment(null); }}
       />
+      </div>
+      {showChrome ? (
+        <SideRail
+          mode={mode}
+          activePanel={activePanel}
+          onTogglePanel={togglePanel}
+        />
+      ) : null}
     </main>
   );
 }

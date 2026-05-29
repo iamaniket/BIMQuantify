@@ -3,12 +3,13 @@
 import { Eyebrow } from '@bimstitch/ui';
 import { Info, MousePointerClick } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 import { ElementHeader } from '@/features/viewer/properties/ElementHeader';
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
+import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { EntityAttachmentsBody, useEntityAttachmentCount } from './EntityAttachmentsBody';
 import { EntityFindingsBody, useEntityFindingCount } from './EntityFindingsBody';
@@ -25,6 +26,10 @@ type EntityInspectorPanelProps = {
   projectId: string;
   modelId: string;
   fileId: string;
+  /** When set, the inspector switches to this tab. */
+  requestedView?: Tab | undefined;
+  /** Nonce that increments on each new request, so repeated requests re-fire. */
+  requestNonce?: number | undefined;
   isPdf?: boolean;
   pdfCurrentPage?: number;
   pdfPinMode?: boolean;
@@ -45,10 +50,27 @@ function IfcInspector({
   projectId,
   modelId,
   fileId,
+  requestedView,
+  requestNonce,
 }: EntityInspectorPanelProps): JSX.Element {
   const t = useTranslations('viewerInspector');
   const tAttachments = useTranslations('viewerAttachments');
   const [tab, setTab] = useState<Tab>('properties');
+
+  // When a new inspect:request arrives, switch to the requested tab.
+  useEffect(() => {
+    if (requestedView !== undefined && requestNonce !== undefined) {
+      setTab(requestedView);
+    }
+  }, [requestedView, requestNonce]);
+
+  // Derive an auto-open nonce only for create-flow tabs (attachments/findings).
+  const autoOpenNonce =
+    requestedView !== undefined
+    && requestedView !== 'properties'
+    && requestNonce !== undefined
+      ? requestNonce
+      : undefined;
 
   const {
     element,
@@ -70,7 +92,8 @@ function IfcInspector({
   );
 
   if (selectedAll) {
-    const count = metadata?.totalElements ?? 0;
+    const storeTotalElements = useViewerEntityStore.getState().totalElements;
+    const count = storeTotalElements > 0 ? storeTotalElements : (metadata?.totalElements ?? 0);
     return (
       <PanelEmptyState
         icon={Info}
@@ -139,12 +162,14 @@ function IfcInspector({
             modelId={modelId}
             fileId={fileId}
             globalId={element.globalId}
+            autoOpenNonce={autoOpenNonce}
           />
         ) : (
           <EntityFindingsBody
             projectId={projectId}
             fileId={fileId}
             globalId={element.globalId}
+            autoOpenNonce={autoOpenNonce}
           />
         )}
       </div>

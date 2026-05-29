@@ -89,7 +89,7 @@ export function SidePanel({
       aria-hidden={!isOpen}
       style={{ width: isOpen ? width : DEFAULT_WIDTH }}
       className={cn(
-        'absolute bottom-0 right-[51px] top-0 z-20 transition-transform duration-200 ease-out',
+        'absolute bottom-0 right-0 top-0 z-20 transition-transform duration-200 ease-out',
         isOpen
           ? 'pointer-events-auto translate-x-0'
           : 'pointer-events-none translate-x-full',

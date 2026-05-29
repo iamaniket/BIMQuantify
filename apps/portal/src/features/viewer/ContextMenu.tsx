@@ -1,21 +1,27 @@
 'use client';
 
 import {
-  ChevronRight,
   Eye,
+  Flag,
   Glasses,
+  Paperclip,
   Search,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
+  forwardRef,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  type ForwardedRef,
   type JSX,
 } from 'react';
 
-import type { ViewerHandle, ViewerEvents } from '@bimstitch/viewer';
+import type { ItemId, ViewerHandle, ViewerEvents } from '@bimstitch/viewer';
 
+import { prettyKey } from '@/components/shared/viewer/settings/prettyKey';
 import { useViewerState } from '@/components/shared/viewer/useViewerState';
 
 type ContextMenuData = ViewerEvents['contextmenu:open'];
@@ -24,86 +30,165 @@ type MenuItem = {
   label: string;
   icon?: JSX.Element;
   command?: string;
-  commandArgs?: unknown;
+  /** When set, the clicked element is selected before the command runs. */
+  targetItem?: ItemId;
+  /** Pretty-printed shortcut combo shown on the trailing edge. */
+  shortcut?: string;
   action?: () => void;
   disabled?: boolean;
-  children?: MenuItem[];
   separator?: boolean;
 };
 
 type Props = {
   handle: ViewerHandle | null;
-  onInspectProperties?: (item: ContextMenuData['item']) => void;
 };
 
 const ICON_CLASS = 'h-4 w-4 shrink-0 text-foreground-secondary';
 
+/** Dashed-circle isolation glyph, same as the model-tree's TreeRow. */
+function IsolateIcon(): JSX.Element {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={ICON_CLASS}
+    >
+      <circle cx="8" cy="8" r="5.5" strokeDasharray="3 2" />
+      <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shortcut lookup — fetches bindings once on menu open
+// ---------------------------------------------------------------------------
+
+type ShortcutMap = Map<string, string>;
+
+function useShortcutMap(handle: ViewerHandle | null): ShortcutMap {
+  const [map, setMap] = useState<ShortcutMap>(new Map());
+
+  useEffect(() => {
+    if (!handle) return;
+    handle.commands
+      .execute<Array<{ combo: string; command: string }>>('shortcuts.list')
+      .then((list) => {
+        const m = new Map<string, string>();
+        for (const b of list) m.set(b.command, b.combo);
+        setMap(m);
+      })
+      .catch(() => undefined);
+  }, [handle]);
+
+  return map;
+}
+
+// ---------------------------------------------------------------------------
+// Build the grouped menu
+// ---------------------------------------------------------------------------
+
 function buildMenu(
+  t: ReturnType<typeof useTranslations>,
+  shortcuts: ShortcutMap,
   hasSelection: boolean,
   isAllSelected: boolean,
   hasHidden: boolean,
   hasXray: boolean,
   item: ContextMenuData['item'],
-  onInspect?: () => void,
 ): MenuItem[] {
   const hasItem = item !== null;
+  const sc = (cmd: string): string | undefined => {
+    const combo = shortcuts.get(cmd);
+    return combo ? prettyKey(combo) : undefined;
+  };
 
   return [
+    // ── Group 1: Inspect (item-scoped) ──────────────────────────────
     hasItem
       ? {
-          label: 'Inspect Properties',
+          label: t('inspectProperties'),
           icon: <Search className={ICON_CLASS} />,
-          action: onInspect,
+          command: 'inspect.properties',
+          targetItem: item,
+          shortcut: sc('inspect.properties'),
+        }
+      : null,
+    hasItem
+      ? {
+          label: t('attach'),
+          icon: <Paperclip className={ICON_CLASS} />,
+          command: 'inspect.attach',
+          targetItem: item,
+          shortcut: sc('inspect.attach'),
+        }
+      : null,
+    hasItem
+      ? {
+          label: t('addFindings'),
+          icon: <Flag className={ICON_CLASS} />,
+          command: 'inspect.findings',
+          targetItem: item,
+          shortcut: sc('inspect.findings'),
         }
       : null,
     hasItem ? { label: '', separator: true } : null,
-    hasHidden ? { label: 'Show All', icon: <Eye className={ICON_CLASS} />, command: 'visibility.showAll' } : null,
-    !hasHidden ? { label: 'Hide All', icon: <Eye className={ICON_CLASS} />, command: 'visibility.hideAll' } : null,
-    hasItem ? { label: 'Hide', icon: <Eye className={ICON_CLASS} />, command: 'visibility.hideItem', commandArgs: item } : null,
-    hasItem ? { label: 'Show Only This', icon: <Eye className={ICON_CLASS} />, command: 'visibility.isolateItem', commandArgs: item } : null,
+
+    // ── Group 2: Visibility ─────────────────────────────────────────
+    hasHidden
+      ? { label: t('showAll'), icon: <Eye className={ICON_CLASS} />, command: 'visibility.showAll', shortcut: sc('visibility.showAll') }
+      : { label: t('hideAll'), icon: <Eye className={ICON_CLASS} />, command: 'visibility.hideAll', shortcut: sc('visibility.hideAll') },
+    hasItem
+      ? { label: t('hide'), icon: <Eye className={ICON_CLASS} />, command: 'visibility.hide', targetItem: item, shortcut: sc('visibility.hide') }
+      : null,
+    hasItem
+      ? { label: t('isolate'), icon: <IsolateIcon />, command: 'visibility.isolate', targetItem: item, shortcut: sc('visibility.isolate') }
+      : null,
     { label: '', separator: true },
-    !hasXray ? { label: 'X-Ray All', icon: <Glasses className={ICON_CLASS} />, command: 'xray.all' } : null,
-    hasXray ? { label: 'Clear X-Ray', icon: <Glasses className={ICON_CLASS} />, command: 'xray.clear' } : null,
-    hasItem ? { label: 'X-Ray', icon: <Glasses className={ICON_CLASS} />, command: 'xray.set', commandArgs: item } : null,
-    hasItem ? { label: 'X-Ray Others', icon: <Glasses className={ICON_CLASS} />, command: 'xray.allExceptItem', commandArgs: item } : null,
+
+    // ── Group 3: X-Ray (whole-model toggle) ─────────────────────────
+    {
+      label: hasXray ? t('clearXray') : t('xrayAll'),
+      icon: <Glasses className={ICON_CLASS} />,
+      command: 'xray.toggleAll',
+      shortcut: sc('xray.toggleAll'),
+    },
     { label: '', separator: true },
-    !isAllSelected ? { label: 'Select All', command: 'selection.selectAll' } : null,
-    hasSelection ? { label: 'Clear Selection', command: 'selection.clear' } : null,
-    hasSelection && !isAllSelected ? { label: 'Invert Selection', command: 'selection.invert' } : null,
+
+    // ── Group 4: Selection ──────────────────────────────────────────
+    !isAllSelected
+      ? { label: t('selectAll'), command: 'selection.selectAll', shortcut: sc('selection.selectAll') }
+      : null,
+    hasSelection
+      ? { label: t('clearSelection'), command: 'selection.clear', shortcut: sc('selection.clear') }
+      : null,
+    hasSelection && !isAllSelected
+      ? { label: t('invertSelection'), command: 'selection.invert', shortcut: sc('selection.invert') }
+      : null,
   ].filter(Boolean) as MenuItem[];
 }
+
+// ---------------------------------------------------------------------------
+// Menu item row
+// ---------------------------------------------------------------------------
 
 function MenuItemRow({
   item,
   onCommand,
-  parentDirection,
 }: {
   item: MenuItem;
-  onCommand: (cmd: string, args?: unknown) => void;
-  parentDirection: 'right' | 'left';
+  onCommand: (cmd: string, targetItem?: ItemId) => void;
 }): JSX.Element {
-  const [subOpen, setSubOpen] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const rowRef = useRef<HTMLDivElement>(null);
-
-  const openSub = (): void => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setSubOpen(true);
-  };
-
-  const closeSub = (): void => {
-    timerRef.current = setTimeout(() => setSubOpen(false), 150);
-  };
-
-  useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-  }, []);
-
   if (item.separator) {
     return <div className="my-1 h-px bg-border" />;
   }
 
-  const hasChildren = item.children && item.children.length > 0;
   const isDisabled = item.disabled === true;
 
   const handleClick = (): void => {
@@ -111,178 +196,36 @@ function MenuItemRow({
     if (item.action) {
       item.action();
     } else if (item.command) {
-      onCommand(item.command, item.commandArgs);
+      onCommand(item.command, item.targetItem);
     }
   };
 
   return (
-    <div
-      ref={rowRef}
-      className="relative"
-      onMouseEnter={hasChildren ? openSub : undefined}
-      onMouseLeave={hasChildren ? closeSub : undefined}
-    >
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isDisabled && !hasChildren}
-        className={
-          'flex w-full items-center gap-3 rounded px-3 py-1.5 text-left text-sm '
-          + (isDisabled && !hasChildren
-            ? 'cursor-not-allowed bg-background-tertiary text-foreground-disabled'
-            : 'text-foreground hover:bg-background-secondary')
-        }
-      >
-        {item.icon ?? <span className="h-4 w-4 shrink-0" />}
-        <span className="flex-1">{item.label}</span>
-        {hasChildren ? (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground-secondary" />
-        ) : null}
-      </button>
-      {hasChildren && subOpen ? (
-        <SubMenu
-          items={item.children!}
-          onCommand={onCommand}
-          parentRef={rowRef}
-          direction={parentDirection}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function SubMenu({
-  items,
-  onCommand,
-  parentRef,
-  direction,
-}: {
-  items: MenuItem[];
-  onCommand: (cmd: string, args?: unknown) => void;
-  parentRef: React.RefObject<HTMLDivElement | null>;
-  direction: 'right' | 'left';
-}): JSX.Element {
-  const subRef = useRef<HTMLDivElement>(null);
-  const [actualDir, setActualDir] = useState(direction);
-
-  useEffect(() => {
-    const sub = subRef.current;
-    const parent = parentRef.current;
-    if (!sub || !parent) return;
-    const subRect = sub.getBoundingClientRect();
-    const viewportW = window.innerWidth;
-    if (direction === 'right' && subRect.right > viewportW) {
-      setActualDir('left');
-    } else if (direction === 'left' && subRect.left < 0) {
-      setActualDir('right');
-    }
-  }, [direction, parentRef]);
-
-  const positionClass =
-    actualDir === 'right' ? 'left-full top-0 ml-1' : 'right-full top-0 mr-1';
-
-  return (
-    <div
-      ref={subRef}
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={isDisabled}
       className={
-        'absolute z-50 min-w-[180px] rounded-lg border border-border bg-background p-1 shadow-xl ' +
-        positionClass
+        'flex w-full items-center gap-3 rounded px-3 py-1.5 text-left text-sm '
+        + (isDisabled
+          ? 'cursor-not-allowed bg-background-tertiary text-foreground-disabled'
+          : 'text-foreground hover:bg-background-secondary')
       }
     >
-      {items.map((child, i) => (
-        <MenuItemRow
-          key={child.label || `sep-${String(i)}`}
-          item={child}
-          onCommand={onCommand}
-          parentDirection={actualDir}
-        />
-      ))}
-    </div>
+      {item.icon ?? <span className="h-4 w-4 shrink-0" />}
+      <span className="flex-1">{item.label}</span>
+      {item.shortcut ? (
+        <kbd className="ml-auto shrink-0 font-sans text-[11px] text-foreground-tertiary">
+          {item.shortcut}
+        </kbd>
+      ) : null}
+    </button>
   );
 }
 
-export function ContextMenu({ handle, onInspectProperties }: Props): JSX.Element | null {
-  const [menu, setMenu] = useState<ContextMenuData | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const viewerState = useViewerState(handle);
-
-  useEffect(() => {
-    if (!handle) return undefined;
-
-    const offOpen = handle.events.on('contextmenu:open', (data) => {
-      setMenu(data);
-    });
-
-    const offClose = handle.events.on('contextmenu:close', () => {
-      setMenu(null);
-    });
-
-    return () => {
-      offOpen();
-      offClose();
-    };
-  }, [handle]);
-
-  // Close menu when clicking outside of it
-  useEffect(() => {
-    if (!menu || !handle) return undefined;
-
-    const onOutsideClick = (ev: MouseEvent): void => {
-      const el = menuRef.current;
-      if (el && !el.contains(ev.target as Node)) {
-        handle.commands.execute('contextMenu.close').catch(() => undefined);
-      }
-    };
-
-    document.addEventListener('mousedown', onOutsideClick);
-    return () => document.removeEventListener('mousedown', onOutsideClick);
-  }, [menu, handle]);
-
-  const runCommand = useCallback(
-    (cmd: string, args?: unknown) => {
-      if (!handle) return;
-      handle.commands.execute(cmd, args).catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.warn(`[context-menu] ${cmd} failed:`, err);
-      });
-      handle.commands.execute('contextMenu.close').catch(() => undefined);
-    },
-    [handle],
-  );
-
-  const handleInspect = useCallback(() => {
-    if (!handle || !menu?.item) return;
-    handle.commands.execute('selection.set', menu.item).catch(() => undefined);
-    handle.commands.execute('contextMenu.close').catch(() => undefined);
-    onInspectProperties?.(menu.item);
-  }, [handle, menu, onInspectProperties]);
-
-  if (!menu) return null;
-
-  const items = buildMenu(
-    viewerState.selectionCount > 0,
-    viewerState.selectionCount === Number.MAX_SAFE_INTEGER,
-    viewerState.hasHidden || viewerState.isIsolated,
-    viewerState.hasXray,
-    menu.item,
-    handleInspect,
-  );
-
-  return (
-    <div ref={containerRef} className="pointer-events-none absolute inset-0 z-30">
-      <PositionedMenu
-        ref={menuRef}
-        x={menu.position.x}
-        y={menu.position.y}
-        items={items}
-        onCommand={runCommand}
-      />
-    </div>
-  );
-}
-
-import { forwardRef, type ForwardedRef } from 'react';
+// ---------------------------------------------------------------------------
+// Positioned wrapper
+// ---------------------------------------------------------------------------
 
 const PositionedMenu = forwardRef(function PositionedMenu(
   {
@@ -294,7 +237,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
     x: number;
     y: number;
     items: MenuItem[];
-    onCommand: (cmd: string, args?: unknown) => void;
+    onCommand: (cmd: string, targetItem?: ItemId) => void;
   },
   ref: ForwardedRef<HTMLDivElement>,
 ): JSX.Element {
@@ -344,9 +287,97 @@ const PositionedMenu = forwardRef(function PositionedMenu(
           key={item.label || `sep-${String(i)}`}
           item={item}
           onCommand={onCommand}
-          parentDirection="right"
         />
       ))}
     </div>
   );
 });
+
+// ---------------------------------------------------------------------------
+// Root component
+// ---------------------------------------------------------------------------
+
+export function ContextMenu({ handle }: Props): JSX.Element | null {
+  const t = useTranslations('viewer.contextMenu');
+  const [menu, setMenu] = useState<ContextMenuData | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewerState = useViewerState(handle);
+  const shortcuts = useShortcutMap(handle);
+
+  useEffect(() => {
+    if (!handle) return undefined;
+
+    const offOpen = handle.events.on('contextmenu:open', (data) => {
+      setMenu(data);
+    });
+
+    const offClose = handle.events.on('contextmenu:close', () => {
+      setMenu(null);
+    });
+
+    return () => {
+      offOpen();
+      offClose();
+    };
+  }, [handle]);
+
+  // Close menu when clicking outside of it
+  useEffect(() => {
+    if (!menu || !handle) return undefined;
+
+    const onOutsideClick = (ev: MouseEvent): void => {
+      const el = menuRef.current;
+      if (el && !el.contains(ev.target as Node)) {
+        handle.commands.execute('contextMenu.close').catch(() => undefined);
+      }
+    };
+
+    document.addEventListener('mousedown', onOutsideClick);
+    return () => document.removeEventListener('mousedown', onOutsideClick);
+  }, [menu, handle]);
+
+  const runCommand = useCallback(
+    (cmd: string, targetItem?: ItemId) => {
+      if (!handle) return;
+      // Item-scoped rows: select the target first so the command reads
+      // it from the selection, then execute the command.
+      if (targetItem) {
+        handle.commands.execute('selection.set', targetItem).catch(() => undefined);
+      }
+      handle.commands.execute(cmd).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[context-menu] ${cmd} failed:`, err);
+      });
+      handle.commands.execute('contextMenu.close').catch(() => undefined);
+    },
+    [handle],
+  );
+
+  const items = useMemo(() => {
+    if (!menu) return [];
+    return buildMenu(
+      t,
+      shortcuts,
+      viewerState.selectionCount > 0,
+      viewerState.selectionCount === Number.MAX_SAFE_INTEGER,
+      viewerState.hasHidden || viewerState.isIsolated,
+      viewerState.hasXray,
+      menu.item,
+    );
+  }, [t, shortcuts, viewerState, menu]);
+
+  if (!menu) return null;
+
+  return (
+    <div ref={containerRef} className="pointer-events-none absolute inset-0 z-30">
+      <PositionedMenu
+        ref={menuRef}
+        x={menu.position.x}
+        y={menu.position.y}
+        items={items}
+        onCommand={runCommand}
+      />
+    </div>
+  );
+}

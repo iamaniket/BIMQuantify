@@ -46,6 +46,22 @@ export function useProjectAttachments(
   });
 }
 
+export function useFileAttachmentCount(
+  projectId: string,
+  fileId: string | null,
+): number {
+  const query = useAuthQuery({
+    queryKey: [...attachmentsKey(projectId), 'file', fileId ?? ''] as const,
+    queryFn: (accessToken) => {
+      if (fileId === null) throw new Error('Missing fileId');
+      return listAttachments(accessToken, projectId, { linkedFileId: fileId });
+    },
+    enabled: fileId !== null,
+    staleTime: 30_000,
+  });
+  return query.data?.length ?? 0;
+}
+
 export function usePdfPageAttachments(
   projectId: string,
   fileId: string,

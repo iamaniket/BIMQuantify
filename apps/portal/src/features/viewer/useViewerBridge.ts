@@ -53,6 +53,10 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
       store.getState()._setModelId(modelId);
     });
 
+    const offElementCount = handle.events.on('model:elementCount', ({ count }) => {
+      store.getState()._setTotalElements(count);
+    });
+
     const offSelection = handle.events.on('selection:change', ({ selected, allSelected }) => {
       if (allSelected) {
         // O(1) regardless of model size — no key conversion, no Set build.
@@ -196,6 +200,7 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
 
     return () => {
       offModel();
+      offElementCount();
       offSelection();
       offVisibility();
       offXray();
