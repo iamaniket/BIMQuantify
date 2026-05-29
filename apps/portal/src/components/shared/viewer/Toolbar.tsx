@@ -1,17 +1,12 @@
 'use client';
 
 import {
-  Axis3D,
-  Box,
   Camera,
   Eraser,
-  Expand,
-  Glasses,
   Home,
   MousePointer2,
-  Palette,
+  Orbit,
   Settings,
-  User,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
@@ -39,26 +34,13 @@ export function Toolbar({
   const t = useTranslations('viewer.toolbar');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTool, setActiveTool] = useState('select');
-  const [colorCodingActive, setColorCodingActive] = useState(false);
-  const [exploded, setExploded] = useState(false);
 
   useEffect(() => {
     if (!handle) return;
-    const offMode = handle.events.on('mode:exit', ({ toolName }) => {
-      if (toolName.startsWith('walkthrough')) {
-        setActiveTool('select');
-      }
-    });
     const offEraser = handle.events.on('eraser:change', ({ active }) => {
       if (!active) setActiveTool('select');
     });
-    const offColorCoding = handle.events.on('colorCoding:change', ({ active }) => {
-      setColorCodingActive(active);
-    });
-    const offExploder = handle.events.on('exploder:change', ({ active }) => {
-      setExploded(active);
-    });
-    return () => { offMode(); offEraser(); offColorCoding(); offExploder(); };
+    return () => { offEraser(); };
   }, [handle]);
 
   const run = (cmd: string): void => {
@@ -83,8 +65,20 @@ export function Toolbar({
           isActive: activeTool === 'select',
           onClick: () => {
             if (activeTool === 'eraser') run('eraser.exit');
-            if (activeTool === 'walkthrough') run('walkthrough.exit');
+            if (activeTool === 'navigate') run('navigate.exit');
             setActiveTool('select');
+          },
+        },
+        {
+          type: 'button',
+          id: 'navigate',
+          icon: Orbit,
+          label: t('navigate'),
+          isActive: activeTool === 'navigate',
+          onClick: () => {
+            if (activeTool === 'eraser') run('eraser.exit');
+            run('navigate.enter');
+            setActiveTool('navigate');
           },
         },
         {
@@ -98,7 +92,7 @@ export function Toolbar({
               run('eraser.exit');
               setActiveTool('select');
             } else {
-              if (activeTool === 'walkthrough') run('walkthrough.exit');
+              if (activeTool === 'navigate') run('navigate.exit');
               run('eraser.enter');
               setActiveTool('eraser');
             }
@@ -108,42 +102,6 @@ export function Toolbar({
     },
     {
       tools: [
-        {
-          type: 'button', id: 'wireframe', icon: Axis3D, label: t('wireframe'),
-          onClick: () => { run('wireframe.toggle'); },
-        },
-        {
-          type: 'button', id: 'xray', icon: Glasses, label: t('xray'),
-          onClick: () => { run('xray.toggleAll'); },
-        },
-        {
-          type: 'button', id: 'isolate', icon: Box, label: t('isolate'),
-          onClick: () => { run('isolation.toggle'); },
-        },
-        {
-          type: 'button', id: 'walkthrough', icon: User, label: t('firstPerson'),
-          isActive: activeTool === 'walkthrough',
-          onClick: () => {
-            if (activeTool === 'walkthrough') {
-              run('walkthrough.exit');
-              setActiveTool('select');
-            } else {
-              if (activeTool === 'eraser') run('eraser.exit');
-              run('walkthrough.enter');
-              setActiveTool('walkthrough');
-            }
-          },
-        },
-        {
-          type: 'button', id: 'colorCoding', icon: Palette, label: t('colorCoding'),
-          isActive: colorCodingActive,
-          onClick: () => { run('colorCoding.toggle'); },
-        },
-        {
-          type: 'button', id: 'explode', icon: Expand, label: t('explode'),
-          isActive: exploded,
-          onClick: () => { run('exploder.toggle'); },
-        },
         {
           type: 'button', id: 'screenshot', icon: Camera, label: t('screenshot'),
           onClick: () => { run('screenshot.download'); },

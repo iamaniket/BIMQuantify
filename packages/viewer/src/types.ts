@@ -170,8 +170,6 @@ export type { BoundingBoxerPluginAPI, BboxDimensions } from './plugins/bounding-
 
 export type { ViewpointsPluginAPI, Viewpoint } from './plugins/viewpoints/index.js';
 
-export type { BcfPluginAPI, BcfTopicSummary, BcfComment } from './plugins/bcf/index.js';
-
 export type { MarkerPluginAPI, MarkerPluginOptions, MarkerData } from './plugins/marker/index.js';
 
 export type { GridPluginAPI, GridPluginOptions } from './plugins/grid/index.js';

@@ -166,6 +166,27 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         },
         { title: 'Frame selection', defaultShortcut: 'Shift+F' },
       );
+
+      // Fit the camera to the currently visible set (all − hidden). When
+      // nothing is hidden, this is just zoom-to-fit (fast path). Used by the
+      // double-click gesture both to zoom an isolated element and to fit the
+      // visible view on an empty-space double-click.
+      commands.register(
+        'camera.frameVisible',
+        async () => {
+          const hidden = commands.has('visibility.getHidden')
+            ? await commands.execute<undefined, ItemId[]>('visibility.getHidden')
+            : [];
+          if (!hidden.length) {
+            await commands.execute('camera.zoomExtents');
+            return;
+          }
+          const box = await computeVisibleBox(ctx, hidden);
+          if (box.isEmpty()) return;
+          await snapIsoAndFit(box);
+        },
+        { title: 'Frame visible' },
+      );
     },
 
     uninstall() {
@@ -213,6 +234,42 @@ async function computeSelectionBox(
     if (!model) continue;
     try {
       const mb = await (model as FRAGS.FragmentsModel).getMergedBox(ids);
+      if (!mb.isEmpty()) out.union(mb);
+    } catch {
+      // ignore; some items may not have geometry
+    }
+  }
+  return out;
+}
+
+async function computeVisibleBox(
+  ctx: ViewerContext,
+  hidden: ItemId[],
+): Promise<THREE.Box3> {
+  const out = new THREE.Box3();
+  // Group hidden localIds by model for O(1) membership checks.
+  const hiddenByModel = new Map<string, Set<number>>();
+  for (const item of hidden) {
+    let set = hiddenByModel.get(item.modelId);
+    if (!set) { set = new Set(); hiddenByModel.set(item.modelId, set); }
+    set.add(item.localId);
+  }
+  for (const [modelId, model] of ctx.models()) {
+    let allIds: Iterable<number>;
+    try {
+      allIds = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
+    } catch {
+      continue;
+    }
+    const hiddenSet = hiddenByModel.get(modelId);
+    const visibleIds: number[] = [];
+    for (const id of allIds) {
+      if (hiddenSet?.has(id)) continue;
+      visibleIds.push(id);
+    }
+    if (!visibleIds.length) continue;
+    try {
+      const mb = await (model as FRAGS.FragmentsModel).getMergedBox(visibleIds);
       if (!mb.isEmpty()) out.union(mb);
     } catch {
       // ignore; some items may not have geometry

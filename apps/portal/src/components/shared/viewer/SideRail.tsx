@@ -1,14 +1,11 @@
 'use client';
 
 import {
-  ClipboardCheck,
   Files,
   Info,
   ListTree,
-  MessageSquare,
   Ruler,
   Scan,
-  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -19,11 +16,8 @@ import { cn } from '@bimstitch/ui';
 export type PanelId =
   | 'explorer'
   | 'inspector'
-  | 'issues'
-  | 'compliance'
   | 'measure'
   | 'section'
-  | 'bcf'
   | 'pages';
 
 export type Mode = 'ifc' | 'pdf';
@@ -43,18 +37,13 @@ type RailButton = {
 const IFC_BUTTONS: RailButton[] = [
   { id: 'explorer', labelKey: 'titleExplorer', icon: ListTree },
   { id: 'inspector', labelKey: 'titleInspector', icon: Info },
-  { id: 'issues', labelKey: 'titleIssues', icon: ClipboardCheck },
-  { id: 'compliance', labelKey: 'titleCompliance', icon: ShieldCheck },
   { id: 'measure', labelKey: 'titleMeasure', icon: Ruler },
   { id: 'section', labelKey: 'titleSection', icon: Scan },
-  { id: 'bcf', labelKey: 'titleBcf', icon: MessageSquare },
 ];
 
 const PDF_BUTTONS: RailButton[] = [
   { id: 'pages', labelKey: 'titlePages', icon: Files },
   { id: 'inspector', labelKey: 'titleInspector', icon: Info },
-  { id: 'issues', labelKey: 'titleIssues', icon: ClipboardCheck },
-  { id: 'compliance', labelKey: 'titleCompliance', icon: ShieldCheck },
 ];
 
 export function SideRail({

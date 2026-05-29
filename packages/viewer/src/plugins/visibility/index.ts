@@ -6,6 +6,7 @@
  * Depends on the `selection` plugin for reading the current selection set.
  */
 
+import { pick } from '../../core/Raycaster.js';
 import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
 
 const NAME = 'visibility' as const;
@@ -193,6 +194,22 @@ export function visibilityPlugin(
     await applyIsolation(items);
   };
 
+  // Double-click handler bound to `doubleclick:left` by default. Raycast
+  // under the cursor: a hit isolates that element; a miss leaves isolation
+  // untouched. Either way we re-frame the camera to the visible set, so a
+  // hit zooms to the isolated element and a miss fits the current view.
+  const isolateAtPointer = async (args: unknown): Promise<void> => {
+    if (!ctxRef || !enabled) return;
+    const ndc = ndcOf(args as PickArgs);
+    if (ndc) {
+      const hit = await pick(ctxRef, ndc);
+      if (hit) await applyIsolation([hit.item]);
+    }
+    if (ctxRef.commands.has('camera.frameVisible')) {
+      await ctxRef.commands.execute('camera.frameVisible').catch(() => undefined);
+    }
+  };
+
   const showItem = async (args: unknown): Promise<void> => {
     if (!ctxRef) return;
     const items = toItems(args);
@@ -288,6 +305,16 @@ export function visibilityPlugin(
       );
 
       ctx.commands.register(
+        'visibility.isolateAtPointer',
+        (args: unknown) => isolateAtPointer(args),
+        { title: 'Isolate element under cursor and frame' },
+      );
+
+      ctx.commands.register('visibility.getHidden', () => [...hiddenItemMap.values()], {
+        title: 'Get hidden elements',
+      });
+
+      ctx.commands.register(
         'visibility.showItem',
         (args: unknown) => showItem(args),
         { title: 'Show specific hidden elements' },
@@ -323,4 +350,16 @@ function toItems(args: unknown): ItemId[] {
   if (!args) return [];
   if (Array.isArray(args)) return args as ItemId[];
   return [args as ItemId];
+}
+
+// Pick-by-NDC arg shape — mirrors the selection plugin's dispatcher payload.
+type PickArgs = { ndc?: { x: number; y: number } | null; x?: number; y?: number } | null | undefined;
+
+function ndcOf(args: PickArgs): { x: number; y: number } | null {
+  if (!args) return null;
+  if (args.ndc) return args.ndc;
+  if (typeof args.x === 'number' && typeof args.y === 'number') {
+    return { x: args.x, y: args.y };
+  }
+  return null;
 }

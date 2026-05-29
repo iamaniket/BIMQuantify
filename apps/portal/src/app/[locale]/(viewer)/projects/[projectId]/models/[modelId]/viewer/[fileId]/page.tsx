@@ -28,7 +28,6 @@ import { DocumentToolbar } from '@/components/shared/viewer/DocumentToolbar';
 import { ModeIndicator } from '@/components/shared/viewer/ModeIndicator';
 import { SideRail, type PanelId, type Mode } from '@/components/shared/viewer/SideRail';
 import { Toolbar } from '@/components/shared/viewer/Toolbar';
-import { BcfPanel, BcfHeaderActions } from '@/components/shared/viewer/bcf/BcfPanel';
 import { MeasurementPanel, MeasurementHeaderActions } from '@/components/shared/viewer/measurement/MeasurementPanel';
 import { SectionPanel } from '@/components/shared/viewer/section/SectionPanel';
 import { PagesPanel } from '@/components/shared/viewer/pages/PagesPanel';
@@ -38,7 +37,6 @@ import { EntityInspectorPanel } from '@/features/viewer/inspector/EntityInspecto
 import { PdfAnnotationLayer, type PdfPin } from '@/features/viewer/attachments/PdfAnnotationLayer';
 import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
-import { InspectionsPanel } from '@/features/viewer/inspections/InspectionsPanel';
 import { SidePanel } from '@/features/viewer/SidePanel';
 import { StatusBar } from '@/features/viewer/StatusBar';
 import { useDocumentShortcuts } from '@/features/viewer/useDocumentShortcuts';
@@ -420,13 +418,6 @@ export default function ViewerPage(): JSX.Element {
                   } : {})}
                 />
               }
-              inspectionsContent={isIfc ? (
-                <InspectionsPanel
-                  metadata={metadata}
-                  projectId={projectId}
-                  fileId={fileId}
-                />
-              ) : undefined}
               explorerContent={isIfc ? (
                 <ModelExplorer
                   metadata={metadata}
@@ -439,9 +430,6 @@ export default function ViewerPage(): JSX.Element {
               sectionContent={isIfc ? (
                 <SectionPanel handle={viewerHandleRef.current} />
               ) : undefined}
-              bcfContent={isIfc ? (
-                <BcfPanel handle={viewerHandleRef.current} />
-              ) : undefined}
               pagesContent={isPdf ? (
                 <PagesPanel
                   numPages={pdfNumPages}
@@ -452,7 +440,6 @@ export default function ViewerPage(): JSX.Element {
               headerActions={isIfc ? {
                 explorer: <ExplorerCounter metadata={metadata} />,
                 measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
-                bcf: <BcfHeaderActions handle={viewerHandleRef.current} />,
               } : undefined}
             />
             <SideRail

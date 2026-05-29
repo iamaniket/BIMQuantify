@@ -34,6 +34,7 @@ export interface ViewerEvents {
   'model:loaded': { modelId: string };
   'pointer:move': { ndc: { x: number; y: number }; clientX: number; clientY: number };
   'pointer:click': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean; clientX: number; clientY: number };
+  'pointer:doubleclick': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean; clientX: number; clientY: number };
   'hover:change': { item: ItemId | null };
   /**
    * Fired when the selection set changes. When `allSelected` is true the
@@ -67,7 +68,6 @@ export interface ViewerEvents {
   'classification:change': { groups: Record<string, ItemId[]> };
   'finder:results': { query: Record<string, unknown>; results: ItemId[]; count: number };
   'viewpoint:change': { viewpoints: Array<{ id: string; name: string }> };
-  'bcf:change': { topics: Array<{ guid: string; title: string; status: string }> };
   'marker:change': { markers: Array<{ id: string; label: string; position: Vec3 }> };
   'marker:click': { id: string; position: Vec3 };
   'grid:change': { visible: boolean };
@@ -95,7 +95,7 @@ export interface ViewerContext {
   renderer: THREE.WebGLRenderer;
   canvas: HTMLCanvasElement;
   container: HTMLElement;
-  /** ThatOpen Components instance for accessing core BIM components (Classifier, BCFTopics, etc.). */
+  /** ThatOpen Components instance for accessing core BIM components (Classifier, etc.). */
   components: Components;
   fragments: FRAGS.FragmentsModels;
   events: EventBus<ViewerEvents>;

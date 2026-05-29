@@ -36,6 +36,11 @@ export interface MouseBindingsPluginOptions {
    * not a click. Default: 4.
    */
   clickThreshold?: number;
+  /**
+   * Max gap in ms between two clicks for them to count as a double-click.
+   * Default: 300.
+   */
+  doubleClickMs?: number;
 }
 
 export interface MouseBindingsAPI {
@@ -50,6 +55,7 @@ export const DEFAULT_MOUSE_BINDINGS: MouseBindingMap = {
   'click:Ctrl+left': 'selection.pickToggle',
   'click:Meta+left': 'selection.pickToggle',
   'click:Alt+left': 'selection.pickRemove',
+  'doubleclick:left': 'visibility.isolateAtPointer',
   move: 'hover.pick',
   'move:leave': 'hover.clear',
 };
@@ -64,6 +70,7 @@ export function mouseBindingsPlugin(
   options: MouseBindingsPluginOptions = {},
 ): Plugin & MouseBindingsAPI {
   const clickThreshold = options.clickThreshold ?? 4;
+  const doubleClickMs = options.doubleClickMs ?? 300;
 
   // canonical gesture key → command name
   const bindings = new Map<string, string>();
@@ -80,8 +87,8 @@ export function mouseBindingsPlugin(
 
   const hasRightClickGesture = (): boolean => {
     for (const k of bindings.keys()) {
-      if (k.startsWith('click:') && k.endsWith('+right')) return true;
-      if (k === 'click:right') return true;
+      if (k === 'click:right' || k === 'doubleclick:right') return true;
+      if ((k.startsWith('click:') || k.startsWith('doubleclick:')) && k.endsWith('+right')) return true;
     }
     return false;
   };
@@ -106,6 +113,12 @@ export function mouseBindingsPlugin(
       let downX = 0;
       let downY = 0;
       let downBtn = -1;
+
+      // Last accepted click, used for double-click detection.
+      let lastClickTime = 0;
+      let lastClickButton = -1;
+      let lastClickX = 0;
+      let lastClickY = 0;
 
       // rAF-coalesce move dispatch — pointermove can fire >100Hz and the
       // bound command (typically `hover.pick`) is async.
@@ -165,7 +178,18 @@ export function mouseBindingsPlugin(
         const button = BUTTON_NAME[ev.button];
         if (!button) return;
         const ndc = clientToNdc(canvas, ev.clientX, ev.clientY);
-        const gesture = clickGestureFor(button, ev);
+        const payload = {
+          ndc,
+          button,
+          shift: ev.shiftKey,
+          ctrl: ev.ctrlKey,
+          alt: ev.altKey,
+          meta: ev.metaKey,
+        };
+
+        // Single-click dispatch first — the first click of a double-click
+        // still fires its bound command (e.g. select-then-isolate).
+        const gesture = clickGestureFor('click', button, ev);
         ctx.events.emit('pointer:click', {
           ndc,
           button: ev.button,
@@ -176,15 +200,38 @@ export function mouseBindingsPlugin(
           clientY: ev.clientY,
         });
         const cmd = bindings.get(gesture);
-        if (!cmd) return;
-        runCommand(ctx, cmd, {
-          ndc,
-          button,
-          shift: ev.shiftKey,
-          ctrl: ev.ctrlKey,
-          alt: ev.altKey,
-          meta: ev.metaKey,
-        });
+        if (cmd) runCommand(ctx, cmd, payload);
+
+        // Double-click: same button, within doubleClickMs and clickThreshold
+        // px of the previously accepted click.
+        const now = performance.now();
+        const isDouble =
+          ev.button === lastClickButton &&
+          now - lastClickTime <= doubleClickMs &&
+          Math.hypot(ev.clientX - lastClickX, ev.clientY - lastClickY) <= clickThreshold;
+
+        if (isDouble) {
+          const dblGesture = clickGestureFor('doubleclick', button, ev);
+          ctx.events.emit('pointer:doubleclick', {
+            ndc,
+            button: ev.button,
+            shift: ev.shiftKey,
+            ctrl: ev.ctrlKey,
+            meta: ev.metaKey,
+            clientX: ev.clientX,
+            clientY: ev.clientY,
+          });
+          const dblCmd = bindings.get(dblGesture);
+          if (dblCmd) runCommand(ctx, dblCmd, payload);
+          // Reset so a third click doesn't re-trigger another double.
+          lastClickTime = 0;
+          lastClickButton = -1;
+        } else {
+          lastClickTime = now;
+          lastClickButton = ev.button;
+          lastClickX = ev.clientX;
+          lastClickY = ev.clientY;
+        }
       };
 
       const onContextMenu = (ev: MouseEvent): void => {
@@ -255,6 +302,7 @@ function runCommand(ctx: ViewerContext, name: string, args: unknown): void {
 }
 
 function clickGestureFor(
+  kind: 'click' | 'doubleclick',
   button: 'left' | 'middle' | 'right',
   ev: PointerEvent,
 ): string {
@@ -264,18 +312,21 @@ function clickGestureFor(
   if (ev.shiftKey) mods.push('Shift');
   if (ev.metaKey) mods.push('Meta');
   const prefix = mods.length ? `${mods.join('+')}+` : '';
-  return `click:${prefix}${button}`;
+  return `${kind}:${prefix}${button}`;
 }
 
 function anyClickBindingFor(bindings: Map<string, string>, ev: PointerEvent): boolean {
   const button = BUTTON_NAME[ev.button];
   if (!button) return false;
-  // Any binding for this button (with or without the current modifiers) —
-  // we can't know modifier state precisely until pointerup, so accept any
-  // click:*+button match as a hint to swallow native side-effects.
+  // Any click/double-click binding for this button (with or without the
+  // current modifiers) — we can't know modifier state precisely until
+  // pointerup, so accept any *click:*+button match as a hint to swallow
+  // native side-effects.
   for (const k of bindings.keys()) {
-    if (k === `click:${button}`) return true;
-    if (k.startsWith('click:') && k.endsWith(`+${button}`)) return true;
+    if (k === `click:${button}` || k === `doubleclick:${button}`) return true;
+    if ((k.startsWith('click:') || k.startsWith('doubleclick:')) && k.endsWith(`+${button}`)) {
+      return true;
+    }
   }
   return false;
 }
@@ -283,10 +334,21 @@ function anyClickBindingFor(bindings: Map<string, string>, ev: PointerEvent): bo
 export function canonicalize(gesture: string): string {
   const trimmed = gesture.trim();
   if (trimmed === 'move' || trimmed === 'move:leave') return trimmed;
-  if (!trimmed.startsWith('click:')) return trimmed;
-  const body = trimmed.slice('click:'.length);
+  if (trimmed.startsWith('click:')) {
+    return canonicalizeClickGesture('click', trimmed.slice('click:'.length));
+  }
+  if (trimmed.startsWith('doubleclick:')) {
+    return canonicalizeClickGesture('doubleclick', trimmed.slice('doubleclick:'.length));
+  }
+  return trimmed;
+}
+
+function canonicalizeClickGesture(
+  kind: 'click' | 'doubleclick',
+  body: string,
+): string {
   const parts = body.split('+').map((p) => p.trim()).filter(Boolean);
-  if (!parts.length) return trimmed;
+  if (!parts.length) return `${kind}:${body.trim()}`;
   const buttonRaw = parts.pop()!.toLowerCase();
   const button =
     buttonRaw === 'l' || buttonRaw === 'left'
@@ -303,5 +365,5 @@ export function canonicalize(gesture: string): string {
   if (mods.has('shift')) ordered.push('Shift');
   if (mods.has('meta') || mods.has('cmd') || mods.has('command')) ordered.push('Meta');
   ordered.push(button);
-  return `click:${ordered.join('+')}`;
+  return `${kind}:${ordered.join('+')}`;
 }

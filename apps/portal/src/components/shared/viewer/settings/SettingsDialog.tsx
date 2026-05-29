@@ -399,6 +399,22 @@ function applyLiveCommands3D(
       })
       .catch(() => undefined);
   }
+
+  // Mouse gesture bindings — diff the gesture→command maps. Removed gestures
+  // unbind; added/changed gestures (re)bind. Mirrors the keyboard block above.
+  const snapMouse = snapshot.mouseBindings;
+  const draftMouse = draft.mouseBindings;
+  const allGestures = new Set([...Object.keys(snapMouse), ...Object.keys(draftMouse)]);
+  for (const gesture of allGestures) {
+    const before = snapMouse[gesture];
+    const after = draftMouse[gesture];
+    if (before === after) continue;
+    if (after === undefined) {
+      handle.commands.execute('mouseBindings.unbind', { gesture }).catch(() => undefined);
+    } else {
+      handle.commands.execute('mouseBindings.bind', { gesture, command: after }).catch(() => undefined);
+    }
+  }
 }
 
 // ── Exported dialog ─────────────────────────────────────────────────

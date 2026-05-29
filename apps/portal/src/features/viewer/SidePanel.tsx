@@ -14,11 +14,8 @@ export type { PanelId } from '@/components/shared/viewer/SideRail';
 const PANEL_TITLE_KEYS: Record<PanelId, string> = {
   explorer: 'titleExplorer',
   inspector: 'titleInspector',
-  issues: 'titleIssues',
-  compliance: 'titleCompliance',
   measure: 'titleMeasure',
   section: 'titleSection',
-  bcf: 'titleBcf',
   pages: 'titlePages',
 };
 
@@ -28,8 +25,6 @@ type SidePanelProps = {
   inspectorContent?: ReactNode | undefined;
   measureContent?: ReactNode | undefined;
   sectionContent?: ReactNode | undefined;
-  bcfContent?: ReactNode | undefined;
-  inspectionsContent?: ReactNode | undefined;
   pagesContent?: ReactNode | undefined;
   headerActions?: Partial<Record<PanelId, ReactNode>> | undefined;
 };
@@ -56,10 +51,8 @@ export function SidePanel({
   activePanel,
   explorerContent,
   inspectorContent,
-  inspectionsContent,
   measureContent,
   sectionContent,
-  bcfContent,
   pagesContent,
   headerActions,
 }: SidePanelProps): JSX.Element {
@@ -130,10 +123,7 @@ export function SidePanel({
               {activePanel === 'inspector' && (inspectorContent ?? <PlaceholderContent label={t('titleInspector')} />)}
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
-              {activePanel === 'bcf' && bcfContent}
               {activePanel === 'pages' && pagesContent}
-              {activePanel === 'issues' && (inspectionsContent ?? <PlaceholderContent label={t('titleIssues')} />)}
-              {activePanel === 'compliance' && <PlaceholderContent label={t('titleCompliance')} />}
             </div>
           </>
         )}

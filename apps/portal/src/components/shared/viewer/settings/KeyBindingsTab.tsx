@@ -61,6 +61,28 @@ const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; labelKey: stri
   { key: 'wheel', labelKey: 'wheel' },
 ];
 
+// Command bound to the double-click gesture (isolate-or-fit). Surfaced in
+// the Mouse tab as a single button picker.
+const ISOLATE_AT_POINTER_CMD = 'visibility.isolateAtPointer';
+
+const DOUBLE_CLICK_BUTTONS: { value: 'left' | 'middle' | 'right' | 'none'; labelKey: string }[] = [
+  { value: 'left', labelKey: 'leftButton' },
+  { value: 'middle', labelKey: 'middleButton' },
+  { value: 'right', labelKey: 'rightButton' },
+  { value: 'none', labelKey: 'mouseBindingNone' },
+];
+
+/** Read which button the double-click isolate gesture is bound to (or 'none'). */
+function doubleClickButtonOf(mouseBindings: Record<string, string>): string {
+  for (const [gesture, command] of Object.entries(mouseBindings)) {
+    if (command !== ISOLATE_AT_POINTER_CMD) continue;
+    if (!gesture.startsWith('doubleclick:')) continue;
+    const btn = gesture.slice('doubleclick:'.length).split('+').pop()?.toLowerCase();
+    if (btn === 'left' || btn === 'middle' || btn === 'right') return btn;
+  }
+  return 'none';
+}
+
 const ACTION_ORDER: DocumentAction[] = [
   'zoomIn', 'zoomOut', 'fitPage', 'fitWidth', 'actualSize',
   'rotateRight', 'rotateLeft',
@@ -322,6 +344,19 @@ function Mouse3DSection({
     return found !== undefined ? ts(found.labelKey) : action;
   };
 
+  const doubleClickButton = doubleClickButtonOf(settings.mouseBindings);
+  const setDoubleClickButton = (value: string): void => {
+    // Drop any existing double-click → isolate binding, then re-add for the
+    // chosen button (unless disabled).
+    const next: Record<string, string> = {};
+    for (const [gesture, command] of Object.entries(settings.mouseBindings)) {
+      if (command === ISOLATE_AT_POINTER_CMD && gesture.startsWith('doubleclick:')) continue;
+      next[gesture] = command;
+    }
+    if (value !== 'none') next[`doubleclick:${value}`] = ISOLATE_AT_POINTER_CMD;
+    onSettingsChange({ ...settings, mouseBindings: next });
+  };
+
   return (
     <>
       <MouseDiagram
@@ -356,6 +391,24 @@ function Mouse3DSection({
             </Select>
           </label>
         ))}
+      </div>
+      <div className="space-y-2">
+        <h4 className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+          {ts('mouseActions')}
+        </h4>
+        <label className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
+          <span>{ts('doubleClickIsolate')}</span>
+          <Select
+            selectSize="sm"
+            className="w-40"
+            value={doubleClickButton}
+            onChange={(e) => { setDoubleClickButton(e.target.value); }}
+          >
+            {DOUBLE_CLICK_BUTTONS.map((b) => (
+              <option key={b.value} value={b.value}>{ts(b.labelKey)}</option>
+            ))}
+          </Select>
+        </label>
       </div>
     </>
   );

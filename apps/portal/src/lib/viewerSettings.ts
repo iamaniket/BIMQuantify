@@ -60,6 +60,7 @@ export const DEFAULT_MOUSE_BINDINGS_SETTINGS: MouseBindingMap = {
   'click:Shift+left': 'selection.pickAdd',
   'click:Ctrl+left': 'selection.pickToggle',
   'click:Meta+left': 'selection.pickToggle',
+  'doubleclick:left': 'visibility.isolateAtPointer',
   move: 'hover.pick',
   'move:leave': 'hover.clear',
 };
@@ -105,6 +106,7 @@ export const DEFAULT_INTERACTIVE_PERFORMANCE: InteractivePerformanceSettings = {
   motionFarMultiplier: 1.5,
   flatShadeOverride: false,
   pauseHover: false,
+  xrayMotionHideFills: true,
 };
 
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
@@ -130,7 +132,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
     effects: { ...d.effects, ...(p.effects ?? {}) },
     outline: { ...d.outline, ...(p.outline ?? {}) },
     shortcuts: p.shortcuts ?? d.shortcuts,
-    mouseBindings: p.mouseBindings ?? d.mouseBindings,
+    mouseBindings: { ...d.mouseBindings, ...(p.mouseBindings ?? {}) },
     controls: { ...d.controls, ...(p.controls ?? {}) },
     interactivePerformance: {
       ...d.interactivePerformance,

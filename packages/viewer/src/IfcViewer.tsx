@@ -18,6 +18,7 @@ import { hoverHighlightPlugin } from './plugins/hover-highlight/index.js';
 import { interactivePerformancePlugin } from './plugins/interactive-performance/index.js';
 import { keyboardShortcutsPlugin } from './plugins/keyboard-shortcuts/index.js';
 import { mouseBindingsPlugin } from './plugins/mouse-bindings/index.js';
+import { navigatePlugin } from './plugins/navigate/index.js';
 import { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
 import { selectionPlugin } from './plugins/selection/index.js';
 import { viewCubePlugin } from './plugins/viewcube/index.js';
@@ -36,7 +37,6 @@ import { classifierPlugin } from './plugins/classifier/index.js';
 import { itemsFinderPlugin } from './plugins/items-finder/index.js';
 import { boundingBoxerPlugin } from './plugins/bounding-boxer/index.js';
 import { viewpointsPlugin } from './plugins/viewpoints/index.js';
-import { bcfPlugin } from './plugins/bcf/index.js';
 import { markerPlugin } from './plugins/marker/index.js';
 import { gridPlugin } from './plugins/grid/index.js';
 import { screenshotPlugin } from './plugins/screenshot/index.js';
@@ -114,6 +114,8 @@ function IfcViewerImpl(
       // Mouse-bindings registers AFTER selection/hover so the default
       // bindings can resolve `selection.pickSet` etc. at install time.
       mouseBindingsPlugin(props.mouseBindings ? { overrides: props.mouseBindings } : {}),
+      // Navigate depends on mouse-bindings, so it registers after it.
+      navigatePlugin(),
       eraserPlugin(),
       snappingPlugin(props.snapping ?? {}),
       contextMenuPlugin(),
@@ -139,7 +141,6 @@ function IfcViewerImpl(
       itemsFinderPlugin(),
       boundingBoxerPlugin(),
       viewpointsPlugin(),
-      bcfPlugin(),
       markerPlugin(),
       gridPlugin(),
       screenshotPlugin(),

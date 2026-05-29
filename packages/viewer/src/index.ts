@@ -67,9 +67,6 @@ export type {
   BboxDimensions,
   ViewpointsPluginAPI,
   Viewpoint,
-  BcfPluginAPI,
-  BcfTopicSummary,
-  BcfComment,
   MarkerPluginAPI,
   MarkerPluginOptions,
   MarkerData,
@@ -104,6 +101,7 @@ export {
   mouseBindingsPlugin,
   DEFAULT_MOUSE_BINDINGS,
 } from './plugins/mouse-bindings/index.js';
+export { navigatePlugin } from './plugins/navigate/index.js';
 export { viewCubePlugin } from './plugins/viewcube/index.js';
 export { effectsPlugin } from './plugins/effects/index.js';
 export { interactivePerformancePlugin } from './plugins/interactive-performance/index.js';
@@ -127,7 +125,6 @@ export { classifierPlugin } from './plugins/classifier/index.js';
 export { itemsFinderPlugin } from './plugins/items-finder/index.js';
 export { boundingBoxerPlugin } from './plugins/bounding-boxer/index.js';
 export { viewpointsPlugin } from './plugins/viewpoints/index.js';
-export { bcfPlugin } from './plugins/bcf/index.js';
 export { markerPlugin } from './plugins/marker/index.js';
 export { gridPlugin } from './plugins/grid/index.js';
 export { screenshotPlugin } from './plugins/screenshot/index.js';
