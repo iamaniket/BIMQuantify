@@ -21,10 +21,10 @@ export default async function PrivacyPage({ params }: Props): Promise<JSX.Elemen
   return (
     <article className="space-y-8">
       <header className="space-y-3">
-        <h1 className="m-0 font-display text-[32px] font-medium leading-tight tracking-tight text-foreground">
+        <h1 className="m-0 font-sans text-[32px] font-medium leading-tight tracking-tight text-foreground">
           {t('privacy.title')}
         </h1>
-        <p className="font-mono text-[11px] uppercase tracking-[0.10em] text-foreground-tertiary">
+        <p className="font-sans text-[11px] uppercase tracking-[0.10em] text-foreground-tertiary">
           {t('lastUpdated', { date: '2026-05-10' })}
         </p>
         <p className="text-[15px] leading-relaxed text-foreground-secondary">{t('privacy.intro')}</p>
@@ -32,7 +32,7 @@ export default async function PrivacyPage({ params }: Props): Promise<JSX.Elemen
 
       {sections.map(({ title, body }) => (
         <section key={title} className="space-y-2">
-          <h2 className="font-display text-[18px] font-semibold leading-tight tracking-tight text-foreground">
+          <h2 className="font-sans text-[18px] font-semibold leading-tight tracking-tight text-foreground">
             {title}
           </h2>
           <p className="text-[14.5px] leading-relaxed text-foreground-secondary">{body}</p>

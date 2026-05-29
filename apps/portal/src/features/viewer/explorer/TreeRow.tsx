@@ -6,11 +6,10 @@ import {
   type MouseEvent,
   useCallback,
   memo,
-  useState,
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { cn } from '@bimstitch/ui';
+import { cn, CountChip } from '@bimstitch/ui';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useViewerEntityStore, type EntityKey } from '@/stores/viewerEntityStore';
@@ -48,7 +47,6 @@ function TreeRowInner({
   onToggleExpand,
 }: TreeRowProps): JSX.Element {
   const t = useTranslations('viewer.explorer');
-  const [hover, setHover] = useState(false);
   const isExpanded = expanded.has(node.key);
   const hasChildren = node.children != null && node.children.length > 0;
   const leftPad = 8 + depth * 16;
@@ -118,12 +116,6 @@ function TreeRowInner({
     [node.entityKeys, isRowIsolated, isolateItems, showAll],
   );
 
-  const bgColor = (() => {
-    if (isRowSelected) return 'var(--primary-light)';
-    if (hover) return 'var(--bg-hover)';
-    return 'transparent';
-  })();
-
   return (
     <div style={style}>
       <div
@@ -131,22 +123,16 @@ function TreeRowInner({
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={isRowSelected}
         onClick={handleSelect}
-        onMouseEnter={() => { setHover(true); }}
-        onMouseLeave={() => { setHover(false); }}
         className={cn(
-          'group flex h-full select-none items-center gap-2 pr-2',
+          'group flex h-full select-none items-center gap-2 pr-2 text-[13px]',
           'cursor-pointer',
           'transition-colors duration-100',
           isRowSelected
-            ? 'border-l-2 border-primary'
-            : 'border-l-2 border-transparent',
+            ? 'border-l-2 border-primary bg-primary-light'
+            : 'border-l-2 border-transparent hover:bg-background-hover',
+          dim && 'opacity-[0.55]',
         )}
-        style={{
-          paddingLeft: `${String(leftPad)}px`,
-          background: bgColor,
-          opacity: dim ? 0.55 : 1,
-          fontSize: 13,
-        }}
+        style={{ paddingLeft: `${String(leftPad)}px` }}
       >
         {/* Expand / collapse chevron */}
         <button
@@ -159,13 +145,10 @@ function TreeRowInner({
         >
           <span
             aria-hidden="true"
-            className="inline-grid place-items-center transition-transform duration-[120ms]"
+            className="inline-grid size-3.5 place-items-center text-foreground-tertiary transition-transform duration-[120ms]"
             style={{
-              width: 14,
-              height: 14,
               opacity: hasChildren ? 1 : 0,
               transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-              color: 'var(--fg-3)',
             }}
           >
             <svg width="10" height="10" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -180,10 +163,8 @@ function TreeRowInner({
         {/* Color dot */}
         {node.color != null && (
           <span
-            className="shrink-0 rounded-xs"
+            className="size-2.5 shrink-0 rounded-xs"
             style={{
-              width: 10,
-              height: 10,
               background: node.color,
               boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.10)',
             }}
@@ -192,13 +173,11 @@ function TreeRowInner({
 
         {/* Label */}
         <span
-          className="min-w-0 flex-1 truncate leading-none"
-          style={{
-            fontFamily: node.mono ? 'var(--mono)' : 'var(--sans)',
-            fontWeight: isRowSelected ? 600 : 500,
-            color: isRowSelected ? 'var(--primary)' : 'var(--fg)',
-            letterSpacing: node.mono ? '-0.01em' : '-0.005em',
-          }}
+          className={cn(
+            'min-w-0 flex-1 truncate leading-none',
+            node.mono ? 'font-sans tracking-[-0.01em]' : 'font-sans tracking-[-0.005em]',
+            isRowSelected ? 'font-semibold text-primary' : 'font-medium text-foreground',
+          )}
           title={node.label}
         >
           {node.label}
@@ -206,32 +185,26 @@ function TreeRowInner({
 
         {/* Count chip */}
         {typeof node.count === 'number' && (
-          <span
-            className="shrink-0 tabular-nums"
-            style={{
-              fontFamily: 'var(--mono)',
-              fontSize: 11.5,
-              color: 'var(--fg-3)',
-              padding: '1px 5px',
-              borderRadius: 3,
-              background: isRowSelected ? 'rgba(44,86,151,0.10)' : 'transparent',
-            }}
+          <CountChip
+            className={cn(
+              'shrink-0 rounded-xs px-[5px] py-px',
+              isRowSelected && 'bg-primary-light',
+            )}
           >
             {node.count.toLocaleString()}
-          </span>
+          </CountChip>
         )}
 
         {/* Hover actions: select + isolate */}
-        <span
-          className="inline-flex shrink-0 gap-0.5 transition-opacity duration-100"
-          style={{ opacity: hover ? 1 : 0 }}
-        >
+        <span className="inline-flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
           <button
             type="button"
             onClick={handleIsolate}
             title={t('isolate')}
-            className="inline-grid h-[22px] w-[22px] cursor-pointer place-items-center rounded-[3px] border-none bg-transparent p-0"
-            style={{ color: isRowIsolated ? 'var(--primary)' : 'var(--fg-3)' }}
+            className={cn(
+              'inline-grid h-[22px] w-[22px] cursor-pointer place-items-center rounded-[3px] border-none bg-transparent p-0',
+              isRowIsolated ? 'text-primary' : 'text-foreground-tertiary',
+            )}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="8" cy="8" r="5.5" strokeDasharray="3 2" />

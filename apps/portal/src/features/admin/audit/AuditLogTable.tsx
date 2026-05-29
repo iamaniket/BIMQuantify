@@ -44,17 +44,17 @@ export function AuditLogTable({ entries }: Props): JSX.Element {
       <TableBody>
         {entries.map((entry) => (
           <TableRow key={entry.id}>
-            <TableCell className="whitespace-nowrap font-mono text-caption text-foreground-tertiary">
+            <TableCell className="whitespace-nowrap font-sans text-caption text-foreground-tertiary">
               {new Date(entry.created_at).toLocaleString()}
             </TableCell>
-            <TableCell className="font-mono">{entry.action}</TableCell>
-            <TableCell className="font-mono text-foreground-tertiary">
+            <TableCell className="font-sans">{entry.action}</TableCell>
+            <TableCell className="font-sans text-foreground-tertiary">
               {entry.resource_type}
               {entry.resource_id !== null && (
                 <span className="block text-caption">{entry.resource_id}</span>
               )}
             </TableCell>
-            <TableCell className="max-w-[480px] truncate font-mono text-caption text-foreground-tertiary">
+            <TableCell className="max-w-[480px] truncate font-sans text-caption text-foreground-tertiary">
               {summarize(entry)}
             </TableCell>
           </TableRow>

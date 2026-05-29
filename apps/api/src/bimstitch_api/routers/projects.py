@@ -443,7 +443,6 @@ async def create_project(
             "consequence_class": project.consequence_class.value if project.consequence_class else None,
         },
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return await _project_to_read(project, storage)
@@ -523,7 +522,6 @@ async def create_project_with_thumbnail(
         resource_id=project.id,
         after={"name": project.name},
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return await _project_to_read(project, storage)
@@ -624,7 +622,6 @@ async def update_project(
         before=before,
         after=after,
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return await _project_to_read(project, storage)
@@ -651,7 +648,6 @@ async def delete_project(
         resource_id=project.id,
         before=before,
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -685,7 +681,6 @@ async def archive_project(
         before={"lifecycle_state": ProjectLifecycleState.active.value},
         after={"lifecycle_state": ProjectLifecycleState.archived.value},
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return await _project_to_read(project, storage)
@@ -722,7 +717,6 @@ async def reactivate_project(
         before={"lifecycle_state": ProjectLifecycleState.archived.value},
         after={"lifecycle_state": ProjectLifecycleState.active.value},
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return await _project_to_read(project, storage)
@@ -825,7 +819,6 @@ async def add_member(
         resource_id=project.id,
         after={"user_id": str(payload.user_id), "role": payload.role.value},
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return await _member_to_read(session, member)
@@ -860,7 +853,6 @@ async def remove_member(
         resource_id=project.id,
         before=before,
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -906,7 +898,6 @@ async def update_member_role(
         before={"user_id": str(user_id), "role": old_role.value},
         after={"user_id": str(user_id), "role": payload.role.value},
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return await _member_to_read(session, target)
@@ -1049,8 +1040,9 @@ async def invite_to_project(
             ) from exc
         await ms.execute(text("SET LOCAL search_path = public"))
 
-        await audit.record(
+        await audit.record_for_org(
             ms,
+            active_org_id,
             action="project_invitation.created",
             resource_type="project_member",
             resource_id=str(project.id),
@@ -1061,7 +1053,6 @@ async def invite_to_project(
                 "scenario": scenario,
             },
             actor_user_id=user.id,
-            organization_id=active_org_id,
             request=request,
         )
         await ms.commit()

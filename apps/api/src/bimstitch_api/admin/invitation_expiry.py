@@ -48,15 +48,15 @@ async def sweep_expired_invitations(session: AsyncSession, ttl_days: int) -> int
     for member in expired:
         before = {"status": member.status.value}
         member.status = OrganizationMemberStatus.removed
-        await audit.record(
+        await audit.record_for_org(
             session,
+            member.organization_id,
             action="organization_member.invitation_expired",
             resource_type="organization_member",
             resource_id=member.id,
             before=before,
             after={"status": member.status.value},
             actor_user_id=None,  # System action
-            organization_id=member.organization_id,
             request=None,
         )
 

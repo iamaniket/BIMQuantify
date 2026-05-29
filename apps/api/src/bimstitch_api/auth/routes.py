@@ -239,8 +239,9 @@ def build_auth_router() -> APIRouter:
             # session, so SQLAlchemy auto-began a transaction. We append the
             # audit row and commit; the explicit `async with session.begin()`
             # would conflict with the existing implicit transaction.
-            await audit.record(
+            await audit.record_for_org(
                 session,
+                None,
                 action="auth.login.failure",
                 resource_type="user",
                 after={"email": credentials.username},
@@ -261,26 +262,26 @@ def build_auth_router() -> APIRouter:
         # backfill active org, emit audit, commit once at the end.
         flipped = await _flip_pending_memberships(session, user)
         for m in flipped:
-            await audit.record(
+            await audit.record_for_org(
                 session,
+                m.organization_id,
                 action="organization_member.accepted",
                 resource_type="organization_member",
                 resource_id=m.id,
                 after={"organization_id": str(m.organization_id)},
                 actor_user_id=user.id,
-                organization_id=m.organization_id,
                 request=request,
             )
 
         active_org_id = await _ensure_active_organization(session, user)
 
-        await audit.record(
+        await audit.record_for_org(
             session,
+            active_org_id,
             action="auth.login.success",
             resource_type="user",
             resource_id=user.id,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             request=request,
         )
         await session.commit()
@@ -423,13 +424,13 @@ def build_auth_router() -> APIRouter:
             .where(User.id == user.id)
             .values(active_organization_id=payload.organization_id)
         )
-        await audit.record(
+        await audit.record_for_org(
             session,
+            payload.organization_id,
             action="auth.switch_organization",
             resource_type="user",
             resource_id=user.id,
             actor_user_id=user.id,
-            organization_id=payload.organization_id,
             request=request,
         )
         await session.commit()

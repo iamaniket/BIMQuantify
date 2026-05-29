@@ -15,6 +15,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import Request
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.models.audit_log import AuditLog
@@ -90,12 +91,17 @@ async def record(
     before: dict[str, Any] | None = None,
     after: dict[str, Any] | None = None,
     actor_user_id: UUID | None = None,
-    organization_id: UUID | None = None,
     project_id: UUID | None = None,
     request: Request | None = None,
     impersonator_user_id: UUID | None = None,
 ) -> None:
     """Append an audit entry within the caller's transaction.
+
+    The row lands in whatever schema the session's `search_path` resolves
+    `audit_log` to. Tenant-session callers (and any caller that has already
+    set search_path to an org schema) get the entry written into that org's
+    schema with no extra work. Callers on a plain master/superuser session
+    that need to target a specific org's schema should use `record_for_org`.
 
     Always called with the *same* session the mutation is happening on so
     the entry commits or rolls back atomically with the operation. Do NOT
@@ -114,7 +120,6 @@ async def record(
     entry = AuditLog(
         user_id=actor_user_id,
         impersonator_user_id=impersonator,
-        organization_id=organization_id,
         project_id=project_id,
         action=action,
         resource_type=resource_type,
@@ -129,6 +134,60 @@ async def record(
     # Caller's transaction commits this. We deliberately do NOT flush() —
     # letting the surrounding txn batch the insert is fine, and a forced
     # flush here would emit SQL before the caller is ready.
+
+
+async def record_for_org(
+    session: AsyncSession,
+    organization_id: UUID | None,
+    *,
+    action: str,
+    resource_type: str,
+    resource_id: str | UUID | None = None,
+    before: dict[str, Any] | None = None,
+    after: dict[str, Any] | None = None,
+    actor_user_id: UUID | None = None,
+    project_id: UUID | None = None,
+    request: Request | None = None,
+    impersonator_user_id: UUID | None = None,
+) -> None:
+    """Append an audit entry into a specific org's schema from a master session.
+
+    For callers that are NOT inside a tenant session (auth, super-admin,
+    background tasks): `audit_log` is a per-tenant table, so we point the
+    session's `search_path` at the target org's schema, write the row, flush
+    it (so the INSERT is emitted under that search_path), then reset
+    `search_path` back to `public`. The reset matters because leaving it on
+    the org schema would let an org-local enum type shadow a public one in a
+    later statement of the same transaction — the hazard documented in
+    `jobs_internal._set_tenant_schema`.
+
+    `organization_id=None` routes the entry to the platform org's schema —
+    used for events that belong to no single customer org (anonymous auth
+    failures, platform-level super-admin actions, org deletion where the
+    subject schema is being dropped).
+    """
+    from bimstitch_api.tenancy import resolve_platform_schema, schema_name_for
+
+    if organization_id is not None:
+        schema = schema_name_for(organization_id)
+    else:
+        schema = await resolve_platform_schema(session)
+
+    await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+    await record(
+        session,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        before=before,
+        after=after,
+        actor_user_id=actor_user_id,
+        project_id=project_id,
+        request=request,
+        impersonator_user_id=impersonator_user_id,
+    )
+    await session.flush()
+    await session.execute(text("SET LOCAL search_path TO public"))
 
 
 async def log_permission_denied(
@@ -174,14 +233,14 @@ async def log_permission_denied(
         sm = get_session_maker()
         async with sm() as ds:
             async with ds.begin():
-                await record(
+                await record_for_org(
                     ds,
+                    organization_id,
                     action="permission.denied",
                     resource_type=resource,
                     resource_id=resource_id,
                     before={"role": role, "resource": resource, "action": action},
                     actor_user_id=actor_user_id,
-                    organization_id=organization_id,
                     request=request,
                 )
     except Exception:  # noqa: BLE001

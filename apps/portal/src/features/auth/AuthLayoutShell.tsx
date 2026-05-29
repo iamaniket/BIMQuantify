@@ -36,7 +36,7 @@ export async function AuthLayoutShell({
   const backLink = (
     <Link
       href="/login"
-      className="inline-flex items-center gap-1.5 font-mono text-[11.5px] tracking-[0.02em] text-foreground-tertiary no-underline hover:text-foreground"
+      className="inline-flex items-center gap-1.5 font-sans text-[11.5px] tracking-[0.02em] text-foreground-tertiary no-underline hover:text-foreground"
     >
       <span aria-hidden>←</span>
       {t('backToSignIn')}

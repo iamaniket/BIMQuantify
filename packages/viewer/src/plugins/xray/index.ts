@@ -7,7 +7,11 @@
  */
 
 import * as THREE from 'three';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import type { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
+import { LAYER_OVERLAY } from '../../core/layers.js';
 import type { ItemId, Plugin, ViewerContext } from '../../core/types.js';
 import { EdgeOverlay } from '../shared/edge-overlay.js';
 
@@ -16,7 +20,7 @@ const NAME = 'xray' as const;
 export interface XrayPluginOptions {
   /** Edge line color used while x-ray is active. */
   color?: number;
-  /** Fill opacity for xrayed items (0..1). Default: 0.02 for line-dominant view. */
+  /** Fill opacity for xrayed items (0..1). Default: 0.08 for line-dominant view. */
   opacity?: number;
 }
 
@@ -31,7 +35,10 @@ export interface XrayPluginAPI {
 const itemKey = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
 export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPluginAPI {
-  const defaultOpacity = options.opacity ?? 0.02;
+  // 0.08 reads as a faint surface under alpha-to-coverage dithering (the
+  // Viewer renders these fade materials with screen-door transparency). Stays
+  // well under XRAY_DITHER_MAX_OPACITY so the dithered path picks it up.
+  const defaultOpacity = options.opacity ?? 0.08;
   const edgeColor = new THREE.Color(options.color ?? 0x6f7784);
   const edges = new EdgeOverlay({ lineWidth: 1.3 });
 
@@ -41,6 +48,14 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
 
   let ctxRef: ViewerContext | null = null;
   let enabled = true;
+
+  // When x-raying the whole model we reuse the prebuilt outline (one merged
+  // geometry per model) instead of adding a fat line per item. `mode` tracks
+  // which path produced the current edges so enable/disable can re-apply the
+  // right one.
+  let mode: 'merged' | 'peritem' | null = null;
+  let mergedLines: LineSegments2[] = [];
+  let mergedMat: LineMaterial | null = null;
 
   const groupByModel = (items: ItemId[]): Map<string, number[]> => {
     const map = new Map<string, number[]>();
@@ -87,8 +102,7 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     }
   };
 
-  const applyXray = (items: ItemId[]): void => {
-    if (!items.length) return;
+  const markAndFade = (items: ItemId[]): ItemId[] => {
     const fresh = items.filter((it) => !xrayed.has(itemKey(it)));
     for (const it of items) {
       const k = itemKey(it);
@@ -96,7 +110,69 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
       itemMap.set(k, it);
     }
     if (fresh.length) applyOpacity(fresh);
+    return fresh;
+  };
+
+  const applyXray = (items: ItemId[]): void => {
+    if (!items.length) return;
+    const fresh = markAndFade(items);
     if (ctxRef && fresh.length) void edges.add(ctxRef, fresh, edgeColor);
+    if (fresh.length) mode = 'peritem';
+    emitChange();
+  };
+
+  const addMergedOutline = async (): Promise<void> => {
+    if (!ctxRef) return;
+    const size = ctxRef.renderer.getSize(new THREE.Vector2());
+    const dpr = ctxRef.renderer.getPixelRatio();
+    if (!mergedMat) {
+      mergedMat = new LineMaterial({
+        color: edgeColor.getHex(),
+        linewidth: 1.3,
+        worldUnits: false,
+        depthTest: false,
+        transparent: true,
+        opacity: 0.85,
+        resolution: new THREE.Vector2(size.x * dpr, size.y * dpr),
+      });
+    } else {
+      mergedMat.resolution.set(size.x * dpr, size.y * dpr);
+    }
+    for (const [modelId] of ctxRef.models()) {
+      let geos: LineSegmentsGeometry[] | null;
+      try {
+        geos = await ctxRef.commands.execute<
+          { modelId: string },
+          LineSegmentsGeometry[] | null
+        >('outline.getGeometries', { modelId });
+      } catch {
+        continue;
+      }
+      if (!geos || !ctxRef) continue;
+      for (const geo of geos) {
+        const line = new LineSegments2(geo, mergedMat);
+        line.layers.set(LAYER_OVERLAY);
+        line.renderOrder = 999;
+        line.frustumCulled = false;
+        line.name = `xray-outline::${modelId}`;
+        ctxRef.scene.add(line);
+        mergedLines.push(line);
+      }
+    }
+    mode = 'merged';
+  };
+
+  const clearMergedOutline = (): void => {
+    if (ctxRef) {
+      for (const line of mergedLines) ctxRef.scene.remove(line);
+    }
+    mergedLines = [];
+  };
+
+  const applyXrayAll = async (items: ItemId[]): Promise<void> => {
+    if (!items.length) return;
+    markAndFade(items);
+    await addMergedOutline();
     emitChange();
   };
 
@@ -161,7 +237,7 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
       }
       for (const localId of allIds) toXray.push({ modelId, localId });
     }
-    applyXray(toXray);
+    await applyXrayAll(toXray);
   };
 
   const xrayAllExcept = async (): Promise<void> => {
@@ -215,6 +291,8 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     xrayed.clear();
     itemMap.clear();
     edges.clear(ctxRef);
+    clearMergedOutline();
+    mode = null;
     emitChange();
   };
 
@@ -234,19 +312,25 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     if (!enabled && all.length) {
       restoreOrResetOpacity(all);
       edges.clear(ctxRef);
+      clearMergedOutline();
     } else if (enabled && all.length) {
       for (const [modelId, ids] of groupByModel(all)) {
         const model = ctxRef.models().get(modelId);
         if (model) void model.setOpacity(ids, defaultOpacity).catch(() => undefined);
       }
-      void edges.add(ctxRef, all, edgeColor);
+      // Re-apply the same edge path that produced the current x-ray.
+      if (mode === 'merged') {
+        void addMergedOutline();
+      } else {
+        void edges.add(ctxRef, all, edgeColor);
+      }
     }
     ctxRef.events.emit('feature:enabled', { name: NAME, enabled });
   };
 
   const api: Plugin & XrayPluginAPI = {
     name: NAME,
-    dependencies: ['selection'],
+    dependencies: ['selection', 'outline'],
 
     list() {
       return [...itemMap.values()];
@@ -363,6 +447,8 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
     uninstall() {
       clearXray();
       if (ctxRef) edges.dispose(ctxRef);
+      mergedMat?.dispose();
+      mergedMat = null;
       opacityMap.clear();
       ctxRef = null;
     },

@@ -1,8 +1,9 @@
 """Project-scoped activity feed backed by audit_log.
 
-Returns categorized audit entries for a project, scoped by the tenant session's
-RLS policy (organization_id matches the JWT org claim). Any project member can
-read; org admins and superusers bypass the membership check.
+Returns categorized audit entries for a project. `audit_log` is a per-tenant
+table, so the tenant session's search_path resolves it to the active org's
+schema — org scoping is physical, not an RLS/organization_id filter. Any
+project member can read; org admins and superusers bypass the membership check.
 """
 
 from __future__ import annotations

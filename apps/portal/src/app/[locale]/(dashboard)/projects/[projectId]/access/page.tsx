@@ -155,7 +155,7 @@ function OverviewPane({
                     <span className={`h-2.5 w-2.5 rounded-sm ${ROLE_COLORS[role] ?? 'bg-foreground-tertiary'}`} />
                     {tRoles(role as 'owner')}
                   </div>
-                  <div className="font-mono text-body3 text-foreground-tertiary">
+                  <div className="font-sans text-body3 text-foreground-tertiary">
                     {roleCounts[role]}{' '}
                     <span className="text-foreground-tertiary">
                       &middot; {t(`roleDesc.${role}` as 'roleDesc.owner')}

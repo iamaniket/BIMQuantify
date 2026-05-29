@@ -54,6 +54,15 @@ export interface InteractivePerformanceOptions {
   // Scene-state suppressions
   flatShadeOverride?: boolean;
   pauseHover?: boolean;
+
+  // X-ray suppressions
+  /**
+   * While x-ray is active, hide the faded fills during camera motion and
+   * restore them on idle. The edge outline stays visible the whole time, so
+   * the model's shape is still legible while orbiting. Default: true (only
+   * does anything when x-ray is already active).
+   */
+  xrayMotionHideFills?: boolean;
 }
 
 const DEFAULTS: Required<InteractivePerformanceOptions> = {
@@ -70,6 +79,7 @@ const DEFAULTS: Required<InteractivePerformanceOptions> = {
   motionFarMultiplier: 1.5,
   flatShadeOverride: false,
   pauseHover: false,
+  xrayMotionHideFills: true,
 };
 
 export interface InteractivePerformanceAPI {
@@ -97,6 +107,11 @@ interface VisibilityPluginShape {
 
 interface HoverPluginShape {
   setEnabled(enabled: boolean): void;
+}
+
+interface XrayPluginShape {
+  isEnabled(): boolean;
+  list(): ItemId[];
 }
 
 const itemKey = (modelId: string, localId: number): string => `${modelId}::${String(localId)}`;
@@ -265,6 +280,37 @@ export function interactivePerformancePlugin(
   const useAnyVisibility = (): boolean =>
     opts.hideSmall || opts.envelopeOnly || opts.hideTransparent || opts.pixelSizeCull;
 
+  // Union ids into hiddenByModel so multiple suppression paths (visibility +
+  // x-ray) can each contribute without clobbering each other; exitMotion
+  // restores the union.
+  const addHidden = (modelId: string, ids: number[]): void => {
+    if (!ids.length) return;
+    const existing = hiddenByModel.get(modelId);
+    if (!existing) {
+      hiddenByModel.set(modelId, [...ids]);
+      return;
+    }
+    const seen = new Set(existing);
+    for (const id of ids) if (!seen.has(id)) existing.push(id);
+  };
+
+  // X-rayed items grouped by model, skipping anything the user explicitly hid
+  // (so we restore exactly what we hid and leave visibility-plugin state alone).
+  const xrayHiddenByModel = (): Map<string, number[]> => {
+    const result = new Map<string, number[]>();
+    if (!ctxRef) return result;
+    const xray = ctxRef.plugins.get<XrayPluginShape>('xray');
+    if (!xray || !xray.isEnabled()) return result;
+    const skipKeys = visibilityHiddenKeys();
+    for (const it of xray.list()) {
+      if (skipKeys.has(itemKey(it.modelId, it.localId))) continue;
+      let arr = result.get(it.modelId);
+      if (!arr) { arr = []; result.set(it.modelId, arr); }
+      arr.push(it.localId);
+    }
+    return result;
+  };
+
   const enterMotion = (): void => {
     if (!ctxRef || inMotion) return;
     if (visibilityIsolated()) return;
@@ -310,9 +356,23 @@ export function interactivePerformancePlugin(
       hoverWasPaused = true;
     }
 
+    hiddenByModel.clear();
+
+    // X-ray: hide the faded fills while moving; the edge outline (overlay
+    // layer) stays visible so the shape is still legible. Restored on idle by
+    // exitMotion's shared loop.
+    if (opts.xrayMotionHideFills) {
+      const xrayItems = xrayHiddenByModel();
+      for (const [modelId, ids] of xrayItems) {
+        if (!ids.length) continue;
+        addHidden(modelId, ids);
+        const model = ctxRef.models().get(modelId);
+        if (model) void model.setVisible(ids, false).catch(() => undefined);
+      }
+    }
+
     if (useAnyVisibility()) {
       const skipKeys = visibilityHiddenKeys();
-      hiddenByModel.clear();
       // Fire-and-forget per model; setVisible is async but non-blocking.
       for (const [modelId, model] of ctxRef.models()) {
         void (async (): Promise<void> => {
@@ -347,7 +407,7 @@ export function interactivePerformancePlugin(
           if (!toHide.length) return;
           // Bail out if a viewer:idle already raced ahead of us.
           if (!inMotion) return;
-          hiddenByModel.set(modelId, toHide);
+          addHidden(modelId, toHide);
           await model.setVisible(toHide, false).catch(() => undefined);
         })();
       }

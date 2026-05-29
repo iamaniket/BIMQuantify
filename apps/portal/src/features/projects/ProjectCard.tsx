@@ -177,7 +177,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                   {project.name}
                 </h3>
                 {project.reference_code !== null && (
-                  <p className="line-clamp-1 break-all text-caption font-mono text-primary-foreground/75">
+                  <p className="line-clamp-1 break-all text-caption font-sans text-primary-foreground/75">
                     {project.reference_code}
                   </p>
                 )}

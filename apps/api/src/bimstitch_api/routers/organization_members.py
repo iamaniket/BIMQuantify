@@ -49,6 +49,7 @@ from bimstitch_api.schemas.admin import (
     MemberRead,
     MemberUpdate,
 )
+from bimstitch_api.tenancy import schema_name_for
 
 
 def _build_member_read(
@@ -267,12 +268,13 @@ async def invite_member(
                     "role": assignment.role,
                 },
             )
-        # Restore search_path so any subsequent statement in this txn
-        # writes audit_log to public, not the tenant schema.
+        # Restore search_path to public; the audit write below routes itself
+        # to the org schema via record_for_org.
         await session.execute(text("SET LOCAL search_path = public"))
 
-    await audit.record(
+    await audit.record_for_org(
         session,
+        organization_id,
         action="organization_member.invited",
         resource_type="organization_member",
         resource_id=member.id,
@@ -286,7 +288,6 @@ async def invite_member(
             ],
         },
         actor_user_id=requester.id,
-        organization_id=organization_id,
         request=request,
     )
 
@@ -387,15 +388,15 @@ async def update_member(
         assert user is not None
         return _build_member_read(m, user)
 
-    await audit.record(
+    await audit.record_for_org(
         session,
+        organization_id,
         action=actions[0] if len(actions) == 1 else "organization_member.role_changed",
         resource_type="organization_member",
         resource_id=m.id,
         before=before,
         after={"is_org_admin": m.is_org_admin, "status": m.status.value},
         actor_user_id=requester.id,
-        organization_id=organization_id,
         request=request,
     )
     await session.commit()
@@ -459,15 +460,15 @@ async def update_member_guest(
     before = {"is_guest": m.is_guest}
     m.is_guest = payload.is_guest
 
-    await audit.record(
+    await audit.record_for_org(
         session,
+        organization_id,
         action="organization_member.guest_changed",
         resource_type="organization_member",
         resource_id=m.id,
         before=before,
         after={"is_guest": m.is_guest},
         actor_user_id=requester.id,
-        organization_id=organization_id,
         request=request,
     )
     await session.commit()
@@ -538,15 +539,15 @@ async def remove_member(
 
     await session.delete(m)
 
-    await audit.record(
+    await audit.record_for_org(
         session,
+        organization_id,
         action="organization_member.removed",
         resource_type="organization_member",
         resource_id=m.id,
         before=before,
         after={"reassigned_to": str(reassign_to)} if reassign_to else None,
         actor_user_id=requester.id,
-        organization_id=organization_id,
         request=request,
     )
     await session.commit()
@@ -590,15 +591,15 @@ async def resend_invite(
     # stays accurate.
     before_invited_at = member.invited_at
     member.invited_at = datetime.now(UTC)
-    await audit.record(
+    await audit.record_for_org(
         session,
+        organization_id,
         action="organization_member.invite_resent",
         resource_type="organization_member",
         resource_id=member.id,
         before={"invited_at": before_invited_at.isoformat()},
         after={"invited_at": member.invited_at.isoformat()},
         actor_user_id=requester.id,
-        organization_id=organization_id,
         request=request,
     )
     await session.commit()
@@ -637,9 +638,14 @@ async def list_org_audit_log(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> list[AuditEntry]:
+    # audit_log lives in this org's own schema now — point search_path at it
+    # rather than filtering by organization_id. require_org_admin already
+    # verified the requester administers this org.
+    schema = schema_name_for(organization_id)
+    await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+
     stmt = (
         select(AuditLog)
-        .where(AuditLog.organization_id == organization_id)
         .order_by(AuditLog.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -655,4 +661,6 @@ async def list_org_audit_log(
     if until:
         stmt = stmt.where(AuditLog.created_at < until)
     result = await session.execute(stmt)
-    return [AuditEntry.model_validate(e, from_attributes=True) for e in result.scalars()]
+    entries = [AuditEntry.model_validate(e, from_attributes=True) for e in result.scalars()]
+    await session.execute(text("SET LOCAL search_path TO public"))
+    return entries

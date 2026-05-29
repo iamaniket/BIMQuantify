@@ -176,7 +176,6 @@ async def check_compliance(
             "fail_count": fail_count,
         },
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )

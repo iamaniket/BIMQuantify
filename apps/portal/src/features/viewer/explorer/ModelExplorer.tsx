@@ -85,16 +85,12 @@ export function ModelExplorer({
       {tab === 'zones' && (
         <ZonesTab
           zones={metadata.zones}
-          elements={metadata.elements}
         />
       )}
       {hasSelection && (
-        <div
-          className="flex shrink-0 items-center justify-between border-t border-border px-3.5 py-2.5 font-mono text-xs tabular-nums"
-          style={{ color: 'var(--fg-3)', background: 'var(--surface-low)' }}
-        >
+        <div className="flex shrink-0 items-center justify-between border-t border-border bg-surface-low px-3.5 py-2.5 font-sans text-xs tabular-nums text-foreground-tertiary">
           <span>
-            <span style={{ color: 'var(--fg-2)', fontWeight: 700 }}>
+            <span className="font-bold text-foreground-secondary">
               {t('selected')}
               :
             </span>
@@ -104,8 +100,7 @@ export function ModelExplorer({
           <button
             type="button"
             onClick={clearSelection}
-            className="cursor-pointer border-none bg-transparent font-mono text-xs"
-            style={{ color: 'var(--primary)' }}
+            className="cursor-pointer border-none bg-transparent font-sans text-xs text-primary"
           >
             {t('clear')}
           </button>
@@ -125,7 +120,7 @@ export function ExplorerCounter({
   const shown = Math.max(0, total - hiddenCount);
 
   return (
-    <span className="font-mono text-[11.5px] tabular-nums text-white/65">
+    <span className="font-sans text-[11.5px] tabular-nums text-white/65">
       {shown.toLocaleString()} / {total.toLocaleString()}
     </span>
   );

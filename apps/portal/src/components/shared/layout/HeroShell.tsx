@@ -37,7 +37,7 @@ export function HeroShell({
           {badge !== undefined && (
             <div className="mb-1 flex flex-wrap items-center gap-2">{badge}</div>
           )}
-          <h1 className="line-clamp-2 font-display text-[28px] font-medium leading-[1.15] tracking-[-0.022em] sm:text-[32px]">
+          <h1 className="line-clamp-2 font-sans text-[28px] font-medium leading-[1.15] tracking-[-0.022em] sm:text-[32px]">
             {title}
           </h1>
           {description !== undefined && description !== null && description.length > 0 && (

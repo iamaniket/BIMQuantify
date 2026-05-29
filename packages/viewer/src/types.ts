@@ -14,6 +14,7 @@ import type {
 } from './core/types.js';
 import type { CameraAction, ControlsOptions, ZoomOptions } from './core/Viewer.js';
 import type { EffectsOptions } from './plugins/effects/types.js';
+import type { OutlinePluginOptions } from './plugins/outline/index.js';
 import type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
 import type { InteractivePerformanceOptions } from './plugins/interactive-performance/index.js';
 import type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
@@ -92,8 +93,13 @@ export type IfcViewerProps = {
   hoverHighlight?: HoverPluginOptions;
   /** Selection highlight color and opacity. */
   selectionHighlight?: SelectionPluginOptions;
-  /** Forge-style post-processing (silhouette edge lines). */
+  /** MSAA + FXAA composite on the idle frame. */
   effects?: EffectsOptions;
+  /**
+   * Geometry-based model outline drawn on the idle frame. Built once per
+   * model on load and reused by x-ray. Pass `{ enabled: true }` to show it.
+   */
+  outline?: OutlinePluginOptions;
   /**
    * Forge-style orbit-around-cursor. Pass `false` to disable, an options
    * object to tune. Defaults are sensible — most consumers can omit this.

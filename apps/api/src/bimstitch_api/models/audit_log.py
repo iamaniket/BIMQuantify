@@ -7,15 +7,22 @@ from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bimstitch_api.db import MasterBase
+from bimstitch_api.db import TenantBase
 
 
-class AuditLog(MasterBase):
-    """Append-only log of identity/admin mutations.
+class AuditLog(TenantBase):
+    """Append-only log of mutations, stored per-tenant.
+
+    This is a tenant table: one `audit_log` lives in each org schema
+    (`org_<hex>`), so a row's organization is implied by the schema it sits
+    in — there is no `organization_id` column. Events with no single org
+    (anonymous auth failures, platform-level super-admin actions) are written
+    into the platform org's schema.
 
     Scope: auth events (login/logout/refresh/switch), user lifecycle, org
-    CRUD, organization_member changes, project_member changes. App data
-    (project file uploads, model state changes, etc.) is NOT logged here.
+    CRUD, organization_member changes, project_member changes, plus
+    project-scoped app events (file uploads, extraction, reports) that feed
+    the project activity feed.
 
     Always written from the app layer — not via Postgres triggers — because
     triggers can't see request_id, user_agent, or the HTTP actor.
@@ -49,15 +56,9 @@ class AuditLog(MasterBase):
         nullable=True,
     )
 
-    # Org context — null for cross-org / platform events.
-    organization_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.organizations.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
     # Project context — null for non-project events (auth, org-level).
-    # No FK: audit_log is in public, projects live in tenant schemas.
+    # FK-less by design: platform-schema rows reference projects that live in
+    # other schemas, and a target project may have been deleted.
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         nullable=True,
@@ -91,11 +92,9 @@ class AuditLog(MasterBase):
     )
 
     __table_args__ = (
-        Index("ix_audit_org_time", "organization_id", "created_at"),
         Index("ix_audit_user_time", "user_id", "created_at"),
         Index("ix_audit_resource", "resource_type", "resource_id"),
         Index("ix_audit_action_time", "action", "created_at"),
         Index("ix_audit_impersonator_time", "impersonator_user_id", "created_at"),
         Index("ix_audit_project_time", "project_id", "created_at"),
-        {"schema": "public"},
     )

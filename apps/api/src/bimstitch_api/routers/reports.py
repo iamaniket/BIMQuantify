@@ -315,7 +315,6 @@ async def create_report(
             "title": report.title,
         },
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )

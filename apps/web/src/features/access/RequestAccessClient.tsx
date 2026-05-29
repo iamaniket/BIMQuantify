@@ -90,7 +90,7 @@ export function RequestAccessClient(): JSX.Element {
           <div className="relative flex items-center gap-3">
             <BrandMark size={38} tone="on-dark" />
             <div>
-              <div className="font-display text-[18px] font-semibold leading-tight tracking-tight text-white">
+              <div className="font-sans text-[18px] font-semibold leading-tight tracking-tight text-white">
                 BimStitch
               </div>
               <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
@@ -114,7 +114,7 @@ export function RequestAccessClient(): JSX.Element {
               </div>
 
               <h1
-                className="m-0 max-w-md font-display text-[36px] font-medium leading-[1.06] tracking-tight text-white"
+                className="m-0 max-w-md font-sans text-[36px] font-medium leading-[1.06] tracking-tight text-white"
                 style={{ textWrap: 'pretty' }}
               >
                 See your <span className="italic" style={{ color: '#9bbce8' }}>models</span>,{' '}
@@ -162,7 +162,7 @@ export function RequestAccessClient(): JSX.Element {
                 {/* Always rendered with reserved space — visibility-toggled
                     so the map doesn't jump when the API call resolves. */}
                 <div
-                  className="mt-5 whitespace-nowrap text-right font-mono text-[15px] uppercase tracking-[0.10em] text-white/55"
+                  className="mt-5 whitespace-nowrap text-right font-sans text-[15px] uppercase tracking-[0.10em] text-white/55"
                   style={{ visibility: markers.length > 0 ? 'visible' : 'hidden' }}
                   aria-hidden={markers.length === 0}
                 >
@@ -180,7 +180,7 @@ export function RequestAccessClient(): JSX.Element {
       topRight={(
         <>
           <SystemStatusBadge status="normal" region="Onboarding · EU-WEST · AMS01" tone="on-light" />
-          <a href={signInHref} className="font-mono text-[11.5px] text-foreground-tertiary no-underline">
+          <a href={signInHref} className="font-sans text-[11.5px] text-foreground-tertiary no-underline">
             ‹ Back to sign in
           </a>
         </>
@@ -192,7 +192,7 @@ export function RequestAccessClient(): JSX.Element {
               <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">
                 Request access
               </div>
-              <h2 className="m-0 font-display text-[28px] font-medium leading-tight tracking-tight text-foreground">
+              <h2 className="m-0 font-sans text-[28px] font-medium leading-tight tracking-tight text-foreground">
                 Get your BimStitch demo.
               </h2>
               <p className="mt-2 text-[13px] leading-snug text-foreground-tertiary">

@@ -92,6 +92,10 @@ export {
 export type { TooltipContentProps } from './Tooltip.js';
 export { Badge } from './Badge.js';
 export type { BadgeProps, BadgeVariant } from './Badge.js';
+export { Eyebrow } from './Eyebrow.js';
+export type { EyebrowProps, EyebrowSize } from './Eyebrow.js';
+export { CountChip } from './CountChip.js';
+export type { CountChipProps } from './CountChip.js';
 export { Progress } from './Progress.js';
 export type { ProgressProps, ProgressVariant } from './Progress.js';
 export {

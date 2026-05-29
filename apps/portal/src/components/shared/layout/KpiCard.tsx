@@ -29,7 +29,7 @@ export function KpiCard({
         {label}
       </div>
       <div
-        className="mt-[3px] whitespace-nowrap font-display text-[22px] font-semibold leading-[1.05] tracking-[-0.015em] tabular-nums"
+        className="mt-[3px] whitespace-nowrap font-sans text-[22px] font-semibold leading-[1.05] tracking-[-0.015em] tabular-nums"
         style={{ color: color ?? 'currentColor' }}
       >
         {value}

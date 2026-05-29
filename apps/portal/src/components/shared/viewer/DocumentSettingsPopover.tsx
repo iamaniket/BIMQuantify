@@ -97,7 +97,7 @@ function ShortcutsSection({
               <button
                 type="button"
                 onClick={() => { setCapturing(action); }}
-                className="min-w-[5rem] rounded border border-border px-2 py-0.5 font-mono text-foreground hover:bg-background-secondary"
+                className="min-w-[5rem] rounded border border-border px-2 py-0.5 font-sans text-foreground hover:bg-background-secondary"
               >
                 {capturing === action ? 'Press a key…' : combo || '—'}
               </button>
@@ -130,7 +130,7 @@ function MouseSection(): JSX.Element {
             key={r.gesture}
             className="flex items-center justify-between gap-2 text-caption"
           >
-            <span className="truncate font-mono text-foreground-secondary">
+            <span className="truncate font-sans text-foreground-secondary">
               {r.gesture}
             </span>
             <span className="text-foreground">{r.action}</span>

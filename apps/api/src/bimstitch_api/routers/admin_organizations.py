@@ -11,7 +11,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
@@ -44,6 +44,7 @@ from bimstitch_api.schemas.admin import (
     OrganizationRead,
     OrganizationUpdate,
 )
+from bimstitch_api.tenancy import resolve_platform_schema, schema_name_for
 
 
 async def _seat_counts_for(
@@ -252,26 +253,26 @@ async def update_organization(
         elif seat_limit_changed:
             # Record an extra audit entry so the seat change is visible
             # even though the primary action describes name/status.
-            await audit.record(
+            await audit.record_for_org(
                 session,
+                organization_id,
                 action="organization.seat_limit_changed",
                 resource_type="organization",
                 resource_id=organization_id,
                 before={"seat_limit": before["seat_limit"]},
                 after={"seat_limit": after["seat_limit"]},
                 actor_user_id=requester.id,
-                organization_id=organization_id,
                 request=request,
             )
-        await audit.record(
+        await audit.record_for_org(
             session,
+            organization_id,
             action=action,
             resource_type="organization",
             resource_id=organization_id,
             before=before,
             after=after,
             actor_user_id=requester.id,
-            organization_id=organization_id,
             request=request,
         )
         await session.commit()
@@ -337,8 +338,10 @@ async def _toggle_superuser(
             ProposedUserChange(is_superuser=False, is_active=user.is_active),
         )
     user.is_superuser = new_value
-    await audit.record(
+    # Platform-level action (no subject org) → platform schema.
+    await audit.record_for_org(
         session,
+        None,
         action="user.promoted_superuser" if new_value else "user.demoted_superuser",
         resource_type="user",
         resource_id=user.id,
@@ -407,8 +410,10 @@ async def _toggle_active(
             ProposedUserChange(is_superuser=True, is_active=False),
         )
     user.is_active = new_value
-    await audit.record(
+    # Platform-level action (no subject org) → platform schema.
+    await audit.record_for_org(
         session,
+        None,
         action="user.activated" if new_value else "user.deactivated",
         resource_type="user",
         resource_id=user.id,
@@ -463,6 +468,15 @@ async def list_audit_log(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> list[AuditEntry]:
+    # audit_log is a per-tenant table. With ?organization_id, read that org's
+    # schema; without it, read the platform schema (super-admin / org-less
+    # events). No cross-org UNION — drill into one org at a time.
+    if organization_id is not None:
+        schema = schema_name_for(organization_id)
+    else:
+        schema = await resolve_platform_schema(session)
+    await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+
     stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).offset(offset)
     if action:
         stmt = stmt.where(AuditLog.action == action)
@@ -472,11 +486,11 @@ async def list_audit_log(
         stmt = stmt.where(AuditLog.resource_id == resource_id)
     if user_id:
         stmt = stmt.where(AuditLog.user_id == user_id)
-    if organization_id:
-        stmt = stmt.where(AuditLog.organization_id == organization_id)
     if since:
         stmt = stmt.where(AuditLog.created_at >= since)
     if until:
         stmt = stmt.where(AuditLog.created_at < until)
     result = await session.execute(stmt)
-    return [AuditEntry.model_validate(e, from_attributes=True) for e in result.scalars()]
+    entries = [AuditEntry.model_validate(e, from_attributes=True) for e in result.scalars()]
+    await session.execute(text("SET LOCAL search_path TO public"))
+    return entries

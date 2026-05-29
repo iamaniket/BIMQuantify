@@ -15,10 +15,9 @@ import pytest
 from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimstitch_api.admin.invitation_expiry import sweep_expired_invitations
-from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -26,6 +25,7 @@ from bimstitch_api.models.organization_member import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.tenancy import schema_name_for
+from tests.conftest import _audit_rows
 
 PASSWORD = "correct-horse-battery"
 
@@ -71,7 +71,10 @@ async def _get_member_status(
     return row.scalar_one()
 
 
-async def test_sweep_expires_old_pending_rows(session: AsyncSession) -> None:
+async def test_sweep_expires_old_pending_rows(
+    session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
     org = await _make_org(session, f"Acme-{uuid4().hex[:8]}")
     invitee = await _make_user(session, f"stale-{uuid4().hex[:8]}@acme.com")
     old_invited_at = datetime.now(timezone.utc) - timedelta(days=20)
@@ -92,13 +95,12 @@ async def test_sweep_expires_old_pending_rows(session: AsyncSession) -> None:
 
     assert await _get_member_status(session, member_id) == OrganizationMemberStatus.removed
 
-    audit_q = await session.execute(
-        select(AuditLog).where(
-            AuditLog.resource_id == str(member_id),
-            AuditLog.action == "organization_member.invitation_expired",
-        )
+    entries = await _audit_rows(
+        session_maker,
+        "organization_member.invitation_expired",
+        resource_id=member_id,
     )
-    assert audit_q.scalar_one_or_none() is not None
+    assert len(entries) == 1
 
 
 async def test_sweep_leaves_fresh_pending_rows(session: AsyncSession) -> None:

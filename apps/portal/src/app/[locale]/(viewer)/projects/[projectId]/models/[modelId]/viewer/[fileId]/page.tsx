@@ -349,7 +349,8 @@ export default function ViewerPage(): JSX.Element {
           enabled: settings.shadows.enabled,
         }}
         background={{ color: settings.background.color }}
-        effects={{ ...settings.effects, edges: false }}
+        effects={settings.effects}
+        outline={{ enabled: settings.outline.enabled }}
         hoverHighlight={{ color: settings.behavior.hoverHighlight.color }}
         selectionHighlight={{ color: settings.behavior.selection.color }}
         shortcuts={settings.shortcuts}

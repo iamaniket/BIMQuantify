@@ -5,29 +5,23 @@ import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';
 
-import type { ElementEntry, ZoneNode } from '@/lib/api/viewerTypes';
-import { useViewerEntityStore } from '@/stores/viewerEntityStore';
+import type { ZoneNode } from '@/lib/api/viewerTypes';
+import { useViewerEntityStore, toEntityKey } from '@/stores/viewerEntityStore';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { VirtualizedTree } from './VirtualizedTree';
 import type { TreeNodeData } from './TreeNode';
-import {
-  elementToLeaf,
-  groupElementsBy,
-  filterTree,
-} from './treeBuilders';
+import { filterTree } from './treeBuilders';
 import { ifcClassColor } from './ifcClassColors';
 import { TreeToolbar } from './TreeToolbar';
 import { useTreeExpansion } from './useTreeExpansion';
 
 type ZonesTabProps = {
   zones: ZoneNode[] | undefined;
-  elements: ElementEntry[] | undefined;
 };
 
 export function ZonesTab({
   zones,
-  elements,
 }: ZonesTabProps): JSX.Element {
   const modelId = useViewerEntityStore((s) => s.modelId);
   const showItems = useViewerEntityStore((s) => s.showItems);
@@ -40,25 +34,16 @@ export function ZonesTab({
   const [filter, setFilter] = useState('');
 
   const zoneNodes = useMemo((): TreeNodeData[] => {
-    if (!zones || !elements || !modelId) return [];
-
-    const byContainer = groupElementsBy(elements, (el) => el.containedIn);
+    if (!zones || !modelId) return [];
 
     return zones.map((zone): TreeNodeData => {
-      const spaceNodes = zone.spaces.map((space): TreeNodeData => {
-        const items = byContainer.get(space.expressID) ?? [];
-        const children = items.map((el) => ({
-          ...elementToLeaf(el, modelId, `zone-${String(zone.expressID)}-${String(space.expressID)}`),
-          color: ifcClassColor(el.type),
-        }));
-        return {
-          key: `zone-${String(zone.expressID)}-space-${String(space.expressID)}`,
-          label: space.name ?? `Space #${String(space.expressID)}`,
-          entityKeys: children.flatMap((c) => c.entityKeys),
-          children,
-          count: items.length,
-        };
-      });
+      const spaceNodes = zone.spaces.map((space): TreeNodeData => ({
+        key: `zone-${String(zone.expressID)}-space-${String(space.expressID)}`,
+        label: space.name ?? `Space #${String(space.expressID)}`,
+        type: 'IfcSpace',
+        entityKeys: [toEntityKey(modelId, space.expressID)],
+        color: ifcClassColor('IfcSpace'),
+      }));
 
       const entityKeys = spaceNodes.flatMap((n) => n.entityKeys);
       return {
@@ -66,10 +51,10 @@ export function ZonesTab({
         label: zone.name ?? `Zone #${String(zone.expressID)}`,
         entityKeys,
         children: spaceNodes,
-        count: entityKeys.length,
+        count: spaceNodes.length,
       };
     });
-  }, [zones, elements, modelId]);
+  }, [zones, modelId]);
 
   const allKeys = useMemo(
     () => zoneNodes.flatMap((n) => [n.key, ...(n.children ?? []).map((c) => c.key)]),

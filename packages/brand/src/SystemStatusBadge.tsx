@@ -38,7 +38,7 @@ export function SystemStatusBadge({
   return (
     <div
       role="status"
-      className={cn('inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.02em]', className)}
+      className={cn('inline-flex items-center gap-2 font-sans text-[11px] tracking-[0.02em]', className)}
       style={{ color: fg }}
     >
       <span

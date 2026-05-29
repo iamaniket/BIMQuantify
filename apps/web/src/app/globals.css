@@ -5,6 +5,12 @@
 :root {
   --brand-gradient-start: #2c5697;
   --brand-gradient-end: #224579;
+
+  /* Inline/SVG font references resolve to the single text family, Geist.
+     Fraunces (--font-display, injected by next/font) is reserved for
+     login/auth. --font-mono is aliased to Geist; Geist Mono was dropped. */
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 [data-theme="dark"] {
@@ -15,14 +21,6 @@
 @font-face {
   font-family: 'Geist';
   src: url('/fonts/Geist-Variable.woff2') format('woff2-variations');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Geist Mono';
-  src: url('/fonts/GeistMono-Variable.woff2') format('woff2-variations');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;

@@ -1,5 +1,6 @@
 'use client';
 
+import { Eyebrow } from '@bimstitch/ui';
 import { Info, MousePointerClick } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
@@ -111,8 +112,6 @@ function IfcInspector({
       <ElementHeader
         name={element.name}
         type={element.type}
-        globalId={element.globalId}
-        selectionCount={selectedSize}
       />
       <PanelTabs tabs={tabs} active={tab} onChange={setTab} />
       <div className="min-h-0 flex-1 overflow-hidden">
@@ -165,32 +164,10 @@ function PdfInspector({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div
-        className="border-b border-border"
-        style={{ padding: '12px 14px 10px', background: 'var(--surface-main)' }}
-      >
-        <div
-          className="flex items-center gap-2"
-          style={{
-            fontFamily: 'var(--mono)',
-            fontSize: 10.5,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: 'var(--fg-3)',
-          }}
-        >
-          <span style={{ color: 'var(--fg-2)', fontWeight: 700 }}>PDF</span>
-          <span
-            style={{
-              padding: '1px 6px',
-              borderRadius: 3,
-              background: 'var(--primary-light)',
-              color: 'var(--primary)',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              fontSize: 10,
-            }}
-          >
+      <div className="border-b border-border bg-surface-main px-3.5 pb-2.5 pt-3">
+        <div className="flex items-center gap-2 font-sans text-caption uppercase tracking-[0.12em] text-foreground-tertiary">
+          <Eyebrow className="tracking-[0.12em]">PDF</Eyebrow>
+          <span className="rounded-xs bg-primary-light px-1.5 py-px font-bold tracking-[0.08em] text-primary">
             {t('pdfPageHeader', { page: pdfCurrentPage })}
           </span>
         </div>

@@ -453,7 +453,7 @@ function InvitationsPane({
                 className="rounded-lg border border-border bg-background px-4 py-3"
               >
                 <div className="flex flex-col gap-1">
-                  <div className="font-display text-[15px] font-medium text-foreground">
+                  <div className="font-sans text-[15px] font-medium text-foreground">
                     {inv.organization_name}
                   </div>
                   <div className="flex items-center gap-1.5 text-[12px] text-foreground-tertiary">

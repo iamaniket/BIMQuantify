@@ -66,7 +66,6 @@ async def create_capture_link(
             resource=Resource.capture_link.value,
             action=Action.create.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             request=request,
         )
         raise
@@ -97,7 +96,6 @@ async def create_capture_link(
         resource_id=link.id,
         after=_capture_link_snapshot(link),
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
 
@@ -149,7 +147,6 @@ async def revoke_capture_link(
             resource=Resource.capture_link.value,
             action=Action.delete.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             resource_id=link_id,
             request=request,
         )
@@ -181,7 +178,6 @@ async def revoke_capture_link(
         before=before,
         after=_capture_link_snapshot(link),
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

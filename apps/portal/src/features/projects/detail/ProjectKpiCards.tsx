@@ -25,7 +25,7 @@ export function ProjectKpiCards({ items }: Props): JSX.Element {
             {item.label}
           </div>
           <div
-            className="mt-[3px] font-display text-[22px] font-semibold leading-[1.05] tracking-[-0.015em] tabular-nums"
+            className="mt-[3px] font-sans text-[22px] font-semibold leading-[1.05] tracking-[-0.015em] tabular-nums"
             style={{ color: item.color ?? 'currentColor' }}
           >
             {item.value}

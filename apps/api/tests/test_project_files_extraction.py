@@ -410,7 +410,7 @@ async def test_viewer_bundle_returns_presigned_urls_after_extraction(
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["fragments_url"].startswith("http://fake-storage/")
-    assert body["fragments_url"].endswith(".frag")
+    assert ".frag?download=" in body["fragments_url"]
     assert body["metadata_url"] is not None
     assert body["properties_url"] is not None
     assert body["expires_in"] == fake.presign_ttl_value

@@ -5,6 +5,7 @@ import type {
   EffectsQuality,
   InteractivePerformanceOptions,
   MouseBindingMap,
+  OutlinePluginOptions,
   ShortcutMap,
   ZoomOptions,
 } from '@bimstitch/viewer';
@@ -12,6 +13,8 @@ import type {
 const STORAGE_KEY = 'bimstitch.viewerSettings.v2';
 
 export type EffectsSettings = Required<EffectsOptions>;
+
+export type OutlineSettings = { enabled: boolean };
 
 export type ControlsSettings = Required<ControlsOptions>;
 
@@ -27,6 +30,8 @@ export type ViewerSettings = {
   shadows: { enabled: boolean };
   background: { color: number };
   effects: EffectsSettings;
+  /** Build-once geometry outline drawn on the idle frame. */
+  outline: OutlineSettings;
   /** command name → key combo. Matches `IfcViewerProps.shortcuts`. */
   shortcuts: ShortcutMap;
   /** Mouse gesture → command name. Matches `IfcViewerProps.mouseBindings`. */
@@ -43,8 +48,11 @@ export type ViewerSettings = {
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
   enabled: true,
-  edges: true,
   quality: 'medium',
+};
+
+export const DEFAULT_OUTLINE: OutlineSettings = {
+  enabled: true,
 };
 
 export const DEFAULT_MOUSE_BINDINGS_SETTINGS: MouseBindingMap = {
@@ -104,6 +112,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   shadows: { enabled: true },
   background: { color: 0xffffff },
   effects: DEFAULT_EFFECTS,
+  outline: DEFAULT_OUTLINE,
   shortcuts: {},
   mouseBindings: DEFAULT_MOUSE_BINDINGS_SETTINGS,
   controls: DEFAULT_CONTROLS,
@@ -119,6 +128,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
     shadows: p.shadows ?? d.shadows,
     background: p.background ?? d.background,
     effects: { ...d.effects, ...(p.effects ?? {}) },
+    outline: { ...d.outline, ...(p.outline ?? {}) },
     shortcuts: p.shortcuts ?? d.shortcuts,
     mouseBindings: p.mouseBindings ?? d.mouseBindings,
     controls: { ...d.controls, ...(p.controls ?? {}) },

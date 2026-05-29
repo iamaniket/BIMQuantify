@@ -91,7 +91,11 @@ const preset = {
       },
       fontFamily: {
         sans: ['Geist', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        // `mono` is intentionally aliased to Geist: the app uses a single
+        // text family (Geist) everywhere. Geist Mono was dropped. This alias
+        // guarantees any remaining `font-mono` class renders Geist, never a
+        // system monospace fallback.
+        mono: ['Geist', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
         // Brand display face for hero copy on auth/marketing pages.
         // Falls back to a serif so the page still looks correct if the
         // webfont hasn't loaded.

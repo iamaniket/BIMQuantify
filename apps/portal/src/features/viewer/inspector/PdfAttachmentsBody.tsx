@@ -195,7 +195,7 @@ export function PdfAttachmentsBody({
     <div className="flex h-full min-h-0 flex-col">
       {/* Action bar */}
       <div className="flex items-center justify-between gap-2 border-b border-border bg-background px-3.5 py-2.5">
-        <div className="font-mono text-caption font-bold uppercase tracking-[0.1em] text-foreground-secondary">
+        <div className="font-sans text-caption font-bold uppercase tracking-[0.1em] text-foreground-secondary">
           {t('tabOnPage')}
         </div>
         <div className="flex shrink-0 gap-1">

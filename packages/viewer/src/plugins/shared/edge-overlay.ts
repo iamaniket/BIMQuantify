@@ -17,6 +17,12 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
 import { LAYER_OVERLAY } from '../../core/layers.js';
 import type { ItemId, ViewerContext } from '../../core/types.js';
+import { extractEdgePositions } from './edges.js';
+import {
+  applyClippingPlanes,
+  buildClippingPlanes,
+  type SectionPlaneData,
+} from './clipping.js';
 
 export interface EdgeOverlayOptions {
   lineWidth?: number;
@@ -27,9 +33,41 @@ const itemKey = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 export class EdgeOverlay {
   private readonly lines = new Map<string, LineSegments2[]>();
   private readonly lineWidth: number;
+  private currentPlanes: THREE.Plane[] = [];
+  private clipCount = 0;
+  private sectionUnsub: (() => void) | null = null;
 
   constructor(opts: EdgeOverlayOptions = {}) {
     this.lineWidth = opts.lineWidth ?? 2;
+  }
+
+  /**
+   * Lazily wire this overlay to the section plugin (idempotent). Keeps the
+   * overlay's line materials clipped to the active section planes — both ones
+   * created later and ones already painted when the plane moves.
+   */
+  private ensureSectionSync(ctx: ViewerContext): void {
+    if (this.sectionUnsub) return;
+    this.sectionUnsub = ctx.events.on('section:change', ({ planes }) => {
+      this.setClippingPlanes(planes);
+    });
+    void ctx.commands
+      .execute('section.list')
+      .then((planes) => {
+        if (Array.isArray(planes)) this.setClippingPlanes(planes as SectionPlaneData[]);
+      })
+      .catch(() => undefined);
+  }
+
+  private setClippingPlanes(planes: SectionPlaneData[]): void {
+    this.currentPlanes = buildClippingPlanes(planes);
+    const prev = this.clipCount;
+    for (const segs of this.lines.values()) {
+      for (const seg of segs) {
+        applyClippingPlanes(seg.material as LineMaterial, this.currentPlanes, prev);
+      }
+    }
+    this.clipCount = this.currentPlanes.length;
   }
 
   async add(
@@ -37,6 +75,7 @@ export class EdgeOverlay {
     items: ItemId[],
     color: THREE.Color,
   ): Promise<void> {
+    this.ensureSectionSync(ctx);
     const size = ctx.renderer.getSize(new THREE.Vector2());
     const dpr = ctx.renderer.getPixelRatio();
 
@@ -49,6 +88,7 @@ export class EdgeOverlay {
       opacity: 0.85,
       resolution: new THREE.Vector2(size.x * dpr, size.y * dpr),
     });
+    applyClippingPlanes(mat, this.currentPlanes, -1);
 
     const grouped = new Map<string, ItemId[]>();
     for (const item of items) {
@@ -78,28 +118,18 @@ export class EdgeOverlay {
           const segments: LineSegments2[] = [];
 
           for (const meshData of meshDataArr) {
-            if (!meshData.positions) continue;
+            // Edges are extracted with the mesh transform baked into world
+            // space, so the line object itself stays at identity.
+            const positions = extractEdgePositions(meshData);
+            if (!positions) continue;
 
-            const bufGeo = new THREE.BufferGeometry();
-            bufGeo.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
-            if (meshData.indices) {
-              bufGeo.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
-            }
-
-            const edgesGeo = new THREE.EdgesGeometry(bufGeo, 30);
-            bufGeo.dispose();
-
-            const lineGeo = new LineSegmentsGeometry().fromEdgesGeometry(edgesGeo);
-            edgesGeo.dispose();
+            const lineGeo = new LineSegmentsGeometry();
+            lineGeo.setPositions(positions);
 
             const line = new LineSegments2(lineGeo, mat.clone());
             line.renderOrder = 999;
             line.layers.set(LAYER_OVERLAY);
             line.name = `edge-overlay::${k}`;
-
-            if (meshData.transform) {
-              line.applyMatrix4(meshData.transform);
-            }
 
             ctx.scene.add(line);
             segments.push(line);
@@ -150,5 +180,7 @@ export class EdgeOverlay {
 
   dispose(ctx: ViewerContext): void {
     this.clear(ctx);
+    this.sectionUnsub?.();
+    this.sectionUnsub = null;
   }
 }

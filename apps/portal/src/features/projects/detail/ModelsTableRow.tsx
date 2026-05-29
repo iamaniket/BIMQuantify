@@ -108,7 +108,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
           </span>
           <div className="min-w-0">
             <div className="truncate font-semibold">{model.name}</div>
-            <div className="flex items-center gap-1.5 font-mono text-caption text-foreground-tertiary">
+            <div className="flex items-center gap-1.5 font-sans text-caption text-foreground-tertiary">
               {latestFile !== undefined ? (
                 <>
                   <FileTypePill fileType={latestFile.file_type} schema={latestFile.ifc_schema} />
@@ -123,7 +123,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
         <span className="text-caption font-medium uppercase text-foreground-tertiary">
           {latestFile !== undefined ? (latestFile.file_type === 'pdf' ? 'PDF' : 'IFC') : '—'}
         </span>
-        <span className="text-center font-mono text-body3 font-semibold tabular-nums">{files.length}</span>
+        <span className="text-center font-sans text-body3 font-semibold tabular-nums">{files.length}</span>
         <span className="text-caption text-foreground-tertiary whitespace-nowrap">
           {latestFile !== undefined ? formatRelativeTime(latestFile.updated_at) : '—'}
         </span>
@@ -263,7 +263,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
                       i < files.length - 1 ? 'border-b border-border' : ''
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 font-mono font-bold">
+                    <div className="flex items-center gap-1.5 font-sans font-bold">
                       <span className={isLatest ? 'text-primary' : 'text-foreground'}>
                         v{String(f.version_number).padStart(2, '0')}{ext}
                       </span>

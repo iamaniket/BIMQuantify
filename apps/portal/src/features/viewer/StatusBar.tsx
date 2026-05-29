@@ -48,7 +48,7 @@ function PdfStatusBar({
   className?: string;
 }): JSX.Element {
   return (
-    <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-mono', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
+    <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-sans', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
       <span className="flex min-w-0 flex-1 items-center overflow-hidden">
         <Label>page</Label>
         <span>&nbsp;</span>
@@ -91,7 +91,7 @@ function IfcStatusBar({
   const hasSelection = selectionCount > 0;
 
   return (
-    <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-mono', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
+    <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-sans', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
       <span className="flex min-w-0 flex-1 items-center overflow-hidden">
         {hasSelection ? (
           <span className="inline-flex items-center rounded-sm bg-white/15 px-1.5">

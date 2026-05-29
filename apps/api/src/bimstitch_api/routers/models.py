@@ -98,7 +98,6 @@ async def create_model(
             "primary_file_type": model.primary_file_type.value if model.primary_file_type else None,
         },
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )
@@ -213,7 +212,6 @@ async def update_model(
         before=before,
         after=after,
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )
@@ -260,7 +258,6 @@ async def delete_model(
         resource_id=model.id,
         before=before,
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )

@@ -179,21 +179,21 @@ function OverviewPane({
               <span className="h-2.5 w-2.5 rounded-sm bg-success" />
               {t('statusActive')}
             </div>
-            <span className="font-mono text-body3 text-foreground-tertiary">{byStatus.active.length}</span>
+            <span className="font-sans text-body3 text-foreground-tertiary">{byStatus.active.length}</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 text-body3 font-medium text-foreground-secondary">
               <span className="h-2.5 w-2.5 rounded-sm bg-warning" />
               {t('statusSuspended')}
             </div>
-            <span className="font-mono text-body3 text-foreground-tertiary">{byStatus.suspended.length}</span>
+            <span className="font-sans text-body3 text-foreground-tertiary">{byStatus.suspended.length}</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 text-body3 font-medium text-foreground-secondary">
               <span className="h-2.5 w-2.5 rounded-sm bg-foreground-tertiary" />
               {t('statusProvisioning')}
             </div>
-            <span className="font-mono text-body3 text-foreground-tertiary">{byStatus.provisioning.length}</span>
+            <span className="font-sans text-body3 text-foreground-tertiary">{byStatus.provisioning.length}</span>
           </div>
         </div>
       </div>
@@ -204,11 +204,11 @@ function OverviewPane({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-body3 text-foreground-secondary">{t('seatsInUse')}</span>
-            <span className="font-mono text-body3 font-semibold">{totalSeats}</span>
+            <span className="font-sans text-body3 font-semibold">{totalSeats}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-body3 text-foreground-secondary">{t('totalCapacity')}</span>
-            <span className="font-mono text-body3 text-foreground-tertiary">
+            <span className="font-sans text-body3 text-foreground-tertiary">
               {totalCapacity}{unlimitedCount > 0 ? ` + ${unlimitedCount} ∞` : ''}
             </span>
           </div>
@@ -226,7 +226,7 @@ function OverviewPane({
               <div key={org.id} className="flex items-center justify-between py-2.5">
                 <div>
                   <span className="text-body3 font-medium">{org.name}</span>
-                  <span className="ml-2 font-mono text-caption text-foreground-tertiary">{org.schema_name}</span>
+                  <span className="ml-2 font-sans text-caption text-foreground-tertiary">{org.schema_name}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge variant={org.status === 'active' ? 'success' : org.status === 'suspended' ? 'warning' : 'default'}>

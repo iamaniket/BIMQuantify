@@ -102,7 +102,6 @@ async def start_inspection(
             resource_id=moment.id,
             after={"moment_id": str(moment.id), "inspector_user_id": str(user.id)},
             actor_user_id=user.id,
-            organization_id=active_org_id,
             request=request,
         )
 
@@ -200,7 +199,6 @@ async def submit_result(
             "has_photos": bool(result.photo_ids),
         },
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return result
@@ -341,7 +339,6 @@ async def complete_inspection(
             "fail_count": int(has_failures),
         },
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
 

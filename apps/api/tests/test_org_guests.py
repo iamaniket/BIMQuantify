@@ -21,7 +21,6 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -29,6 +28,7 @@ from bimstitch_api.models.organization_member import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.tenancy import schema_name_for
+from tests.conftest import _audit_rows
 
 PASSWORD = "correct-horse-battery"
 
@@ -334,6 +334,7 @@ async def test_demote_org_admin_to_guest_is_rejected(
 async def test_demote_regular_to_guest_succeeds(
     client: AsyncClient,
     session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     org = await _make_org(session, "HostCo")
     admin = await _make_user(session, "host-admin@example.com")
@@ -351,11 +352,7 @@ async def test_demote_regular_to_guest_succeeds(
     assert resp.json()["is_guest"] is True
 
     # And the audit row.
-    rows = (
-        await session.execute(
-            select(AuditLog).where(AuditLog.action == "organization_member.guest_changed")
-        )
-    ).scalars().all()
+    rows = await _audit_rows(session_maker, "organization_member.guest_changed")
     assert len(rows) == 1
     assert rows[0].before == {"is_guest": False}
     assert rows[0].after == {"is_guest": True}

@@ -203,7 +203,6 @@ async def initiate_capture_upload(
                 "attachment_category": att.attachment_category.value,
             },
             actor_user_id=None,
-            organization_id=org_id,
             request=request,
         )
 
@@ -270,7 +269,6 @@ async def complete_capture_upload(
                 resource_id=att.id,
                 after={"status": "rejected", "rejection_reason": "SIZE_MISMATCH"},
                 actor_user_id=None,
-                organization_id=org_id,
                 request=request,
             )
             await session.commit()
@@ -290,7 +288,6 @@ async def complete_capture_upload(
             before={"status": "pending"},
             after={"status": "ready"},
             actor_user_id=None,
-            organization_id=org_id,
             request=request,
         )
 

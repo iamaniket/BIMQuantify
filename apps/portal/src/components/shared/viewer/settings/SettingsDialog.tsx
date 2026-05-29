@@ -64,12 +64,12 @@ function Viewer3DSection({
           }}
         />
         <Toggle
-          label="Edges (silhouette)"
-          checked={settings.effects.edges}
-          onChange={(edges) => {
+          label="Edges (outline)"
+          checked={settings.outline.enabled}
+          onChange={(enabled) => {
             onChange({
               ...settings,
-              effects: { ...settings.effects, edges },
+              outline: { ...settings.outline, enabled },
             });
           }}
         />
@@ -330,7 +330,7 @@ type Props = Props3D | Props2D;
 function needsReload(prev: ViewerSettings, next: ViewerSettings): boolean {
   if (prev.shadows.enabled !== next.shadows.enabled) return true;
   if (prev.effects.enabled !== next.effects.enabled) return true;
-  if (prev.effects.edges !== next.effects.edges) return true;
+  if (prev.outline.enabled !== next.outline.enabled) return true;
   if (prev.effects.quality !== next.effects.quality) return true;
   if (prev.background.color !== next.background.color) return true;
   if (prev.controls.left !== next.controls.left) return true;

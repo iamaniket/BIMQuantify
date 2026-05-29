@@ -38,7 +38,7 @@ function PlaceholderContent({ label }: { label: string }): JSX.Element {
     <div className="flex flex-1 items-center justify-center p-6">
       <div className="text-center">
         <p className="text-body2 font-medium text-foreground-secondary">{label}</p>
-        <p className="mt-1 font-mono text-caption text-foreground-secondary/60">
+        <p className="mt-1 font-sans text-caption text-foreground-secondary/60">
           Coming soon
         </p>
       </div>

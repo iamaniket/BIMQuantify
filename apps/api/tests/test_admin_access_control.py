@@ -23,10 +23,8 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -34,6 +32,7 @@ from bimstitch_api.models.organization_member import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.tenancy import schema_name_for
+from tests.conftest import _audit_rows
 
 
 PASSWORD = "correct-horse-battery"
@@ -212,7 +211,10 @@ async def test_switch_organization_rejects_suspended(
 
 
 async def test_patch_status_suspended_records_audit(
-    client: AsyncClient, session: AsyncSession, superadmin: dict[str, str]
+    client: AsyncClient,
+    session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
+    superadmin: dict[str, str],
 ) -> None:
     """The audit action when status flips to suspended is 'organization.suspended'
     (not just 'organization.updated'), so the audit-log view surfaces it
@@ -227,11 +229,7 @@ async def test_patch_status_suspended_records_audit(
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "suspended"
 
-    entries = (
-        await session.execute(
-            select(AuditLog).where(AuditLog.action == "organization.suspended")
-        )
-    ).scalars().all()
+    entries = await _audit_rows(session_maker, "organization.suspended")
     assert len(entries) == 1
     assert entries[0].resource_id == str(org.id)
 
@@ -272,7 +270,10 @@ async def test_deactivate_user_blocks_subsequent_login(
 
 
 async def test_deactivate_user_audited(
-    client: AsyncClient, session: AsyncSession, superadmin: dict[str, str]
+    client: AsyncClient,
+    session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
+    superadmin: dict[str, str],
 ) -> None:
     user = await _make_user(session, "audit-deactivate@example.com")
 
@@ -282,11 +283,8 @@ async def test_deactivate_user_audited(
     )
     assert resp.status_code == 200
 
-    entries = (
-        await session.execute(
-            select(AuditLog).where(AuditLog.action == "user.deactivated")
-        )
-    ).scalars().all()
+    # Platform-level event (no subject org) → platform org's schema.
+    entries = await _audit_rows(session_maker, "user.deactivated")
     assert len(entries) == 1
     assert entries[0].resource_id == str(user.id)
 

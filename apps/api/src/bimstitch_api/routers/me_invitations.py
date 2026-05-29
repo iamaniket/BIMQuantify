@@ -131,14 +131,14 @@ async def accept_invitation(
     member.status = OrganizationMemberStatus.active
     member.accepted_at = now
 
-    await audit.record(
+    await audit.record_for_org(
         session,
+        org.id,
         action="organization_member.accepted",
         resource_type="organization_member",
         resource_id=member.id,
         after={"organization_id": str(org.id)},
         actor_user_id=user.id,
-        organization_id=org.id,
         request=request,
     )
     await session.commit()
@@ -180,15 +180,15 @@ async def decline_invitation(
     before = {"status": member.status.value}
     member.status = OrganizationMemberStatus.removed
 
-    await audit.record(
+    await audit.record_for_org(
         session,
+        org.id,
         action="organization_member.declined",
         resource_type="organization_member",
         resource_id=member.id,
         before=before,
         after={"status": member.status.value},
         actor_user_id=user.id,
-        organization_id=org.id,
         request=request,
     )
     await session.commit()
@@ -279,15 +279,15 @@ async def leave_organization(
     if user.active_organization_id == organization_id:
         user.active_organization_id = None
 
-    await audit.record(
+    await audit.record_for_org(
         session,
+        organization_id,
         action="organization_member.left",
         resource_type="organization_member",
         resource_id=member.id,
         before=before,
         after={"reassigned_to": str(reassign_to)} if reassign_to else None,
         actor_user_id=user.id,
-        organization_id=organization_id,
         request=request,
     )
     await session.commit()

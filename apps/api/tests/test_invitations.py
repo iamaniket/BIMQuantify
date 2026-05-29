@@ -35,9 +35,8 @@ import pytest
 from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -45,6 +44,7 @@ from bimstitch_api.models.organization_member import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.tenancy import schema_name_for
+from tests.conftest import _audit_rows
 
 if TYPE_CHECKING:
     from bimstitch_api.email.transport import InMemoryEmailTransport
@@ -661,6 +661,7 @@ async def test_verify_does_not_auto_accept_when_user_has_active_orgs(
 async def test_accepted_invitation_records_audit_entry(
     client: AsyncClient,
     session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     org = await _make_org(session, "AuditAcceptCo")
     user = await _make_user(session, "audit-accept@example.com")
@@ -677,16 +678,10 @@ async def test_accepted_invitation_records_audit_entry(
     )
     assert resp.status_code == 200
 
-    entry = (
-        await session.execute(
-            select(AuditLog).where(
-                AuditLog.action == "organization_member.accepted",
-                AuditLog.organization_id == org.id,
-                AuditLog.user_id == user.id,
-            )
-        )
-    ).scalar_one_or_none()
-    assert entry is not None
+    entries = await _audit_rows(
+        session_maker, "organization_member.accepted", user_id=user.id
+    )
+    assert len(entries) == 1
 
 
 @pytest.mark.asyncio

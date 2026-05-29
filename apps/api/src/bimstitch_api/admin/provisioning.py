@@ -201,8 +201,9 @@ async def provision_organization(
                 )
             )
 
-            await audit.record(
+            await audit.record_for_org(
                 s,
+                org_id,
                 action="organization.created",
                 resource_type="organization",
                 resource_id=org_id,
@@ -214,7 +215,6 @@ async def provision_organization(
                     "seat_limit": seat_limit,
                 },
                 actor_user_id=requester.id,
-                organization_id=org_id,
                 request=request,
             )
 
@@ -312,14 +312,16 @@ async def delete_organization(
                 status=OrganizationStatus.deleted,
             )
         )
-        await audit.record(
+        # Platform schema: the org's own schema is dropped immediately below,
+        # so the deletion record can't live there.
+        await audit.record_for_org(
             s,
+            None,
             action="organization.deleted",
             resource_type="organization",
             resource_id=organization_id,
             before=before,
             actor_user_id=requester.id,
-            organization_id=organization_id,
             request=request,
         )
 

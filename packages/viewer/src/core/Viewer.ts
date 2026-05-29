@@ -81,6 +81,15 @@ export interface ViewerOptions {
 /** Camera idle window after which the `viewer:idle` event fires. */
 const IDLE_MS = 150;
 
+/**
+ * X-ray fades items to near-zero opacity. Any material arriving below this
+ * opacity is treated as an x-ray fade and rendered with alpha-to-coverage
+ * (dithered, opaque pass) instead of alpha blending — see the material hook in
+ * `mount()`. Genuinely translucent BIM materials (glass, ~0.2+) stay above the
+ * threshold and keep true alpha blending.
+ */
+const XRAY_DITHER_MAX_OPACITY = 0.12;
+
 export class Viewer {
   readonly events = new EventBus<ViewerEvents>();
   readonly commands = new CommandRegistry();
@@ -201,6 +210,18 @@ export class Viewer {
       // Without DoubleSide, back-facing triangles are culled and entire
       // elements disappear even though their geometry is present.
       material.side = THREE.DoubleSide;
+
+      // X-ray fade materials arrive as transparent with near-zero opacity.
+      // Render them as dithered-opaque (alpha-to-coverage) so they keep
+      // early-Z and don't trigger blend overdraw / transparent sorting — the
+      // FPS killer on large models. If ThatOpen recreates the material, this
+      // hook fires again and re-applies the flags.
+      if (material.transparent && material.opacity <= XRAY_DITHER_MAX_OPACITY) {
+        material.transparent = false;
+        material.alphaToCoverage = true;
+        material.depthWrite = true;
+        material.needsUpdate = true;
+      }
     });
 
     // FragmentsModels streams tile data from a worker. Drive `update()`

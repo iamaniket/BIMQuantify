@@ -73,14 +73,14 @@ function TopPanel(): JSX.Element {
     }}>
       <div style={{
         fontSize: 18, fontWeight: 800, letterSpacing: -0.5,
-        fontFamily: '"Saira Condensed", "DM Sans", sans-serif',
+        fontFamily: 'var(--font-sans)',
         color: '#f4eee0', lineHeight: 1, fontStyle: 'italic',
       }}>
         BimStitch<span style={{ position: 'relative', top: -6, fontSize: 10 }}>&deg;</span>
       </div>
       <div style={{
         fontSize: 9, letterSpacing: 2, color: '#f4eee0',
-        fontFamily: '"Saira Condensed", "DM Sans", sans-serif', fontWeight: 700, opacity: 0.5,
+        fontFamily: 'var(--font-sans)', fontWeight: 700, opacity: 0.5,
       }}>
         KEYBOARD
       </div>
@@ -145,7 +145,7 @@ function Keycap({
     padding: 0, border: 'none', background: 'transparent',
     cursor: hasBind ? 'pointer' : 'default',
     outline: 'none', flexShrink: 0,
-    fontFamily: '"Saira Condensed", "DM Sans", system-ui, sans-serif',
+    fontFamily: 'var(--font-sans)',
   };
 
   return (

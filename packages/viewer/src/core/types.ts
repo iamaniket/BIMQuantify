@@ -54,6 +54,8 @@ export interface ViewerEvents {
   'contextmenu:open': { position: { x: number; y: number }; item: ItemId | null; point: Vec3 | null };
   'contextmenu:close': undefined;
   'xray:change': { xrayed: ItemId[]; opacityOverrides: Array<{ item: ItemId; opacity: number }> };
+  'outline:ready': { modelId: string };
+  'outline:change': { enabled: boolean };
   'section:change': { planes: Array<{ id: string; normal: Vec3; point: Vec3; active: boolean }> };
   'section:select': { id: string | null };
   'measurement:change': { measurements: Array<{ id: string; type: string; value: number; unit: string; visible: boolean }> };

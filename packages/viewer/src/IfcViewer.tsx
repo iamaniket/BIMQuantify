@@ -25,6 +25,7 @@ import { visibilityPlugin } from './plugins/visibility/index.js';
 import { eraserPlugin } from './plugins/eraser/index.js';
 import { contextMenuPlugin } from './plugins/context-menu/index.js';
 import { xrayPlugin } from './plugins/xray/index.js';
+import { outlinePlugin } from './plugins/outline/index.js';
 import { modePlugin } from './plugins/mode/index.js';
 import { sectionPlugin } from './plugins/section/index.js';
 import { measurementPlugin } from './plugins/measurement/index.js';
@@ -116,6 +117,7 @@ function IfcViewerImpl(
       eraserPlugin(),
       snappingPlugin(props.snapping ?? {}),
       contextMenuPlugin(),
+      outlinePlugin(props.outline ?? {}),
       xrayPlugin(),
       ...(viewCubeEnabled
         ? [

@@ -104,7 +104,7 @@ export function AttachmentRow({
               {attachment.original_filename}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 overflow-hidden font-mono text-[11px] leading-tight text-foreground-tertiary tabular-nums">
+          <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
             <span className="shrink-0">{formatSize(attachment.size_bytes)}</span>
             <span className="shrink-0">·</span>
             <span className="shrink-0">{formatDate(attachment.created_at)}</span>

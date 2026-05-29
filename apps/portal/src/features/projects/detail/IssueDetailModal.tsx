@@ -38,12 +38,12 @@ export function IssueDetailModal({ issue, open, onOpenChange }: Props): JSX.Elem
             <Badge variant={issue.severity === 'fail' ? 'error' : 'warning'}>
               {issue.severity.toUpperCase()}
             </Badge>
-            <span className="font-mono text-body3 font-bold text-foreground-tertiary">
+            <span className="font-sans text-body3 font-bold text-foreground-tertiary">
               {issue.id}
             </span>
           </div>
           <DialogTitle className="mt-1">
-            <span className="font-mono text-primary">{issue.bblCode}</span>
+            <span className="font-sans text-primary">{issue.bblCode}</span>
             {' · '}
             {issue.objectName}
           </DialogTitle>

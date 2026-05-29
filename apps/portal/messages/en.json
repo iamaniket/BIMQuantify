@@ -716,7 +716,16 @@
         "viewerLinkedModel": "Linked model",
         "viewerVersion": "Version",
         "viewerNoPreview": "Preview not available for this file type. Download to view.",
-        "viewerLoadingPreview": "Loading preview..."
+        "viewerLoadingPreview": "Loading preview...",
+        "viewerGroupFile": "File",
+        "viewerGroupMedia": "Media",
+        "viewerGroupDocument": "Document",
+        "viewerGroupOrigin": "Origin",
+        "viewerClose": "Close",
+        "viewerDimensions": "Dimensions",
+        "viewerCamera": "Camera",
+        "viewerCapturedAt": "Captured",
+        "viewerLocation": "Location"
       },
       "deadlines": {
         "label": "Deadlines",

@@ -111,7 +111,6 @@ async def initiate_attachment_upload(
             resource=Resource.attachment.value,
             action=Action.create.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             request=request,
         )
         raise
@@ -199,7 +198,6 @@ async def initiate_attachment_upload(
         resource_id=att.id,
         after=_attachment_snapshot(att),
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )
@@ -233,7 +231,6 @@ async def complete_attachment_upload(
             resource=Resource.attachment.value,
             action=Action.create.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             request=request,
         )
         raise
@@ -266,7 +263,6 @@ async def complete_attachment_upload(
             resource_id=att.id,
             after={"status": "rejected", "rejection_reason": "SIZE_MISMATCH"},
             actor_user_id=user.id,
-            organization_id=active_org_id,
             project_id=project.id,
             request=request,
         )
@@ -288,7 +284,6 @@ async def complete_attachment_upload(
         before=before,
         after=_attachment_snapshot(att),
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )
@@ -423,7 +418,6 @@ async def update_attachment(
             resource=Resource.attachment.value,
             action=Action.update.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             resource_id=attachment_id,
             request=request,
         )
@@ -446,7 +440,6 @@ async def update_attachment(
         before=before,
         after=_attachment_snapshot(att),
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )
@@ -472,7 +465,6 @@ async def delete_attachment(
             resource=Resource.attachment.value,
             action=Action.delete.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             resource_id=attachment_id,
             request=request,
         )
@@ -490,7 +482,6 @@ async def delete_attachment(
         resource_id=attachment_id,
         before=before,
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )

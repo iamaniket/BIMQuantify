@@ -3,7 +3,8 @@
 
 export const fontFamily = {
   sans: 'Geist, ui-sans-serif, system-ui, -apple-system, sans-serif',
-  mono: 'Geist Mono, ui-monospace, SFMono-Regular, monospace',
+  // Aliased to Geist — Geist Mono was dropped; the app uses one text family.
+  mono: 'Geist, ui-sans-serif, system-ui, -apple-system, sans-serif',
 } as const;
 
 export const fontWeight = {

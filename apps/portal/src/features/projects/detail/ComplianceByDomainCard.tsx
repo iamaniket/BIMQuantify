@@ -136,7 +136,7 @@ export function ComplianceByDomainCard({
                   >
                     <div className="mb-0.5 flex items-baseline justify-between text-caption">
                       <span>
-                        <span className="font-mono font-bold text-primary">
+                        <span className="font-sans font-bold text-primary">
                           {a.code}
                         </span>{' '}
                         <span className="text-foreground-secondary">{a.title}</span>

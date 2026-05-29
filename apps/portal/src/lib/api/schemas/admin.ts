@@ -134,7 +134,6 @@ export type MemberUpdateInput = z.infer<typeof MemberUpdateInputSchema>;
 export const AuditEntrySchema = z.object({
   id: z.string(),
   user_id: z.union([z.string(), z.null()]),
-  organization_id: z.union([z.string(), z.null()]),
   action: z.string(),
   resource_type: z.string(),
   resource_id: z.union([z.string(), z.null()]),

@@ -82,12 +82,12 @@ export function AuthHeroBrand(): JSX.Element {
           <div
             className="inline-flex w-fit items-center gap-2 rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em]"
             style={{
-              color: '#9ff0bf',
-              background: 'rgba(95,217,158,0.16)',
-              borderColor: 'rgba(95,217,158,0.32)',
+              color: 'var(--header-status-success-fg)',
+              background: 'var(--header-status-success-bg)',
+              borderColor: 'var(--header-status-success-border)',
             }}
           >
-            <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: '#5fd99e' }} />
+            <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: 'var(--header-status-success-dot)' }} />
             {t('hero.readyBadge', { version: wkb })}
           </div>
 
@@ -103,7 +103,7 @@ export function AuthHeroBrand(): JSX.Element {
           >
             {t.rich('hero.headlineTemplate', {
               em: (chunks) => (
-                <span className="italic" style={{ color: '#9bbce8' }}>{chunks}</span>
+                <span className="italic" style={{ color: 'var(--header-status-info-dot)' }}>{chunks}</span>
               ),
             })}
           </h1>
@@ -119,16 +119,16 @@ export function AuthHeroBrand(): JSX.Element {
             tone="on-dark"
             items={[
               { label: t('kpi.wkb'), value: wkb },
-              { label: t('kpi.bbl'), value: bbl, valueColor: '#9bbce8' },
-              { label: t('kpi.ifc'), value: ifc, valueColor: '#9bbce8' },
+              { label: t('kpi.bbl'), value: bbl, valueColor: 'var(--header-status-info-dot)' },
+              { label: t('kpi.ifc'), value: ifc, valueColor: 'var(--header-status-info-dot)' },
               {
                 label: t('kpi.status'),
                 value: statusLabel,
                 valueColor:
-                  status === 'normal' ? '#9ff0bf'
-                  : status === 'degraded' ? '#f4c45b'
-                  : status === 'down' ? '#f99b8c'
-                  : '#cbd5e1',
+                  status === 'normal' ? 'var(--header-status-success-fg)'
+                  : status === 'degraded' ? 'var(--header-status-warning-dot)'
+                  : status === 'down' ? 'var(--header-status-error-dot)'
+                  : 'var(--header-status-info-fg)',
               },
             ]}
           />
@@ -162,7 +162,7 @@ export function AuthHeroBrand(): JSX.Element {
             {/* Always rendered with reserved space — visibility-toggled
                 so the map doesn't jump when the API call resolves. */}
             <div
-              className="mt-5 whitespace-nowrap text-right font-mono text-[12.5px] uppercase tracking-[0.10em] text-white/55"
+              className="mt-5 whitespace-nowrap text-right font-sans text-[12.5px] uppercase tracking-[0.10em] text-white/55"
               style={{
                 visibility:
                   markersQuery.isSuccess && markers.length > 0 ? 'visible' : 'hidden',
@@ -226,7 +226,7 @@ export function AuthTopRight({ trailing }: AuthTopRightProps = {}): JSX.Element 
       {trailing !== undefined ? (
         trailing
       ) : region ? (
-        <div className="font-mono text-[11px] text-foreground-tertiary">{region}</div>
+        <div className="font-sans text-[11px] text-foreground-tertiary">{region}</div>
       ) : null}
     </>
   );

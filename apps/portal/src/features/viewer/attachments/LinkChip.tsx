@@ -36,7 +36,7 @@ export function LinkChip({ attachment, compact = false }: Props): JSX.Element | 
 
   return (
     <span className={cn(
-      'inline-flex items-center gap-1 rounded font-mono text-[10.5px] font-bold leading-tight tracking-wide',
+      'inline-flex items-center gap-1 rounded font-sans text-[10.5px] font-bold leading-tight tracking-wide',
       colors,
       compact ? 'px-1 py-px' : 'px-1.5 py-0.5',
     )}>

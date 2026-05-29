@@ -54,7 +54,7 @@ export function RequestAccessSuccess({
             ['3', 'Your sandbox is ready', 'Pre-loaded with sample Wkb projects and BBL libraries.'],
           ].map(([n, t, d]) => (
             <li key={n} className="flex items-start gap-3">
-              <span className="grid size-5 shrink-0 place-items-center rounded-full border border-border bg-surface-low font-mono text-[11px] font-bold text-foreground-secondary">
+              <span className="grid size-5 shrink-0 place-items-center rounded-full border border-border bg-surface-low font-sans text-[11px] font-bold text-foreground-secondary">
                 {n}
               </span>
               <span className="text-[12.5px] leading-snug text-foreground-secondary">

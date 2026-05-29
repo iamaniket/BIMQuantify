@@ -131,7 +131,7 @@ export function IssuesTab({ issues, onDownloadCsv }: Props): JSX.Element {
                 <Badge variant={issue.severity === 'fail' ? 'error' : 'warning'} className="w-fit">
                   {issue.severity === 'fail' ? t('badges.fail') : t('badges.warn')}
                 </Badge>
-                <span className="font-mono font-bold text-foreground">{issue.id}</span>
+                <span className="font-sans font-bold text-foreground">{issue.id}</span>
                 <div className="min-w-0">
                   <span className="truncate font-medium text-foreground">{issue.objectName}</span>
                   <span className="ml-1.5 text-caption text-foreground-tertiary">{issue.bblCode}</span>

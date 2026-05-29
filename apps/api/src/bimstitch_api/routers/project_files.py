@@ -234,7 +234,6 @@ async def initiate_upload(
             "model_id": str(model.id),
         },
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )
@@ -303,7 +302,6 @@ async def complete_upload(
                 resource_id=row.id,
                 after={"rejection_reason": "FILE_NOT_VALID_PDF", "file_type": "pdf"},
                 actor_user_id=user.id,
-                organization_id=active_org_id,
                 project_id=project.id,
                 request=request,
             )
@@ -360,7 +358,6 @@ async def complete_upload(
                 "version_number": row.version_number,
             },
             actor_user_id=user.id,
-            organization_id=active_org_id,
             project_id=project.id,
             request=request,
         )
@@ -425,7 +422,6 @@ async def complete_upload(
                 "ifc_schema": row.ifc_schema.value if row.ifc_schema else None,
             },
             actor_user_id=user.id,
-            organization_id=active_org_id,
             project_id=project.id,
             request=request,
         )
@@ -454,7 +450,6 @@ async def complete_upload(
             "file_type": "ifc",
         },
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )
@@ -687,7 +682,6 @@ async def delete_file(
         resource_id=row.id,
         before=before,
         actor_user_id=user.id,
-        organization_id=active_org_id,
         project_id=project.id,
         request=request,
     )

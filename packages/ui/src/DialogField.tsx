@@ -18,7 +18,7 @@ export const DialogField = forwardRef<HTMLDivElement, DialogFieldProps>(
       </span>
       {children}
       {hint !== undefined && (
-        <span className="font-mono text-caption text-foreground-tertiary">
+        <span className="font-sans text-caption text-foreground-tertiary">
           {hint}
         </span>
       )}

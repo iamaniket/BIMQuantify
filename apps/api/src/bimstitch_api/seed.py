@@ -39,12 +39,11 @@ from bimstitch_api.models.organization_member import (
     OrganizationMemberStatus,
 )
 from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimstitch_api.tenancy import PLATFORM_ORG_NAME, schema_name_for
 
 logger = logging.getLogger(__name__)
 
 
-PLATFORM_ORG_NAME = "BIMstitch Platform"
 DEMO_ORG_A_NAME = "Acme Construction"
 DEMO_ORG_B_NAME = "Beta Builders"
 

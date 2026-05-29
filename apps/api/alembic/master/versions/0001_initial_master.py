@@ -1,7 +1,8 @@
-"""Initial master schema: users, organizations, organization_members, audit_log, access_requests.
+"""Initial master schema: users, organizations, organization_members, access_requests.
 
-Creates the identity layer in the `public` schema. Tenant tables (projects, jobs, etc.)
-are NOT created here — they live in per-org schemas managed by the tenant chain.
+Creates the identity layer in the `public` schema. Tenant tables (projects, jobs,
+audit_log, etc.) are NOT created here — they live in per-org schemas managed by
+the tenant chain.
 
 Revision ID: 0001_master
 Revises:

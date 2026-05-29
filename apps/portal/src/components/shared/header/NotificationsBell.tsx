@@ -92,7 +92,7 @@ function NotificationListBody({
                 {n.body}
               </div>
             ) : null}
-            <div className="mt-1 font-mono text-[10px] tracking-[0.02em] text-foreground-tertiary">
+            <div className="mt-1 font-sans text-[10px] tracking-[0.02em] text-foreground-tertiary">
               {formatRelative(n.created_at)}
             </div>
           </div>
@@ -152,7 +152,7 @@ export function NotificationsBell(): JSX.Element {
         <div className="absolute right-0 top-[calc(100%+8px)] z-50 max-h-[460px] w-[360px] overflow-auto rounded-[10px] border border-border bg-background-secondary text-foreground shadow-[0_12px_32px_rgba(15,23,42,0.18),0_2px_6px_rgba(15,23,42,0.08)]">
           <div className="flex items-center justify-between border-b border-border px-3.5 py-3">
             <div>
-              <div className="font-display text-sm font-semibold tracking-[-0.01em] text-foreground">
+              <div className="font-sans text-sm font-semibold tracking-[-0.01em] text-foreground">
                 Notifications
               </div>
               <div className="mt-0.5 text-[10.5px] text-foreground-tertiary">

@@ -282,7 +282,7 @@ function OverviewPane({
                       <span className="font-semibold text-foreground">{entry.resource_type}</span>{' '}
                       <span className="text-foreground-tertiary">{entry.action}</span>
                     </div>
-                    <div className="font-mono text-body3 text-foreground-tertiary">
+                    <div className="font-sans text-body3 text-foreground-tertiary">
                       {relativeTime(entry.created_at)}
                     </div>
                   </div>
@@ -305,7 +305,7 @@ function OverviewPane({
                   <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
                   Admin
                 </div>
-                <div className="font-mono text-body3 text-foreground-tertiary">
+                <div className="font-sans text-body3 text-foreground-tertiary">
                   {adminCount} <span className="text-foreground-tertiary">&middot; {t('fullAccess')}</span>
                 </div>
               </div>
@@ -314,7 +314,7 @@ function OverviewPane({
                   <span className="h-2.5 w-2.5 rounded-sm bg-foreground-tertiary" />
                   Member
                 </div>
-                <div className="font-mono text-body3 text-foreground-tertiary">
+                <div className="font-sans text-body3 text-foreground-tertiary">
                   {memberCount} <span className="text-foreground-tertiary">&middot; {t('readWrite')}</span>
                 </div>
               </div>
@@ -324,7 +324,7 @@ function OverviewPane({
                     <span className="h-2.5 w-2.5 rounded-sm bg-warning" />
                     {t('pendingInvite')}
                   </div>
-                  <div className="font-mono text-body3 text-foreground-tertiary">{pendingCount}</div>
+                  <div className="font-sans text-body3 text-foreground-tertiary">{pendingCount}</div>
                 </div>
               )}
             </div>

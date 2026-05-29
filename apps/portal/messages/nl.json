@@ -716,7 +716,16 @@
         "viewerLinkedModel": "Gekoppeld model",
         "viewerVersion": "Versie",
         "viewerNoPreview": "Voorbeeld niet beschikbaar voor dit bestandstype. Download om te bekijken.",
-        "viewerLoadingPreview": "Voorbeeld laden..."
+        "viewerLoadingPreview": "Voorbeeld laden...",
+        "viewerGroupFile": "Bestand",
+        "viewerGroupMedia": "Media",
+        "viewerGroupDocument": "Document",
+        "viewerGroupOrigin": "Herkomst",
+        "viewerClose": "Sluiten",
+        "viewerDimensions": "Afmetingen",
+        "viewerCamera": "Camera",
+        "viewerCapturedAt": "Vastgelegd",
+        "viewerLocation": "Locatie"
       },
       "deadlines": {
         "label": "Deadlines",

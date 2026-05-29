@@ -126,8 +126,9 @@ async def start_impersonation(
         ttl_override_seconds=ttl,
     )
 
-    await audit.record(
+    await audit.record_for_org(
         session,
+        resolved_org,
         action="auth.impersonate.start",
         resource_type="user",
         resource_id=target.id,
@@ -141,10 +142,10 @@ async def start_impersonation(
         # Actor here is the super admin starting the session; record the
         # impersonator field explicitly because the start event itself is
         # NOT made via an impersonated token (the super admin's normal
-        # token has no `imp` claim yet).
+        # token has no `imp` claim yet). resolved_org=None routes the entry
+        # to the platform schema.
         actor_user_id=requester.id,
         impersonator_user_id=requester.id,
-        organization_id=resolved_org,
         request=request,
     )
     await session.commit()

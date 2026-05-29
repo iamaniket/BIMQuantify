@@ -48,7 +48,7 @@ export function OrgTable({ organizations }: Props): JSX.Element {
               >
                 {org.name}
               </Link>
-              <div className="font-mono text-caption text-foreground-tertiary">
+              <div className="font-sans text-caption text-foreground-tertiary">
                 {org.schema_name}
               </div>
             </TableCell>

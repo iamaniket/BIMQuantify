@@ -188,7 +188,6 @@ class AuditEntry(BaseModel):
     id: UUID
     user_id: UUID | None
     impersonator_user_id: UUID | None = None
-    organization_id: UUID | None
     action: str
     resource_type: str
     resource_id: str | None

@@ -145,11 +145,11 @@ function ReportRow({
             {report.model_discipline.slice(0, 4).toUpperCase()}
           </span>
           <span className="truncate font-semibold text-foreground">{report.model_name}</span>
-          <span className="shrink-0 font-mono text-caption text-foreground-tertiary">
+          <span className="shrink-0 font-sans text-caption text-foreground-tertiary">
             v{String(report.file_version).padStart(2, '0')}
           </span>
         </div>
-        <div className="truncate font-mono text-caption text-foreground-tertiary">
+        <div className="truncate font-sans text-caption text-foreground-tertiary">
           {report.file_name} · {formatRelative(report.finished_at)}
         </div>
       </div>
@@ -228,7 +228,7 @@ function RunCheckRow({
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-border px-3 py-2 text-body3">
       <div className="min-w-0">
         <div className="truncate font-semibold">{model.name}</div>
-        <div className="truncate font-mono text-caption text-foreground-tertiary">
+        <div className="truncate font-sans text-caption text-foreground-tertiary">
           {latest !== undefined
             ? `${latest.original_filename} · ${latest.extraction_status}`
             : 'No files'}

@@ -178,7 +178,6 @@ async def extraction_callback(
                     "extraction_status": "succeeded",
                 },
                 actor_user_id=row.uploaded_by_user_id,
-                organization_id=payload.organization_id,
                 project_id=row.project_id,
             )
         elif row.extraction_status == ExtractionStatus.failed:
@@ -193,7 +192,6 @@ async def extraction_callback(
                     "extraction_error": (row.extraction_error or "")[:200],
                 },
                 actor_user_id=row.uploaded_by_user_id,
-                organization_id=payload.organization_id,
                 project_id=row.project_id,
             )
 

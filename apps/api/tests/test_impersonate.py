@@ -15,15 +15,14 @@ import pytest
 from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from jose import jwt
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimstitch_api.auth.tokens import ALGORITHM, REFRESH_AUDIENCE, decode_token_full
 from bimstitch_api.config import get_settings
-from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.user import User
 from bimstitch_api.tenancy import schema_name_for
+from tests.conftest import _audit_rows
 
 PASSWORD = "correct-horse-battery"
 
@@ -323,6 +322,7 @@ async def test_refresh_with_imp_claim_is_rejected(
 async def test_audit_records_impersonate_start_event(
     client: AsyncClient,
     session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
     superadmin: dict[str, str],
 ) -> None:
     target = await _make_user(session, "alice@example.com")
@@ -336,11 +336,8 @@ async def test_audit_records_impersonate_start_event(
     decoded = decode_token_full(imp_token, "access")
     minted_jti = decoded.jti
 
-    rows = (
-        await session.execute(
-            select(AuditLog).where(AuditLog.action == "auth.impersonate.start")
-        )
-    ).scalars().all()
+    # No org resolved for this impersonation → entry lands in the platform schema.
+    rows = await _audit_rows(session_maker, "auth.impersonate.start")
     assert len(rows) == 1
     row = rows[0]
     assert str(row.user_id) == superadmin["user_id"]
@@ -354,6 +351,7 @@ async def test_audit_records_impersonate_start_event(
 async def test_mutations_during_impersonation_record_impersonator(
     client: AsyncClient,
     session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
     org_user: dict[str, str],
     superadmin: dict[str, str],
     same_org_user: dict[str, str],
@@ -382,13 +380,7 @@ async def test_mutations_during_impersonation_record_impersonator(
     )
     assert resp.status_code == 200, resp.text
 
-    rows = (
-        await session.execute(
-            select(AuditLog)
-            .where(AuditLog.action == "organization_member.status_changed")
-            .order_by(AuditLog.created_at.desc())
-        )
-    ).scalars().all()
+    rows = await _audit_rows(session_maker, "organization_member.status_changed")
     assert rows, "expected at least one status_changed audit row"
     row = rows[0]
     # Actor is the impersonated user.

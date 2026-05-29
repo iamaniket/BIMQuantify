@@ -17,7 +17,7 @@ function categoryStyle(category: string): { bg: string; fg: string; glyph: strin
     case 'upload': return { bg: 'rgba(44,86,151,0.10)', fg: 'var(--primary)', glyph: '↑' };
     case 'scan':   return { bg: 'rgba(95,217,158,0.18)', fg: 'var(--success)', glyph: '✓' };
     case 'change': return { bg: 'rgba(169,116,40,0.16)', fg: 'var(--warning)', glyph: '✎' };
-    default:       return { bg: 'var(--surface-high)', fg: 'var(--fg-2)', glyph: '·' };
+    default:       return { bg: 'var(--surface-high)', fg: 'var(--foreground-secondary)', glyph: '·' };
   }
 }
 
@@ -124,7 +124,7 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
             {t('title')}
           </div>
           <div className="mt-0.5 flex flex-wrap items-baseline justify-end gap-2">
-            <span className="font-display text-[17px] font-bold leading-tight tracking-tight text-foreground">
+            <span className="font-sans text-[17px] font-bold leading-tight tracking-tight text-foreground">
               {t('events', { count })}
             </span>
           </div>

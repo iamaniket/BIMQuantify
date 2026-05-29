@@ -30,6 +30,7 @@ export type {
   MouseBindingMap,
   CameraAction,
   ControlsOptions,
+  ZoomOptions,
   EffectsOptions,
   EffectsQuality,
   HoverPluginOptions,
@@ -111,6 +112,11 @@ export { visibilityPlugin } from './plugins/visibility/index.js';
 export { eraserPlugin } from './plugins/eraser/index.js';
 export { contextMenuPlugin } from './plugins/context-menu/index.js';
 export { xrayPlugin } from './plugins/xray/index.js';
+export { outlinePlugin } from './plugins/outline/index.js';
+export type {
+  OutlinePluginOptions,
+  OutlinePluginAPI,
+} from './plugins/outline/index.js';
 export { sectionPlugin } from './plugins/section/index.js';
 export { snappingPlugin } from './plugins/snapping/index.js';
 export { modePlugin } from './plugins/mode/index.js';

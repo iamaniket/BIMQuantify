@@ -8,6 +8,8 @@ from httpx import AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.conftest import _audit_rows
+
 
 def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
@@ -399,14 +401,9 @@ async def test_invite_records_audit_entry(
     )
     assert resp.status_code == 201, resp.text
 
-    from bimstitch_api.models.audit_log import AuditLog
-
-    async with session_maker() as session:
-        entry = (
-            await session.execute(
-                select(AuditLog).where(AuditLog.action == "project_invitation.created")
-            )
-        ).scalar_one()
-        assert entry.resource_id == project["id"]
-        assert entry.after["email"] == "audit-check@external.com"
-        assert entry.after["scenario"] == "new_user"
+    entries = await _audit_rows(session_maker, "project_invitation.created")
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.resource_id == project["id"]
+    assert entry.after["email"] == "audit-check@external.com"
+    assert entry.after["scenario"] == "new_user"

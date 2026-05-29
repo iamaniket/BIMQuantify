@@ -81,7 +81,7 @@ export function PropertiesBody({
   }, [allExpanded, psetEntries]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col" style={{ fontFamily: 'var(--sans)' }}>
+    <div className="flex h-full min-h-0 flex-col font-sans">
       <PropertiesToolbar
         query={filter}
         onQueryChange={setFilter}
@@ -113,16 +113,9 @@ export function PropertiesBody({
                 onSelectKey={setSelectedKey}
               />
             ))}
-            <div style={{ borderTop: '1px solid var(--border)' }} />
+            <div className="border-t border-border" />
             {filter && shown === 0 && (
-              <div
-                className="py-6 text-center"
-                style={{
-                  fontSize: 11.5,
-                  color: 'var(--fg-3)',
-                  fontFamily: 'var(--mono)',
-                }}
-              >
+              <div className="py-6 text-center font-sans text-caption text-foreground-tertiary">
                 No properties match &ldquo;{filter}&rdquo;
               </div>
             )}
@@ -131,19 +124,9 @@ export function PropertiesBody({
       </div>
 
       {selectedKey && (
-        <div
-          className="flex items-center justify-between border-t border-border"
-          style={{
-            padding: '10px 14px',
-            background: 'var(--surface-low)',
-            fontSize: 12,
-            color: 'var(--fg-3)',
-            fontFamily: 'var(--mono)',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
+        <div className="flex items-center justify-between border-t border-border bg-surface-low px-3.5 py-2.5 font-sans text-body3 tabular-nums text-foreground-tertiary">
           <span className="truncate">
-            <span style={{ color: 'var(--fg-2)', fontWeight: 700 }}>
+            <span className="font-bold text-foreground-secondary">
               Pinned:
             </span>{' '}
             {selectedKey}
@@ -151,13 +134,7 @@ export function PropertiesBody({
           <button
             type="button"
             onClick={() => { setSelectedKey(null); }}
-            className="cursor-pointer border-none bg-transparent"
-            style={{
-              color: 'var(--primary)',
-              fontFamily: 'inherit',
-              fontSize: 12,
-              marginLeft: 8,
-            }}
+            className="ml-2 cursor-pointer border-none bg-transparent font-sans text-body3 text-primary"
           >
             clear
           </button>

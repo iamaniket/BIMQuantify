@@ -134,7 +134,7 @@ export function DeadlineCard({
           {legalReference != null && (
             <>
               <span>·</span>
-              <span className="font-mono">{legalReference}</span>
+              <span className="font-sans">{legalReference}</span>
             </>
           )}
         </div>

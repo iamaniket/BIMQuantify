@@ -658,7 +658,7 @@ async def test_download_returns_presigned_url_for_ready_file(
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["download_url"].endswith("?download=down.ifc")
+    assert "?download=down.ifc" in body["download_url"]
     assert body["expires_in"] == fake.presign_ttl_value
 
 
@@ -1042,7 +1042,7 @@ async def test_viewer_bundle_pdf_returns_file_url(
     body = resp.json()
     assert body["file_type"] == "pdf"
     assert body["file_url"] is not None
-    assert body["file_url"].endswith("?download=plan.pdf")
+    assert "?download=plan.pdf" in body["file_url"]
     assert body["fragments_url"] is None
     assert body["expires_in"] == fake.presign_ttl_value
 

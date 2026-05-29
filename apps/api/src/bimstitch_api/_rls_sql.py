@@ -10,7 +10,9 @@ The policies in this module live only on **master** tables in `public`:
 
   * `users` — self-read OR member-of-active-org
   * `organization_members` — only see your active org's members
-  * `audit_log` — only see your active org's entries (or all if NULL)
+
+(`audit_log` is a tenant table — one per org schema — so its isolation comes
+from the schema namespace, not RLS.)
 
 The GUC source-of-truth (`app.current_org_id`, `app.current_user_id`) is
 set by `tenancy.py::get_tenant_session` from the JWT `org` claim. Outside
@@ -36,7 +38,6 @@ APP_ROLE = "bim_app"
 RLS_TABLES = (
     "users",
     "organization_members",
-    "audit_log",
 )
 
 # Master tables the app role needs DML privileges on. `organizations` and
@@ -46,7 +47,6 @@ APP_GRANT_TABLES = (
     "users",
     "organizations",
     "organization_members",
-    "audit_log",
     "access_requests",
 )
 
@@ -134,32 +134,12 @@ def enable_rls_statements() -> list[str]:
         """
     )
 
-    # audit_log:
-    #   - org-scoped entries visible to org members
-    #   - org-NULL entries (platform-level events) visible to everyone; in
-    #     practice only super-admins read those because non-admin endpoints
-    #     don't expose audit_log
-    stmts.append("DROP POLICY IF EXISTS audit_log_isolation ON audit_log;")
-    stmts.append(
-        """
-        CREATE POLICY audit_log_isolation ON audit_log
-        USING (
-            organization_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid
-            OR organization_id IS NULL
-        );
-        """
-    )
-    # Inserts come from app code with explicit organization_id — no WITH
-    # CHECK clause means inserts respect the USING clause, which is fine:
-    # an admin acting in org A can only insert audit rows for org A.
-
     return stmts
 
 
 def disable_rls_statements() -> list[str]:
     """Reverse of `enable_rls_statements`; used by migration downgrade."""
     stmts: list[str] = []
-    stmts.append("DROP POLICY IF EXISTS audit_log_isolation ON audit_log;")
     stmts.append("DROP POLICY IF EXISTS organization_members_isolation ON organization_members;")
     stmts.append("DROP POLICY IF EXISTS users_tenant_isolation ON users;")
     for table in RLS_TABLES:

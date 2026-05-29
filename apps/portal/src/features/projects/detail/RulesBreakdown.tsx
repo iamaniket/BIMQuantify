@@ -145,7 +145,7 @@ function RuleRow({
               {fails > 0 ? t('badges.fail') : rule.warned > 0 ? t('badges.warn') : rule.passed > 0 ? t('badges.pass') : t('badges.skip')}
             </Badge>
           </div>
-          <div className="truncate font-mono text-caption text-foreground-tertiary">
+          <div className="truncate font-sans text-caption text-foreground-tertiary">
             {rule.article} · {categoryLabel}
           </div>
         </div>
@@ -210,7 +210,7 @@ function DetailRow({ item }: { item: CheckResultItem }): JSX.Element {
         <div className="truncate font-semibold">
           {item.element_name ?? item.element_global_id}
         </div>
-        <div className="truncate font-mono text-caption text-foreground-tertiary">
+        <div className="truncate font-sans text-caption text-foreground-tertiary">
           {item.element_type ?? '—'}
           {item.property_set !== null && item.property_set !== undefined ? ` · ${item.property_set}` : ''}
           {item.property_name !== null && item.property_name !== undefined ? `.${item.property_name}` : ''}
@@ -219,7 +219,7 @@ function DetailRow({ item }: { item: CheckResultItem }): JSX.Element {
       <div className="min-w-0">
         <div className="text-foreground">{item.message}</div>
         {hasValues && (
-          <div className="mt-0.5 font-mono text-caption text-foreground-tertiary">
+          <div className="mt-0.5 font-sans text-caption text-foreground-tertiary">
             {t('actualExpected', { actual: formatValue(item.actual_value), expected: formatValue(item.expected_value) })}
           </div>
         )}

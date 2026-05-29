@@ -1,15 +1,11 @@
 'use client';
 
+import { CountChip, Eyebrow } from '@bimstitch/ui';
 import type { JSX } from 'react';
 
 import type { PropertySet } from '@/lib/api/viewerTypes';
 
 import { PropertyRow } from './PropertyRow';
-
-/** Design tokens — matches tree row vocabulary. */
-const GROUP_H = 30;
-const FONT_GROUP = 11;
-const FONT_COUNT = 11.5;
 
 type PropertySetGroupProps = {
   name: string;
@@ -54,31 +50,18 @@ export function PropertySetGroup({
   const effectiveOpen = filter ? true : open;
 
   return (
-    <div style={{ borderTop: '1px solid var(--border)' }}>
+    <div className="border-t border-border">
       {/* Group header */}
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full select-none items-center gap-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
-        style={{
-          height: GROUP_H,
-          paddingLeft: 8,
-          paddingRight: 12,
-          cursor: 'pointer',
-          background: 'transparent',
-          border: 'none',
-        }}
+        className="flex h-[30px] w-full cursor-pointer select-none items-center gap-2 border-none bg-transparent pl-2 pr-3 text-left transition-colors hover:bg-background-hover"
       >
         {/* Chevron */}
         <span
           aria-hidden="true"
-          className="inline-grid shrink-0 place-items-center transition-transform duration-[120ms]"
-          style={{
-            width: 14,
-            height: 14,
-            color: 'var(--fg-3)',
-            transform: effectiveOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-          }}
+          className="inline-grid h-3.5 w-3.5 shrink-0 place-items-center text-foreground-tertiary transition-transform duration-[120ms]"
+          style={{ transform: effectiveOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
         >
           <svg
             width="10"
@@ -95,32 +78,12 @@ export function PropertySetGroup({
         </span>
 
         {/* Pset name */}
-        <span
-          title={name}
-          className="flex-1 truncate"
-          style={{
-            fontFamily: 'var(--mono)',
-            fontSize: FONT_GROUP,
-            letterSpacing: '0.10em',
-            textTransform: 'uppercase',
-            color: 'var(--fg-2)',
-            fontWeight: 700,
-          }}
-        >
+        <Eyebrow title={name} className="flex-1 truncate">
           {name}
-        </span>
+        </Eyebrow>
 
         {/* Count chip */}
-        <span
-          style={{
-            fontFamily: 'var(--mono)',
-            fontSize: FONT_COUNT,
-            color: 'var(--fg-3)',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {filtered.length}
-        </span>
+        <CountChip>{filtered.length}</CountChip>
       </button>
 
       {/* Property rows */}

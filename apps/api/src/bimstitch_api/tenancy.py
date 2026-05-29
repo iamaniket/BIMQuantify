@@ -11,9 +11,8 @@
                                                 tables fall through to public.
   3. `app.current_org_id`, `app.current_user_id` GUCs
                                               — fed into the surviving RLS
-                                                policies on `users`,
-                                                `organization_members`, and
-                                                `audit_log`.
+                                                policies on `users` and
+                                                `organization_members`.
 
 Endpoint code under this dependency MUST NOT call `session.commit()` itself
 — committing closes the txn and drops the GUCs + search_path, breaking
@@ -50,6 +49,38 @@ def schema_name_for(organization_id: UUID) -> str:
     inside Postgres' 63-byte identifier limit.
     """
     return f"org_{organization_id.hex}"
+
+
+# Name of the platform/super-admin org. Its tenant schema holds audit rows for
+# events that belong to no single customer org (anonymous auth failures,
+# platform-level super-admin actions). Defined here (not in seed.py) so runtime
+# code can resolve the platform schema without importing the seed module.
+PLATFORM_ORG_NAME = "BIMstitch Platform"
+
+_platform_schema: str | None = None
+
+
+async def resolve_platform_schema(session: AsyncSession) -> str:
+    """Return the platform org's tenant schema name, cached after first lookup.
+
+    The platform org is created by the seed and never renamed, so its schema
+    name is stable for the process lifetime.
+    """
+    global _platform_schema
+    if _platform_schema is None:
+        schema = (
+            await session.execute(
+                select(Organization.schema_name).where(
+                    Organization.name == PLATFORM_ORG_NAME
+                )
+            )
+        ).scalar_one_or_none()
+        if schema is None:
+            raise RuntimeError(
+                f"Platform org {PLATFORM_ORG_NAME!r} not found — run the seed first."
+            )
+        _platform_schema = schema
+    return _platform_schema
 
 
 async def require_active_organization(

@@ -143,7 +143,7 @@ function ReportRow({
     <li className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-md border border-border px-3 py-2 text-body3">
       <div className="min-w-0">
         <div className="truncate font-semibold text-foreground">{report.title}</div>
-        <div className="font-mono text-caption text-foreground-tertiary">
+        <div className="font-sans text-caption text-foreground-tertiary">
           {formatRelative(report.created_at)}
           {report.status === 'failed' && report.error !== null
             ? ` · ${report.error.slice(0, 80)}`
@@ -225,7 +225,7 @@ function ReportPreviewDrawer({
           ) : report.status === 'failed' ? (
             <div className="rounded-md border border-error bg-error-subtle p-3 text-body3 text-error-foreground">
               {t('errorGenerating')}
-              {report.error !== null ? <div className="mt-2 font-mono text-caption">{report.error}</div> : null}
+              {report.error !== null ? <div className="mt-2 font-sans text-caption">{report.error}</div> : null}
             </div>
           ) : report.download_url !== null ? (
             <iframe

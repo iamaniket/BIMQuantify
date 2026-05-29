@@ -11,10 +11,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import select
 
-from bimstitch_api.models.audit_log import AuditLog
-from tests.conftest import _add_member, _auth, _create_project
+from tests.conftest import (
+    _PLATFORM_ORG_ID_HEX,
+    _add_member,
+    _auth,
+    _create_project,
+    _latest_audit,
+)
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -24,26 +28,6 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-async def _latest_audit(
-    session_maker: async_sessionmaker[AsyncSession], action: str
-) -> AuditLog | None:
-    """Return the most-recent AuditLog row for the given action code.
-
-    Uses the raw session_maker (bim superuser) which bypasses RLS, so
-    entries from both tenant and master sessions are visible.
-    """
-    async with session_maker() as s:
-        row = (
-            await s.execute(
-                select(AuditLog)
-                .where(AuditLog.action == action)
-                .order_by(AuditLog.created_at.desc())
-                .limit(1)
-            )
-        ).scalar_one_or_none()
-    return row
 
 
 def _risk_payload(**overrides: object) -> dict[str, object]:
@@ -191,6 +175,46 @@ async def test_viewer_denied_creates_permission_denied_audit_row(
     assert row.before["role"] == "viewer"
     assert row.before["resource"] == "risk"
     assert row.before["action"] == "create"
+
+
+# ---------------------------------------------------------------------------
+# Org-less events land in the platform schema
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_failed_login_records_into_platform_schema(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """A failed login has no subject org, so its audit row must land in the
+    platform org's schema — not in `public`, not in any tenant schema."""
+    import uuid
+
+    from sqlalchemy import select
+
+    from bimstitch_api.models.audit_log import AuditLog
+    from bimstitch_api.tenancy import schema_name_for
+
+    bogus = f"nobody-{uuid.uuid4().hex[:8]}@example.com"
+    resp = await client.post(
+        "/auth/jwt/login",
+        data={"username": bogus, "password": "definitely-wrong"},
+    )
+    assert resp.status_code == 400
+
+    platform_schema = schema_name_for(uuid.UUID(_PLATFORM_ORG_ID_HEX))
+    async with session_maker() as s:
+        rows = (
+            await s.execute(
+                select(AuditLog).where(
+                    AuditLog.action == "auth.login.failure"
+                ),
+                execution_options={"schema_translate_map": {None: platform_schema}},
+            )
+        ).scalars().all()
+    matching = [r for r in rows if r.after and r.after.get("email") == bogus]
+    assert len(matching) == 1, "Expected failed-login row in the platform schema"
 
 
 # ---------------------------------------------------------------------------

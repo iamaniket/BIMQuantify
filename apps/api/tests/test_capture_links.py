@@ -11,14 +11,13 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 
-from bimstitch_api.models.audit_log import AuditLog
 from tests.conftest import (
     FakeStorage,
     _add_member,
     _auth,
     _create_project,
+    _latest_audit,
     _new_hash,
 )
 
@@ -53,21 +52,6 @@ async def _create_capture_link(
     )
     assert resp.status_code == 201, resp.text
     return resp.json()
-
-
-async def _latest_audit(
-    session_maker: async_sessionmaker[AsyncSession], action: str
-) -> AuditLog | None:
-    async with session_maker() as s:
-        row = (
-            await s.execute(
-                select(AuditLog)
-                .where(AuditLog.action == action)
-                .order_by(AuditLog.created_at.desc())
-                .limit(1)
-            )
-        ).scalar_one_or_none()
-    return row
 
 
 # ---------------------------------------------------------------------------

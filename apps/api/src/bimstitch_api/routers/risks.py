@@ -71,7 +71,6 @@ async def create_risk(
             resource=Resource.risk.value,
             action=Action.create.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             request=request,
         )
         raise
@@ -88,7 +87,6 @@ async def create_risk(
         resource_id=risk.id,
         after=_risk_snapshot(risk),
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return risk
@@ -145,7 +143,6 @@ async def update_risk(
             resource=Resource.risk.value,
             action=Action.update.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             resource_id=risk_id,
             request=request,
         )
@@ -167,7 +164,6 @@ async def update_risk(
         before=before,
         after=_risk_snapshot(risk),
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return risk
@@ -192,7 +188,6 @@ async def delete_risk(
             resource=Resource.risk.value,
             action=Action.delete.value,
             actor_user_id=user.id,
-            organization_id=active_org_id,
             resource_id=risk_id,
             request=request,
         )
@@ -210,7 +205,6 @@ async def delete_risk(
         resource_id=risk_id,
         before=before,
         actor_user_id=user.id,
-        organization_id=active_org_id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

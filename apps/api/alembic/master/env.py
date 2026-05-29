@@ -1,7 +1,7 @@
 """Alembic env for the MASTER chain.
 
 Targets `public` schema. Manages identity-layer tables only: users,
-organizations, organization_members, audit_log, access_requests.
+organizations, organization_members, access_requests.
 
 Tenant tables live in per-org schemas and are managed by the `tenant`
 chain, run once per org schema by the provisioning saga.

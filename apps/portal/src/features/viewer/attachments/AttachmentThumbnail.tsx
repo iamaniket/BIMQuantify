@@ -94,7 +94,7 @@ export function AttachmentThumbnail({
         sizeClass,
         className,
       )}>
-        <span className="font-mono text-[9px] tracking-wide text-foreground-tertiary">IMG</span>
+        <span className="font-sans text-[9px] tracking-wide text-foreground-tertiary">IMG</span>
       </div>
     );
   }
@@ -113,7 +113,7 @@ export function AttachmentThumbnail({
         className,
       )}>
         <FileText className={size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
-        <span className="font-mono text-[8.5px] font-bold leading-none tracking-wide">
+        <span className="font-sans text-[8.5px] font-bold leading-none tracking-wide">
           {meta.label}
         </span>
       </div>

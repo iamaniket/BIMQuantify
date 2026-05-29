@@ -303,6 +303,62 @@ async def _clean_tables(
             raise
 
 
+# Stable identity for the test platform org. `record_for_org(None)` and every
+# org-less audit event resolve their target schema through the org named
+# `PLATFORM_ORG_NAME` (see `tenancy.resolve_platform_schema`). Production seeds
+# this org once; tests truncate between cases, so `_platform_org` recreates it
+# per-test. A fixed id keeps the schema name deterministic across tests.
+_PLATFORM_ORG_ID_HEX = "00000000000000000000000000000001"
+
+
+@pytest.fixture(autouse=True)
+async def _platform_org(
+    request: pytest.FixtureRequest,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+) -> None:
+    """Ensure the platform org + its tenant schema exist for each DB test.
+
+    Org-less audit events (`record_for_org(session, None)`) route to the
+    platform org's schema, resolved by name in
+    `tenancy.resolve_platform_schema`. Without this the first such event in a
+    test raises ``RuntimeError("Platform org ... not found")``. We reset the
+    module-level schema cache so a name from a prior (now-dropped) schema can't
+    leak across tests, then materialise a fresh platform org + schema.
+    """
+    _db_fixture_names = {
+        "client", "org_user", "other_org_user", "same_org_user",
+        "same_org_non_admin_user", "same_org_admin_user", "superuser_in_org",
+        "session", "fake_storage_client", "rate_limited_client",
+    }
+    if not _db_fixture_names.intersection(request.fixturenames):
+        return
+
+    import uuid
+    from datetime import datetime, timezone
+
+    from bimstitch_api import tenancy
+    from bimstitch_api.models.organization import Organization, OrganizationStatus
+
+    tenancy._platform_schema = None
+    platform_id = uuid.UUID(_PLATFORM_ORG_ID_HEX)
+    schema = tenancy.schema_name_for(platform_id)
+
+    async with session_maker() as session:
+        session.add(
+            Organization(
+                id=platform_id,
+                name=tenancy.PLATFORM_ORG_NAME,
+                schema_name=schema,
+                status=OrganizationStatus.active,
+                provisioned_at=datetime.now(timezone.utc),
+            )
+        )
+        await session.commit()
+
+    await _provision_tenant_schema(engine, schema)
+
+
 @pytest.fixture(autouse=True)
 async def _flush_redis(
     request: pytest.FixtureRequest,
@@ -574,6 +630,72 @@ async def _add_member(
         headers=_auth(owner_token),
     )
     assert resp.status_code == 201, resp.text
+
+
+# ---------------------------------------------------------------------------
+# Audit-log query helpers
+#
+# `audit_log` is now a per-tenant table: in-tenant writes land in the active
+# org's schema, `record_for_org(org)` lands in that org's schema, and
+# org-less events (`record_for_org(None)`) land in the platform org's schema
+# (seeded per-test by the `_platform_org` fixture). Tests that created an org
+# row via a `_make_org` helper *without* provisioning a real schema get their
+# rows in `public` (search_path falls through). These helpers scan every
+# candidate schema so a test never has to know where the row physically
+# landed. `schema_translate_map` is used (not `SET search_path`) so each query
+# emits schema-qualified SQL — distinct statement text per schema avoids
+# asyncpg's prepared-statement cache returning a stale plan, and the ORM still
+# decodes the JSONB `before`/`after` columns into dicts.
+# ---------------------------------------------------------------------------
+
+
+async def _audit_rows(
+    session_maker: async_sessionmaker[AsyncSession],
+    action: str,
+    *,
+    resource_id: object | None = None,
+    user_id: object | None = None,
+) -> list:
+    """All AuditLog rows for `action`, across public + every org schema,
+    newest first. Optional `resource_id` / `user_id` narrow the match."""
+    from sqlalchemy import select
+
+    from bimstitch_api.models.audit_log import AuditLog
+
+    rows: list = []
+    async with session_maker() as s:
+        schemas = (
+            await s.execute(
+                text(
+                    "SELECT schema_name FROM information_schema.schemata "
+                    "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+                )
+            )
+        ).scalars().all()
+        for schema in schemas:
+            stmt = select(AuditLog).where(AuditLog.action == action)
+            if resource_id is not None:
+                stmt = stmt.where(AuditLog.resource_id == str(resource_id))
+            if user_id is not None:
+                stmt = stmt.where(AuditLog.user_id == user_id)
+            found = (
+                await s.execute(
+                    stmt,
+                    execution_options={"schema_translate_map": {None: schema}},
+                )
+            ).scalars().all()
+            rows.extend(found)
+    rows.sort(key=lambda r: r.created_at, reverse=True)
+    return rows
+
+
+async def _latest_audit(
+    session_maker: async_sessionmaker[AsyncSession],
+    action: str,
+) -> object | None:
+    """Most-recent AuditLog row for `action` across every schema, or None."""
+    rows = await _audit_rows(session_maker, action)
+    return rows[0] if rows else None
 
 
 @pytest.fixture

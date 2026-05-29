@@ -7,109 +7,18 @@ import type { JSX } from 'react';
 import { Button } from '@bimstitch/ui';
 
 import {
+  extractExifMeta,
+  formatCoord,
+  formatDateFull,
+  formatSize,
+} from '@/features/attachments/attachmentMeta';
+import {
   isWithinNetherlands,
   pdokAerialThumbnailUrl,
 } from '@/features/jurisdictions/nl/mapThumbnail';
 import type { Attachment } from '@/lib/api/schemas';
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${String(bytes)} B`;
-  if (bytes < 1024 * 1024) return `${String(Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDateFull(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 type MetaEntry = [string, string];
-
-type GpsData = { latitude: number; longitude: number; altitude: number | null };
-type CameraData = { make: string | null; model: string | null };
-type ImageDims = { width: number | null; height: number | null };
-
-function extractExifMeta(att: Attachment): {
-  gps: GpsData | null;
-  camera: CameraData | null;
-  dims: ImageDims | null;
-  capturedAt: string | null;
-} {
-  const sm = att.server_metadata;
-  const cm = att.capture_metadata;
-
-  let gps: GpsData | null = null;
-  let camera: CameraData | null = null;
-  let dims: ImageDims | null = null;
-  let capturedAt: string | null = null;
-
-  if (sm != null) {
-    const g = sm['gps'] as Record<string, unknown> | null | undefined;
-    if (g != null && typeof g['latitude'] === 'number' && typeof g['longitude'] === 'number') {
-      gps = {
-        latitude: g['latitude'],
-        longitude: g['longitude'],
-        altitude: typeof g['altitude'] === 'number' ? g['altitude'] : null,
-      };
-    }
-    const c = sm['camera'] as Record<string, unknown> | null | undefined;
-    if (c != null) {
-      const make = typeof c['make'] === 'string' ? c['make'] : null;
-      const model = typeof c['model'] === 'string' ? c['model'] : null;
-      if (make !== null || model !== null) camera = { make, model };
-    }
-    const img = sm['image'] as Record<string, unknown> | null | undefined;
-    if (img != null) {
-      const w = typeof img['width'] === 'number' ? img['width'] : null;
-      const h = typeof img['height'] === 'number' ? img['height'] : null;
-      if (w !== null || h !== null) dims = { width: w, height: h };
-    }
-    const cap = sm['capture'] as Record<string, unknown> | null | undefined;
-    if (cap != null && typeof cap['date_time_original'] === 'string') {
-      capturedAt = cap['date_time_original'];
-    }
-  } else if (cm != null) {
-    const exif = cm['exif'] as Record<string, unknown> | null | undefined;
-    const geo = cm['geolocation'] as Record<string, unknown> | null | undefined;
-    if (geo != null && typeof geo['latitude'] === 'number' && typeof geo['longitude'] === 'number') {
-      gps = {
-        latitude: geo['latitude'],
-        longitude: geo['longitude'],
-        altitude: typeof geo['altitude'] === 'number' ? geo['altitude'] : null,
-      };
-    }
-    if (exif != null) {
-      const make = typeof exif['make'] === 'string' ? exif['make'] : null;
-      const model = typeof exif['model'] === 'string' ? exif['model'] : null;
-      if (make !== null || model !== null) camera = { make, model };
-      const w = typeof exif['image_width'] === 'number' ? exif['image_width'] : null;
-      const h = typeof exif['image_height'] === 'number' ? exif['image_height'] : null;
-      if (w !== null || h !== null) dims = { width: w, height: h };
-      if (typeof exif['date_time_original'] === 'string') {
-        capturedAt = exif['date_time_original'];
-      }
-    }
-  }
-
-  return {
-    gps,
-    camera,
-    dims,
-    capturedAt,
-  };
-}
-
-function formatCoord(lat: number, lon: number): string {
-  const latDir = lat >= 0 ? 'N' : 'S';
-  const lonDir = lon >= 0 ? 'E' : 'W';
-  return `${Math.abs(lat).toFixed(6)}° ${latDir}, ${Math.abs(lon).toFixed(6)}° ${lonDir}`;
-}
 
 type Props = {
   attachment: Attachment;
@@ -174,10 +83,10 @@ export function ExpandedBody({
       <div className="grid grid-cols-[76px_1fr] gap-x-2.5 gap-y-1 py-2">
         {kv.map(([k, v]) => (
           <div key={k} className="contents">
-            <div className="font-mono text-[10.5px] uppercase tracking-wide leading-[1.7] text-foreground-tertiary">
+            <div className="font-sans text-[10.5px] uppercase tracking-wide leading-[1.7] text-foreground-tertiary">
               {k}
             </div>
-            <div className="break-all font-mono text-xs leading-[1.7] text-foreground tabular-nums">
+            <div className="break-all font-sans text-xs leading-[1.7] text-foreground tabular-nums">
               {v}
             </div>
           </div>
@@ -189,7 +98,7 @@ export function ExpandedBody({
         <div className="mb-2 overflow-hidden rounded border border-border">
           <div className="flex items-center gap-1.5 bg-surface px-2 py-1">
             <MapPin className="h-3 w-3 text-foreground-tertiary" />
-            <span className="font-mono text-[10.5px] uppercase tracking-wide text-foreground-tertiary">
+            <span className="font-sans text-[10.5px] uppercase tracking-wide text-foreground-tertiary">
               {t('expandedLocation')}
             </span>
           </div>

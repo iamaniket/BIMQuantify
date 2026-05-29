@@ -278,10 +278,10 @@ function CaptureOverlay({ action, combo, cat, onCancel }: {
         </div>
         <div className="mt-3 text-body3 text-foreground-tertiary">
           Currently bound to{' '}
-          <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-mono text-caption font-semibold text-foreground">
+          <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-sans text-caption font-semibold text-foreground">
             {prettyKey(combo)}
           </kbd>
-          {' '}· Press <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-mono text-caption font-semibold text-foreground">Esc</kbd> to cancel
+          {' '}· Press <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-sans text-caption font-semibold text-foreground">Esc</kbd> to cancel
         </div>
       </div>
     </div>
@@ -370,7 +370,7 @@ function Mouse2DSection(): JSX.Element {
         <ul className="space-y-0.5">
           {rows.map((r) => (
             <li key={r.gesture} className="flex items-center justify-between gap-2 rounded px-2 py-1 text-body3">
-              <span className="font-mono text-foreground-secondary">{r.gesture}</span>
+              <span className="font-sans text-foreground-secondary">{r.gesture}</span>
               <span className="text-foreground">{r.action}</span>
             </li>
           ))}

@@ -133,31 +133,37 @@ export function EntityAttachmentsBody({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Action bar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-background px-3.5 py-2.5">
-        <div className="font-mono text-caption font-bold uppercase tracking-[0.1em] text-foreground-secondary">
-          {t('attachToElement')}
+      {/* Action bar + search in one row */}
+      <div className="flex items-center gap-1.5 border-b border-border bg-background px-2.5 py-2">
+        <div className="relative min-w-0 flex-1">
+          <Paperclip className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-secondary" />
+          <Input
+            type="text"
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); }}
+            placeholder={t('filterPlaceholder')}
+            inputSize="sm"
+            className="pl-7"
+          />
         </div>
-        <div className="flex shrink-0 gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { setShowNoteInput(!showNoteInput); }}
-            title={t('addNote')}
-          >
-            <StickyNote className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={uploadMutation.isPending}
-            onClick={() => { if (fileInputRef.current !== null) fileInputRef.current.click(); }}
-            title={t('attachToElement')}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t('attachButton')}
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => { setShowNoteInput(!showNoteInput); }}
+          title={t('addNote')}
+        >
+          <StickyNote className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={uploadMutation.isPending}
+          onClick={() => { if (fileInputRef.current !== null) fileInputRef.current.click(); }}
+          title={t('attachToElement')}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {t('attachButton')}
+        </Button>
         <input
           ref={fileInputRef}
           type="file"
@@ -204,21 +210,6 @@ export function EntityAttachmentsBody({
           </div>
         </div>
       )}
-
-      {/* Search */}
-      <div className="border-b border-border bg-surface-low px-2.5 py-2">
-        <div className="relative">
-          <Paperclip className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-secondary" />
-          <Input
-            type="text"
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); }}
-            placeholder={t('filterPlaceholder')}
-            inputSize="sm"
-            className="pl-7"
-          />
-        </div>
-      </div>
 
       {/* List */}
       <div className="min-h-0 flex-1 overflow-auto">

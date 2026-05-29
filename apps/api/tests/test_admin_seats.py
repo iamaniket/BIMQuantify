@@ -16,10 +16,8 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -27,6 +25,7 @@ from bimstitch_api.models.organization_member import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.tenancy import schema_name_for
+from tests.conftest import _audit_rows
 
 
 PASSWORD = "correct-horse-battery"
@@ -217,7 +216,10 @@ async def test_get_org_includes_seat_fields(
 
 
 async def test_patch_seat_limit_audited(
-    client: AsyncClient, session: AsyncSession, superadmin: dict[str, str]
+    client: AsyncClient,
+    session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
+    superadmin: dict[str, str],
 ) -> None:
     org = await _make_org(session, name="AuditCo", seat_limit=5)
 
@@ -229,11 +231,7 @@ async def test_patch_seat_limit_audited(
     assert patch.status_code == 200, patch.text
     assert patch.json()["seat_limit"] == 10
 
-    entries = (
-        await session.execute(
-            select(AuditLog).where(AuditLog.action == "organization.seat_limit_changed")
-        )
-    ).scalars().all()
+    entries = await _audit_rows(session_maker, "organization.seat_limit_changed")
     assert len(entries) == 1
     # The audit row carries a full snapshot of the org before/after (matches
     # how `organization.updated` records changes). We only need to confirm

@@ -1,9 +1,10 @@
 """Initial tenant schema: projects, project_members, models, project_files, jobs, reports,
 contractors, notifications, notification_reads, risks, borgingsplans, borgingsmomenten,
-checklist_items, attachments, capture_links.
+checklist_items, attachments, capture_links, audit_log.
 
 Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables (users)
-are emitted as `public.users(id)` so they resolve regardless of search_path.
+are emitted as `public.users(id)` so they resolve regardless of search_path —
+audit_log's user_id / impersonator_user_id rely on this.
 
 Revision ID: 0001_tenant
 Revises:

@@ -109,7 +109,7 @@ export function ShortcutList({
                         <div className="truncate text-body3 font-semibold text-foreground">
                           {b.label}
                         </div>
-                        <div className="font-mono text-caption text-foreground-tertiary">
+                        <div className="font-sans text-caption text-foreground-tertiary">
                           {b.command}
                         </div>
                       </div>
@@ -117,7 +117,7 @@ export function ShortcutList({
                     <div className="flex shrink-0 items-center gap-1.5">
                       <kbd
                         className={[
-                          'inline-flex items-center justify-center rounded border px-1.5 py-0.5 font-mono text-caption font-semibold',
+                          'inline-flex items-center justify-center rounded border px-1.5 py-0.5 font-sans text-caption font-semibold',
                           isCapturing
                             ? 'animate-pulse border-primary bg-primary-lighter text-primary'
                             : `${rowCat.bg} ${rowCat.border} ${rowCat.text}`,

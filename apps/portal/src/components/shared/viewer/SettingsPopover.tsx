@@ -146,7 +146,7 @@ function ShortcutsSection({
               key={b.command}
               className="flex items-center justify-between gap-2 text-caption"
             >
-              <span className="truncate font-mono text-foreground-secondary">
+              <span className="truncate font-sans text-foreground-secondary">
                 {b.command}
               </span>
               <button
@@ -154,7 +154,7 @@ function ShortcutsSection({
                 onClick={() => {
                   setCapturing(b.command);
                 }}
-                className="min-w-[5rem] rounded border border-border px-2 py-0.5 font-mono text-foreground hover:bg-background-secondary"
+                className="min-w-[5rem] rounded border border-border px-2 py-0.5 font-sans text-foreground hover:bg-background-secondary"
               >
                 {capturing === b.command ? 'Press a key…' : b.combo}
               </button>
@@ -262,7 +262,7 @@ function MouseBindingsSection({
             key={g}
             className="flex items-center justify-between gap-2 text-caption"
           >
-            <span className="truncate font-mono text-foreground-secondary">
+            <span className="truncate font-sans text-foreground-secondary">
               {g}
             </span>
             <Select
@@ -501,12 +501,12 @@ export function SettingsPopover({
                 }}
               />
               <Toggle
-                label="Edges (silhouette)"
-                checked={settings.effects.edges}
-                onChange={(edges) => {
+                label="Edges (outline)"
+                checked={settings.outline.enabled}
+                onChange={(enabled) => {
                   update({
                     ...settings,
-                    effects: { ...settings.effects, edges },
+                    outline: { ...settings.outline, enabled },
                   });
                 }}
               />
