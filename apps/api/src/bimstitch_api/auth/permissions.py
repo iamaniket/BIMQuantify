@@ -49,6 +49,8 @@ class Resource(StrEnum):
     capture_link = "capture_link"
     deadline = "deadline"
     audit_log = "audit_log"
+    compliance = "compliance"
+    report = "report"
 
 
 class Action(StrEnum):
@@ -69,6 +71,7 @@ _READ_WRITE_DELETE: frozenset[Action] = frozenset(
     {Action.read, Action.create, Action.update, Action.delete}
 )
 _READ_UPDATE: frozenset[Action] = frozenset({Action.read, Action.update})
+_READ_CREATE: frozenset[Action] = frozenset({Action.read, Action.create})
 _NONE: frozenset[Action] = frozenset()
 
 
@@ -101,6 +104,8 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.deadline: _READ_UPDATE,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _READ,
+                Resource.compliance: _READ_CREATE,
+                Resource.report: _READ_CREATE,
             }
         ),
         ProjectRole.editor: MappingProxyType(
@@ -119,6 +124,8 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.assurance_plan: _READ_WRITE_DELETE,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
+                Resource.compliance: _READ_CREATE,
+                Resource.report: _READ_CREATE,
             }
         ),
         ProjectRole.viewer: MappingProxyType(
@@ -137,6 +144,8 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
+                Resource.compliance: _READ,
+                Resource.report: _READ,
             }
         ),
         # Inspector (NL: kwaliteitsborger): full inspect rights + sole holder
@@ -162,6 +171,8 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                     {Action.read, Action.create, Action.update, Action.sign}
                 ),
                 Resource.audit_log: _READ,
+                Resource.compliance: _READ_CREATE,
+                Resource.report: _READ_CREATE,
             }
         ),
         # Contractor (NL: aannemer): reads all project data, writes
@@ -183,6 +194,8 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
+                Resource.compliance: _READ,
+                Resource.report: _READ,
             }
         ),
         # Client / principal (NL: opdrachtgever): reads most things, writes
@@ -203,6 +216,8 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.assurance_plan: _READ,
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
+                Resource.compliance: _READ,
+                Resource.report: _READ,
             }
         ),
     }

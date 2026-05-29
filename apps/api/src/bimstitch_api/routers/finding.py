@@ -14,7 +14,7 @@ from `draft` to `open` by setting a deadline and an assignee.
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
@@ -124,10 +124,14 @@ async def create_finding(
 @router.get("", response_model=list[FindingRead])
 async def list_findings(
     project_id: UUID,
+    response: Response,
     status_filter: FindingStatus | None = None,
     severity: FindingSeverity | None = None,
     linked_file_id: UUID | None = None,
     linked_element_global_id: str | None = Query(default=None, max_length=22),
+    unlinked: bool = False,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -147,8 +151,13 @@ async def list_findings(
         stmt = stmt.where(Finding.linked_file_id == linked_file_id)
     if linked_element_global_id is not None:
         stmt = stmt.where(Finding.linked_element_global_id == linked_element_global_id)
-    stmt = stmt.order_by(Finding.created_at.desc())
+    if unlinked:
+        stmt = stmt.where(Finding.linked_element_global_id.is_(None))
 
+    total = (await session.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+
+    stmt = stmt.order_by(Finding.created_at.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 

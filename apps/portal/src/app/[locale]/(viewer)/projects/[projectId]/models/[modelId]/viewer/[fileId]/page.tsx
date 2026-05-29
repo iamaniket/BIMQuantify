@@ -418,6 +418,7 @@ export default function ViewerPage(): JSX.Element {
                   metadata={metadata}
                   properties={properties}
                   isLoadingProperties={isLoadingProperties}
+                  isLoadingMetadata={isLoadingMetadata}
                   projectId={projectId}
                   modelId={modelId}
                   fileId={fileId}

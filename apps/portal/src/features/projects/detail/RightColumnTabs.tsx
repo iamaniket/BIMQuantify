@@ -6,6 +6,8 @@ import { useState, type JSX } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
 
 import type { Model } from '@/lib/api/schemas';
+import { useAttachments } from '@/features/attachments/useAttachments';
+import { useFindings } from '@/features/findings/useFindings';
 
 import { AttachmentsTab } from './AttachmentsTab';
 import { BevindingenTab } from './BevindingenTab';
@@ -27,32 +29,48 @@ export function RightColumnTabs({
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const [tab, setTab] = useState('overzicht');
+  const documentCount = useAttachments(projectId).data?.length ?? 0;
+  const findingsCount = useFindings(projectId).data?.length ?? 0;
+
+  const subtitleCount = tab === 'documenten' ? documentCount
+    : tab === 'bevindingen' ? findingsCount
+    : models.length;
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
       <div className="shrink-0 p-4 pb-0">
         <div className="mb-3 flex items-end justify-between">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
-              {t('eyebrow')}
-            </div>
-            <div className="mt-0.5 text-title3 font-medium tracking-tight text-foreground">
-              {t('subtitle', { count: models.length })}
-            </div>
-          </div>
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="inline-flex w-auto">
               <TabsTrigger value="overzicht">{t('overzicht.label')}</TabsTrigger>
-              <TabsTrigger value="documenten">{t('documenten.label')}</TabsTrigger>
-              <TabsTrigger value="bevindingen">{t('bevindingen.label')}</TabsTrigger>
               <TabsTrigger value="models">
                 {t('models.label')}
-                <span className="ml-1 rounded-full bg-background-secondary px-1.5 text-caption tabular-nums text-foreground-secondary">
+                <span className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-background-secondary text-caption tabular-nums text-foreground-secondary">
                   {models.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="documenten">
+                {t('documenten.label')}
+                <span className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-background-secondary text-caption tabular-nums text-foreground-secondary">
+                  {documentCount}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="bevindingen">
+                {t('bevindingen.label')}
+                <span className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-background-secondary text-caption tabular-nums text-foreground-secondary">
+                  {findingsCount}
                 </span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          <div className="text-right">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+              {t(`${tab}.eyebrow`)}
+            </div>
+            <div className="mt-0.5 text-title3 font-medium tracking-tight text-foreground">
+              {t(`${tab}.subtitle`, { count: subtitleCount })}
+            </div>
+          </div>
         </div>
       </div>
 

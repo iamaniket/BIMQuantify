@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.compliance import ComplianceCheckError, run_compliance_check
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jurisdictions import is_supported_framework
@@ -76,7 +77,8 @@ async def check_compliance(
     storage keys available.
     """
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    membership = await _require_membership(session, project.id, user.id)
+    require_permission(membership.role, Resource.compliance, Action.create)
     await _load_model_or_404(session, project.id, model_id)
 
     pf = (

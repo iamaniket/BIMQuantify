@@ -54,12 +54,16 @@ async def _list_active_schemas() -> list[str]:
         return [row[0] for row in result.all()]
 
 
-async def main() -> None:
+def main() -> None:
+    # NB: each Alembic env.py drives its own `asyncio.run(...)`, so this
+    # function must stay synchronous — wrapping it in `asyncio.run` would nest
+    # event loops and raise "asyncio.run() cannot be called from a running
+    # event loop". The only async step (listing schemas) gets its own loop.
     print("Upgrading master schema...")
     run_master()
     print("  done.")
 
-    schemas = await _list_active_schemas()
+    schemas = asyncio.run(_list_active_schemas())
     if not schemas:
         print("No tenant schemas to upgrade.")
         return
@@ -72,6 +76,6 @@ async def main() -> None:
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         sys.exit(130)

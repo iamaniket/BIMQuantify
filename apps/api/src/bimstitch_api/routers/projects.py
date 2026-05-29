@@ -730,6 +730,9 @@ async def reactivate_project(
 @router.get("/{project_id}/members", response_model=list[ProjectMemberRead])
 async def list_members(
     project_id: UUID,
+    response: Response,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -740,11 +743,22 @@ async def list_members(
     project = await _load_project_or_404(session, project_id)
     await _require_member_viewer(session, project.id, user, active_org_id)
 
+    total = (
+        await session.scalar(
+            select(func.count())
+            .select_from(ProjectMember)
+            .where(ProjectMember.project_id == project.id)
+        )
+    ) or 0
+    response.headers["X-Total-Count"] = str(total)
+
     stmt = (
         select(ProjectMember, User.email, User.full_name)
         .join(User, User.id == ProjectMember.user_id)
         .where(ProjectMember.project_id == project.id)
         .order_by(ProjectMember.created_at)
+        .limit(limit)
+        .offset(offset)
     )
     rows = (await session.execute(stmt)).all()
     return [

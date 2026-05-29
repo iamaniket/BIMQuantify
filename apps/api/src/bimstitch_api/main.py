@@ -15,6 +15,7 @@ from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_engine
 from bimstitch_api.deadlines.reminder_engine import DeadlineReminderSweeper
 from bimstitch_api.jobs.dispatcher import close_http_client
+from bimstitch_api.jobs.reconcile import JobReconcileSweeper
 from bimstitch_api.migrations_check import check_pending_migrations
 from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.observability import init_sentry
@@ -92,6 +93,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     invitation_sweeper.start()
     deadline_sweeper = DeadlineReminderSweeper(settings.deadline_sweep_interval_minutes)
     deadline_sweeper.start()
+    job_reconcile_sweeper = JobReconcileSweeper(
+        settings.job_reconcile_interval_minutes,
+        settings.job_stuck_timeout_minutes,
+    )
+    job_reconcile_sweeper.start()
     try:
         yield
     finally:
@@ -99,6 +105,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         if hasattr(_storage, "close"):
             await _storage.close()
         await close_http_client()
+        await job_reconcile_sweeper.stop()
         await deadline_sweeper.stop()
         await invitation_sweeper.stop()
         await manager.stop()

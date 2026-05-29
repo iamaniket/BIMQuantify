@@ -545,16 +545,18 @@
       "mapPreviewAlt": "{name} map preview"
     },
     "tabs": {
-      "eyebrow": "Project workspace",
-      "subtitle": "{count, plural, =0 {No models yet} =1 {1 model} other {# models}}",
       "overzicht": {
         "label": "Overview",
+        "eyebrow": "Project workspace",
+        "subtitle": "{count, plural, =0 {No models yet} =1 {1 model} other {# models}}",
         "deadlinesHeading": "Deadlines",
         "emptyTitle": "No deadlines yet",
         "emptyDescription": "Deadlines will appear automatically once the project has planned start and delivery dates."
       },
       "documenten": {
-        "label": "Documents"
+        "label": "Documents",
+        "eyebrow": "Files & attachments",
+        "subtitle": "{count, plural, =0 {No documents} one {# document} other {# documents}}"
       },
       "overviewCard": {
         "address": "Address",
@@ -580,6 +582,8 @@
       },
       "models": {
         "label": "Models",
+        "eyebrow": "BIM workspace",
+        "subtitle": "{count, plural, =0 {No models yet} =1 {1 model} other {# models}}",
         "columnName": "Name",
         "newModel": "New model",
         "emptyState": "No models yet. Create one to get started.",
@@ -756,6 +760,8 @@
       },
       "bevindingen": {
         "label": "Findings",
+        "eyebrow": "Quality tracking",
+        "subtitle": "{count, plural, =0 {No findings} one {# finding} other {# findings}}",
         "title": "No findings logged",
         "description": "Findings from failed checklist items will show up here with their resolution and verification trail.",
         "ctaLabel": "Log finding",
@@ -775,6 +781,7 @@
         "delete": "Delete",
         "viaCapture": "Capture",
         "linked": "Linked",
+        "searchPlaceholder": "Search files…",
         "filterAll": "All",
         "filterImage": "Images",
         "filterVideo": "Videos",
@@ -1836,12 +1843,11 @@
       "modeDistance": "Distance",
       "modeAngle": "Angle",
       "modeArea": "Area",
-      "modeVolume": "Volume",
       "helpDistance": "Click two points to measure distance",
       "helpAngle": "Click three points to measure angle (2nd point is the vertex)",
-      "helpArea": "Click points to define a polygon, close near the first point or right-click to finish",
+      "helpArea": "Click points to outline an area; double-click or right-click to finish (min 3 points)",
       "helpVolume": "Click points for base polygon, close to finish, then click to set height",
-      "emptyMessage": "Select a mode above to measure distances, angles, areas, or volumes",
+      "emptyMessage": "Select a mode above to measure distances, angles, or areas",
       "hide": "Hide measurement",
       "show": "Show measurement",
       "remove": "Remove measurement",
@@ -1853,10 +1859,6 @@
       "clearAll": "Clear all measurements",
       "clearConfirmDescription": "This will remove all {count, plural, one {# measurement} other {# measurements}}. This cannot be undone.",
       "clearConfirm": "Clear all",
-      "csvType": "Type",
-      "csvValue": "Value",
-      "csvUnit": "Unit",
-      "csvPoints": "Points",
       "settingsTitle": "Measurement Settings",
       "settingsSubtitle": "Configure how measurements appear in the viewer",
       "sectionColors": "Colors",
@@ -1880,7 +1882,6 @@
       "snappingTooltip": "Snapping (S) — {state}",
       "snappingOn": "on",
       "snappingOff": "off",
-      "exportCsv": "Export measurements as CSV",
       "settings": "Measurement settings"
     },
     "section": {
@@ -2076,7 +2077,25 @@
     "count": "{count, plural, =0 {No findings} one {# finding} other {# findings}}",
     "createButton": "New finding",
     "loading": "Loading findings…",
-    "emptyNoItems": "No findings linked to this element yet."
+    "emptyNoItems": "No findings linked to this element yet.",
+    "emptyProjectEmpty": "No project-level findings."
+  },
+  "viewerModelInfo": {
+    "loading": "Loading model info…",
+    "unavailable": "Model info unavailable.",
+    "sectionModel": "Model",
+    "sectionSpatial": "Spatial structure",
+    "sectionClasses": "Elements by class",
+    "sectionBbox": "Bounding box",
+    "schema": "Schema",
+    "sourceFormat": "Source format",
+    "project": "Project",
+    "longName": "Long name",
+    "lengthUnit": "Length unit",
+    "totalElements": "Total elements",
+    "width": "Width",
+    "depth": "Depth",
+    "height": "Height"
   },
   "viewerAttachments": {
     "panelTitle": "Attachments",

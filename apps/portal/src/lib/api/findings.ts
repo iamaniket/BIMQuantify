@@ -16,6 +16,7 @@ export async function listFindings(
     severity?: string;
     linkedFileId?: string;
     linkedElementGlobalId?: string;
+    unlinked?: boolean;
   },
 ): Promise<FindingList> {
   const params = new URLSearchParams();
@@ -25,6 +26,7 @@ export async function listFindings(
   if (filters?.linkedElementGlobalId !== undefined) {
     params.set('linked_element_global_id', filters.linkedElementGlobalId);
   }
+  if (filters?.unlinked === true) params.set('unlinked', 'true');
   const query = params.size === 0 ? '' : `?${params.toString()}`;
   return apiClient.get<FindingList>(
     `/projects/${projectId}/findings${query}`,

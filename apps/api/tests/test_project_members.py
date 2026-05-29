@@ -407,3 +407,41 @@ async def test_update_role_on_archived_project_returns_409(
     )
     assert response.status_code == 409
     assert response.json()["detail"] == "PROJECT_ARCHIVED"
+
+
+async def test_list_members_pagination_and_total_count(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    project = await _create_project(client, org_user)
+    # The owner is auto-added as a member; adding one more gives a list of 2.
+    resp = await client.post(
+        f"/projects/{project['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+
+    full = await client.get(
+        f"/projects/{project['id']}/members",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert full.status_code == 200, full.text
+    total = len(full.json())
+    assert total == 2
+    assert full.headers["X-Total-Count"] == str(total)
+
+    capped = await client.get(
+        f"/projects/{project['id']}/members?limit=1",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert capped.status_code == 200, capped.text
+    assert len(capped.json()) == 1
+    assert capped.headers["X-Total-Count"] == str(total)
+
+    too_big = await client.get(
+        f"/projects/{project['id']}/members?limit=201",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert too_big.status_code == 422

@@ -316,12 +316,15 @@ async def complete_attachment_upload(
 @router.get("", response_model=list[AttachmentRead])
 async def list_attachments(
     project_id: UUID,
+    response: Response,
     category: Annotated[AttachmentCategory | None, Query()] = None,
     linked_element_global_id: Annotated[str | None, Query(max_length=22)] = None,
     linked_file_id: Annotated[UUID | None, Query()] = None,
     unlinked: Annotated[bool, Query()] = False,
     linked_point_type: Annotated[str | None, Query(max_length=10)] = None,
     linked_point_page: Annotated[int | None, Query(ge=1)] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -329,31 +332,35 @@ async def list_attachments(
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
 
-    stmt = (
-        select(Attachment)
-        .options(selectinload(Attachment.uploaded_by_user))
-        .where(
-            Attachment.project_id == project.id,
-            Attachment.status == AttachmentStatus.ready,
-            Attachment.deleted_at.is_(None),
-        )
-        .order_by(Attachment.created_at.desc())
+    base = select(Attachment).where(
+        Attachment.project_id == project.id,
+        Attachment.status == AttachmentStatus.ready,
+        Attachment.deleted_at.is_(None),
     )
     if category is not None:
-        stmt = stmt.where(Attachment.attachment_category == category)
+        base = base.where(Attachment.attachment_category == category)
     if linked_element_global_id is not None:
-        stmt = stmt.where(Attachment.linked_element_global_id == linked_element_global_id)
+        base = base.where(Attachment.linked_element_global_id == linked_element_global_id)
     if linked_file_id is not None:
-        stmt = stmt.where(Attachment.linked_file_id == linked_file_id)
+        base = base.where(Attachment.linked_file_id == linked_file_id)
     if unlinked:
-        stmt = stmt.where(Attachment.linked_element_global_id.is_(None))
+        base = base.where(Attachment.linked_element_global_id.is_(None))
     if linked_point_type is not None:
-        stmt = stmt.where(Attachment.linked_point["type"].astext == linked_point_type)
+        base = base.where(Attachment.linked_point["type"].astext == linked_point_type)
     if linked_point_page is not None:
-        stmt = stmt.where(
+        base = base.where(
             Attachment.linked_point["page"].astext.cast(Integer) == linked_point_page
         )
 
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+
+    stmt = (
+        base.options(selectinload(Attachment.uploaded_by_user))
+        .order_by(Attachment.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     result = await session.execute(stmt)
     return list(result.scalars().all())
 

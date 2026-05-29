@@ -1,10 +1,13 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from redis.asyncio import Redis
 from sqlalchemy import case, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.cache import get_redis_dep
 from bimstitch_api.models.notification import Notification, NotificationRead
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.notification import (
@@ -14,7 +17,27 @@ from bimstitch_api.schemas.notification import (
 )
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+
+# The unread badge is polled on dashboard load; at ~1M notifications/org the
+# full COUNT is a seq scan, so cache it briefly per (org, user). Live updates
+# already arrive over the WS pub/sub channel, so a short TTL bounds the only
+# staleness window (a broadcast create the writer didn't invalidate).
+_UNREAD_COUNT_TTL_SECONDS = 20
+
+
+def _unread_count_key(org_id: UUID, user_id: UUID) -> str:
+    return f"notif:unread:{org_id}:{user_id}"
+
+
+async def _invalidate_unread_count(redis: Redis, org_id: UUID, user_id: UUID) -> None:
+    key = _unread_count_key(org_id, user_id)
+    try:
+        await redis.delete(key)
+    except Exception:
+        logger.warning("unread-count cache invalidation failed for %s", key, exc_info=True)
 
 
 @router.get("", response_model=NotificationListResponse)
@@ -78,7 +101,17 @@ async def list_notifications(
 async def unread_count(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    redis: Redis = Depends(get_redis_dep),
 ) -> UnreadCountResponse:
+    key = _unread_count_key(active_org_id, user.id)
+    try:
+        cached = await redis.get(key)
+        if cached is not None:
+            return UnreadCountResponse(count=int(cached))
+    except Exception:
+        logger.warning("unread-count cache read failed for %s", key, exc_info=True)
+
     is_read_expr = exists(
         select(NotificationRead.notification_id).where(
             NotificationRead.notification_id == Notification.id,
@@ -87,6 +120,12 @@ async def unread_count(
     )
     stmt = select(func.count()).select_from(Notification).where(~is_read_expr)
     count = (await session.scalar(stmt)) or 0
+
+    try:
+        await redis.set(key, count, ex=_UNREAD_COUNT_TTL_SECONDS)
+    except Exception:
+        logger.warning("unread-count cache write failed for %s", key, exc_info=True)
+
     return UnreadCountResponse(count=count)
 
 
@@ -95,6 +134,8 @@ async def mark_read(
     notification_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    redis: Redis = Depends(get_redis_dep),
 ) -> None:
     notif = (
         await session.execute(select(Notification).where(Notification.id == notification_id))
@@ -116,12 +157,15 @@ async def mark_read(
     if existing is None:
         session.add(NotificationRead(notification_id=notification_id, user_id=user.id))
         await session.flush()
+        await _invalidate_unread_count(redis, active_org_id, user.id)
 
 
 @router.post("/mark-all-read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_all_read(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    redis: Redis = Depends(get_redis_dep),
 ) -> None:
     is_read_expr = exists(
         select(NotificationRead.notification_id).where(
@@ -135,6 +179,7 @@ async def mark_all_read(
         session.add(NotificationRead(notification_id=nid, user_id=user.id))
     if unread_ids:
         await session.flush()
+        await _invalidate_unread_count(redis, active_org_id, user.id)
 
 
 __all__ = ["router"]

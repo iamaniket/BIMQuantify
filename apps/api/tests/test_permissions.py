@@ -172,6 +172,8 @@ def test_matrix_snapshot() -> None:
             "audit_log": {"read"},
             "attachment": {"read", "create", "update", "delete"},
             "capture_link": {"read", "create", "update", "delete"},
+            "compliance": {"read", "create"},
+            "report": {"read", "create"},
         },
         "editor": {
             "project": {"read", "update"},
@@ -188,6 +190,8 @@ def test_matrix_snapshot() -> None:
             "audit_log": set(),
             "attachment": {"read", "create", "update", "delete"},
             "capture_link": {"read", "create", "update"},
+            "compliance": {"read", "create"},
+            "report": {"read", "create"},
         },
         "viewer": {
             "project": {"read"},
@@ -204,6 +208,8 @@ def test_matrix_snapshot() -> None:
             "audit_log": set(),
             "attachment": {"read"},
             "capture_link": {"read"},
+            "compliance": {"read"},
+            "report": {"read"},
         },
         "inspector": {
             "project": {"read"},
@@ -220,6 +226,8 @@ def test_matrix_snapshot() -> None:
             "audit_log": {"read"},
             "attachment": {"read", "create", "update"},
             "capture_link": {"read"},
+            "compliance": {"read", "create"},
+            "report": {"read", "create"},
         },
         "contractor": {
             "project": {"read"},
@@ -236,6 +244,8 @@ def test_matrix_snapshot() -> None:
             "audit_log": set(),
             "attachment": {"read", "create", "update"},
             "capture_link": {"read"},
+            "compliance": {"read"},
+            "report": {"read"},
         },
         "client": {
             "project": {"read"},
@@ -252,6 +262,8 @@ def test_matrix_snapshot() -> None:
             "audit_log": set(),
             "attachment": {"read"},
             "capture_link": {"read"},
+            "compliance": {"read"},
+            "report": {"read"},
         },
     }
 

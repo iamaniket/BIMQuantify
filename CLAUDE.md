@@ -115,26 +115,32 @@ FastAPI Users handles registration, verification, password reset, and the `/user
 
 **Logout** (`auth/logout.py`): `POST /auth/logout` decodes both access and refresh tokens, writes their JTIs into Redis (`cache/blocklist.py`, prefix `blk:jti:`) with TTL matching each token's remaining lifetime. The blocklist is checked on every authenticated request.
 
-**Signup -> org link flow**:
-1. `POST /auth/register` receives `email, password, full_name, organization_name`.
-2. Custom route in `auth/routes.py` stores `organization_name` on `request.state` before calling `user_manager.create`.
-3. `UserCreate.create_update_dict` strips `organization_name` so it never reaches the `User` SQLAlchemy model.
-4. `UserManager.on_after_register` pops `organization_name` off `request.state`, upserts the `Organization` (race-safe via `IntegrityError` + reselect), writes `organization_id` onto both the DB row and the in-memory instance so the response reflects it.
-5. `request_verify` fires — `on_after_request_verify` emails the token via `email.transport.get_email_transport()`.
+**Invite -> activation flow** (no public signup):
+
+There is no public `POST /auth/register` — it is intentionally not mounted (`auth/routes.py`; all user creation goes through admin invite endpoints). New users arrive by invite:
+1. An admin invite endpoint calls `user_manager.create(...)` directly for the new user.
+2. `UserManager.on_after_register` — now reachable only from that explicit `create`, never an HTTP route — fires `request_verify()`.
+3. `on_after_request_verify` emails an activation link to `frontend_activate_url` carrying a verify-audience token (lifetime bumped to `INVITE_TOKEN_TTL_SECONDS`).
+4. The invitee calls `POST /auth/activate { token, password }` — a single call that atomically flips `is_verified=true` **and** sets the password. (Replaces the legacy verify + reset-password two-call flow, which failed at step 2 because reset-password decodes a different JWT audience.)
+5. `on_after_verify` (and the mirror check at login, `_flip_pending_memberships`) auto-accepts the user's sole bootstrap pending invite, so they land logged in with an active org rather than a "sign in and accept" prompt.
 
 **Email transport** is a small `Protocol` with two implementations in `email/transport.py`: `SMTPEmailTransport` (MailHog in dev, real SMTP in prod) and `InMemoryEmailTransport` (tests). The `email_transport` pytest fixture swaps in the in-memory one and exposes `last_for(email)` so tests read the verification token out of the email body directly.
 
 **DB session lifecycle**: `db.py` lazily builds a single `AsyncEngine` + `async_sessionmaker`. `get_async_session` is the FastAPI dependency; `get_session_maker()` is used by code outside a request (e.g. `UserManager._link_to_organization`). Tests monkey-patch `db._engine` / `db._session_maker` before `create_app()` so the app uses the test DB.
 
-### RLS multi-tenancy
+### Multi-tenancy (schema-per-tenant)
 
-`tenancy.py::get_tenant_session` opens a session, begins a transaction, runs `SET LOCAL ROLE bim_app` (a non-superuser role), then sets GUCs `app.current_org_id` and `app.current_user_id`. Postgres RLS policies (defined in Alembic migrations, SQL helpers in `_rls_sql.py`) filter every query to the current tenant.
+Isolation is **schema-per-tenant**: each org gets its own Postgres schema `org_<hex>` (`tenancy.py::schema_name_for`). Every tenant table — projects, models, files, jobs, reports, deadlines, … — lives inside that schema and has **no `organization_id` column**; the schema name *is* the tenant boundary. Only two tables are shared in `public`: `users` and `organization_members` (membership spans orgs).
 
-**Hard rule**: endpoints using `get_tenant_session` MUST NOT call `session.commit()`. The wrapping `async with session.begin():` handles commit/rollback. Calling commit explicitly drops the GUCs and breaks RLS for subsequent queries in the same request.
+`tenancy.py::get_tenant_session` opens a session, begins a transaction, and sets three things: `SET LOCAL search_path = "<schema>", public` (tenant tables resolve to the active org's schema; the two master tables fall through to `public`), `SET LOCAL ROLE bim_app` (a non-superuser role), and the GUCs `app.current_org_id` / `app.current_user_id`. The active org id comes from the JWT `org` claim — never from the request path, query, or body.
 
-**Why `bim_app` role**: the docker-compose `bim` user is a superuser. Postgres bypasses RLS for superusers even with FORCE. `SET LOCAL ROLE bim_app` drops to a non-bypass role for the duration of the transaction.
+**RLS is a backstop, not the primary boundary.** Postgres RLS policies (defined in Alembic migrations, SQL helpers in `_rls_sql.py`) survive only on the two shared `public` tables (`users`, `organization_members`), fed by the GUCs above. Tenant tables need no RLS — they are physically separated by schema.
 
-**Exception**: `jobs_internal.py` uses `get_async_session` (not `get_tenant_session`) because the processor worker has no tenant context. The superuser role bypasses RLS, which is correct — the callback must update any file row regardless of org.
+**Hard rule**: endpoints using `get_tenant_session` MUST NOT call `session.commit()`. The wrapping `async with session.begin():` handles commit/rollback. Calling commit explicitly drops the `search_path` + GUCs and breaks isolation for subsequent queries in the same request.
+
+**Why `bim_app` role**: the docker-compose `bim` user is a superuser, and Postgres bypasses RLS for superusers even with FORCE. `SET LOCAL ROLE bim_app` drops to a non-bypass role for the transaction so the surviving master-table policies actually enforce.
+
+**Exception — code with no request-scoped tenant**: the processor callback (`jobs_internal.py`, via `get_async_session`) and the background sweeps (`jobs/reconcile.py`, `deadlines/reminder_engine.py`, `admin/invitation_expiry.py`) run as the superuser and set `search_path` per org by hand. They carry no JWT, so there is no tenant context to derive — superuser + explicit `SET LOCAL search_path` is the deliberate cross-tenant pattern.
 
 ### Data model and routers
 
@@ -171,7 +177,7 @@ Where each kind of string lives:
 
 When you add a new label, template field, or jurisdiction entry: write the `nl` and `en` values in the same edit, never as a follow-up TODO. Same goes for adding any new `t('...')` key in the portal — the en.json and nl.json edits ship together.
 
-**Rate limiting**: Redis-backed via `fastapi-limiter`. Defaults in `config.py`: login 5/min, register 3/hour, refresh 10/min, forgot-password 3/hour.
+**Rate limiting**: Redis-backed via `fastapi-limiter`. Defaults in `config.py`: login 5/min, register 3/hour, refresh 10/min, forgot-password 3/hour. (The `register` limiter now guards the admin invite path — the public `/auth/register` route is gone — but the knob is unchanged.)
 
 ### Storage
 
@@ -184,13 +190,15 @@ When you add a new label, template field, or jurisdiction entry: write the `nl` 
 
 ### Job dispatch flow
 
-Cross-service flow spanning API and the `processor` worker. Same shape for every job type (IFC extraction, PDF extraction, compliance check, compliance-report PDF generation):
+Cross-service flow spanning API and the `processor` worker, used for the **asynchronous** job types — IFC extraction, PDF metadata extraction, and compliance-report (PDF) generation. (The compliance **check** is *not* dispatched here: it runs synchronously inside the request — `routers/compliance.py::check_compliance` calls the Arbiter MCP inline and writes the job straight to a terminal state before responding. The worker has no `compliance_check` case.) The async jobs all share one shape:
 
 1. API creates a `Job` row with `job_type` + `payload` (JSONB), then calls `dispatch_job(job, settings)` which POSTs `{job_id, job_type, payload}` to `{PROCESSOR_URL}/jobs` with shared-secret bearer auth.
 2. Worker enqueues a BullMQ job on Redis queue `jobs` (single queue, dispatched by `job_type`).
-3. BullMQ worker picks up the job: callbacks `running` status to API, runs the type-specific pipeline (IFC → web-ifc + fragments; PDF metadata → pdfjs-dist; compliance check → MCP arbiter; compliance report → puppeteer + HTML template), uploads artifacts to MinIO.
+3. BullMQ worker picks up the job: callbacks `running` status to API, runs the type-specific pipeline (IFC → web-ifc + fragments; PDF metadata → pdfjs-dist; compliance report → puppeteer + HTML template), uploads artifacts to MinIO.
 4. Worker callbacks `succeeded` (with type-specific result keys) or `failed` (with error) to API at `/internal/jobs/callback`.
 5. API's `jobs_internal.py` receives the callback and updates the relevant row (ProjectFile for extraction, Report for compliance) plus the Job. Terminal states are idempotent.
+
+**Stuck-job recovery**: those callbacks are the only happy path to a terminal state — if the worker dies between `running` and the terminal callback (OOM, crash, redeploy), or the terminal POST is lost, the row stays non-terminal forever and the UI spins. `jobs/reconcile.py::JobReconcileSweeper` is the backstop: every `JOB_RECONCILE_INTERVAL_MINUTES` it walks every active org schema and force-fails any job/report whose `created_at` is older than `JOB_STUCK_TIMEOUT_MINUTES` (default 60, kept well above `JOB_TIMEOUT_MS` × BullMQ retries so slow-but-alive jobs aren't reaped), cascading a reaped extraction job onto its `ProjectFile`. Idempotent — the queries match only non-terminal rows. Same asyncio-task-on-an-interval shape as the deadline/invitation sweepers.
 
 **JobType is jurisdiction-blind**: `compliance_check` is the single value for all building-code checks; the regulation framework (`bbl`, `wkb`, future `geg`/`mbo`) lives in `payload.framework`. Lookups by framework use `Job.payload["framework"].astext == "bbl"` rather than a `job_type` filter — see `routers/compliance.py::_load_latest_compliance_job`.
 

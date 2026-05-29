@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Crosshair, DraftingCompass, Download, Eraser, Eye, EyeOff, Ruler, Settings, Square, Trash2 } from 'lucide-react';
+import { Box, Crosshair, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Settings, Square, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
@@ -17,7 +17,6 @@ const MODE_DEFS: Array<{ id: MeasurementMode; labelKey: string; icon: typeof Rul
   { id: 'distance', labelKey: 'modeDistance', icon: Ruler },
   { id: 'angle', labelKey: 'modeAngle', icon: DraftingCompass },
   { id: 'area', labelKey: 'modeArea', icon: Square },
-  { id: 'volume', labelKey: 'modeVolume', icon: Box },
 ];
 
 const HELP_KEYS: Record<MeasurementMode, string> = {
@@ -47,25 +46,6 @@ function formatValue(m: Measurement): string {
   if (m.value < 1) return `${(m.value * 1000).toFixed(0)} mm`;
   if (m.value < 100) return `${m.value.toFixed(3)} m`;
   return `${m.value.toFixed(1)} m`;
-}
-
-function exportMeasurementsCSV(
-  measurements: Measurement[],
-  headers: { type: string; value: string; unit: string; points: string },
-): void {
-  const rows = [[headers.type, headers.value, headers.unit, headers.points]];
-  for (const m of measurements) {
-    const pts = m.points.map((p) => `(${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)})`).join(';');
-    rows.push([m.type, String(m.value), m.unit, pts]);
-  }
-  const csv = rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `measurements-${Date.now()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export function MeasurementPanel({ handle }: Props): JSX.Element {
@@ -200,7 +180,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
                 'flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150',
                 isActive
                   ? 'bg-primary-lighter text-primary border border-primary-light shadow-sm'
-                  : 'bg-background-secondary text-foreground-secondary border border-transparent shadow-sm hover:bg-primary/5 hover:text-primary hover:border-primary-light',
+                  : 'bg-background text-foreground-secondary border border-border shadow-sm hover:bg-primary/5 hover:text-primary hover:border-primary-light',
               )}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -537,9 +517,9 @@ function dotSizeKey(scale: number): string {
   return 'sizeExtraLarge';
 }
 
-// ---- header actions (snapping toggle + export + settings) ----
+// ---- header actions (snapping toggle + settings) ----
 
-const headerBtnClass = 'inline-flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-background hover:text-foreground';
+const headerBtnClass = 'inline-flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-background hover:text-primary';
 
 export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | null }): JSX.Element {
   const t = useTranslations('viewer.measurement');
@@ -568,37 +548,16 @@ export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | nu
         title={t('snappingTooltip', { state: snappingEnabled ? t('snappingOn') : t('snappingOff') })}
         className={cn(
           headerBtnClass,
-          snappingEnabled ? 'text-primary' : 'text-foreground-secondary',
+          snappingEnabled ? 'text-primary' : 'text-foreground-placeholder',
         )}
       >
         <Crosshair className="h-3.5 w-3.5" />
       </button>
       <button
         type="button"
-        onClick={() => {
-          handle.commands.execute<Measurement[]>('measure.list')
-            .then((list) => {
-              if (list && list.length > 0) {
-                exportMeasurementsCSV(list, {
-                  type: t('csvType'),
-                  value: t('csvValue'),
-                  unit: t('csvUnit'),
-                  points: t('csvPoints'),
-                });
-              }
-            })
-            .catch(() => undefined);
-        }}
-        title={t('exportCsv')}
-        className={cn(headerBtnClass, 'text-foreground-secondary')}
-      >
-        <Download className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
         onClick={() => setSettingsOpen(true)}
         title={t('settings')}
-        className={cn(headerBtnClass, 'text-foreground-secondary')}
+        className={cn(headerBtnClass, 'text-foreground-placeholder')}
       >
         <Settings className="h-3.5 w-3.5" />
       </button>

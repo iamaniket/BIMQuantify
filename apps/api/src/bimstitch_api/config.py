@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     deadline_sweep_interval_minutes: int = Field(
         default=60, alias="DEADLINE_SWEEP_INTERVAL_MINUTES"
     )
+    job_reconcile_interval_minutes: int = Field(
+        default=5, alias="JOB_RECONCILE_INTERVAL_MINUTES"
+    )
+    job_stuck_timeout_minutes: int = Field(
+        default=60, alias="JOB_STUCK_TIMEOUT_MINUTES"
+    )
 
     smtp_host: str = Field(default="localhost", alias="SMTP_HOST")
     smtp_port: int = Field(default=1025, alias="SMTP_PORT")

@@ -13,7 +13,7 @@ import { Button, Input, Spinner } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
-import { useElementAttachments } from '@/features/attachments/useAttachments';
+import { useElementAttachments, useProjectAttachments } from '@/features/attachments/useAttachments';
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 import { AttachmentRow } from '@/features/viewer/attachments/AttachmentRow';
@@ -23,7 +23,8 @@ type EntityAttachmentsBodyProps = {
   projectId: string;
   modelId: string;
   fileId: string;
-  globalId: string;
+  /** A single element's GlobalId, or `null` for the project-level (unlinked) view. */
+  globalId: string | null;
   /** When this nonce changes, auto-click the file picker to start the attach flow. */
   autoOpenNonce?: number | undefined;
 };
@@ -54,11 +55,14 @@ export function EntityAttachmentsBody({
     }
   }, [autoOpenNonce]);
 
-  const entityQuery = useElementAttachments(projectId, fileId, globalId);
+  const isProject = globalId === null;
+  const elementQuery = useElementAttachments(projectId, fileId, globalId);
+  const projectQuery = useProjectAttachments(projectId, isProject);
+  const activeQuery = isProject ? projectQuery : elementQuery;
   const uploadMutation = useUploadAttachment(projectId);
   const deleteMutation = useDeleteAttachment(projectId);
 
-  const items = entityQuery.data ?? [];
+  const items = activeQuery.data ?? [];
   const filteredItems = useMemo(() => {
     if (query.trim() === '') return items;
     const q = query.toLowerCase();
@@ -73,12 +77,13 @@ export function EntityAttachmentsBody({
       if (files === null || files.length === 0) return;
       const [file] = files;
       if (file === undefined) return;
+      const linkVars = globalId !== null
+        ? { linked_element_global_id: globalId, linked_file_id: fileId, linked_model_id: modelId }
+        : {};
       uploadMutation.mutate(
         {
           file,
-          linked_element_global_id: globalId,
-          linked_file_id: fileId,
-          linked_model_id: modelId,
+          ...linkVars,
           onProgress: (event) => {
             if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
             else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
@@ -106,13 +111,14 @@ export function EntityAttachmentsBody({
     const blob = new Blob([text], { type: 'text/plain' });
     const now = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const file = new File([blob], `note-${now}.txt`, { type: 'text/plain' });
+    const linkVars = globalId !== null
+      ? { linked_element_global_id: globalId, linked_file_id: fileId, linked_model_id: modelId }
+      : {};
     uploadMutation.mutate(
       {
         file,
         description: text.slice(0, 200),
-        linked_element_global_id: globalId,
-        linked_file_id: fileId,
-        linked_model_id: modelId,
+        ...linkVars,
         onProgress: (event) => {
           if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
           else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
@@ -171,7 +177,7 @@ export function EntityAttachmentsBody({
           size="sm"
           disabled={uploadMutation.isPending}
           onClick={() => { if (fileInputRef.current !== null) fileInputRef.current.click(); }}
-          title={t('attachToElement')}
+          title={isProject ? t('attachToProject') : t('attachToElement')}
         >
           <Plus className="h-3.5 w-3.5" />
           {t('attachButton')}
@@ -225,12 +231,16 @@ export function EntityAttachmentsBody({
 
       {/* List */}
       <div className="min-h-0 flex-1 overflow-auto">
-        {entityQuery.isLoading ? (
+        {activeQuery.isLoading ? (
           <PanelEmptyState icon={Loader2} message={t('loading')} />
         ) : filteredItems.length === 0 ? (
           <PanelEmptyState
             icon={Paperclip}
-            message={query.trim() !== '' ? t('emptyNoMatches', { query }) : t('emptyNoItems')}
+            message={
+              query.trim() !== ''
+                ? t('emptyNoMatches', { query })
+                : isProject ? t('emptyProjectEmpty') : t('emptyNoItems')
+            }
           />
         ) : (
           <div className="flex flex-col">

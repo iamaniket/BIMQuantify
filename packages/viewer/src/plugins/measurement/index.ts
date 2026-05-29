@@ -14,6 +14,7 @@ import { LAYER_OVERLAY } from '../../core/layers.js';
 import type { Plugin, ViewerContext } from '../../core/types.js';
 import { pick } from '../../core/Raycaster.js';
 import type { SnappingPluginAPI } from '../snapping/index.js';
+import type { MouseBindingsAPI } from '../mouse-bindings/index.js';
 import {
   acquireCss2dOverlay,
   releaseCss2dOverlay,
@@ -115,6 +116,17 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   let pendingLines: THREE.Line[] = [];
   let clickUnsub: (() => void) | null = null;
   let moveUnsub: (() => void) | null = null;
+  let dblclickUnsub: (() => void) | null = null;
+  // Clicks are serialized through this promise chain: a double-click is two
+  // `pointer:click` events (each async via raycasting) followed by a sync
+  // `pointer:doubleclick`. Chaining guarantees both points settle before the
+  // finish handler runs, so it can pop the duplicate 2nd-click point.
+  let clickChain: Promise<void> = Promise.resolve();
+  // While a measurement mode is active we steal the `doubleclick:left`
+  // gesture from whatever else owns it (e.g. visibility.isolateAtPointer)
+  // and restore it on exit.
+  let savedDblClickBinding: string | null = null;
+  let dblClickSuppressed = false;
   let exiting = false;
 
   // Area/volume polygon preview state
@@ -1310,6 +1322,36 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     }
   };
 
+  // Remove the most-recently placed pending point and its dot/line. Used by
+  // the double-click finish to drop the duplicate point left by the 2nd click.
+  const popLastPendingPoint = (): void => {
+    if (pendingPoints.length === 0) return;
+    pendingPoints.pop();
+    const dot = pendingDots.pop();
+    if (dot) dot.removeFromParent();
+    const line = pendingLines.pop();
+    if (line) {
+      line.geometry.dispose();
+      line.removeFromParent();
+    }
+    clearRubberBand();
+    clearPolygonPreview();
+    const last = pendingPoints[pendingPoints.length - 1];
+    if (last) createRubberLine(last);
+  };
+
+  // Double-click finishes an area polygon. The two clicks of the gesture each
+  // placed a point at (nearly) the same spot, so drop the duplicate and close
+  // the loop if we still have the 3 points a polygon needs.
+  const handleDoubleClick = (payload: { button: number }): void => {
+    if (!ctxRef || currentMode !== 'area' || payload.button !== 0) return;
+    popLastPendingPoint();
+    if (pendingPoints.length >= 3) {
+      finishArea(pendingPoints);
+      clearPending();
+    }
+  };
+
   const disposeGroup = (id: string): void => {
     const group = sceneGroups.get(id);
     if (!group) return;
@@ -1340,6 +1382,24 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     }
   };
 
+  const suppressDoubleClickBinding = (): void => {
+    if (!ctxRef || dblClickSuppressed) return;
+    const mb = ctxRef.plugins.get<MouseBindingsAPI>('mouse-bindings');
+    if (!mb) return;
+    savedDblClickBinding =
+      mb.list().find((b) => b.gesture === 'doubleclick:left')?.command ?? null;
+    mb.unbind('doubleclick:left');
+    dblClickSuppressed = true;
+  };
+
+  const restoreDoubleClickBinding = (): void => {
+    if (!ctxRef || !dblClickSuppressed) return;
+    dblClickSuppressed = false;
+    const cmd = savedDblClickBinding;
+    savedDblClickBinding = null;
+    if (cmd) ctxRef.plugins.get<MouseBindingsAPI>('mouse-bindings')?.bind('doubleclick:left', cmd);
+  };
+
   const activate = async (args: unknown): Promise<void> => {
     if (!ctxRef) return;
     const mode = typeof args === 'string'
@@ -1353,8 +1413,15 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
 
     ctxRef.commands.execute('snapping.enable').catch(() => undefined);
 
-    clickUnsub = ctxRef.events.on('pointer:click', (e) => void handleClick(e));
+    clickChain = Promise.resolve();
+    clickUnsub = ctxRef.events.on('pointer:click', (e) => {
+      clickChain = clickChain.then(() => handleClick(e)).catch(() => undefined);
+    });
     moveUnsub = ctxRef.events.on('pointer:move', (e) => void handlePreviewMove(e));
+    dblclickUnsub = ctxRef.events.on('pointer:doubleclick', (e) => {
+      clickChain = clickChain.then(() => { handleDoubleClick(e); }).catch(() => undefined);
+    });
+    suppressDoubleClickBinding();
 
     if (!magnifier) {
       magnifier = new Magnifier(
@@ -1379,6 +1446,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
         clickUnsub = null;
         moveUnsub?.();
         moveUnsub = null;
+        dblclickUnsub?.();
+        dblclickUnsub = null;
+        restoreDoubleClickBinding();
         currentMode = null;
         magnifier?.hide();
         ctxRef?.commands.execute('snapping.disable').catch(() => undefined);
@@ -1396,6 +1466,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     clickUnsub = null;
     moveUnsub?.();
     moveUnsub = null;
+    dblclickUnsub?.();
+    dblclickUnsub = null;
+    restoreDoubleClickBinding();
     currentMode = null;
     ctxRef.commands.execute('snapping.disable').catch(() => undefined);
     ctxRef.commands.execute('mode.exit').catch(() => undefined);

@@ -490,3 +490,32 @@ async def test_get_nonexistent_deadline_returns_404(
         headers=_auth(token),
     )
     assert resp.status_code == 404
+
+
+async def test_list_deadlines_pagination_and_total_count(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    # A project with both dates auto-seeds exactly 3 deadlines.
+    project = await _create_project_with_dates(client, token, name="Paginated")
+
+    page1 = await client.get(
+        f"/projects/{project['id']}/deadlines?limit=2",
+        headers=_auth(token),
+    )
+    assert page1.status_code == 200, page1.text
+    assert len(page1.json()) == 2
+    assert page1.headers["X-Total-Count"] == "3"
+
+    page2 = await client.get(
+        f"/projects/{project['id']}/deadlines?limit=2&offset=2",
+        headers=_auth(token),
+    )
+    assert page2.status_code == 200, page2.text
+    assert len(page2.json()) == 1
+
+    too_big = await client.get(
+        f"/projects/{project['id']}/deadlines?limit=201",
+        headers=_auth(token),
+    )
+    assert too_big.status_code == 422

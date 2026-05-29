@@ -364,3 +364,37 @@ async def test_cross_org_returns_404(
         headers=_auth(other_org_user["access_token"]),
     )
     assert resp.status_code == 404
+
+
+async def test_list_models_pagination_and_total_count(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    for i in range(3):
+        await _create_model(client, token, project["id"], name=f"M-{i}")
+
+    page1 = await client.get(
+        f"/projects/{project['id']}/models?limit=2",
+        headers=_auth(token),
+    )
+    assert page1.status_code == 200, page1.text
+    assert len(page1.json()) == 2
+    assert page1.headers["X-Total-Count"] == "3"
+
+    page2 = await client.get(
+        f"/projects/{project['id']}/models?limit=2&offset=2",
+        headers=_auth(token),
+    )
+    assert page2.status_code == 200, page2.text
+    assert len(page2.json()) == 1
+
+    ids1 = {m["id"] for m in page1.json()}
+    ids2 = {m["id"] for m in page2.json()}
+    assert ids1.isdisjoint(ids2)
+
+    too_big = await client.get(
+        f"/projects/{project['id']}/models?limit=201",
+        headers=_auth(token),
+    )
+    assert too_big.status_code == 422

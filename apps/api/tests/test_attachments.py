@@ -1206,3 +1206,41 @@ async def test_server_metadata_in_response(
     )
     assert resp.status_code == 200
     assert resp.json()["server_metadata"]["gps"]["latitude"] == 51.5
+
+
+@pytest.mark.asyncio
+async def test_list_attachments_pagination_and_total_count(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    for _ in range(3):
+        att = await _initiate_att(client, token, project["id"])
+        await _complete_att(client, fake, token, project["id"], att)
+
+    page1 = await client.get(
+        f"/projects/{project['id']}/attachments?limit=2",
+        headers=_auth(token),
+    )
+    assert page1.status_code == 200, page1.text
+    assert len(page1.json()) == 2
+    assert page1.headers["X-Total-Count"] == "3"
+
+    page2 = await client.get(
+        f"/projects/{project['id']}/attachments?limit=2&offset=2",
+        headers=_auth(token),
+    )
+    assert page2.status_code == 200, page2.text
+    assert len(page2.json()) == 1
+
+    ids1 = {a["id"] for a in page1.json()}
+    ids2 = {a["id"] for a in page2.json()}
+    assert ids1.isdisjoint(ids2)
+
+    too_big = await client.get(
+        f"/projects/{project['id']}/attachments?limit=201",
+        headers=_auth(token),
+    )
+    assert too_big.status_code == 422

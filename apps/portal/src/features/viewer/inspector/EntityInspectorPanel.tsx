@@ -1,18 +1,21 @@
 'use client';
 
 import { Eyebrow } from '@bimstitch/ui';
-import { Info, MousePointerClick } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
+import { useProjectAttachmentCount } from '@/features/attachments/useAttachments';
+import { useProjectFindingCount } from '@/features/findings/useFindings';
 import { ElementHeader } from '@/features/viewer/properties/ElementHeader';
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { EntityAttachmentsBody, useEntityAttachmentCount } from './EntityAttachmentsBody';
 import { EntityFindingsBody, useEntityFindingCount } from './EntityFindingsBody';
+import { ModelInfoBody } from './ModelInfoBody';
 import { PdfAttachmentsBody } from './PdfAttachmentsBody';
 import { PropertiesBody, countPsetProperties } from './PropertiesBody';
 import { useSelectedElement } from './useSelectedElement';
@@ -23,6 +26,7 @@ type EntityInspectorPanelProps = {
   metadata: ModelMetadata | undefined;
   properties: ModelProperties | undefined;
   isLoadingProperties: boolean;
+  isLoadingMetadata?: boolean;
   projectId: string;
   modelId: string;
   fileId: string;
@@ -47,6 +51,7 @@ function IfcInspector({
   metadata,
   properties,
   isLoadingProperties,
+  isLoadingMetadata,
   projectId,
   modelId,
   fileId,
@@ -75,10 +80,12 @@ function IfcInspector({
   const {
     element,
     selectedAll,
-    selectedSize,
     hasSelection,
     isMultiSelection,
   } = useSelectedElement(metadata);
+
+  // No selection → show project/model-level content so every tab stays useful.
+  const isProjectMode = !hasSelection;
 
   const attachmentCount = useEntityAttachmentCount(
     projectId,
@@ -90,6 +97,8 @@ function IfcInspector({
     fileId,
     element?.globalId ?? null,
   );
+  const projectAttachmentCount = useProjectAttachmentCount(projectId, isProjectMode);
+  const projectFindingCount = useProjectFindingCount(projectId, isProjectMode);
 
   if (selectedAll) {
     const storeTotalElements = useViewerEntityStore.getState().totalElements;
@@ -98,15 +107,6 @@ function IfcInspector({
       <PanelEmptyState
         icon={Info}
         message={t('messages.allSelected', { count })}
-      />
-    );
-  }
-
-  if (!hasSelection) {
-    return (
-      <PanelEmptyState
-        icon={MousePointerClick}
-        message={tAttachments('emptyNoSelection')}
       />
     );
   }
@@ -120,59 +120,94 @@ function IfcInspector({
     );
   }
 
-  if (!element) {
-    return (
-      <PanelEmptyState
-        icon={Info}
-        message={t('messages.noElementData')}
+  const propertiesCount = isProjectMode
+    ? undefined
+    : countPsetProperties(element, properties);
+
+  const tabs: TabDef<Tab>[] = [
+    {
+      id: 'properties',
+      label: t('tabProperties'),
+      ...(propertiesCount !== undefined ? { count: propertiesCount } : {}),
+    },
+    {
+      id: 'attachments',
+      label: t('tabAttachments'),
+      count: isProjectMode ? projectAttachmentCount : attachmentCount,
+    },
+    {
+      id: 'findings',
+      label: t('tabFindings'),
+      count: isProjectMode ? projectFindingCount : findingCount,
+    },
+  ];
+
+  let header: JSX.Element;
+  let body: JSX.Element;
+  if (isProjectMode) {
+    header = (
+      <ElementHeader
+        type={metadata?.schema ?? 'IFC'}
+        name={metadata?.project.name ?? null}
       />
+    );
+    body =
+      tab === 'properties' ? (
+        <ModelInfoBody metadata={metadata} isLoading={isLoadingMetadata ?? false} />
+      ) : tab === 'attachments' ? (
+        <EntityAttachmentsBody
+          projectId={projectId}
+          modelId={modelId}
+          fileId={fileId}
+          globalId={null}
+          autoOpenNonce={autoOpenNonce}
+        />
+      ) : (
+        <EntityFindingsBody
+          projectId={projectId}
+          fileId={fileId}
+          globalId={null}
+          autoOpenNonce={autoOpenNonce}
+        />
+      );
+  } else if (element !== null) {
+    header = <ElementHeader name={element.name} type={element.type} />;
+    body =
+      tab === 'properties' ? (
+        <PropertiesBody
+          element={element}
+          properties={properties}
+          isLoading={isLoadingProperties}
+        />
+      ) : element.globalId === null ? (
+        <PanelEmptyState icon={Info} message={t('messages.noGlobalId')} />
+      ) : tab === 'attachments' ? (
+        <EntityAttachmentsBody
+          projectId={projectId}
+          modelId={modelId}
+          fileId={fileId}
+          globalId={element.globalId}
+          autoOpenNonce={autoOpenNonce}
+        />
+      ) : (
+        <EntityFindingsBody
+          projectId={projectId}
+          fileId={fileId}
+          globalId={element.globalId}
+          autoOpenNonce={autoOpenNonce}
+        />
+      );
+  } else {
+    return (
+      <PanelEmptyState icon={Info} message={t('messages.noElementData')} />
     );
   }
 
-  const propertiesCount = countPsetProperties(element, properties);
-
-  const tabs: TabDef<Tab>[] = [
-    { id: 'properties', label: t('tabProperties'), count: propertiesCount },
-    { id: 'attachments', label: t('tabAttachments'), count: attachmentCount },
-    { id: 'findings', label: t('tabFindings'), count: findingCount },
-  ];
-
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ElementHeader
-        name={element.name}
-        type={element.type}
-      />
+      {header}
       <PanelTabs tabs={tabs} active={tab} onChange={setTab} />
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === 'properties' ? (
-          <PropertiesBody
-            element={element}
-            properties={properties}
-            isLoading={isLoadingProperties}
-          />
-        ) : element.globalId === null ? (
-          <PanelEmptyState
-            icon={Info}
-            message={t('messages.noGlobalId')}
-          />
-        ) : tab === 'attachments' ? (
-          <EntityAttachmentsBody
-            projectId={projectId}
-            modelId={modelId}
-            fileId={fileId}
-            globalId={element.globalId}
-            autoOpenNonce={autoOpenNonce}
-          />
-        ) : (
-          <EntityFindingsBody
-            projectId={projectId}
-            fileId={fileId}
-            globalId={element.globalId}
-            autoOpenNonce={autoOpenNonce}
-          />
-        )}
-      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">{body}</div>
     </div>
   );
 }

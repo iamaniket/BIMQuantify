@@ -15,8 +15,8 @@ from datetime import datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
@@ -78,6 +78,9 @@ async def _load_deadline_or_404(
 @router.get("", response_model=list[DeadlineRead])
 async def list_deadlines(
     project_id: UUID,
+    response: Response,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -85,10 +88,12 @@ async def list_deadlines(
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
 
+    base = select(Deadline).where(Deadline.project_id == project.id)
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+
     result = await session.execute(
-        select(Deadline)
-        .where(Deadline.project_id == project.id)
-        .order_by(Deadline.due_date.asc().nulls_last())
+        base.order_by(Deadline.due_date.asc().nulls_last()).limit(limit).offset(offset)
     )
     return [_serialize_deadline(dl) for dl in result.scalars().all()]
 

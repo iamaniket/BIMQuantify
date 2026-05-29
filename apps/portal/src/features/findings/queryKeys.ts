@@ -7,3 +7,8 @@ export const elementFindingsKey = (
   globalId: string,
 ): readonly [string, string, string, string, string, string] =>
   ['projects', projectId, 'findings', 'element', fileId, globalId] as const;
+
+export const projectFindingsKey = (
+  projectId: string,
+): readonly [string, string, string, string] =>
+  ['projects', projectId, 'findings', 'unlinked'] as const;

@@ -217,6 +217,48 @@ async def test_list_findings_filter_by_status_and_severity(
     assert by_open.json() == []
 
 
+async def test_list_findings_pagination_and_total_count(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    token = org_user["access_token"]
+    for i in range(3):
+        resp = await client.post(
+            f"/projects/{project['id']}/findings",
+            json=_payload(title=f"f-{i}"),
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+
+    page1 = await client.get(
+        f"/projects/{project['id']}/findings?limit=2",
+        headers=_auth(token),
+    )
+    assert page1.status_code == 200, page1.text
+    assert len(page1.json()) == 2
+    assert page1.headers["X-Total-Count"] == "3"
+
+    page2 = await client.get(
+        f"/projects/{project['id']}/findings?limit=2&offset=2",
+        headers=_auth(token),
+    )
+    assert page2.status_code == 200, page2.text
+    assert len(page2.json()) == 1
+    assert page2.headers["X-Total-Count"] == "3"
+
+    # Pages are disjoint — offset actually advances the window.
+    ids1 = {f["id"] for f in page1.json()}
+    ids2 = {f["id"] for f in page2.json()}
+    assert ids1.isdisjoint(ids2)
+
+    # limit is bounded (le=200) — over-max is rejected by validation.
+    too_big = await client.get(
+        f"/projects/{project['id']}/findings?limit=201",
+        headers=_auth(token),
+    )
+    assert too_big.status_code == 422
+
+
 async def test_get_finding_404_cross_project(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:
@@ -686,3 +728,39 @@ async def test_list_findings_filter_by_element(
     )
     assert by_elem.status_code == 200, by_elem.text
     assert [f["title"] for f in by_elem.json()] == ["linked-one"]
+
+
+async def test_list_findings_filter_unlinked(
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    org_user: dict[str, str],
+) -> None:
+    """`?unlinked=true` returns only findings with no linked element — the
+    project-level set shown in the viewer inspector when nothing is selected
+    (mirrors the attachments `unlinked` filter)."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    model = await _create_model(client, token, project["id"])
+    file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
+
+    await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(
+            title="linked-one",
+            linked_file_id=file_id,
+            linked_element_global_id=ELEMENT_GLOBAL_ID,
+        ),
+        headers=_auth(token),
+    )
+    await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(title="project-level-one"),
+        headers=_auth(token),
+    )
+
+    unlinked = await client.get(
+        f"/projects/{project['id']}/findings?unlinked=true",
+        headers=_auth(token),
+    )
+    assert unlinked.status_code == 200, unlinked.text
+    assert [f["title"] for f in unlinked.json()] == ["project-level-one"]

@@ -8,6 +8,7 @@ import { Badge, Button } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { useElementFindings } from '@/features/findings/useElementFindings';
+import { useProjectFindings } from '@/features/findings/useFindings';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { FindingFormDialog } from '@/features/projects/detail/FindingFormDialog';
 import {
@@ -19,7 +20,8 @@ import type { Finding } from '@/lib/api/schemas';
 type EntityFindingsBodyProps = {
   projectId: string;
   fileId: string;
-  globalId: string;
+  /** A single element's GlobalId, or `null` for the project-level (unlinked) view. */
+  globalId: string | null;
   /** When this nonce changes, auto-open the new-finding dialog. */
   autoOpenNonce?: number | undefined;
 };
@@ -34,7 +36,10 @@ export function EntityFindingsBody({
   const tSeverity = useTranslations('findings.severity');
   const tStatus = useTranslations('findings.status');
 
-  const query = useElementFindings(projectId, fileId, globalId);
+  const isProject = globalId === null;
+  const elementQuery = useElementFindings(projectId, fileId, globalId);
+  const projectQuery = useProjectFindings(projectId, isProject);
+  const query = isProject ? projectQuery : elementQuery;
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
 
@@ -68,7 +73,10 @@ export function EntityFindingsBody({
         {query.isLoading ? (
           <PanelEmptyState icon={Loader2} message={t('loading')} />
         ) : findings.length === 0 ? (
-          <PanelEmptyState icon={AlertTriangle} message={t('emptyNoItems')} />
+          <PanelEmptyState
+            icon={AlertTriangle}
+            message={isProject ? t('emptyProjectEmpty') : t('emptyNoItems')}
+          />
         ) : (
           <div className="flex flex-col">
             {findings.map((finding) => (
@@ -97,7 +105,7 @@ export function EntityFindingsBody({
         projectId={projectId}
         open={createOpen}
         onOpenChange={setCreateOpen}
-        linkedFileId={fileId}
+        linkedFileId={globalId !== null ? fileId : null}
         linkedElementGlobalId={globalId}
       />
       <FindingDetailModal

@@ -57,6 +57,9 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
 
   let ctxRef: ViewerContext | null = null;
   let enabled = true;
+  // EventBus subscriptions captured at install, released at uninstall so a
+  // re-installed/swapped plugin doesn't leave dead handlers on the bus.
+  const disposers: Array<() => void> = [];
   const edges = new EdgeOverlay({ lineWidth: 2 });
   let cachedSectionPlanes: Array<{ normal: { x: number; y: number; z: number }; point: { x: number; y: number; z: number }; active: boolean }> = [];
 
@@ -83,7 +86,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
   // individual LineSegments for thousands of items is too expensive.
   const EDGE_OVERLAY_THRESHOLD = 50;
 
-  const DEBUG = true;
+  const DEBUG = false;
   const log = (...args: unknown[]): void => { if (DEBUG) console.log('[selection]', ...args); };
   const time = (label: string): void => { if (DEBUG) console.time(`[selection] ${label}`); };
   const timeEnd = (label: string): void => { if (DEBUG) console.timeEnd(`[selection] ${label}`); };
@@ -416,24 +419,28 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     install(ctx: ViewerContext) {
       ctxRef = ctx;
 
-      ctx.events.on('section:change', ({ planes }) => {
-        cachedSectionPlanes = planes;
-      });
+      disposers.push(
+        ctx.events.on('section:change', ({ planes }) => {
+          cachedSectionPlanes = planes;
+        }),
+      );
 
       // Refresh cached counts whenever a model loads so `size()` stays accurate.
-      ctx.events.on('model:loaded', ({ modelId }) => {
-        const model = ctx.models().get(modelId);
-        if (!model) return;
-        void (model as unknown as { getLocalIds(): Promise<Iterable<number>> })
-          .getLocalIds()
-          .then((ids) => {
-            let n = 0;
-            for (const _ of ids) n++;
-            modelCounts.set(modelId, n);
-            ctx.events.emit('model:elementCount', { modelId, count: totalLoadedItems() });
-          })
-          .catch(() => undefined);
-      });
+      disposers.push(
+        ctx.events.on('model:loaded', ({ modelId }) => {
+          const model = ctx.models().get(modelId);
+          if (!model) return;
+          void (model as unknown as { getLocalIds(): Promise<Iterable<number>> })
+            .getLocalIds()
+            .then((ids) => {
+              let n = 0;
+              for (const _ of ids) n++;
+              modelCounts.set(modelId, n);
+              ctx.events.emit('model:elementCount', { modelId, count: totalLoadedItems() });
+            })
+            .catch(() => undefined);
+        }),
+      );
 
       ctx.commands.register('selection.clear', () => clear(), {
         title: 'Clear selection',
@@ -570,6 +577,7 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
     },
 
     uninstall() {
+      for (const dispose of disposers.splice(0)) dispose();
       if (ctxRef) edges.dispose(ctxRef);
       clear();
       cachedSectionPlanes = [];

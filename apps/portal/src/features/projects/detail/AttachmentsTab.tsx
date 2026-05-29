@@ -2,15 +2,8 @@
 
 import {
   Camera,
-  Download,
-  Eye,
-  FileAudio,
   FileText,
-  FileVideo,
-  Image,
-  LinkIcon,
-  MoreHorizontal,
-  Trash2,
+  Search,
   Upload,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -19,23 +12,18 @@ import { toast } from 'sonner';
 
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   EmptyState,
+  Select,
   Skeleton,
 } from '@bimstitch/ui';
 
-import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment, AttachmentCategoryValue } from '@/lib/api/schemas';
 import {
   buildCaptureMetadata,
   requestGeolocation,
   type GeolocationResult,
 } from '@/lib/upload/captureMetadata';
-import { useAuth } from '@/providers/AuthProvider';
-
+import { AttachmentRow } from '@/features/viewer/attachments/AttachmentRow';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { CaptureLinksList } from '@/features/attachments/CaptureLinksList';
 import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLinkDialog';
@@ -47,14 +35,6 @@ type Props = {
   projectId: string;
 };
 
-const CATEGORY_ICONS: Record<string, typeof FileText> = {
-  image: Image,
-  video: FileVideo,
-  audio: FileAudio,
-  office: FileText,
-  other: FileText,
-};
-
 const CATEGORY_FILTERS: Array<{ value: AttachmentCategoryValue | 'all'; labelKey: string }> = [
   { value: 'all', labelKey: 'filterAll' },
   { value: 'image', labelKey: 'filterImage' },
@@ -63,19 +43,14 @@ const CATEGORY_FILTERS: Array<{ value: AttachmentCategoryValue | 'all'; labelKey
   { value: 'office', labelKey: 'filterOffice' },
 ];
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${String(bytes)} B`;
-  if (bytes < 1024 * 1024) return `${String(Math.round(bytes / 1024))} KB`;
-  return `${String((bytes / (1024 * 1024)).toFixed(1))} MB`;
-}
-
 export function AttachmentsTab({ projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.attachments');
-  const { tokens } = useAuth();
   const [categoryFilter, setCategoryFilter] = useState<AttachmentCategoryValue | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState('');
   const [captureLinkDialogOpen, setCaptureLinkDialogOpen] = useState(false);
   const [showCaptureLinks, setShowCaptureLinks] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const geoRef = useRef<GeolocationResult>({ status: 'unavailable' });
 
@@ -87,7 +62,10 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
   const uploadMutation = useUploadAttachment(projectId);
   const deleteMutation = useDeleteAttachment(projectId);
 
-  const attachments = attachmentsQuery.data ?? [];
+  const allAttachments = attachmentsQuery.data ?? [];
+  const attachments = searchQuery === ''
+    ? allAttachments
+    : allAttachments.filter((a) => a.original_filename.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,23 +91,6 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
     [uploadMutation, t],
   );
 
-  const handleDownload = useCallback(
-    async (doc: Attachment) => {
-      if (tokens === null) return;
-      try {
-        const { download_url } = await getAttachmentDownloadUrl(
-          tokens.access_token,
-          projectId,
-          doc.id,
-        );
-        window.open(download_url, '_blank');
-      } catch {
-        toast.error(t('downloadError'));
-      }
-    },
-    [tokens, projectId, t],
-  );
-
   const handleDelete = useCallback(
     (doc: Attachment) => {
       deleteMutation.mutate(doc.id, {
@@ -151,43 +112,45 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
 
   return (
     <div className="space-y-3">
-      {/* Header actions */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-1">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); }}
+            placeholder={t('searchPlaceholder')}
+            className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-3 text-body3 text-foreground placeholder:text-foreground-disabled focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <Select
+          selectSize="sm"
+          value={categoryFilter ?? 'all'}
+          onChange={(e) => { setCategoryFilter(e.target.value === 'all' ? undefined : e.target.value as AttachmentCategoryValue); }}
+          className="w-auto shrink-0"
+        >
           {CATEGORY_FILTERS.map(({ value, labelKey }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => { setCategoryFilter(value === 'all' ? undefined : value); }}
-              className={`rounded-md px-2.5 py-1 text-caption font-medium transition-colors ${
-                (value === 'all' && categoryFilter === undefined) || value === categoryFilter
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background-secondary text-foreground-secondary hover:bg-background-tertiary'
-              }`}
-            >
-              {t(labelKey)}
-            </button>
+            <option key={value} value={value}>{t(labelKey)}</option>
           ))}
-        </div>
-        <div className="flex gap-1.5">
-          <Button
-            variant="border"
-            size="sm"
-            onClick={() => { setShowCaptureLinks(!showCaptureLinks); }}
-          >
-            <Camera className="mr-1.5 h-3.5 w-3.5" />
-            {t('captureLink')}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => { fileInputRef.current?.click(); }}
-            disabled={uploadMutation.isPending}
-          >
-            <Upload className="mr-1.5 h-3.5 w-3.5" />
-            {t('uploadButton')}
-          </Button>
-        </div>
+        </Select>
+        <Button
+          variant="border"
+          size="sm"
+          onClick={() => { setShowCaptureLinks(!showCaptureLinks); }}
+        >
+          <Camera className="mr-1.5 h-3.5 w-3.5" />
+          {t('captureLink')}
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => { fileInputRef.current?.click(); }}
+          disabled={uploadMutation.isPending}
+        >
+          <Upload className="mr-1.5 h-3.5 w-3.5" />
+          {t('uploadButton')}
+        </Button>
         <input
           ref={fileInputRef}
           type="file"
@@ -228,79 +191,21 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
       )}
 
       {/* Attachment list */}
-      {attachments.map((doc) => {
-        const Icon = CATEGORY_ICONS[doc.attachment_category] ?? FileText;
-        return (
-          <div
-            key={doc.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => { setViewingAttachment(doc); }}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setViewingAttachment(doc); }}
-            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 transition-colors hover:bg-background-secondary"
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background-secondary">
-              <Icon className="h-4.5 w-4.5 text-foreground-secondary" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-body3 font-medium text-foreground">
-                {doc.original_filename}
-              </div>
-              <div className="flex items-center gap-2 text-caption text-foreground-tertiary">
-                <span>{formatFileSize(doc.size_bytes)}</span>
-                <span className="opacity-40">&middot;</span>
-                <span>{new Date(doc.created_at).toLocaleDateString()}</span>
-                {doc.capture_link_id !== null && (
-                  <>
-                    <span className="opacity-40">&middot;</span>
-                    <span className="inline-flex items-center gap-0.5">
-                      <Camera className="h-3 w-3" />
-                      {t('viaCapture')}
-                    </span>
-                  </>
-                )}
-                {doc.linked_element_global_id !== null && (
-                  <>
-                    <span className="opacity-40">&middot;</span>
-                    <span className="inline-flex items-center gap-0.5">
-                      <LinkIcon className="h-3 w-3" />
-                      {t('linked')}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); }}
-                  className="rounded-md p-1.5 text-foreground-tertiary hover:bg-background-tertiary hover:text-foreground"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setViewingAttachment(doc); }}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  {t('view')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); void handleDownload(doc); }}>
-                  <Download className="mr-2 h-4 w-4" />
-                  {t('download')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}
-                  className="text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {t('delete')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        );
-      })}
+      {attachments.length > 0 && (
+        <div className="overflow-hidden rounded-lg border border-border bg-background">
+          {attachments.map((doc) => (
+            <AttachmentRow
+              key={doc.id}
+              attachment={doc}
+              projectId={projectId}
+              expanded={expandedId === doc.id}
+              onToggle={() => { setExpandedId(expandedId === doc.id ? null : doc.id); }}
+              onView={() => { setViewingAttachment(doc); }}
+              onDelete={() => { handleDelete(doc); }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Capture links section */}
       {showCaptureLinks && (

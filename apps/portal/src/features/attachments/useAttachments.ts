@@ -39,11 +39,18 @@ export function useElementAttachments(
 
 export function useProjectAttachments(
   projectId: string,
+  enabled = true,
 ): UseQueryResult<AttachmentList> {
   return useAuthQuery({
     queryKey: [...attachmentsKey(projectId), 'unlinked'] as const,
     queryFn: (accessToken) => listAttachments(accessToken, projectId, { unlinked: true }),
+    enabled,
+    staleTime: 30_000,
   });
+}
+
+export function useProjectAttachmentCount(projectId: string, enabled = true): number {
+  return useProjectAttachments(projectId, enabled).data?.length ?? 0;
 }
 
 export function useFileAttachmentCount(

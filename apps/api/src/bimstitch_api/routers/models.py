@@ -12,7 +12,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -114,6 +114,8 @@ async def list_models(
     active_org_id: UUID = Depends(require_active_organization),
     status_filter: ModelStatus | None = Query(default=None, alias="status"),
     discipline: ModelDiscipline | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
 ) -> list[Model]:
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
@@ -123,7 +125,11 @@ async def list_models(
         stmt = stmt.where(Model.status == status_filter)
     if discipline is not None:
         stmt = stmt.where(Model.discipline == discipline)
-    stmt = stmt.order_by(Model.created_at)
+
+    total = (await session.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+
+    stmt = stmt.order_by(Model.created_at).limit(limit).offset(offset)
     result = await session.execute(stmt)
     cache_response(response, CACHE_TTL_MODELS_LIST)
     return list(result.scalars().all())

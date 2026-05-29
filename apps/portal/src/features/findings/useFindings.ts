@@ -6,13 +6,31 @@ import { listFindings } from '@/lib/api/findings';
 import type { FindingList } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
 
-import { findingsKey } from './queryKeys';
+import { findingsKey, projectFindingsKey } from './queryKeys';
 
 export function useFindings(projectId: string): UseQueryResult<FindingList> {
   return useAuthQuery({
     queryKey: findingsKey(projectId),
     queryFn: (accessToken) => listFindings(accessToken, projectId),
   });
+}
+
+/** Project-level findings — those not linked to a 3D element. Shown in the
+ * viewer inspector when no element is selected (mirrors useProjectAttachments). */
+export function useProjectFindings(
+  projectId: string,
+  enabled = true,
+): UseQueryResult<FindingList> {
+  return useAuthQuery({
+    queryKey: projectFindingsKey(projectId),
+    queryFn: (accessToken) => listFindings(accessToken, projectId, { unlinked: true }),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useProjectFindingCount(projectId: string, enabled = true): number {
+  return useProjectFindings(projectId, enabled).data?.length ?? 0;
 }
 
 export function useFileFindingCount(

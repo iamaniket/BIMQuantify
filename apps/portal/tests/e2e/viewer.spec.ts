@@ -12,9 +12,16 @@ import { E2E_ENV } from '../support/env';
 const ACME_ADMIN_EMAIL = process.env['SEED_ACME_ADMIN_EMAIL'] ?? 'admin@acme.dev';
 const ACME_ADMIN_PASSWORD = process.env['SEED_ACME_ADMIN_PASSWORD'] ?? 'Admin123!';
 
-// ── Small IFC fixture ──────────────────────────────────────────────────
+// ── Models under test ──────────────────────────────────────────────────
+// Two small IFC fixtures so both conversions stay fast. Driven by an array
+// so adding a third model later is a one-line change.
 
-const IFC_PATH = resolve(__dirname, '../../../samples/IfcSampleFiles-main/Ifc4_CubeAdvancedBrep.ifc');
+const SAMPLES_DIR = resolve(__dirname, '../../../../samples/IfcSampleFiles-main');
+
+const MODELS = [
+  { name: 'Architecture', discipline: 'architectural', file: 'Ifc4_CubeAdvancedBrep.ifc' },
+  { name: 'Structure', discipline: 'structural', file: 'Ifc4_SampleHouse.ifc' },
+] as const;
 
 // ── API helper — runs fetch inside the browser (CORS-safe) ────────────
 
@@ -47,92 +54,115 @@ async function apiFetch(
 
 // ── Test ────────────────────────────────────────────────────────────────
 
-test.describe.serial('Viewer', () => {
+test.describe.serial('Model: IFC', () => {
   let projectId: string;
-  let modelId: string;
-  let fileId: string;
+  const uploaded: { name: string; modelId: string; fileId: string }[] = [];
 
-  test('loads an IFC model in the 3D viewer', async ({ page }) => {
+  test('creates two models, uploads an IFC to each, and converts them', async ({ page }) => {
     // 1. Auth
     await loginViaAPI(page, ACME_ADMIN_EMAIL, ACME_ADMIN_PASSWORD);
 
-    // 2. Create project
+    // 2. Create one project to hold both models
     const project = (await apiFetch(page, 'POST', '/projects', {
-      name: `Viewer Test ${Date.now().toString(36)}`,
+      name: `Viewer IFC Test ${Date.now().toString(36)}`,
       country: 'NL',
     })) as { id: string };
     projectId = project.id;
 
-    // 3. Create model
-    const model = (await apiFetch(page, 'POST', `/projects/${projectId}/models`, {
-      name: 'Architecture',
-      discipline: 'architectural',
-    })) as { id: string };
-    modelId = model.id;
+    // 3. For each model: create it, then upload its IFC (two-phase)
+    for (const spec of MODELS) {
+      const model = (await apiFetch(page, 'POST', `/projects/${projectId}/models`, {
+        name: spec.name,
+        discipline: spec.discipline,
+      })) as { id: string };
+      const modelId = model.id;
 
-    // 4. Upload IFC file (two-phase)
-    const fileBytes = readFileSync(IFC_PATH);
-    const sha256 = createHash('sha256').update(fileBytes).digest('hex');
+      const fileBytes = readFileSync(resolve(SAMPLES_DIR, spec.file));
+      const sha256 = createHash('sha256').update(fileBytes).digest('hex');
 
-    const initResp = (await apiFetch(
-      page,
-      'POST',
-      `/projects/${projectId}/models/${modelId}/files/initiate`,
-      {
-        filename: 'Ifc4_CubeAdvancedBrep.ifc',
-        size_bytes: fileBytes.length,
-        content_type: 'application/octet-stream',
-        content_sha256: sha256,
-      },
-    )) as { file_id: string; upload_url: string };
-    fileId = initResp.file_id;
-
-    // PUT directly to presigned URL (MinIO)
-    const putResp = await page.request.put(initResp.upload_url, {
-      data: fileBytes,
-      headers: { 'Content-Type': 'application/octet-stream' },
-    });
-    expect(putResp.ok(), `S3 PUT failed: ${putResp.status()}`).toBe(true);
-
-    // Complete upload
-    await apiFetch(
-      page,
-      'POST',
-      `/projects/${projectId}/models/${modelId}/files/${fileId}/complete`,
-    );
-
-    // 5. Wait for extraction to finish (processor must be running)
-    const deadline = Date.now() + 60_000;
-    let extraction = 'not_started';
-    while (Date.now() < deadline) {
-      const files = (await apiFetch(
+      const initResp = (await apiFetch(
         page,
-        'GET',
-        `/projects/${projectId}/models/${modelId}/files?status=all`,
-      )) as { extraction_status: string }[];
-      const file = files.find((f: { extraction_status: string } & Record<string, unknown>) =>
-        (f as Record<string, unknown>)['id'] === fileId,
+        'POST',
+        `/projects/${projectId}/models/${modelId}/files/initiate`,
+        {
+          filename: spec.file,
+          size_bytes: fileBytes.length,
+          content_type: 'application/octet-stream',
+          content_sha256: sha256,
+        },
+      )) as { file_id: string; upload_url: string };
+      const fileId = initResp.file_id;
+
+      // PUT directly to presigned URL (MinIO)
+      const putResp = await page.request.put(initResp.upload_url, {
+        data: fileBytes,
+        headers: { 'Content-Type': 'application/octet-stream' },
+      });
+      expect(putResp.ok(), `S3 PUT failed for ${spec.file}: ${putResp.status()}`).toBe(true);
+
+      // Complete upload — dispatches the extraction job
+      await apiFetch(
+        page,
+        'POST',
+        `/projects/${projectId}/models/${modelId}/files/${fileId}/complete`,
       );
-      extraction = file?.extraction_status ?? 'not_started';
-      if (extraction === 'succeeded' || extraction === 'failed') break;
-      await page.waitForTimeout(2_000);
+
+      uploaded.push({ name: spec.name, modelId, fileId });
     }
-    expect(extraction, 'Extraction did not succeed within 60 s').toBe('succeeded');
 
-    // 6. Navigate to viewer
-    await page.goto(`/en/projects/${projectId}/models/${modelId}/viewer/${fileId}`);
+    // 4. Wait for both extractions to finish (processor must be running)
+    const deadline = Date.now() + 90_000;
+    const pending = new Map(uploaded.map((u) => [u.fileId, u]));
+    while (pending.size > 0 && Date.now() < deadline) {
+      for (const [fileId, info] of [...pending]) {
+        const files = (await apiFetch(
+          page,
+          'GET',
+          `/projects/${projectId}/models/${info.modelId}/files?status=all`,
+        )) as ({ id: string; extraction_status: string })[];
+        const file = files.find((f) => f.id === fileId);
+        const status = file?.extraction_status ?? 'not_started';
+        expect(status, `Extraction failed for ${info.name}`).not.toBe('failed');
+        if (status === 'succeeded') pending.delete(fileId);
+      }
+      if (pending.size > 0) await page.waitForTimeout(2_000);
+    }
 
-    // 7. Assert viewer chrome is rendered
-    await expect(page.getByTestId('viewer-toolbar')).toBeVisible({ timeout: 15_000 });
+    expect(
+      pending.size,
+      `Extraction did not succeed within 90 s for: ${[...pending.values()].map((u) => u.name).join(', ')}`,
+    ).toBe(0);
+  });
 
-    // 8. Assert model progress bar appears then completes (viewer becomes ready)
-    //    The toolbar has a "Home view" button that's only interactive once the
-    //    viewer is fully loaded.
-    await expect(
-      page.getByRole('button', { name: 'Home view' }),
-    ).toBeVisible({ timeout: 30_000 });
+  test('loads each converted IFC model in the 3D viewer', async ({ page }) => {
+    expect(uploaded.length, 'setup test did not produce any converted models').toBe(MODELS.length);
 
-    // 9. Verify no error banner is shown
-    await expect(page.getByRole('alert')).not.toBeVisible();
+    // Re-auth this fresh page context, then open each model one by one.
+    await loginViaAPI(page, ACME_ADMIN_EMAIL, ACME_ADMIN_PASSWORD);
+
+    for (const { name, modelId, fileId } of uploaded) {
+      await page.goto(`/en/projects/${projectId}/models/${modelId}/viewer/${fileId}`);
+
+      // Viewer chrome renders once the bundle URL resolves.
+      await expect(
+        page.getByTestId('viewer-toolbar'),
+        `viewer toolbar never appeared for ${name}`,
+      ).toBeVisible({ timeout: 15_000 });
+
+      // The toolbar "home" tool only renders after fragments finish loading
+      // (viewerReady). Use the testid — `aria-label="Home view"` is shared with
+      // the ViewCube's home facet, which would make a role lookup ambiguous.
+      await expect(
+        page.getByTestId('viewer-tool-home'),
+        `model "${name}" did not finish loading in the viewer`,
+      ).toBeVisible({ timeout: 30_000 });
+
+      // No load error surfaced. Exclude Next's always-present empty route
+      // announcer (`#__next-route-announcer__`, also role="alert") so this
+      // targets only the viewer's error banner.
+      await expect(
+        page.locator('[role="alert"]:not(#__next-route-announcer__)'),
+      ).toHaveCount(0);
+    }
   });
 });

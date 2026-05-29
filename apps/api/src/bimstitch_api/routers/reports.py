@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jobs import (
     DispatchJobError,
@@ -183,7 +184,8 @@ async def create_report(
     settings: Settings = Depends(get_settings),
 ) -> ReportResponse:
     project = await _load_project_or_404(session, project_id)
-    await _require_membership(session, project.id, user.id)
+    membership = await _require_membership(session, project.id, user.id)
+    require_permission(membership.role, Resource.report, Action.create)
 
     # Find the source compliance data. Without one, we have nothing to render.
     source_job = await _load_latest_compliance_job(session, project.id)
