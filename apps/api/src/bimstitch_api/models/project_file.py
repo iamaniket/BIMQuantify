@@ -29,6 +29,8 @@ if TYPE_CHECKING:
 class FileType(StrEnum):
     ifc = "ifc"
     pdf = "pdf"
+    dxf = "dxf"
+    dwg = "dwg"
 
 
 ALLOWED_EXTENSIONS: dict[str, "FileType"] = {
@@ -38,6 +40,11 @@ ALLOWED_EXTENSIONS: dict[str, "FileType"] = {
     # the processor after decompression, not at the API.
     ".ifczip": FileType.ifc,
     ".pdf": FileType.pdf,
+    # CAD drawings. DXF is parsed directly; DWG is converted to DXF in the
+    # processor (dwg2dxf) before the same extraction runs. Two FileTypes so the
+    # UI pill reflects what the user uploaded.
+    ".dxf": FileType.dxf,
+    ".dwg": FileType.dwg,
 }
 
 

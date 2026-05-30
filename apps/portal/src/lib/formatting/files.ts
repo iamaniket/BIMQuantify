@@ -22,8 +22,12 @@ export function formatRejection(reason: string | null): string {
       return 'IFC schema is not one of IFC2X3, IFC4, IFC4X3.';
     case 'FILE_NOT_VALID_PDF':
       return 'Not a valid PDF file (missing %PDF header).';
+    case 'FILE_NOT_VALID_DXF':
+      return 'Not a valid DXF file (missing DXF section header).';
+    case 'FILE_NOT_VALID_DWG':
+      return 'Not a valid DWG file (missing AutoCAD version header).';
     case 'INVALID_FILE_EXTENSION':
-      return 'File type not supported. Allowed: .ifc, .pdf';
+      return 'File type not supported. Allowed: .ifc, .pdf, .dxf, .dwg';
     case 'MODEL_FILE_TYPE_LOCKED':
       return 'This model is locked to its existing file type.';
     default:
@@ -36,6 +40,8 @@ export function formatSchemaLabel(
   fileType?: FileTypeValue,
 ): string {
   if (fileType === 'pdf') return 'PDF';
+  if (fileType === 'dxf') return 'DXF';
+  if (fileType === 'dwg') return 'DWG';
   if (schema === null) return '—';
   if (schema === 'unknown') return 'Unknown';
   return schema;

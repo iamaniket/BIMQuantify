@@ -31,6 +31,12 @@ export const PageGeometrySchema = z.object({
   rot: z.number().optional(),
   l: z.array(LineSchema),
   t: z.array(TextEntrySchema),
+  /** DXF only: layer-name table; PDF artifacts omit it. */
+  lyr: z.array(z.string()).optional(),
+  /** DXF only: layer index (into `lyr`) per line in `l`. */
+  ll: z.array(z.number().int().nonnegative()).optional(),
+  /** DXF only: layer index (into `lyr`) per text entry in `t`. */
+  tl: z.array(z.number().int().nonnegative()).optional(),
 });
 
 export type PageGeometry = z.infer<typeof PageGeometrySchema>;
@@ -41,3 +47,40 @@ export const GeometryArtifactSchema = z.object({
 });
 
 export type GeometryArtifact = z.infer<typeof GeometryArtifactSchema>;
+
+/**
+ * Zod mirror of the processor's DXF/DWG drawing-metadata blob
+ * (`apps/processor/src/pipeline/dxf-geometry.ts::DrawingMetadata`). Surfaced in
+ * the drawing viewer's info panel.
+ */
+export const DrawingLayerMetaSchema = z.object({
+  name: z.string(),
+  color: z.number(),
+  linetype: z.string(),
+  off: z.boolean(),
+  frozen: z.boolean(),
+  count: z.number().int().nonnegative(),
+});
+
+export type DrawingLayerMeta = z.infer<typeof DrawingLayerMetaSchema>;
+
+export const DrawingMetadataSchema = z.object({
+  source: z.enum(['dxf', 'dwg']),
+  cadVersion: z.union([z.string(), z.null()]),
+  units: z.string(),
+  unitsCode: z.union([z.number(), z.null()]),
+  extents: z.union([
+    z.object({
+      min: z.tuple([z.number(), z.number()]),
+      max: z.tuple([z.number(), z.number()]),
+    }),
+    z.null(),
+  ]),
+  createdAt: z.union([z.string(), z.null()]),
+  modifiedAt: z.union([z.string(), z.null()]),
+  savedBy: z.union([z.string(), z.null()]),
+  layers: z.array(DrawingLayerMetaSchema),
+  entityCounts: z.record(z.string(), z.number()),
+});
+
+export type DrawingMetadata = z.infer<typeof DrawingMetadataSchema>;

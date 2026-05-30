@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const FileTypeEnum = z.enum(['ifc', 'pdf']);
+export const FileTypeEnum = z.enum(['ifc', 'pdf', 'dxf', 'dwg']);
 
 export type FileTypeValue = z.infer<typeof FileTypeEnum>;
 

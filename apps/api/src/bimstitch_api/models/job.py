@@ -15,6 +15,7 @@ from bimstitch_api.models._mixins import TimestampMixin
 class JobType(StrEnum):
     ifc_extraction = "ifc_extraction"
     pdf_extraction = "pdf_extraction"
+    dxf_extraction = "dxf_extraction"
     verification = "verification"
     batch_update = "batch_update"
     image_metadata_extraction = "image_metadata_extraction"

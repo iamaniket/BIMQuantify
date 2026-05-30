@@ -6,6 +6,7 @@ import { getConfig, QUEUE_NAME } from '../config.js';
 import { logger } from '../log.js';
 import { runExtraction } from '../pipeline/extract.js';
 import { runImageMetadataExtraction } from '../pipeline/image.js';
+import { runDxfExtraction } from '../pipeline/dxf.js';
 import { runPdfExtraction } from '../pipeline/pdf.js';
 import { postReportCallback } from '../pipeline/report/callback.js';
 import { classifyError } from '../pipeline/errors.js';
@@ -35,6 +36,7 @@ async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void>
   switch (data.job_type) {
     case 'ifc_extraction':
     case 'pdf_extraction':
+    case 'dxf_extraction':
       await postCallback({
         file_id: pickStr(data.payload, 'file_id'),
         organization_id: data.organization_id,
@@ -93,6 +95,9 @@ export function startWorker(): Worker<WorkerJob> {
           break;
         case 'pdf_extraction':
           await runPdfExtraction(job.data, onProgress);
+          break;
+        case 'dxf_extraction':
+          await runDxfExtraction(job.data, onProgress);
           break;
         case 'image_metadata_extraction':
           await runImageMetadataExtraction(job.data, onProgress);

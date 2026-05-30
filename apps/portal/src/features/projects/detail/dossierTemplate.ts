@@ -48,3 +48,39 @@ export function computeDossierCompleteness(
 
   return { filled, total, pct, categories };
 }
+
+export type CompletionPoint = { t: number; pct: number };
+
+/**
+ * Replays ready attachments oldest-first, recomputing dossier completion after
+ * each so the curve steps 0→100 on the real timestamps the files arrived.
+ */
+export function buildCompletionSeries(
+  buildingType: BuildingTypeValue | null,
+  attachments: Attachment[],
+): CompletionPoint[] {
+  const requirements = DOSSIER_REQUIREMENTS[buildingType ?? 'default'];
+  const total = requirements.length;
+  if (total === 0) return [];
+
+  const required = new Set(requirements.map((r) => r.category));
+  const ready = attachments
+    .filter((a) => a.status === 'ready')
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  const fulfilled = new Set<string>();
+  const points: CompletionPoint[] = [];
+  for (const a of ready) {
+    const before = fulfilled.size;
+    if (required.has(a.attachment_category)) {
+      fulfilled.add(a.attachment_category);
+    }
+    if (fulfilled.size !== before) {
+      points.push({
+        t: new Date(a.created_at).getTime(),
+        pct: Math.round((fulfilled.size / total) * 100),
+      });
+    }
+  }
+  return points;
+}

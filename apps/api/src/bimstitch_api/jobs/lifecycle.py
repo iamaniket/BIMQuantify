@@ -126,6 +126,7 @@ class _ResourceOps:
 _RESOURCE_OPS: dict[JobType, _ResourceOps] = {
     JobType.ifc_extraction: _ResourceOps(_reset_file, _fail_file),
     JobType.pdf_extraction: _ResourceOps(_reset_file, _fail_file),
+    JobType.dxf_extraction: _ResourceOps(_reset_file, _fail_file),
     JobType.compliance_report: _ResourceOps(_reset_report, _fail_report),
     JobType.image_metadata_extraction: _ResourceOps(_noop_reset, _noop_fail),
 }

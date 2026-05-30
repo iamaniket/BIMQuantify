@@ -36,6 +36,9 @@ import { ModelExplorer, ExplorerCounter } from '@/features/viewer/explorer/Model
 import { EntityInspectorPanel } from '@/features/viewer/inspector/EntityInspectorPanel';
 import { PdfAnnotationLayer, type PdfPin } from '@/features/viewer/attachments/PdfAnnotationLayer';
 import { PdfVectorOverlay } from '@/features/viewer/pdf/PdfVectorOverlay';
+import { DrawingCanvas } from '@/features/viewer/drawing/DrawingCanvas';
+import { DrawingInfoBody } from '@/features/viewer/drawing/DrawingInfoBody';
+import { useDrawingMetadata } from '@/features/viewer/drawing/useDrawingMetadata';
 import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { SidePanel } from '@/features/viewer/SidePanel';
@@ -191,7 +194,9 @@ export default function ViewerPage(): JSX.Element {
   const modeState = useViewerMode(viewerHandleRef.current);
   const isEditMode = modeState.mode === 'edit';
 
-  const metadataUrl = bundle?.metadata_url ?? null;
+  // IFC metadata blob is schema-specific — only fetch it for IFC bundles (the
+  // DXF/DWG metadata_url points at a different shape, read via useDrawingMetadata).
+  const metadataUrl = bundle?.file_type === 'ifc' ? (bundle.metadata_url ?? null) : null;
   const propertiesUrl = bundle?.properties_url ?? null;
   const { data: metadata, isLoading: isLoadingMetadata } = useModelMetadata(metadataUrl);
   const hasSelection = isAllSelected || partialSelectionCount > 0;
@@ -233,14 +238,20 @@ export default function ViewerPage(): JSX.Element {
     setViewerError(err.message);
   }, []);
 
-  const mode: Mode = bundle?.file_type === 'pdf' ? 'pdf' : 'ifc';
+  const fileType = bundle?.file_type;
+  const isDrawing = fileType === 'dxf' || fileType === 'dwg';
+  const mode: Mode = fileType === 'pdf' ? 'pdf' : isDrawing ? 'drawing' : 'ifc';
   const isPdf = mode === 'pdf';
   const isIfc = mode === 'ifc';
 
-  // PDF vector geometry (invisible snap layer). Only fetched for ready PDFs that
-  // carry a presigned geometry artifact URL.
+  // Vector geometry artifact. PDFs use it as an invisible snap layer; DXF/DWG
+  // drawings render it directly (there is no raster page).
   const geometryUrl = bundle?.geometry_url ?? null;
-  const { data: pdfGeometry } = usePdfGeometry(isPdf ? geometryUrl : null);
+  const { data: pdfGeometry } = usePdfGeometry((isPdf || isDrawing) ? geometryUrl : null);
+  const { data: drawingMetadata, isLoading: isLoadingDrawingMetadata } = useDrawingMetadata(
+    isDrawing ? (bundle?.metadata_url ?? null) : null,
+  );
+  const drawingPage = isDrawing ? (pdfGeometry?.p[0] ?? null) : null;
   const shellReady = bundle !== null && error === null;
   const ifcShellReady = shellReady && isIfc && viewerReady;
   const pdfShellReady = shellReady && isPdf;
@@ -249,7 +260,7 @@ export default function ViewerPage(): JSX.Element {
   // even that is usually prefetched on hover. The canvas area shows its own
   // skeleton/progress UI underneath while the file loads.
   const showChrome = error === null;
-  const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady;
+  const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady && !isDrawing;
 
   // PDF pin annotations
   const pdfPinsQuery = usePdfPageAttachments(
@@ -361,6 +372,10 @@ export default function ViewerPage(): JSX.Element {
     );
   } else if (bundle === null) {
     canvas = <Skeleton className="absolute inset-0" />;
+  } else if (isDrawing) {
+    canvas = drawingPage !== null
+      ? <DrawingCanvas page={drawingPage} />
+      : <Skeleton className="absolute inset-0" />;
   } else if (isPdf) {
     canvas = (
       <DocumentViewer
@@ -487,6 +502,12 @@ export default function ViewerPage(): JSX.Element {
                   onSelect={setPdfCurrentPage}
                 />
               ) : undefined}
+              drawingInfoContent={isDrawing ? (
+                <DrawingInfoBody
+                  metadata={drawingMetadata}
+                  isLoading={isLoadingDrawingMetadata}
+                />
+              ) : undefined}
               headerActions={isIfc ? {
                 explorer: <ExplorerCounter metadata={metadata} />,
                 measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
@@ -549,6 +570,7 @@ export default function ViewerPage(): JSX.Element {
       <StatusBar
         mode={mode}
         metadata={metadata}
+        drawingMetadata={drawingMetadata}
         viewerReady={viewerReady}
         currentPage={pdfCurrentPage}
         numPages={pdfNumPages}

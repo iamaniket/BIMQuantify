@@ -22,6 +22,7 @@ ENV NODE_ENV=production \
 #  * fonts-noto + emoji   — Dutch diacritics, broad Unicode coverage
 #  * ca-certificates      — TLS for outbound API/S3 calls
 #  * dumb-init            — proper signal forwarding to node
+#  * libredwg-tools       — provides `dwg2dxf` for DWG→DXF conversion
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        chromium \
@@ -30,6 +31,7 @@ RUN apt-get update \
        fonts-noto-color-emoji \
        ca-certificates \
        dumb-init \
+       libredwg-tools \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./

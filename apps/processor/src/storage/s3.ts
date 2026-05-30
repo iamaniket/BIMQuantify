@@ -93,3 +93,11 @@ export function pdfMetadataKeyFor(sourceKey: string): string {
 export function pdfGeometryKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.pdf$/i, '.geometry.json');
 }
+
+export function dxfGeometryKeyFor(sourceKey: string): string {
+  return sourceKey.replace(/\.(dxf|dwg)$/i, '.geometry.json');
+}
+
+export function dxfMetadataKeyFor(sourceKey: string): string {
+  return sourceKey.replace(/\.(dxf|dwg)$/i, '.metadata.json');
+}

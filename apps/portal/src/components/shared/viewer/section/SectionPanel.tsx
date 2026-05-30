@@ -1,13 +1,20 @@
 'use client';
 
-import { Crosshair, Eraser, Eye, EyeOff, FlipVertical, Trash2 } from 'lucide-react';
+import {
+  Crosshair, Eraser, Eye, EyeOff, FlipVertical, Trash2,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
+import {
+  useCallback, useEffect, useRef, useState, type JSX,
+} from 'react';
 
 import { ConfirmDialog, cn } from '@bimstitch/ui';
 import type { SectionPlane, ViewerHandle } from '@bimstitch/viewer';
 
+import { PanelButton } from '../PanelButton';
 import { PanelEmptyState } from '../PanelEmptyState';
+import { PanelStatusStrip } from '../PanelStatusStrip';
+import { PanelButtonRow, PanelToolbar } from '../PanelToolbar';
 
 type Props = {
   handle: ViewerHandle | null;
@@ -15,10 +22,16 @@ type Props = {
 
 type PlaneExtent = { min: number; max: number; current: number };
 
-const PRESET_NORMALS: Array<{ label: string; normal: { x: number; y: number; z: number }; colorClass: string }> = [
-  { label: '+X', normal: { x: 1, y: 0, z: 0 }, colorClass: 'text-red-500' },
-  { label: '+Y', normal: { x: 0, y: 1, z: 0 }, colorClass: 'text-green-500' },
-  { label: '+Z', normal: { x: 0, y: 0, z: 1 }, colorClass: 'text-blue-500' },
+type PresetNormal = {
+  label: string;
+  normal: { x: number; y: number; z: number };
+  colorClass: string;
+};
+
+const PRESET_NORMALS: PresetNormal[] = [
+  { label: '+X', normal: { x: 1, y: 0, z: 0 }, colorClass: 'text-red-300' },
+  { label: '+Y', normal: { x: 0, y: 1, z: 0 }, colorClass: 'text-green-300' },
+  { label: '+Z', normal: { x: 0, y: 0, z: 1 }, colorClass: 'text-blue-200' },
 ];
 
 function dominantAxisLabel(n: { x: number; y: number; z: number }): string {
@@ -165,31 +178,27 @@ export function SectionPanel({ handle }: Props): JSX.Element {
   return (
     <div className="flex h-full flex-col">
       {/* Preset buttons + placement toggle */}
-      <div className="flex shrink-0 gap-1.5 border-b border-border px-3 py-2.5">
-        {PRESET_NORMALS.map(({ label, normal, colorClass }) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => addPreset(normal)}
-            className="flex flex-1 items-center justify-center gap-1 rounded-md border border-transparent bg-background-secondary px-2 py-1.5 text-xs font-medium text-foreground-secondary shadow-sm transition-all duration-150 hover:border-primary-light hover:bg-primary/5 hover:text-primary"
+      <PanelToolbar>
+        <PanelButtonRow>
+          {PRESET_NORMALS.map(({ label, normal, colorClass }) => (
+            <PanelButton
+              key={label}
+              segmented
+              onClick={() => { addPreset(normal); }}
+              title={t('addPreset', { axis: label })}
+            >
+              <span className={cn('font-extrabold', colorClass)}>{label}</span>
+            </PanelButton>
+          ))}
+          <PanelButton
+            active={isPlacing}
+            onClick={togglePlacement}
+            icon={<Crosshair className="h-3.5 w-3.5" />}
           >
-            <span className={cn('text-[10px] font-bold', colorClass)}>{label}</span>
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={togglePlacement}
-          className={cn(
-            'flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all duration-150',
-            isPlacing
-              ? 'bg-primary-lighter text-primary border border-primary-light shadow-sm'
-              : 'bg-background-secondary text-foreground-secondary border border-transparent shadow-sm hover:bg-primary/5 hover:text-primary hover:border-primary-light',
-          )}
-        >
-          <Crosshair className="h-3.5 w-3.5" />
-          {t('place')}
-        </button>
-      </div>
+            {t('place')}
+          </PanelButton>
+        </PanelButtonRow>
+      </PanelToolbar>
 
       {/* Plane list */}
       <div className="min-h-0 flex-1 overflow-auto">
@@ -208,7 +217,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => selectPlane(p.id)}
+                    onClick={() => { selectPlane(p.id); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') selectPlane(p.id); }}
                     className={cn(
                       'flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors cursor-pointer',
@@ -260,7 +269,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
                         max={ext.max}
                         step={(ext.max - ext.min) / 200}
                         value={ext.current}
-                        onChange={(e) => handleSlider(p.id, Number(e.target.value))}
+                        onChange={(e) => { handleSlider(p.id, Number(e.target.value)); }}
                         className="w-full accent-primary"
                       />
                     </div>
@@ -272,36 +281,46 @@ export function SectionPanel({ handle }: Props): JSX.Element {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 border-t border-border px-3 py-2">
-        {isPlacing ? (
-          <div className="flex items-center gap-2">
-            <p className="flex-1 text-body3 text-foreground-secondary">
-              {t('placeHint')}
-            </p>
+      {/* Footer status strip */}
+      {isPlacing && (
+        <PanelStatusStrip
+          tone="active"
+          right={(
             <button
               type="button"
               onClick={togglePlacement}
-              className="shrink-0 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-secondary"
+              className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-hover"
             >
               {t('done')}
             </button>
-          </div>
-        ) : planes.length > 0 ? (
-          <div className="flex items-center gap-3 text-xs text-foreground-secondary">
-            <span>{t('count', { count: planes.length })}</span>
-            <span className="ml-auto" />
+          )}
+        >
+          <span className="truncate">{t('placeHint')}</span>
+        </PanelStatusStrip>
+      )}
+      {!isPlacing && planes.length > 0 && (
+        <PanelStatusStrip
+          tone="active"
+          right={(
             <button
               type="button"
               onClick={() => { setShowClearConfirm(true); }}
               title={t('clearAll')}
-              className="shrink-0 rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
+              className="rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
             >
               <Eraser className="h-3.5 w-3.5" />
             </button>
-          </div>
-        ) : null}
-      </div>
+          )}
+        >
+          <span className="font-semibold text-foreground-secondary">{t('statusPlanes', { count: planes.length })}</span>
+          <span className="text-foreground-tertiary">· {t('clippingOn')}</span>
+        </PanelStatusStrip>
+      )}
+      {!isPlacing && planes.length === 0 && (
+        <PanelStatusStrip tone="idle" right={t('clippingOff')}>
+          <span className="font-semibold text-foreground-secondary">{t('statusPlanes', { count: 0 })}</span>
+        </PanelStatusStrip>
+      )}
 
       <ConfirmDialog
         open={showClearConfirm}

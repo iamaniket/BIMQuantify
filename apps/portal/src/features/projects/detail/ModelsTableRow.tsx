@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 
 import { Badge, Button, Spinner } from '@bimstitch/ui';
 
-import type { Model, ProjectFile } from '@/lib/api/schemas';
+import type { FileTypeValue, Model, ProjectFile } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
 import { formatExtractionStatus } from '@/lib/formatting/files';
 import { useModelFiles } from '@/features/models/useModelFiles';
@@ -33,13 +33,19 @@ function fileExt(filename: string): string {
   return dot >= 0 ? filename.slice(dot) : '';
 }
 
-type FileTypePillProps = { fileType: 'ifc' | 'pdf'; schema?: string | null };
+type FileTypePillProps = { fileType: FileTypeValue; schema?: string | null };
+
+const PILL_VARIANT: Record<FileTypeValue, 'info' | 'error' | 'warning'> = {
+  ifc: 'info',
+  pdf: 'error',
+  dxf: 'warning',
+  dwg: 'warning',
+};
 
 function FileTypePill({ fileType, schema }: FileTypePillProps): JSX.Element {
-  const isPdf = fileType === 'pdf';
-  const label = isPdf ? 'PDF' : (schema ?? 'IFC');
+  const label = fileType === 'ifc' ? (schema ?? 'IFC') : fileType.toUpperCase();
   return (
-    <Badge variant={isPdf ? 'error' : 'info'} size="sm" bordered={false} className="shrink-0 uppercase">
+    <Badge variant={PILL_VARIANT[fileType]} size="sm" bordered={false} className="shrink-0 uppercase">
       {label}
     </Badge>
   );
@@ -123,7 +129,7 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
           </div>
         </div>
         <span className="text-caption font-medium uppercase text-foreground-tertiary">
-          {latestFile !== undefined ? (latestFile.file_type === 'pdf' ? 'PDF' : 'IFC') : '—'}
+          {latestFile !== undefined ? latestFile.file_type.toUpperCase() : '—'}
         </span>
         <span className="text-center font-sans text-body3 font-semibold tabular-nums">{files.length}</span>
         <span className="text-caption text-foreground-tertiary whitespace-nowrap">

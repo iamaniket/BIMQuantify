@@ -1037,7 +1037,7 @@ async def test_initiate_unknown_extension_rejected(
     project_id, model_id = await _project_and_model(
         client, org_user["access_token"], project_name="UnkExt"
     )
-    for filename in ("model.dwg", "model.xyz", "model.step"):
+    for filename in ("model.rvt", "model.xyz", "model.step"):
         resp = await client.post(
             f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
@@ -1221,6 +1221,277 @@ async def test_pdf_callback_persists_geometry_and_bundle_serves_it(
     assert body["file_type"] == "pdf"
     assert body["geometry_url"] is not None
     assert "geometry.json" in body["geometry_url"]
+
+
+# ---------------------------------------------------------------------------
+# DXF / DWG (CAD) upload + complete
+# ---------------------------------------------------------------------------
+
+# ASCII DXF opens with group code 0 + SECTION and carries a HEADER section.
+VALID_DXF_BYTES = b"0\r\nSECTION\r\n2\r\nHEADER\r\n0\r\nENDSEC\r\n0\r\nEOF\r\n"
+# DWG opens with a 6-byte ACxxxx version tag.
+VALID_DWG_BYTES = b"AC1027" + b"\x00" * 60
+
+
+async def test_initiate_dxf_succeeds(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DxfInit"
+    )
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
+        json={
+            "filename": "floorplan.dxf",
+            "size_bytes": len(VALID_DXF_BYTES),
+            "content_type": "application/octet-stream",
+            "content_sha256": _new_hash(),
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["storage_key"].endswith(".dxf")
+
+
+async def test_initiate_dwg_succeeds(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DwgInit"
+    )
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
+        json={
+            "filename": "floorplan.dwg",
+            "size_bytes": len(VALID_DWG_BYTES),
+            "content_type": "application/octet-stream",
+            "content_sha256": _new_hash(),
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["storage_key"].endswith(".dwg")
+
+
+async def test_complete_dxf_valid_marks_ready_and_dispatches(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, str]],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DxfComplete"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "plan.dxf",
+                "size_bytes": len(VALID_DXF_BYTES),
+                "content_type": "application/octet-stream",
+                "content_sha256": _new_hash(),
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_DXF_BYTES
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "ready"
+    assert body["file_type"] == "dxf"
+    assert body["ifc_schema"] is None
+    assert body["extraction_status"] == "queued"
+
+    assert len(extraction_calls) == 1
+    assert extraction_calls[0]["job_type"] == "dxf_extraction"
+    assert extraction_calls[0]["payload"]["source_format"] == "dxf"
+
+
+async def test_complete_dwg_valid_dispatches_with_source_format_dwg(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, str]],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DwgComplete"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "plan.dwg",
+                "size_bytes": len(VALID_DWG_BYTES),
+                "content_type": "application/octet-stream",
+                "content_sha256": _new_hash(),
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_DWG_BYTES
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "ready"
+    assert body["file_type"] == "dwg"
+    assert body["extraction_status"] == "queued"
+
+    assert len(extraction_calls) == 1
+    assert extraction_calls[0]["job_type"] == "dxf_extraction"
+    assert extraction_calls[0]["payload"]["source_format"] == "dwg"
+
+
+async def test_complete_dxf_invalid_magic_rejects(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, str]],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DxfBadMagic"
+    )
+    bad = b"definitely not a dxf file\n"
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "fake.dxf",
+                "size_bytes": len(bad),
+                "content_type": "application/octet-stream",
+                "content_sha256": _new_hash(),
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = bad
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "rejected"
+    assert body["rejection_reason"] == "FILE_NOT_VALID_DXF"
+    assert init["storage_key"] not in fake.objects
+    assert init["storage_key"] in fake.deleted
+    assert len(extraction_calls) == 0
+
+
+async def test_complete_dwg_invalid_magic_rejects(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, str]],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DwgBadMagic"
+    )
+    bad = b"not a dwg\n"
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "fake.dwg",
+                "size_bytes": len(bad),
+                "content_type": "application/octet-stream",
+                "content_sha256": _new_hash(),
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = bad
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "rejected"
+    assert body["rejection_reason"] == "FILE_NOT_VALID_DWG"
+    assert len(extraction_calls) == 0
+
+
+async def test_cad_callback_persists_artifacts_and_bundle_serves_them(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A DXF extractor callback carrying geometry_key + metadata_key persists
+    both, and the viewer-bundle then presigns geometry_url + metadata_url +
+    file_url."""
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="DxfBundle"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "plan.dxf",
+                "size_bytes": len(VALID_DXF_BYTES),
+                "content_type": "application/octet-stream",
+                "content_sha256": _new_hash(),
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_DXF_BYTES
+    await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+
+    geometry_key = init["storage_key"].replace(".dxf", ".geometry.json")
+    metadata_key = init["storage_key"].replace(".dxf", ".metadata.json")
+    callback = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": init["file_id"],
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+            "geometry_key": geometry_key,
+            "metadata_key": metadata_key,
+            "page_count": 1,
+        },
+        headers={"Authorization": "Bearer dev-shared-secret-change-me"},
+    )
+    assert callback.status_code == 200, callback.text
+    assert callback.json()["extraction_status"] == "succeeded"
+
+    resp = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/viewer-bundle",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["file_type"] == "dxf"
+    assert body["geometry_url"] is not None
+    assert "geometry.json" in body["geometry_url"]
+    assert body["metadata_url"] is not None
+    assert "metadata.json" in body["metadata_url"]
+    assert body["file_url"] is not None
+    assert "?download=plan.dxf" in body["file_url"]
 
 
 # ---------------------------------------------------------------------------

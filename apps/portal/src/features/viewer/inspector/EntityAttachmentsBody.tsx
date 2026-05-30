@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Loader2, Paperclip, Plus, StickyNote,
+  FileText, Loader2, Paperclip, Plus, StickyNote,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Button, Input, Spinner } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
+import { SplitButton } from '@/components/shared/viewer/SplitButton';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { useElementAttachments, useProjectAttachments } from '@/features/attachments/useAttachments';
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
@@ -166,24 +167,27 @@ export function EntityAttachmentsBody({
             className="pl-7"
           />
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => { setShowNoteInput(!showNoteInput); }}
-          title={t('addNote')}
-        >
-          <StickyNote className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
+        <SplitButton
+          label={t('attachButton')}
+          icon={<Plus className="h-3.5 w-3.5" />}
           disabled={uploadMutation.isPending}
           onClick={() => { if (fileInputRef.current !== null) fileInputRef.current.click(); }}
-          title={isProject ? t('attachToProject') : t('attachToElement')}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t('attachButton')}
-        </Button>
+          menuLabel={t('moreAttachOptions')}
+          items={[
+            {
+              id: 'file',
+              label: t('attachFile'),
+              icon: <FileText className="h-4 w-4" />,
+              onSelect: () => { if (fileInputRef.current !== null) fileInputRef.current.click(); },
+            },
+            {
+              id: 'note',
+              label: t('addNote'),
+              icon: <StickyNote className="h-4 w-4" />,
+              onSelect: () => { setShowNoteInput(true); },
+            },
+          ]}
+        />
         <input
           ref={fileInputRef}
           type="file"

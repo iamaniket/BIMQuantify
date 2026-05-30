@@ -18,9 +18,10 @@ export type PanelId =
   | 'inspector'
   | 'measure'
   | 'section'
-  | 'pages';
+  | 'pages'
+  | 'drawingInfo';
 
-export type Mode = 'ifc' | 'pdf';
+export type Mode = 'ifc' | 'pdf' | 'drawing';
 
 type SideRailProps = {
   mode: Mode;
@@ -46,13 +47,23 @@ const PDF_BUTTONS: RailButton[] = [
   { id: 'inspector', labelKey: 'titleInspector', icon: Info },
 ];
 
+const DRAWING_BUTTONS: RailButton[] = [
+  { id: 'drawingInfo', labelKey: 'titleDrawingInfo', icon: Info },
+];
+
+const BUTTONS_BY_MODE: Record<Mode, RailButton[]> = {
+  ifc: IFC_BUTTONS,
+  pdf: PDF_BUTTONS,
+  drawing: DRAWING_BUTTONS,
+};
+
 export function SideRail({
   mode,
   activePanel,
   onTogglePanel,
 }: SideRailProps): JSX.Element {
   const t = useTranslations('viewer.sidePanel');
-  const buttons = mode === 'pdf' ? PDF_BUTTONS : IFC_BUTTONS;
+  const buttons = BUTTONS_BY_MODE[mode];
   return (
     <div
       className="z-30 flex w-[51px] shrink-0 flex-col items-center gap-2 border-l border-t border-white/12 py-3"

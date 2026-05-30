@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
+from bimstitch_api.cad.header import looks_like_dwg, looks_like_dxf
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.ifc.header import looks_like_zip, parse_ifc_header
 from bimstitch_api.jobs import (
@@ -369,6 +370,109 @@ async def complete_upload(
         await session.refresh(row)
         return row
 
+    if row.file_type in (FileType.dxf, FileType.dwg):
+        # CAD path. We only magic-byte sniff here; the processor parses DXF (and
+        # converts DWG -> DXF via dwg2dxf first), then extracts geometry +
+        # metadata. Both file types run the single `dxf_extraction` job; the
+        # `source_format` payload flag tells the worker whether to convert first.
+        range_end = min(HEADER_PEEK_BYTES - 1, max(row.size_bytes - 1, 0))
+        head_bytes = await storage.get_object_range(row.storage_key, 0, range_end)
+
+        if row.file_type is FileType.dwg:
+            cad_accepted = looks_like_dwg(head_bytes)
+            cad_rejection = None if cad_accepted else "FILE_NOT_VALID_DWG"
+            source_format = "dwg"
+        else:
+            cad_accepted = looks_like_dxf(head_bytes)
+            cad_rejection = None if cad_accepted else "FILE_NOT_VALID_DXF"
+            source_format = "dxf"
+
+        file_type_label = row.file_type.value
+
+        if cad_accepted:
+            row.status = ProjectFileStatus.ready
+            row.extraction_status = ExtractionStatus.queued
+            if model.primary_file_type is None:
+                model.primary_file_type = row.file_type
+
+            try:
+                await check_job_concurrency(session, settings)
+            except JobConcurrencyError:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="TOO_MANY_ACTIVE_JOBS",
+                )
+
+            cad_job = Job(
+                project_id=project.id,
+                file_id=row.id,
+                job_type=JobType.dxf_extraction,
+                status=JobStatus.pending,
+                payload={
+                    "file_id": str(row.id),
+                    "project_id": str(project.id),
+                    "storage_key": row.storage_key,
+                    "source_format": source_format,
+                },
+                created_by_user_id=user.id,
+            )
+            session.add(cad_job)
+            await session.flush()
+
+            try:
+                await dispatch_job(cad_job, settings, active_org_id)
+            except DispatchJobError as exc:
+                row.extraction_status = ExtractionStatus.failed
+                row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
+                cad_job.status = JobStatus.failed
+                cad_job.error = f"DISPATCH_FAILED: {exc}"[:500]
+                cad_job.retriable = True
+                cad_job.error_kind = "dispatch"
+                logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
+                await session.flush()
+
+            await audit.record(
+                session,
+                action="project_file.completed",
+                resource_type="project_file",
+                resource_id=row.id,
+                after={
+                    "file_type": file_type_label,
+                    "original_filename": row.original_filename,
+                    "version_number": row.version_number,
+                },
+                actor_user_id=user.id,
+                project_id=project.id,
+                request=request,
+            )
+
+            await session.refresh(row)
+            return row
+
+        row.status = ProjectFileStatus.rejected
+        row.rejection_reason = cad_rejection or "UNKNOWN"
+        try:
+            await storage.delete_object(row.storage_key)
+        except Exception:
+            logger.warning(
+                "Failed to delete rejected upload %s; row marked rejected anyway",
+                row.storage_key,
+                exc_info=True,
+            )
+        await audit.record(
+            session,
+            action="project_file.rejected",
+            resource_type="project_file",
+            resource_id=row.id,
+            after={"rejection_reason": row.rejection_reason, "file_type": file_type_label},
+            actor_user_id=user.id,
+            project_id=project.id,
+            request=request,
+        )
+        await session.flush()
+        await session.refresh(row)
+        return row
+
     # IFC path. Uncompressed `.ifc` is STEP-header-sniffed here. Compressed
     # `.ifczip` is a zip wrapper whose schema can only be read after
     # decompression, so we verify only the zip magic and defer schema
@@ -603,6 +707,33 @@ async def get_viewer_bundle(
             file_type=row.file_type,
             file_url=file_url,
             geometry_url=geometry_url,
+            expires_in=storage.presign_ttl,
+        )
+
+    if row.file_type in (FileType.dxf, FileType.dwg):
+        # Drawing path: the overlay renders the geometry artifact; the info
+        # panel reads the metadata blob. file_url lets the user grab the raw CAD.
+        if (
+            row.extraction_status is not ExtractionStatus.succeeded
+            or row.geometry_storage_key is None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="VIEWER_BUNDLE_NOT_READY"
+            )
+        geometry_key = row.geometry_storage_key
+        cad_coros = [
+            storage.presigned_get_url(geometry_key, "geometry.json"),
+            storage.presigned_get_url(row.storage_key, row.original_filename),
+        ]
+        cad_metadata_key = row.metadata_storage_key
+        if cad_metadata_key is not None:
+            cad_coros.append(storage.presigned_get_url(cad_metadata_key, "metadata.json"))
+        cad_urls = await asyncio.gather(*cad_coros)
+        return ViewerBundleResponse(
+            file_type=row.file_type,
+            geometry_url=cad_urls[0],
+            file_url=cad_urls[1],
+            metadata_url=cad_urls[2] if cad_metadata_key is not None else None,
             expires_in=storage.presign_ttl,
         )
 

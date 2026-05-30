@@ -1,19 +1,30 @@
 'use client';
 
-import { Box, Crosshair, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Settings, Square, Trash2 } from 'lucide-react';
+import {
+  Box, Crosshair, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Settings, Square, Trash2,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
+import {
+  useCallback, useEffect, useRef, useState, type JSX,
+} from 'react';
 
-import { AppDialog, ConfirmDialog, DialogField, DialogSection, Select, cn } from '@bimstitch/ui';
-import type { Measurement, MeasurementConfig, MeasurementMode, ViewerHandle } from '@bimstitch/viewer';
+import {
+  AppDialog, ConfirmDialog, DialogField, DialogSection, Select, cn,
+} from '@bimstitch/ui';
+import type {
+  Measurement, MeasurementConfig, MeasurementMode, ViewerHandle,
+} from '@bimstitch/viewer';
 
+import { PanelButton } from '../PanelButton';
 import { PanelEmptyState } from '../PanelEmptyState';
+import { PanelStatusStrip } from '../PanelStatusStrip';
+import { PanelButtonRow, PanelToolbar } from '../PanelToolbar';
 
 type Props = {
   handle: ViewerHandle | null;
 };
 
-const MODE_DEFS: Array<{ id: MeasurementMode; labelKey: string; icon: typeof Ruler }> = [
+const MODE_DEFS: { id: MeasurementMode; labelKey: string; icon: typeof Ruler }[] = [
   { id: 'distance', labelKey: 'modeDistance', icon: Ruler },
   { id: 'angle', labelKey: 'modeAngle', icon: DraftingCompass },
   { id: 'area', labelKey: 'modeArea', icon: Square },
@@ -168,27 +179,21 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
   return (
     <div className="flex h-full flex-col">
       {/* Mode toggle */}
-      <div className="flex shrink-0 gap-1.5 border-b border-border px-3 py-2.5">
-        {MODE_DEFS.map(({ id, labelKey, icon: Icon }) => {
-          const isActive = activeMode === id;
-          return (
-            <button
+      <PanelToolbar>
+        <PanelButtonRow>
+          {MODE_DEFS.map(({ id, labelKey, icon: Icon }) => (
+            <PanelButton
               key={id}
-              type="button"
-              onClick={() => switchMode(id)}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150',
-                isActive
-                  ? 'bg-primary-lighter text-primary border border-primary-light shadow-sm'
-                  : 'bg-background text-foreground-secondary border border-border shadow-sm hover:bg-primary/5 hover:text-primary hover:border-primary-light',
-              )}
+              segmented
+              active={activeMode === id}
+              onClick={() => { switchMode(id); }}
+              icon={<Icon className="h-3.5 w-3.5" />}
             >
-              <Icon className="h-3.5 w-3.5" />
               {t(labelKey)}
-            </button>
-          );
-        })}
-      </div>
+            </PanelButton>
+          ))}
+        </PanelButtonRow>
+      </PanelToolbar>
 
       {/* Measurement list */}
       <div className="min-h-0 flex-1 overflow-auto">
@@ -201,7 +206,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
           <ul className="divide-y divide-border">
             {measurements.map((m) => {
               const Icon = m.type === 'angle' ? DraftingCompass : m.type === 'area' ? Square : m.type === 'volume' ? Box : Ruler;
-              const isVisible = m.visible !== false;
+              const isVisible = m.visible;
               return (
                 <li
                   key={m.id}
@@ -216,7 +221,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
                   </span>
                   <button
                     type="button"
-                    onClick={() => toggleVisibility(m.id, isVisible)}
+                    onClick={() => { toggleVisibility(m.id, isVisible); }}
                     title={isVisible ? t('hide') : t('show')}
                     className={cn(
                       'shrink-0 rounded p-0.5 transition-colors hover:!bg-background-tertiary',
@@ -233,7 +238,7 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
                   </button>
                   <button
                     type="button"
-                    onClick={() => remove(m.id)}
+                    onClick={() => { remove(m.id); }}
                     title={t('remove')}
                     className="shrink-0 rounded p-1 text-foreground-secondary transition-colors hover:text-error"
                   >
@@ -246,74 +251,74 @@ export function MeasurementPanel({ handle }: Props): JSX.Element {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 border-t border-border px-3 py-2">
-        {activeMode !== null ? (
-          <div className="flex items-center gap-2">
-            <p className="flex-1 text-body3 text-foreground-secondary">
-              {t(HELP_KEYS[activeMode])}
-            </p>
-            {axisLock.active && axisLock.axis !== null && (
-              <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-white', AXIS_COLORS[axisLock.axis] ?? 'bg-foreground-secondary')}>
-                {axisLock.axis}-Lock
-              </span>
-            )}
+      {/* Footer status strip */}
+      {activeMode !== null && (
+        <PanelStatusStrip
+          tone="active"
+          right={(
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={cancelPending}
+                title={t('cancelPending')}
+                className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-hover"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={stopMeasuring}
+                title={t('stop')}
+                className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-hover"
+              >
+                {t('done')}
+              </button>
+            </span>
+          )}
+        >
+          <span className="truncate">{t(HELP_KEYS[activeMode])}</span>
+          {axisLock.active && axisLock.axis !== null && (
+            <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-white', AXIS_COLORS[axisLock.axis] ?? 'bg-foreground-secondary')}>
+              {axisLock.axis}-{t('lock')}
+            </span>
+          )}
+        </PanelStatusStrip>
+      )}
+      {activeMode === null && measurements.length > 0 && (
+        <PanelStatusStrip
+          tone="idle"
+          right={(
             <button
               type="button"
-              onClick={cancelPending}
-              title={t('cancelPending')}
-              className="shrink-0 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-secondary"
-            >
-              {t('cancel')}
-            </button>
-            <button
-              type="button"
-              onClick={stopMeasuring}
-              title={t('stop')}
-              className="shrink-0 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-secondary"
-            >
-              {t('done')}
-            </button>
-          </div>
-        ) : measurements.length > 0 ? (
-          <div className="flex items-center gap-3 text-xs text-foreground-secondary">
-            <span>{t('count', { count: measurements.length })}</span>
-            {measurements.some((m) => m.type === 'distance') && (
-              <span className="flex items-center gap-1">
-                <Ruler className="h-3 w-3" />
-                {measurements.filter((m) => m.type === 'distance').length}
-              </span>
-            )}
-            {measurements.some((m) => m.type === 'angle') && (
-              <span className="flex items-center gap-1">
-                <DraftingCompass className="h-3 w-3" />
-                {measurements.filter((m) => m.type === 'angle').length}
-              </span>
-            )}
-            {measurements.some((m) => m.type === 'area') && (
-              <span className="flex items-center gap-1">
-                <Square className="h-3 w-3" />
-                {measurements.filter((m) => m.type === 'area').length}
-              </span>
-            )}
-            {measurements.some((m) => m.type === 'volume') && (
-              <span className="flex items-center gap-1">
-                <Box className="h-3 w-3" />
-                {measurements.filter((m) => m.type === 'volume').length}
-              </span>
-            )}
-            <span className="ml-auto" />
-            <button
-              type="button"
-              onClick={() => setShowClearConfirm(true)}
+              onClick={() => { setShowClearConfirm(true); }}
               title={t('clearAll')}
-              className="shrink-0 rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
+              className="rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
             >
               <Eraser className="h-3.5 w-3.5" />
             </button>
-          </div>
-        ) : null}
-      </div>
+          )}
+        >
+          <span className="font-semibold text-foreground-secondary">{t('count', { count: measurements.length })}</span>
+          {measurements.some((m) => m.type === 'distance') && (
+            <span className="ml-2 flex items-center gap-1"><Ruler className="h-3 w-3" />{measurements.filter((m) => m.type === 'distance').length}</span>
+          )}
+          {measurements.some((m) => m.type === 'angle') && (
+            <span className="ml-2 flex items-center gap-1"><DraftingCompass className="h-3 w-3" />{measurements.filter((m) => m.type === 'angle').length}</span>
+          )}
+          {measurements.some((m) => m.type === 'area') && (
+            <span className="ml-2 flex items-center gap-1"><Square className="h-3 w-3" />{measurements.filter((m) => m.type === 'area').length}</span>
+          )}
+          {measurements.some((m) => m.type === 'volume') && (
+            <span className="ml-2 flex items-center gap-1"><Box className="h-3 w-3" />{measurements.filter((m) => m.type === 'volume').length}</span>
+          )}
+        </PanelStatusStrip>
+      )}
+      {activeMode === null && measurements.length === 0 && (
+        <PanelStatusStrip tone="idle" right={t('savedCount', { count: 0 })}>
+          <span className="font-semibold text-foreground-secondary">{t('statusReady')}</span>
+          <span className="text-foreground-tertiary">· {t('statusNoActive')}</span>
+        </PanelStatusStrip>
+      )}
 
       <ConfirmDialog
         open={showClearConfirm}
@@ -364,7 +369,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
     if (!open) return;
     handle.commands
       .execute<MeasurementConfig>('measure.getConfig')
-      .then((c) => setCfg(c ?? null))
+      .then((c) => { setCfg(c ?? null); })
       .catch(() => undefined);
   }, [handle, open]);
 
@@ -392,7 +397,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
             <input
               type="color"
               value={hexFromNumber(cfg.directColor)}
-              onChange={(e) => update({ directColor: numberFromHex(e.target.value) })}
+              onChange={(e) => { update({ directColor: numberFromHex(e.target.value) }); }}
               className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
             />
           </DialogField>
@@ -400,7 +405,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
             <input
               type="color"
               value={hexFromNumber(cfg.xColor)}
-              onChange={(e) => update({ xColor: numberFromHex(e.target.value) })}
+              onChange={(e) => { update({ xColor: numberFromHex(e.target.value) }); }}
               className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
             />
           </DialogField>
@@ -408,7 +413,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
             <input
               type="color"
               value={hexFromNumber(cfg.yColor)}
-              onChange={(e) => update({ yColor: numberFromHex(e.target.value) })}
+              onChange={(e) => { update({ yColor: numberFromHex(e.target.value) }); }}
               className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
             />
           </DialogField>
@@ -416,7 +421,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
             <input
               type="color"
               value={hexFromNumber(cfg.zColor)}
-              onChange={(e) => update({ zColor: numberFromHex(e.target.value) })}
+              onChange={(e) => { update({ zColor: numberFromHex(e.target.value) }); }}
               className="h-8 w-14 cursor-pointer rounded border border-border bg-transparent"
             />
           </DialogField>
@@ -428,7 +433,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
               type="button"
               role="switch"
               aria-checked={cfg.showDecomposition}
-              onClick={() => update({ showDecomposition: !cfg.showDecomposition })}
+              onClick={() => { update({ showDecomposition: !cfg.showDecomposition }); }}
               className={cn(
                 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
                 cfg.showDecomposition ? 'bg-primary' : 'bg-border',
@@ -450,7 +455,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
               max="2"
               step="0.1"
               value={cfg.labelScale}
-              onChange={(e) => update({ labelScale: parseFloat(e.target.value) })}
+              onChange={(e) => { update({ labelScale: parseFloat(e.target.value) }); }}
               className="w-full accent-primary"
             />
           </DialogField>
@@ -462,7 +467,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
               max="3"
               step="0.25"
               value={cfg.dotScale}
-              onChange={(e) => update({ dotScale: parseFloat(e.target.value) })}
+              onChange={(e) => { update({ dotScale: parseFloat(e.target.value) }); }}
               className="w-full accent-primary"
             />
           </DialogField>
@@ -472,7 +477,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
           <DialogField label={t('decimalPlaces')}>
             <Select
               value={cfg.precision}
-              onChange={(e) => update({ precision: parseInt(e.target.value, 10) })}
+              onChange={(e) => { update({ precision: parseInt(e.target.value, 10) }); }}
               className="h-8 px-2 text-xs"
             >
               {PRECISION_OPTIONS.map((opt) => (
@@ -493,7 +498,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
               max="40"
               step="1"
               value={cfg.snapThreshold}
-              onChange={(e) => update({ snapThreshold: parseInt(e.target.value, 10) })}
+              onChange={(e) => { update({ snapThreshold: parseInt(e.target.value, 10) }); }}
               className="w-full accent-primary"
             />
           </DialogField>
@@ -529,7 +534,7 @@ export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | nu
   useEffect(() => {
     if (!handle) return undefined;
     handle.commands.execute<boolean>('snapping.isEnabled')
-      .then((v) => setSnappingEnabled(v ?? false))
+      .then((v) => { setSnappingEnabled(v ?? false); })
       .catch(() => undefined);
 
     const unsub = handle.events.on('snapping:change', (data: { enabled: boolean }) => {
@@ -555,13 +560,13 @@ export function MeasurementHeaderActions({ handle }: { handle: ViewerHandle | nu
       </button>
       <button
         type="button"
-        onClick={() => setSettingsOpen(true)}
+        onClick={() => { setSettingsOpen(true); }}
         title={t('settings')}
         className={cn(headerBtnClass, 'text-foreground-placeholder')}
       >
         <Settings className="h-3.5 w-3.5" />
       </button>
-      <MeasurementSettingsDialog handle={handle} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <MeasurementSettingsDialog handle={handle} open={settingsOpen} onClose={() => { setSettingsOpen(false); }} />
     </>
   );
 }

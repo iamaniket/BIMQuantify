@@ -17,6 +17,7 @@ const PANEL_TITLE_KEYS: Record<PanelId, string> = {
   measure: 'titleMeasure',
   section: 'titleSection',
   pages: 'titlePages',
+  drawingInfo: 'titleDrawingInfo',
 };
 
 type SidePanelProps = {
@@ -26,6 +27,7 @@ type SidePanelProps = {
   measureContent?: ReactNode | undefined;
   sectionContent?: ReactNode | undefined;
   pagesContent?: ReactNode | undefined;
+  drawingInfoContent?: ReactNode | undefined;
   headerActions?: Partial<Record<PanelId, ReactNode>> | undefined;
 };
 
@@ -54,6 +56,7 @@ export function SidePanel({
   measureContent,
   sectionContent,
   pagesContent,
+  drawingInfoContent,
   headerActions,
 }: SidePanelProps): JSX.Element {
   const t = useTranslations('viewer.sidePanel');
@@ -124,6 +127,7 @@ export function SidePanel({
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
               {activePanel === 'pages' && pagesContent}
+              {activePanel === 'drawingInfo' && drawingInfoContent}
             </div>
           </>
         )}

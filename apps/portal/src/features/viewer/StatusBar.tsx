@@ -4,6 +4,7 @@ import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
+import type { DrawingMetadata } from '@/lib/api/schemas/geometry';
 import type { ModelMetadata, SpatialNode } from '@/lib/api/viewerTypes';
 import { useFileAttachmentCount } from '@/features/attachments/useAttachments';
 import { useFileFindingCount } from '@/features/findings/useFindings';
@@ -15,6 +16,7 @@ import type { Mode } from '@/components/shared/viewer/SideRail';
 type StatusBarProps = {
   mode: Mode;
   metadata?: ModelMetadata | undefined;
+  drawingMetadata?: DrawingMetadata | undefined;
   viewerReady?: boolean;
   currentPage?: number;
   numPages?: number | null;
@@ -69,6 +71,49 @@ function PdfStatusBar({
         <Label>format</Label>
         <span>&nbsp;</span>
         <Value>PDF</Value>
+      </span>
+    </div>
+  );
+}
+
+function DrawingStatusBar({
+  metadata,
+  className,
+}: {
+  metadata: DrawingMetadata | undefined;
+  className?: string;
+}): JSX.Element {
+  const extents = metadata?.extents ?? null;
+  const size = extents !== null
+    ? `${(extents.max[0] - extents.min[0]).toFixed(1)} × ${(extents.max[1] - extents.min[1]).toFixed(1)}`
+    : null;
+  return (
+    <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-sans', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
+      <span className="flex min-w-0 flex-1 items-center overflow-hidden">
+        <Label>units</Label>
+        <span>&nbsp;</span>
+        <Value>{metadata?.units ?? '—'}</Value>
+        <Separator />
+        <Label>layers</Label>
+        <span>&nbsp;</span>
+        <Value>{metadata !== undefined ? metadata.layers.length : '—'}</Value>
+        {size !== null ? (
+          <>
+            <Separator />
+            <Label>extents</Label>
+            <span>&nbsp;</span>
+            <Value>{size}</Value>
+          </>
+        ) : null}
+        <Separator />
+        <Label>view</Label>
+        <span>&nbsp;</span>
+        <Value>drawing</Value>
+      </span>
+      <span className="flex shrink-0 items-center">
+        <Label>format</Label>
+        <span>&nbsp;</span>
+        <Value>{metadata !== undefined ? metadata.source.toUpperCase() : 'DXF'}</Value>
       </span>
     </div>
   );
@@ -190,6 +235,7 @@ function IfcStatusBar({
 export function StatusBar({
   mode,
   metadata,
+  drawingMetadata,
   viewerReady = false,
   currentPage = 1,
   numPages = null,
@@ -198,6 +244,9 @@ export function StatusBar({
 }: StatusBarProps): JSX.Element {
   if (mode === 'pdf') {
     return <PdfStatusBar currentPage={currentPage} numPages={numPages} />;
+  }
+  if (mode === 'drawing') {
+    return <DrawingStatusBar metadata={drawingMetadata} />;
   }
   return <IfcStatusBar metadata={metadata} viewerReady={viewerReady} projectId={projectId} fileId={fileId} />;
 }

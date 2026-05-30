@@ -81,8 +81,10 @@ function formatDate(iso: string): string {
 const EXTENSIONS_BY_FILE_TYPE: Record<string, readonly string[]> = {
   ifc: ['.ifc', '.ifczip'],
   pdf: ['.pdf'],
+  dxf: ['.dxf'],
+  dwg: ['.dwg'],
 };
-const ALL_EXTENSIONS = ['.ifc', '.ifczip', '.pdf'] as const;
+const ALL_EXTENSIONS = ['.ifc', '.ifczip', '.pdf', '.dxf', '.dwg'] as const;
 
 function acceptedExtensions(lockedFileType: string | null): readonly string[] {
   if (lockedFileType !== null) {
