@@ -17,6 +17,7 @@ const SNAP_ANGLE = Math.PI / 12; // 15°
 
 export class SectionGizmo {
   private readonly group = new THREE.Group();
+  private readonly ringsGroup = new THREE.Group();
   private readonly ctx: ViewerContext;
   private readonly onUpdate: GizmoUpdateCallback;
   private readonly helperSize: number;
@@ -57,10 +58,12 @@ export class SectionGizmo {
     this.helperSize = helperSize ?? this.fallbackScale();
 
     this.group.name = 'section-gizmo';
+    this.ringsGroup.name = 'section-gizmo-rings';
     this.buildArrows();
     this.buildRings();
     this.syncTransform();
     ctx.scene.add(this.group);
+    ctx.scene.add(this.ringsGroup);
 
     this.onPointerDown = (e) => { this.handlePointerDown(e); };
     this.onPointerMove = (e) => { this.handlePointerMove(e); };
@@ -82,6 +85,7 @@ export class SectionGizmo {
 
   detach(): void {
     this.group.removeFromParent();
+    this.ringsGroup.removeFromParent();
   }
 
   dispose(): void {
@@ -91,14 +95,18 @@ export class SectionGizmo {
     this.ctx.canvas.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
-    this.group.traverse((obj) => {
-      const m = obj as THREE.Mesh;
-      if (m.geometry) m.geometry.dispose();
-      if (m.material) {
-        const mats = Array.isArray(m.material) ? m.material : [m.material];
-        for (const mat of mats) mat.dispose();
-      }
-    });
+    const disposeGroup = (g: THREE.Group): void => {
+      g.traverse((obj) => {
+        const m = obj as THREE.Mesh;
+        if (m.geometry) m.geometry.dispose();
+        if (m.material) {
+          const mats = Array.isArray(m.material) ? m.material : [m.material];
+          for (const mat of mats) mat.dispose();
+        }
+      });
+    };
+    disposeGroup(this.group);
+    disposeGroup(this.ringsGroup);
   }
 
   isDragging(): boolean {
@@ -179,12 +187,11 @@ export class SectionGizmo {
       mesh.renderOrder = 999;
       mesh.userData = { gizmoType: 'rotate', axis: key };
 
-      // Orient ring so it lies in a plane perpendicular to the axis
       if (key === 'x') mesh.rotation.y = Math.PI / 2;
       else if (key === 'y') mesh.rotation.x = Math.PI / 2;
       // z ring is already in the XY plane
 
-      this.group.add(mesh);
+      this.ringsGroup.add(mesh);
       this.rings.push({ mesh, axis, key });
     }
   }
@@ -196,6 +203,8 @@ export class SectionGizmo {
     );
     this.group.quaternion.copy(quat);
     this.group.position.copy(this.entry.point);
+    // Rings stay world-aligned — only follow position, not rotation.
+    this.ringsGroup.position.copy(this.entry.point);
   }
 
   // ----- pointer helpers -----
@@ -212,7 +221,7 @@ export class SectionGizmo {
     const camera = this.ctx.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
     this.raycaster.setFromCamera(ndc, camera);
     const targets = [this.arrowPos, this.arrowNeg, ...this.rings.map((r) => r.mesh)].filter(Boolean) as THREE.Object3D[];
-    const hits = this.raycaster.intersectObjects(targets, false);
+    const hits = this.raycaster.intersectObjects(targets, true);
     return hits.length > 0 ? hits[0]! : null;
   }
 

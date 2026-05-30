@@ -29,10 +29,10 @@ export function RightColumnTabs({
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const [tab, setTab] = useState('overzicht');
-  const documentCount = useAttachments(projectId).data?.length ?? 0;
+  const attachmentCount = useAttachments(projectId).data?.length ?? 0;
   const findingsCount = useFindings(projectId).data?.length ?? 0;
 
-  const subtitleCount = tab === 'documenten' ? documentCount
+  const subtitleCount = tab === 'attachments' ? attachmentCount
     : tab === 'bevindingen' ? findingsCount
     : models.length;
 
@@ -49,10 +49,10 @@ export function RightColumnTabs({
                   {models.length}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="documenten">
-                {t('documenten.label')}
+              <TabsTrigger value="attachments">
+                {t('attachments.label')}
                 <span className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-background-secondary text-caption tabular-nums text-foreground-secondary">
-                  {documentCount}
+                  {attachmentCount}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="bevindingen">
@@ -78,7 +78,7 @@ export function RightColumnTabs({
         {tab === 'overzicht' && (
           <OverzichtTab projectId={projectId} country={projectCountry} />
         )}
-        {tab === 'documenten' && <AttachmentsTab projectId={projectId} />}
+        {tab === 'attachments' && <AttachmentsTab projectId={projectId} />}
         {tab === 'bevindingen' && <BevindingenTab projectId={projectId} />}
         {tab === 'models' && (
           <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />

@@ -104,7 +104,11 @@ def test_only_owner_can_invite() -> None:
             assert not allowed
 
 
-def test_contractor_can_update_findings_but_not_delete() -> None:
+def test_contractor_can_create_and_update_findings_but_not_delete() -> None:
+    # Aannemer-first: the contractor logs findings manually from the KB's
+    # emailed/PDF report (create) and works them through resolution (update),
+    # but cannot delete them. Mirrors the inspector's finding cell.
+    assert has_permission(ProjectRole.contractor, Resource.finding, Action.create)
     assert has_permission(ProjectRole.contractor, Resource.finding, Action.update)
     assert not has_permission(ProjectRole.contractor, Resource.finding, Action.delete)
 
@@ -236,7 +240,7 @@ def test_matrix_snapshot() -> None:
             "member": {"read"},
             "invitation": set(),
             "inspection": {"read"},
-            "finding": {"read", "update"},
+            "finding": {"read", "create", "update"},
             "deadline": {"read", "update"},
             "risk": {"read"},
             "assurance_plan": {"read"},

@@ -29,6 +29,7 @@ export const FindingSchema = z.object({
   borgingsmoment_id: z.union([z.string().uuid(), z.null()]),
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   linked_element_global_id: z.union([z.string(), z.null()]),
+  photo_ids: z.union([z.array(z.string()), z.null()]),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -52,6 +53,7 @@ export const FindingCreateSchema = z.object({
   linked_element_global_id: z
     .union([z.string().max(255), z.null()])
     .optional(),
+  photo_ids: z.array(z.string().uuid()).optional(),
 });
 
 export type FindingCreateInput = z.infer<typeof FindingCreateSchema>;
@@ -86,6 +88,7 @@ export const FindingUpdateSchema = z.object({
   linked_element_global_id: z
     .union([z.string().max(255), z.null()])
     .optional(),
+  photo_ids: z.array(z.string().uuid()).optional(),
 });
 
 export type FindingUpdateInput = z.infer<typeof FindingUpdateSchema>;

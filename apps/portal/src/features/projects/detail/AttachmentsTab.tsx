@@ -92,9 +92,9 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
   );
 
   const handleDelete = useCallback(
-    (doc: Attachment) => {
-      deleteMutation.mutate(doc.id, {
-        onSuccess: () => { toast.success(t('deleteSuccess', { name: doc.original_filename })); },
+    (attachment: Attachment) => {
+      deleteMutation.mutate(attachment.id, {
+        onSuccess: () => { toast.success(t('deleteSuccess', { name: attachment.original_filename })); },
       });
     },
     [deleteMutation, t],
@@ -193,15 +193,15 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
       {/* Attachment list */}
       {attachments.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-border bg-background">
-          {attachments.map((doc) => (
+          {attachments.map((attachment) => (
             <AttachmentRow
-              key={doc.id}
-              attachment={doc}
+              key={attachment.id}
+              attachment={attachment}
               projectId={projectId}
-              expanded={expandedId === doc.id}
-              onToggle={() => { setExpandedId(expandedId === doc.id ? null : doc.id); }}
-              onView={() => { setViewingAttachment(doc); }}
-              onDelete={() => { handleDelete(doc); }}
+              expanded={expandedId === attachment.id}
+              onToggle={() => { setExpandedId(expandedId === attachment.id ? null : attachment.id); }}
+              onView={() => { setViewingAttachment(attachment); }}
+              onDelete={() => { handleDelete(attachment); }}
             />
           ))}
         </div>

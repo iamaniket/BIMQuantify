@@ -87,7 +87,7 @@ export function ProjectChartsPanel({
     return { met, pending, overdue, total: deadlines.length };
   }, [deadlines]);
 
-  const docCounts = useMemo(() => {
+  const attachmentCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const a of attachments) {
       if (a.status === 'ready') {
@@ -133,10 +133,10 @@ export function ProjectChartsPanel({
         </ChartCard>
 
         {/* Documents by category */}
-        <ChartCard title={t('documentsTitle')}>
+        <ChartCard title={t('attachmentsTitle')}>
           <div className="flex w-full flex-col gap-1.5 px-1">
             {categoryKeys.map((cat) => {
-              const count = docCounts.get(cat) ?? 0;
+              const count = attachmentCounts.get(cat) ?? 0;
               const Icon: typeof Image = CATEGORY_ICONS[cat] ?? Package;
               return (
                 <div key={cat} className="flex items-center gap-2">

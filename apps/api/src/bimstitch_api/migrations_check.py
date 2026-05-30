@@ -36,11 +36,17 @@ async def check_pending_migrations(engine: AsyncEngine) -> None:
     for chain_name, ini_path in _CHAINS:
         try:
             await _check_chain(engine, chain_name, ini_path)
-        except Exception:
+        except Exception as exc:
+            # Extract a short reason from the exception chain
+            root = exc
+            while root.__cause__:
+                root = root.__cause__
+            reason = f"{type(root).__name__}: {root}"
             logger.warning(
-                "Could not verify %s migrations (DB might not exist yet)",
+                "Could not verify %s migrations — %s. "
+                "This is normal if the database is still starting up or doesn't exist yet.",
                 chain_name,
-                exc_info=True,
+                reason,
             )
 
 

@@ -31,14 +31,14 @@ type DeadlinesSummary = {
 type Props = {
   project: Project;
   deadlinesSummary?: DeadlinesSummary;
-  documentCount?: number;
+  attachmentCount?: number;
   dossierPct?: number;
 };
 
 export function ProjectDetailHeader({
   project,
   deadlinesSummary,
-  documentCount,
+  attachmentCount,
   dossierPct,
 }: Props): JSX.Element {
   const locale = useLocale() as Locale;
@@ -172,13 +172,13 @@ export function ProjectDetailHeader({
             : {}),
         },
         {
-          label: tHero('documents'),
-          value: documentCount !== undefined && documentCount > 0
-            ? String(documentCount)
+          label: tHero('attachments'),
+          value: attachmentCount !== undefined && attachmentCount > 0
+            ? String(attachmentCount)
             : '—',
-          sub: documentCount !== undefined && documentCount > 0
-            ? tHero('documentsCount', { count: documentCount })
-            : tHero('noDocuments'),
+          sub: attachmentCount !== undefined && attachmentCount > 0
+            ? tHero('attachmentsCount', { count: attachmentCount })
+            : tHero('noAttachments'),
         },
         {
           label: tHero('holdback'),

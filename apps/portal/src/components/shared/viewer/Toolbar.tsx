@@ -38,9 +38,29 @@ export function Toolbar({
   useEffect(() => {
     if (!handle) return;
     const offEraser = handle.events.on('eraser:change', ({ active }) => {
-      if (!active) setActiveTool('select');
+      setActiveTool(active ? 'eraser' : 'select');
     });
-    return () => { offEraser(); };
+    const offNavigate = handle.events.on('navigate:change', ({ active }) => {
+      setActiveTool(active ? 'navigate' : 'select');
+    });
+    return () => { offEraser(); offNavigate(); };
+  }, [handle]);
+
+  // Key 2 = select: exit any active mode and return to default
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent): void => {
+      const target = ev.target as HTMLElement | null;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      if (target?.isContentEditable) return;
+      if (ev.key !== '2') return;
+      ev.preventDefault();
+      if (!handle) return;
+      handle.commands.execute('eraser.exit').catch(() => undefined);
+      handle.commands.execute('navigate.exit').catch(() => undefined);
+      setActiveTool('select');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); };
   }, [handle]);
 
   const run = (cmd: string): void => {
@@ -55,6 +75,7 @@ export function Toolbar({
       tools: [
         {
           type: 'button', id: 'home', icon: Home, label: t('homeView'),
+          tooltip: `${t('homeView')} (1)`,
           onClick: () => { run('camera.home'); },
         },
         {
@@ -62,6 +83,7 @@ export function Toolbar({
           id: 'select',
           icon: MousePointer2,
           label: t('select'),
+          tooltip: `${t('select')} (2)`,
           isActive: activeTool === 'select',
           onClick: () => {
             if (activeTool === 'eraser') run('eraser.exit');
@@ -74,6 +96,7 @@ export function Toolbar({
           id: 'navigate',
           icon: Orbit,
           label: t('navigate'),
+          tooltip: `${t('navigate')} (3)`,
           isActive: activeTool === 'navigate',
           onClick: () => {
             if (activeTool === 'eraser') run('eraser.exit');
@@ -86,6 +109,7 @@ export function Toolbar({
           id: 'eraser',
           icon: Eraser,
           label: t('eraser'),
+          tooltip: `${t('eraser')} (4)`,
           isActive: activeTool === 'eraser',
           onClick: () => {
             if (activeTool === 'eraser') {
@@ -104,6 +128,7 @@ export function Toolbar({
       tools: [
         {
           type: 'button', id: 'screenshot', icon: Camera, label: t('screenshot'),
+          tooltip: `${t('screenshot')} (5)`,
           onClick: () => { run('screenshot.download'); },
         },
       ],

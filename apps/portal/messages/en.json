@@ -553,9 +553,9 @@
       "deadlines": "Deadlines",
       "deadlinesMetCount": "{met} of {total} met",
       "noDeadlines": "No deadlines",
-      "documents": "Documents",
-      "documentsCount": "{count} uploaded",
-      "noDocuments": "None yet",
+      "attachments": "Attachments",
+      "attachmentsCount": "{count} uploaded",
+      "noAttachments": "None yet",
       "shareProject": "Share project",
       "noAddress": "No address set",
       "instrumentTooltip": "Approved instrument · {provider}",
@@ -571,11 +571,6 @@
         "emptyTitle": "No deadlines yet",
         "emptyDescription": "Deadlines will appear automatically once the project has planned start and delivery dates."
       },
-      "documenten": {
-        "label": "Documents",
-        "eyebrow": "Files & attachments",
-        "subtitle": "{count, plural, =0 {No documents} one {# document} other {# documents}}"
-      },
       "overviewCard": {
         "address": "Address",
         "contractor": "Contractor",
@@ -588,7 +583,7 @@
       "chartsPanel": {
         "dossierTitle": "Dossier",
         "deadlinesTitle": "Deadlines",
-        "documentsTitle": "Documents",
+        "attachmentsTitle": "Attachments",
         "activityTitle": "Activity",
         "noData": "No data yet",
         "met": "Met",
@@ -787,6 +782,8 @@
       },
       "attachments": {
         "label": "Attachments",
+        "eyebrow": "Files & attachments",
+        "subtitle": "{count, plural, =0 {No attachments} one {# attachment} other {# attachments}}",
         "title": "No project attachments yet",
         "description": "Upload drawings, certificates and other supporting files to reference them from inspections and findings.",
         "ctaLabel": "Upload attachment",
@@ -944,6 +941,12 @@
         "description": "This finding is linked to a BIM element in the model.",
         "unlink": "Unlink element"
       }
+    },
+    "photos": {
+      "label": "Photos",
+      "add": "Add",
+      "remove": "Remove photo",
+      "uploadError": "Could not upload {name}"
     }
   },
   "reports": {
@@ -1799,7 +1802,8 @@
       "showAll": "Show all",
       "hideAll": "Hide all",
       "selectAll": "Select all",
-      "deselectAll": "Deselect all"
+      "deselectAll": "Deselect all",
+      "propertiesTitle": "Properties"
     },
     "properties": {
       "filter": "Filter properties…",
@@ -1812,7 +1816,7 @@
     },
     "sidePanel": {
       "titleExplorer": "Model Tree",
-      "titleInspector": "Properties & Attachments",
+      "titleInspector": "Attachments & Findings",
       "titleMeasure": "Measurement",
       "titleSection": "Section Planes",
       "titlePages": "Pages",
@@ -1844,6 +1848,8 @@
       "panTooltip": "Pan (drag to move)",
       "zoom": "Zoom",
       "zoomTooltip": "Zoom (click to zoom in, Alt+click to zoom out)",
+      "line": "Draw line",
+      "lineTooltip": "Draw line (snaps to drawing geometry)",
       "fitPage": "Fit to page",
       "fitWidth": "Fit to width",
       "actualSize": "Actual size",
@@ -2079,8 +2085,7 @@
     }
   },
   "viewerInspector": {
-    "panelTitle": "Properties & Attachments",
-    "tabProperties": "Properties",
+    "panelTitle": "Attachments & Findings",
     "tabAttachments": "Attachments",
     "tabFindings": "Findings",
     "pdfPageHeader": "Page {page}",

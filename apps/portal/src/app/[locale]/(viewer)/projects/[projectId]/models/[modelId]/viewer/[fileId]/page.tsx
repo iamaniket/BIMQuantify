@@ -35,6 +35,7 @@ import { ContextMenu } from '@/features/viewer/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/inspector/EntityInspectorPanel';
 import { PdfAnnotationLayer, type PdfPin } from '@/features/viewer/attachments/PdfAnnotationLayer';
+import { PdfVectorOverlay } from '@/features/viewer/pdf/PdfVectorOverlay';
 import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { SidePanel } from '@/features/viewer/SidePanel';
@@ -42,6 +43,7 @@ import { StatusBar } from '@/features/viewer/StatusBar';
 import { useDocumentShortcuts } from '@/features/viewer/useDocumentShortcuts';
 import { useModelMetadata } from '@/features/viewer/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/useModelProperties';
+import { usePdfGeometry } from '@/features/viewer/usePdfGeometry';
 import { viewerKeys } from '@/features/viewer/queryKeys';
 import { useViewerBridge } from '@/features/viewer/useViewerBridge';
 import { useViewerMode } from '@/features/viewer/useViewerMode';
@@ -134,12 +136,11 @@ export default function ViewerPage(): JSX.Element {
   const [pdfPinMode, setPdfPinMode] = useState(false);
   const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
 
-  // Inspector-request state — set when an inspect.* command fires. The nonce
-  // increments so repeated requests for the same view still re-trigger effects.
   const [inspectorRequest, setInspectorRequest] = useState<{
-    view: 'properties' | 'attachments' | 'findings';
+    view: 'attachments' | 'findings';
     nonce: number;
   } | null>(null);
+  const [propertiesExpanded, setPropertiesExpanded] = useState(true);
 
   const togglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -156,13 +157,17 @@ export default function ViewerPage(): JSX.Element {
     });
   }, [viewerReady]);
 
-  // Open inspector panel when an inspect.* command fires
   useEffect(() => {
     const handle = viewerHandleRef.current;
     if (!handle) return undefined;
     return handle.events.on('inspect:request', ({ view }) => {
-      setActivePanel('inspector');
-      setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
+      if (view === 'properties') {
+        setActivePanel('explorer');
+        setPropertiesExpanded(true);
+      } else {
+        setActivePanel('inspector');
+        setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
+      }
     });
   }, [viewerReady]);
 
@@ -192,7 +197,8 @@ export default function ViewerPage(): JSX.Element {
   const hasSelection = isAllSelected || partialSelectionCount > 0;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,
-    activePanel === 'inspector' && hasSelection && !isAllSelected,
+    (activePanel === 'explorer' && propertiesExpanded && hasSelection && !isAllSelected)
+    || (activePanel === 'inspector' && hasSelection && !isAllSelected),
   );
 
   useAppHeader({ statusLabel: null, statusTone: undefined });
@@ -230,6 +236,11 @@ export default function ViewerPage(): JSX.Element {
   const mode: Mode = bundle?.file_type === 'pdf' ? 'pdf' : 'ifc';
   const isPdf = mode === 'pdf';
   const isIfc = mode === 'ifc';
+
+  // PDF vector geometry (invisible snap layer). Only fetched for ready PDFs that
+  // carry a presigned geometry artifact URL.
+  const geometryUrl = bundle?.geometry_url ?? null;
+  const { data: pdfGeometry } = usePdfGeometry(isPdf ? geometryUrl : null);
   const shellReady = bundle !== null && error === null;
   const ifcShellReady = shellReady && isIfc && viewerReady;
   const pdfShellReady = shellReady && isPdf;
@@ -277,18 +288,41 @@ export default function ViewerPage(): JSX.Element {
     [pdfPins],
   );
 
+  // Per-page vector geometry (artifact `i` is 0-based; pdfCurrentPage is 1-based).
+  const currentPageGeometry = pdfGeometry?.p.find((pg) => pg.i === pdfCurrentPage - 1) ?? null;
+
   const renderPdfOverlay = useCallback(
     (dims: PageDimensions) => (
-      <PdfAnnotationLayer
-        pins={pdfPins}
-        dims={dims}
-        pinMode={pdfPinMode}
-        onPinClick={handlePdfPinClick}
-        onPinPlace={handlePdfPinPlace}
-      />
+      <>
+        <PdfAnnotationLayer
+          pins={pdfPins}
+          dims={dims}
+          pinMode={pdfPinMode}
+          onPinClick={handlePdfPinClick}
+          onPinPlace={handlePdfPinPlace}
+        />
+        <PdfVectorOverlay
+          dims={dims}
+          pageGeometry={currentPageGeometry}
+          rotation={pdfRotation}
+          active={pdfActiveTool === 'line'}
+        />
+      </>
     ),
-    [pdfPins, pdfPinMode, handlePdfPinClick, handlePdfPinPlace],
+    [pdfPins, pdfPinMode, handlePdfPinClick, handlePdfPinPlace, currentPageGeometry, pdfRotation, pdfActiveTool],
   );
+
+  // Line and pin placement both grab pointer events on the page — keep them
+  // mutually exclusive so the two overlays never fight.
+  const handlePdfActiveToolChange = useCallback((tool: DocumentActiveTool) => {
+    setPdfActiveTool(tool);
+    if (tool === 'line') setPdfPinMode(false);
+  }, []);
+
+  const handlePdfPinModeChange = useCallback((next: boolean) => {
+    setPdfPinMode(next);
+    if (next) setPdfActiveTool('select');
+  }, []);
 
   useDocumentShortcuts({
     enabled: isPdf && documentHandle !== null,
@@ -416,9 +450,6 @@ export default function ViewerPage(): JSX.Element {
               inspectorContent={
                 <EntityInspectorPanel
                   metadata={metadata}
-                  properties={properties}
-                  isLoadingProperties={isLoadingProperties}
-                  isLoadingMetadata={isLoadingMetadata}
                   projectId={projectId}
                   modelId={modelId}
                   fileId={fileId}
@@ -428,7 +459,7 @@ export default function ViewerPage(): JSX.Element {
                     isPdf: true,
                     pdfCurrentPage,
                     pdfPinMode,
-                    onPdfPinModeChange: setPdfPinMode,
+                    onPdfPinModeChange: handlePdfPinModeChange,
                   } : {})}
                 />
               }
@@ -436,6 +467,11 @@ export default function ViewerPage(): JSX.Element {
                 <ModelExplorer
                   metadata={metadata}
                   isLoading={isLoadingMetadata}
+                  properties={properties}
+                  isLoadingProperties={isLoadingProperties}
+                  isLoadingMetadata={isLoadingMetadata}
+                  propertiesExpanded={propertiesExpanded}
+                  onPropertiesToggle={() => { setPropertiesExpanded((prev) => !prev); }}
                 />
               ) : undefined}
               measureContent={isIfc ? (
@@ -491,7 +527,7 @@ export default function ViewerPage(): JSX.Element {
             settings={pdfSettings}
             onPageChange={setPdfCurrentPage}
             onScaleChange={setPdfScale}
-            onActiveToolChange={setPdfActiveTool}
+            onActiveToolChange={handlePdfActiveToolChange}
             onSettingsChange={setPdfSettings}
             onSearchHighlightChange={setPdfSearchHighlight}
           />

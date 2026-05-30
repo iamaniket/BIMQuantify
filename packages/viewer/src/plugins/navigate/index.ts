@@ -46,6 +46,7 @@ export function navigatePlugin(): Plugin & NavigatePluginAPI {
     await ctxRef.commands.execute('hover.clear').catch(() => undefined);
 
     active = true;
+    ctxRef.events.emit('navigate:change', { active: true });
   };
 
   const exit = async (): Promise<void> => {
@@ -60,6 +61,7 @@ export function navigatePlugin(): Plugin & NavigatePluginAPI {
 
     saved = [];
     active = false;
+    ctxRef.events.emit('navigate:change', { active: false });
   };
 
   return {
@@ -75,6 +77,7 @@ export function navigatePlugin(): Plugin & NavigatePluginAPI {
 
       ctx.commands.register('navigate.enter', () => enter(), {
         title: 'Activate navigate tool',
+        defaultShortcut: '3',
       });
 
       ctx.commands.register('navigate.exit', () => exit(), {

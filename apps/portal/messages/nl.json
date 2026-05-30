@@ -553,9 +553,9 @@
       "deadlines": "Deadlines",
       "deadlinesMetCount": "{met} van {total} voldaan",
       "noDeadlines": "Geen deadlines",
-      "documents": "Documenten",
-      "documentsCount": "{count} geüpload",
-      "noDocuments": "Nog geen",
+      "attachments": "Bijlagen",
+      "attachmentsCount": "{count} geüpload",
+      "noAttachments": "Nog geen",
       "shareProject": "Project delen",
       "noAddress": "Geen adres ingesteld",
       "instrumentTooltip": "Toegelaten instrument · {provider}",
@@ -571,11 +571,6 @@
         "emptyTitle": "Nog geen deadlines",
         "emptyDescription": "Deadlines verschijnen automatisch zodra het project een geplande startdatum en opleverdatum heeft."
       },
-      "documenten": {
-        "label": "Documenten",
-        "eyebrow": "Bestanden & bijlagen",
-        "subtitle": "{count, plural, =0 {Geen documenten} one {# document} other {# documenten}}"
-      },
       "overviewCard": {
         "address": "Adres",
         "contractor": "Aannemer",
@@ -588,7 +583,7 @@
       "chartsPanel": {
         "dossierTitle": "Dossier",
         "deadlinesTitle": "Deadlines",
-        "documentsTitle": "Documenten",
+        "attachmentsTitle": "Bijlagen",
         "activityTitle": "Activiteit",
         "noData": "Nog geen gegevens",
         "met": "Voldaan",
@@ -787,6 +782,8 @@
       },
       "attachments": {
         "label": "Bijlagen",
+        "eyebrow": "Bestanden & bijlagen",
+        "subtitle": "{count, plural, =0 {Geen bijlagen} one {# bijlage} other {# bijlagen}}",
         "title": "Nog geen projectbijlagen",
         "description": "Upload tekeningen, certificaten en overige bestanden zodat je ze kunt koppelen aan inspecties en bevindingen.",
         "ctaLabel": "Bijlage uploaden",
@@ -944,6 +941,12 @@
         "description": "Deze bevinding is gekoppeld aan een BIM-element in het model.",
         "unlink": "Element ontkoppelen"
       }
+    },
+    "photos": {
+      "label": "Foto's",
+      "add": "Toevoegen",
+      "remove": "Foto verwijderen",
+      "uploadError": "Kon {name} niet uploaden"
     }
   },
   "reports": {
@@ -1799,7 +1802,8 @@
       "showAll": "Alles tonen",
       "hideAll": "Alles verbergen",
       "selectAll": "Alles selecteren",
-      "deselectAll": "Alles deselecteren"
+      "deselectAll": "Alles deselecteren",
+      "propertiesTitle": "Eigenschappen"
     },
     "properties": {
       "filter": "Eigenschappen filteren…",
@@ -1812,7 +1816,7 @@
     },
     "sidePanel": {
       "titleExplorer": "Modelboom",
-      "titleInspector": "Eigenschappen & Bijlagen",
+      "titleInspector": "Bijlagen & Bevindingen",
       "titleMeasure": "Meten",
       "titleSection": "Snijvlakken",
       "titlePages": "Pagina's",
@@ -1844,6 +1848,8 @@
       "panTooltip": "Verschuiven (sleep om te verplaatsen)",
       "zoom": "Zoomen",
       "zoomTooltip": "Zoomen (klik om in te zoomen, Alt+klik om uit te zoomen)",
+      "line": "Lijn tekenen",
+      "lineTooltip": "Lijn tekenen (klikt vast op tekengeometrie)",
       "fitPage": "Pagina passend maken",
       "fitWidth": "Breedte passend maken",
       "actualSize": "Werkelijke grootte",
@@ -2079,8 +2085,7 @@
     }
   },
   "viewerInspector": {
-    "panelTitle": "Eigenschappen & Bijlagen",
-    "tabProperties": "Eigenschappen",
+    "panelTitle": "Bijlagen & Bevindingen",
     "tabAttachments": "Bijlagen",
     "tabFindings": "Bevindingen",
     "pdfPageHeader": "Pagina {page}",

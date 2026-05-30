@@ -83,6 +83,7 @@ export const ViewerBundleResponseSchema = z.object({
   fragments_key: z.union([z.string(), z.null()]),
   metadata_url: z.union([z.string().url(), z.null()]),
   properties_url: z.union([z.string().url(), z.null()]),
+  geometry_url: z.union([z.string().url(), z.null()]),
   file_url: z.union([z.string().url(), z.null()]),
   expires_in: z.number().int().positive(),
 });

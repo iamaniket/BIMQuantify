@@ -4,19 +4,25 @@ import { Box } from 'lucide-react';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
-import type { ModelMetadata } from '@/lib/api/viewerTypes';
+import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 import { ClassesTab } from './ClassesTab';
 import { ObjectsTab } from './ObjectsTab';
+import { PropertiesSubPanel } from './PropertiesSubPanel';
 import { StoriesTab } from './StoriesTab';
 import { ZonesTab } from './ZonesTab';
 
 type ModelExplorerProps = {
   metadata: ModelMetadata | undefined;
   isLoading: boolean;
+  properties: ModelProperties | undefined;
+  isLoadingProperties: boolean;
+  isLoadingMetadata?: boolean;
+  propertiesExpanded: boolean;
+  onPropertiesToggle: () => void;
 };
 
 type ExplorerTab = 'objects' | 'classes' | 'stories' | 'zones';
@@ -41,6 +47,11 @@ function SelectedLabel(): JSX.Element {
 export function ModelExplorer({
   metadata,
   isLoading,
+  properties,
+  isLoadingProperties,
+  isLoadingMetadata,
+  propertiesExpanded,
+  onPropertiesToggle,
 }: ModelExplorerProps): JSX.Element {
   const t = useTranslations('viewer.explorer');
   const [tab, setTab] = useState<ExplorerTab>('objects');
@@ -65,28 +76,38 @@ export function ModelExplorer({
   return (
     <div className="flex h-full flex-col">
       <PanelTabs tabs={TABS} active={tab} onChange={setTab} />
-      {tab === 'objects' && (
-        <ObjectsTab
-          spatialTree={metadata.spatialTree}
-          elements={metadata.elements}
-        />
-      )}
-      {tab === 'classes' && (
-        <ClassesTab
-          elements={metadata.elements}
-        />
-      )}
-      {tab === 'stories' && (
-        <StoriesTab
-          spatialTree={metadata.spatialTree}
-          elements={metadata.elements}
-        />
-      )}
-      {tab === 'zones' && (
-        <ZonesTab
-          zones={metadata.zones}
-        />
-      )}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {tab === 'objects' && (
+          <ObjectsTab
+            spatialTree={metadata.spatialTree}
+            elements={metadata.elements}
+          />
+        )}
+        {tab === 'classes' && (
+          <ClassesTab
+            elements={metadata.elements}
+          />
+        )}
+        {tab === 'stories' && (
+          <StoriesTab
+            spatialTree={metadata.spatialTree}
+            elements={metadata.elements}
+          />
+        )}
+        {tab === 'zones' && (
+          <ZonesTab
+            zones={metadata.zones}
+          />
+        )}
+      </div>
+      <PropertiesSubPanel
+        metadata={metadata}
+        properties={properties}
+        isLoadingProperties={isLoadingProperties}
+        isLoadingMetadata={isLoadingMetadata}
+        expanded={propertiesExpanded}
+        onToggle={onPropertiesToggle}
+      />
       {hasSelection && (
         <div className="flex shrink-0 items-center justify-between border-t border-border bg-surface-low px-3.5 py-2.5 font-sans text-xs tabular-nums text-foreground-tertiary">
           <span>

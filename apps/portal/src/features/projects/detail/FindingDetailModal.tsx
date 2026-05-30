@@ -23,6 +23,7 @@ import { useProjectMembers } from '@/features/projects/members/useProjectMembers
 import { useRegisterField } from '@/hooks/useRegisterField';
 import type { Finding, FindingStatusValue, FindingUpdateInput } from '@/lib/api/schemas';
 
+import { FindingPhotos } from './FindingPhotos';
 import { statusBadgeVariant } from './findingBadges';
 
 const SEVERITIES = ['low', 'medium', 'high'] as const;
@@ -45,7 +46,11 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-function buildPatch(values: FormValues, status?: FindingStatusValue): FindingUpdateInput {
+function buildPatch(
+  values: FormValues,
+  photoIds: string[],
+  status?: FindingStatusValue,
+): FindingUpdateInput {
   const patch: FindingUpdateInput = {
     title: values.title.trim(),
     description: values.description.trim(),
@@ -62,6 +67,7 @@ function buildPatch(values: FormValues, status?: FindingStatusValue): FindingUpd
       values.deadline_date === undefined || values.deadline_date === ''
         ? null
         : values.deadline_date,
+    photo_ids: photoIds,
   };
   if (status !== undefined) {
     patch.status = status;
@@ -82,6 +88,7 @@ export function FindingDetailModal({
   const updateMutation = useUpdateFinding(projectId);
   const deleteMutation = useDeleteFinding(projectId);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [photoIds, setPhotoIds] = useState<string[]>([]);
 
   const form = useForm<FormValues>({ resolver: zodResolver(FormSchema) });
   const { reset: resetForm } = form;
@@ -103,6 +110,7 @@ export function FindingDetailModal({
         assignee_user_id: finding.assignee_user_id ?? '',
         deadline_date: finding.deadline_date ?? '',
       });
+      setPhotoIds(finding.photo_ids ?? []);
       setConfirmDelete(false);
     }
   }, [open, finding, resetForm]);
@@ -121,14 +129,14 @@ export function FindingDetailModal({
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     updateMutation.mutate(
-      { findingId: finding.id, input: buildPatch(values) },
+      { findingId: finding.id, input: buildPatch(values, photoIds) },
       { onSuccess: () => { onOpenChange(false); } },
     );
   };
 
   const onPromoteSubmit: SubmitHandler<FormValues> = (values) => {
     updateMutation.mutate(
-      { findingId: finding.id, input: buildPatch(values, 'open') },
+      { findingId: finding.id, input: buildPatch(values, photoIds, 'open') },
       { onSuccess: () => { onOpenChange(false); } },
     );
   };
@@ -205,6 +213,13 @@ export function FindingDetailModal({
             <Input id={id} type="date" {...deadlineField} />
           )}
         </Field>
+
+        <FindingPhotos
+          projectId={projectId}
+          photoIds={photoIds}
+          onChange={setPhotoIds}
+          disabled={isPending}
+        />
 
         {isLinked && (
           <div className="flex items-start justify-between gap-2 rounded-md border border-border bg-surface-low p-3">

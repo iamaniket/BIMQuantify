@@ -47,7 +47,7 @@ export default function ProjectDetailPage(): JSX.Element {
     return { met, total: deadlines.length, overdue };
   }, [deadlines]);
 
-  const documentCount = useMemo(
+  const attachmentCount = useMemo(
     () => attachments.filter((a) => a.status === 'ready').length,
     [attachments],
   );
@@ -103,7 +103,7 @@ export default function ProjectDetailPage(): JSX.Element {
         <ProjectDetailHeader
           project={project}
           deadlinesSummary={deadlinesSummary}
-          documentCount={documentCount}
+          attachmentCount={attachmentCount}
           dossierPct={dossierPct}
         />
       }

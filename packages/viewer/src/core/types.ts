@@ -79,6 +79,7 @@ export interface ViewerEvents {
   'marker:click': { id: string; position: Vec3 };
   'grid:change': { visible: boolean };
   'eraser:change': { active: boolean };
+  'navigate:change': { active: boolean };
   'screenshot:captured': { width: number; height: number };
   'colorCoding:change': { active: boolean; scheme: string | null; legend: Array<{ name: string; color: number; count: number }> };
   'exploder:change': { active: boolean; mode: string | null; factor: number };

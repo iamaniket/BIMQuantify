@@ -115,7 +115,9 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   background: { color: 0xffffff },
   effects: DEFAULT_EFFECTS,
   outline: DEFAULT_OUTLINE,
-  shortcuts: {},
+  shortcuts: {
+    'camera.home': '1',
+  },
   mouseBindings: DEFAULT_MOUSE_BINDINGS_SETTINGS,
   controls: DEFAULT_CONTROLS,
   interactivePerformance: DEFAULT_INTERACTIVE_PERFORMANCE,
@@ -131,7 +133,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
     background: p.background ?? d.background,
     effects: { ...d.effects, ...(p.effects ?? {}) },
     outline: { ...d.outline, ...(p.outline ?? {}) },
-    shortcuts: p.shortcuts ?? d.shortcuts,
+    shortcuts: { ...d.shortcuts, ...(p.shortcuts ?? {}) },
     mouseBindings: { ...d.mouseBindings, ...(p.mouseBindings ?? {}) },
     controls: { ...d.controls, ...(p.controls ?? {}) },
     interactivePerformance: {

@@ -14,7 +14,7 @@ NL/WKB market is:
   - inspector         — quality inspector (NL: kwaliteitsborger);
                         full inspect rights + sole sign authority.
   - contractor        — contractor (NL: aannemer); reads everything,
-                        writes inspections, marks findings resolved.
+                        reads inspections, creates and updates findings.
   - client            — client / principal (NL: opdrachtgever);
                         reads most, no writes.
 
@@ -175,9 +175,9 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.report: _READ_CREATE,
             }
         ),
-        # Contractor (NL: aannemer): reads all project data, writes
-        # inspections, marks findings as resolved (modeled as `update` on
-        # finding).
+        # Contractor (NL: aannemer): reads all project data, logs findings
+        # manually from the KB's report (create) and works them through
+        # resolution (update). Mirrors the inspector's finding cell; no delete.
         ProjectRole.contractor: MappingProxyType(
             {
                 Resource.project: _READ,
@@ -186,7 +186,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.member: _READ,
                 Resource.invitation: _NONE,
                 Resource.inspection: _READ,
-                Resource.finding: frozenset({Action.read, Action.update}),
+                Resource.finding: _READ_WRITE,
                 Resource.attachment: _READ_WRITE,
                 Resource.capture_link: _READ,
                 Resource.deadline: _READ_UPDATE,

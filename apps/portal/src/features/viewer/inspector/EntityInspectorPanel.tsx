@@ -10,23 +10,18 @@ import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 import { useProjectAttachmentCount } from '@/features/attachments/useAttachments';
 import { useProjectFindingCount } from '@/features/findings/useFindings';
 import { ElementHeader } from '@/features/viewer/properties/ElementHeader';
-import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
+import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { EntityAttachmentsBody, useEntityAttachmentCount } from './EntityAttachmentsBody';
 import { EntityFindingsBody, useEntityFindingCount } from './EntityFindingsBody';
-import { ModelInfoBody } from './ModelInfoBody';
 import { PdfAttachmentsBody } from './PdfAttachmentsBody';
-import { PropertiesBody, countPsetProperties } from './PropertiesBody';
 import { useSelectedElement } from './useSelectedElement';
 
-type Tab = 'properties' | 'attachments' | 'findings';
+type Tab = 'attachments' | 'findings';
 
 type EntityInspectorPanelProps = {
   metadata: ModelMetadata | undefined;
-  properties: ModelProperties | undefined;
-  isLoadingProperties: boolean;
-  isLoadingMetadata?: boolean;
   projectId: string;
   modelId: string;
   fileId: string;
@@ -49,9 +44,6 @@ export function EntityInspectorPanel(props: EntityInspectorPanelProps): JSX.Elem
 
 function IfcInspector({
   metadata,
-  properties,
-  isLoadingProperties,
-  isLoadingMetadata,
   projectId,
   modelId,
   fileId,
@@ -60,20 +52,16 @@ function IfcInspector({
 }: EntityInspectorPanelProps): JSX.Element {
   const t = useTranslations('viewerInspector');
   const tAttachments = useTranslations('viewerAttachments');
-  const [tab, setTab] = useState<Tab>('properties');
+  const [tab, setTab] = useState<Tab>('attachments');
 
-  // When a new inspect:request arrives, switch to the requested tab.
   useEffect(() => {
     if (requestedView !== undefined && requestNonce !== undefined) {
       setTab(requestedView);
     }
   }, [requestedView, requestNonce]);
 
-  // Derive an auto-open nonce only for create-flow tabs (attachments/findings).
   const autoOpenNonce =
-    requestedView !== undefined
-    && requestedView !== 'properties'
-    && requestNonce !== undefined
+    requestedView !== undefined && requestNonce !== undefined
       ? requestNonce
       : undefined;
 
@@ -84,7 +72,6 @@ function IfcInspector({
     isMultiSelection,
   } = useSelectedElement(metadata);
 
-  // No selection → show project/model-level content so every tab stays useful.
   const isProjectMode = !hasSelection;
 
   const attachmentCount = useEntityAttachmentCount(
@@ -120,16 +107,7 @@ function IfcInspector({
     );
   }
 
-  const propertiesCount = isProjectMode
-    ? undefined
-    : countPsetProperties(element, properties);
-
   const tabs: TabDef<Tab>[] = [
-    {
-      id: 'properties',
-      label: t('tabProperties'),
-      ...(propertiesCount !== undefined ? { count: propertiesCount } : {}),
-    },
     {
       id: 'attachments',
       label: t('tabAttachments'),
@@ -152,9 +130,7 @@ function IfcInspector({
       />
     );
     body =
-      tab === 'properties' ? (
-        <ModelInfoBody metadata={metadata} isLoading={isLoadingMetadata ?? false} />
-      ) : tab === 'attachments' ? (
+      tab === 'attachments' ? (
         <EntityAttachmentsBody
           projectId={projectId}
           modelId={modelId}
@@ -173,13 +149,7 @@ function IfcInspector({
   } else if (element !== null) {
     header = <ElementHeader name={element.name} type={element.type} />;
     body =
-      tab === 'properties' ? (
-        <PropertiesBody
-          element={element}
-          properties={properties}
-          isLoading={isLoadingProperties}
-        />
-      ) : element.globalId === null ? (
+      element.globalId === null ? (
         <PanelEmptyState icon={Info} message={t('messages.noGlobalId')} />
       ) : tab === 'attachments' ? (
         <EntityAttachmentsBody

@@ -9,6 +9,7 @@ import {
   Moon,
   MousePointer2,
   Move,
+  PenLine,
   Plus,
   RotateCcw,
   RotateCw,
@@ -196,6 +197,12 @@ export function DocumentToolbar({
           isActive: activeTool === 'zoom',
           onClick: () => { onActiveToolChange('zoom'); },
         },
+        {
+          type: 'button', id: 'line', icon: PenLine, label: tb('line'),
+          tooltip: tb('lineTooltip'),
+          isActive: activeTool === 'line',
+          onClick: () => { onActiveToolChange('line'); },
+        },
       ],
     },
     {
@@ -343,7 +350,7 @@ export function DocumentToolbar({
                     aria-label={t('searchPrev')}
                     data-testid="document-search-prev"
                   >
-                    <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                    <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
                   </ToolButton>
                   <ToolButton
                     type="button"
@@ -353,7 +360,7 @@ export function DocumentToolbar({
                     aria-label={t('searchNext')}
                     data-testid="document-search-next"
                   >
-                    <ChevronRight className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                    <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
                   </ToolButton>
                   <ToolButton
                     type="button"
@@ -369,7 +376,7 @@ export function DocumentToolbar({
                     aria-label={t('searchClose')}
                     data-testid="document-search-close"
                   >
-                    <XIcon className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                    <XIcon className="h-5 w-5" strokeWidth={1.75} />
                   </ToolButton>
                 </form>
               ),

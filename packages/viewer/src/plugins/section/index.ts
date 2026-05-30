@@ -71,7 +71,7 @@ let nextId = 0;
 export function sectionPlugin(
   options: SectionPluginOptions = {},
 ): Plugin & SectionPluginAPI {
-  let helperScale = options.helperScale ?? 0.5;
+  let helperScale = options.helperScale ?? 0.4;
   let helperColor = options.helperColor ?? 0x1e90ff;
   let helperOpacity = options.helperOpacity ?? 0.12;
   let fillColor = options.fillColor ?? helperColor;
@@ -90,6 +90,7 @@ export function sectionPlugin(
   let selectedId: string | null = null;
   let previewHelper: THREE.Group | null = null;
   let modelLoadUnsub: (() => void) | null = null;
+  let selectionClickUnsub: (() => void) | null = null;
   let gizmo: SectionGizmo | null = null;
 
   // ----- material management -----
@@ -399,6 +400,37 @@ export function sectionPlugin(
     emitChange();
   };
 
+  // ----- helper raycast (shared by placement + persistent selection) -----
+
+  const raycastHelpers = (ndc: { x: number; y: number }): string | null => {
+    if (!ctxRef || entries.size === 0) return null;
+    const camera = ctxRef.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
+    const rc = new THREE.Raycaster();
+    rc.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
+
+    // Skip clicks that land on a gizmo element (arrows or rings)
+    const gizmoTargets: THREE.Object3D[] = [];
+    const g1 = ctxRef.scene.getObjectByName('section-gizmo');
+    const g2 = ctxRef.scene.getObjectByName('section-gizmo-rings');
+    if (g1) gizmoTargets.push(g1);
+    if (g2) gizmoTargets.push(g2);
+    if (gizmoTargets.length > 0) {
+      const gizmoHits = rc.intersectObjects(gizmoTargets, true);
+      if (gizmoHits.length > 0) return null;
+    }
+
+    const helpers = [...entries.values()].map((e) => e.helper);
+    const hits = rc.intersectObjects(helpers, true);
+    if (hits.length === 0) return null;
+    const hitObj = hits[0]!.object;
+    for (const [id, entry] of entries) {
+      if (entry.helper === hitObj || entry.helper.children.includes(hitObj)) {
+        return id;
+      }
+    }
+    return null;
+  };
+
   // ----- placement mode -----
 
   const clearPreview = (): void => {
@@ -462,25 +494,11 @@ export function sectionPlugin(
     if (!ctxRef || !placementActive || payload.button !== 0) return;
     if (gizmo?.isDragging()) return;
 
-    // Check if user clicked an existing helper mesh → select it instead
-    const helperMeshes: THREE.Object3D[] = [];
-    for (const entry of entries.values()) {
-      helperMeshes.push(entry.helper);
-    }
-    if (helperMeshes.length > 0) {
-      const camera = ctxRef.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
-      const threeRaycaster = new THREE.Raycaster();
-      threeRaycaster.setFromCamera(new THREE.Vector2(payload.ndc.x, payload.ndc.y), camera);
-      const hits = threeRaycaster.intersectObjects(helperMeshes, true);
-      if (hits.length > 0) {
-        const hitObj = hits[0]!.object;
-        for (const [id, entry] of entries) {
-          if (entry.helper === hitObj || entry.helper.children.includes(hitObj)) {
-            selectPlane(id);
-            return;
-          }
-        }
-      }
+    // Check if user clicked an existing helper mesh → toggle selection
+    const hitId = raycastHelpers(payload.ndc);
+    if (hitId) {
+      selectPlane(selectedId === hitId ? null : hitId);
+      return;
     }
 
     const result = await pick(ctxRef, payload.ndc);
@@ -496,8 +514,7 @@ export function sectionPlugin(
     }
 
     clearPreview();
-    const id = add({ normal: { x: normal.x, y: normal.y, z: normal.z }, point: { x: point.x, y: point.y, z: point.z } });
-    if (id) selectPlane(id);
+    add({ normal: { x: normal.x, y: normal.y, z: normal.z }, point: { x: point.x, y: point.y, z: point.z } });
 
     // Single-shot: exit placement mode after placing a plane.
     deactivate().catch(() => undefined);
@@ -561,6 +578,7 @@ export function sectionPlugin(
     applyToAllMaterials();
     refreshBackfaceMeshes();
     emitChange();
+    selectPlane(id);
     return id;
   };
 
@@ -814,6 +832,18 @@ export function sectionPlugin(
           refreshBackfaceMeshes();
         }
       });
+
+      // Persistent click handler: click a section helper in the 3D viewport
+      // to select it (or click the selected one to deselect). Active at all
+      // times except during placement mode (which has its own handler).
+      selectionClickUnsub = ctx.events.on('pointer:click', (payload) => {
+        if (placementActive || !enabled || payload.button !== 0) return;
+        if (entries.size === 0) return;
+        const hitId = raycastHelpers(payload.ndc);
+        if (hitId) {
+          selectPlane(selectedId === hitId ? null : hitId);
+        }
+      });
     },
 
     uninstall() {
@@ -829,6 +859,8 @@ export function sectionPlugin(
       materialHookDispose = null;
       modelLoadUnsub?.();
       modelLoadUnsub = null;
+      selectionClickUnsub?.();
+      selectionClickUnsub = null;
       ctxRef = null;
     },
   };

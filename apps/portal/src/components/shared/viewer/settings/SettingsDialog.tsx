@@ -494,13 +494,13 @@ export function SettingsDialog(props: Props): JSX.Element {
       title={t('viewerTitle')}
       subtitle={t('viewerSubtitle')}
       width={900}
-      height={760}
+      height={836}
       bodyClassName="overflow-hidden"
       onReset={handleReset}
       resetLabel={t('resetDefaults')}
       onSave={handleSave}
     >
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
         <TabsList className="w-fit shrink-0">
           <TabsTrigger value="appearance">
             {t('tabAppearance')}

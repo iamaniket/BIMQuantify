@@ -31,7 +31,7 @@ export function ToolbarShell({
       className={cn('absolute bottom-5 left-1/2 z-40 -translate-x-1/2', className)}
       data-testid={testId}
     >
-      <div className="flex items-center rounded-lg border border-border bg-white/95 px-1 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl backdrop-saturate-150 dark:border-white/[0.08] dark:bg-[rgba(15,15,20,0.75)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <div className="flex items-center gap-1.5">
         {children}
       </div>
     </div>
@@ -40,28 +40,27 @@ export function ToolbarShell({
 
 export function ToolbarDivider(): JSX.Element {
   return (
-    <div className="mx-0.5 h-4 w-px rounded-full bg-black/[0.08] dark:bg-white/[0.07]" />
+    <div className="mx-0.5 h-[18px] w-px rounded-full bg-black/[0.08] dark:bg-white/[0.07]" />
   );
 }
 
+const groupPill =
+  'rounded-lg border border-border bg-white/95 px-1 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl backdrop-saturate-150 dark:border-white/[0.08] dark:bg-[rgba(15,15,20,0.75)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]';
+
 type GroupProps = {
   children: ReactNode;
-  /** Renders a vertical divider before this group. Set false for the first group. */
+  /** @deprecated No longer used — kept for API compat. */
   withDivider: boolean | undefined;
   className: string | undefined;
 };
 
 export function ToolbarGroup({
   children,
-  withDivider = true,
   className,
 }: Partial<GroupProps> & { children: ReactNode }): JSX.Element {
   return (
-    <div className="flex items-center">
-      {withDivider ? <ToolbarDivider /> : null}
-      <div className={cn('flex items-center gap-1', className)}>
-        {children}
-      </div>
+    <div className={cn('flex items-center gap-1', groupPill, className)}>
+      {children}
     </div>
   );
 }
@@ -93,7 +92,7 @@ function ToolButtonInner(
       type="button"
       disabled={disabled}
       className={cn(
-        'relative inline-flex h-9 w-9 items-center justify-center rounded-md transition-all duration-200 ease-out',
+        'relative inline-flex h-10 w-10 items-center justify-center rounded-md transition-all duration-200 ease-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
         buttonClassName(disabled, isActive),
         className,
@@ -119,7 +118,7 @@ export function ToolbarReadout({
   return (
     <span
       className={cn(
-        'min-w-[44px] px-1 text-center text-caption font-semibold tabular-nums text-foreground/80',
+        'min-w-[48px] px-1 text-center text-caption font-semibold tabular-nums text-foreground/80',
         className,
       )}
     >

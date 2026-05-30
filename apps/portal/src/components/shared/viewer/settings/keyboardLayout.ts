@@ -38,7 +38,7 @@ const SPACER = (w: number): typeof DEFAULTS => ({
   isSpacer: true,
 });
 
-export const KEY_UNIT = 34;
+export const KEY_UNIT = 30;
 export const KEY_GAP = 2;
 
 // Every row sums to 19u so the board is flush.
@@ -160,7 +160,7 @@ export const KEYBOARD_ROWS: KeyDef[][] = [
   ],
 ];
 
-export const FROW_GAP = 8;
+export const FROW_GAP = 7;
 
 export function codeToComboKey(code: string): string {
   if (code.startsWith('Key') && code.length === 4) return code.slice(3);

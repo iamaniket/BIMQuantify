@@ -110,6 +110,41 @@ async def test_create_finding_with_fields(
     assert body["bbl_article_ref"] == "4.51"
 
 
+async def test_create_finding_photo_ids_round_trips(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    # N5: photos attached while logging a finding round-trip through the JSONB
+    # column. Bare UUID strings prove the field plumbing without real uploads.
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    photo_ids = [str(uuid4()), str(uuid4())]
+
+    create = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(photo_ids=photo_ids),
+        headers=_auth(token),
+    )
+    assert create.status_code == 201, create.text
+    finding_id = create.json()["id"]
+    assert create.json()["photo_ids"] == photo_ids
+
+    got = await client.get(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        headers=_auth(token),
+    )
+    assert got.status_code == 200, got.text
+    assert got.json()["photo_ids"] == photo_ids
+
+    replacement = [str(uuid4())]
+    patched = await client.patch(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        json={"photo_ids": replacement},
+        headers=_auth(token),
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["photo_ids"] == replacement
+
+
 async def test_create_finding_invalid_severity_422(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:
@@ -520,11 +555,13 @@ async def test_finding_inspector_can_create(
     assert resp.status_code == 201, resp.text
 
 
-async def test_finding_contractor_cannot_create_but_can_update(
+async def test_finding_contractor_can_create_and_update(
     client: AsyncClient,
     org_user: dict[str, str],
     same_org_non_admin_user: dict[str, str],
 ) -> None:
+    # Aannemer-first (N5): the contractor logs findings manually from the KB's
+    # report and works them through resolution. Create + update, no delete.
     project = await _create_project(client, org_user["access_token"])
     await _add_member(
         client,
@@ -533,20 +570,15 @@ async def test_finding_contractor_cannot_create_but_can_update(
         same_org_non_admin_user["id"],
         "contractor",
     )
-    created = (
-        await client.post(
-            f"/projects/{project['id']}/findings",
-            json=_payload(),
-            headers=_auth(org_user["access_token"]),
-        )
-    ).json()
 
     create_resp = await client.post(
         f"/projects/{project['id']}/findings",
-        json=_payload(title="contractor-attempt"),
+        json=_payload(title="contractor-created"),
         headers=_auth(same_org_non_admin_user["access_token"]),
     )
-    assert create_resp.status_code == 403
+    assert create_resp.status_code == 201, create_resp.text
+    created = create_resp.json()
+    assert created["created_by_user_id"] == same_org_non_admin_user["id"]
 
     update_resp = await client.patch(
         f"/projects/{project['id']}/findings/{created['id']}",

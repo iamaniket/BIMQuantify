@@ -64,15 +64,15 @@ function TopPanel(): JSX.Element {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 14,
-      padding: '8px 14px',
+      padding: '6px 12px',
       background: '#1c1a16',
       borderRadius: 6,
       border: '1px solid #0d0c0a',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.4)',
-      marginBottom: 10,
+      marginBottom: 8,
     }}>
       <div style={{
-        fontSize: 18, fontWeight: 800, letterSpacing: -0.5,
+        fontSize: 16, fontWeight: 800, letterSpacing: -0.5,
         fontFamily: 'var(--font-sans)',
         color: '#f4eee0', lineHeight: 1, fontStyle: 'italic',
       }}>
@@ -86,7 +86,7 @@ function TopPanel(): JSX.Element {
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{
-          width: 160, height: 28,
+          width: 140, height: 24,
           backgroundImage: 'repeating-linear-gradient(90deg, #4a4640 0, #4a4640 3px, #1c1a16 3px, #1c1a16 6px)',
           borderRadius: 2,
           opacity: 0.7,
@@ -141,7 +141,7 @@ function Keycap({
 
   const btnStyle: CSSProperties = {
     position: 'relative',
-    width: w, height: 42,
+    width: w, height: 37,
     padding: 0, border: 'none', background: 'transparent',
     cursor: hasBind ? 'pointer' : 'default',
     outline: 'none', flexShrink: 0,
@@ -217,7 +217,7 @@ function Keycap({
 }
 
 function Spacer({ widthU }: { widthU: number }): JSX.Element {
-  return <span aria-hidden="true" style={{ display: 'inline-block', width: unitPx(widthU), height: 42, flexShrink: 0 }} />;
+  return <span aria-hidden="true" style={{ display: 'inline-block', width: unitPx(widthU), height: 37, flexShrink: 0 }} />;
 }
 
 export function VisualKeyboard({
@@ -240,7 +240,7 @@ export function VisualKeyboard({
 
       <div style={{
         position: 'relative',
-        padding: '12px 14px 16px',
+        padding: '10px 12px 14px',
         borderRadius: 10,
         background: 'linear-gradient(180deg, #d8d8d8 0%, #c4c4c4 100%)',
         boxShadow: `

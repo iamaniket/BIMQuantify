@@ -24,6 +24,10 @@ class FindingCreate(FindingBase):
     # element in the viewer so it round-trips to the 3D model.
     linked_file_id: UUID | None = None
     linked_element_global_id: str | None = Field(default=None, max_length=255)
+    # Attachment ids (photos) captured while logging the finding. Stored as a
+    # JSONB string list — match ChecklistItemResult.photo_ids, so values stay
+    # JSON-serializable (str, not UUID).
+    photo_ids: list[str] | None = None
 
 
 class FindingUpdate(BaseModel):
@@ -41,6 +45,8 @@ class FindingUpdate(BaseModel):
     # Element link (#49): PATCH to link/relink; send null to unlink.
     linked_file_id: UUID | None = None
     linked_element_global_id: str | None = Field(default=None, max_length=255)
+    # Replace the photo set (add/remove). Omit to leave unchanged.
+    photo_ids: list[str] | None = None
 
 
 class FindingRead(FindingBase):
@@ -54,5 +60,6 @@ class FindingRead(FindingBase):
     borgingsmoment_id: UUID | None
     linked_file_id: UUID | None
     linked_element_global_id: str | None
+    photo_ids: list[str] | None
     created_at: datetime
     updated_at: datetime

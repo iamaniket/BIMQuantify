@@ -86,7 +86,7 @@ export function eraserPlugin(): Plugin & EraserPluginAPI {
       ctx.commands.register('eraser.toggle', async () => {
         if (active) await exit();
         else await enter();
-      }, { title: 'Toggle eraser tool' });
+      }, { title: 'Toggle eraser tool', defaultShortcut: '4' });
 
       ctx.commands.register('eraser.isActive', () => active, {
         title: 'Check if eraser is active',

@@ -26,7 +26,7 @@ export type DocumentLoadedInfo = {
   numPages: number;
 };
 
-export type DocumentActiveTool = 'select' | 'pan' | 'zoom';
+export type DocumentActiveTool = 'select' | 'pan' | 'zoom' | 'line';
 export type DocumentRotation = 0 | 90 | 180 | 270;
 
 export type DocumentSearchHit = {

@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { useEffect, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -16,6 +16,8 @@ import {
 import { Field } from '@/components/shared/forms/Field';
 import { useCreateFinding } from '@/features/findings/useCreateFinding';
 import { useRegisterField } from '@/hooks/useRegisterField';
+
+import { FindingPhotos } from './FindingPhotos';
 
 const SEVERITIES = ['low', 'medium', 'high'] as const;
 
@@ -55,6 +57,7 @@ export function FindingFormDialog({
   const t = useTranslations('findings.form');
   const tSeverity = useTranslations('findings.severity');
   const mutation = useCreateFinding(projectId);
+  const [photoIds, setPhotoIds] = useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -73,6 +76,7 @@ export function FindingFormDialog({
     if (open) {
       resetForm(EMPTY);
       resetMutation();
+      setPhotoIds([]);
     }
   }, [open, resetForm, resetMutation]);
 
@@ -89,6 +93,7 @@ export function FindingFormDialog({
         linked_file_id: linkedFileId === undefined ? null : linkedFileId,
         linked_element_global_id:
           linkedElementGlobalId === undefined ? null : linkedElementGlobalId,
+        photo_ids: photoIds.length > 0 ? photoIds : undefined,
       },
       {
         onSuccess: () => { onOpenChange(false); },
@@ -150,6 +155,11 @@ export function FindingFormDialog({
             />
           )}
         </Field>
+        <FindingPhotos
+          projectId={projectId}
+          photoIds={photoIds}
+          onChange={setPhotoIds}
+        />
       </div>
     </AppDialog>
   );

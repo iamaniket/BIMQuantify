@@ -19,10 +19,13 @@ const EDITING_PREFIXES = [
   'wireframe.',
   'section.',
   'measurement.',
+  'eraser.',
 ];
 
 const GLOBAL_PREFIXES = [
   'mode.',
+  'navigate.',
+  'screenshot.',
   'toolSelect', 'toolPan', 'toolZoom',
   'shortcuts.', 'mouseBindings.',
 ];
