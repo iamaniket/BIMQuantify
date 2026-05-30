@@ -22,6 +22,11 @@ export type CallbackPayload = {
   finished_at?: string;
   content_sha256?: string;
   ifc_project_guid?: string;
+  // 0-100 progress reported on `running` callbacks.
+  progress?: number;
+  // Failure classification, set on `failed` callbacks (see pipeline/errors.ts).
+  retriable?: boolean;
+  error_kind?: string;
 };
 
 export async function postCallback(payload: CallbackPayload): Promise<void> {

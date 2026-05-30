@@ -6,8 +6,9 @@ import exifr from 'exifr';
 
 import { postAttachmentCallback } from '../api/attachmentCallback.js';
 import { logger } from '../log.js';
-import type { WorkerJob } from '../queue/queue.js';
+import type { ProgressReporter, WorkerJob } from '../queue/queue.js';
 import { downloadObjectWithHash } from '../storage/s3.js';
+import { classifyError } from './errors.js';
 
 export type ImageMetadataPayload = {
   attachment_id: string;
@@ -126,7 +127,10 @@ function buildServerMetadata(
   };
 }
 
-export async function runImageMetadataExtraction(job: WorkerJob): Promise<void> {
+export async function runImageMetadataExtraction(
+  job: WorkerJob,
+  onProgress?: ProgressReporter,
+): Promise<void> {
   const payload = parsePayload(job.payload);
   const startedAt = new Date().toISOString();
   const version = await getExtractorVersion();
@@ -142,6 +146,15 @@ export async function runImageMetadataExtraction(job: WorkerJob): Promise<void> 
   try {
     logger.info({ payload }, 'downloading image for EXIF extraction');
     const { bytes } = await downloadObjectWithHash(payload.storage_key, payload.bucket);
+    await postAttachmentCallback({
+      attachment_id: payload.attachment_id,
+      organization_id: job.organization_id,
+      job_id: job.job_id,
+      status: 'running',
+      started_at: startedAt,
+      progress: 50,
+    });
+    await onProgress?.(50);
 
     logger.info({ size: bytes.length }, 'extracting EXIF metadata');
     const exif: Record<string, unknown> | null = await exifr.parse(bytes, {
@@ -172,6 +185,7 @@ export async function runImageMetadataExtraction(job: WorkerJob): Promise<void> 
   } catch (err) {
     const message = err instanceof Error ? `${err.name}: ${err.message}` : 'UNKNOWN_ERROR';
     logger.error({ err, payload }, 'image metadata extraction failed');
+    const { retriable, error_kind } = classifyError(err);
     await postAttachmentCallback({
       attachment_id: payload.attachment_id,
       organization_id: job.organization_id,
@@ -180,6 +194,8 @@ export async function runImageMetadataExtraction(job: WorkerJob): Promise<void> 
       error: message.slice(0, 500),
       started_at: startedAt,
       finished_at: new Date().toISOString(),
+      retriable,
+      error_kind,
     });
     throw err;
   }

@@ -24,15 +24,15 @@ from sqlalchemy.orm import selectinload
 from bimstitch_api import audit
 from bimstitch_api.db import get_async_session
 from bimstitch_api.jobs import require_worker_secret
+from bimstitch_api.models.attachment import Attachment
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.organization import Organization
-from bimstitch_api.models.attachment import Attachment
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile, ProjectFileStatus
 from bimstitch_api.models.report import _REPORT_TERMINAL, Report, ReportStatus
 from bimstitch_api.notifications.service import create_notification, publish_notification
-from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
 from bimstitch_api.schemas.attachment import AttachmentCallbackRequest, AttachmentRead
+from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
 from bimstitch_api.schemas.report import ReportCallbackRequest, ReportResponse
 from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.tenancy import schema_name_for
@@ -221,9 +221,12 @@ def _apply_job_update(job: Job, payload: ExtractionCallbackRequest) -> None:
         job.status = JobStatus.running
         if payload.started_at is not None:
             job.started_at = payload.started_at
+        if payload.progress is not None:
+            job.progress = payload.progress
     elif payload.status is ExtractionStatus.succeeded:
         job.status = JobStatus.succeeded
         job.finished_at = payload.finished_at
+        job.progress = 100
         job.result = {
             k: v
             for k, v in {
@@ -239,6 +242,8 @@ def _apply_job_update(job: Job, payload: ExtractionCallbackRequest) -> None:
         job.status = JobStatus.failed
         job.error = payload.error
         job.finished_at = payload.finished_at
+        job.retriable = payload.retriable
+        job.error_kind = payload.error_kind
 
 
 _EVENT_MAP: dict[ExtractionStatus, NotificationEventType] = {
@@ -262,6 +267,12 @@ async def _emit_notification(
 ) -> None:
     event_type = _EVENT_MAP.get(payload.status)
     if event_type is None:
+        return
+
+    # Progress ticks ride the `running` callback (they carry `progress`); the
+    # Job row is already updated. Suppress their notification so the bell isn't
+    # spammed — only the initial `running` callback (no `progress`) notifies.
+    if payload.status is ExtractionStatus.running and payload.progress is not None:
         return
 
     title = _TITLE_MAP[payload.status]
@@ -370,9 +381,12 @@ async def report_callback(
             if payload.status == "running":
                 job.status = JobStatus.running
                 job.started_at = payload.started_at
+                if payload.progress is not None:
+                    job.progress = payload.progress
             elif payload.status == "ready":
                 job.status = JobStatus.succeeded
                 job.finished_at = payload.finished_at
+                job.progress = 100
                 job.result = {
                     "storage_key": payload.storage_key,
                     "byte_size": payload.byte_size,
@@ -382,6 +396,8 @@ async def report_callback(
                 job.status = JobStatus.failed
                 job.error = payload.error
                 job.finished_at = payload.finished_at
+                job.retriable = payload.retriable
+                job.error_kind = payload.error_kind
 
     # Outside the txn — emit the notification.
     event_type = {
@@ -389,6 +405,10 @@ async def report_callback(
         "ready": NotificationEventType.job_succeeded,
         "failed": NotificationEventType.job_failed,
     }.get(payload.status)
+    # Suppress progress-tick notifications: a `running` callback carrying
+    # `progress` only updates the Job row (see `_emit_notification`'s gate).
+    if payload.status == "running" and payload.progress is not None:
+        event_type = None
     if event_type is not None:
         # NL stays the default locale; English is the fallback for any other
         # locale until the Phase 4 i18n migration moves these into the shared
@@ -489,14 +509,19 @@ async def attachment_metadata_callback(
             if payload.status == "running":
                 job.status = JobStatus.running
                 job.started_at = payload.started_at
+                if payload.progress is not None:
+                    job.progress = payload.progress
             elif payload.status == "succeeded":
                 job.status = JobStatus.succeeded
                 job.finished_at = payload.finished_at
+                job.progress = 100
                 job.result = payload.server_metadata or {}
             else:
                 job.status = JobStatus.failed
                 job.error = payload.error
                 job.finished_at = payload.finished_at
+                job.retriable = payload.retriable
+                job.error_kind = payload.error_kind
 
     async with session.begin():
         schema = schema_name_for(payload.organization_id)

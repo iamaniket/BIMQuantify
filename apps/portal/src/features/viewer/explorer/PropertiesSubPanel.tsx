@@ -9,11 +9,13 @@ import {
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { ModelInfoBody } from '@/features/viewer/inspector/ModelInfoBody';
+import { MultiPropertiesBody } from '@/features/viewer/inspector/MultiPropertiesBody';
 import {
   PropertiesBody,
   countPsetProperties,
 } from '@/features/viewer/inspector/PropertiesBody';
 import { useSelectedElement } from '@/features/viewer/inspector/useSelectedElement';
+import { useMultiSelectedProperties } from '@/features/viewer/inspector/useMultiSelectedProperties';
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
 
 type PropertiesSubPanelProps = {
@@ -45,9 +47,16 @@ export function PropertiesSubPanel({
 
   const isProjectMode = !hasSelection;
 
-  const count = isProjectMode
-    ? undefined
-    : countPsetProperties(element, properties);
+  const multiState = useMultiSelectedProperties(metadata, properties);
+
+  let count: number | undefined;
+  if (isProjectMode) {
+    count = undefined;
+  } else if (isMultiSelection) {
+    count = multiState.commonCount;
+  } else {
+    count = countPsetProperties(element, properties);
+  }
 
   const [flexGrow, setFlexGrow] = useState(1);
   const dragging = useRef(false);
@@ -92,11 +101,9 @@ export function PropertiesSubPanel({
       );
     } else if (isMultiSelection) {
       body = (
-        <PanelEmptyState
-          icon={Info}
-          message={tInspector('messages.allSelected', {
-            count: metadata?.totalElements ?? 0,
-          })}
+        <MultiPropertiesBody
+          state={multiState}
+          isLoading={isLoadingProperties}
         />
       );
     } else if (isProjectMode) {

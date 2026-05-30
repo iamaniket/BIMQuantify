@@ -8,8 +8,9 @@ import { runExtraction } from '../pipeline/extract.js';
 import { runImageMetadataExtraction } from '../pipeline/image.js';
 import { runPdfExtraction } from '../pipeline/pdf.js';
 import { postReportCallback } from '../pipeline/report/callback.js';
+import { classifyError } from '../pipeline/errors.js';
 import { runComplianceReport } from '../pipeline/report/index.js';
-import { getRedis, type WorkerJob } from './queue.js';
+import { getRedis, type ProgressReporter, type WorkerJob } from './queue.js';
 
 const pickStr = (payload: Record<string, unknown>, key: string): string =>
   typeof payload[key] === 'string' ? (payload[key] as string) : '';
@@ -29,6 +30,7 @@ const pickStr = (payload: Record<string, unknown>, key: string): string =>
 async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void> {
   const error = `${err.name}: ${err.message}`.slice(0, 500);
   const finished_at = new Date().toISOString();
+  const { retriable, error_kind } = classifyError(err);
 
   switch (data.job_type) {
     case 'ifc_extraction':
@@ -40,6 +42,8 @@ async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void>
         status: 'failed',
         error,
         finished_at,
+        retriable,
+        error_kind,
       });
       break;
     case 'image_metadata_extraction':
@@ -50,6 +54,8 @@ async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void>
         status: 'failed',
         error,
         finished_at,
+        retriable,
+        error_kind,
       });
       break;
     case 'compliance_report':
@@ -60,6 +66,8 @@ async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void>
         status: 'failed',
         error,
         finished_at,
+        retriable,
+        error_kind,
       });
       break;
     case 'send_email':
@@ -78,18 +86,19 @@ export function startWorker(): Worker<WorkerJob> {
     QUEUE_NAME,
     async (job) => {
       logger.info({ jobId: job.id, jobType: job.data.job_type }, 'job started');
+      const onProgress: ProgressReporter = (pct) => job.updateProgress(pct);
       switch (job.data.job_type) {
         case 'ifc_extraction':
-          await runExtraction(job.data);
+          await runExtraction(job.data, onProgress);
           break;
         case 'pdf_extraction':
-          await runPdfExtraction(job.data);
+          await runPdfExtraction(job.data, onProgress);
           break;
         case 'image_metadata_extraction':
-          await runImageMetadataExtraction(job.data);
+          await runImageMetadataExtraction(job.data, onProgress);
           break;
         case 'compliance_report':
-          await runComplianceReport(job.data);
+          await runComplianceReport(job.data, onProgress);
           break;
         case 'send_email':
           // Handled by the action worker on the "actions" queue.

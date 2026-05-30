@@ -14,6 +14,13 @@ export type WorkerJob = {
   payload: Record<string, unknown>;
 };
 
+/**
+ * Reports 0-100 pipeline progress. The worker wires this to BullMQ's
+ * `job.updateProgress`; pipelines call it at stage boundaries. Optional in
+ * pipeline signatures so unit tests can invoke a pipeline without a BullMQ job.
+ */
+export type ProgressReporter = (pct: number) => Promise<void> | void;
+
 const ACTION_JOB_TYPES: ReadonlySet<string> = new Set(['send_email']);
 
 let cachedQueue: Queue<WorkerJob> | null = null;
@@ -61,7 +68,27 @@ export function getActionQueue(): Queue<WorkerJob> {
 
 export async function enqueueJob(job: WorkerJob): Promise<void> {
   const queue = ACTION_JOB_TYPES.has(job.job_type) ? getActionQueue() : getQueue();
-  await queue.add(job.job_type, job, { jobId: `${job.job_id}-${Date.now()}` });
+  // Use the API's job_id verbatim as the BullMQ job id so cancel can address
+  // it. Safe because retry mints a fresh Job (new UUID) rather than re-adding
+  // this id — BullMQ would otherwise dedupe a re-add against the same id.
+  await queue.add(job.job_type, job, { jobId: job.job_id });
+}
+
+export type RemoveResult = 'removed' | 'active' | 'not_found';
+
+/**
+ * Best-effort cancel of a *queued* job by id. Returns:
+ *   - `active`    — the worker already picked it up (BullMQ `isActive`); the
+ *                   caller must let it run to completion (no mid-flight kill).
+ *   - `removed`   — the queued job was dropped before it started.
+ *   - `not_found` — no such job (already finished, evicted, or never existed).
+ */
+export async function removeQueuedJob(jobId: string): Promise<RemoveResult> {
+  const job = await getQueue().getJob(jobId);
+  if (job === undefined) return 'not_found';
+  if (await job.isActive()) return 'active';
+  await job.remove();
+  return 'removed';
 }
 
 export async function closeQueue(): Promise<void> {

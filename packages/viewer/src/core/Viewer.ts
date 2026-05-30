@@ -166,6 +166,7 @@ export class Viewer {
     world.renderer = new SimpleRenderer(components, container, {
       antialias: true,
     });
+    world.renderer.showLogo = false;
     world.camera = new SimpleCamera(components);
     world.scene.setup();
 

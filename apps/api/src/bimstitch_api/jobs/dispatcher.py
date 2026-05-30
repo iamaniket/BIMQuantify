@@ -132,6 +132,69 @@ def get_job_dispatcher() -> JobDispatcher:
     return _dispatcher
 
 
+# ---------------------------------------------------------------------------
+# Outbound cancel
+# ---------------------------------------------------------------------------
+
+# The processor reports one of these after we ask it to drop a queued job.
+CancelResult = str  # "removed" | "not_found" | "already_running"
+
+JobCanceller = Callable[[UUID, Settings], Awaitable[CancelResult]]
+
+
+async def _http_cancel(job_id: UUID, settings: Settings) -> CancelResult:
+    """Ask the processor to remove a still-queued BullMQ job.
+
+    Returns "removed"/"not_found" (both mean the worker won't run it) or
+    "already_running" (409 — the job started before we could cancel; the
+    caller must NOT mark it cancelled). Raises DispatchJobError if the
+    processor is unreachable, so we never mark a job cancelled while it may
+    still be running.
+    """
+    headers = {"Authorization": f"Bearer {settings.processor_shared_secret}"}
+    timeout = httpx.Timeout(settings.processor_dispatch_timeout_seconds)
+    client = _get_http_client(timeout)
+    try:
+        response = await client.post(
+            f"{settings.processor_url.rstrip('/')}/jobs/{job_id}/cancel",
+            headers=headers,
+        )
+    except httpx.HTTPError as exc:
+        raise DispatchJobError(f"{type(exc).__name__}: {exc}") from exc
+    if response.status_code == 409:
+        return "already_running"
+    if response.status_code >= 400:
+        raise DispatchJobError(
+            f"processor worker returned {response.status_code}: {response.text[:200]}"
+        )
+    body = response.json() if response.content else {}
+    result = body.get("result", "removed")
+    return str(result)
+
+
+_canceller: JobCanceller = _http_cancel
+
+
+def set_job_canceller(canceller: JobCanceller) -> None:
+    """Test hook: replace the default HTTP canceller with a recording stub."""
+    global _canceller
+    _canceller = canceller
+
+
+def reset_job_canceller() -> None:
+    global _canceller
+    _canceller = _http_cancel
+
+
+def get_job_canceller() -> JobCanceller:
+    return _canceller
+
+
+async def cancel_dispatched_job(job_id: UUID, settings: Settings) -> CancelResult:
+    """Ask the processor to cancel a queued job. Raises DispatchJobError if unreachable."""
+    return await _canceller(job_id, settings)
+
+
 class JobConcurrencyError(Exception):
     """Raised when a tenant has too many active jobs."""
 

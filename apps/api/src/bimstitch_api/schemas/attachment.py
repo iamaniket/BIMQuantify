@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
-
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -144,6 +142,11 @@ class AttachmentCallbackRequest(BaseModel):
     error: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    # 0-100 progress, sent on `running` callbacks at pipeline stage boundaries.
+    progress: int | None = Field(default=None, ge=0, le=100)
+    # On `failed`: whether retrying could plausibly succeed, plus a classifier tag.
+    retriable: bool = False
+    error_kind: str | None = None
 
 
 class AttachmentDownloadResponse(BaseModel):

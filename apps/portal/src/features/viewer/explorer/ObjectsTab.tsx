@@ -130,7 +130,9 @@ export function ObjectsTab({
 
   const defaultExpanded = useMemo(() => {
     if (spatialTree == null) return [];
-    return collectExpandedKeys(spatialTree, 3);
+    // Expand the spatial skeleton (project → site → building) but stop before
+    // storeys so their element lists stay collapsed on open.
+    return collectExpandedKeys(spatialTree, 2);
   }, [spatialTree]);
 
   const allKeys = useMemo(() => (tree ? collectAllKeys([tree]) : []), [tree]);

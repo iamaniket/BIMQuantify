@@ -8,9 +8,11 @@ import sensible from '@fastify/sensible';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const enqueueMock = vi.fn();
+const removeQueuedJobMock = vi.fn();
 
 vi.mock('../src/queue/queue.js', () => ({
   enqueueJob: (...args: unknown[]) => enqueueMock(...args),
+  removeQueuedJob: (...args: unknown[]) => removeQueuedJobMock(...args),
   getRedis: vi.fn(),
   getQueue: vi.fn(),
   closeQueue: vi.fn(),
@@ -20,6 +22,7 @@ const SECRET = 'dev-shared-secret-change-me';
 
 beforeEach(() => {
   enqueueMock.mockReset();
+  removeQueuedJobMock.mockReset();
   process.env.PROCESSOR_SHARED_SECRET = SECRET;
 });
 
@@ -97,6 +100,54 @@ describe('POST /jobs', () => {
     expect(resp.statusCode).toBe(202);
     expect(enqueueMock).toHaveBeenCalledTimes(1);
     expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining(validBody));
+  });
+});
+
+describe('POST /jobs/:jobId/cancel', () => {
+  const jobId = '123e4567-e89b-12d3-a456-426614174002';
+
+  it('returns 401 without auth', async () => {
+    const app = await buildApp();
+    const resp = await app.inject({ method: 'POST', url: `/jobs/${jobId}/cancel` });
+    expect(resp.statusCode).toBe(401);
+    expect(removeQueuedJobMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 200 when the queued job is removed', async () => {
+    removeQueuedJobMock.mockResolvedValue('removed');
+    const app = await buildApp();
+    const resp = await app.inject({
+      method: 'POST',
+      url: `/jobs/${jobId}/cancel`,
+      headers: { authorization: `Bearer ${SECRET}` },
+    });
+    expect(resp.statusCode).toBe(200);
+    expect(resp.json()).toEqual({ result: 'removed' });
+    expect(removeQueuedJobMock).toHaveBeenCalledWith(jobId);
+  });
+
+  it('returns 200 when the job is already gone (not_found is best-effort)', async () => {
+    removeQueuedJobMock.mockResolvedValue('not_found');
+    const app = await buildApp();
+    const resp = await app.inject({
+      method: 'POST',
+      url: `/jobs/${jobId}/cancel`,
+      headers: { authorization: `Bearer ${SECRET}` },
+    });
+    expect(resp.statusCode).toBe(200);
+    expect(resp.json()).toEqual({ result: 'not_found' });
+  });
+
+  it('returns 409 ALREADY_RUNNING when the worker already picked it up', async () => {
+    removeQueuedJobMock.mockResolvedValue('active');
+    const app = await buildApp();
+    const resp = await app.inject({
+      method: 'POST',
+      url: `/jobs/${jobId}/cancel`,
+      headers: { authorization: `Bearer ${SECRET}` },
+    });
+    expect(resp.statusCode).toBe(409);
+    expect(resp.json()).toEqual({ error: 'ALREADY_RUNNING' });
   });
 });
 

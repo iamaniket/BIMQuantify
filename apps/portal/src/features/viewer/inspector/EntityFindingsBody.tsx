@@ -2,7 +2,7 @@
 
 import { AlertTriangle, Loader2, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 
 import { Badge, Button } from '@bimstitch/ui';
 
@@ -42,10 +42,12 @@ export function EntityFindingsBody({
   const query = isProject ? projectQuery : elementQuery;
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
+  const lastConsumedNonce = useRef<number | undefined>(undefined);
 
   // Auto-open the new-finding dialog when triggered from a context-menu command.
   useEffect(() => {
-    if (autoOpenNonce !== undefined) {
+    if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
+      lastConsumedNonce.current = autoOpenNonce;
       setCreateOpen(true);
     }
   }, [autoOpenNonce]);

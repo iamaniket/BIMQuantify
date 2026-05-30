@@ -7,6 +7,7 @@ import { type JSX, useCallback } from 'react';
 import { cn } from '@bimstitch/ui';
 
 import type { PropertyValue } from '@/lib/api/viewerTypes';
+import { MIXED_VALUE } from '@/features/viewer/inspector/useMultiSelectedProperties';
 
 type PropertyRowProps = {
   name: string;
@@ -19,12 +20,14 @@ function formatDisplay(
   value: PropertyValue,
   t: ReturnType<typeof useTranslations>,
 ): string {
+  if (value === MIXED_VALUE) return t('mixed');
   if (value === null || value === undefined) return '—';
   if (typeof value === 'boolean') return value ? t('boolYes') : t('boolNo');
   return String(value);
 }
 
-function valueKind(value: PropertyValue): 'bool' | 'number' | 'string' | 'null' {
+function valueKind(value: PropertyValue): 'bool' | 'number' | 'string' | 'null' | 'mixed' {
+  if (value === MIXED_VALUE) return 'mixed';
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'boolean') return 'bool';
   if (typeof value === 'number') return 'number';
@@ -64,7 +67,7 @@ export function PropertyRow({
       <span
         title={name}
         className={cn(
-          'truncate font-sans text-micro leading-tight tracking-[-0.01em]',
+          'truncate font-sans text-[13px] leading-tight tracking-[-0.01em]',
           selected ? 'font-bold text-primary' : 'font-semibold text-foreground-secondary',
         )}
       >
@@ -74,8 +77,11 @@ export function PropertyRow({
       {/* Value */}
       <span
         className={cn(
-          'inline-flex items-baseline gap-1 truncate font-sans font-normal text-micro leading-tight tabular-nums',
-          kind === 'null' ? 'text-foreground-tertiary' : 'text-foreground',
+          'inline-flex items-baseline gap-1 truncate font-sans font-normal text-[13px] leading-tight tabular-nums',
+          kind === 'null' || kind === 'mixed'
+            ? 'text-foreground-tertiary'
+            : 'text-foreground',
+          kind === 'mixed' && 'italic',
         )}
       >
         {kind === 'bool' && (

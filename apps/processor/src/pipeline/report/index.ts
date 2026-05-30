@@ -17,8 +17,9 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { logger } from '../../log.js';
-import type { WorkerJob } from '../../queue/queue.js';
+import type { ProgressReporter, WorkerJob } from '../../queue/queue.js';
 import { uploadObject } from '../../storage/s3.js';
+import { classifyError } from '../errors.js';
 import { postReportCallback } from './callback.js';
 import { htmlToPdf } from './pdf.js';
 import { renderHtml, type ComplianceReportData } from './templates/compliance-report.js';
@@ -63,7 +64,10 @@ const PayloadSchema: z.ZodType<ComplianceReportData & { storage_key: string }> =
   })
   .passthrough() as unknown as z.ZodType<ComplianceReportData & { storage_key: string }>;
 
-export async function runComplianceReport(job: WorkerJob): Promise<void> {
+export async function runComplianceReport(
+  job: WorkerJob,
+  onProgress?: ProgressReporter,
+): Promise<void> {
   const parsed = PayloadSchema.safeParse(job.payload);
   if (!parsed.success) {
     const msg = `INVALID_REPORT_PAYLOAD: ${parsed.error.message.slice(0, 200)}`;
@@ -93,9 +97,11 @@ export async function runComplianceReport(job: WorkerJob): Promise<void> {
   try {
     logger.info({ reportId: payload.report_id }, 'rendering compliance report HTML');
     const html = renderHtml(payload);
+    await onProgress?.(30);
 
     logger.info({ reportId: payload.report_id }, 'driving Puppeteer to PDF');
     const pdfBytes = await htmlToPdf(html, { generatedAt: payload.generated_at });
+    await onProgress?.(80);
 
     const sha256 = createHash('sha256').update(pdfBytes).digest('hex');
 
@@ -119,6 +125,7 @@ export async function runComplianceReport(job: WorkerJob): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? `${err.name}: ${err.message}` : 'UNKNOWN_ERROR';
     logger.error({ err, reportId: payload.report_id }, 'compliance report generation failed');
+    const { retriable, error_kind } = classifyError(err);
     await postReportCallback({
       report_id: payload.report_id,
       organization_id: job.organization_id,
@@ -127,6 +134,8 @@ export async function runComplianceReport(job: WorkerJob): Promise<void> {
       error: message.slice(0, 500),
       started_at: startedAt,
       finished_at: new Date().toISOString(),
+      retriable,
+      error_kind,
     }).catch(() => undefined);
     throw err;
   }

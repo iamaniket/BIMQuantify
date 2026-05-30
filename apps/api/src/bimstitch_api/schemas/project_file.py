@@ -100,3 +100,8 @@ class ExtractionCallbackRequest(BaseModel):
     finished_at: datetime | None = None
     content_sha256: str | None = Field(default=None, pattern=_HEX_SHA256)
     ifc_project_guid: str | None = Field(default=None, pattern=_IFC_GUID)
+    # 0-100 progress, sent on `running` callbacks at pipeline stage boundaries.
+    progress: int | None = Field(default=None, ge=0, le=100)
+    # On `failed`: whether retrying could plausibly succeed, plus a classifier tag.
+    retriable: bool = False
+    error_kind: str | None = None

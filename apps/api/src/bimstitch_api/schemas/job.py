@@ -15,6 +15,11 @@ class JobListItem(BaseModel):
     job_type: JobType
     status: JobStatus
     error: str | None
+    retriable: bool
+    error_kind: str | None
+    progress: int
+    retry_of: UUID | None
+    attempt: int
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime

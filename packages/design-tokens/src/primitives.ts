@@ -2,9 +2,9 @@
 // Theme-agnostic primitives shared across all themes.
 
 export const fontFamily = {
-  sans: 'Geist, ui-sans-serif, system-ui, -apple-system, sans-serif',
-  // Aliased to Geist — Geist Mono was dropped; the app uses one text family.
-  mono: 'Geist, ui-sans-serif, system-ui, -apple-system, sans-serif',
+  sans: 'ui-sans-serif, system-ui, -apple-system, sans-serif',
+  // Aliased to system sans — the app uses one text family.
+  mono: 'ui-sans-serif, system-ui, -apple-system, sans-serif',
 } as const;
 
 export const fontWeight = {

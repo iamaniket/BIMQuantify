@@ -7,12 +7,18 @@ import {
   Clock,
   Loader2,
   RefreshCw,
+  X,
 } from 'lucide-react';
 import {
   useEffect, useRef, useState, type JSX,
 } from 'react';
 import { useTranslations } from 'next-intl';
 
+import {
+  useCancelJob,
+  useJob,
+  useRetryJob,
+} from '@/features/jobs/hooks';
 import {
   useMarkAllRead,
   useNotifications,
@@ -22,6 +28,14 @@ import type {
   Notification,
   NotificationEventTypeValue,
 } from '@/lib/api/schemas/notifications';
+
+/** Notification event types whose job may still be acted on (retry/cancel) or
+ * is still progressing — only these resolve their live `Job` for controls. */
+const ACTIONABLE_EVENT_TYPES: ReadonlySet<NotificationEventTypeValue> = new Set([
+  'job_started',
+  'job_progress',
+  'job_failed',
+]);
 
 const ICON_BY_TYPE: Record<NotificationEventTypeValue, JSX.Element> = {
   job_started: <Loader2 className="h-3 w-3" aria-hidden />,
@@ -53,6 +67,120 @@ function formatRelative(iso: string, t: ReturnType<typeof useTranslations>): str
   return t('daysAgo', { count: d });
 }
 
+/** Live job controls behind a notification: a progress bar while in-flight,
+ * a Retry button on a retriable failure, a Cancel button while still queued.
+ * Resolves the job lazily — only actionable notifications fetch it. */
+function JobControls({
+  notification,
+}: {
+  notification: Notification;
+}): JSX.Element | null {
+  const t = useTranslations('notifications');
+  const actionable = notification.job_id !== null
+    && ACTIONABLE_EVENT_TYPES.has(notification.event_type);
+  const jobQuery = useJob(notification.job_id, actionable);
+  const projectId = notification.project_id ?? '';
+  const retry = useRetryJob(projectId);
+  const cancel = useCancelJob(projectId);
+
+  const job = jobQuery.data;
+  if (!actionable || job === undefined || notification.job_id === null) {
+    return null;
+  }
+  const jobId = notification.job_id;
+
+  const showProgress = (job.status === 'running' || job.status === 'started') && job.progress > 0;
+  const canRetry = job.status === 'failed' && job.retriable;
+  const canCancel = job.status === 'pending' || job.status === 'started';
+
+  return (
+    <div className="mt-1.5 flex flex-col gap-1.5">
+      {showProgress ? (
+        <div className="flex items-center gap-1.5">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-background-hover">
+            <div
+              className="h-full rounded-full bg-info transition-[width] duration-300"
+              style={{ width: `${String(Math.min(100, job.progress))}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-[10px] tabular-nums text-foreground-tertiary">
+            {t('progressLabel', { percent: job.progress })}
+          </span>
+        </div>
+      ) : null}
+      <div className="flex items-center gap-2">
+        {canRetry ? (
+          <button
+            type="button"
+            disabled={retry.isPending}
+            onClick={() => {
+              retry.mutate(jobId);
+            }}
+            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-primary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
+          >
+            <RefreshCw className="h-3 w-3" aria-hidden />
+            {retry.isPending ? t('retrying') : t('retry')}
+          </button>
+        ) : null}
+        {job.status === 'failed' && !job.retriable ? (
+          <span className="text-[10px] text-foreground-tertiary">
+            {t('notRetriable')}
+          </span>
+        ) : null}
+        {canCancel ? (
+          <button
+            type="button"
+            disabled={cancel.isPending}
+            onClick={() => {
+              cancel.mutate(jobId);
+            }}
+            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-foreground-secondary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
+          >
+            <X className="h-3 w-3" aria-hidden />
+            {cancel.isPending ? t('cancelling') : t('cancel')}
+          </button>
+        ) : null}
+        {job.status === 'cancelled' ? (
+          <span className="text-[10px] text-foreground-tertiary">
+            {t('cancelled')}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function NotificationRow({ notification }: { notification: Notification }): JSX.Element {
+  const t = useTranslations('notifications');
+  const n = notification;
+  return (
+    <li
+      className={`flex cursor-pointer gap-2.5 border-b border-border px-3.5 py-2.5 last:border-b-0 ${n.is_read ? '' : 'bg-primary-lighter'}`}
+    >
+      <div className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-md ${TONE_BY_TYPE[n.event_type]}`}>
+        {ICON_BY_TYPE[n.event_type]}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-1.5 text-xs font-medium text-foreground">
+          <span className="truncate font-semibold">{n.title}</span>
+        </div>
+        {n.body.length > 0 ? (
+          <div className="mt-0.5 truncate text-[11px] text-foreground-tertiary">
+            {n.body}
+          </div>
+        ) : null}
+        <div className="mt-1 font-sans text-[10px] tracking-[0.02em] text-foreground-tertiary">
+          {formatRelative(n.created_at, t)}
+        </div>
+        <JobControls notification={n} />
+      </div>
+      {n.is_read ? null : (
+        <span className="mt-1.5 h-[7px] w-[7px] shrink-0 self-center rounded-full bg-primary" />
+      )}
+    </li>
+  );
+}
+
 function NotificationListBody({
   isLoading,
   items,
@@ -78,30 +206,7 @@ function NotificationListBody({
   return (
     <ul>
       {items.map((n) => (
-        <li
-          key={n.id}
-          className={`flex cursor-pointer gap-2.5 border-b border-border px-3.5 py-2.5 last:border-b-0 ${n.is_read ? '' : 'bg-primary-lighter'}`}
-        >
-          <div className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-md ${TONE_BY_TYPE[n.event_type]}`}>
-            {ICON_BY_TYPE[n.event_type]}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-1.5 text-xs font-medium text-foreground">
-              <span className="truncate font-semibold">{n.title}</span>
-            </div>
-            {n.body.length > 0 ? (
-              <div className="mt-0.5 truncate text-[11px] text-foreground-tertiary">
-                {n.body}
-              </div>
-            ) : null}
-            <div className="mt-1 font-sans text-[10px] tracking-[0.02em] text-foreground-tertiary">
-              {formatRelative(n.created_at, t)}
-            </div>
-          </div>
-          {n.is_read ? null : (
-            <span className="mt-1.5 h-[7px] w-[7px] shrink-0 self-center rounded-full bg-primary" />
-          )}
-        </li>
+        <NotificationRow key={n.id} notification={n} />
       ))}
     </ul>
   );

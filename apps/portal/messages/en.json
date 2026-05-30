@@ -1885,7 +1885,12 @@
       "clear": "clear",
       "copyValue": "Copy value",
       "boolYes": "Yes",
-      "boolNo": "No"
+      "boolNo": "No",
+      "mixed": "Mixed",
+      "loading": "Loading properties…",
+      "noCommonProperties": "No common properties across selected elements.",
+      "tooManySelected": "Too many elements selected ({count}). Select fewer than 100 to compare properties.",
+      "multiSummary": "{elements, plural, one {# element} other {# elements}} · {properties, plural, one {# common property} other {# common properties}}"
     },
     "sidePanel": {
       "titleExplorer": "Model Tree",
@@ -2268,6 +2273,14 @@
     "justNow": "just now",
     "minutesAgo": "{count} min ago",
     "hoursAgo": "{count}h ago",
-    "daysAgo": "{count}d ago"
+    "daysAgo": "{count}d ago",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "cancelling": "Cancelling…",
+    "retrying": "Retrying…",
+    "notRetriable": "This error can't be retried",
+    "cancelled": "Cancelled",
+    "jobAlreadyRunning": "Job already started and can't be cancelled",
+    "progressLabel": "{percent}%"
   }
 }

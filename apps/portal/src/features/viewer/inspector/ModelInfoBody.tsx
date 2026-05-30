@@ -28,7 +28,7 @@ function SpatialRows({ node, depth }: { node: SpatialNode; depth: number }): JSX
         <Eyebrow size="sm" title={node.type} className="shrink-0 tracking-[0.04em]">
           {node.type}
         </Eyebrow>
-        <span className="truncate font-sans text-micro leading-tight text-foreground">
+        <span className="truncate font-sans text-[13px] leading-tight text-foreground">
           {node.name ?? '—'}
         </span>
       </div>

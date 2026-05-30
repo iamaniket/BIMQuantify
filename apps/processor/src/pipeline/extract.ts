@@ -22,7 +22,8 @@ import {
   propertiesKeyFor,
   uploadObject,
 } from '../storage/s3.js';
-import type { WorkerJob } from '../queue/queue.js';
+import type { ProgressReporter, WorkerJob } from '../queue/queue.js';
+import { classifyError } from './errors.js';
 import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel, UnsupportedSchemaError } from './ifc.js';
 import { buildMetadata } from './metadata.js';
@@ -68,10 +69,29 @@ async function getExtractorVersion(): Promise<string> {
   return cachedVersion;
 }
 
-export async function runExtraction(job: WorkerJob): Promise<void> {
+export async function runExtraction(
+  job: WorkerJob,
+  onProgress?: ProgressReporter,
+): Promise<void> {
   const payload = parseIfcPayload(job.payload);
   const startedAt = new Date().toISOString();
   const version = await getExtractorVersion();
+
+  // Posts a `running` callback carrying `progress` and mirrors it to BullMQ.
+  // Progress surfaces in the portal via the Job row (polled), not a per-tick
+  // notification — see the callback handler's emit gate.
+  const reportProgress = async (pct: number): Promise<void> => {
+    await postCallback({
+      file_id: payload.file_id,
+      organization_id: job.organization_id,
+      job_id: job.job_id,
+      status: 'running',
+      started_at: startedAt,
+      extractor_version: version,
+      progress: pct,
+    });
+    await onProgress?.(pct);
+  };
 
   await postCallback({
     file_id: payload.file_id,
@@ -86,6 +106,7 @@ export async function runExtraction(job: WorkerJob): Promise<void> {
   try {
     logger.info({ payload }, 'downloading source');
     const { bytes, sha256 } = await downloadObjectWithHash(payload.storage_key);
+    await reportProgress(10);
 
     // For an ifcZIP the stored object is the zip; unwrap to the inner IFC
     // before parsing. `sha256` stays the hash of the stored (compressed) bytes
@@ -95,9 +116,11 @@ export async function runExtraction(job: WorkerJob): Promise<void> {
     logger.info({ size: ifcBytes.length, sha256: sha256.slice(0, 16) }, 'parsing IFC');
     const opened = await openModel(ifcBytes);
     modelID = opened.modelID;
+    await reportProgress(40);
 
     logger.info('generating fragments');
     const fragmentBytes = await generateFragments(ifcBytes);
+    await reportProgress(80);
 
     logger.info('extracting metadata');
     const ifcApi = await getIfcApi();
@@ -147,6 +170,7 @@ export async function runExtraction(job: WorkerJob): Promise<void> {
           ? `${err.name}: ${err.message}`
           : 'UNKNOWN_ERROR';
     logger.error({ err, payload }, 'extraction failed');
+    const { retriable, error_kind } = classifyError(err);
     await postCallback({
       file_id: payload.file_id,
       organization_id: job.organization_id,
@@ -156,6 +180,8 @@ export async function runExtraction(job: WorkerJob): Promise<void> {
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       extractor_version: version,
+      retriable,
+      error_kind,
     });
     throw err;
   } finally {

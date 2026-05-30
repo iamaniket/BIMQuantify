@@ -1885,7 +1885,12 @@
       "clear": "wissen",
       "copyValue": "Waarde kopiëren",
       "boolYes": "Ja",
-      "boolNo": "Nee"
+      "boolNo": "Nee",
+      "mixed": "Gemengd",
+      "loading": "Eigenschappen laden…",
+      "noCommonProperties": "Geen gemeenschappelijke eigenschappen voor geselecteerde elementen.",
+      "tooManySelected": "Te veel elementen geselecteerd ({count}). Selecteer minder dan 100 om eigenschappen te vergelijken.",
+      "multiSummary": "{elements, plural, one {# element} other {# elementen}} · {properties, plural, one {# gemeenschappelijke eigenschap} other {# gemeenschappelijke eigenschappen}}"
     },
     "sidePanel": {
       "titleExplorer": "Modelboom",
@@ -2268,6 +2273,14 @@
     "justNow": "zojuist",
     "minutesAgo": "{count} min geleden",
     "hoursAgo": "{count} u geleden",
-    "daysAgo": "{count} d geleden"
+    "daysAgo": "{count} d geleden",
+    "retry": "Opnieuw proberen",
+    "cancel": "Annuleren",
+    "cancelling": "Annuleren…",
+    "retrying": "Opnieuw proberen…",
+    "notRetriable": "Deze fout kan niet opnieuw worden geprobeerd",
+    "cancelled": "Geannuleerd",
+    "jobAlreadyRunning": "Taak is al gestart en kan niet worden geannuleerd",
+    "progressLabel": "{percent}%"
   }
 }

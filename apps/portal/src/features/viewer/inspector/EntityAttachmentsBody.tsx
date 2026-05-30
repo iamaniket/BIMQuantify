@@ -45,12 +45,14 @@ export function EntityAttachmentsBody({
   const [noteText, setNoteText] = useState('');
   const [uploadPhase, setUploadPhase] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastConsumedNonce = useRef<number | undefined>(undefined);
 
   // Auto-open the native file picker when triggered from a context-menu command.
   // Note: the browser may block this if transient user activation has expired;
   // in that case the Attach button is right there as a one-click fallback.
   useEffect(() => {
-    if (autoOpenNonce !== undefined) {
+    if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
+      lastConsumedNonce.current = autoOpenNonce;
       fileInputRef.current?.click();
     }
   }, [autoOpenNonce]);

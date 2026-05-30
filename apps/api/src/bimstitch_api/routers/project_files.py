@@ -30,6 +30,7 @@ from bimstitch_api.jobs import (
     check_job_concurrency,
     dispatch_job,
 )
+from bimstitch_api.jobs.lifecycle import retry_job as retry_job_lifecycle
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.model import Model
 from bimstitch_api.models.project_file import (
@@ -345,6 +346,8 @@ async def complete_upload(
             row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
             pdf_job.status = JobStatus.failed
             pdf_job.error = f"DISPATCH_FAILED: {exc}"[:500]
+            pdf_job.retriable = True
+            pdf_job.error_kind = "dispatch"
             logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
             await session.flush()
 
@@ -424,6 +427,8 @@ async def complete_upload(
             row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
             ifc_job.status = JobStatus.failed
             ifc_job.error = f"DISPATCH_FAILED: {exc}"[:500]
+            ifc_job.retriable = True
+            ifc_job.error_kind = "dispatch"
             logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
             await session.flush()
 
@@ -546,48 +551,22 @@ async def retry_extraction(
     if row.extraction_status is not ExtractionStatus.failed:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="EXTRACTION_NOT_FAILED")
 
-    retry_job_type = (
-        JobType.pdf_extraction if row.file_type == FileType.pdf else JobType.ifc_extraction
-    )
-
-    row.extraction_status = ExtractionStatus.queued
-    row.extraction_error = None
-    row.extraction_started_at = None
-    row.extraction_finished_at = None
-
-    try:
-        await check_job_concurrency(session, settings)
-    except JobConcurrencyError:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="TOO_MANY_ACTIVE_JOBS",
+    # Delegate to the generic lifecycle helper: it resets the linked file to
+    # `queued`, mints a fresh Job (retry_of lineage, attempt+1) and re-dispatches.
+    failed_job = (
+        await session.execute(
+            select(Job)
+            .where(Job.file_id == row.id, Job.status == JobStatus.failed)
+            .order_by(Job.created_at.desc())
+            .limit(1)
         )
+    ).scalar_one_or_none()
+    if failed_job is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="EXTRACTION_NOT_FAILED")
 
-    retry_job = Job(
-        project_id=project.id,
-        file_id=row.id,
-        job_type=retry_job_type,
-        status=JobStatus.pending,
-        payload={
-            "file_id": str(row.id),
-            "project_id": str(project.id),
-            "storage_key": row.storage_key,
-            "retry": True,
-        },
-        created_by_user_id=user.id,
+    await retry_job_lifecycle(
+        session, failed_job, settings=settings, organization_id=active_org_id, user=user
     )
-    session.add(retry_job)
-    await session.flush()
-
-    try:
-        await dispatch_job(retry_job, settings, active_org_id)
-    except DispatchJobError as exc:
-        row.extraction_status = ExtractionStatus.failed
-        row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
-        retry_job.status = JobStatus.failed
-        retry_job.error = f"DISPATCH_FAILED: {exc}"[:500]
-        logger.warning("Worker re-dispatch failed for %s: %s", row.storage_key, exc)
-        await session.flush()
 
     await session.refresh(row)
     return row

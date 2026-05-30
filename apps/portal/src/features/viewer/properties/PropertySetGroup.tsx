@@ -78,7 +78,7 @@ export function PropertySetGroup({
         </span>
 
         {/* Pset name */}
-        <Eyebrow title={name} className="flex-1 truncate">
+        <Eyebrow size="sm" title={name} className="flex-1 truncate">
           {name}
         </Eyebrow>
 

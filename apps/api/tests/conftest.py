@@ -432,6 +432,38 @@ def extraction_calls(
 
 
 @pytest.fixture(autouse=True)
+def _stub_job_canceller() -> Generator[list[dict[str, object]], None, None]:
+    """Default: recording canceller that reports the job as removed.
+
+    Mirrors ``_stub_job_dispatcher``. Each entry is `{"job_id": ...}`. Tests
+    that need a different outcome (e.g. ``already_running``) set their own
+    canceller via ``set_job_canceller`` after pulling this fixture.
+    """
+    from bimstitch_api.config import Settings
+    from bimstitch_api.jobs import reset_job_canceller, set_job_canceller
+
+    calls: list[dict[str, object]] = []
+
+    async def _record(job_id, _settings: Settings) -> str:
+        calls.append({"job_id": str(job_id)})
+        return "removed"
+
+    set_job_canceller(_record)
+    try:
+        yield calls
+    finally:
+        reset_job_canceller()
+
+
+@pytest.fixture
+def job_cancel_calls(
+    _stub_job_canceller: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Alias so test signatures read naturally."""
+    return _stub_job_canceller
+
+
+@pytest.fixture(autouse=True)
 def _stub_action_dispatcher() -> Generator[list[dict[str, object]], None, None]:
     """No-op action dispatcher that records calls.
 

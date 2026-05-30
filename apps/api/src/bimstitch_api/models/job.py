@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, Text, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Text, text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -28,9 +28,12 @@ class JobStatus(StrEnum):
     running = "running"
     succeeded = "succeeded"
     failed = "failed"
+    cancelled = "cancelled"
 
 
-_JOB_TERMINAL: frozenset[JobStatus] = frozenset({JobStatus.succeeded, JobStatus.failed})
+_JOB_TERMINAL: frozenset[JobStatus] = frozenset(
+    {JobStatus.succeeded, JobStatus.failed, JobStatus.cancelled}
+)
 
 
 class Job(TimestampMixin, TenantBase):
@@ -74,6 +77,29 @@ class Job(TimestampMixin, TenantBase):
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
     result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # `retriable` is set on terminal failure: True when retrying could plausibly
+    # succeed (network/S3/OOM/timeout/dispatch), False for permanent errors
+    # (bad input, parse failure, hash mismatch). Drives the UI Retry affordance.
+    retriable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    # Free-form classifier tag from the worker (e.g. "dispatch", "parse",
+    # "network"). Informational; `retriable` is the gate.
+    error_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 0-100 progress reported by the worker on `running` callbacks.
+    progress: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    # Lineage: the failed job this one was spawned to retry, if any.
+    retry_of: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("jobs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # 1 for the original dispatch; incremented on each retry.
+    attempt: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(
@@ -89,6 +115,7 @@ class Job(TimestampMixin, TenantBase):
         Index("ix_jobs_job_type", "job_type"),
         Index("ix_jobs_created_at", text("created_at DESC")),
         Index("ix_jobs_created_by", "created_by_user_id"),
+        Index("ix_jobs_retry_of", "retry_of", postgresql_where=text("retry_of IS NOT NULL")),
         Index(
             "ix_jobs_project_created",
             "project_id",

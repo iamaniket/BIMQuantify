@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { getConfig } from '../config.js';
-import { enqueueJob } from '../queue/queue.js';
+import { enqueueJob, removeQueuedJob } from '../queue/queue.js';
 
 /**
  * Generic job envelope. Type-specific fields live inside `payload` —
@@ -38,5 +38,25 @@ export function registerRoutes(app: FastifyInstance): void {
 
     await enqueueJob(parsed.data);
     return reply.code(202).send({ accepted: true });
+  });
+
+  // Cancel a still-queued job by id. The API calls this before flipping the
+  // Job to `cancelled`; an already-running job returns 409 so the API leaves
+  // it to finish via the worker's own terminal callback.
+  app.post('/jobs/:jobId/cancel', async (request, reply) => {
+    const cfg = getConfig();
+    const auth = request.headers.authorization;
+    if (auth !== `Bearer ${cfg.PROCESSOR_SHARED_SECRET}`) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+
+    const { jobId } = request.params as { jobId: string };
+    const result = await removeQueuedJob(jobId);
+    if (result === 'active') {
+      return reply.code(409).send({ error: 'ALREADY_RUNNING' });
+    }
+    // `removed` and `not_found` both resolve to success — cancel is
+    // best-effort and idempotent (a missing job is already gone).
+    return reply.code(200).send({ result });
   });
 }
