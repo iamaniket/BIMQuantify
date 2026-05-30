@@ -20,8 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
+from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimstitch_api.models.notification import NotificationEventType
+from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.user import User
 from bimstitch_api.notifications.service import create_notification
 from bimstitch_api.routers.projects import (
@@ -31,10 +33,29 @@ from bimstitch_api.routers.projects import (
     _require_project_read_access,
     _require_project_writable,
 )
-from bimstitch_api.schemas.finding import FindingCreate, FindingRead, FindingUpdate
+from bimstitch_api.schemas.finding import (
+    FindingCreate,
+    FindingHistoryEntry,
+    FindingRead,
+    FindingUpdate,
+)
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 router = APIRouter(prefix="/projects/{project_id}/findings", tags=["findings"])
+
+
+# Legal Bevinding lifecycle transitions (#26/#27). The finding moves
+# draft -> open -> in_progress/resolved -> verified. `verified` is the
+# kwaliteitsborger's acceptance and is terminal — there is no revert. A
+# resolution can be reworked (resolved -> in_progress) or re-opened
+# (in_progress -> open). Same-status writes are no-ops and skip the map.
+_FINDING_TRANSITIONS: dict[FindingStatus, frozenset[FindingStatus]] = {
+    FindingStatus.draft: frozenset({FindingStatus.open}),
+    FindingStatus.open: frozenset({FindingStatus.in_progress, FindingStatus.resolved}),
+    FindingStatus.in_progress: frozenset({FindingStatus.resolved, FindingStatus.open}),
+    FindingStatus.resolved: frozenset({FindingStatus.verified, FindingStatus.in_progress}),
+    FindingStatus.verified: frozenset(),
+}
 
 
 def _finding_snapshot(finding: Finding) -> dict[str, str | None]:
@@ -54,6 +75,7 @@ def _finding_snapshot(finding: Finding) -> dict[str, str | None]:
         ),
         "linked_file_id": str(finding.linked_file_id) if finding.linked_file_id else None,
         "linked_element_global_id": finding.linked_element_global_id,
+        "resolution_note": finding.resolution_note,
     }
 
 
@@ -139,10 +161,7 @@ async def list_findings(
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
 
-    stmt = (
-        select(Finding)
-        .where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
-    )
+    stmt = select(Finding).where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
     if status_filter is not None:
         stmt = stmt.where(Finding.status == status_filter)
     if severity is not None:
@@ -173,6 +192,65 @@ async def get_finding(
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
     return await _load_finding_or_404(session, project.id, finding_id)
+
+
+def _snapshot_status(snapshot: dict[str, object] | None) -> str | None:
+    if not snapshot:
+        return None
+    value = snapshot.get("status")
+    return value if isinstance(value, str) else None
+
+
+@router.get("/{finding_id}/history", response_model=list[FindingHistoryEntry])
+async def get_finding_history(
+    project_id: UUID,
+    finding_id: UUID,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> list[FindingHistoryEntry]:
+    """Chronological lifecycle timeline for one finding.
+
+    Reads the per-tenant `audit_log` (search_path resolves it to the active
+    org's schema) for every entry targeting this finding, oldest first. Gated
+    on project-read like `get_finding` — any project member can see the
+    history, so a contractor sees it without holding the `audit_log`
+    permission. `from_status`/`to_status` come from each entry's before/after
+    snapshot; the actor is resolved from `public.users`.
+    """
+    project = await _load_project_or_404(session, project_id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
+    # 404 if the finding doesn't exist or belongs to a sibling project.
+    await _load_finding_or_404(session, project.id, finding_id)
+
+    # Select the AuditLog + User entities (not bare columns): `User.email` /
+    # `User.id` come from the FastAPI-Users base typed as plain str/UUID, so
+    # passing them to `select()` won't type-check — read them off the instance
+    # instead. `actor` is None for entries whose author row was deleted.
+    stmt = (
+        select(AuditLog, User)
+        .outerjoin(User, User.id == AuditLog.user_id)
+        .where(
+            AuditLog.resource_type == "finding",
+            AuditLog.resource_id == str(finding_id),
+        )
+        .order_by(AuditLog.created_at.asc())
+    )
+    rows = (await session.execute(stmt)).all()
+
+    return [
+        FindingHistoryEntry(
+            id=log.id,
+            action=log.action,
+            actor_user_id=log.user_id,
+            actor_name=actor.full_name if actor else None,
+            actor_email=actor.email if actor else None,
+            from_status=_snapshot_status(log.before),
+            to_status=_snapshot_status(log.after),
+            created_at=log.created_at,
+        )
+        for log, actor in rows
+    ]
 
 
 @router.patch("/{finding_id}", response_model=FindingRead)
@@ -212,14 +290,25 @@ async def update_finding(
     # Validate a chosen assignee actually belongs to the project so an invalid
     # id surfaces as a clean 422 rather than an FK IntegrityError 500.
     if finding.assignee_user_id is not None and "assignee_user_id" in updates:
-        assignee_membership = await _get_membership(
-            session, project.id, finding.assignee_user_id
-        )
+        assignee_membership = await _get_membership(session, project.id, finding.assignee_user_id)
         if assignee_membership is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="ASSIGNEE_NOT_A_PROJECT_MEMBER",
             )
+
+    # Lifecycle gating (#26/#27). A status change must follow the legal
+    # transition map; same-status writes are no-ops and skip it.
+    status_changed = finding.status is not previous_status
+    if status_changed and finding.status not in _FINDING_TRANSITIONS[previous_status]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_ILLEGAL_TRANSITION",
+        )
+
+    resolving = status_changed and finding.status is FindingStatus.resolved
+    verifying = status_changed and finding.status is FindingStatus.verified
+    promoted = previous_status is FindingStatus.draft and finding.status is FindingStatus.open
 
     # Promotion rule: draft -> open requires both a deadline and an assignee.
     if finding.status is FindingStatus.open and (
@@ -230,10 +319,27 @@ async def update_finding(
             detail="FINDING_PROMOTE_REQUIRES_DEADLINE_ASSIGNEE",
         )
 
+    # Evidence gate: marking a finding resolved requires a written note and at
+    # least one evidence attachment — no silent close.
+    if resolving and (
+        not (finding.resolution_note or "").strip() or not finding.resolution_evidence_ids
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_RESOLVE_REQUIRES_EVIDENCE",
+        )
+
+    # Verification is the kwaliteitsborger's independent acceptance — only the
+    # inspector role may move a finding into `verified`.
+    if verifying and membership.role is not ProjectRole.inspector:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="FINDING_VERIFY_REQUIRES_INSPECTOR",
+        )
+
     await session.flush()
     await session.refresh(finding)
 
-    promoted = previous_status is FindingStatus.draft and finding.status is FindingStatus.open
     if promoted:
         await create_notification(
             session,
@@ -242,10 +348,27 @@ async def update_finding(
             body=finding.title,
             project_id=project.id,
         )
+    elif resolving:
+        await create_notification(
+            session,
+            event_type=NotificationEventType.finding_resolved,
+            title="Bevinding opgelost",
+            body=finding.title,
+            project_id=project.id,
+        )
+
+    if resolving:
+        audit_action = "finding.resolved"
+    elif verifying:
+        audit_action = "finding.verified"
+    elif promoted:
+        audit_action = "finding.promoted"
+    else:
+        audit_action = "finding.updated"
 
     await audit.record(
         session,
-        action="finding.promoted" if promoted else "finding.updated",
+        action=audit_action,
         resource_type="finding",
         resource_id=finding.id,
         before=before,

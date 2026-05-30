@@ -107,6 +107,11 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
     )
     linked_element_global_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     photo_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
+    # Resolution evidence (#26/#27): a transition into `resolved` requires both
+    # a written note and >=1 attachment id. `resolution_evidence_ids` mirrors
+    # `photo_ids` — a JSONB string list, kept JSON-serializable.
+    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolution_evidence_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
 
     project: Mapped["Project"] = relationship()
     assignee: Mapped[User | None] = relationship(User, foreign_keys=[assignee_user_id])

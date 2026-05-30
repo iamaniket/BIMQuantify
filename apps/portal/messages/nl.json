@@ -845,6 +845,51 @@
         "viewerCapturedAt": "Vastgelegd",
         "viewerLocation": "Locatie"
       },
+      "certificates": {
+        "label": "Certificaten",
+        "eyebrow": "Bewijs van conformiteit",
+        "subtitle": "{count, plural, =0 {Geen certificaten} one {# certificaat} other {# certificaten}}",
+        "title": "Nog geen certificaten",
+        "description": "Upload productcertificaten, testrapporten, inspectiecertificaten en garanties om je Wkb-conformiteitsdossier op te bouwen.",
+        "ctaLabel": "Certificaat uploaden",
+        "searchPlaceholder": "Certificaten zoeken…",
+        "filterAll": "Alle typen",
+        "uploadButton": "Uploaden",
+        "uploadTitle": "Certificaat uploaden",
+        "uploadDescription": "Voeg een bewijs-van-conformiteit document toe met type en geldigheidsperiode.",
+        "uploadSuccess": "{name} geüpload",
+        "downloadError": "Kon downloadlink niet genereren",
+        "deleteSuccess": "{name} verwijderd",
+        "download": "Downloaden",
+        "delete": "Verwijderen",
+        "cancel": "Annuleren",
+        "fieldFile": "Bestand",
+        "fieldType": "Type certificaat",
+        "fieldNumber": "Certificaatnummer",
+        "fieldNumberPlaceholder": "bv. DoP-2024-018",
+        "fieldIssuer": "Uitgever",
+        "fieldIssuerPlaceholder": "bv. Kiwa",
+        "fieldValidFrom": "Geldig vanaf",
+        "fieldValidUntil": "Geldig tot",
+        "fieldDescription": "Omschrijving",
+        "fieldDescriptionPlaceholder": "Wat dekt dit certificaat?",
+        "validityError": "Geldig tot mag niet eerder zijn dan geldig vanaf",
+        "numberShort": "Nr.",
+        "validUntilShort": "Tot {date}",
+        "type": {
+          "product": "Productcertificaat",
+          "installation_test": "Installatietestrapport",
+          "inspection": "Inspectiecertificaat",
+          "warranty": "Garantie",
+          "other": "Overig"
+        },
+        "expiry": {
+          "none": "Geen vervaldatum",
+          "valid": "Geldig",
+          "expiring": "Verloopt binnenkort",
+          "expired": "Verlopen"
+        }
+      },
       "deadlines": {
         "label": "Deadlines",
         "emptyTitle": "Nog geen deadlines",
@@ -930,6 +975,20 @@
         "hint": "Stel zowel een verantwoordelijke als een deadline in om dit concept naar een open bevinding te promoveren.",
         "action": "Promoveren naar open"
       },
+      "resolution": {
+        "title": "Bevinding oplossen",
+        "hint": "Leg vast hoe het gebrek is hersteld. Een toelichting en minimaal één bewijsstuk zijn verplicht.",
+        "noteLabel": "Toelichting oplossing",
+        "notePlaceholder": "Beschrijf de uitgevoerde herstelmaatregel…",
+        "evidenceLabel": "Bewijs van herstel",
+        "action": "Markeren als opgelost",
+        "recordedTitle": "Oplossing"
+      },
+      "verify": {
+        "title": "Onafhankelijke verificatie",
+        "hint": "Bevestig als kwaliteitsborger dat het herstel aan de eisen voldoet. Dit is definitief en kan niet worden teruggedraaid.",
+        "action": "Verifiëren"
+      },
       "delete": {
         "action": "Bevinding verwijderen",
         "confirm": "Deze bevinding verwijderen?",
@@ -940,6 +999,20 @@
         "title": "Gekoppeld element",
         "description": "Deze bevinding is gekoppeld aan een BIM-element in het model.",
         "unlink": "Element ontkoppelen"
+      },
+      "history": {
+        "title": "Geschiedenis",
+        "empty": "Nog geen geschiedenis.",
+        "loading": "Geschiedenis laden…",
+        "system": "Systeem",
+        "actions": {
+          "created": "heeft de bevinding aangemaakt",
+          "promoted": "heeft gepromoveerd naar open",
+          "resolved": "heeft als opgelost gemarkeerd",
+          "verified": "heeft de bevinding geverifieerd",
+          "updated": "heeft de bevinding bijgewerkt",
+          "deleted": "heeft de bevinding verwijderd"
+        }
       }
     },
     "photos": {

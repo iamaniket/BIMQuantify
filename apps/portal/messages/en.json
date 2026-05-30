@@ -845,6 +845,51 @@
         "viewerCapturedAt": "Captured",
         "viewerLocation": "Location"
       },
+      "certificates": {
+        "label": "Certificates",
+        "eyebrow": "Proof of conformity",
+        "subtitle": "{count, plural, =0 {No certificates} one {# certificate} other {# certificates}}",
+        "title": "No certificates yet",
+        "description": "Upload product certificates, test reports, inspection certificates and warranties to build your Wkb conformity dossier.",
+        "ctaLabel": "Upload certificate",
+        "searchPlaceholder": "Search certificates…",
+        "filterAll": "All types",
+        "uploadButton": "Upload",
+        "uploadTitle": "Upload certificate",
+        "uploadDescription": "Add a proof-of-conformity document with its type and validity window.",
+        "uploadSuccess": "{name} uploaded",
+        "downloadError": "Could not generate download link",
+        "deleteSuccess": "{name} deleted",
+        "download": "Download",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "fieldFile": "File",
+        "fieldType": "Certificate type",
+        "fieldNumber": "Certificate number",
+        "fieldNumberPlaceholder": "e.g. DoP-2024-018",
+        "fieldIssuer": "Issuer",
+        "fieldIssuerPlaceholder": "e.g. Kiwa",
+        "fieldValidFrom": "Valid from",
+        "fieldValidUntil": "Valid until",
+        "fieldDescription": "Description",
+        "fieldDescriptionPlaceholder": "What does this certificate cover?",
+        "validityError": "Valid until must not be earlier than valid from",
+        "numberShort": "No.",
+        "validUntilShort": "Until {date}",
+        "type": {
+          "product": "Product certificate",
+          "installation_test": "Installation test report",
+          "inspection": "Inspection certificate",
+          "warranty": "Warranty",
+          "other": "Other"
+        },
+        "expiry": {
+          "none": "No expiry",
+          "valid": "Valid",
+          "expiring": "Expiring soon",
+          "expired": "Expired"
+        }
+      },
       "deadlines": {
         "label": "Deadlines",
         "emptyTitle": "No deadlines yet",
@@ -930,6 +975,20 @@
         "hint": "Set both an assignee and a deadline to promote this draft to an open finding.",
         "action": "Promote to open"
       },
+      "resolution": {
+        "title": "Resolve finding",
+        "hint": "Record how the defect was fixed. A written note and at least one piece of evidence are required.",
+        "noteLabel": "Resolution note",
+        "notePlaceholder": "Describe the corrective action taken…",
+        "evidenceLabel": "Resolution evidence",
+        "action": "Mark as resolved",
+        "recordedTitle": "Resolution"
+      },
+      "verify": {
+        "title": "Independent verification",
+        "hint": "As the quality assurance inspector, confirm the fix meets the requirements. This is final and cannot be reverted.",
+        "action": "Verify"
+      },
       "delete": {
         "action": "Delete finding",
         "confirm": "Delete this finding?",
@@ -940,6 +999,20 @@
         "title": "Linked element",
         "description": "This finding is linked to a BIM element in the model.",
         "unlink": "Unlink element"
+      },
+      "history": {
+        "title": "History",
+        "empty": "No history yet.",
+        "loading": "Loading history…",
+        "system": "System",
+        "actions": {
+          "created": "created the finding",
+          "promoted": "promoted to open",
+          "resolved": "marked as resolved",
+          "verified": "verified the finding",
+          "updated": "updated the finding",
+          "deleted": "deleted the finding"
+        }
       }
     },
     "photos": {

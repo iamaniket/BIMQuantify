@@ -18,6 +18,11 @@ from bimstitch_api.models.checklist_item_result import (
 )
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.attachment import Attachment, AttachmentCategory, AttachmentStatus
+from bimstitch_api.models.certificate import (
+    Certificate,
+    CertificateStatus,
+    CertificateType,
+)
 from bimstitch_api.models.deadline import Deadline, DeadlineStatus
 from bimstitch_api.models.deadline_notification_log import DeadlineNotificationLog
 from bimstitch_api.models.deadline_notification_settings import DeadlineNotificationSettings
@@ -63,6 +68,9 @@ __all__ = [
     "Borgingsplan",
     "BorgingsplanStatus",
     "CaptureLink",
+    "Certificate",
+    "CertificateStatus",
+    "CertificateType",
     "ChecklistItem",
     "ChecklistItemResult",
     "ChecklistItemType",

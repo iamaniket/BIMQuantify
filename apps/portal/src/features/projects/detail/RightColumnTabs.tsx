@@ -7,10 +7,12 @@ import { Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
 
 import type { Model } from '@/lib/api/schemas';
 import { useAttachments } from '@/features/attachments/useAttachments';
+import { useCertificates } from '@/features/certificates/useCertificates';
 import { useFindings } from '@/features/findings/useFindings';
 
 import { AttachmentsTab } from './AttachmentsTab';
 import { BevindingenTab } from './BevindingenTab';
+import { CertificatesTab } from './CertificatesTab';
 import { ModelsTab } from './ModelsTab';
 import { OverzichtTab } from './OverzichtTab';
 
@@ -30,9 +32,11 @@ export function RightColumnTabs({
   const t = useTranslations('projectDetail.tabs');
   const [tab, setTab] = useState('overzicht');
   const attachmentCount = useAttachments(projectId).data?.length ?? 0;
+  const certificateCount = useCertificates(projectId).data?.length ?? 0;
   const findingsCount = useFindings(projectId).data?.length ?? 0;
 
   const subtitleCount = tab === 'attachments' ? attachmentCount
+    : tab === 'certificates' ? certificateCount
     : tab === 'bevindingen' ? findingsCount
     : models.length;
 
@@ -61,6 +65,12 @@ export function RightColumnTabs({
                   {findingsCount}
                 </span>
               </TabsTrigger>
+              <TabsTrigger value="certificates">
+                {t('certificates.label')}
+                <span className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-background-secondary text-caption tabular-nums text-foreground-secondary">
+                  {certificateCount}
+                </span>
+              </TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="text-right">
@@ -79,6 +89,7 @@ export function RightColumnTabs({
           <OverzichtTab projectId={projectId} country={projectCountry} />
         )}
         {tab === 'attachments' && <AttachmentsTab projectId={projectId} />}
+        {tab === 'certificates' && <CertificatesTab projectId={projectId} />}
         {tab === 'bevindingen' && <BevindingenTab projectId={projectId} />}
         {tab === 'models' && (
           <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />

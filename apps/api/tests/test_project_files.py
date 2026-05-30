@@ -510,6 +510,125 @@ async def test_complete_already_finalized_returns_409(
 
 
 # ---------------------------------------------------------------------------
+# ifcZIP (compressed IFC) upload + complete
+# ---------------------------------------------------------------------------
+
+# Minimal bytes that open with the zip local-file-header magic. The processor
+# (not the API) decompresses and validates the inner IFC; the API only checks
+# the magic, so a header-only blob is enough to exercise the accept path.
+VALID_IFCZIP_BYTES = b"PK\x03\x04" + b"\x00" * 60
+
+
+async def test_initiate_ifczip_succeeds(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="IfczipInit"
+    )
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/initiate",
+        json={
+            "filename": "model.ifczip",
+            "size_bytes": len(VALID_IFCZIP_BYTES),
+            "content_type": "application/octet-stream",
+            "content_sha256": _new_hash(),
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["storage_key"].endswith(".ifczip")
+
+
+async def test_complete_ifczip_marks_ready_and_dispatches_compressed(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, str]],
+) -> None:
+    """A valid zip is accepted without header-sniffing: schema stays unknown and
+    the extraction job is dispatched with compressed=True so the processor
+    decompresses before opening the model."""
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="IfczipComplete"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "model.ifczip",
+                "size_bytes": len(VALID_IFCZIP_BYTES),
+                "content_type": "application/octet-stream",
+                "content_sha256": _new_hash(),
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_IFCZIP_BYTES
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "ready"
+    assert body["file_type"] == "ifc"
+    # Schema is deferred to the processor — not knowable from the zip wrapper.
+    assert body["ifc_schema"] == "unknown"
+    assert body["rejection_reason"] is None
+    assert body["extraction_status"] == "queued"
+
+    assert len(extraction_calls) == 1
+    assert extraction_calls[0]["job_type"] == "ifc_extraction"
+    assert extraction_calls[0]["payload"]["compressed"] is True
+
+
+async def test_complete_ifczip_non_zip_marks_rejected(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, str]],
+) -> None:
+    """An .ifczip whose bytes aren't a zip is rejected at complete — no job
+    dispatched, the object is deleted."""
+    client, fake = fake_storage_client
+    project_id, model_id = await _project_and_model(
+        client, org_user["access_token"], project_name="IfczipBadMagic"
+    )
+    bad = b"ISO-10303-21;\nHEADER;\n"  # a raw IFC, not a zip
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": "fake.ifczip",
+                "size_bytes": len(bad),
+                "content_type": "application/octet-stream",
+                "content_sha256": _new_hash(),
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = bad
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "rejected"
+    assert body["rejection_reason"] == "FILE_NOT_VALID_IFCZIP"
+    assert init["storage_key"] not in fake.objects
+    assert init["storage_key"] in fake.deleted
+    assert len(extraction_calls) == 0
+
+
+# ---------------------------------------------------------------------------
 # list
 # ---------------------------------------------------------------------------
 

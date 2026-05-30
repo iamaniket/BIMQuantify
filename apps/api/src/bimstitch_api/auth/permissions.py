@@ -46,6 +46,7 @@ class Resource(StrEnum):
     assurance_plan = "assurance_plan"
     completion_declaration = "completion_declaration"
     attachment = "attachment"
+    certificate = "certificate"
     capture_link = "capture_link"
     deadline = "deadline"
     audit_log = "audit_log"
@@ -100,6 +101,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                     {Action.read, Action.create, Action.update, Action.delete, Action.publish}
                 ),
                 Resource.attachment: _READ_WRITE_DELETE,
+                Resource.certificate: _READ_WRITE_DELETE,
                 Resource.capture_link: _READ_WRITE_DELETE,
                 Resource.deadline: _READ_UPDATE,
                 Resource.completion_declaration: _READ,
@@ -119,6 +121,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.finding: _READ_WRITE,
                 Resource.risk: _READ_WRITE_DELETE,
                 Resource.attachment: _READ_WRITE_DELETE,
+                Resource.certificate: _READ_WRITE_DELETE,
                 Resource.capture_link: _READ_WRITE,
                 Resource.deadline: _READ_UPDATE,
                 Resource.assurance_plan: _READ_WRITE_DELETE,
@@ -139,6 +142,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.finding: _READ,
                 Resource.risk: _READ,
                 Resource.attachment: _READ,
+                Resource.certificate: _READ,
                 Resource.capture_link: _READ,
                 Resource.deadline: _READ,
                 Resource.assurance_plan: _READ,
@@ -163,6 +167,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.finding: frozenset({Action.read, Action.create, Action.update}),
                 Resource.risk: _READ,
                 Resource.attachment: _READ_WRITE,
+                Resource.certificate: _READ,
                 Resource.capture_link: _READ,
                 Resource.deadline: _READ_UPDATE,
                 Resource.assurance_plan: _READ_WRITE,
@@ -188,6 +193,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.inspection: _READ,
                 Resource.finding: _READ_WRITE,
                 Resource.attachment: _READ_WRITE,
+                Resource.certificate: _READ_WRITE,
                 Resource.capture_link: _READ,
                 Resource.deadline: _READ_UPDATE,
                 Resource.risk: _READ,
@@ -210,6 +216,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.inspection: _READ,
                 Resource.finding: _READ,
                 Resource.attachment: _READ,
+                Resource.certificate: _READ,
                 Resource.capture_link: _READ,
                 Resource.deadline: _READ,
                 Resource.risk: _READ,

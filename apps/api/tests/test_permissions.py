@@ -152,6 +152,23 @@ def test_risk_crud_requires_owner_or_editor() -> None:
             assert not can_create and not can_update and not can_delete
 
 
+def test_certificate_upload_requires_write_role() -> None:
+    # The subcontractor (contractor) uploads his own proof-of-conformity
+    # certificates; the inspector (kwaliteitsborger) and client only consume
+    # them as evidence and cannot create. Read is universal.
+    for role in ProjectRole:
+        assert has_permission(role, Resource.certificate, Action.read)
+    can_create = {r for r in ProjectRole if has_permission(r, Resource.certificate, Action.create)}
+    assert can_create == {
+        ProjectRole.owner,
+        ProjectRole.editor,
+        ProjectRole.contractor,
+    }
+    assert not has_permission(ProjectRole.inspector, Resource.certificate, Action.create)
+    assert not has_permission(ProjectRole.viewer, Resource.certificate, Action.create)
+    assert not has_permission(ProjectRole.client, Resource.certificate, Action.create)
+
+
 # ---------------------------------------------------------------------------
 # Snapshot: pin the current matrix.
 # ---------------------------------------------------------------------------
@@ -175,6 +192,7 @@ def test_matrix_snapshot() -> None:
             "completion_declaration": {"read"},
             "audit_log": {"read"},
             "attachment": {"read", "create", "update", "delete"},
+            "certificate": {"read", "create", "update", "delete"},
             "capture_link": {"read", "create", "update", "delete"},
             "compliance": {"read", "create"},
             "report": {"read", "create"},
@@ -193,6 +211,7 @@ def test_matrix_snapshot() -> None:
             "completion_declaration": {"read"},
             "audit_log": set(),
             "attachment": {"read", "create", "update", "delete"},
+            "certificate": {"read", "create", "update", "delete"},
             "capture_link": {"read", "create", "update"},
             "compliance": {"read", "create"},
             "report": {"read", "create"},
@@ -211,6 +230,7 @@ def test_matrix_snapshot() -> None:
             "completion_declaration": {"read"},
             "audit_log": set(),
             "attachment": {"read"},
+            "certificate": {"read"},
             "capture_link": {"read"},
             "compliance": {"read"},
             "report": {"read"},
@@ -229,6 +249,7 @@ def test_matrix_snapshot() -> None:
             "completion_declaration": {"read", "create", "update", "sign"},
             "audit_log": {"read"},
             "attachment": {"read", "create", "update"},
+            "certificate": {"read"},
             "capture_link": {"read"},
             "compliance": {"read", "create"},
             "report": {"read", "create"},
@@ -247,6 +268,7 @@ def test_matrix_snapshot() -> None:
             "completion_declaration": {"read"},
             "audit_log": set(),
             "attachment": {"read", "create", "update"},
+            "certificate": {"read", "create", "update"},
             "capture_link": {"read"},
             "compliance": {"read"},
             "report": {"read"},
@@ -265,6 +287,7 @@ def test_matrix_snapshot() -> None:
             "completion_declaration": {"read"},
             "audit_log": set(),
             "attachment": {"read"},
+            "certificate": {"read"},
             "capture_link": {"read"},
             "compliance": {"read"},
             "report": {"read"},

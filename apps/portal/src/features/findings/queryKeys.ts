@@ -12,3 +12,9 @@ export const projectFindingsKey = (
   projectId: string,
 ): readonly [string, string, string, string] =>
   ['projects', projectId, 'findings', 'unlinked'] as const;
+
+export const findingHistoryKey = (
+  projectId: string,
+  findingId: string,
+): readonly [string, string, string, string, string] =>
+  ['projects', projectId, 'findings', findingId, 'history'] as const;

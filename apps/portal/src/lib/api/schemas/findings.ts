@@ -30,6 +30,8 @@ export const FindingSchema = z.object({
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   linked_element_global_id: z.union([z.string(), z.null()]),
   photo_ids: z.union([z.array(z.string()), z.null()]),
+  resolution_note: z.union([z.string(), z.null()]),
+  resolution_evidence_ids: z.union([z.array(z.string()), z.null()]),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -89,6 +91,27 @@ export const FindingUpdateSchema = z.object({
     .union([z.string().max(255), z.null()])
     .optional(),
   photo_ids: z.array(z.string().uuid()).optional(),
+  resolution_note: z
+    .union([z.string().max(4000), z.null()])
+    .optional(),
+  resolution_evidence_ids: z.array(z.string().uuid()).optional(),
 });
 
 export type FindingUpdateInput = z.infer<typeof FindingUpdateSchema>;
+
+export const FindingHistoryEntrySchema = z.object({
+  id: z.string().uuid(),
+  action: z.string(),
+  actor_user_id: z.union([z.string().uuid(), z.null()]),
+  actor_name: z.union([z.string(), z.null()]),
+  actor_email: z.union([z.string(), z.null()]),
+  from_status: z.union([z.string(), z.null()]),
+  to_status: z.union([z.string(), z.null()]),
+  created_at: z.string(),
+});
+
+export type FindingHistoryEntry = z.infer<typeof FindingHistoryEntrySchema>;
+
+export const FindingHistoryListSchema = z.array(FindingHistoryEntrySchema);
+
+export type FindingHistoryList = z.infer<typeof FindingHistoryListSchema>;

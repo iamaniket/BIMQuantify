@@ -23,7 +23,7 @@ from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
-from bimstitch_api.ifc.header import parse_ifc_header
+from bimstitch_api.ifc.header import looks_like_zip, parse_ifc_header
 from bimstitch_api.jobs import (
     DispatchJobError,
     JobConcurrencyError,
@@ -36,6 +36,7 @@ from bimstitch_api.models.project_file import (
     ALLOWED_EXTENSIONS,
     ExtractionStatus,
     FileType,
+    IfcSchema,
     ProjectFile,
     ProjectFileStatus,
 )
@@ -365,13 +366,25 @@ async def complete_upload(
         await session.refresh(row)
         return row
 
-    # IFC path
+    # IFC path. Uncompressed `.ifc` is STEP-header-sniffed here. Compressed
+    # `.ifczip` is a zip wrapper whose schema can only be read after
+    # decompression, so we verify only the zip magic and defer schema
+    # validation to the processor (it rejects on UnsupportedSchemaError).
+    is_compressed = row.original_filename.lower().endswith(".ifczip")
     range_end = min(HEADER_PEEK_BYTES - 1, max(row.size_bytes - 1, 0))
     head_bytes = await storage.get_object_range(row.storage_key, 0, range_end)
-    result = parse_ifc_header(head_bytes)
 
-    if result.rejection is None and result.schema is not None:
+    if is_compressed:
+        accepted = looks_like_zip(head_bytes)
+        rejection_reason = None if accepted else "FILE_NOT_VALID_IFCZIP"
+        row.ifc_schema = IfcSchema.unknown
+    else:
+        result = parse_ifc_header(head_bytes)
+        accepted = result.rejection is None and result.schema is not None
+        rejection_reason = result.rejection.value if result.rejection else None
         row.ifc_schema = result.schema
+
+    if accepted:
         row.status = ProjectFileStatus.ready
         row.extraction_status = ExtractionStatus.queued
         if model.primary_file_type is None:
@@ -385,16 +398,20 @@ async def complete_upload(
                 detail="TOO_MANY_ACTIVE_JOBS",
             )
 
+        job_payload: dict[str, str | bool] = {
+            "file_id": str(row.id),
+            "project_id": str(project.id),
+            "storage_key": row.storage_key,
+        }
+        if is_compressed:
+            job_payload["compressed"] = True
+
         ifc_job = Job(
             project_id=project.id,
             file_id=row.id,
             job_type=JobType.ifc_extraction,
             status=JobStatus.pending,
-            payload={
-                "file_id": str(row.id),
-                "project_id": str(project.id),
-                "storage_key": row.storage_key,
-            },
+            payload=job_payload,
             created_by_user_id=user.id,
         )
         session.add(ifc_job)
@@ -430,8 +447,7 @@ async def complete_upload(
         return row
 
     row.status = ProjectFileStatus.rejected
-    row.rejection_reason = result.rejection.value if result.rejection else "UNKNOWN"
-    row.ifc_schema = result.schema
+    row.rejection_reason = rejection_reason or "UNKNOWN"
     try:
         await storage.delete_object(row.storage_key)
     except Exception:

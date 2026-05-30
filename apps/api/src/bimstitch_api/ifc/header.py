@@ -24,6 +24,21 @@ from bimstitch_api.models.project_file import IfcSchema
 
 ISO_MAGIC = b"ISO-10303-21"
 
+# Local-file-header magic that opens every non-empty zip (and thus every
+# ifcZIP). The empty-archive form (PK\x05\x06) carries no entries, so we only
+# accept the local-file-header variant.
+ZIP_MAGIC = b"PK\x03\x04"
+
+
+def looks_like_zip(blob: bytes) -> bool:
+    """True if `blob` opens with the zip local-file-header magic.
+
+    An ifcZIP can't be STEP-header-sniffed here (its first bytes are the zip
+    magic, not ISO-10303-21), so the API only confirms it's really a zip; the
+    processor decompresses and validates the inner IFC schema.
+    """
+    return blob.startswith(ZIP_MAGIC)
+
 # Tolerate FILE_SCHEMA(('IFC4')) and FILE_SCHEMA(("IFC4")) and whitespace/newlines.
 _FILE_SCHEMA_RE = re.compile(rb"FILE_SCHEMA\s*\(\s*\(\s*['\"]([A-Za-z0-9_]+)['\"]")
 

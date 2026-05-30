@@ -1,9 +1,11 @@
 import { apiClient } from './client';
 import {
+  FindingHistoryListSchema,
   FindingListSchema,
   FindingSchema,
   type Finding,
   type FindingCreateInput,
+  type FindingHistoryList,
   type FindingList,
   type FindingUpdateInput,
 } from './schemas';
@@ -58,6 +60,18 @@ export async function updateFinding(
     `/projects/${projectId}/findings/${findingId}`,
     input,
     FindingSchema,
+    accessToken,
+  );
+}
+
+export async function getFindingHistory(
+  accessToken: string,
+  projectId: string,
+  findingId: string,
+): Promise<FindingHistoryList> {
+  return apiClient.get<FindingHistoryList>(
+    `/projects/${projectId}/findings/${findingId}/history`,
+    FindingHistoryListSchema,
     accessToken,
   );
 }

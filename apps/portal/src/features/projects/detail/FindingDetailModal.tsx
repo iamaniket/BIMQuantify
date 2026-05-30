@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash2, Unlink } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
@@ -18,15 +18,39 @@ import {
 
 import { Field } from '@/components/shared/forms/Field';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
+import { useFindingHistory } from '@/features/findings/useFindingHistory';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useRegisterField } from '@/hooks/useRegisterField';
 import type { Finding, FindingStatusValue, FindingUpdateInput } from '@/lib/api/schemas';
+import { useAuth } from '@/providers/AuthProvider';
 
 import { FindingPhotos } from './FindingPhotos';
 import { statusBadgeVariant } from './findingBadges';
 
 const SEVERITIES = ['low', 'medium', 'high'] as const;
+
+const STATUS_VALUES: readonly FindingStatusValue[] = [
+  'draft',
+  'open',
+  'in_progress',
+  'resolved',
+  'verified',
+];
+
+function isStatus(value: string | null): value is FindingStatusValue {
+  return value !== null && (STATUS_VALUES as readonly string[]).includes(value);
+}
+
+// audit_log action -> findings.detail.history.actions key
+const HISTORY_ACTION_KEY: Record<string, string> = {
+  'finding.created': 'created',
+  'finding.promoted': 'promoted',
+  'finding.resolved': 'resolved',
+  'finding.verified': 'verified',
+  'finding.updated': 'updated',
+  'finding.deleted': 'deleted',
+};
 
 const FormSchema = z.object({
   title: z.string().trim().min(1).max(255),
@@ -46,10 +70,16 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
+type PatchOptions = {
+  status?: FindingStatusValue;
+  resolutionNote?: string;
+  resolutionEvidenceIds?: string[];
+};
+
 function buildPatch(
   values: FormValues,
   photoIds: string[],
-  status?: FindingStatusValue,
+  opts: PatchOptions = {},
 ): FindingUpdateInput {
   const patch: FindingUpdateInput = {
     title: values.title.trim(),
@@ -69,8 +99,14 @@ function buildPatch(
         : values.deadline_date,
     photo_ids: photoIds,
   };
-  if (status !== undefined) {
-    patch.status = status;
+  if (opts.status !== undefined) {
+    patch.status = opts.status;
+  }
+  if (opts.resolutionNote !== undefined) {
+    patch.resolution_note = opts.resolutionNote;
+  }
+  if (opts.resolutionEvidenceIds !== undefined) {
+    patch.resolution_evidence_ids = opts.resolutionEvidenceIds;
   }
   return patch;
 }
@@ -82,13 +118,19 @@ export function FindingDetailModal({
   onOpenChange,
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
+  const tHistory = useTranslations('findings.detail.history');
   const tSeverity = useTranslations('findings.severity');
   const tStatus = useTranslations('findings.status');
+  const locale = useLocale();
+  const { me } = useAuth();
   const membersQuery = useProjectMembers(projectId);
   const updateMutation = useUpdateFinding(projectId);
   const deleteMutation = useDeleteFinding(projectId);
+  const historyQuery = useFindingHistory(projectId, finding?.id ?? null, open);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [photoIds, setPhotoIds] = useState<string[]>([]);
+  const [resolutionNote, setResolutionNote] = useState('');
+  const [resolutionEvidenceIds, setResolutionEvidenceIds] = useState<string[]>([]);
 
   const form = useForm<FormValues>({ resolver: zodResolver(FormSchema) });
   const { reset: resetForm } = form;
@@ -111,6 +153,8 @@ export function FindingDetailModal({
         deadline_date: finding.deadline_date ?? '',
       });
       setPhotoIds(finding.photo_ids ?? []);
+      setResolutionNote(finding.resolution_note ?? '');
+      setResolutionEvidenceIds(finding.resolution_evidence_ids ?? []);
       setConfirmDelete(false);
     }
   }, [open, finding, resetForm]);
@@ -127,6 +171,17 @@ export function FindingDetailModal({
   const canPromote = finding.status === 'draft' && hasAssignee && hasDeadline;
   const isPending = updateMutation.isPending || deleteMutation.isPending;
 
+  const currentUserId = me === null ? null : me.user.id;
+  const isInspector = members.some(
+    (m) => m.user_id === currentUserId && m.role === 'inspector',
+  );
+  const canResolve =
+    (finding.status === 'open' || finding.status === 'in_progress') &&
+    resolutionNote.trim() !== '' &&
+    resolutionEvidenceIds.length > 0;
+  const isResolved = finding.status === 'resolved' || finding.status === 'verified';
+  const showResolve = finding.status === 'open' || finding.status === 'in_progress';
+
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     updateMutation.mutate(
       { findingId: finding.id, input: buildPatch(values, photoIds) },
@@ -136,7 +191,28 @@ export function FindingDetailModal({
 
   const onPromoteSubmit: SubmitHandler<FormValues> = (values) => {
     updateMutation.mutate(
-      { findingId: finding.id, input: buildPatch(values, photoIds, 'open') },
+      { findingId: finding.id, input: buildPatch(values, photoIds, { status: 'open' }) },
+      { onSuccess: () => { onOpenChange(false); } },
+    );
+  };
+
+  const onResolveSubmit: SubmitHandler<FormValues> = (values) => {
+    updateMutation.mutate(
+      {
+        findingId: finding.id,
+        input: buildPatch(values, photoIds, {
+          status: 'resolved',
+          resolutionNote: resolutionNote.trim(),
+          resolutionEvidenceIds,
+        }),
+      },
+      { onSuccess: () => { onOpenChange(false); } },
+    );
+  };
+
+  const onVerify = (): void => {
+    updateMutation.mutate(
+      { findingId: finding.id, input: { status: 'verified' } },
       { onSuccess: () => { onOpenChange(false); } },
     );
   };
@@ -155,6 +231,12 @@ export function FindingDetailModal({
   };
 
   const isLinked = finding.linked_element_global_id !== null;
+
+  const history = historyQuery.data ?? [];
+  const dateFmt = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   return (
     <AppDialog
@@ -264,6 +346,142 @@ export function FindingDetailModal({
             </Button>
           </div>
         )}
+
+        {showResolve && (
+          <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
+            <div>
+              <div className="text-label2 font-medium text-foreground">
+                {t('resolution.title')}
+              </div>
+              <p className="mt-1 text-caption text-foreground-tertiary">
+                {t('resolution.hint')}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-label2 font-medium text-foreground">
+                {t('resolution.noteLabel')}
+              </span>
+              <Textarea
+                rows={3}
+                value={resolutionNote}
+                placeholder={t('resolution.notePlaceholder')}
+                disabled={isPending}
+                onChange={(e) => { setResolutionNote(e.target.value); }}
+              />
+            </div>
+            <FindingPhotos
+              projectId={projectId}
+              photoIds={resolutionEvidenceIds}
+              onChange={setResolutionEvidenceIds}
+              disabled={isPending}
+              label={t('resolution.evidenceLabel')}
+            />
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              className="self-start"
+              disabled={!canResolve || isPending}
+              onClick={form.handleSubmit(onResolveSubmit)}
+            >
+              {t('resolution.action')}
+            </Button>
+          </div>
+        )}
+
+        {isResolved && (
+          <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
+            <div>
+              <div className="text-label2 font-medium text-foreground">
+                {t('resolution.recordedTitle')}
+              </div>
+              {finding.resolution_note !== null && finding.resolution_note !== '' && (
+                <p className="mt-1 whitespace-pre-wrap text-body3 text-foreground-secondary">
+                  {finding.resolution_note}
+                </p>
+              )}
+            </div>
+            {resolutionEvidenceIds.length > 0 && (
+              <FindingPhotos
+                projectId={projectId}
+                photoIds={resolutionEvidenceIds}
+                onChange={setResolutionEvidenceIds}
+                disabled
+                label={t('resolution.evidenceLabel')}
+              />
+            )}
+            {finding.status === 'resolved' && isInspector && (
+              <div className="border-t border-border pt-3">
+                <div className="text-label2 font-medium text-foreground">
+                  {t('verify.title')}
+                </div>
+                <p className="mt-1 text-caption text-foreground-tertiary">
+                  {t('verify.hint')}
+                </p>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  className="mt-2"
+                  disabled={isPending}
+                  onClick={onVerify}
+                >
+                  {t('verify.action')}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
+          <div className="text-label2 font-medium text-foreground">
+            {tHistory('title')}
+          </div>
+          {historyQuery.isLoading ? (
+            <p className="text-caption text-foreground-tertiary">
+              {tHistory('loading')}
+            </p>
+          ) : history.length === 0 ? (
+            <p className="text-caption text-foreground-tertiary">
+              {tHistory('empty')}
+            </p>
+          ) : (
+            <ol className="flex flex-col gap-3">
+              {history.map((entry) => {
+                const actionKey = HISTORY_ACTION_KEY[entry.action];
+                const actionLabel =
+                  actionKey !== undefined ? tHistory(`actions.${actionKey}`) : entry.action;
+                const actor = entry.actor_name ?? entry.actor_email ?? tHistory('system');
+                const from = entry.from_status;
+                const to = entry.to_status;
+                return (
+                  <li
+                    key={entry.id}
+                    className="flex flex-col gap-1 border-l-2 border-border pl-3"
+                  >
+                    <div className="text-body3 text-foreground">
+                      <span className="font-medium">{actor}</span>{' '}
+                      <span className="text-foreground-secondary">{actionLabel}</span>
+                    </div>
+                    {isStatus(from) && isStatus(to) && from !== to && (
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant={statusBadgeVariant(from)}>{tStatus(from)}</Badge>
+                        <span className="text-caption text-foreground-tertiary">→</span>
+                        <Badge variant={statusBadgeVariant(to)}>{tStatus(to)}</Badge>
+                      </div>
+                    )}
+                    <time
+                      className="text-caption text-foreground-tertiary"
+                      dateTime={entry.created_at}
+                    >
+                      {dateFmt.format(new Date(entry.created_at))}
+                    </time>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
 
         <div className="border-t border-border pt-3">
           {confirmDelete ? (

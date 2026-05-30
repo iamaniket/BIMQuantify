@@ -33,6 +33,10 @@ class FileType(StrEnum):
 
 ALLOWED_EXTENSIONS: dict[str, "FileType"] = {
     ".ifc": FileType.ifc,
+    # Compressed IFC (a zip wrapping a single .ifc). Same FileType — compression
+    # is a property of the upload, not a distinct kind; the schema is sniffed by
+    # the processor after decompression, not at the API.
+    ".ifczip": FileType.ifc,
     ".pdf": FileType.pdf,
 }
 

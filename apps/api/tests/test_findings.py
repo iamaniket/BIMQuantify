@@ -95,9 +95,7 @@ async def test_create_finding_minimal(client: AsyncClient, org_user: dict[str, s
     assert "id" in body and "created_at" in body and "updated_at" in body
 
 
-async def test_create_finding_with_fields(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
+async def test_create_finding_with_fields(client: AsyncClient, org_user: dict[str, str]) -> None:
     project = await _create_project(client, org_user["access_token"])
     resp = await client.post(
         f"/projects/{project['id']}/findings",
@@ -157,9 +155,7 @@ async def test_create_finding_invalid_severity_422(
     assert resp.status_code == 422
 
 
-async def test_create_finding_title_required(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
+async def test_create_finding_title_required(client: AsyncClient, org_user: dict[str, str]) -> None:
     project = await _create_project(client, org_user["access_token"])
     resp = await client.post(
         f"/projects/{project['id']}/findings",
@@ -294,9 +290,7 @@ async def test_list_findings_pagination_and_total_count(
     assert too_big.status_code == 422
 
 
-async def test_get_finding_404_cross_project(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
+async def test_get_finding_404_cross_project(client: AsyncClient, org_user: dict[str, str]) -> None:
     project_a = await _create_project(client, org_user["access_token"], name="A")
     project_b = await _create_project(client, org_user["access_token"], name="B")
     finding = (
@@ -436,6 +430,387 @@ async def test_promote_with_nonmember_assignee_422(
     )
     assert resp.status_code == 422
     assert resp.json()["detail"] == "ASSIGNEE_NOT_A_PROJECT_MEMBER"
+
+
+# ---------------------------------------------------------------------------
+# Resolution + verification lifecycle (#26/#27)
+# ---------------------------------------------------------------------------
+
+EVIDENCE_NOTE = "Doorvoer brandwerend afgekit en visueel gecontroleerd."
+
+
+async def _promote_to_open(
+    client: AsyncClient, token: str, project_id: str, finding_id: str, assignee_id: str
+) -> None:
+    resp = await client.patch(
+        f"/projects/{project_id}/findings/{finding_id}",
+        json={
+            "status": "open",
+            "deadline_date": "2026-08-01",
+            "assignee_user_id": assignee_id,
+        },
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+
+
+async def _resolve(client: AsyncClient, token: str, project_id: str, finding_id: str) -> None:
+    resp = await client.patch(
+        f"/projects/{project_id}/findings/{finding_id}",
+        json={
+            "status": "resolved",
+            "resolution_note": EVIDENCE_NOTE,
+            "resolution_evidence_ids": [str(uuid4())],
+        },
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+
+
+async def test_resolve_requires_note_and_evidence(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+
+    bare = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "resolved"},
+        headers=_auth(token),
+    )
+    assert bare.status_code == 422
+    assert bare.json()["detail"] == "FINDING_RESOLVE_REQUIRES_EVIDENCE"
+
+    note_only = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "resolved", "resolution_note": EVIDENCE_NOTE},
+        headers=_auth(token),
+    )
+    assert note_only.status_code == 422
+
+    evidence_only = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "resolved", "resolution_evidence_ids": [str(uuid4())]},
+        headers=_auth(token),
+    )
+    assert evidence_only.status_code == 422
+
+
+async def test_resolve_with_evidence_succeeds_and_notifies(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+
+    evidence = [str(uuid4())]
+    resolved = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={
+            "status": "resolved",
+            "resolution_note": EVIDENCE_NOTE,
+            "resolution_evidence_ids": evidence,
+        },
+        headers=_auth(token),
+    )
+    assert resolved.status_code == 200, resolved.text
+    body = resolved.json()
+    assert body["status"] == "resolved"
+    assert body["resolution_note"] == EVIDENCE_NOTE
+    assert body["resolution_evidence_ids"] == evidence
+
+    notifs = await client.get("/notifications", headers=_auth(token))
+    events = [n["event_type"] for n in notifs.json()["items"]]
+    assert "finding_resolved" in events
+
+
+async def test_resolve_writes_audit(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+    await _resolve(client, token, project["id"], created["id"])
+
+    rows = await _audit_rows(session_maker, "finding.resolved", resource_id=created["id"])
+    assert len(rows) == 1
+
+
+async def test_illegal_transition_open_to_verified(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+
+    resp = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "verified"},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "FINDING_ILLEGAL_TRANSITION"
+
+
+async def test_illegal_transition_draft_to_resolved(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    resp = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={
+            "status": "resolved",
+            "resolution_note": EVIDENCE_NOTE,
+            "resolution_evidence_ids": [str(uuid4())],
+        },
+        headers=_auth(token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "FINDING_ILLEGAL_TRANSITION"
+
+
+async def test_resolved_can_be_reworked_to_in_progress(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    # Inspector rejects a resolution: resolved -> in_progress (rework). Going
+    # out of resolved must not trip the evidence gate.
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], same_org_non_admin_user["id"], "inspector")
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+    await _resolve(client, token, project["id"], created["id"])
+
+    rework = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "in_progress"},
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert rework.status_code == 200, rework.text
+    assert rework.json()["status"] == "in_progress"
+
+
+async def test_contractor_cannot_verify(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], same_org_non_admin_user["id"], "contractor")
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+    await _resolve(client, token, project["id"], created["id"])
+
+    resp = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "verified"},
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "FINDING_VERIFY_REQUIRES_INSPECTOR"
+
+
+async def test_inspector_can_verify(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], same_org_non_admin_user["id"], "inspector")
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+    await _resolve(client, token, project["id"], created["id"])
+
+    resp = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "verified"},
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "verified"
+
+    rows = await _audit_rows(session_maker, "finding.verified", resource_id=created["id"])
+    assert len(rows) == 1
+
+
+async def test_verified_is_terminal_no_revert(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], same_org_non_admin_user["id"], "inspector")
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+    await _resolve(client, token, project["id"], created["id"])
+    verified = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "verified"},
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert verified.status_code == 200, verified.text
+
+    revert = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"status": "in_progress"},
+        headers=_auth(token),
+    )
+    assert revert.status_code == 422
+    assert revert.json()["detail"] == "FINDING_ILLEGAL_TRANSITION"
+
+
+# ---------------------------------------------------------------------------
+# History timeline (#26) — GET /findings/{id}/history
+# ---------------------------------------------------------------------------
+
+
+async def test_finding_history_orders_chronologically(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+    await _resolve(client, token, project["id"], created["id"])
+
+    resp = await client.get(
+        f"/projects/{project['id']}/findings/{created['id']}/history",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    entries = resp.json()
+    # Oldest first: created -> promoted -> resolved.
+    assert [e["action"] for e in entries] == [
+        "finding.created",
+        "finding.promoted",
+        "finding.resolved",
+    ]
+    assert entries[0]["from_status"] is None
+    assert entries[0]["to_status"] == "draft"
+    assert entries[1]["from_status"] == "draft"
+    assert entries[1]["to_status"] == "open"
+    assert entries[2]["from_status"] == "open"
+    assert entries[2]["to_status"] == "resolved"
+    # Actor is resolved from public.users on every entry.
+    for entry in entries:
+        assert entry["actor_user_id"] == org_user["id"]
+        assert entry["actor_email"]
+
+
+async def test_finding_history_attributes_each_actor(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    other = same_org_non_admin_user
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], other["id"], "contractor")
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
+    # A different member resolves it — history must attribute each entry.
+    await _resolve(client, other["access_token"], project["id"], created["id"])
+
+    entries = (
+        await client.get(
+            f"/projects/{project['id']}/findings/{created['id']}/history",
+            headers=_auth(token),
+        )
+    ).json()
+    by_action = {e["action"]: e for e in entries}
+    assert by_action["finding.promoted"]["actor_user_id"] == org_user["id"]
+    assert by_action["finding.resolved"]["actor_user_id"] == other["id"]
+
+
+async def test_finding_history_unknown_finding_404(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    resp = await client.get(
+        f"/projects/{project['id']}/findings/{uuid4()}/history",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "FINDING_NOT_FOUND"
+
+
+async def test_finding_history_non_member_404(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    resp = await client.get(
+        f"/projects/{project['id']}/findings/{created['id']}/history",
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------

@@ -1,10 +1,13 @@
 """Initial tenant schema: projects, project_members, models, project_files, jobs, reports,
 contractors, notifications, notification_reads, risks, borgingsplans, borgingsmomenten,
-checklist_items, attachments, capture_links, findings, audit_log.
+checklist_items, attachments, capture_links, findings, certificates, audit_log.
 
-project_files carries `geometry_storage_key` (PDF vector-geometry artifact) and
-findings (bevindingen) ship in this baseline — both squashed in from the former
-0002/0003 increments.
+This baseline is the full current tenant schema — `Base.metadata.create_all` over
+the live models emits every table/column, so anything the models declare lands
+here. The former 0002 (scaling indexes), 0003 (finding-resolution columns), and
+0004 (certificates table) increments are squashed in: the resolution columns and
+certificates table come for free from the models, and 0002's three raw-SQL indexes
+are recreated explicitly in upgrade() below.
 
 Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables (users)
 are emitted as `public.users(id)` so they resolve regardless of search_path —
@@ -46,6 +49,7 @@ def upgrade() -> None:
         Borgingsmoment,
         Borgingsplan,
         CaptureLink,
+        Certificate,
         ChecklistItem,
         ChecklistItemResult,
         Contractor,
@@ -113,6 +117,30 @@ def upgrade() -> None:
         )
     )
 
+    # Scaling indexes (formerly 0002). Expression/partial indexes the model's
+    # create_all does not emit: the JSONB framework path that every compliance
+    # lookup filters on, the soft-delete-aware findings feed sort, and the
+    # unfiltered audit feed sort.
+    bind.execute(
+        text(
+            f"CREATE INDEX IF NOT EXISTS ix_jobs_payload_framework "
+            f"ON \"{schema}\".jobs ((payload ->> 'framework'))"
+        )
+    )
+    bind.execute(
+        text(
+            f"CREATE INDEX IF NOT EXISTS ix_findings_project_created "
+            f'ON "{schema}".findings (project_id, created_at DESC) '
+            f"WHERE deleted_at IS NULL"
+        )
+    )
+    bind.execute(
+        text(
+            f"CREATE INDEX IF NOT EXISTS ix_audit_created_at "
+            f'ON "{schema}".audit_log (created_at DESC)'
+        )
+    )
+
 
 def downgrade() -> None:
     from bimstitch_api.db import Base, is_tenant_table
@@ -122,6 +150,7 @@ def downgrade() -> None:
         Borgingsmoment,
         Borgingsplan,
         CaptureLink,
+        Certificate,
         ChecklistItem,
         ChecklistItemResult,
         Contractor,
@@ -146,6 +175,9 @@ def downgrade() -> None:
 
     bind = op.get_bind()
     schema = _schema()
+    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_audit_created_at'))
+    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_findings_project_created'))
+    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_jobs_payload_framework'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".uq_findings_source_item'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_attachments_element_link'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_checklist_items_element_link'))
@@ -158,6 +190,8 @@ def downgrade() -> None:
         "borgingsmomentstatus",
         "borgingsplanstatus",
         "checklistitemtype",
+        "certificatetype",
+        "certificatestatus",
         "attachmentcategory",
         "attachmentstatus",
         "evidencetype",

@@ -53,6 +53,9 @@ type Props = {
   photoIds: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
+  // Override the heading so the same picker reads as "resolution evidence"
+  // when reused in the resolve flow; defaults to the photos label.
+  label?: string;
 };
 
 export function FindingPhotos({
@@ -60,6 +63,7 @@ export function FindingPhotos({
   photoIds,
   onChange,
   disabled = false,
+  label,
 }: Props): JSX.Element {
   const t = useTranslations('findings.photos');
   const uploadMutation = useUploadAttachment(projectId);
@@ -97,7 +101,7 @@ export function FindingPhotos({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-label2 font-medium text-foreground">{t('label')}</span>
+      <span className="text-label2 font-medium text-foreground">{label ?? t('label')}</span>
       <div className="flex flex-wrap gap-2">
         {photoIds.map((id) => (
           <PhotoThumbnail

@@ -27,13 +27,17 @@ import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel, UnsupportedSchemaError } from './ifc.js';
 import { buildMetadata } from './metadata.js';
 import { buildProperties } from './properties.js';
+import { extractIfcFromZip } from './unzip.js';
 
 /** Payload shape for `ifc_extraction` jobs. The API populates this when
- * dispatching; the worker reads it via `job.payload`. */
+ * dispatching; the worker reads it via `job.payload`. `compressed` flags an
+ * ifcZIP upload — the stored object is a zip wrapping the `.ifc`, so the bytes
+ * must be unzipped before parsing. */
 export type IfcExtractionPayload = {
   file_id: string;
   project_id: string;
   storage_key: string;
+  compressed: boolean;
 };
 
 function parseIfcPayload(raw: Record<string, unknown>): IfcExtractionPayload {
@@ -45,7 +49,7 @@ function parseIfcPayload(raw: Record<string, unknown>): IfcExtractionPayload {
       `INVALID_IFC_PAYLOAD: expected {file_id, project_id, storage_key} as strings, got ${JSON.stringify(raw)}`,
     );
   }
-  return { file_id, project_id, storage_key };
+  return { file_id, project_id, storage_key, compressed: raw['compressed'] === true };
 }
 
 let cachedVersion: string | null = null;
@@ -83,12 +87,17 @@ export async function runExtraction(job: WorkerJob): Promise<void> {
     logger.info({ payload }, 'downloading source');
     const { bytes, sha256 } = await downloadObjectWithHash(payload.storage_key);
 
-    logger.info({ size: bytes.length, sha256: sha256.slice(0, 16) }, 'parsing IFC');
-    const opened = await openModel(bytes);
+    // For an ifcZIP the stored object is the zip; unwrap to the inner IFC
+    // before parsing. `sha256` stays the hash of the stored (compressed) bytes
+    // — that's what the client uploaded and what dedup keys on.
+    const ifcBytes = payload.compressed ? extractIfcFromZip(bytes) : bytes;
+
+    logger.info({ size: ifcBytes.length, sha256: sha256.slice(0, 16) }, 'parsing IFC');
+    const opened = await openModel(ifcBytes);
     modelID = opened.modelID;
 
     logger.info('generating fragments');
-    const fragmentBytes = await generateFragments(bytes);
+    const fragmentBytes = await generateFragments(ifcBytes);
 
     logger.info('extracting metadata');
     const ifcApi = await getIfcApi();

@@ -47,6 +47,10 @@ class FindingUpdate(BaseModel):
     linked_element_global_id: str | None = Field(default=None, max_length=255)
     # Replace the photo set (add/remove). Omit to leave unchanged.
     photo_ids: list[str] | None = None
+    # Resolution evidence (#26/#27): required (non-empty note + >=1 id) on a
+    # transition into `resolved`; the gate is enforced in the router.
+    resolution_note: str | None = Field(default=None, max_length=4000)
+    resolution_evidence_ids: list[str] | None = None
 
 
 class FindingRead(FindingBase):
@@ -61,5 +65,26 @@ class FindingRead(FindingBase):
     linked_file_id: UUID | None
     linked_element_global_id: str | None
     photo_ids: list[str] | None
+    resolution_note: str | None
+    resolution_evidence_ids: list[str] | None
     created_at: datetime
     updated_at: datetime
+
+
+class FindingHistoryEntry(BaseModel):
+    """One row of a finding's lifecycle timeline, derived from `audit_log`.
+
+    `from_status`/`to_status` are pulled out of the audit `before`/`after`
+    snapshots so the portal can render "open -> resolved" transitions without
+    re-deriving them client-side. Actor name/email are resolved from
+    `public.users` (null when the actor row was deleted).
+    """
+
+    id: UUID
+    action: str
+    actor_user_id: UUID | None
+    actor_name: str | None
+    actor_email: str | None
+    from_status: str | None
+    to_status: str | None
+    created_at: datetime

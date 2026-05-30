@@ -76,14 +76,24 @@ function formatDate(iso: string): string {
   }).format(parsed);
 }
 
-const ALL_EXTENSIONS = ['.ifc', '.pdf'] as const;
+// `.ifczip` is a compressed IFC — same `ifc` file type, so a model already
+// locked to IFC must still accept it even though it doesn't end in `.ifc`.
+const EXTENSIONS_BY_FILE_TYPE: Record<string, readonly string[]> = {
+  ifc: ['.ifc', '.ifczip'],
+  pdf: ['.pdf'],
+};
+const ALL_EXTENSIONS = ['.ifc', '.ifczip', '.pdf'] as const;
+
+function acceptedExtensions(lockedFileType: string | null): readonly string[] {
+  if (lockedFileType !== null) {
+    return EXTENSIONS_BY_FILE_TYPE[lockedFileType] ?? [`.${lockedFileType}`];
+  }
+  return ALL_EXTENSIONS;
+}
 
 function isAllowedFile(file: File, lockedFileType: string | null): boolean {
   const lower = file.name.toLowerCase();
-  if (lockedFileType !== null) {
-    return lower.endsWith(`.${lockedFileType}`);
-  }
-  return ALL_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  return acceptedExtensions(lockedFileType).some((ext) => lower.endsWith(ext));
 }
 
 function ExtractionBadge({
@@ -355,7 +365,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
   return (
     <div className="flex flex-col gap-3">
       <FileDropZone
-        accept={lockedFileType !== null ? `.${lockedFileType}` : '.ifc,.pdf'}
+        accept={acceptedExtensions(lockedFileType).join(',')}
         multiple
         onFiles={(files) => { Array.from(files).forEach(startUpload); }}
         hint={
