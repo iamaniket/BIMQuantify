@@ -75,6 +75,7 @@ export async function runExtraction(
 ): Promise<void> {
   const payload = parseIfcPayload(job.payload);
   const startedAt = new Date().toISOString();
+  const startedAtMs = performance.now();
   const version = await getExtractorVersion();
 
   // Posts a `running` callback carrying `progress` and mirrors it to BullMQ.
@@ -147,6 +148,12 @@ export async function runExtraction(
         'application/json',
       ),
     ]);
+
+    const elapsedMs = Math.round(performance.now() - startedAtMs);
+    logger.info(
+      { file_id: payload.file_id, job_id: job.job_id, elapsed_ms: elapsedMs },
+      `extraction finished in ${elapsedMs}ms`,
+    );
 
     await postCallback({
       file_id: payload.file_id,
