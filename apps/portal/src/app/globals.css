@@ -137,3 +137,38 @@
 .bq-text-layer mark.bq-highlight.active {
   background: rgba(255, 140, 0, 0.65);
 }
+
+/* High-contrast mode for field/outdoor inspection use */
+@media (prefers-contrast: more) {
+  :root {
+    --foreground: #000000;
+    --foreground-secondary: #111111;
+    --foreground-tertiary: #222222;
+    --foreground-disabled: #555555;
+    --border: #000000;
+    --border-hover: #000000;
+    --background-secondary: #f0f0f0;
+    --success: #006600;
+    --success-lighter: #ccffcc;
+    --error: #cc0000;
+    --error-lighter: #ffcccc;
+    --warning: #996600;
+    --warning-lighter: #fff0cc;
+  }
+}
+
+[data-high-contrast='true'] {
+  --foreground: #000000;
+  --foreground-secondary: #111111;
+  --foreground-tertiary: #222222;
+  --foreground-disabled: #555555;
+  --border: #000000;
+  --border-hover: #000000;
+  --background-secondary: #f0f0f0;
+  --success: #006600;
+  --success-lighter: #ccffcc;
+  --error: #cc0000;
+  --error-lighter: #ffcccc;
+  --warning: #996600;
+  --warning-lighter: #fff0cc;
+}

@@ -34,5 +34,6 @@ export type InspectionSummary = z.infer<typeof InspectionSummarySchema>;
 export const ResultCreateSchema = z.object({
   verdict: InspectionVerdictEnum,
   note: z.union([z.string().max(4000), z.null()]).optional(),
+  photo_ids: z.union([z.array(z.string()), z.null()]).optional(),
 });
 export type ResultCreateInput = z.infer<typeof ResultCreateSchema>;

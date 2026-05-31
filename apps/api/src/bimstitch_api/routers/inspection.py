@@ -183,6 +183,7 @@ async def submit_result(
         project_id=project_id,
         verdict=payload.verdict,
         note=payload.note,
+        photo_ids=payload.photo_ids,
         inspector_user_id=user.id,
         inspected_at=datetime.now(UTC),
     )

@@ -1899,11 +1899,16 @@
     },
     "photo": {
       "label": "Foto",
-      "comingSoon": "Foto-opname is binnenkort beschikbaar."
+      "capture": "Foto maken",
+      "uploadFailed": "Foto-upload mislukt.",
+      "maxReached": "Maximum aantal foto's bereikt."
     },
     "voiceNote": {
       "label": "Spraaknotitie",
       "comingSoon": "Spraaknotities zijn binnenkort beschikbaar."
+    },
+    "accessibility": {
+      "toggleLabel": "Hoog contrast"
     },
     "progress": {
       "of": "{completed} van {total}",

@@ -1899,11 +1899,16 @@
     },
     "photo": {
       "label": "Photo",
-      "comingSoon": "Photo capture is coming soon."
+      "capture": "Take photo",
+      "uploadFailed": "Photo upload failed.",
+      "maxReached": "Maximum photos reached."
     },
     "voiceNote": {
       "label": "Voice note",
       "comingSoon": "Voice notes are coming soon."
+    },
+    "accessibility": {
+      "toggleLabel": "High contrast"
     },
     "progress": {
       "of": "{completed} of {total}",

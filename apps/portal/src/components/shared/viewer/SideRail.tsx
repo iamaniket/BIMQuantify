@@ -66,7 +66,7 @@ export function SideRail({
   const buttons = BUTTONS_BY_MODE[mode];
   return (
     <div
-      className="z-30 flex w-[51px] shrink-0 flex-col items-center gap-2 border-l border-t border-white/12 py-3"
+      className="z-30 flex w-[46px] shrink-0 flex-col items-center gap-[7px] border-l border-t border-white/12 px-[6px] py-3"
       style={{
         background: 'linear-gradient(180deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
       }}
@@ -82,13 +82,19 @@ export function SideRail({
             onClick={() => { onTogglePanel(id); }}
             title={label}
             className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150',
+              'flex min-h-[92px] w-full flex-col items-center justify-start gap-[9px] rounded border pt-[10px] pb-[13px] transition-colors duration-150',
               isActive
-                ? 'bg-white/[0.16] text-white'
-                : 'text-white/[0.82] border border-transparent hover:bg-white/10 hover:text-white',
+                ? 'border-[var(--brand-gradient-start)] bg-[var(--brand-gradient-start)] text-white shadow-[0_2px_10px_-2px_rgba(0,0,0,0.35)]'
+                : 'border-white/25 bg-white text-foreground-secondary hover:border-white/40 hover:bg-white/90',
             )}
           >
-            <Icon className={cn('h-[18px] w-[18px]', isActive ? 'text-white' : 'text-white/55')} />
+            <Icon className="h-4 w-4 shrink-0" />
+            <span
+              className="text-[11px] font-semibold leading-none tracking-[0.02em]"
+              style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+            >
+              {label}
+            </span>
           </button>
         );
       })}

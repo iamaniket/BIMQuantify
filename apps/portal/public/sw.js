@@ -4,9 +4,9 @@
 //   - Other GETs to same-origin static assets: stale-while-revalidate against a runtime cache.
 //   - Anything else (POST/PUT, cross-origin API): pass straight through to the network.
 
-const SHELL_CACHE = 'bimstitch-shell-v1';
+const SHELL_CACHE = 'bimstitch-shell-v2';
 const RUNTIME_CACHE = 'bimstitch-runtime-v1';
-const SHELL_URLS = ['/', '/manifest.webmanifest', '/icon.svg', '/icon-maskable.svg'];
+const SHELL_URLS = ['/', '/manifest.webmanifest', '/icon.svg', '/icon-maskable.svg', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

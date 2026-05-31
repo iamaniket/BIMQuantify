@@ -68,10 +68,10 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
   }, [startMutation]);
 
   const handleSubmit = useCallback(
-    (verdict: InspectionVerdictValue, note: string | null) => {
+    (verdict: InspectionVerdictValue, note: string | null, photoIds: string[] | null) => {
       if (currentItem === undefined) return;
       submitMutation.mutate(
-        { itemId: currentItem.id, input: { verdict, note } },
+        { itemId: currentItem.id, input: { verdict, note, photo_ids: photoIds } },
         {
           onSuccess: () => {
             if (currentIdx < items.length - 1) {
@@ -150,7 +150,8 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
         {allDone && !isTerminal && (
           <Button
             variant="primary"
-            size="sm"
+            size="md"
+            className="min-h-12"
             onClick={() => setShowCompletion(true)}
           >
             {t('complete.button')}
@@ -161,6 +162,7 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
       <div className="flex min-h-0 flex-1 flex-col">
         <ItemCard
           key={currentItem.id}
+          projectId={projectId}
           item={currentItem}
           existingResult={resultByItemId.get(currentItem.id) ?? null}
           onSubmit={handleSubmit}
@@ -169,24 +171,26 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
         />
       </div>
 
-      <div className="flex items-center justify-between border-t border-border bg-background px-4 py-2">
+      <div className="flex items-center justify-between border-t border-border bg-background px-4 py-3">
         <Button
           variant="ghost"
-          size="sm"
+          size="lg"
+          className="min-h-12 min-w-12 gap-1"
           onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
           disabled={currentIdx === 0}
         >
-          <ChevronLeft className="mr-1 h-4 w-4" />
+          <ChevronLeft className="h-5 w-5" />
           {t('stepper.prev')}
         </Button>
         <Button
           variant="ghost"
-          size="sm"
+          size="lg"
+          className="min-h-12 min-w-12 gap-1"
           onClick={() => setCurrentIdx((i) => Math.min(items.length - 1, i + 1))}
           disabled={currentIdx >= items.length - 1}
         >
           {t('stepper.next')}
-          <ChevronRight className="ml-1 h-4 w-4" />
+          <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
 

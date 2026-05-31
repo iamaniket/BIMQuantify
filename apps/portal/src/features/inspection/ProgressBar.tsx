@@ -18,7 +18,7 @@ export function ProgressBar({ completed, total, failed }: Props): JSX.Element {
 
   return (
     <div className="flex flex-col gap-1.5 border-t border-border bg-background px-4 py-3">
-      <div className="flex items-center justify-between text-caption">
+      <div className="flex items-center justify-between text-body3">
         <span className="font-medium text-foreground">
           {t('of', { completed, total })}
         </span>

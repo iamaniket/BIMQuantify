@@ -9,6 +9,7 @@ from bimstitch_api.models.checklist_item_result import InspectionVerdict
 class ResultCreate(BaseModel):
     verdict: InspectionVerdict
     note: str | None = Field(default=None, max_length=4000)
+    photo_ids: list[str] | None = None
 
 
 class ChecklistItemResultRead(BaseModel):
