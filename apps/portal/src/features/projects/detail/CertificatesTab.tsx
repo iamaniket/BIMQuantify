@@ -23,6 +23,7 @@ import {
 
 import { getCertificateDownloadUrl } from '@/lib/api/certificates';
 import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
+import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
 import { useCertificates } from '@/features/certificates/useCertificates';
 import { useDeleteCertificate } from '@/features/certificates/useDeleteCertificate';
 import {
@@ -68,6 +69,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
 
   const certificatesQuery = useCertificates(projectId, typeFilter);
   const deleteMutation = useDeleteCertificate(projectId);
@@ -201,14 +203,24 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
                     <FileBadge className="h-5 w-5 text-foreground-tertiary" aria-hidden />
                   }
                   actions={
-                    <button
-                      type="button"
-                      title={t('download')}
-                      onClick={(e) => { e.stopPropagation(); void handleDownload(certificate); }}
-                      className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        title={t('rowView')}
+                        onClick={(e) => { e.stopPropagation(); setViewingCertificate(certificate); }}
+                        className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        title={t('download')}
+                        onClick={(e) => { e.stopPropagation(); void handleDownload(certificate); }}
+                        className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
+                    </>
                   }
                 >
                   <div className="flex items-center gap-2">
@@ -248,7 +260,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => { void handleDownload(certificate); }}
+                      onClick={() => { setViewingCertificate(certificate); }}
                     >
                       <Eye className="h-3.5 w-3.5" />
                       {t('rowView')}
@@ -285,6 +297,13 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
         projectId={projectId}
         open={uploadOpen}
         onOpenChange={setUploadOpen}
+      />
+
+      <CertificateViewerDialog
+        certificate={viewingCertificate}
+        projectId={projectId}
+        open={viewingCertificate !== null}
+        onOpenChange={(o) => { if (!o) setViewingCertificate(null); }}
       />
     </div>
   );

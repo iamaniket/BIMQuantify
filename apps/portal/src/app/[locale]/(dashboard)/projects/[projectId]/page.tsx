@@ -12,6 +12,8 @@ import { ApiError } from '@/lib/api/client';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
 import { useAttachments } from '@/features/attachments/useAttachments';
+import { useFindings } from '@/features/findings/useFindings';
+import { useCertificates } from '@/features/certificates/useCertificates';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
@@ -30,12 +32,16 @@ export default function ProjectDetailPage(): JSX.Element {
   const deadlinesQuery = useDeadlines(projectId);
   const attachmentsQuery = useAttachments(projectId);
   const activityQuery = useProjectActivity(projectId);
+  const findingsQuery = useFindings(projectId);
+  const certificatesQuery = useCertificates(projectId);
 
   const [uploadModelId, setUploadModelId] = useState<string | null>(null);
 
   const deadlines = deadlinesQuery.data ?? [];
   const attachments = attachmentsQuery.data ?? [];
   const activityEntries = activityQuery.data ?? [];
+  const findings = findingsQuery.data ?? [];
+  const certificates = certificatesQuery.data ?? [];
 
   const deadlinesSummary = useMemo(() => {
     let met = 0;
@@ -52,11 +58,23 @@ export default function ProjectDetailPage(): JSX.Element {
     [attachments],
   );
 
+  const modelCount = modelsQuery.data?.length ?? 0;
+  const certificateCount = certificates.filter((c) => c.status === 'ready').length;
+  const findingsOpen = useMemo(
+    () => findings.filter((f) => f.status !== 'resolved' && f.status !== 'verified').length,
+    [findings],
+  );
+
   const buildingType = projectQuery.data?.building_type ?? null;
 
   const dossierPct = useMemo(
-    () => computeDossierCompleteness(buildingType, attachments).pct,
-    [buildingType, attachments],
+    () => computeDossierCompleteness(buildingType, attachments, {
+      modelCount,
+      certificateCount,
+      findingsOpen,
+      deadlinesOverdue: deadlinesSummary.overdue,
+    }).pct,
+    [buildingType, attachments, modelCount, certificateCount, findingsOpen, deadlinesSummary.overdue],
   );
 
   if (projectQuery.isLoading) {
@@ -136,6 +154,10 @@ export default function ProjectDetailPage(): JSX.Element {
           deadlines={deadlines}
           attachments={attachments}
           activityEntries={activityEntries}
+          modelCount={modelCount}
+          certificateCount={certificateCount}
+          findingsOpen={findingsOpen}
+          deadlinesOverdue={deadlinesSummary.overdue}
         />
 
         <div className="grid min-h-0 grid-rows-[3fr_2fr] gap-3.5">

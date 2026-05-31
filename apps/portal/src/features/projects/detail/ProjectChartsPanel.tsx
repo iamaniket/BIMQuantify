@@ -18,6 +18,10 @@ type Props = {
   deadlines: Deadline[];
   attachments: Attachment[];
   activityEntries: ProjectActivityEntry[];
+  modelCount: number;
+  certificateCount: number;
+  findingsOpen: number;
+  deadlinesOverdue: number;
 };
 
 function PanelSection({
@@ -44,12 +48,21 @@ export function ProjectChartsPanel({
   deadlines,
   attachments,
   activityEntries,
+  modelCount,
+  certificateCount,
+  findingsOpen,
+  deadlinesOverdue,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.chartsPanel');
 
   const dossier = useMemo(
-    () => computeDossierCompleteness(buildingType, attachments),
-    [buildingType, attachments],
+    () => computeDossierCompleteness(buildingType, attachments, {
+      modelCount,
+      certificateCount,
+      findingsOpen,
+      deadlinesOverdue,
+    }),
+    [buildingType, attachments, modelCount, certificateCount, findingsOpen, deadlinesOverdue],
   );
 
   return (

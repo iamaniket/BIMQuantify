@@ -548,7 +548,7 @@
       "noDeliveryDate": "Geen opleverdatum",
       "daysRemaining": "{count} dagen resterend",
       "daysOverdue": "{count} dagen te laat",
-      "failWarn": "{fail} fout \u00b7 {warn} waarsch.",
+      "failWarn": "{fail} fout · {warn} waarsch.",
       "dossierReady": "{pct}% dossier gereed",
       "deadlines": "Deadlines",
       "deadlinesMetCount": "{met} van {total} voldaan",
@@ -587,8 +587,16 @@
         "noActivity": "Nog geen activiteit",
         "done": "Gereed",
         "missing": "Ontbreekt",
+        "models": "Modellen",
         "photos": "Foto's",
-        "documents": "Documenten"
+        "documents": "Documenten",
+        "certificates": "Certificaten",
+        "findings": "Bevindingen",
+        "deadlines": "Deadlines",
+        "findingsOpenDetail": "{count, plural, =1 {1 open} other {# open}}",
+        "findingsResolved": "Alle opgelost",
+        "deadlinesOverdueDetail": "{count, plural, =1 {1 te laat} other {# te laat}}",
+        "deadlinesOnTrack": "Op schema"
       },
       "models": {
         "label": "Modellen",
@@ -930,7 +938,9 @@
           "revertToDefaults": "Terug naar standaard"
         }
       },
-      "rapporten": { "label": "Rapporten" }
+      "rapporten": {
+        "label": "Rapporten"
+      }
     }
   },
   "findings": {
@@ -2243,7 +2253,30 @@
     "uploadButton": "Uploaden",
     "loading": "Certificaten laden…",
     "emptyNoItems": "Nog geen certificaten gekoppeld aan dit element.",
-    "emptyProjectEmpty": "Geen certificaten op projectniveau."
+    "emptyProjectEmpty": "Geen certificaten op projectniveau.",
+    "viewerTitle": "Certificaat",
+    "viewerSubtitle": "Bewijs van conformiteit en geldigheid",
+    "viewerClose": "Sluiten",
+    "download": "Downloaden",
+    "downloadError": "Kon geen downloadlink genereren.",
+    "viewerNoPreview": "Geen voorbeeld beschikbaar voor dit bestandstype.",
+    "viewerLoadingPreview": "Voorbeeld laden…",
+    "groupFile": "Bestand",
+    "groupCertificate": "Certificaat",
+    "groupOrigin": "Herkomst",
+    "fieldFilename": "Bestandsnaam",
+    "fieldSize": "Grootte",
+    "fieldFileType": "Bestandstype",
+    "fieldType": "Type",
+    "fieldNumber": "Nummer",
+    "fieldIssuer": "Uitgever",
+    "fieldSubject": "Onderwerp",
+    "fieldValidFrom": "Geldig vanaf",
+    "fieldValidUntil": "Geldig tot",
+    "fieldStatus": "Status",
+    "fieldUploadedAt": "Toegevoegd",
+    "fieldUploadedBy": "Geüpload door",
+    "fieldLinkedElement": "Gekoppeld element"
   },
   "viewerOrphans": {
     "title": "Niet in deze versie",

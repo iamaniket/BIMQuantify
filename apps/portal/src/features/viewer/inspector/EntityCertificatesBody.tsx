@@ -1,12 +1,13 @@
 'use client';
 
-import { FileBadge, Loader2, Plus, Search } from 'lucide-react';
+import { Eye, FileBadge, Loader2, Plus, Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 
 import { Badge, Button, Input, type BadgeVariant } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
+import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
 import { useElementCertificates } from '@/features/certificates/useElementCertificates';
 import { useProjectCertificates } from '@/features/certificates/useCertificates';
 import {
@@ -14,6 +15,7 @@ import {
   type CertificateExpiryState,
 } from '@/features/certificates/expiry';
 import { CertificateUploadDialog } from '@/features/projects/detail/CertificateUploadDialog';
+import type { Certificate } from '@/lib/api/schemas';
 
 type EntityCertificatesBodyProps = {
   projectId: string;
@@ -48,6 +50,7 @@ export function EntityCertificatesBody({
   const projectQuery = useProjectCertificates(projectId, isProject);
   const query = isProject ? projectQuery : elementQuery;
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
   const lastConsumedNonce = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -108,8 +111,10 @@ export function EntityCertificatesBody({
             {filteredCertificates.map((cert) => {
               const expiry = getCertificateExpiryState(cert.valid_until);
               return (
-                <div
+                <button
                   key={cert.id}
+                  type="button"
+                  onClick={() => { setViewingCertificate(cert); }}
                   className="flex w-full items-center gap-2 border-b border-border px-2.5 py-2 text-left transition-colors hover:bg-background-hover"
                 >
                   <Badge variant="default" className="w-fit shrink-0">
@@ -121,7 +126,8 @@ export function EntityCertificatesBody({
                   <Badge variant={EXPIRY_BADGE[expiry]} className="w-fit shrink-0">
                     {tExpiry(expiry)}
                   </Badge>
-                </div>
+                  <Eye className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
+                </button>
               );
             })}
           </div>
@@ -135,6 +141,13 @@ export function EntityCertificatesBody({
         linkedElementGlobalId={globalId}
         linkedModelId={globalId !== null ? modelId : null}
         linkedFileId={globalId !== null ? fileId : null}
+      />
+
+      <CertificateViewerDialog
+        certificate={viewingCertificate}
+        projectId={projectId}
+        open={viewingCertificate !== null}
+        onOpenChange={(o) => { if (!o) setViewingCertificate(null); }}
       />
     </div>
   );

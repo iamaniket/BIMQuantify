@@ -1,20 +1,24 @@
 'use client';
 
-import { Check, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  FileText,
+  Image,
+  Layers,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
-export type DossierCategory = {
-  category: string;
-  labelKey: string;
-  fulfilled: boolean;
-  count: number;
-};
+import type { DossierCategoryResult } from '@/features/projects/detail/dossierTemplate';
 
 type Props = {
   pct: number;
-  categories: DossierCategory[];
+  categories: DossierCategoryResult[];
 };
 
 function centerColor(pct: number): string {
@@ -23,6 +27,15 @@ function centerColor(pct: number): string {
   return 'var(--error)';
 }
 
+const CATEGORY_ICONS: Record<string, typeof Check> = {
+  models: Layers,
+  documents: FileText,
+  photos: Image,
+  certificates: ShieldCheck,
+  findings: AlertTriangle,
+  deadlines: Calendar,
+};
+
 type SliceDatum = { name: string; value: number; index: number };
 
 export function DossierDonut({ pct, categories }: Props): JSX.Element {
@@ -30,7 +43,6 @@ export function DossierDonut({ pct, categories }: Props): JSX.Element {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  // Equal-weight slices, one per requirement category.
   const data: SliceDatum[] = categories.map((c, index) => ({
     name: t(c.labelKey),
     value: 1,
@@ -106,25 +118,34 @@ export function DossierDonut({ pct, categories }: Props): JSX.Element {
       </button>
 
       {expanded && (
-        <ul className="flex w-full max-w-[260px] flex-col gap-1.5">
-          {categories.map((c) => (
-            <li
-              key={c.category}
-              className="flex items-center gap-2 rounded-md border border-border bg-surface-low px-2.5 py-1.5 dark:bg-black/20"
-            >
-              {c.fulfilled ? (
-                <Check className="h-3.5 w-3.5 shrink-0 text-success" />
-              ) : (
-                <X className="h-3.5 w-3.5 shrink-0 text-error" />
-              )}
-              <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">
-                {t(c.labelKey)}
-              </span>
-              <span className="text-body3 font-semibold tabular-nums text-foreground">
-                {c.fulfilled ? t('done') : t('missing')}
-              </span>
-            </li>
-          ))}
+        <ul className="flex w-full max-w-[280px] flex-col gap-1.5">
+          {categories.map((c, index) => {
+            const Icon = CATEGORY_ICONS[c.category] ?? FileText;
+            const isInverted = c.category === 'findings' || c.category === 'deadlines';
+            return (
+              <li
+                key={c.category}
+                className="flex items-center gap-2 rounded-md border border-border bg-surface-low px-2.5 py-1.5 transition-colors hover:bg-surface-main dark:bg-black/20 dark:hover:bg-black/30"
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
+              >
+                <Icon className={`h-3.5 w-3.5 shrink-0 ${c.fulfilled ? 'text-success' : 'text-foreground-tertiary'}`} />
+                <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">
+                  {t(c.labelKey)}
+                </span>
+                <span className="text-body3 tabular-nums text-foreground-tertiary">
+                  {c.count}
+                </span>
+                {c.fulfilled ? (
+                  <Check className="h-3.5 w-3.5 shrink-0 text-success" />
+                ) : isInverted ? (
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
+                ) : (
+                  <X className="h-3.5 w-3.5 shrink-0 text-error" />
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

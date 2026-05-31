@@ -548,7 +548,7 @@
       "noDeliveryDate": "No delivery date",
       "daysRemaining": "{count} days remaining",
       "daysOverdue": "{count} days overdue",
-      "failWarn": "{fail} fail \u00b7 {warn} warn",
+      "failWarn": "{fail} fail · {warn} warn",
       "dossierReady": "{pct}% dossier ready",
       "deadlines": "Deadlines",
       "deadlinesMetCount": "{met} of {total} met",
@@ -587,8 +587,16 @@
         "noActivity": "No activity yet",
         "done": "Done",
         "missing": "Missing",
+        "models": "Models",
         "photos": "Photos",
-        "documents": "Documents"
+        "documents": "Documents",
+        "certificates": "Certificates",
+        "findings": "Findings",
+        "deadlines": "Deadlines",
+        "findingsOpenDetail": "{count, plural, =1 {1 open} other {# open}}",
+        "findingsResolved": "All resolved",
+        "deadlinesOverdueDetail": "{count, plural, =1 {1 overdue} other {# overdue}}",
+        "deadlinesOnTrack": "On track"
       },
       "models": {
         "label": "Models",
@@ -930,7 +938,9 @@
           "revertToDefaults": "Revert to defaults"
         }
       },
-      "rapporten": { "label": "Reports" }
+      "rapporten": {
+        "label": "Reports"
+      }
     }
   },
   "findings": {
@@ -2243,7 +2253,30 @@
     "uploadButton": "Upload",
     "loading": "Loading certificates…",
     "emptyNoItems": "No certificates linked to this element yet.",
-    "emptyProjectEmpty": "No project-level certificates."
+    "emptyProjectEmpty": "No project-level certificates.",
+    "viewerTitle": "Certificate",
+    "viewerSubtitle": "Proof of conformity and validity",
+    "viewerClose": "Close",
+    "download": "Download",
+    "downloadError": "Could not generate download link.",
+    "viewerNoPreview": "No preview available for this file type.",
+    "viewerLoadingPreview": "Loading preview…",
+    "groupFile": "File",
+    "groupCertificate": "Certificate",
+    "groupOrigin": "Origin",
+    "fieldFilename": "Filename",
+    "fieldSize": "Size",
+    "fieldFileType": "File type",
+    "fieldType": "Type",
+    "fieldNumber": "Number",
+    "fieldIssuer": "Issuer",
+    "fieldSubject": "Subject",
+    "fieldValidFrom": "Valid from",
+    "fieldValidUntil": "Valid until",
+    "fieldStatus": "Status",
+    "fieldUploadedAt": "Added",
+    "fieldUploadedBy": "Uploaded by",
+    "fieldLinkedElement": "Linked element"
   },
   "viewerOrphans": {
     "title": "Not in this version",
