@@ -145,7 +145,7 @@ export function PropertiesSubPanel({
       <button
         type="button"
         onClick={onToggle}
-        className="flex h-[30px] w-full shrink-0 cursor-pointer select-none items-center gap-2 border-none pl-2 pr-3 text-left transition-colors hover:brightness-110"
+        className="flex h-10 w-full shrink-0 cursor-pointer select-none items-center gap-2 border-none pl-2 pr-3 text-left transition-colors hover:brightness-110"
         style={{
           background: 'linear-gradient(135deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
         }}
@@ -169,7 +169,7 @@ export function PropertiesSubPanel({
           </svg>
         </span>
 
-        <span className="flex-1 truncate font-sans text-[10px] font-bold uppercase tracking-[0.1em] text-white">
+        <span className="flex-1 truncate font-sans text-xs font-bold uppercase tracking-wider text-white">
           {t('propertiesTitle')}
         </span>
 

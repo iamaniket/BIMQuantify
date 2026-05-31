@@ -69,6 +69,7 @@ function TreeRowInner({
 
   const select = useViewerEntityStore((s) => s.select);
   const clearSelection = useViewerEntityStore((s) => s.clearSelection);
+  const hidden = useViewerEntityStore((s) => s.hidden);
   const hideItems = useViewerEntityStore((s) => s.hideItems);
   const showItems = useViewerEntityStore((s) => s.showItems);
   const isolateItems = useViewerEntityStore((s) => s.isolateItems);
@@ -88,11 +89,12 @@ function TreeRowInner({
         if (isRowSelected) {
           clearSelection();
         } else {
-          select(node.entityKeys);
+          const visible = node.entityKeys.filter((k) => !hidden.has(k));
+          if (visible.length > 0) select(visible);
         }
       }, 200);
     },
-    [node.entityKeys, isRowSelected, select, clearSelection],
+    [node.entityKeys, isRowSelected, select, clearSelection, hidden],
   );
 
   const handleDoubleClick = useCallback(

@@ -144,6 +144,7 @@ export default function ViewerPage(): JSX.Element {
     nonce: number;
   } | null>(null);
   const [propertiesExpanded, setPropertiesExpanded] = useState(true);
+  const [modelTreeExpanded, setModelTreeExpanded] = useState(true);
 
   const togglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -487,6 +488,7 @@ export default function ViewerPage(): JSX.Element {
                   isLoadingMetadata={isLoadingMetadata}
                   propertiesExpanded={propertiesExpanded}
                   onPropertiesToggle={() => { setPropertiesExpanded((prev) => !prev); }}
+                  modelTreeExpanded={modelTreeExpanded}
                 />
               ) : undefined}
               measureContent={isIfc ? (
@@ -512,6 +514,8 @@ export default function ViewerPage(): JSX.Element {
                 explorer: <ExplorerCounter metadata={metadata} />,
                 measure: <MeasurementHeaderActions handle={viewerHandleRef.current} />,
               } : undefined}
+              headerExpanded={modelTreeExpanded}
+              onHeaderToggle={() => { setModelTreeExpanded((prev) => !prev); }}
             />
         ) : null}
 

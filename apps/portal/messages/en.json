@@ -775,7 +775,9 @@
         "title": "No findings logged",
         "description": "Findings from failed checklist items will show up here with their resolution and verification trail.",
         "ctaLabel": "Log finding",
-        "count": "{count, plural, one {# finding} other {# findings}}"
+        "count": "{count, plural, one {# finding} other {# findings}}",
+        "searchPlaceholder": "Search findings…",
+        "noResults": "No findings match your search."
       },
       "attachments": {
         "label": "Attachments",
@@ -2199,6 +2201,7 @@
   },
   "viewerFindings": {
     "count": "{count, plural, =0 {No findings} one {# finding} other {# findings}}",
+    "filterPlaceholder": "Search findings…",
     "createButton": "New finding",
     "loading": "Loading findings…",
     "emptyNoItems": "No findings linked to this element yet.",

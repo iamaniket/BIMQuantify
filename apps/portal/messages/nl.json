@@ -775,7 +775,9 @@
         "title": "Nog geen bevindingen vastgelegd",
         "description": "Bevindingen uit afgekeurde checklistitems verschijnen hier met hun afhandeling en verificatie.",
         "ctaLabel": "Bevinding vastleggen",
-        "count": "{count, plural, one {# bevinding} other {# bevindingen}}"
+        "count": "{count, plural, one {# bevinding} other {# bevindingen}}",
+        "searchPlaceholder": "Zoek bevindingen…",
+        "noResults": "Geen bevindingen komen overeen met uw zoekopdracht."
       },
       "attachments": {
         "label": "Bijlagen",
@@ -2199,6 +2201,7 @@
   },
   "viewerFindings": {
     "count": "{count, plural, =0 {Geen bevindingen} one {# bevinding} other {# bevindingen}}",
+    "filterPlaceholder": "Bevindingen zoeken…",
     "createButton": "Nieuwe bevinding",
     "loading": "Bevindingen laden…",
     "emptyNoItems": "Nog geen bevindingen gekoppeld aan dit element.",

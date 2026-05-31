@@ -47,6 +47,7 @@ export function effectsPlugin(
   let composerTarget: THREE.WebGLRenderTarget | null = null;
 
   let isIdle = false;
+  let xrayActive = false;
   let shadowMat: THREE.ShaderMaterial | null = null;
 
   const setShadowLinearBlend = (v: number): void => {
@@ -95,7 +96,7 @@ export function effectsPlugin(
   };
 
   const requestComposerFrame = (): void => {
-    if (!composer || !opts.enabled) return;
+    if (!composer || !opts.enabled || xrayActive) return;
     renderCompositeFrame();
   };
 
@@ -155,11 +156,17 @@ export function effectsPlugin(
 
       const offCam = ctx.events.on('camera:change', onCamChange);
       const offIdle = ctx.events.on('viewer:idle', onIdle);
+      const offXray = ctx.events.on('xray:change', ({ xrayed }) => {
+        const wasActive = xrayActive;
+        xrayActive = xrayed.length > 0;
+        // Resume the composite when x-ray clears.
+        if (wasActive && !xrayActive && isIdle) requestComposerFrame();
+      });
 
       let raf = 0;
       const loop = (): void => {
         raf = requestAnimationFrame(loop);
-        if (!opts.enabled || !isIdle || !composer) return;
+        if (!opts.enabled || !isIdle || !composer || xrayActive) return;
         renderCompositeFrame();
       };
       raf = requestAnimationFrame(loop);
@@ -181,6 +188,7 @@ export function effectsPlugin(
         cancelAnimationFrame(raf);
         offCam();
         offIdle();
+        offXray();
         ro.disconnect();
 
         composer?.dispose();

@@ -2,7 +2,6 @@
 
 import { Box } from 'lucide-react';
 import { useState, type JSX } from 'react';
-import { useTranslations } from 'next-intl';
 
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
@@ -23,6 +22,7 @@ type ModelExplorerProps = {
   isLoadingMetadata?: boolean;
   propertiesExpanded: boolean;
   onPropertiesToggle: () => void;
+  modelTreeExpanded: boolean;
 };
 
 type ExplorerTab = 'objects' | 'classes' | 'stories' | 'zones';
@@ -34,16 +34,6 @@ const TABS: TabDef<ExplorerTab>[] = [
   { id: 'zones', label: 'Zones' },
 ];
 
-function SelectedLabel(): JSX.Element {
-  const count = useViewerEntityStore(
-    (s) => {
-      if (s.selectedAll) return 'all';
-      return String(s.selected.size);
-    },
-  );
-  return <>{count}</>;
-}
-
 export function ModelExplorer({
   metadata,
   isLoading,
@@ -52,13 +42,9 @@ export function ModelExplorer({
   isLoadingMetadata,
   propertiesExpanded,
   onPropertiesToggle,
+  modelTreeExpanded,
 }: ModelExplorerProps): JSX.Element {
-  const t = useTranslations('viewer.explorer');
   const [tab, setTab] = useState<ExplorerTab>('objects');
-  const clearSelection = useViewerEntityStore((s) => s.clearSelection);
-  const hasSelection = useViewerEntityStore(
-    (s) => s.selectedAll || s.selected.size > 0,
-  );
 
   if (isLoading) {
     return <PanelEmptyState message="Loading model data..." />;
@@ -75,31 +61,35 @@ export function ModelExplorer({
 
   return (
     <div className="flex h-full flex-col">
-      <PanelTabs tabs={TABS} active={tab} onChange={setTab} />
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {tab === 'objects' && (
-          <ObjectsTab
-            spatialTree={metadata.spatialTree}
-            elements={metadata.elements}
-          />
-        )}
-        {tab === 'classes' && (
-          <ClassesTab
-            elements={metadata.elements}
-          />
-        )}
-        {tab === 'stories' && (
-          <StoriesTab
-            spatialTree={metadata.spatialTree}
-            elements={metadata.elements}
-          />
-        )}
-        {tab === 'zones' && (
-          <ZonesTab
-            zones={metadata.zones}
-          />
-        )}
-      </div>
+      {modelTreeExpanded && (
+        <>
+          <PanelTabs tabs={TABS} active={tab} onChange={setTab} />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {tab === 'objects' && (
+              <ObjectsTab
+                spatialTree={metadata.spatialTree}
+                elements={metadata.elements}
+              />
+            )}
+            {tab === 'classes' && (
+              <ClassesTab
+                elements={metadata.elements}
+              />
+            )}
+            {tab === 'stories' && (
+              <StoriesTab
+                spatialTree={metadata.spatialTree}
+                elements={metadata.elements}
+              />
+            )}
+            {tab === 'zones' && (
+              <ZonesTab
+                zones={metadata.zones}
+              />
+            )}
+          </div>
+        </>
+      )}
       <PropertiesSubPanel
         metadata={metadata}
         properties={properties}
@@ -108,25 +98,6 @@ export function ModelExplorer({
         expanded={propertiesExpanded}
         onToggle={onPropertiesToggle}
       />
-      {hasSelection && (
-        <div className="flex shrink-0 items-center justify-between border-t border-border bg-surface-low px-3.5 py-2.5 font-sans text-xs tabular-nums text-foreground-tertiary">
-          <span>
-            <span className="font-bold text-foreground-secondary">
-              {t('selected')}
-              :
-            </span>
-            {' '}
-            <SelectedLabel />
-          </span>
-          <button
-            type="button"
-            onClick={clearSelection}
-            className="cursor-pointer border-none bg-transparent font-sans text-xs text-primary"
-          >
-            {t('clear')}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

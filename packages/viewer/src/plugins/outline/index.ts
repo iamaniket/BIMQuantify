@@ -55,6 +55,7 @@ export function outlinePlugin(
   let lines: LineSegments2[] = [];
   let material: LineMaterial | null = null;
   let isIdle = false;
+  let xrayActive = false;
   let cleanup: (() => void) | null = null;
   let currentPlanes: THREE.Plane[] = [];
   let clipCount = 0;
@@ -69,7 +70,7 @@ export function outlinePlugin(
   let dirty = false;
 
   const updateVisibility = (): void => {
-    const show = enabled && isIdle;
+    const show = enabled && isIdle && !xrayActive;
     for (const line of lines) line.visible = show;
   };
 
@@ -214,6 +215,10 @@ export function outlinePlugin(
           }
         },
       );
+      const offXray = ctx.events.on('xray:change', ({ xrayed }) => {
+        xrayActive = xrayed.length > 0;
+        updateVisibility();
+      });
       const offSection = ctx.events.on('section:change', ({ planes }) => {
         syncClipping(planes);
       });
@@ -267,6 +272,7 @@ export function outlinePlugin(
         offIdle();
         offCam();
         offVisibility();
+        offXray();
         offSection();
         ro.disconnect();
       };

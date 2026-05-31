@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Plus, Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
@@ -29,8 +29,19 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
   const findingsQuery = useFindings(projectId);
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const findings = findingsQuery.data ?? [];
+  const allFindings = findingsQuery.data ?? [];
+  const findings = searchQuery === ''
+    ? allFindings
+    : allFindings.filter((f) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          f.title.toLowerCase().includes(q) ||
+          f.description.toLowerCase().includes(q) ||
+          (f.bbl_article_ref?.toLowerCase().includes(q) ?? false)
+        );
+      });
 
   if (findingsQuery.isLoading) {
     return (
@@ -42,7 +53,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
     );
   }
 
-  if (findings.length === 0) {
+  if (allFindings.length === 0) {
     return (
       <>
         <EmptyState
@@ -68,8 +79,18 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <div className="text-body3 text-foreground-tertiary">
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); }}
+            placeholder={t('searchPlaceholder')}
+            className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-3 text-body3 text-foreground placeholder:text-foreground-disabled focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="shrink-0 text-body3 text-foreground-tertiary">
           {t('count', { count: findings.length })}
         </div>
         <Button variant="border" size="sm" onClick={() => { setCreateOpen(true); }}>
@@ -78,6 +99,11 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         </Button>
       </div>
 
+      {findings.length === 0 ? (
+        <p className="py-6 text-center text-body3 text-foreground-tertiary">
+          {t('noResults')}
+        </p>
+      ) : (
       <div className="rounded-lg border border-border bg-background">
         {findings.map((finding, idx) => (
           <button
@@ -105,6 +131,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
           </button>
         ))}
       </div>
+      )}
 
       <FindingFormDialog
         projectId={projectId}

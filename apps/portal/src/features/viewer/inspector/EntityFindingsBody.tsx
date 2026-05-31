@@ -1,10 +1,10 @@
 'use client';
 
-import { AlertTriangle, Loader2, Plus } from 'lucide-react';
+import { AlertTriangle, Loader2, Plus, Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 
-import { Badge, Button } from '@bimstitch/ui';
+import { Badge, Button, Input } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { useElementFindings } from '@/features/findings/useElementFindings';
@@ -54,12 +54,30 @@ export function EntityFindingsBody({
 
   const findings = query.data ?? [];
 
+  const [search, setSearch] = useState('');
+  const filteredFindings = useMemo(() => {
+    if (search.trim() === '') return findings;
+    const q = search.toLowerCase();
+    return findings.filter((f) => {
+      if (f.title.toLowerCase().includes(q)) return true;
+      return f.description !== null && f.description !== undefined && f.description.toLowerCase().includes(q);
+    });
+  }, [findings, search]);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between gap-1.5 border-b border-border bg-background px-2.5 py-2">
-        <span className="min-w-0 truncate text-caption text-foreground-tertiary">
-          {t('count', { count: findings.length })}
-        </span>
+      <div className="flex items-center gap-1.5 border-b border-border bg-background px-2.5 py-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-secondary" />
+          <Input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); }}
+            placeholder={t('filterPlaceholder')}
+            inputSize="sm"
+            className="pl-7"
+          />
+        </div>
         <Button
           variant="primary"
           size="sm"
@@ -74,14 +92,14 @@ export function EntityFindingsBody({
       <div className="min-h-0 flex-1 overflow-auto">
         {query.isLoading ? (
           <PanelEmptyState icon={Loader2} message={t('loading')} />
-        ) : findings.length === 0 ? (
+        ) : filteredFindings.length === 0 ? (
           <PanelEmptyState
             icon={AlertTriangle}
             message={isProject ? t('emptyProjectEmpty') : t('emptyNoItems')}
           />
         ) : (
           <div className="flex flex-col">
-            {findings.map((finding) => (
+            {filteredFindings.map((finding) => (
               <button
                 key={finding.id}
                 type="button"

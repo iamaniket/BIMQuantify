@@ -29,6 +29,8 @@ type SidePanelProps = {
   pagesContent?: ReactNode | undefined;
   drawingInfoContent?: ReactNode | undefined;
   headerActions?: Partial<Record<PanelId, ReactNode>> | undefined;
+  headerExpanded?: boolean | undefined;
+  onHeaderToggle?: (() => void) | undefined;
 };
 
 function PlaceholderContent({ label }: { label: string }): JSX.Element {
@@ -58,6 +60,8 @@ export function SidePanel({
   pagesContent,
   drawingInfoContent,
   headerActions,
+  headerExpanded,
+  onHeaderToggle,
 }: SidePanelProps): JSX.Element {
   const t = useTranslations('viewer.sidePanel');
   const isOpen = activePanel !== null;
@@ -106,21 +110,59 @@ export function SidePanel({
       <div className="flex h-full flex-col border-l border-border bg-background shadow-lg">
         {activePanel !== null && (
           <>
-            <div
-              className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3.5"
-              style={{
-                background: 'linear-gradient(135deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
-              }}
-            >
-              <span className="text-xs font-bold uppercase tracking-wider text-white">
-                {t(PANEL_TITLE_KEYS[activePanel])}
-              </span>
-              {headerActions?.[activePanel] && (
-                <div className="flex items-center gap-0.5">
-                  {headerActions[activePanel]}
-                </div>
-              )}
-            </div>
+            {onHeaderToggle ? (
+              <button
+                type="button"
+                onClick={onHeaderToggle}
+                className="flex h-10 w-full shrink-0 cursor-pointer select-none items-center gap-2 border-b border-border px-3.5 text-left transition-colors hover:brightness-110"
+                style={{
+                  background: 'linear-gradient(135deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="inline-grid h-3.5 w-3.5 shrink-0 place-items-center text-white/70 transition-transform duration-[120ms]"
+                  style={{ transform: headerExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 8 8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="2.5,1.5 5.5,4 2.5,6.5" />
+                  </svg>
+                </span>
+                <span className="flex-1 text-xs font-bold uppercase tracking-wider text-white">
+                  {t(PANEL_TITLE_KEYS[activePanel])}
+                </span>
+                {headerActions?.[activePanel] && (
+                  <div className="flex items-center gap-0.5">
+                    {headerActions[activePanel]}
+                  </div>
+                )}
+              </button>
+            ) : (
+              <div
+                className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3.5"
+                style={{
+                  background: 'linear-gradient(135deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
+                }}
+              >
+                <span className="text-xs font-bold uppercase tracking-wider text-white">
+                  {t(PANEL_TITLE_KEYS[activePanel])}
+                </span>
+                {headerActions?.[activePanel] && (
+                  <div className="flex items-center gap-0.5">
+                    {headerActions[activePanel]}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="min-h-0 flex-1 overflow-auto">
               {activePanel === 'explorer' && explorerContent}
               {activePanel === 'inspector' && (inspectorContent ?? <PlaceholderContent label={t('titleInspector')} />)}
