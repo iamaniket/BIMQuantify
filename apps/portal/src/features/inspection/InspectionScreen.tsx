@@ -68,10 +68,10 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
   }, [startMutation]);
 
   const handleSubmit = useCallback(
-    (verdict: InspectionVerdictValue, note: string | null, photoIds: string[] | null) => {
+    (verdict: InspectionVerdictValue, note: string | null, photoIds: string[] | null, referenceAttachmentIds: string[] | null) => {
       if (currentItem === undefined) return;
       submitMutation.mutate(
-        { itemId: currentItem.id, input: { verdict, note, photo_ids: photoIds } },
+        { itemId: currentItem.id, input: { verdict, note, photo_ids: photoIds, reference_attachment_ids: referenceAttachmentIds } },
         {
           onSuccess: () => {
             if (currentIdx < items.length - 1) {

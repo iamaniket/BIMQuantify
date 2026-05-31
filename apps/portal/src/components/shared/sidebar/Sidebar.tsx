@@ -5,12 +5,12 @@ import type { JSX } from 'react';
 import { TooltipProvider } from '@bimstitch/ui';
 
 import { StitchLogo } from '@/components/shared/charts/StitchLogo';
+import { SidebarWorkspaceNav } from '@/features/projects/SidebarWorkspaceNav';
 
 import { SidebarCollapseToggle } from './SidebarCollapseToggle';
 import { SidebarNav } from './SidebarNav';
 import { SidebarTenantCard } from './SidebarTenantCard';
 import { SidebarUserChip } from './SidebarUserChip';
-import { SidebarWorkspaceNav } from './SidebarWorkspaceNav';
 import { useSidebar } from './SidebarContext';
 
 export function Sidebar(): JSX.Element {

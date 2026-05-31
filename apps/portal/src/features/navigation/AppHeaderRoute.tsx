@@ -1,21 +1,23 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 import { type JSX } from 'react';
 
+import { AppHeader, type Crumb } from '@/components/shared/header/AppHeader';
+import { useAppHeaderOverrides } from '@/components/shared/header/AppHeaderContext';
+import { NotificationsBell } from '@/components/shared/header/NotificationsBell';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
 import { usePathname } from '@/i18n/navigation';
-
-import { AppHeader, type Crumb } from './AppHeader';
-import { useAppHeaderOverrides } from './AppHeaderContext';
-import { NotificationsBell } from './NotificationsBell';
 
 type RouteParams = {
   projectId: string | undefined;
   modelId: string | undefined;
   fileId: string | undefined;
 };
+
+type CrumbT = ReturnType<typeof useTranslations>;
 
 const VIEWER_RE = /^\/projects\/[^/]+\/models\/[^/]+\/viewer\/[^/]+/;
 const REPORT_RE = /^\/projects\/[^/]+\/reports\/[^/]+/;
@@ -29,6 +31,7 @@ function resolveCrumbs(
     projectName: string | null;
     modelName: string | null;
   },
+  t: CrumbT,
 ): Crumb[] {
   const { projectId, projectName, modelName } = ctx;
   const projectsHref = '/projects';
@@ -36,61 +39,62 @@ function resolveCrumbs(
 
   if (VIEWER_RE.test(pathname)) {
     return [
-      { label: 'Projects', href: projectsHref },
-      { label: projectName ?? 'Project', href: projectHref },
-      { label: modelName ?? 'Model', href: projectHref },
+      { label: t('projects'), href: projectsHref },
+      { label: projectName ?? t('project'), href: projectHref },
+      { label: modelName ?? t('model'), href: projectHref },
     ];
   }
   if (REPORT_RE.test(pathname)) {
     return [
-      { label: 'Projects', href: projectsHref },
-      { label: projectName ?? 'Project', href: projectHref },
-      { label: 'Report', href: undefined },
+      { label: t('projects'), href: projectsHref },
+      { label: projectName ?? t('project'), href: projectHref },
+      { label: t('report'), href: undefined },
     ];
   }
   if (PROJECT_DETAIL_RE.test(pathname)) {
     return [
-      { label: 'Projects', href: projectsHref },
-      { label: projectName ?? 'Project', href: undefined },
+      { label: t('projects'), href: projectsHref },
+      { label: projectName ?? t('project'), href: undefined },
     ];
   }
   if (pathname.startsWith('/projects')) {
-    return [{ label: 'Projects', href: undefined }];
+    return [{ label: t('projects'), href: undefined }];
   }
   if (pathname.startsWith('/settings')) {
-    return [{ label: 'Settings', href: undefined }];
+    return [{ label: t('settings'), href: undefined }];
   }
   // Admin shell — the detail page replaces these via useHeaderCrumbsOverride
   // so the tenant's actual name shows up; the rest get static crumbs.
   if (ADMIN_ORG_DETAIL_RE.test(pathname)) {
     return [
-      { label: 'Admin', href: '/admin/organizations' },
-      { label: 'Tenants', href: '/admin/organizations' },
-      { label: 'Tenant', href: undefined },
+      { label: t('admin'), href: '/admin/organizations' },
+      { label: t('tenants'), href: '/admin/organizations' },
+      { label: t('tenant'), href: undefined },
     ];
   }
   if (pathname.startsWith('/admin/organizations')) {
     return [
-      { label: 'Admin', href: '/admin/organizations' },
-      { label: 'Tenants', href: undefined },
+      { label: t('admin'), href: '/admin/organizations' },
+      { label: t('tenants'), href: undefined },
     ];
   }
   if (pathname.startsWith('/admin/users')) {
     return [
-      { label: 'Admin', href: '/admin/organizations' },
-      { label: 'Users', href: undefined },
+      { label: t('admin'), href: '/admin/organizations' },
+      { label: t('users'), href: undefined },
     ];
   }
   if (pathname.startsWith('/admin/audit-log')) {
     return [
-      { label: 'Admin', href: '/admin/organizations' },
-      { label: 'Audit log', href: undefined },
+      { label: t('admin'), href: '/admin/organizations' },
+      { label: t('auditLog'), href: undefined },
     ];
   }
-  return [{ label: 'BimStitch', href: undefined }];
+  return [{ label: t('appName'), href: undefined }];
 }
 
 export function AppHeaderRoute(): JSX.Element {
+  const t = useTranslations('breadcrumbs');
   const pathname = usePathname();
   const params = useParams<RouteParams>();
   const projectId = params.projectId ?? '';
@@ -111,7 +115,7 @@ export function AppHeaderRoute(): JSX.Element {
   }
 
   const crumbs = crumbsOverride
-    ?? resolveCrumbs(pathname, { projectId, projectName, modelName });
+    ?? resolveCrumbs(pathname, { projectId, projectName, modelName }, t);
 
   return (
     <AppHeader

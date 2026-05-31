@@ -122,6 +122,7 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
     # `photo_ids` — a JSONB string list, kept JSON-serializable.
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolution_evidence_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
+    reference_attachment_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
 
     project: Mapped["Project"] = relationship()
     assignee: Mapped[User | None] = relationship(User, foreign_keys=[assignee_user_id])

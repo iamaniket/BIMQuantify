@@ -18,6 +18,7 @@ import { useCreateFinding } from '@/features/findings/useCreateFinding';
 import { useRegisterField } from '@/hooks/useRegisterField';
 
 import { FindingPhotos } from './FindingPhotos';
+import { ReferenceDocumentPicker } from './ReferenceDocumentPicker';
 
 const SEVERITIES = ['low', 'medium', 'high'] as const;
 
@@ -62,6 +63,7 @@ export function FindingFormDialog({
   const tSeverity = useTranslations('findings.severity');
   const mutation = useCreateFinding(projectId);
   const [photoIds, setPhotoIds] = useState<string[]>([]);
+  const [referenceAttachmentIds, setReferenceAttachmentIds] = useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -81,6 +83,7 @@ export function FindingFormDialog({
       resetForm(EMPTY);
       resetMutation();
       setPhotoIds([]);
+      setReferenceAttachmentIds([]);
     }
   }, [open, resetForm, resetMutation]);
 
@@ -99,6 +102,7 @@ export function FindingFormDialog({
         linked_element_global_id:
           linkedElementGlobalId === undefined ? null : linkedElementGlobalId,
         photo_ids: photoIds.length > 0 ? photoIds : undefined,
+        reference_attachment_ids: referenceAttachmentIds.length > 0 ? referenceAttachmentIds : undefined,
       },
       {
         onSuccess: () => { onOpenChange(false); },
@@ -164,6 +168,11 @@ export function FindingFormDialog({
           projectId={projectId}
           photoIds={photoIds}
           onChange={setPhotoIds}
+        />
+        <ReferenceDocumentPicker
+          projectId={projectId}
+          referenceIds={referenceAttachmentIds}
+          onChange={setReferenceAttachmentIds}
         />
       </div>
     </AppDialog>

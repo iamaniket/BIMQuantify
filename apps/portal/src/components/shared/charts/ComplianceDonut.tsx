@@ -3,6 +3,8 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import type { JSX } from 'react';
 
+import { Eyebrow } from '@bimstitch/ui';
+
 export type DonutSegment = {
   value: number;
   color: string;
@@ -50,9 +52,9 @@ export function ComplianceDonut({
           {centerValue}
         </span>
         {centerLabel !== undefined && (
-          <span className="mt-1 text-caption uppercase tracking-widest text-foreground-tertiary">
+          <Eyebrow size="xs" className="mt-1 font-normal text-foreground-tertiary">
             {centerLabel}
-          </span>
+          </Eyebrow>
         )}
         {centerSub !== undefined && (
           <span className="mt-0.5 text-caption text-foreground-tertiary">

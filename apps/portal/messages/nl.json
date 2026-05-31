@@ -152,6 +152,19 @@
     },
     "account": "Account"
   },
+  "breadcrumbs": {
+    "projects": "Projecten",
+    "project": "Project",
+    "model": "Model",
+    "report": "Rapport",
+    "settings": "Instellingen",
+    "admin": "Beheer",
+    "tenants": "Tenants",
+    "users": "Gebruikers",
+    "auditLog": "Auditlog",
+    "tenant": "Tenant",
+    "appName": "BimStitch"
+  },
   "account": {
     "pageTitle": "Account",
     "pageSubtitle": "Beheer je profiel en bekijk openstaande uitnodigingen.",
@@ -865,6 +878,8 @@
         "captureLinkMaxUses": "Max uploads",
         "captureLinkMaxUsesPlaceholder": "Onbeperkt",
         "captureLinkCreate": "Link aanmaken",
+        "captureLinkCancel": "Annuleren",
+        "captureLinkDone": "Klaar",
         "captureLinkCopied": "Link gekopieerd naar klembord",
         "captureLinkRevoke": "Intrekken",
         "captureLinkRevoked": "Opnamelink ingetrokken",
@@ -1093,6 +1108,14 @@
       "add": "Toevoegen",
       "remove": "Foto verwijderen",
       "uploadError": "Kon {name} niet uploaden"
+    },
+    "referenceDocuments": {
+      "label": "Referentiedocumenten",
+      "add": "Referentie toevoegen",
+      "remove": "Verwijderen",
+      "pickerTitle": "Selecteer een document",
+      "pickerDescription": "Kies een projectdocument als referentie.",
+      "empty": "Geen documenten beschikbaar"
     },
     "expanded": {
       "status": "STATUS",
@@ -1902,6 +1925,9 @@
       "capture": "Foto maken",
       "uploadFailed": "Foto-upload mislukt.",
       "maxReached": "Maximum aantal foto's bereikt."
+    },
+    "referenceDocuments": {
+      "label": "Referentiedocumenten"
     },
     "voiceNote": {
       "label": "Spraaknotitie",

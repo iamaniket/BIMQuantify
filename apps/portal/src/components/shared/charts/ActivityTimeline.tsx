@@ -12,17 +12,14 @@ import {
   YAxis,
 } from 'recharts';
 
-import { buildCompletionSeries } from '@/features/projects/detail/dossierTemplate';
-import type { JurisdictionDossierRequirement } from '@/lib/api/jurisdictions';
 import type { ProjectActivityEntry } from '@/lib/api/schemas/activity';
-import type { Attachment } from '@/lib/api/schemas/attachments';
-import type { Certificate } from '@/lib/api/schemas/certificates';
 import type { Deadline } from '@/lib/api/schemas/deadlines';
 
+/** A point on the dossier-completion step series: `pct` complete at epoch-ms `t`. */
+export type CompletionPoint = { t: number; pct: number };
+
 type Props = {
-  attachments: Attachment[];
-  certificates?: Certificate[];
-  template: JurisdictionDossierRequirement[];
+  completion: CompletionPoint[];
   activityEntries: ProjectActivityEntry[];
   deadlines?: Deadline[];
   height?: number;
@@ -45,9 +42,7 @@ type EventPoint = {
 };
 
 export function ActivityTimeline({
-  attachments,
-  certificates = [],
-  template,
+  completion,
   activityEntries,
   deadlines = [],
   height = 96,
@@ -96,7 +91,6 @@ export function ActivityTimeline({
   );
 
   const { lineData, events, markers, domain, hasData } = useMemo(() => {
-    const completion = buildCompletionSeries(template, attachments, certificates);
     const now = Date.now();
 
     const eventTimes = activityEntries.map((e) => new Date(e.created_at).getTime());
@@ -146,7 +140,7 @@ export function ActivityTimeline({
       domain: [minT, maxT] as [number, number],
       hasData: completion.length > 0 || evts.length > 0,
     };
-  }, [attachments, certificates, template, activityEntries, deadlines]);
+  }, [completion, activityEntries, deadlines]);
 
   if (!hasData) {
     return (

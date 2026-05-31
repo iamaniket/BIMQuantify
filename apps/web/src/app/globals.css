@@ -6,6 +6,12 @@
   --brand-gradient-start: #2c5697;
   --brand-gradient-end: #224579;
 
+  /* Marketing hero accents (on-dark brand pane). Translucent fills derive
+     from --brand-accent via color-mix so there's a single source of truth. */
+  --brand-accent: #5fd99e;
+  --brand-accent-soft: #9ff0bf;
+  --brand-accent-ink: #9bbce8;
+
   /* Inline/SVG font references resolve to the system sans-serif stack.
      Fraunces (--font-display, injected by next/font) is reserved for
      login/auth. --font-mono is aliased to the same system sans stack. */

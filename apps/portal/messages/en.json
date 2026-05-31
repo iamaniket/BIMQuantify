@@ -152,6 +152,19 @@
     },
     "account": "Account"
   },
+  "breadcrumbs": {
+    "projects": "Projects",
+    "project": "Project",
+    "model": "Model",
+    "report": "Report",
+    "settings": "Settings",
+    "admin": "Admin",
+    "tenants": "Tenants",
+    "users": "Users",
+    "auditLog": "Audit log",
+    "tenant": "Tenant",
+    "appName": "BimStitch"
+  },
   "account": {
     "pageTitle": "Account",
     "pageSubtitle": "Manage your profile and review pending invitations.",
@@ -865,6 +878,8 @@
         "captureLinkMaxUses": "Max uploads",
         "captureLinkMaxUsesPlaceholder": "Unlimited",
         "captureLinkCreate": "Create link",
+        "captureLinkCancel": "Cancel",
+        "captureLinkDone": "Done",
         "captureLinkCopied": "Link copied to clipboard",
         "captureLinkRevoke": "Revoke",
         "captureLinkRevoked": "Capture link revoked",
@@ -1093,6 +1108,14 @@
       "add": "Add",
       "remove": "Remove photo",
       "uploadError": "Could not upload {name}"
+    },
+    "referenceDocuments": {
+      "label": "Reference documents",
+      "add": "Add reference",
+      "remove": "Remove",
+      "pickerTitle": "Select a document",
+      "pickerDescription": "Choose a project document to reference.",
+      "empty": "No documents available"
     },
     "expanded": {
       "status": "STATUS",
@@ -1902,6 +1925,9 @@
       "capture": "Take photo",
       "uploadFailed": "Photo upload failed.",
       "maxReached": "Maximum photos reached."
+    },
+    "referenceDocuments": {
+      "label": "Reference documents"
     },
     "voiceNote": {
       "label": "Voice note",

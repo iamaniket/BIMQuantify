@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { type JSX, type ReactNode } from 'react';
+import { type JSX, type ReactNode, useMemo } from 'react';
 
 import { ActivityTimeline } from '@/components/shared/charts/ActivityTimeline';
 import { DossierDonut } from '@/components/shared/charts/DossierDonut';
@@ -12,7 +12,7 @@ import type { Certificate } from '@/lib/api/schemas/certificates';
 import type { Deadline } from '@/lib/api/schemas/deadlines';
 import type { ProjectActivityEntry } from '@/lib/api/schemas/activity';
 
-import type { DossierCompleteness } from './dossierTemplate';
+import { buildCompletionSeries, type DossierCompleteness } from './dossierTemplate';
 
 type Props = {
   dossier: DossierCompleteness;
@@ -52,6 +52,11 @@ export function ProjectChartsPanel({
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.chartsPanel');
 
+  const completion = useMemo(
+    () => buildCompletionSeries(template, attachments, certificates),
+    [template, attachments, certificates],
+  );
+
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
       <div className="flex min-h-0 flex-1 flex-col gap-1 p-3">
@@ -66,9 +71,7 @@ export function ProjectChartsPanel({
         <div className="flex-1 border-t border-border pt-1">
           <PanelSection title={t('timelineTitle')}>
             <ActivityTimeline
-              attachments={attachments}
-              certificates={certificates}
-              template={template}
+              completion={completion}
               activityEntries={activityEntries}
               deadlines={deadlines}
             />

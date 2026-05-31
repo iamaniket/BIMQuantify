@@ -10,6 +10,7 @@ class ResultCreate(BaseModel):
     verdict: InspectionVerdict
     note: str | None = Field(default=None, max_length=4000)
     photo_ids: list[str] | None = None
+    reference_attachment_ids: list[str] | None = None
 
 
 class ChecklistItemResultRead(BaseModel):
@@ -24,6 +25,7 @@ class ChecklistItemResultRead(BaseModel):
     inspector_user_id: UUID
     inspected_at: datetime
     photo_ids: list[str] | None
+    reference_attachment_ids: list[str] | None
     voice_note_id: UUID | None
     created_at: datetime
     updated_at: datetime

@@ -6,10 +6,10 @@ import type { JSX } from 'react';
 
 import { useTranslations } from 'next-intl';
 
-import { useProjects } from '@/features/projects/useProjects';
+import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
+import { SidebarNavItem } from '@/components/shared/sidebar/SidebarNavItem';
 
-import { useSidebar } from './SidebarContext';
-import { SidebarNavItem } from './SidebarNavItem';
+import { useProjects } from './useProjects';
 
 const itemDefinitions = [
   { key: 'projects', icon: LayoutGrid, href: '/projects' },

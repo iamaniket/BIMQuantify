@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Button, Eyebrow } from '@bimstitch/ui';
 
 import { prettyKey } from './prettyKey';
 import { CATEGORY_STYLES, CATEGORY_LABEL_KEYS } from './shortcutCategories';
@@ -71,9 +71,9 @@ export function ShortcutList({
           <div key={sec.id}>
             <div className="mb-2 flex items-baseline gap-2.5">
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: cat.swatch }} />
-              <span className="text-caption font-bold uppercase tracking-widest text-foreground-secondary">
+              <Eyebrow size="xs">
                 {t(CATEGORY_LABEL_KEYS[sec.id])}
-              </span>
+              </Eyebrow>
               <span className="text-caption text-foreground-tertiary">{t(sec.subtitleKey)}</span>
             </div>
             <div className="grid grid-cols-2 gap-2">

@@ -127,7 +127,7 @@ export function CreateCaptureLinkDialog({
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <DialogClose asChild>
-                  <Button variant="ghost" size="sm">Cancel</Button>
+                  <Button variant="ghost" size="sm">{t('captureLinkCancel')}</Button>
                 </DialogClose>
                 <Button
                   variant="primary"
@@ -152,7 +152,7 @@ export function CreateCaptureLinkDialog({
               </div>
               <div className="flex justify-end">
                 <DialogClose asChild>
-                  <Button variant="primary" size="sm">Done</Button>
+                  <Button variant="primary" size="sm">{t('captureLinkDone')}</Button>
                 </DialogClose>
               </div>
             </div>

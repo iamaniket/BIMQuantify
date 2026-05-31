@@ -13,6 +13,7 @@ export const ChecklistItemResultSchema = z.object({
   inspector_user_id: z.string().uuid(),
   inspected_at: z.string(),
   photo_ids: z.union([z.array(z.string()), z.null()]),
+  reference_attachment_ids: z.union([z.array(z.string()), z.null()]),
   voice_note_id: z.union([z.string().uuid(), z.null()]),
   created_at: z.string(),
   updated_at: z.string(),
@@ -35,5 +36,6 @@ export const ResultCreateSchema = z.object({
   verdict: InspectionVerdictEnum,
   note: z.union([z.string().max(4000), z.null()]).optional(),
   photo_ids: z.union([z.array(z.string()), z.null()]).optional(),
+  reference_attachment_ids: z.union([z.array(z.string()), z.null()]).optional(),
 });
 export type ResultCreateInput = z.infer<typeof ResultCreateSchema>;

@@ -12,11 +12,20 @@ import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
-import type { DossierRequirementResult } from '@/features/projects/detail/dossierTemplate';
+import { CountChip, Eyebrow } from '@bimstitch/ui';
+
+export type DossierDonutRequirement = {
+  code: string;
+  label: string;
+  required: boolean;
+  sourceKind: 'attachment_slot' | 'certificate_type' | 'derived';
+  fulfilled: boolean;
+  count: number;
+};
 
 type Props = {
   pct: number;
-  requirements: DossierRequirementResult[];
+  requirements: DossierDonutRequirement[];
 };
 
 function centerColor(pct: number): string {
@@ -25,7 +34,7 @@ function centerColor(pct: number): string {
   return 'var(--error)';
 }
 
-const SOURCE_ICONS: Record<DossierRequirementResult['sourceKind'], typeof Check> = {
+const SOURCE_ICONS: Record<DossierDonutRequirement['sourceKind'], typeof Check> = {
   attachment_slot: FileText,
   certificate_type: ShieldCheck,
   derived: SlidersHorizontal,
@@ -91,9 +100,9 @@ export function DossierDonut({ pct, requirements }: Props): JSX.Element {
               <span className="text-h5 font-semibold leading-none text-foreground">
                 {active.count}
               </span>
-              <span className="mt-1 max-w-[80%] truncate text-caption uppercase tracking-widest text-foreground-tertiary">
+              <Eyebrow size="xs" className="mt-1 max-w-[80%] truncate font-normal text-foreground-tertiary">
                 {active.label}
-              </span>
+              </Eyebrow>
             </>
           ) : (
             <>
@@ -104,9 +113,9 @@ export function DossierDonut({ pct, requirements }: Props): JSX.Element {
                 {pct}
                 <span className="text-title3 text-foreground-tertiary">%</span>
               </span>
-              <span className="mt-1 text-caption uppercase tracking-widest text-foreground-tertiary">
+              <Eyebrow size="xs" className="mt-1 font-normal text-foreground-tertiary">
                 {t('completionLabel')}
-              </span>
+              </Eyebrow>
             </>
           )}
         </div>
@@ -127,9 +136,9 @@ export function DossierDonut({ pct, requirements }: Props): JSX.Element {
                 <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">
                   {r.label}
                 </span>
-                <span className="text-body3 tabular-nums text-foreground-tertiary">
+                <CountChip className="text-body3">
                   {r.count}
-                </span>
+                </CountChip>
                 {r.fulfilled ? (
                   <Check className="h-3.5 w-3.5 shrink-0 text-success" />
                 ) : r.required ? (

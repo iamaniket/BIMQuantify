@@ -104,12 +104,12 @@ export function RequestAccessClient(): JSX.Element {
               <div
                 className="mb-3.5 inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em]"
                 style={{
-                  color: '#9ff0bf',
-                  background: 'rgba(95,217,158,0.16)',
-                  borderColor: 'rgba(95,217,158,0.32)',
+                  color: 'var(--brand-accent-soft)',
+                  background: 'color-mix(in srgb, var(--brand-accent) 16%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--brand-accent) 32%, transparent)',
                 }}
               >
-                <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: '#5fd99e' }} />
+                <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: 'var(--brand-accent)' }} />
                 Request a guided demo
               </div>
 
@@ -117,9 +117,9 @@ export function RequestAccessClient(): JSX.Element {
                 className="m-0 max-w-md font-sans text-[36px] font-medium leading-[1.06] tracking-tight text-white"
                 style={{ textWrap: 'pretty' }}
               >
-                See your <span className="italic" style={{ color: '#9bbce8' }}>models</span>,{' '}
-                <span className="italic" style={{ color: '#9bbce8' }}>issues</span> and{' '}
-                <span className="italic" style={{ color: '#9bbce8' }}>dossier</span> stitched into one Wkb record.
+                See your <span className="italic" style={{ color: 'var(--brand-accent-ink)' }}>models</span>,{' '}
+                <span className="italic" style={{ color: 'var(--brand-accent-ink)' }}>issues</span> and{' '}
+                <span className="italic" style={{ color: 'var(--brand-accent-ink)' }}>dossier</span> stitched into one Wkb record.
               </h1>
               <p className="mt-3.5 max-w-md text-[13.5px] leading-snug text-white/70">
                 Tell us a little about your team and we&rsquo;ll spin up a sandbox preloaded with sample
@@ -136,7 +136,7 @@ export function RequestAccessClient(): JSX.Element {
                     <span
                       aria-hidden
                       className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full"
-                      style={{ background: 'rgba(95,217,158,0.22)', color: '#9ff0bf' }}
+                      style={{ background: 'color-mix(in srgb, var(--brand-accent) 22%, transparent)', color: 'var(--brand-accent-soft)' }}
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M5 12l5 5L20 7" />

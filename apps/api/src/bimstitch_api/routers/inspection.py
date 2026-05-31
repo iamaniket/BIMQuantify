@@ -184,6 +184,7 @@ async def submit_result(
         verdict=payload.verdict,
         note=payload.note,
         photo_ids=payload.photo_ids,
+        reference_attachment_ids=payload.reference_attachment_ids,
         inspector_user_id=user.id,
         inspected_at=datetime.now(UTC),
     )
@@ -200,6 +201,7 @@ async def submit_result(
             "verdict": result.verdict.value,
             "has_note": bool(result.note),
             "has_photos": bool(result.photo_ids),
+            "has_references": bool(result.reference_attachment_ids),
         },
         actor_user_id=user.id,
         request=request,

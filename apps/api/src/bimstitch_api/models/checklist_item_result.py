@@ -62,6 +62,7 @@ class ChecklistItemResult(TimestampMixin, TenantBase):
         DateTime(timezone=True), server_default="now()", nullable=False,
     )
     photo_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
+    reference_attachment_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     voice_note_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
     checklist_item: Mapped["ChecklistItem"] = relationship()

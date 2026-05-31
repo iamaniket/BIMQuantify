@@ -66,6 +66,7 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     photo_ids: null,
     resolution_note: null,
     resolution_evidence_ids: null,
+    reference_attachment_ids: null,
     created_at: '2026-05-29T10:00:00Z',
     updated_at: '2026-05-29T10:00:00Z',
     ...overrides,

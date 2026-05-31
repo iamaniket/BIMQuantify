@@ -25,6 +25,7 @@ import type { Finding, FindingStatusValue, FindingUpdateInput } from '@/lib/api/
 import { useAuth } from '@/providers/AuthProvider';
 
 import { FindingPhotos } from './FindingPhotos';
+import { ReferenceDocumentPicker } from './ReferenceDocumentPicker';
 import { statusBadgeVariant } from './findingBadges';
 
 const SEVERITIES = ['low', 'medium', 'high'] as const;
@@ -56,6 +57,7 @@ type PatchOptions = {
 function buildPatch(
   values: FormValues,
   photoIds: string[],
+  referenceAttachmentIds: string[],
   opts: PatchOptions = {},
 ): FindingUpdateInput {
   const patch: FindingUpdateInput = {
@@ -75,6 +77,7 @@ function buildPatch(
         ? null
         : values.deadline_date,
     photo_ids: photoIds,
+    reference_attachment_ids: referenceAttachmentIds,
   };
   if (opts.status !== undefined) {
     patch.status = opts.status;
@@ -103,6 +106,7 @@ export function FindingDetailModal({
   const deleteMutation = useDeleteFinding(projectId);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [photoIds, setPhotoIds] = useState<string[]>([]);
+  const [referenceAttachmentIds, setReferenceAttachmentIds] = useState<string[]>([]);
   const [resolutionNote, setResolutionNote] = useState('');
   const [resolutionEvidenceIds, setResolutionEvidenceIds] = useState<string[]>([]);
 
@@ -127,6 +131,7 @@ export function FindingDetailModal({
         deadline_date: finding.deadline_date ?? '',
       });
       setPhotoIds(finding.photo_ids ?? []);
+      setReferenceAttachmentIds(finding.reference_attachment_ids ?? []);
       setResolutionNote(finding.resolution_note ?? '');
       setResolutionEvidenceIds(finding.resolution_evidence_ids ?? []);
       setConfirmDelete(false);
@@ -158,14 +163,14 @@ export function FindingDetailModal({
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     updateMutation.mutate(
-      { findingId: finding.id, input: buildPatch(values, photoIds) },
+      { findingId: finding.id, input: buildPatch(values, photoIds, referenceAttachmentIds) },
       { onSuccess: () => { onOpenChange(false); } },
     );
   };
 
   const onPromoteSubmit: SubmitHandler<FormValues> = (values) => {
     updateMutation.mutate(
-      { findingId: finding.id, input: buildPatch(values, photoIds, { status: 'open' }) },
+      { findingId: finding.id, input: buildPatch(values, photoIds, referenceAttachmentIds, { status: 'open' }) },
       { onSuccess: () => { onOpenChange(false); } },
     );
   };
@@ -174,7 +179,7 @@ export function FindingDetailModal({
     updateMutation.mutate(
       {
         findingId: finding.id,
-        input: buildPatch(values, photoIds, {
+        input: buildPatch(values, photoIds, referenceAttachmentIds, {
           status: 'resolved',
           resolutionNote: resolutionNote.trim(),
           resolutionEvidenceIds,
@@ -307,6 +312,15 @@ export function FindingDetailModal({
             photoIds={photoIds}
             onChange={setPhotoIds}
             disabled={isPending}
+          />
+        </div>
+
+        <div className="col-span-2">
+          <ReferenceDocumentPicker
+            projectId={projectId}
+            referenceIds={referenceAttachmentIds}
+            onChange={setReferenceAttachmentIds}
+            disabled={isPending || finding.status === 'verified'}
           />
         </div>
 

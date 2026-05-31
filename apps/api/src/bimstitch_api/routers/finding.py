@@ -77,6 +77,7 @@ def _finding_snapshot(finding: Finding) -> dict[str, str | None]:
         "linked_file_id": str(finding.linked_file_id) if finding.linked_file_id else None,
         "linked_element_global_id": finding.linked_element_global_id,
         "resolution_note": finding.resolution_note,
+        "has_references": bool(finding.reference_attachment_ids),
     }
 
 

@@ -663,3 +663,77 @@ async def test_start_inspection_rejected_when_project_archived(
     )
     assert resp.status_code == 409
     assert resp.json()["detail"] == "PROJECT_ARCHIVED"
+
+
+# ---------------------------------------------------------------------------
+# reference_attachment_ids
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_submit_result_with_reference_attachment_ids(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+) -> None:
+    from uuid import uuid4
+
+    user = await _provision_user_in_org(
+        client, session_maker, engine, email="kb@test.nl"
+    )
+    project = await _create_project(client, user["access_token"])
+    plan = await _generate_borgingsplan(client, user["access_token"], project["id"])
+    moment = _first_moment(plan)
+    item = _first_item(moment)
+
+    await client.post(
+        f"/borgingsmomenten/{moment['id']}/start-inspection",
+        headers=_auth(user["access_token"]),
+    )
+
+    ref_ids = [str(uuid4()), str(uuid4())]
+    resp = await client.post(
+        f"/borgingsmomenten/{moment['id']}/checklist-items/{item['id']}/result",
+        json={"verdict": "pass", "reference_attachment_ids": ref_ids},
+        headers=_auth(user["access_token"]),
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["reference_attachment_ids"] == ref_ids
+
+    results = await client.get(
+        f"/borgingsmomenten/{moment['id']}/results",
+        headers=_auth(user["access_token"]),
+    )
+    assert results.status_code == 200
+    found = [r for r in results.json() if r["checklist_item_id"] == item["id"]]
+    assert len(found) == 1
+    assert found[0]["reference_attachment_ids"] == ref_ids
+
+
+@pytest.mark.anyio
+async def test_submit_result_reference_attachment_ids_default_null(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+) -> None:
+    user = await _provision_user_in_org(
+        client, session_maker, engine, email="kb@test.nl"
+    )
+    project = await _create_project(client, user["access_token"])
+    plan = await _generate_borgingsplan(client, user["access_token"], project["id"])
+    moment = _first_moment(plan)
+    item = _first_item(moment)
+
+    await client.post(
+        f"/borgingsmomenten/{moment['id']}/start-inspection",
+        headers=_auth(user["access_token"]),
+    )
+
+    resp = await client.post(
+        f"/borgingsmomenten/{moment['id']}/checklist-items/{item['id']}/result",
+        json={"verdict": "pass"},
+        headers=_auth(user["access_token"]),
+    )
+    assert resp.status_code == 201
+    assert resp.json()["reference_attachment_ids"] is None

@@ -31,6 +31,7 @@ class FindingCreate(FindingBase):
     # JSONB string list — match ChecklistItemResult.photo_ids, so values stay
     # JSON-serializable (str, not UUID).
     photo_ids: list[str] | None = None
+    reference_attachment_ids: list[str] | None = None
 
 
 class FindingUpdate(BaseModel):
@@ -56,6 +57,7 @@ class FindingUpdate(BaseModel):
     # transition into `resolved`; the gate is enforced in the router.
     resolution_note: str | None = Field(default=None, max_length=4000)
     resolution_evidence_ids: list[str] | None = None
+    reference_attachment_ids: list[str] | None = None
 
 
 class FindingRead(FindingBase):
@@ -73,6 +75,7 @@ class FindingRead(FindingBase):
     photo_ids: list[str] | None
     resolution_note: str | None
     resolution_evidence_ids: list[str] | None
+    reference_attachment_ids: list[str] | None
     created_at: datetime
     updated_at: datetime
 

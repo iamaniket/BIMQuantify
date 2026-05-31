@@ -153,6 +153,52 @@ async def test_create_finding_photo_ids_round_trips(
     assert patched.json()["photo_ids"] == replacement
 
 
+async def test_create_finding_reference_attachment_ids_round_trips(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    ref_ids = [str(uuid4()), str(uuid4())]
+
+    create = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(reference_attachment_ids=ref_ids),
+        headers=_auth(token),
+    )
+    assert create.status_code == 201, create.text
+    finding_id = create.json()["id"]
+    assert create.json()["reference_attachment_ids"] == ref_ids
+
+    got = await client.get(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        headers=_auth(token),
+    )
+    assert got.status_code == 200, got.text
+    assert got.json()["reference_attachment_ids"] == ref_ids
+
+    replacement = [str(uuid4())]
+    patched = await client.patch(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        json={"reference_attachment_ids": replacement},
+        headers=_auth(token),
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["reference_attachment_ids"] == replacement
+
+
+async def test_create_finding_reference_attachment_ids_default_null(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    resp = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["reference_attachment_ids"] is None
+
+
 async def test_create_finding_invalid_severity_422(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:

@@ -16,7 +16,7 @@ vi.mock('@/i18n/navigation', () => ({
   ),
 }));
 
-vi.mock('./SidebarContext', () => ({
+vi.mock('@/components/shared/sidebar/SidebarContext', () => ({
   useSidebar: () => ({
     collapsed: false,
     toggle: () => {},
