@@ -50,6 +50,7 @@ interface ViewerEntityState {
   _frameRequested: number;
 
   select: (keys: EntityKey[]) => void;
+  selectAll: () => void;
   addToSelection: (keys: EntityKey[]) => void;
   removeFromSelection: (keys: EntityKey[]) => void;
   clearSelection: () => void;
@@ -110,6 +111,7 @@ export const useViewerEntityStore = create<ViewerEntityState>()((set) => ({
   _frameRequested: 0,
 
   select: (keys) => set({ selected: new Set(keys), selectedAll: false }),
+  selectAll: () => set({ selectedAll: true, selected: EMPTY_SET }),
   addToSelection: (keys) =>
     set((s) => {
       const next = new Set(s.selected);

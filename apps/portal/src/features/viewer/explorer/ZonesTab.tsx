@@ -30,6 +30,7 @@ export function ZonesTab({
   const selected = useViewerEntityStore((s) => s.selected);
   const selectedAll = useViewerEntityStore((s) => s.selectedAll);
   const select = useViewerEntityStore((s) => s.select);
+  const selectAll = useViewerEntityStore((s) => s.selectAll);
   const clearSelection = useViewerEntityStore((s) => s.clearSelection);
   const [filter, setFilter] = useState('');
 
@@ -100,13 +101,12 @@ export function ZonesTab({
   );
 
   const handleToggleSelectAll = useCallback(() => {
-    if (allEntityKeys.length === 0) return;
     if (allSelected) {
       clearSelection();
     } else {
-      select(allEntityKeys);
+      selectAll();
     }
-  }, [allSelected, clearSelection, select, allEntityKeys]);
+  }, [allSelected, clearSelection, selectAll]);
 
   const filtered = useMemo(() => filterTree(zoneNodes, filter), [zoneNodes, filter]);
 

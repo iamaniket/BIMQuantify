@@ -9,10 +9,9 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { Button, Input, Spinner } from '@bimstitch/ui';
+import { Button, Input, Spinner, SplitButton } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
-import { SplitButton } from '@/components/shared/viewer/SplitButton';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { useElementAttachments, useProjectAttachments } from '@/features/attachments/useAttachments';
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';

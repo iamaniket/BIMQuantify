@@ -98,6 +98,8 @@ export { CountChip } from './CountChip.js';
 export type { CountChipProps } from './CountChip.js';
 export { Progress } from './Progress.js';
 export type { ProgressProps, ProgressVariant } from './Progress.js';
+export { SplitButton } from './SplitButton.js';
+export type { SplitButtonProps, SplitButtonItem } from './SplitButton.js';
 export {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from './Table.js';
