@@ -118,6 +118,38 @@ td.warn, .warn { color: var(--c-warn); font-weight: 600; }
 .pill-fail { background: var(--c-fail-bg); color: var(--c-fail); }
 .pill-warn { background: var(--c-warn-bg); color: var(--c-warn); }
 
+/* Borgingsplan / verklaring (#31/#32) */
+.moment { margin: 4mm 0 6mm 0; page-break-inside: avoid; }
+.moment h3 { font-size: 11pt; margin: 0 0 1.5mm 0; font-weight: 700; }
+.meta-inline {
+  grid-template-columns: auto 1fr auto 1fr auto 1fr;
+  gap: 1mm 3mm; font-size: 9pt; margin: 0 0 2mm 0;
+}
+.signature { margin-top: 10mm; page-break-inside: avoid; }
+.sign-grid { grid-template-columns: 30mm 1fr; gap: 5mm 4mm; max-width: 120mm; }
+.sign-line { border-bottom: 1px solid var(--c-text); min-height: 6mm; }
+.sign-tall { min-height: 16mm; }
+
+/* Declaration body (verklaring #32) */
+.declaration { font-size: 11pt; line-height: 1.6; margin: 4mm 0 8mm 0; }
+.declaration p { margin: 0 0 4mm 0; }
+.signed-stamp {
+  margin-top: 6mm; padding: 4mm 6mm; border: 1px solid var(--c-pass);
+  border-radius: 3mm; background: var(--c-pass-bg); color: var(--c-pass);
+  font-size: 9.5pt;
+}
+.signed-stamp .hash { font-family: 'Liberation Mono', monospace; font-size: 8pt; word-break: break-all; }
+
+/* Dossier (#33) */
+.toc { margin: 4mm 0 8mm 0; }
+.toc li { margin: 0 0 1mm 0; }
+.photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin: 2mm 0; }
+.photo-grid figure { margin: 0; page-break-inside: avoid; }
+.photo-grid img { width: 100%; height: auto; border: 1px solid var(--c-border); border-radius: 1mm; }
+.photo-grid figcaption { font-size: 8pt; color: var(--c-muted); margin-top: 1mm; }
+.finding { margin: 3mm 0 5mm 0; page-break-inside: avoid; }
+.finding h3 { font-size: 11pt; margin: 0 0 1mm 0; }
+
 .page-footer {
   /* Visible only inside the html shell — Puppeteer's own
    * displayHeaderFooter footer is what actually appears in the PDF page

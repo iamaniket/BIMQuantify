@@ -29,6 +29,7 @@ from bimstitch_api.models.attachment import (
     Attachment,
     AttachmentCategory,
     AttachmentStatus,
+    DossierSlot,
 )
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.user import User
@@ -62,6 +63,7 @@ def _attachment_snapshot(att: Attachment) -> dict:
         "attachment_category": att.attachment_category.value,
         "status": att.status.value,
         "description": att.description,
+        "dossier_slot": att.dossier_slot.value if att.dossier_slot else None,
         "linked_element_global_id": att.linked_element_global_id,
         "linked_model_id": str(att.linked_model_id) if att.linked_model_id else None,
         "linked_file_id": str(att.linked_file_id) if att.linked_file_id else None,
@@ -177,6 +179,7 @@ async def initiate_attachment_upload(
         attachment_category=category,
         status=AttachmentStatus.pending,
         description=payload.description,
+        dossier_slot=payload.dossier_slot,
         linked_element_global_id=payload.linked_element_global_id,
         linked_model_id=payload.linked_model_id,
         linked_point=payload.linked_point,
@@ -318,6 +321,8 @@ async def list_attachments(
     project_id: UUID,
     response: Response,
     category: Annotated[AttachmentCategory | None, Query()] = None,
+    dossier_slot: Annotated[DossierSlot | None, Query()] = None,
+    unslotted: Annotated[bool, Query()] = False,
     linked_element_global_id: Annotated[str | None, Query(max_length=22)] = None,
     linked_model_id: Annotated[UUID | None, Query()] = None,
     linked_file_id: Annotated[UUID | None, Query()] = None,
@@ -340,6 +345,11 @@ async def list_attachments(
     )
     if category is not None:
         base = base.where(Attachment.attachment_category == category)
+    if dossier_slot is not None:
+        base = base.where(Attachment.dossier_slot == dossier_slot)
+    # "Link existing" picker: office docs not yet tagged to any dossier slot.
+    if unslotted:
+        base = base.where(Attachment.dossier_slot.is_(None))
     if linked_element_global_id is not None:
         base = base.where(Attachment.linked_element_global_id == linked_element_global_id)
     # Version-independent identity (model + GlobalId): an attachment shows on

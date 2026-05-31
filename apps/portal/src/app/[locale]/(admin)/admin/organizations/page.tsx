@@ -83,7 +83,7 @@ function AdminOrgsHero({
         {
           label: t('suspendedLabel'),
           value: String(suspendedCount),
-          color: suspendedCount > 0 ? 'var(--warning)' : undefined,
+          ...(suspendedCount > 0 && { color: 'var(--warning)' }),
           sub: t('suspendedSub'),
         },
       ]}

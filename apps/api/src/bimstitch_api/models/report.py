@@ -33,10 +33,9 @@ from bimstitch_api.models._mixins import TimestampMixin
 
 class ReportType(StrEnum):
     compliance_report = "compliance_report"
-    # Reserved for later milestones (#31/#32/#33):
-    # assurance_plan = "assurance_plan"              # NL: borgingsplan
-    # completion_declaration = "completion_declaration"  # NL: verklaring
-    # dossier = "dossier"
+    assurance_plan = "assurance_plan"  # NL: borgingsplan (#31)
+    completion_declaration = "completion_declaration"  # NL: verklaring (#32)
+    dossier = "dossier"  # dossier bevoegd gezag (#33)
 
 
 class ReportStatus(StrEnum):
@@ -117,6 +116,18 @@ class Report(TimestampMixin, TenantBase):
         nullable=True,
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Verklaring sign-to-lock (#32). Only meaningful for
+    # report_type=completion_declaration: an inspector (kwaliteitsborger) signs
+    # a `ready` declaration → these are set and the row is locked (no further
+    # regeneration). `signature_hash` is the embedded audit-id hash.
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signed_by_user_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("public.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    signature_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     __table_args__ = (
         Index(

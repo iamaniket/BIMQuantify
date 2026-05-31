@@ -3,7 +3,7 @@
 import type { UseMutationResult } from '@tanstack/react-query';
 
 import { uploadAttachmentEnd2End, type AttachmentUploadProgressEvent } from '@/lib/api/attachments';
-import type { Attachment } from '@/lib/api/schemas';
+import type { Attachment, DossierSlotValue } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { attachmentsKey } from './queryKeys';
@@ -11,6 +11,7 @@ import { attachmentsKey } from './queryKeys';
 type UploadVars = {
   file: File;
   description?: string | null;
+  dossier_slot?: DossierSlotValue | null;
   linked_element_global_id?: string | null;
   linked_model_id?: string | null;
   linked_point?: Record<string, unknown> | null;
@@ -26,6 +27,7 @@ export function useUploadAttachment(
     mutationFn: (accessToken, vars) => {
       const extra: {
         description?: string | null;
+        dossier_slot?: DossierSlotValue | null;
         linked_element_global_id?: string | null;
         linked_model_id?: string | null;
         linked_point?: Record<string, unknown> | null;
@@ -33,6 +35,7 @@ export function useUploadAttachment(
         capture_metadata?: Record<string, unknown> | null;
       } = {};
       if (vars.description !== undefined) extra.description = vars.description;
+      if (vars.dossier_slot !== undefined) extra.dossier_slot = vars.dossier_slot;
       if (vars.linked_element_global_id !== undefined) extra.linked_element_global_id = vars.linked_element_global_id;
       if (vars.linked_model_id !== undefined) extra.linked_model_id = vars.linked_model_id;
       if (vars.linked_point !== undefined) extra.linked_point = vars.linked_point;

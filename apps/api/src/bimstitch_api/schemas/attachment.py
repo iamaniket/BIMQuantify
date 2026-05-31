@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from bimstitch_api.models.attachment import AttachmentCategory, AttachmentStatus
+from bimstitch_api.models.attachment import AttachmentCategory, AttachmentStatus, DossierSlot
 
 _HEX_SHA256 = r"^[a-f0-9]{64}$"
 
@@ -78,6 +78,7 @@ class AttachmentInitiateRequest(BaseModel):
     content_type: str = Field(min_length=1, max_length=255)
     content_sha256: str = Field(pattern=_HEX_SHA256)
     description: str | None = Field(default=None, max_length=2000)
+    dossier_slot: DossierSlot | None = None
     linked_element_global_id: str | None = Field(default=None, max_length=22)
     linked_model_id: UUID | None = None
     linked_point: dict[str, Any] | None = None
@@ -113,6 +114,7 @@ class AttachmentRead(BaseModel):
     status: AttachmentStatus
     rejection_reason: str | None
     description: str | None
+    dossier_slot: DossierSlot | None
     linked_element_global_id: str | None
     linked_model_id: UUID | None
     linked_point: dict[str, Any] | None
@@ -127,6 +129,7 @@ class AttachmentRead(BaseModel):
 
 class AttachmentUpdateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
+    dossier_slot: DossierSlot | None = None
     linked_element_global_id: str | None = Field(default=None, max_length=22)
     linked_model_id: UUID | None = None
     linked_point: dict[str, Any] | None = None

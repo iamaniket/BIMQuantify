@@ -45,3 +45,17 @@ export async function createReport(
     accessToken,
   );
 }
+
+/** Sign a ready verklaring (#32) — inspector-only; locks + re-renders it. */
+export async function signReport(
+  accessToken: string,
+  projectId: string,
+  reportId: string,
+): Promise<Report> {
+  return apiClient.post(
+    `/projects/${projectId}/reports/${reportId}/sign`,
+    {},
+    ReportSchema,
+    accessToken,
+  );
+}

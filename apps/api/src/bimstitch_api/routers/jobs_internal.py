@@ -23,13 +23,14 @@ from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
 from bimstitch_api.db import get_async_session
+from bimstitch_api.email.transport import get_email_transport
 from bimstitch_api.jobs import require_worker_secret
 from bimstitch_api.models.attachment import Attachment
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.organization import Organization
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile, ProjectFileStatus
-from bimstitch_api.models.report import _REPORT_TERMINAL, Report, ReportStatus
+from bimstitch_api.models.report import _REPORT_TERMINAL, Report, ReportStatus, ReportType
 from bimstitch_api.notifications.service import create_notification, publish_notification
 from bimstitch_api.schemas.attachment import AttachmentCallbackRequest, AttachmentRead
 from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
@@ -461,6 +462,42 @@ async def report_callback(
                 job_id=payload.job_id,
             )
         await publish_notification(notification, organization_id=payload.organization_id)
+
+    # Dossier (#33) is generated asynchronously and can take minutes — email the
+    # requester when it's ready, on top of the in-app notification above. Email
+    # failure must never break the callback (the row is already terminal).
+    if (
+        payload.status == "ready"
+        and report.report_type is ReportType.dossier
+        and report.created_by_user_id is not None
+    ):
+        try:
+            schema = schema_name_for(payload.organization_id)
+            async with session.begin():
+                await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+                recipient = (
+                    await session.execute(
+                        text("SELECT email FROM public.users WHERE id = :uid"),
+                        {"uid": str(report.created_by_user_id)},
+                    )
+                ).scalar_one_or_none()
+            if recipient:
+                locale = report.locale or "nl"
+                subject = (
+                    "Dossier bevoegd gezag gereed"
+                    if locale == "nl"
+                    else "Dossier for the authority is ready"
+                )
+                body = (
+                    f"Het dossier '{report.title}' staat klaar in BIMstitch."
+                    if locale == "nl"
+                    else f"The dossier '{report.title}' is ready in BIMstitch."
+                )
+                await get_email_transport().send(recipient, subject, body)
+        except Exception:
+            logger.warning(
+                "Failed to send dossier-ready email for report %s", report.id, exc_info=True
+            )
 
     # Re-anchor search_path for the refresh — `SET LOCAL` from the earlier
     # transaction has reset by now.

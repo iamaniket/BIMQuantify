@@ -34,6 +34,26 @@ class AttachmentStatus(StrEnum):
     rejected = "rejected"
 
 
+class DossierSlot(StrEnum):
+    """Which dossier-bevoegd-gezag requirement a document satisfies.
+
+    Neutral codes; Dutch/English labels live in the jurisdiction registry
+    (``Jurisdiction.dossier_category_labels`` / requirement templates), same
+    rule as ``AttachmentCategory`` and ``CertificateType``. Assigned from the
+    dossier checklist UI (upload-into-slot or link-existing), never derived
+    from the file itself.
+    """
+
+    drawings = "drawings"
+    structural_calculations = "structural_calculations"
+    fire_safety = "fire_safety"
+    energy_performance = "energy_performance"
+    installations = "installations"
+    assurance = "assurance"
+    inspection_evidence = "inspection_evidence"
+    other = "other"
+
+
 ATTACHMENT_ALLOWED_EXTENSIONS: dict[str, AttachmentCategory] = {
     ".jpg": AttachmentCategory.image,
     ".jpeg": AttachmentCategory.image,
@@ -101,6 +121,15 @@ class Attachment(TimestampMixin, SoftDeleteMixin, TenantBase):
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    dossier_slot: Mapped[DossierSlot | None] = mapped_column(
+        SAEnum(
+            DossierSlot,
+            name="dossierslot",
+            values_callable=lambda enum: [m.value for m in enum],
+        ),
+        nullable=True,
+    )
+
     linked_element_global_id: Mapped[str | None] = mapped_column(String(22), nullable=True)
     linked_model_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -164,5 +193,11 @@ class Attachment(TimestampMixin, SoftDeleteMixin, TenantBase):
             "project_id",
             "created_at",
             postgresql_where="deleted_at IS NULL",
+        ),
+        Index(
+            "ix_attachments_dossier_slot",
+            "project_id",
+            "dossier_slot",
+            postgresql_where="dossier_slot IS NOT NULL AND deleted_at IS NULL",
         ),
     )

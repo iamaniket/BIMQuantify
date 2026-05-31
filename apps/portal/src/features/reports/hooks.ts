@@ -9,6 +9,7 @@ import {
   createReport,
   getReport,
   listReports,
+  signReport,
 } from '@/lib/api/reports';
 import type {
   CreateReportRequest,
@@ -64,8 +65,25 @@ export function useGenerateReport(
 ): UseMutationResult<Report, Error, CreateReportRequest> {
   return useAuthMutation({
     mutationFn: (accessToken, body) => createReport(accessToken, projectId, body),
-    invalidateKeys: (_vars, data) => [
-      reportsListKey(projectId, 'compliance_report'),
+    invalidateKeys: (vars, data) => [
+      // Invalidate the per-type list (so the right section refreshes) and the
+      // type-agnostic list, plus the freshly created report's own key.
+      reportsListKey(projectId, vars.report_type),
+      reportsListKey(projectId),
+      reportKey(projectId, data.id),
+    ],
+  });
+}
+
+/** Sign a verklaring (#32). Invalidates the declaration list + the report so
+ * the signed/locked state + the re-rendered PDF surface immediately. */
+export function useSignReport(
+  projectId: string,
+): UseMutationResult<Report, Error, string> {
+  return useAuthMutation({
+    mutationFn: (accessToken, reportId) => signReport(accessToken, projectId, reportId),
+    invalidateKeys: (_reportId, data) => [
+      reportsListKey(projectId, 'completion_declaration'),
       reportsListKey(projectId),
       reportKey(projectId, data.id),
     ],

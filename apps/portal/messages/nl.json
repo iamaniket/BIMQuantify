@@ -571,6 +571,27 @@
         "emptyTitle": "Nog geen deadlines",
         "emptyDescription": "Deadlines verschijnen automatisch zodra het project een geplande startdatum en opleverdatum heeft."
       },
+      "dossier": {
+        "label": "Dossier",
+        "eyebrow": "Dossiergereedheid",
+        "subtitle": "Wat je nog nodig hebt voor de gereedmelding",
+        "progressLabel": "{filled} van {total} verplichte items compleet",
+        "optionalLabel": "{filled} van {total} optionele items aangeleverd",
+        "optionalBadge": "Optioneel",
+        "statusProvided": "{count, plural, =1 {1 document} other {# documenten}} aangeleverd",
+        "statusMissing": "Ontbreekt",
+        "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
+        "uploadCta": "Uploaden",
+        "uploadCertificate": "Certificaat uploaden",
+        "linkExisting": "Bestaand document koppelen",
+        "uploadSuccess": "{name} geüpload",
+        "linkSuccess": "Document gekoppeld aan het dossier",
+        "linkDialogTitle": "Bestaand document koppelen",
+        "linkDialogDescription": "Kies een al geüpload document om aan deze eis te voldoen.",
+        "linkEmpty": "Geen ongetagde documenten beschikbaar. Upload een nieuw document.",
+        "emptyTitle": "Geen dossierchecklist beschikbaar",
+        "emptyDescription": "Voor de jurisdictie van dit project zijn nog geen dossiereisen geconfigureerd."
+      },
       "overviewCard": {
         "address": "Adres",
         "contractor": "Aannemer",
@@ -876,6 +897,8 @@
         "fieldNumberPlaceholder": "bv. DoP-2024-018",
         "fieldIssuer": "Uitgever",
         "fieldIssuerPlaceholder": "bv. Kiwa",
+        "fieldSubject": "Onderwerp",
+        "fieldSubjectPlaceholder": "bv. Brandwerendheid van dragende wanden",
         "fieldValidFrom": "Geldig vanaf",
         "fieldValidUntil": "Geldig tot",
         "fieldDescription": "Omschrijving",
@@ -907,6 +930,11 @@
         "rowView": "Bekijken",
         "rowExpand": "Uitklappen",
         "rowCollapse": "Inklappen"
+      },
+      "rapporten": {
+        "label": "Rapporten",
+        "eyebrow": "Gegenereerde documenten",
+        "subtitle": "Genereer en download indieningsklare PDF's"
       },
       "deadlines": {
         "label": "Deadlines",
@@ -1150,16 +1178,12 @@
       "accessibility": "Toegankelijkheid",
       "sustainability": "Duurzaamheid"
     },
-    "downloadable": {
-      "downloadableTitle": "Downloadbare rapporten",
-      "downloadableDescription": "Genereer een PDF-versie van het laatste nalevingsrapport, klaar om te delen.",
-      "generate": "Genereer nalevingsrapport",
-      "generating": "Bezig met genereren…",
+    "shared": {
       "loading": "Laden…",
+      "generating": "Bezig met genereren…",
+      "noReports": "Nog geen rapporten gegenereerd",
       "view": "Bekijk",
       "download": "Download",
-      "noReports": "Nog geen rapporten gegenereerd",
-      "noComplianceData": "Geen nalevingsgegevens beschikbaar — voer eerst een controle uit op een verwerkt IFC-bestand.",
       "errorGenerating": "Genereren van het rapport is mislukt.",
       "noPreview": "Geen preview beschikbaar.",
       "status": {
@@ -1168,6 +1192,37 @@
         "ready": "Gereed",
         "failed": "Mislukt"
       }
+    },
+    "types": {
+      "compliance_report": {
+        "title": "Nalevingsrapport",
+        "description": "Genereer een PDF van de laatste nalevingscontrole, klaar om te delen.",
+        "generate": "Genereer nalevingsrapport",
+        "missingData": "Geen nalevingsgegevens beschikbaar — voer eerst een controle uit op een verwerkt IFC-bestand."
+      },
+      "assurance_plan": {
+        "title": "Borgingsplan",
+        "description": "Genereer het borgingsplan als indieningsklare PDF voor de bouwmelding.",
+        "generate": "Genereer borgingsplan",
+        "missingData": "Nog geen borgingsplan voor dit project."
+      },
+      "completion_declaration": {
+        "title": "Verklaring kwaliteitsborger",
+        "description": "Genereer de verklaring van de kwaliteitsborger. Alleen de inspecteur kan ondertekenen.",
+        "generate": "Genereer verklaring",
+        "missingData": "Projectgegevens zijn onvolledig voor de verklaring."
+      },
+      "dossier": {
+        "title": "Dossier bevoegd gezag",
+        "description": "Bundel het volledige dossier voor de gereedmelding. Je ontvangt een e-mail zodra het klaar is.",
+        "generate": "Genereer dossier",
+        "missingData": "Onvoldoende gegevens om het dossier samen te stellen."
+      }
+    },
+    "sign": {
+      "sign": "Onderteken",
+      "signing": "Bezig met ondertekenen…",
+      "signed": "Ondertekend"
     }
   },
   "auth": {

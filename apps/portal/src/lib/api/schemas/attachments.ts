@@ -6,6 +6,18 @@ export type AttachmentCategoryValue = z.infer<typeof AttachmentCategoryEnum>;
 export const AttachmentStatusEnum = z.enum(['pending', 'ready', 'rejected']);
 export type AttachmentStatusValue = z.infer<typeof AttachmentStatusEnum>;
 
+export const DossierSlotEnum = z.enum([
+  'drawings',
+  'structural_calculations',
+  'fire_safety',
+  'energy_performance',
+  'installations',
+  'assurance',
+  'inspection_evidence',
+  'other',
+]);
+export type DossierSlotValue = z.infer<typeof DossierSlotEnum>;
+
 export const AttachmentSchema = z.object({
   id: z.string().uuid(),
   project_id: z.string().uuid(),
@@ -20,6 +32,7 @@ export const AttachmentSchema = z.object({
   status: AttachmentStatusEnum,
   rejection_reason: z.union([z.string(), z.null()]),
   description: z.union([z.string(), z.null()]),
+  dossier_slot: z.union([DossierSlotEnum, z.null()]),
   linked_element_global_id: z.union([z.string(), z.null()]),
   linked_model_id: z.union([z.string().uuid(), z.null()]),
   linked_point: z.union([z.record(z.unknown()), z.null()]),

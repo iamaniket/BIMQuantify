@@ -134,3 +134,63 @@ async def test_unsupported_framework_for_country_rejected(
     assert is_supported_framework("NL", "wkb") is True
     assert is_supported_framework("NL", "german_geg") is False
     assert is_supported_framework("DE", "bbl") is False
+
+
+# ---------------------------------------------------------------------------
+# Dossier-completeness requirement templates (#N2)
+# ---------------------------------------------------------------------------
+
+
+async def test_jurisdictions_exposes_dossier_templates(client: AsyncClient) -> None:
+    """NL ships dossier checklist templates keyed by building type."""
+    resp = await client.get("/jurisdictions")
+    assert resp.status_code == 200, resp.text
+    nl = next(item for item in resp.json()["items"] if item["country"] == "NL")
+
+    templates = nl["dossier_requirement_templates"]
+    # One checklist per building-type code, with a fallback "other" set.
+    assert {"dwelling", "commercial", "other"} <= set(templates)
+    assert len(templates["dwelling"]) > 0
+
+    # Category headers are exposed for the section grouping.
+    assert "documents" in nl["dossier_category_labels"]
+
+    # Every requirement carries the fields the portal needs to resolve it.
+    req = templates["dwelling"][0]
+    assert {"code", "category", "label", "required", "source_kind", "source_value"} <= set(req)
+    assert req["source_kind"] in {"attachment_slot", "certificate_type", "derived"}
+
+    # At least one of each source kind exists across the dwelling set.
+    kinds = {r["source_kind"] for r in templates["dwelling"]}
+    assert {"attachment_slot", "certificate_type", "derived"} <= kinds
+
+
+async def test_dossier_template_labels_localized(client: AsyncClient) -> None:
+    """Requirement + category labels flatten to the requested locale."""
+    nl_resp = await client.get("/jurisdictions", params={"locale": "nl"})
+    en_resp = await client.get("/jurisdictions", params={"locale": "en"})
+    nl = next(i for i in nl_resp.json()["items"] if i["country"] == "NL")
+    en = next(i for i in en_resp.json()["items"] if i["country"] == "NL")
+
+    # Structural-calculations row: Dutch vs English copy differs.
+    def _structural(item: dict) -> dict:
+        return next(
+            r
+            for r in item["dossier_requirement_templates"]["dwelling"]
+            if r["code"] == "structural-calculations"
+        )
+
+    assert _structural(nl)["label"] == "Constructieberekeningen"
+    assert _structural(en)["label"] == "Structural calculations"
+    assert nl["dossier_category_labels"]["documents"] == "Documenten"
+    assert en["dossier_category_labels"]["documents"] == "Documents"
+
+
+async def test_get_dossier_requirements_falls_back_to_other() -> None:
+    """Unknown/None building type resolves to the 'other' template set."""
+    from bimstitch_api.jurisdictions import get_dossier_requirements
+
+    base = get_dossier_requirements("NL", "other")
+    assert get_dossier_requirements("NL", None) == base
+    assert get_dossier_requirements("NL", "warehouse") == base
+    assert get_dossier_requirements("DE", "dwelling") == ()

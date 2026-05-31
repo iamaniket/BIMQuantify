@@ -24,8 +24,10 @@ from bimstitch_api.jurisdictions import (
     BorgingsmomentTemplate,
     ChecklistItemTemplate,
     DeadlineRule,
+    DossierRequirementTemplate,
     Instrument,
     Jurisdiction,
+    LocaleMap,
     RiskTemplate,
     register,
 )
@@ -885,6 +887,124 @@ NL_INSTRUMENTS: tuple[Instrument, ...] = (
     ),
 )
 
+# Dossier-bevoegd-gezag completeness checklist. Hand-curated for the
+# aannemer-first flow; KB-layer items (borgingsplan / verklaring) are optional
+# until a kwaliteitsborger joins the project. Document items map to a
+# DossierSlot, certificate items to a CertificateType, progress items to a
+# derived signal. Last reviewed 2026-05-31.
+NL_DOSSIER_CATEGORY_LABELS: dict[str, LocaleMap] = {
+    "documents": {"nl": "Documenten", "en": "Documents"},
+    "installations": {"nl": "Installaties", "en": "Installations"},
+    "certificates": {"nl": "Certificaten", "en": "Certificates"},
+    "assurance": {"nl": "Kwaliteitsborging", "en": "Quality assurance"},
+    "evidence": {"nl": "Bewijslast", "en": "Evidence"},
+    "quality": {"nl": "Voortgang", "en": "Progress"},
+}
+
+_NL_DOSSIER_BASE: tuple[DossierRequirementTemplate, ...] = (
+    DossierRequirementTemplate(
+        code="drawings",
+        category="documents",
+        label={"nl": "Tekeningen", "en": "Drawings"},
+        source_kind="attachment_slot",
+        source_value="drawings",
+    ),
+    DossierRequirementTemplate(
+        code="structural-calculations",
+        category="documents",
+        label={"nl": "Constructieberekeningen", "en": "Structural calculations"},
+        source_kind="attachment_slot",
+        source_value="structural_calculations",
+    ),
+    DossierRequirementTemplate(
+        code="fire-safety-docs",
+        category="documents",
+        label={"nl": "Brandveiligheidsdocumenten", "en": "Fire-safety documents"},
+        source_kind="attachment_slot",
+        source_value="fire_safety",
+    ),
+    DossierRequirementTemplate(
+        code="energy-performance",
+        category="documents",
+        label={"nl": "BENG-berekening", "en": "Energy performance (BENG)"},
+        source_kind="attachment_slot",
+        source_value="energy_performance",
+    ),
+    DossierRequirementTemplate(
+        code="installation-docs",
+        category="installations",
+        label={"nl": "Installatiedocumenten", "en": "Installation documents"},
+        source_kind="attachment_slot",
+        source_value="installations",
+    ),
+    DossierRequirementTemplate(
+        code="product-certificates",
+        category="certificates",
+        label={"nl": "Productcertificaten", "en": "Product certificates"},
+        source_kind="certificate_type",
+        source_value="product",
+    ),
+    DossierRequirementTemplate(
+        code="inspection-certificates",
+        category="certificates",
+        label={"nl": "Keuringsrapporten", "en": "Test / inspection reports"},
+        source_kind="certificate_type",
+        source_value="installation_test",
+    ),
+    DossierRequirementTemplate(
+        code="assurance-docs",
+        category="assurance",
+        label={
+            "nl": "KB-documenten (borgingsplan)",
+            "en": "Assurance documents (assurance plan)",
+        },
+        required=False,
+        source_kind="attachment_slot",
+        source_value="assurance",
+    ),
+    DossierRequirementTemplate(
+        code="inspection-evidence",
+        category="evidence",
+        label={"nl": "Inspectie-bewijslast", "en": "Inspection evidence"},
+        required=False,
+        source_kind="attachment_slot",
+        source_value="inspection_evidence",
+    ),
+    DossierRequirementTemplate(
+        code="findings-resolved",
+        category="quality",
+        label={"nl": "Bevindingen opgelost", "en": "Findings resolved"},
+        source_kind="derived",
+        source_value="findings",
+    ),
+    DossierRequirementTemplate(
+        code="deadlines-on-track",
+        category="quality",
+        label={"nl": "Meldingen op schema", "en": "Deadlines on track"},
+        source_kind="derived",
+        source_value="deadlines",
+    ),
+)
+
+# Commercial projects additionally benefit from a coordinated 3D model in the
+# dossier (optional). Dwelling/other reuse the base set.
+NL_DOSSIER_REQUIREMENT_TEMPLATES: dict[str, tuple[DossierRequirementTemplate, ...]] = {
+    "dwelling": _NL_DOSSIER_BASE,
+    "commercial": _NL_DOSSIER_BASE
+    + (
+        DossierRequirementTemplate(
+            code="model-present",
+            category="quality",
+            label={"nl": "3D-model aanwezig", "en": "3D model present"},
+            required=False,
+            source_kind="derived",
+            source_value="models",
+        ),
+    ),
+    "other": _NL_DOSSIER_BASE,
+}
+
+
 NL = Jurisdiction(
     country="NL",
     name="Netherlands",
@@ -957,6 +1077,8 @@ NL = Jurisdiction(
     borgingsmoment_templates=NL_BORGINGSMOMENT_TEMPLATES,
     risk_category_to_phases=NL_RISK_CATEGORY_TO_PHASES,
     deadline_rules=NL_DEADLINE_RULES,
+    dossier_requirement_templates=NL_DOSSIER_REQUIREMENT_TEMPLATES,
+    dossier_category_labels=NL_DOSSIER_CATEGORY_LABELS,
 )
 
 register(NL)

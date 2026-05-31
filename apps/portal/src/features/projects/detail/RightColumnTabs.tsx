@@ -13,8 +13,10 @@ import { useFindings } from '@/features/findings/useFindings';
 import { AttachmentsTab } from './AttachmentsTab';
 import { BevindingenTab } from './BevindingenTab';
 import { CertificatesTab } from './CertificatesTab';
+import { DossierChecklistTab } from './DossierChecklistTab';
 import { ModelsTab } from './ModelsTab';
 import { OverzichtTab } from './OverzichtTab';
+import { RapportenTab } from './RapportenTab';
 
 type Props = {
   projectId: string;
@@ -38,6 +40,8 @@ export function RightColumnTabs({
   const subtitleCount = tab === 'attachments' ? attachmentCount
     : tab === 'certificates' ? certificateCount
     : tab === 'bevindingen' ? findingsCount
+    : tab === 'dossier' ? 0
+    : tab === 'rapporten' ? 0
     : models.length;
 
   return (
@@ -47,6 +51,7 @@ export function RightColumnTabs({
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="inline-flex w-auto">
               <TabsTrigger value="overzicht">{t('overzicht.label')}</TabsTrigger>
+              <TabsTrigger value="dossier">{t('dossier.label')}</TabsTrigger>
               <TabsTrigger value="models">
                 {t('models.label')}
                 <span className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-background-secondary text-caption tabular-nums text-foreground-secondary">
@@ -71,6 +76,7 @@ export function RightColumnTabs({
                   {certificateCount}
                 </span>
               </TabsTrigger>
+              <TabsTrigger value="rapporten">{t('rapporten.label')}</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="text-right">
@@ -88,12 +94,16 @@ export function RightColumnTabs({
         {tab === 'overzicht' && (
           <OverzichtTab projectId={projectId} country={projectCountry} />
         )}
+        {tab === 'dossier' && (
+          <DossierChecklistTab projectId={projectId} country={projectCountry} />
+        )}
         {tab === 'attachments' && <AttachmentsTab projectId={projectId} />}
         {tab === 'certificates' && <CertificatesTab projectId={projectId} />}
         {tab === 'bevindingen' && <BevindingenTab projectId={projectId} />}
         {tab === 'models' && (
           <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />
         )}
+        {tab === 'rapporten' && <RapportenTab projectId={projectId} />}
       </div>
     </div>
   );

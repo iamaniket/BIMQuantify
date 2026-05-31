@@ -15,6 +15,7 @@ import {
   type AttachmentDownloadResponse,
   type AttachmentInitiateResponse,
   type AttachmentList,
+  type DossierSlotValue,
 } from './schemas';
 
 export type AttachmentUploadProgressEvent =
@@ -35,6 +36,7 @@ export async function initiateAttachmentUpload(
     content_type: string;
     content_sha256: string;
     description?: string | null;
+    dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
     linked_model_id?: string | null;
     linked_point?: Record<string, unknown> | null;
@@ -68,6 +70,8 @@ export async function listAttachments(
   projectId: string,
   filters?: {
     category?: AttachmentCategoryValue;
+    dossierSlot?: DossierSlotValue;
+    unslotted?: boolean;
     linkedElementGlobalId?: string;
     linkedModelId?: string;
     linkedFileId?: string;
@@ -78,6 +82,8 @@ export async function listAttachments(
 ): Promise<AttachmentList> {
   const params = new URLSearchParams();
   if (filters?.category !== undefined) params.set('category', filters.category);
+  if (filters?.dossierSlot !== undefined) params.set('dossier_slot', filters.dossierSlot);
+  if (filters?.unslotted === true) params.set('unslotted', 'true');
   if (filters?.linkedElementGlobalId !== undefined) params.set('linked_element_global_id', filters.linkedElementGlobalId);
   if (filters?.linkedModelId !== undefined) params.set('linked_model_id', filters.linkedModelId);
   if (filters?.linkedFileId !== undefined) params.set('linked_file_id', filters.linkedFileId);
@@ -134,6 +140,7 @@ export async function updateAttachment(
   attachmentId: string,
   input: {
     description?: string | null;
+    dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
     linked_model_id?: string | null;
     linked_point?: Record<string, unknown> | null;
@@ -162,6 +169,7 @@ export async function uploadAttachmentEnd2End(
   file: File,
   extra?: {
     description?: string | null;
+    dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
     linked_model_id?: string | null;
     linked_point?: Record<string, unknown> | null;

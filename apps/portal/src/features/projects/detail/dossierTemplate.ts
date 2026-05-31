@@ -1,134 +1,227 @@
+import type { JurisdictionDossierRequirement } from '@/lib/api/jurisdictions';
 import type { Attachment } from '@/lib/api/schemas/attachments';
-import type { BuildingTypeValue } from '@/lib/api/schemas/projects';
+import type { Certificate } from '@/lib/api/schemas/certificates';
 
-export type DossierCategoryResult = {
+/** A resolved checklist requirement: a jurisdiction template + its met/missing state. */
+export type DossierRequirementResult = {
+  code: string;
   category: string;
-  labelKey: string;
+  label: string;
+  required: boolean;
+  sourceKind: JurisdictionDossierRequirement['source_kind'];
+  sourceValue: string;
   fulfilled: boolean;
   count: number;
-  detail?: string;
+};
+
+/** Requirements grouped under one localized category header. */
+export type DossierCategoryGroup = {
+  category: string;
+  requirements: DossierRequirementResult[];
+  filled: number;
+  total: number;
 };
 
 export type DossierCompleteness = {
+  /** Required-only counts drive the headline percentage. */
   filled: number;
   total: number;
   pct: number;
-  categories: DossierCategoryResult[];
+  /** Optional items that are met — surfaced separately so they don't dilute pct. */
+  optionalFilled: number;
+  optionalTotal: number;
+  requirements: DossierRequirementResult[];
+  groups: DossierCategoryGroup[];
 };
 
-export type DossierExtraInput = {
+export type DossierDerivedInput = {
   modelCount?: number;
-  certificateCount?: number;
   findingsOpen?: number;
   deadlinesOverdue?: number;
 };
 
-export function computeDossierCompleteness(
-  buildingType: BuildingTypeValue | null,
-  attachments: Attachment[],
-  extra: DossierExtraInput = {},
-): DossierCompleteness {
-  const {
-    modelCount = 0,
-    certificateCount = 0,
-    findingsOpen = 0,
-    deadlinesOverdue = 0,
-  } = extra;
-
-  const ready = attachments.filter((a) => a.status === 'ready');
-
-  const countByCategory = new Map<string, number>();
-  for (const a of ready) {
-    countByCategory.set(a.attachment_category, (countByCategory.get(a.attachment_category) ?? 0) + 1);
+function resolveFulfillment(
+  req: JurisdictionDossierRequirement,
+  readyAttachments: Attachment[],
+  readyCertificates: Certificate[],
+  derived: Required<DossierDerivedInput>,
+): { fulfilled: boolean; count: number } {
+  switch (req.source_kind) {
+    case 'attachment_slot': {
+      const count = readyAttachments.filter((a) => a.dossier_slot === req.source_value).length;
+      return { fulfilled: count > 0, count };
+    }
+    case 'certificate_type': {
+      const count = readyCertificates.filter(
+        (c) => c.certificate_type === req.source_value,
+      ).length;
+      return { fulfilled: count > 0, count };
+    }
+    case 'derived': {
+      switch (req.source_value) {
+        case 'models':
+          return { fulfilled: derived.modelCount > 0, count: derived.modelCount };
+        case 'findings':
+          return { fulfilled: derived.findingsOpen === 0, count: derived.findingsOpen };
+        case 'deadlines':
+          return { fulfilled: derived.deadlinesOverdue === 0, count: derived.deadlinesOverdue };
+        default:
+          return { fulfilled: false, count: 0 };
+      }
+    }
+    default:
+      return { fulfilled: false, count: 0 };
   }
+}
 
-  const photoCount = countByCategory.get('image') ?? 0;
-  const documentCount = countByCategory.get('office') ?? 0;
+/**
+ * Resolve a jurisdiction's dossier requirement template against the project's
+ * tagged documents, typed certificates, and derived signals (models / findings
+ * / deadlines). Required items drive the headline percentage; optional items
+ * (e.g. KB-documenten before a kwaliteitsborger joins) are tracked separately.
+ *
+ * `template` is the per-building-type list from
+ * `Jurisdiction.dossier_requirement_templates` — the caller selects the right
+ * building-type slice (see `selectDossierTemplate`).
+ */
+export function computeDossierCompleteness(
+  template: JurisdictionDossierRequirement[],
+  attachments: Attachment[],
+  certificates: Certificate[],
+  derived: DossierDerivedInput = {},
+): DossierCompleteness {
+  const filled0: Required<DossierDerivedInput> = {
+    modelCount: derived.modelCount ?? 0,
+    findingsOpen: derived.findingsOpen ?? 0,
+    deadlinesOverdue: derived.deadlinesOverdue ?? 0,
+  };
 
-  const categories: DossierCategoryResult[] = [
-    {
-      category: 'models',
-      labelKey: 'models',
-      fulfilled: modelCount > 0,
-      count: modelCount,
-    },
-    {
-      category: 'documents',
-      labelKey: 'documents',
-      fulfilled: documentCount > 0,
-      count: documentCount,
-    },
-    {
-      category: 'photos',
-      labelKey: 'photos',
-      fulfilled: photoCount > 0,
-      count: photoCount,
-    },
-    {
-      category: 'certificates',
-      labelKey: 'certificates',
-      fulfilled: certificateCount > 0,
-      count: certificateCount,
-    },
-    {
-      category: 'findings',
-      labelKey: 'findings',
-      fulfilled: findingsOpen === 0,
-      count: findingsOpen,
-      detail: findingsOpen > 0 ? 'findingsOpenDetail' : 'findingsResolved',
-    },
-    {
-      category: 'deadlines',
-      labelKey: 'deadlines',
-      fulfilled: deadlinesOverdue === 0,
-      count: deadlinesOverdue,
-      detail: deadlinesOverdue > 0 ? 'deadlinesOverdueDetail' : 'deadlinesOnTrack',
-    },
-  ];
+  const readyAttachments = attachments.filter((a) => a.status === 'ready');
+  const readyCertificates = certificates.filter((c) => c.status === 'ready');
 
-  // Ignore building type for now — same 6 categories for all types.
-  void buildingType;
+  const requirements: DossierRequirementResult[] = template.map((req) => {
+    const { fulfilled, count } = resolveFulfillment(
+      req,
+      readyAttachments,
+      readyCertificates,
+      filled0,
+    );
+    return {
+      code: req.code,
+      category: req.category,
+      label: req.label,
+      required: req.required,
+      sourceKind: req.source_kind,
+      sourceValue: req.source_value,
+      fulfilled,
+      count,
+    };
+  });
 
-  const filled = categories.filter((c) => c.fulfilled).length;
-  const total = categories.length;
-  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  // Group by category, preserving first-seen order.
+  const order: string[] = [];
+  const byCategory = new Map<string, DossierRequirementResult[]>();
+  for (const r of requirements) {
+    if (!byCategory.has(r.category)) {
+      byCategory.set(r.category, []);
+      order.push(r.category);
+    }
+    byCategory.get(r.category)?.push(r);
+  }
+  const groups: DossierCategoryGroup[] = order.map((category) => {
+    const reqs = byCategory.get(category) ?? [];
+    return {
+      category,
+      requirements: reqs,
+      filled: reqs.filter((r) => r.fulfilled).length,
+      total: reqs.length,
+    };
+  });
 
-  return { filled, total, pct, categories };
+  const required = requirements.filter((r) => r.required);
+  const optional = requirements.filter((r) => !r.required);
+  const filled = required.filter((r) => r.fulfilled).length;
+  const total = required.length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 100;
+
+  return {
+    filled,
+    total,
+    pct,
+    optionalFilled: optional.filter((r) => r.fulfilled).length,
+    optionalTotal: optional.length,
+    requirements,
+    groups,
+  };
+}
+
+/**
+ * Pick the requirement set for a building type, falling back to "other" (and
+ * then any available set) — mirrors the API's `get_dossier_requirements`.
+ */
+export function selectDossierTemplate(
+  templates: Record<string, JurisdictionDossierRequirement[]> | undefined,
+  buildingType: string | null,
+): JurisdictionDossierRequirement[] {
+  if (templates === undefined) return [];
+  if (buildingType !== null && templates[buildingType] !== undefined) {
+    return templates[buildingType];
+  }
+  return templates['other'] ?? [];
 }
 
 export type CompletionPoint = { t: number; pct: number };
 
 /**
- * Replays ready attachments oldest-first, tracking when attachment-based
- * categories (photos, documents) became fulfilled. This only covers the
- * attachment portion of dossier completeness — the other categories (models,
- * certificates, findings, deadlines) are point-in-time and don't have
- * historical progression data.
+ * Replays ready attachments and certificates oldest-first, tracking when each
+ * trackable requirement first became fulfilled. Covers attachment-slot and
+ * certificate-type requirements — derived requirements (models, findings,
+ * deadlines) are point-in-time and have no historical progression.
  */
 export function buildCompletionSeries(
-  _buildingType: BuildingTypeValue | null,
+  template: JurisdictionDossierRequirement[],
   attachments: Attachment[],
+  certificates: Certificate[] = [],
 ): CompletionPoint[] {
-  // Track fulfillment of attachment-based categories: image, office
-  const requiredCategories = new Set(['image', 'office']);
-  const total = requiredCategories.size;
+  const slotReqs = template.filter((r) => r.source_kind === 'attachment_slot');
+  const certReqs = template.filter((r) => r.source_kind === 'certificate_type');
+  const requiredSlots = new Set(slotReqs.map((r) => r.source_value));
+  const requiredCertTypes = new Set(certReqs.map((r) => r.source_value));
+  const total = requiredSlots.size + requiredCertTypes.size;
   if (total === 0) return [];
 
-  const ready = attachments
-    .filter((a) => a.status === 'ready')
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  type TimeEntry = { t: number; kind: 'slot' | 'cert'; value: string };
+  const entries: TimeEntry[] = [];
 
-  const fulfilled = new Set<string>();
-  const points: CompletionPoint[] = [];
-  for (const a of ready) {
-    const before = fulfilled.size;
-    if (requiredCategories.has(a.attachment_category)) {
-      fulfilled.add(a.attachment_category);
+  for (const a of attachments) {
+    if (a.status === 'ready' && a.dossier_slot !== null && requiredSlots.has(a.dossier_slot)) {
+      entries.push({ t: new Date(a.created_at).getTime(), kind: 'slot', value: a.dossier_slot });
     }
-    if (fulfilled.size !== before) {
+  }
+  for (const c of certificates) {
+    if (c.status === 'ready' && requiredCertTypes.has(c.certificate_type)) {
+      entries.push({ t: new Date(c.created_at).getTime(), kind: 'cert', value: c.certificate_type });
+    }
+  }
+
+  entries.sort((a, b) => a.t - b.t);
+
+  const fulfilledSlots = new Set<string>();
+  const fulfilledCerts = new Set<string>();
+  const points: CompletionPoint[] = [];
+
+  for (const entry of entries) {
+    const before = fulfilledSlots.size + fulfilledCerts.size;
+    if (entry.kind === 'slot') {
+      fulfilledSlots.add(entry.value);
+    } else {
+      fulfilledCerts.add(entry.value);
+    }
+    const after = fulfilledSlots.size + fulfilledCerts.size;
+    if (after !== before) {
       points.push({
-        t: new Date(a.created_at).getTime(),
-        pct: Math.round((fulfilled.size / total) * 100),
+        t: entry.t,
+        pct: Math.round((after / total) * 100),
       });
     }
   }

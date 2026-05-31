@@ -7,15 +7,17 @@ job-dispatcher stub from conftest. No real worker / S3 / Redis required.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-import pytest
-from httpx import AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from tests.conftest import FakeStorage, _auth, _create_project
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 SECRET = "dev-shared-secret-change-me"
 
@@ -74,8 +76,8 @@ async def _seed_succeeded_compliance_job(
     endpoint has something to render. Bypasses RLS — the seed runs as the
     superuser session. Framework lives in payload after the jurisdiction
     foundation migration; the helper signature mirrors that."""
-    from uuid import uuid4
     import json as _json
+    from uuid import uuid4
 
     job_id = uuid4()
     payload = {"framework": framework}
@@ -393,7 +395,7 @@ async def test_report_callback_transitions_to_ready(
             "storage_key": storage_key,
             "byte_size": 14,
             "sha256": "a" * 64,
-            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "finished_at": datetime.now(UTC).isoformat(),
         },
         headers=_bearer(),
     )
@@ -431,7 +433,7 @@ async def test_report_callback_records_failure(
             "job_id": report["job_id"],
             "status": "failed",
             "error": "PUPPETEER_TIMEOUT",
-            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "finished_at": datetime.now(UTC).isoformat(),
         },
         headers=_bearer(),
     )
@@ -871,3 +873,402 @@ async def test_create_report_snapshot_includes_project_and_contractor(
     assert isinstance(contractor, dict)
     assert contractor["name"] == "Bouwbedrijf X"
     assert contractor["kvk_number"] == "99887766"
+
+
+# ---------------------------------------------------------------------------
+# Borgingsplan PDF (#31) — assurance_plan report type
+# ---------------------------------------------------------------------------
+
+
+async def _seed_borgingsplan(
+    session_maker: async_sessionmaker[AsyncSession],
+    organization_id: UUID,
+    project_id: UUID,
+    created_by_user_id: UUID,
+    *,
+    status: str = "published",
+) -> None:
+    """Seed a minimal published borgingsplan (one foundation moment + one
+    checklist item) plus one risk, directly via SQL (bypasses RLS)."""
+    from uuid import uuid4
+
+    schema = f"org_{str(organization_id).replace('-', '')}"
+    plan_id, moment_id, item_id, risk_id = uuid4(), uuid4(), uuid4(), uuid4()
+    async with session_maker() as session, session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        await session.execute(
+            text(
+                "INSERT INTO borgingsplans (id, project_id, version_number, "
+                "status, created_by_user_id, published_at) "
+                "VALUES (:id, :p, 1, CAST(:st AS borgingsplanstatus), :u, now())"
+            ),
+            {"id": str(plan_id), "p": str(project_id), "st": status, "u": str(created_by_user_id)},
+        )
+        await session.execute(
+            text(
+                "INSERT INTO borgingsmomenten (id, borgingsplan_id, project_id, "
+                "phase, name, planned_date, status, sequence_in_phase) "
+                "VALUES (:id, :plan, :p, 'foundation', 'Funderingsinspectie', "
+                "'2026-06-01', 'planned', 1)"
+            ),
+            {"id": str(moment_id), "plan": str(plan_id), "p": str(project_id)},
+        )
+        await session.execute(
+            text(
+                "INSERT INTO checklist_items (id, borgingsmoment_id, project_id, "
+                "item_type, description, evidence_type, bbl_article_ref, "
+                "pass_fail_criteria, sequence) "
+                "VALUES (:id, :m, :p, 'text', 'Wapening conform tekening', "
+                "'photo', 'BBL-4.12', 'Visuele controle', 1)"
+            ),
+            {"id": str(item_id), "m": str(moment_id), "p": str(project_id)},
+        )
+        await session.execute(
+            text(
+                "INSERT INTO risks (id, project_id, category, level, description, "
+                "mitigation, responsible_party, bbl_article_ref) "
+                "VALUES (:id, :p, 'fire_safety', 'high', 'Compartimentering', "
+                "'Brandwerende doorvoeringen', 'Aannemer', 'BBL-2.10')"
+            ),
+            {"id": str(risk_id), "p": str(project_id)},
+        )
+
+
+async def test_create_assurance_plan_report_dispatches(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="P-borg")
+    await _seed_borgingsplan(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(project["id"]),
+        UUID(org_user["id"]),
+    )
+
+    job_dispatch_calls.clear()
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "assurance_plan", "locale": "nl"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["report_type"] == "assurance_plan"
+    assert body["source_job_id"] is None  # not derived from a compliance job
+
+    assert len(job_dispatch_calls) == 1
+    call = job_dispatch_calls[0]
+    assert call["job_type"] == "assurance_plan_report"
+    payload = call["payload"]
+    assert isinstance(payload, dict)
+    plan = payload["assurance_plan"]
+    assert isinstance(plan, dict)
+    assert plan["version_number"] == 1
+    assert plan["status"] == "published"
+    moments = plan["moments"]
+    assert isinstance(moments, list) and len(moments) == 1
+    assert moments[0]["phase"] == "foundation"
+    assert len(moments[0]["checklist_items"]) == 1
+    risks = payload["risks"]
+    assert isinstance(risks, list) and len(risks) == 1
+    assert risks[0]["category"] == "fire_safety"
+    assert risks[0]["level"] == "high"
+
+
+async def test_create_assurance_plan_report_422_when_no_plan(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="P-noborg")
+
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "assurance_plan"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["detail"] == "NO_ASSURANCE_PLAN"
+
+
+# ---------------------------------------------------------------------------
+# Verklaring PDF (#32) — completion_declaration + sign-to-lock
+# ---------------------------------------------------------------------------
+
+
+async def _promote_to_inspector(
+    session_maker: async_sessionmaker[AsyncSession],
+    organization_id: UUID,
+    project_id: UUID,
+    user_id: UUID,
+) -> None:
+    """Flip the member's project role to inspector — sole holder of sign rights
+    on the completion_declaration."""
+    schema = f"org_{str(organization_id).replace('-', '')}"
+    async with session_maker() as session, session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        await session.execute(
+            text(
+                "UPDATE project_members SET role = 'inspector' "
+                "WHERE project_id = :p AND user_id = :u"
+            ),
+            {"p": str(project_id), "u": str(user_id)},
+        )
+
+
+async def _create_ready_declaration(
+    client: AsyncClient, org_user: dict[str, str]
+) -> tuple[str, dict[str, object]]:
+    """Create a completion_declaration report and flip it to ready via the
+    worker callback so it is signable. Returns (project_id, report)."""
+    project = await _create_project(client, org_user["access_token"], name="P-verk")
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "completion_declaration"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    report = resp.json()
+    storage_key = (
+        f"reports/{org_user['organization_id']}/{project['id']}/{report['id']}.pdf"
+    )
+    cb = await client.post(
+        "/internal/jobs/reports/callback",
+        json={
+            "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
+            "job_id": report["job_id"],
+            "status": "ready",
+            "storage_key": storage_key,
+            "byte_size": 100,
+            "sha256": "e" * 64,
+        },
+        headers=_bearer(),
+    )
+    assert cb.status_code == 200, cb.text
+    report["project_id"] = project["id"]
+    report["storage_key"] = storage_key
+    return str(project["id"]), report
+
+
+async def test_sign_declaration_inspector_locks_and_redispatches(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, _ = fake_storage_client
+    project_id, report = await _create_ready_declaration(client, org_user)
+    await _promote_to_inspector(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(project_id),
+        UUID(org_user["id"]),
+    )
+
+    job_dispatch_calls.clear()
+    resp = await client.post(
+        f"/projects/{project_id}/reports/{report['id']}/sign",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["signed_at"] is not None
+    assert body["signed_by_user_id"] == org_user["id"]
+    assert isinstance(body["signature_hash"], str) and len(body["signature_hash"]) == 64
+
+    # Signing re-dispatches a stamped render over the same storage key.
+    assert len(job_dispatch_calls) == 1
+    call = job_dispatch_calls[0]
+    assert call["job_type"] == "completion_declaration_report"
+    payload = call["payload"]
+    assert isinstance(payload, dict)
+    decl = payload["declaration"]
+    assert isinstance(decl, dict)
+    assert decl["signed"] is True
+    assert decl["signature_hash"] == body["signature_hash"]
+    assert payload["storage_key"] == report["storage_key"]
+
+    # Second sign is rejected — the row is locked.
+    second = await client.post(
+        f"/projects/{project_id}/reports/{report['id']}/sign",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert second.status_code == 409
+    assert second.json()["detail"] == "REPORT_ALREADY_SIGNED"
+
+
+async def test_sign_declaration_non_inspector_403(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    # org_user stays owner — owner has read-only on completion_declaration.
+    project_id, report = await _create_ready_declaration(client, org_user)
+    resp = await client.post(
+        f"/projects/{project_id}/reports/{report['id']}/sign",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 403
+
+
+async def test_sign_non_declaration_422(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="P-notdecl")
+    await _promote_to_inspector(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(project["id"]),
+        UUID(org_user["id"]),
+    )
+    await _seed_succeeded_compliance_job(
+        session_maker, UUID(org_user["organization_id"]), UUID(project["id"])
+    )
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "compliance_report"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    report = resp.json()
+    storage_key = (
+        f"reports/{org_user['organization_id']}/{project['id']}/{report['id']}.pdf"
+    )
+    cb = await client.post(
+        "/internal/jobs/reports/callback",
+        json={
+            "report_id": report["id"],
+            "organization_id": org_user["organization_id"],
+            "job_id": report["job_id"],
+            "status": "ready",
+            "storage_key": storage_key,
+            "byte_size": 1,
+            "sha256": "f" * 64,
+        },
+        headers=_bearer(),
+    )
+    assert cb.status_code == 200, cb.text
+
+    # Inspector passes the permission gate, but the report isn't a declaration.
+    sign = await client.post(
+        f"/projects/{project['id']}/reports/{report['id']}/sign",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert sign.status_code == 422
+    assert sign.json()["detail"] == "NOT_A_DECLARATION"
+
+
+# ---------------------------------------------------------------------------
+# Dossier bevoegd gezag PDF (#33)
+# ---------------------------------------------------------------------------
+
+
+async def _seed_finding_and_certificate(
+    session_maker: async_sessionmaker[AsyncSession],
+    organization_id: UUID,
+    project_id: UUID,
+    created_by_user_id: UUID,
+) -> None:
+    """Seed one open finding + one ready PDF certificate via SQL."""
+    from uuid import uuid4
+
+    schema = f"org_{str(organization_id).replace('-', '')}"
+    finding_id, cert_id = uuid4(), uuid4()
+    async with session_maker() as session, session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        await session.execute(
+            text(
+                "INSERT INTO findings (id, project_id, title, description, "
+                "severity, status, created_by_user_id) "
+                "VALUES (:id, :p, 'Scheur in fundering', 'Haarscheur geconstateerd', "
+                "'high', 'open', :u)"
+            ),
+            {"id": str(finding_id), "p": str(project_id), "u": str(created_by_user_id)},
+        )
+        await session.execute(
+            text(
+                "INSERT INTO certificates (id, project_id, storage_key, "
+                "original_filename, size_bytes, content_type, certificate_type, status) "
+                "VALUES (:id, :p, :sk, 'dop.pdf', 1024, 'application/pdf', "
+                "'product', 'ready')"
+            ),
+            {"id": str(cert_id), "p": str(project_id), "sk": f"certs/{cert_id}.pdf"},
+        )
+
+
+async def test_create_dossier_report_bundles_findings_and_certificates(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="P-dossier")
+    await _seed_finding_and_certificate(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(project["id"]),
+        UUID(org_user["id"]),
+    )
+
+    job_dispatch_calls.clear()
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "dossier"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["report_type"] == "dossier"
+
+    assert len(job_dispatch_calls) == 1
+    call = job_dispatch_calls[0]
+    assert call["job_type"] == "dossier_report"
+    payload = call["payload"]
+    assert isinstance(payload, dict)
+    findings = payload["findings"]
+    assert isinstance(findings, list) and len(findings) == 1
+    assert findings[0]["title"] == "Scheur in fundering"
+    certs = payload["certificates"]
+    assert isinstance(certs, list) and len(certs) == 1
+    assert certs[0]["content_type"] == "application/pdf"
+    assert certs[0]["storage_key"].endswith(".pdf")
+    assert payload["verklaring"] is None  # no signed declaration yet
+    assert isinstance(payload["risks"], list)
+
+
+async def test_create_dossier_report_works_with_no_data(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="P-dossier-empty")
+
+    job_dispatch_calls.clear()
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "dossier"},
+        headers=_auth(org_user["access_token"]),
+    )
+    # A sparse dossier is still valid — no source-data gate.
+    assert resp.status_code == 201, resp.text
+    assert len(job_dispatch_calls) == 1
+    payload = job_dispatch_calls[0]["payload"]
+    assert isinstance(payload, dict)
+    assert payload["findings"] == []
+    assert payload["certificates"] == []

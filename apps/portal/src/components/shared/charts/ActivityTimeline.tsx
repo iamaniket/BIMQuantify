@@ -13,14 +13,16 @@ import {
 } from 'recharts';
 
 import { buildCompletionSeries } from '@/features/projects/detail/dossierTemplate';
+import type { JurisdictionDossierRequirement } from '@/lib/api/jurisdictions';
 import type { ProjectActivityEntry } from '@/lib/api/schemas/activity';
 import type { Attachment } from '@/lib/api/schemas/attachments';
+import type { Certificate } from '@/lib/api/schemas/certificates';
 import type { Deadline } from '@/lib/api/schemas/deadlines';
-import type { BuildingTypeValue } from '@/lib/api/schemas/projects';
 
 type Props = {
   attachments: Attachment[];
-  buildingType: BuildingTypeValue | null;
+  certificates?: Certificate[];
+  template: JurisdictionDossierRequirement[];
   activityEntries: ProjectActivityEntry[];
   deadlines?: Deadline[];
   height?: number;
@@ -44,7 +46,8 @@ type EventPoint = {
 
 export function ActivityTimeline({
   attachments,
-  buildingType,
+  certificates = [],
+  template,
   activityEntries,
   deadlines = [],
   height = 96,
@@ -93,7 +96,7 @@ export function ActivityTimeline({
   );
 
   const { lineData, events, markers, domain, hasData } = useMemo(() => {
-    const completion = buildCompletionSeries(buildingType, attachments);
+    const completion = buildCompletionSeries(template, attachments, certificates);
     const now = Date.now();
 
     const eventTimes = activityEntries.map((e) => new Date(e.created_at).getTime());
@@ -143,7 +146,7 @@ export function ActivityTimeline({
       domain: [minT, maxT] as [number, number],
       hasData: completion.length > 0 || evts.length > 0,
     };
-  }, [attachments, buildingType, activityEntries, deadlines]);
+  }, [attachments, certificates, template, activityEntries, deadlines]);
 
   if (!hasData) {
     return (

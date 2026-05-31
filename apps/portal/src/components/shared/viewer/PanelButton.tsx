@@ -43,7 +43,7 @@ export const PanelButton = forwardRef<HTMLButtonElement, PanelButtonProps>(
   }, ref) => (
     <Button
       ref={ref}
-      variant={variantMap[variant]}
+      variant={variantMap[variant]!}
       size="sm"
       aria-pressed={active}
       className={cn(

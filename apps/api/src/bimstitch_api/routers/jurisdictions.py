@@ -55,6 +55,15 @@ class BorgingsmomentTemplateResponse(BaseModel):
     checklist: list[ChecklistItemTemplateResponse]
 
 
+class DossierRequirementTemplateResponse(BaseModel):
+    code: str
+    category: str
+    label: str
+    required: bool
+    source_kind: str
+    source_value: str
+
+
 class DeadlineRuleResponse(BaseModel):
     deadline_type: str
     label: str
@@ -88,6 +97,8 @@ class JurisdictionResponse(BaseModel):
     borgingsmoment_templates: list[BorgingsmomentTemplateResponse]
     deadline_rules: list[DeadlineRuleResponse]
     risk_category_to_phases: dict[str, list[str]]
+    dossier_requirement_templates: dict[str, list[DossierRequirementTemplateResponse]]
+    dossier_category_labels: dict[str, str]
 
 
 class JurisdictionListResponse(BaseModel):
@@ -202,6 +213,23 @@ async def list_jurisdictions(
                     category: list(phases)
                     for category, phases in j.risk_category_to_phases.items()
                 },
+                dossier_requirement_templates={
+                    building_type: [
+                        DossierRequirementTemplateResponse(
+                            code=req.code,
+                            category=req.category,
+                            label=pick_label(req.label, locale, default),
+                            required=req.required,
+                            source_kind=req.source_kind,
+                            source_value=req.source_value,
+                        )
+                        for req in requirements
+                    ]
+                    for building_type, requirements in j.dossier_requirement_templates.items()
+                },
+                dossier_category_labels=localize_map(
+                    j.dossier_category_labels, locale, default
+                ),
             )
         )
     return JurisdictionListResponse(items=items)

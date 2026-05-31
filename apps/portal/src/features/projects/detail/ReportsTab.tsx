@@ -8,7 +8,6 @@ import { Badge, Button, Spinner } from '@bimstitch/ui';
 
 import { useProjectReports, useCheckCompliance } from '@/features/compliance/hooks';
 import { useModelFiles } from '@/features/models/useModelFiles';
-import { ComplianceReportsSection } from '@/features/reports/ComplianceReportsSection';
 import type { Model, ProjectComplianceReportItem, ProjectFile } from '@/lib/api/schemas';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 
@@ -59,8 +58,6 @@ export function ReportsTab({ projectId, models }: Props): JSX.Element {
 
   return (
     <div className="flex flex-col gap-3">
-      <ComplianceReportsSection projectId={projectId} />
-
       <div className="flex items-center justify-between gap-2">
         <div className="flex rounded-md border border-border">
           {FRAMEWORK_FILTERS.map((f) => (

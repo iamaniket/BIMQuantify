@@ -2,23 +2,21 @@
 
 import {
   AlertTriangle,
-  Calendar,
   Check,
   FileText,
-  Image,
-  Layers,
   ShieldCheck,
+  SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
-import type { DossierCategoryResult } from '@/features/projects/detail/dossierTemplate';
+import type { DossierRequirementResult } from '@/features/projects/detail/dossierTemplate';
 
 type Props = {
   pct: number;
-  categories: DossierCategoryResult[];
+  requirements: DossierRequirementResult[];
 };
 
 function centerColor(pct: number): string {
@@ -27,32 +25,29 @@ function centerColor(pct: number): string {
   return 'var(--error)';
 }
 
-const CATEGORY_ICONS: Record<string, typeof Check> = {
-  models: Layers,
-  documents: FileText,
-  photos: Image,
-  certificates: ShieldCheck,
-  findings: AlertTriangle,
-  deadlines: Calendar,
+const SOURCE_ICONS: Record<DossierRequirementResult['sourceKind'], typeof Check> = {
+  attachment_slot: FileText,
+  certificate_type: ShieldCheck,
+  derived: SlidersHorizontal,
 };
 
 type SliceDatum = { name: string; value: number; index: number };
 
-export function DossierDonut({ pct, categories }: Props): JSX.Element {
+export function DossierDonut({ pct, requirements }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.chartsPanel');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const data: SliceDatum[] = categories.map((c, index) => ({
-    name: t(c.labelKey),
+  const data: SliceDatum[] = requirements.map((r, index) => ({
+    name: r.label,
     value: 1,
     index,
   }));
 
   const fillFor = (index: number): string =>
-    categories[index]?.fulfilled ? 'var(--success)' : 'var(--background-tertiary)';
+    requirements[index]?.fulfilled ? 'var(--success)' : 'var(--background-tertiary)';
 
-  const active = activeIndex !== null ? categories[activeIndex] : null;
+  const active = activeIndex !== null ? requirements[activeIndex] : null;
 
   return (
     <div className="flex h-full w-full flex-col items-center gap-3">
@@ -97,7 +92,7 @@ export function DossierDonut({ pct, categories }: Props): JSX.Element {
                 {active.count}
               </span>
               <span className="mt-1 max-w-[80%] truncate text-caption uppercase tracking-widest text-foreground-tertiary">
-                {t(active.labelKey)}
+                {active.label}
               </span>
             </>
           ) : (
@@ -119,29 +114,28 @@ export function DossierDonut({ pct, categories }: Props): JSX.Element {
 
       {expanded && (
         <ul className="flex w-full max-w-[280px] flex-col gap-1.5">
-          {categories.map((c, index) => {
-            const Icon = CATEGORY_ICONS[c.category] ?? FileText;
-            const isInverted = c.category === 'findings' || c.category === 'deadlines';
+          {requirements.map((r, index) => {
+            const Icon = SOURCE_ICONS[r.sourceKind] ?? FileText;
             return (
               <li
-                key={c.category}
+                key={r.code}
                 className="flex items-center gap-2 rounded-md border border-border bg-surface-low px-2.5 py-1.5 transition-colors hover:bg-surface-main dark:bg-black/20 dark:hover:bg-black/30"
                 onMouseEnter={() => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
               >
-                <Icon className={`h-3.5 w-3.5 shrink-0 ${c.fulfilled ? 'text-success' : 'text-foreground-tertiary'}`} />
+                <Icon className={`h-3.5 w-3.5 shrink-0 ${r.fulfilled ? 'text-success' : 'text-foreground-tertiary'}`} />
                 <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">
-                  {t(c.labelKey)}
+                  {r.label}
                 </span>
                 <span className="text-body3 tabular-nums text-foreground-tertiary">
-                  {c.count}
+                  {r.count}
                 </span>
-                {c.fulfilled ? (
+                {r.fulfilled ? (
                   <Check className="h-3.5 w-3.5 shrink-0 text-success" />
-                ) : isInverted ? (
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
-                ) : (
+                ) : r.required ? (
                   <X className="h-3.5 w-3.5 shrink-0 text-error" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
                 )}
               </li>
             );

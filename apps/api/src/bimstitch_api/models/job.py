@@ -21,6 +21,10 @@ class JobType(StrEnum):
     image_metadata_extraction = "image_metadata_extraction"
     compliance_check = "compliance_check"
     compliance_report = "compliance_report"
+    # Report renderers — one JobType per pipeline, mirroring compliance_report.
+    assurance_plan_report = "assurance_plan_report"  # NL: borgingsplan PDF (#31)
+    completion_declaration_report = "completion_declaration_report"  # NL: verklaring (#32)
+    dossier_report = "dossier_report"  # dossier bevoegd gezag (#33)
 
 
 class JobStatus(StrEnum):

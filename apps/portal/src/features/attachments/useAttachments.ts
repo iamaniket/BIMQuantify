@@ -39,6 +39,23 @@ export function useElementAttachments(
   });
 }
 
+/**
+ * Office documents not yet tagged to a dossier slot — powers the dossier
+ * checklist "Link existing" picker.
+ */
+export function useUnslottedDocuments(
+  projectId: string,
+  enabled = true,
+): UseQueryResult<AttachmentList> {
+  return useAuthQuery({
+    queryKey: [...attachmentsKey(projectId), 'unslotted', 'office'] as const,
+    queryFn: (accessToken) =>
+      listAttachments(accessToken, projectId, { unslotted: true, category: 'office' }),
+    enabled,
+    staleTime: 15_000,
+  });
+}
+
 export function useProjectAttachments(
   projectId: string,
   enabled = true,

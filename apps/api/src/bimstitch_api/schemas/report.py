@@ -16,12 +16,11 @@ from bimstitch_api.models.report import ReportStatus, ReportType
 class ReportCreateRequest(BaseModel):
     """Body of POST /projects/{project_id}/reports."""
 
-    # Single allowed value today; widens as #31/#32/#33 land. Pinned to a
-    # Literal (rather than the full enum) so unsupported types are rejected
-    # with a clear 422 instead of silently queueing a job no worker handles.
-    report_type: Literal[ReportType.compliance_report.value] = Field(
-        default=ReportType.compliance_report.value
-    )
+    # Defaults to compliance_report. Each type routes to a per-type source
+    # resolver in the router; a known type whose resolver hasn't landed yet
+    # returns a clean 422 REPORT_TYPE_NOT_AVAILABLE rather than queueing a job
+    # no worker handles. An unknown value is rejected by enum coercion (422).
+    report_type: ReportType = Field(default=ReportType.compliance_report)
     # If omitted, server resolves from the project's jurisdiction registry
     # entry (NL → 'nl'). Pass an explicit BCP47 code (e.g. 'en') to override.
     locale: str | None = Field(default=None, max_length=8)
@@ -50,6 +49,10 @@ class ReportResponse(BaseModel):
     download_url: str | None = None  # Populated only when status=ready, presigned 15min.
     created_at: datetime
     finished_at: datetime | None
+    # Verklaring sign-to-lock (#32). signed_at != null ⇒ locked.
+    signed_at: datetime | None = None
+    signed_by_user_id: UUID | None = None
+    signature_hash: str | None = None
 
 
 class ReportListResponse(BaseModel):

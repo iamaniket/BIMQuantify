@@ -424,7 +424,8 @@ export default function ViewerPage(): JSX.Element {
         onReady={(handle) => {
           viewerHandleRef.current = handle;
           if (process.env.NODE_ENV === 'development') {
-            (window as unknown as Record<string, unknown>).__viewer = handle;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (window as any).__viewer = handle;
           }
           setViewerReady(true);
           setProgress(null);

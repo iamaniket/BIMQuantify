@@ -10,7 +10,10 @@ import { runDxfExtraction } from '../pipeline/dxf.js';
 import { runPdfExtraction } from '../pipeline/pdf.js';
 import { postReportCallback } from '../pipeline/report/callback.js';
 import { classifyError } from '../pipeline/errors.js';
+import { runAssurancePlanReport } from '../pipeline/report/assurance-plan.js';
+import { runDossierReport } from '../pipeline/report/dossier.js';
 import { runComplianceReport } from '../pipeline/report/index.js';
+import { runCompletionDeclarationReport } from '../pipeline/report/verklaring.js';
 import { getRedis, type ProgressReporter, type WorkerJob } from './queue.js';
 
 const pickStr = (payload: Record<string, unknown>, key: string): string =>
@@ -61,6 +64,9 @@ async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void>
       });
       break;
     case 'compliance_report':
+    case 'assurance_plan_report':
+    case 'completion_declaration_report':
+    case 'dossier_report':
       await postReportCallback({
         report_id: pickStr(data.payload, 'report_id'),
         organization_id: data.organization_id,
@@ -104,6 +110,15 @@ export function startWorker(): Worker<WorkerJob> {
           break;
         case 'compliance_report':
           await runComplianceReport(job.data, onProgress);
+          break;
+        case 'assurance_plan_report':
+          await runAssurancePlanReport(job.data, onProgress);
+          break;
+        case 'completion_declaration_report':
+          await runCompletionDeclarationReport(job.data, onProgress);
+          break;
+        case 'dossier_report':
+          await runDossierReport(job.data, onProgress);
           break;
         case 'send_email':
           // Handled by the action worker on the "actions" queue.

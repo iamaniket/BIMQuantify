@@ -32,6 +32,15 @@ const BorgingsmomentTemplateSchema = z.object({
   checklist: z.array(ChecklistItemTemplateSchema),
 });
 
+const DossierRequirementTemplateSchema = z.object({
+  code: z.string(),
+  category: z.string(),
+  label: z.string(),
+  required: z.boolean(),
+  source_kind: z.enum(['attachment_slot', 'certificate_type', 'derived']),
+  source_value: z.string(),
+});
+
 export const JurisdictionSchema = z.object({
   country: z.string().length(2),
   name: z.string(),
@@ -51,6 +60,11 @@ export const JurisdictionSchema = z.object({
   borgingsmoment_phase_labels: z.record(z.string(), z.string()),
   borgingsmoment_templates: z.array(BorgingsmomentTemplateSchema),
   risk_category_to_phases: z.record(z.string(), z.array(z.string())),
+  dossier_requirement_templates: z
+    .record(z.string(), z.array(DossierRequirementTemplateSchema))
+    .optional()
+    .default({}),
+  dossier_category_labels: z.record(z.string(), z.string()).optional().default({}),
 });
 
 export type Jurisdiction = z.infer<typeof JurisdictionSchema>;
@@ -61,6 +75,9 @@ export type JurisdictionBorgingsmomentTemplate = z.infer<
 >;
 export type JurisdictionChecklistItemTemplate = z.infer<
   typeof ChecklistItemTemplateSchema
+>;
+export type JurisdictionDossierRequirement = z.infer<
+  typeof DossierRequirementTemplateSchema
 >;
 
 const JurisdictionListResponseSchema = z.object({

@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-export const ReportTypeSchema = z.enum(['compliance_report']);
+export const ReportTypeSchema = z.enum([
+  'compliance_report',
+  'assurance_plan', // NL: borgingsplan (#31)
+  'completion_declaration', // NL: verklaring (#32)
+  'dossier', // dossier bevoegd gezag (#33)
+]);
 export type ReportType = z.infer<typeof ReportTypeSchema>;
 
 export const ReportStatusSchema = z.enum(['queued', 'running', 'ready', 'failed']);
@@ -22,6 +27,10 @@ export const ReportSchema = z.object({
   download_url: z.string().nullable(),
   created_at: z.string(),
   finished_at: z.string().nullable(),
+  // Verklaring sign-to-lock (#32). signed_at !== null ⇒ locked.
+  signed_at: z.string().nullable(),
+  signed_by_user_id: z.string().uuid().nullable(),
+  signature_hash: z.string().nullable(),
 });
 export type Report = z.infer<typeof ReportSchema>;
 

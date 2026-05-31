@@ -22,7 +22,11 @@ import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
 import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
 import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
 import { useProjectActivity } from '@/features/projects/detail/useProjectActivity';
-import { computeDossierCompleteness } from '@/features/projects/detail/dossierTemplate';
+import {
+  computeDossierCompleteness,
+  selectDossierTemplate,
+} from '@/features/projects/detail/dossierTemplate';
+import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
 
 export default function ProjectDetailPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
@@ -59,22 +63,26 @@ export default function ProjectDetailPage(): JSX.Element {
   );
 
   const modelCount = modelsQuery.data?.length ?? 0;
-  const certificateCount = certificates.filter((c) => c.status === 'ready').length;
   const findingsOpen = useMemo(
     () => findings.filter((f) => f.status !== 'resolved' && f.status !== 'verified').length,
     [findings],
   );
 
   const buildingType = projectQuery.data?.building_type ?? null;
+  const jurisdiction = useJurisdiction(projectQuery.data?.country);
 
-  const dossierPct = useMemo(
-    () => computeDossierCompleteness(buildingType, attachments, {
+  const dossierTemplate = useMemo(
+    () => selectDossierTemplate(jurisdiction?.dossier_requirement_templates, buildingType),
+    [jurisdiction, buildingType],
+  );
+
+  const dossier = useMemo(
+    () => computeDossierCompleteness(dossierTemplate, attachments, certificates, {
       modelCount,
-      certificateCount,
       findingsOpen,
       deadlinesOverdue: deadlinesSummary.overdue,
-    }).pct,
-    [buildingType, attachments, modelCount, certificateCount, findingsOpen, deadlinesSummary.overdue],
+    }),
+    [dossierTemplate, attachments, certificates, modelCount, findingsOpen, deadlinesSummary.overdue],
   );
 
   if (projectQuery.isLoading) {
@@ -122,7 +130,7 @@ export default function ProjectDetailPage(): JSX.Element {
           project={project}
           deadlinesSummary={deadlinesSummary}
           attachmentCount={attachmentCount}
-          dossierPct={dossierPct}
+          dossierPct={dossier.pct}
         />
       }
     >
@@ -148,16 +156,14 @@ export default function ProjectDetailPage(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 xl:grid-cols-2">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 xl:grid-cols-[2fr_3fr]">
         <ProjectChartsPanel
-          buildingType={buildingType}
+          dossier={dossier}
+          template={dossierTemplate}
           deadlines={deadlines}
           attachments={attachments}
+          certificates={certificates}
           activityEntries={activityEntries}
-          modelCount={modelCount}
-          certificateCount={certificateCount}
-          findingsOpen={findingsOpen}
-          deadlinesOverdue={deadlinesSummary.overdue}
         />
 
         <div className="grid min-h-0 grid-rows-[3fr_2fr] gap-3.5">

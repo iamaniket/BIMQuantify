@@ -149,6 +149,32 @@ class BorgingsmomentTemplate:
 
 
 @dataclass(frozen=True)
+class DossierRequirementTemplate:
+    """One required item in the "dossier bevoegd gezag" completeness checklist.
+
+    Drives the per-building-type checklist the aannemer works through before
+    gereedmelding. Each requirement is satisfied by exactly one source:
+
+    - ``source_kind="attachment_slot"``  → a document tagged with the
+      ``DossierSlot`` named in ``source_value`` (e.g. "structural_calculations")
+    - ``source_kind="certificate_type"`` → a Certificate whose
+      ``certificate_type`` equals ``source_value`` (e.g. "product")
+    - ``source_kind="derived"``          → a computed signal in ``source_value``
+      ("models" present / "findings" all resolved / "deadlines" on track)
+
+    `category` groups rows under a section header localized via
+    `Jurisdiction.dossier_category_labels`.
+    """
+
+    code: str
+    category: str
+    label: LocaleMap
+    required: bool = True
+    source_kind: str = "attachment_slot"  # "attachment_slot" | "certificate_type" | "derived"
+    source_value: str = ""
+
+
+@dataclass(frozen=True)
 class Jurisdiction:
     country: str  # ISO 3166-1 alpha-2
     name: str
@@ -201,6 +227,34 @@ class Jurisdiction:
     # due_dates from project date fields using these rules. Adding a
     # country = register its own rules.
     deadline_rules: tuple[DeadlineRule, ...] = ()
+    # Dossier-completeness checklist templates keyed by BuildingType code
+    # (dwelling / commercial / other). The aannemer works through these before
+    # gereedmelding; the portal computes met/missing against tagged documents,
+    # certificates, and derived signals. A missing key falls back to the
+    # "other" set (see `get_dossier_requirements`).
+    dossier_requirement_templates: dict[str, tuple[DossierRequirementTemplate, ...]] = field(
+        default_factory=dict
+    )
+    # Localized section headers for the `category` codes used by the dossier
+    # requirement templates (e.g. "documents" → {"nl": "Documenten", ...}).
+    dossier_category_labels: dict[str, LocaleMap] = field(default_factory=dict)
+
+
+def get_dossier_requirements(
+    country: str, building_type: str | None
+) -> tuple[DossierRequirementTemplate, ...]:
+    """Dossier checklist for a (country, building_type), with fallback.
+
+    Falls back to the "other" template set when the building type is unknown,
+    null, or has no dedicated template — so a project always gets a checklist.
+    """
+    j = get(country)
+    if j is None:
+        return ()
+    templates = j.dossier_requirement_templates
+    if building_type and building_type in templates:
+        return templates[building_type]
+    return templates.get("other", ())
 
 
 def find_instrument(country: str, instrument_id: str) -> Instrument | None:

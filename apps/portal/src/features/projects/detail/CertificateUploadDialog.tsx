@@ -33,6 +33,9 @@ type Props = {
   // linkedFileId records which version it was uploaded against.
   linkedModelId?: string | null;
   linkedFileId?: string | null;
+  // Preselects the certificate type (e.g. when opened from a dossier
+  // checklist row for a specific required certificate kind).
+  initialType?: CertificateTypeValue;
 };
 
 const CERTIFICATE_TYPES: CertificateTypeValue[] = [
@@ -52,29 +55,32 @@ export function CertificateUploadDialog({
   linkedElementGlobalId,
   linkedModelId,
   linkedFileId,
+  initialType = 'product',
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.certificates');
   const uploadMutation = useUploadCertificate(projectId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
-  const [certificateType, setCertificateType] = useState<CertificateTypeValue>('product');
+  const [certificateType, setCertificateType] = useState<CertificateTypeValue>(initialType);
   const [certificateNumber, setCertificateNumber] = useState('');
   const [issuer, setIssuer] = useState('');
+  const [subject, setSubject] = useState('');
   const [validFrom, setValidFrom] = useState('');
   const [validUntil, setValidUntil] = useState('');
   const [description, setDescription] = useState('');
 
   const reset = useCallback(() => {
     setFile(null);
-    setCertificateType('product');
+    setCertificateType(initialType);
     setCertificateNumber('');
     setIssuer('');
+    setSubject('');
     setValidFrom('');
     setValidUntil('');
     setDescription('');
     if (fileInputRef.current !== null) fileInputRef.current.value = '';
-  }, []);
+  }, [initialType]);
 
   const handleClose = useCallback(
     (nextOpen: boolean) => {
@@ -93,6 +99,7 @@ export function CertificateUploadDialog({
       certificate_type: certificateType,
       certificate_number: certificateNumber === '' ? null : certificateNumber,
       issuer: issuer === '' ? null : issuer,
+      subject: subject === '' ? null : subject,
       valid_from: validFrom === '' ? null : validFrom,
       valid_until: validUntil === '' ? null : validUntil,
       description: description === '' ? null : description,
@@ -115,6 +122,7 @@ export function CertificateUploadDialog({
     certificateType,
     certificateNumber,
     issuer,
+    subject,
     validFrom,
     validUntil,
     description,
@@ -172,6 +180,14 @@ export function CertificateUploadDialog({
                 placeholder={t('fieldIssuerPlaceholder')}
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t('fieldSubject')}</Label>
+            <Input
+              value={subject}
+              onChange={(e) => { setSubject(e.target.value); }}
+              placeholder={t('fieldSubjectPlaceholder')}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

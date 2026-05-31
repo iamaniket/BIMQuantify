@@ -34,8 +34,7 @@ export function useUnreadCount(): UseQueryResult<UnreadCountResponse> {
 
 export function useMarkRead(): UseMutationResult<void, Error, string> {
   return useAuthMutation({
-    mutationFn: (accessToken, notificationId) =>
-      markNotificationRead(accessToken, notificationId),
+    mutationFn: (accessToken, id) => markNotificationRead(accessToken, id),
     invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }
@@ -49,8 +48,7 @@ export function useMarkAllRead(): UseMutationResult<void, Error, void> {
 
 export function useDismiss(): UseMutationResult<void, Error, string> {
   return useAuthMutation({
-    mutationFn: (accessToken, notificationId) =>
-      dismissNotification(accessToken, notificationId),
+    mutationFn: (accessToken, id) => dismissNotification(accessToken, id),
     invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }

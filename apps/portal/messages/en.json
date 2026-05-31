@@ -571,6 +571,27 @@
         "emptyTitle": "No deadlines yet",
         "emptyDescription": "Deadlines will appear automatically once the project has planned start and delivery dates."
       },
+      "dossier": {
+        "label": "Dossier",
+        "eyebrow": "Dossier readiness",
+        "subtitle": "What you still need before gereedmelding",
+        "progressLabel": "{filled} of {total} required items complete",
+        "optionalLabel": "{filled} of {total} optional items provided",
+        "optionalBadge": "Optional",
+        "statusProvided": "{count, plural, =1 {1 document} other {# documents}} provided",
+        "statusMissing": "Missing",
+        "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
+        "uploadCta": "Upload",
+        "uploadCertificate": "Upload certificate",
+        "linkExisting": "Link an existing document",
+        "uploadSuccess": "Uploaded {name}",
+        "linkSuccess": "Document linked to the dossier",
+        "linkDialogTitle": "Link an existing document",
+        "linkDialogDescription": "Pick an already-uploaded document to satisfy this requirement.",
+        "linkEmpty": "No untagged documents available. Upload a new one instead.",
+        "emptyTitle": "No dossier checklist available",
+        "emptyDescription": "This project's jurisdiction has no dossier requirements configured yet."
+      },
       "overviewCard": {
         "address": "Address",
         "contractor": "Contractor",
@@ -876,6 +897,8 @@
         "fieldNumberPlaceholder": "e.g. DoP-2024-018",
         "fieldIssuer": "Issuer",
         "fieldIssuerPlaceholder": "e.g. Kiwa",
+        "fieldSubject": "Subject",
+        "fieldSubjectPlaceholder": "e.g. Fire resistance of load-bearing walls",
         "fieldValidFrom": "Valid from",
         "fieldValidUntil": "Valid until",
         "fieldDescription": "Description",
@@ -907,6 +930,11 @@
         "rowView": "View",
         "rowExpand": "Expand",
         "rowCollapse": "Collapse"
+      },
+      "rapporten": {
+        "label": "Reports",
+        "eyebrow": "Generated documents",
+        "subtitle": "Generate and download filing-ready PDFs"
       },
       "deadlines": {
         "label": "Deadlines",
@@ -1150,16 +1178,12 @@
       "accessibility": "Accessibility",
       "sustainability": "Sustainability"
     },
-    "downloadable": {
-      "downloadableTitle": "Downloadable reports",
-      "downloadableDescription": "Generate a PDF version of the latest compliance report, ready to share.",
-      "generate": "Generate compliance report",
-      "generating": "Generating…",
+    "shared": {
       "loading": "Loading…",
+      "generating": "Generating…",
+      "noReports": "No reports generated yet",
       "view": "View",
       "download": "Download",
-      "noReports": "No reports generated yet",
-      "noComplianceData": "No compliance data available — run a check on a processed IFC first.",
       "errorGenerating": "Failed to generate the report.",
       "noPreview": "No preview available.",
       "status": {
@@ -1168,6 +1192,37 @@
         "ready": "Ready",
         "failed": "Failed"
       }
+    },
+    "types": {
+      "compliance_report": {
+        "title": "Compliance report",
+        "description": "Generate a PDF of the latest compliance check, ready to share.",
+        "generate": "Generate compliance report",
+        "missingData": "No compliance data available — run a check on a processed IFC first."
+      },
+      "assurance_plan": {
+        "title": "Assurance plan",
+        "description": "Generate the borgingsplan as a filing-ready PDF for the bouwmelding.",
+        "generate": "Generate assurance plan",
+        "missingData": "No borgingsplan for this project yet."
+      },
+      "completion_declaration": {
+        "title": "Completion declaration",
+        "description": "Generate the kwaliteitsborger's declaration. Only the inspector can sign it.",
+        "generate": "Generate declaration",
+        "missingData": "Project details are incomplete for the declaration."
+      },
+      "dossier": {
+        "title": "Dossier for the authority",
+        "description": "Bundle the full dossier for the gereedmelding. You'll get an email when it's ready.",
+        "generate": "Generate dossier",
+        "missingData": "Not enough data to assemble the dossier yet."
+      }
+    },
+    "sign": {
+      "sign": "Sign",
+      "signing": "Signing…",
+      "signed": "Signed"
     }
   },
   "auth": {

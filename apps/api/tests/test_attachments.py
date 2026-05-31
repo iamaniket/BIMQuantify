@@ -1289,3 +1289,188 @@ async def test_list_attachments_pagination_and_total_count(
         headers=_auth(token),
     )
     assert too_big.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Dossier slot tagging (#N2)
+# ---------------------------------------------------------------------------
+
+
+def _office_payload(**overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "filename": "berekening.pdf",
+        "size_bytes": 2048,
+        "content_type": "application/pdf",
+        "content_sha256": _new_hash(),
+    }
+    base.update(overrides)
+    return base
+
+
+@pytest.mark.asyncio
+async def test_initiate_with_dossier_slot_round_trips(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    att = await _initiate_att(
+        client, token, project["id"], dossier_slot="structural_calculations"
+    )
+    body = await _complete_att(client, fake, token, project["id"], att)
+    assert body["dossier_slot"] == "structural_calculations"
+
+    # Persisted: visible on the GET endpoint too.
+    got = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        headers=_auth(token),
+    )
+    assert got.json()["dossier_slot"] == "structural_calculations"
+
+
+@pytest.mark.asyncio
+async def test_initiate_without_slot_defaults_null(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    att = await _initiate_att(client, token, project["id"])
+    got = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        headers=_auth(token),
+    )
+    assert got.json()["dossier_slot"] is None
+
+
+@pytest.mark.asyncio
+async def test_initiate_rejects_invalid_dossier_slot(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    resp = await client.post(
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(dossier_slot="not_a_real_slot"),
+        headers=_auth(token),
+    )
+    assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.asyncio
+async def test_patch_sets_and_clears_dossier_slot(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Link-existing tags an untagged doc; setting null unlinks it."""
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    att = await _initiate_att(client, token, project["id"], **_office_payload())
+    aid = att["attachment_id"]
+
+    set_resp = await client.patch(
+        f"/projects/{project['id']}/attachments/{aid}",
+        json={"dossier_slot": "energy_performance"},
+        headers=_auth(token),
+    )
+    assert set_resp.status_code == 200, set_resp.text
+    assert set_resp.json()["dossier_slot"] == "energy_performance"
+
+    clear_resp = await client.patch(
+        f"/projects/{project['id']}/attachments/{aid}",
+        json={"dossier_slot": None},
+        headers=_auth(token),
+    )
+    assert clear_resp.status_code == 200, clear_resp.text
+    assert clear_resp.json()["dossier_slot"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_filters_by_dossier_slot_and_unslotted(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    slotted = await _initiate_att(
+        client, token, project["id"], **_office_payload(dossier_slot="drawings")
+    )
+    await _complete_att(client, fake, token, project["id"], slotted)
+    untagged = await _initiate_att(client, token, project["id"], **_office_payload())
+    await _complete_att(client, fake, token, project["id"], untagged)
+
+    by_slot = await client.get(
+        f"/projects/{project['id']}/attachments?dossier_slot=drawings",
+        headers=_auth(token),
+    )
+    assert by_slot.status_code == 200
+    slot_ids = {a["id"] for a in by_slot.json()}
+    assert slot_ids == {slotted["attachment_id"]}
+
+    unslotted = await client.get(
+        f"/projects/{project['id']}/attachments?unslotted=true",
+        headers=_auth(token),
+    )
+    assert unslotted.status_code == 200
+    unslotted_ids = {a["id"] for a in unslotted.json()}
+    assert untagged["attachment_id"] in unslotted_ids
+    assert slotted["attachment_id"] not in unslotted_ids
+
+
+@pytest.mark.asyncio
+async def test_dossier_slot_in_update_audit(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    att = await _initiate_att(client, token, project["id"], **_office_payload())
+    await client.patch(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        json={"dossier_slot": "fire_safety"},
+        headers=_auth(token),
+    )
+    row = await _latest_audit(session_maker, "attachment.updated")
+    assert row is not None
+    assert row.after is not None
+    assert row.after["dossier_slot"] == "fire_safety"
+
+
+@pytest.mark.asyncio
+async def test_contractor_can_tag_dossier_slot(
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """The aannemer (contractor role) drives the dossier checklist."""
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    await _add_member(
+        client,
+        org_user["access_token"],
+        project["id"],
+        same_org_non_admin_user["id"],
+        "contractor",
+    )
+    contractor_token = same_org_non_admin_user["access_token"]
+    att = await _initiate_att(
+        client, contractor_token, project["id"], **_office_payload(dossier_slot="drawings")
+    )
+    assert att["attachment_id"]
+
+    patch_resp = await client.patch(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        json={"dossier_slot": "installations"},
+        headers=_auth(contractor_token),
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+    assert patch_resp.json()["dossier_slot"] == "installations"

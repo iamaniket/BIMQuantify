@@ -1,27 +1,26 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useMemo, type JSX, type ReactNode } from 'react';
+import { type JSX, type ReactNode } from 'react';
 
 import { ActivityTimeline } from '@/components/shared/charts/ActivityTimeline';
 import { DossierDonut } from '@/components/shared/charts/DossierDonut';
 
+import type { JurisdictionDossierRequirement } from '@/lib/api/jurisdictions';
 import type { Attachment } from '@/lib/api/schemas/attachments';
+import type { Certificate } from '@/lib/api/schemas/certificates';
 import type { Deadline } from '@/lib/api/schemas/deadlines';
-import type { BuildingTypeValue } from '@/lib/api/schemas/projects';
 import type { ProjectActivityEntry } from '@/lib/api/schemas/activity';
 
-import { computeDossierCompleteness } from './dossierTemplate';
+import type { DossierCompleteness } from './dossierTemplate';
 
 type Props = {
-  buildingType: BuildingTypeValue | null;
+  dossier: DossierCompleteness;
+  template: JurisdictionDossierRequirement[];
   deadlines: Deadline[];
   attachments: Attachment[];
+  certificates: Certificate[];
   activityEntries: ProjectActivityEntry[];
-  modelCount: number;
-  certificateCount: number;
-  findingsOpen: number;
-  deadlinesOverdue: number;
 };
 
 function PanelSection({
@@ -44,26 +43,14 @@ function PanelSection({
 }
 
 export function ProjectChartsPanel({
-  buildingType,
+  dossier,
+  template,
   deadlines,
   attachments,
+  certificates,
   activityEntries,
-  modelCount,
-  certificateCount,
-  findingsOpen,
-  deadlinesOverdue,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.chartsPanel');
-
-  const dossier = useMemo(
-    () => computeDossierCompleteness(buildingType, attachments, {
-      modelCount,
-      certificateCount,
-      findingsOpen,
-      deadlinesOverdue,
-    }),
-    [buildingType, attachments, modelCount, certificateCount, findingsOpen, deadlinesOverdue],
-  );
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
@@ -71,7 +58,7 @@ export function ProjectChartsPanel({
         {/* Dossier completeness donut — ~80% of the panel height */}
         <div className="min-h-0 flex-[4]">
           <PanelSection title={t('dossierTitle')}>
-            <DossierDonut pct={dossier.pct} categories={dossier.categories} />
+            <DossierDonut pct={dossier.pct} requirements={dossier.requirements} />
           </PanelSection>
         </div>
 
@@ -80,7 +67,8 @@ export function ProjectChartsPanel({
           <PanelSection title={t('timelineTitle')}>
             <ActivityTimeline
               attachments={attachments}
-              buildingType={buildingType}
+              certificates={certificates}
+              template={template}
               activityEntries={activityEntries}
               deadlines={deadlines}
             />
