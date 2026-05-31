@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.cache import get_redis_dep
-from bimstitch_api.models.notification import Notification, NotificationRead
+from bimstitch_api.models.notification import (
+    Notification,
+    NotificationDismissal,
+    NotificationRead,
+)
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.notification import (
     NotificationListResponse,
@@ -54,11 +58,23 @@ async def list_notifications(
             NotificationRead.user_id == user.id,
         )
     )
+    # Dismissed rows are hidden from this user's feed and counts (per-user,
+    # like read state) — never hard-deleted from the org-shared table.
+    dismissed_expr = exists(
+        select(NotificationDismissal.notification_id).where(
+            NotificationDismissal.notification_id == Notification.id,
+            NotificationDismissal.user_id == user.id,
+        )
+    )
 
-    count_stmt = select(func.count()).select_from(Notification)
+    count_stmt = select(func.count()).select_from(Notification).where(~dismissed_expr)
     total = (await session.scalar(count_stmt)) or 0
 
-    unread_stmt = select(func.count()).select_from(Notification).where(~is_read_expr)
+    unread_stmt = (
+        select(func.count())
+        .select_from(Notification)
+        .where(~is_read_expr, ~dismissed_expr)
+    )
     unread_count = (await session.scalar(unread_stmt)) or 0
 
     stmt = (
@@ -66,6 +82,7 @@ async def list_notifications(
             Notification,
             case((is_read_expr, True), else_=False).label("is_read"),
         )
+        .where(~dismissed_expr)
         .order_by(Notification.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -118,7 +135,17 @@ async def unread_count(
             NotificationRead.user_id == user.id,
         )
     )
-    stmt = select(func.count()).select_from(Notification).where(~is_read_expr)
+    dismissed_expr = exists(
+        select(NotificationDismissal.notification_id).where(
+            NotificationDismissal.notification_id == Notification.id,
+            NotificationDismissal.user_id == user.id,
+        )
+    )
+    stmt = (
+        select(func.count())
+        .select_from(Notification)
+        .where(~is_read_expr, ~dismissed_expr)
+    )
     count = (await session.scalar(stmt)) or 0
 
     try:
@@ -160,6 +187,43 @@ async def mark_read(
         await _invalidate_unread_count(redis, active_org_id, user.id)
 
 
+@router.post("/{notification_id}/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+async def dismiss(
+    notification_id: UUID,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    redis: Redis = Depends(get_redis_dep),
+) -> None:
+    """Dismiss a notification for the current user only.
+
+    Inserts a per-user ``NotificationDismissal`` row (idempotent) so the
+    notification disappears from this user's feed and counts. The org-shared
+    notification row is untouched — teammates still see it.
+    """
+    notif = (
+        await session.execute(select(Notification).where(Notification.id == notification_id))
+    ).scalar_one_or_none()
+    if notif is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="NOTIFICATION_NOT_FOUND",
+        )
+
+    existing = (
+        await session.execute(
+            select(NotificationDismissal).where(
+                NotificationDismissal.notification_id == notification_id,
+                NotificationDismissal.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        session.add(NotificationDismissal(notification_id=notification_id, user_id=user.id))
+        await session.flush()
+        await _invalidate_unread_count(redis, active_org_id, user.id)
+
+
 @router.post("/mark-all-read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_all_read(
     session: AsyncSession = Depends(get_tenant_session),
@@ -173,11 +237,46 @@ async def mark_all_read(
             NotificationRead.user_id == user.id,
         )
     )
-    unread_stmt = select(Notification.id).where(~is_read_expr)
+    dismissed_expr = exists(
+        select(NotificationDismissal.notification_id).where(
+            NotificationDismissal.notification_id == Notification.id,
+            NotificationDismissal.user_id == user.id,
+        )
+    )
+    unread_stmt = select(Notification.id).where(~is_read_expr, ~dismissed_expr)
     unread_ids = list((await session.execute(unread_stmt)).scalars().all())
     for nid in unread_ids:
         session.add(NotificationRead(notification_id=nid, user_id=user.id))
     if unread_ids:
+        await session.flush()
+        await _invalidate_unread_count(redis, active_org_id, user.id)
+
+
+@router.post("/clear", status_code=status.HTTP_204_NO_CONTENT)
+async def clear(
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    redis: Redis = Depends(get_redis_dep),
+) -> None:
+    """Clear (dismiss) the current user's entire feed.
+
+    Bulk-inserts a ``NotificationDismissal`` for every notification the user
+    has not already dismissed — read and unread alike — emptying their feed
+    without affecting teammates.
+    """
+    dismissed_expr = exists(
+        select(NotificationDismissal.notification_id).where(
+            NotificationDismissal.notification_id == Notification.id,
+            NotificationDismissal.user_id == user.id,
+        )
+    )
+    visible_ids = list(
+        (await session.execute(select(Notification.id).where(~dismissed_expr))).scalars().all()
+    )
+    for nid in visible_ids:
+        session.add(NotificationDismissal(notification_id=nid, user_id=user.id))
+    if visible_ids:
         await session.flush()
         await _invalidate_unread_count(redis, active_org_id, user.id)
 

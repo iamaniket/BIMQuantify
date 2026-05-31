@@ -58,7 +58,7 @@ export function EntityAttachmentsBody({
   }, [autoOpenNonce]);
 
   const isProject = globalId === null;
-  const elementQuery = useElementAttachments(projectId, fileId, globalId);
+  const elementQuery = useElementAttachments(projectId, modelId, globalId);
   const projectQuery = useProjectAttachments(projectId, isProject);
   const activeQuery = isProject ? projectQuery : elementQuery;
   const uploadMutation = useUploadAttachment(projectId);
@@ -281,9 +281,9 @@ export function EntityAttachmentsBody({
 /** Reads entity-attachment count via the same hook — drives the tab pill. */
 export function useEntityAttachmentCount(
   projectId: string,
-  fileId: string,
+  modelId: string,
   globalId: string | null,
 ): number {
-  const query = useElementAttachments(projectId, fileId, globalId);
+  const query = useElementAttachments(projectId, modelId, globalId);
   return query.data?.length ?? 0;
 }

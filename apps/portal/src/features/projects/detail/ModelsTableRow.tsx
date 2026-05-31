@@ -3,14 +3,19 @@
 import { Eye, ShieldCheck, Upload, Trash2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState, type JSX } from 'react';
+import { useCallback, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
 import { Badge, Button, Spinner } from '@bimstitch/ui';
+import {
+  DetailCard,
+  DetailCardBody,
+  DetailCardFooter,
+  DetailCardRow,
+} from '@bimstitch/ui';
 
 import type { FileTypeValue, Model, ProjectFile } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
-import { formatExtractionStatus } from '@/lib/formatting/files';
 import { useModelFiles } from '@/features/models/useModelFiles';
 import { viewerKeys } from '@/features/viewer/queryKeys';
 import { getViewerBundle } from '@/lib/api/projectFiles';
@@ -54,12 +59,13 @@ function FileTypePill({ fileType, schema }: FileTypePillProps): JSX.Element {
 type Props = {
   projectId: string;
   model: Model;
+  isOpen: boolean;
+  onToggle: () => void;
   onUpload: (modelId: string) => void;
 };
 
-export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Element {
+export function ModelsTableRow({ projectId, model, isOpen, onToggle, onUpload }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.models.row');
-  const [isOpen, setIsOpen] = useState(false);
   const filesQuery = useModelFiles(projectId, model.id);
   const complianceMutation = useCheckCompliance(projectId, model.id);
   const queryClient = useQueryClient();
@@ -89,209 +95,171 @@ export function ModelsTableRow({ projectId, model, onUpload }: Props): JSX.Eleme
         staleTime: 60_000,
       })
       .catch(() => undefined);
-    // Start downloading the viewer JS chunk so it's hot by the time the page mounts.
     import('@bimstitch/viewer').catch(() => undefined);
   }, [isViewable, latestFile, tokens, queryClient, projectId, model.id]);
 
   return (
-    <div className="border-b border-border">
-      {/* Row */}
-      <div
-        className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_64px_56px_88px_144px] items-center gap-4 px-4 py-3 text-body3 transition-colors ${
-          isOpen
-            ? 'border-l-[3px] border-l-primary bg-primary-lighter pl-[13px] dark:bg-foreground/5'
-            : 'border-l-[3px] border-l-transparent hover:bg-background-hover'
-        }`}
-        onClick={() => { setIsOpen(!isOpen); }}
-      >
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className={`w-2 text-micro font-bold ${isOpen ? 'text-primary' : 'text-foreground-tertiary'}`}>
-            {isOpen ? '▾' : '▸'}
-          </span>
+    <DetailCard expanded={isOpen} onToggle={onToggle}>
+      <DetailCardRow
+        media={
           <span
             className="shrink-0 rounded-sm px-1 py-px text-center text-micro font-bold"
             style={{ background: colors.bg, color: colors.fg, width: 30 }}
           >
             {model.discipline.slice(0, 4).toUpperCase()}
           </span>
-          <div className="min-w-0">
-            <div className="truncate font-semibold">{model.name}</div>
-            <div className="flex items-center gap-1.5 font-sans text-caption text-foreground-tertiary">
-              {latestFile !== undefined ? (
-                <>
-                  <FileTypePill fileType={latestFile.file_type} schema={latestFile.ifc_schema} />
-                  <span className="truncate">{latestFile.original_filename} · {(latestFile.size_bytes / 1048576).toFixed(0)} MB</span>
-                </>
-              ) : (
-                t('noFiles')
-              )}
-            </div>
-          </div>
-        </div>
-        <span className="text-caption font-medium uppercase text-foreground-tertiary">
-          {latestFile !== undefined ? latestFile.file_type.toUpperCase() : '—'}
-        </span>
-        <span className="text-center font-sans text-body3 font-semibold tabular-nums">{files.length}</span>
-        <span className="text-caption text-foreground-tertiary whitespace-nowrap">
-          {latestFile !== undefined ? formatRelativeTime(latestFile.updated_at, t) : '—'}
-        </span>
-        <div className="flex justify-end gap-1.5">
-          {!isOpen ? (
-            <>
-              {isViewable && latestFile !== undefined ? (
-                <Link
-                  href={viewHref}
-                  onClick={(e) => { e.stopPropagation(); }}
-                  onMouseEnter={prewarmViewer}
-                  onFocus={prewarmViewer}
-                  title={t('viewFile')}
-                  className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  onClick={(e) => { e.stopPropagation(); }}
-                  title={t('noViewableFile')}
-                  className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                </button>
-              )}
+        }
+        actions={
+          <>
+            {isViewable && latestFile !== undefined ? (
+              <Link
+                href={viewHref}
+                onClick={(e) => { e.stopPropagation(); }}
+                onMouseEnter={prewarmViewer}
+                onFocus={prewarmViewer}
+                title={t('viewFile')}
+                className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Link>
+            ) : (
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
-                title={t('uploadFile')}
-                className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary"
+                disabled
+                aria-disabled="true"
+                onClick={(e) => { e.stopPropagation(); }}
+                title={t('noViewableFile')}
+                className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Upload className="h-3.5 w-3.5" />
+                <Eye className="h-3.5 w-3.5" />
               </button>
-              {canCheckBbl ? (
-                <button
-                  type="button"
-                  disabled={complianceMutation.isPending}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (latestFile !== undefined) {
-                      complianceMutation.mutate({ fileId: latestFile.id });
-                    }
-                  }}
-                  title={t('checkBbl')}
-                  className="inline-grid h-7 w-7 place-items-center rounded-md border border-border bg-transparent text-foreground-secondary transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {complianceMutation.isPending ? (
-                    <Spinner size="sm" className="text-current" />
-                  ) : (
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                  )}
-                </button>
-              ) : null}
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
+              title={t('uploadFile')}
+              className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+            >
+              <Upload className="h-3.5 w-3.5" />
+            </button>
+          </>
+        }
+      >
+        <div className="truncate text-body3 font-semibold leading-tight text-foreground">
+          {model.name}
+        </div>
+        <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
+          {latestFile !== undefined ? (
+            <>
+              <FileTypePill fileType={latestFile.file_type} schema={latestFile.ifc_schema} />
+              <span className="truncate">{latestFile.original_filename}</span>
+              <span className="shrink-0">·</span>
+              <span className="shrink-0">{(latestFile.size_bytes / 1048576).toFixed(0)} MB</span>
             </>
           ) : (
-            null
+            <span>{t('noFiles')}</span>
+          )}
+          <span className="shrink-0">·</span>
+          <span className="shrink-0">{files.length} {files.length === 1 ? 'version' : 'versions'}</span>
+          {latestFile !== undefined && (
+            <>
+              <span className="shrink-0">·</span>
+              <span className="shrink-0">{formatRelativeTime(latestFile.updated_at, t)}</span>
+            </>
           )}
         </div>
-      </div>
+      </DetailCardRow>
 
-      {/* Expanded section */}
-      {isOpen && (
-        <div className="border-l-[3px] border-l-primary bg-primary-lighter px-4 pb-4 pl-9 pt-2 dark:bg-foreground/[0.03]">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <span className="text-micro font-bold uppercase tracking-[0.12em] text-primary">
-              {t('versionHistory', { count: files.length })}
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {isViewable && latestFile !== undefined ? (
-                <Link
-                  href={viewHref}
-                  onClick={(e) => { e.stopPropagation(); }}
-                  onMouseEnter={prewarmViewer}
-                  onFocus={prewarmViewer}
-                >
-                  <Button variant="border" size="sm">
-                    <Eye className="mr-1.5 h-3 w-3" />
-                    {t('view')}
-                  </Button>
-                </Link>
-              ) : latestFile !== undefined ? (
-                <Button variant="border" size="sm" disabled>
-                  <Eye className="mr-1.5 h-3 w-3" />
-                  {t('view')}
-                </Button>
-              ) : null}
-              <Button
-                variant="border"
-                size="sm"
-                onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
-              >
-                <Upload className="mr-1.5 h-3 w-3" />
-                {t('upload')}
-              </Button>
-              {canCheckBbl && latestFile !== undefined ? (
-                <Button
-                  variant="border"
-                  size="sm"
-                  disabled={complianceMutation.isPending}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    complianceMutation.mutate({ fileId: latestFile.id });
-                  }}
-                >
-                  {complianceMutation.isPending ? (
-                    <Spinner size="sm" className="mr-1.5 text-current" />
-                  ) : (
-                    <ShieldCheck className="mr-1.5 h-3 w-3" />
-                  )}
-                  {t('checkBbl')}
-                </Button>
-              ) : null}
-              <Button variant="border" size="sm" className="text-error hover:border-error">
-                <Trash2 className="mr-1.5 h-3 w-3" />
-                {t('remove')}
-              </Button>
+      <DetailCardBody>
+        <div className="rounded-md border border-border bg-background">
+          {files.length === 0 ? (
+            <div className="px-3 py-4 text-center text-body3 text-foreground-tertiary">
+              {t('noVersionsUploaded')}
             </div>
-          </div>
-
-          <div className="rounded-md border border-border bg-background">
-            {files.length === 0 ? (
-              <div className="px-3 py-4 text-center text-body3 text-foreground-tertiary">
-                {t('noVersionsUploaded')}
-              </div>
-            ) : (
-              files.map((f: ProjectFile, i: number) => {
-                const isLatest = i === 0;
-                const ext = fileExt(f.original_filename);
-                return (
-                  <div
-                    key={f.id}
-                    className={`grid grid-cols-[110px_1fr] items-center px-3 py-1.5 text-body3 ${
-                      i < files.length - 1 ? 'border-b border-border' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 font-sans font-bold">
-                      <span className={isLatest ? 'text-primary' : 'text-foreground'}>
-                        v{String(f.version_number).padStart(2, '0')}{ext}
+          ) : (
+            files.map((f: ProjectFile, i: number) => {
+              const isLatest = i === 0;
+              const ext = fileExt(f.original_filename);
+              return (
+                <div
+                  key={f.id}
+                  className={`grid grid-cols-[110px_1fr] items-center px-3 py-1.5 text-body3 ${
+                    i < files.length - 1 ? 'border-b border-border' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-sans font-bold">
+                    <span className={isLatest ? 'text-primary' : 'text-foreground'}>
+                      v{String(f.version_number).padStart(2, '0')}{ext}
+                    </span>
+                    {isLatest && (
+                      <span className="rounded-sm bg-primary px-1.5 py-px text-caption font-bold text-primary-foreground">
+                        {t('latest')}
                       </span>
-                      {isLatest && (
-                        <span className="rounded-sm bg-primary px-1.5 py-px text-caption font-bold text-primary-foreground">
-                          {t('latest')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-caption text-foreground-tertiary">
-                      <FileTypePill fileType={f.file_type} schema={f.ifc_schema} />
-                      <span className="truncate">{f.original_filename} · {(f.size_bytes / 1048576).toFixed(0)} MB</span>
-                    </div>
+                    )}
                   </div>
-                );
-              })
-            )}
-          </div>
+                  <div className="flex items-center gap-1.5 text-caption text-foreground-tertiary">
+                    <FileTypePill fileType={f.file_type} schema={f.ifc_schema} />
+                    <span className="truncate">{f.original_filename} · {(f.size_bytes / 1048576).toFixed(0)} MB</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
-      )}
-    </div>
+      </DetailCardBody>
+
+      <DetailCardFooter className="justify-between">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {isViewable && latestFile !== undefined ? (
+            <Link
+              href={viewHref}
+              onClick={(e) => { e.stopPropagation(); }}
+              onMouseEnter={prewarmViewer}
+              onFocus={prewarmViewer}
+            >
+              <Button variant="ghost" size="sm">
+                <Eye className="h-3.5 w-3.5" />
+                {t('view')}
+              </Button>
+            </Link>
+          ) : latestFile !== undefined ? (
+            <Button variant="ghost" size="sm" disabled>
+              <Eye className="h-3.5 w-3.5" />
+              {t('view')}
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            {t('upload')}
+          </Button>
+          {canCheckBbl && latestFile !== undefined ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={complianceMutation.isPending}
+              onClick={(e) => {
+                e.stopPropagation();
+                complianceMutation.mutate({ fileId: latestFile.id });
+              }}
+            >
+              {complianceMutation.isPending ? (
+                <Spinner size="sm" className="text-current" />
+              ) : (
+                <ShieldCheck className="h-3.5 w-3.5" />
+              )}
+              {t('checkBbl')}
+            </Button>
+          ) : null}
+        </div>
+        <Button variant="ghost" size="sm" className="text-error hover:text-error">
+          <Trash2 className="h-3.5 w-3.5" />
+          {t('remove')}
+        </Button>
+      </DetailCardFooter>
+    </DetailCard>
   );
 }

@@ -20,15 +20,17 @@ export function useAttachments(
 
 export function useElementAttachments(
   projectId: string,
-  fileId: string,
+  modelId: string,
   globalId: string | null,
 ): UseQueryResult<AttachmentList> {
   return useAuthQuery({
-    queryKey: elementAttachmentsKey(projectId, fileId, globalId ?? ''),
+    queryKey: elementAttachmentsKey(projectId, modelId, globalId ?? ''),
     queryFn: (accessToken) => {
       if (globalId === null) throw new Error('Missing globalId');
+      // Version-independent identity: (model, GlobalId), so an attachment
+      // follows the element across re-uploaded file versions.
       return listAttachments(accessToken, projectId, {
-        linkedFileId: fileId,
+        linkedModelId: modelId,
         linkedElementGlobalId: globalId,
       });
     },

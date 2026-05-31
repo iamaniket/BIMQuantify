@@ -15,7 +15,6 @@ export type DossierCategory = {
 type Props = {
   pct: number;
   categories: DossierCategory[];
-  size?: number;
 };
 
 function centerColor(pct: number): string {
@@ -26,7 +25,7 @@ function centerColor(pct: number): string {
 
 type SliceDatum = { name: string; value: number; index: number };
 
-export function DossierDonut({ pct, categories, size = 200 }: Props): JSX.Element {
+export function DossierDonut({ pct, categories }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.chartsPanel');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -44,12 +43,11 @@ export function DossierDonut({ pct, categories, size = 200 }: Props): JSX.Elemen
   const active = activeIndex !== null ? categories[activeIndex] : null;
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex h-full w-full flex-col items-center gap-3">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="relative outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
-        style={{ width: size, height: size }}
+        className="relative aspect-square w-full max-h-full outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
         aria-expanded={expanded}
         aria-label={t('dossierTitle')}
       >

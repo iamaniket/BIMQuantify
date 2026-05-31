@@ -103,4 +103,12 @@ export type { SplitButtonProps, SplitButtonItem } from './SplitButton.js';
 export {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from './Table.js';
+export {
+  DetailCard, DetailCardRow, DetailCardBody, DetailCardFooter,
+} from './DetailCard.js';
+export type {
+  DetailCardProps, DetailCardRowProps, DetailCardBodyProps, DetailCardFooterProps,
+} from './DetailCard.js';
+export { MetaGrid } from './MetaGrid.js';
+export type { MetaGridProps, MetaGridEntry } from './MetaGrid.js';
 

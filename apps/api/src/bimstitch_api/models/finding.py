@@ -100,6 +100,16 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
         ForeignKey("borgingsmomenten.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Version-independent element identity (#N9): findings attach to an IFC
+    # element by (model, GlobalId), not to one file version. `linked_file_id`
+    # below stays as provenance — "first raised on this version" — while
+    # `linked_model_id` is what the element panels query so a finding follows
+    # the element across re-uploaded versions. Mirrors Attachment/Certificate.
+    linked_model_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("models.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     linked_file_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("project_files.id", ondelete="SET NULL"),
@@ -120,4 +130,13 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
     __table_args__ = (
         Index("ix_findings_project_id", "project_id"),
         Index("ix_findings_project_status", "project_id", "status"),
+        # Drives the version-independent element lookup
+        # (?linked_model_id=&linked_element_global_id=). Partial so only
+        # element-linked findings are indexed. Mirrors ix_attachments_linked_element.
+        Index(
+            "ix_findings_linked_element",
+            "linked_model_id",
+            "linked_element_global_id",
+            postgresql_where="linked_model_id IS NOT NULL AND linked_element_global_id IS NOT NULL",
+        ),
     )

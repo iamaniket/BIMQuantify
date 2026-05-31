@@ -8,17 +8,20 @@ import { useEffect, useState, type JSX } from 'react';
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { PanelTabs, type TabDef } from '@/components/shared/viewer/PanelTabs';
 import { useProjectAttachmentCount } from '@/features/attachments/useAttachments';
+import { useProjectCertificateCount } from '@/features/certificates/useCertificates';
 import { useProjectFindingCount } from '@/features/findings/useFindings';
 import { ElementHeader } from '@/features/viewer/properties/ElementHeader';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { EntityAttachmentsBody, useEntityAttachmentCount } from './EntityAttachmentsBody';
+import { EntityCertificatesBody, useEntityCertificateCount } from './EntityCertificatesBody';
 import { EntityFindingsBody, useEntityFindingCount } from './EntityFindingsBody';
+import { OrphanedItemsNotice } from './OrphanedItemsNotice';
 import { PdfAttachmentsBody } from './PdfAttachmentsBody';
 import { useSelectedElement } from './useSelectedElement';
 
-type Tab = 'attachments' | 'findings';
+type Tab = 'attachments' | 'findings' | 'certificates';
 
 type EntityInspectorPanelProps = {
   metadata: ModelMetadata | undefined;
@@ -76,16 +79,22 @@ function IfcInspector({
 
   const attachmentCount = useEntityAttachmentCount(
     projectId,
-    fileId,
+    modelId,
     element?.globalId ?? null,
   );
   const findingCount = useEntityFindingCount(
     projectId,
-    fileId,
+    modelId,
+    element?.globalId ?? null,
+  );
+  const certificateCount = useEntityCertificateCount(
+    projectId,
+    modelId,
     element?.globalId ?? null,
   );
   const projectAttachmentCount = useProjectAttachmentCount(projectId, isProjectMode);
   const projectFindingCount = useProjectFindingCount(projectId, isProjectMode);
+  const projectCertificateCount = useProjectCertificateCount(projectId, isProjectMode);
 
   if (selectedAll) {
     const storeTotalElements = useViewerEntityStore.getState().totalElements;
@@ -118,6 +127,11 @@ function IfcInspector({
       label: t('tabFindings'),
       count: isProjectMode ? projectFindingCount : findingCount,
     },
+    {
+      id: 'certificates',
+      label: t('tabCertificates'),
+      count: isProjectMode ? projectCertificateCount : certificateCount,
+    },
   ];
 
   let header: JSX.Element;
@@ -138,9 +152,18 @@ function IfcInspector({
           globalId={null}
           autoOpenNonce={autoOpenNonce}
         />
-      ) : (
+      ) : tab === 'findings' ? (
         <EntityFindingsBody
           projectId={projectId}
+          modelId={modelId}
+          fileId={fileId}
+          globalId={null}
+          autoOpenNonce={autoOpenNonce}
+        />
+      ) : (
+        <EntityCertificatesBody
+          projectId={projectId}
+          modelId={modelId}
           fileId={fileId}
           globalId={null}
           autoOpenNonce={autoOpenNonce}
@@ -159,9 +182,18 @@ function IfcInspector({
           globalId={element.globalId}
           autoOpenNonce={autoOpenNonce}
         />
-      ) : (
+      ) : tab === 'findings' ? (
         <EntityFindingsBody
           projectId={projectId}
+          modelId={modelId}
+          fileId={fileId}
+          globalId={element.globalId}
+          autoOpenNonce={autoOpenNonce}
+        />
+      ) : (
+        <EntityCertificatesBody
+          projectId={projectId}
+          modelId={modelId}
           fileId={fileId}
           globalId={element.globalId}
           autoOpenNonce={autoOpenNonce}
@@ -176,6 +208,9 @@ function IfcInspector({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {header}
+      {isProjectMode ? (
+        <OrphanedItemsNotice projectId={projectId} modelId={modelId} metadata={metadata} />
+      ) : null}
       <PanelTabs tabs={tabs} active={tab} onChange={setTab} />
       <div className="min-h-0 flex-1 overflow-hidden">{body}</div>
     </div>

@@ -60,6 +60,7 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     created_by_user_id: '33333333-3333-3333-3333-333333333333',
     source_checklist_item_id: null,
     borgingsmoment_id: null,
+    linked_model_id: null,
     linked_file_id: null,
     linked_element_global_id: null,
     photo_ids: null,

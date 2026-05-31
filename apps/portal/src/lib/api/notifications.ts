@@ -40,3 +40,14 @@ export async function markAllNotificationsRead(
 ): Promise<void> {
   return apiClient.postNoContent('/notifications/mark-all-read', accessToken);
 }
+
+export async function dismissNotification(
+  accessToken: string,
+  notificationId: string,
+): Promise<void> {
+  return apiClient.postNoContent(`/notifications/${notificationId}/dismiss`, accessToken);
+}
+
+export async function clearNotifications(accessToken: string): Promise<void> {
+  return apiClient.postNoContent('/notifications/clear', accessToken);
+}

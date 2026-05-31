@@ -226,7 +226,7 @@ export function FindingDetailModal({
   const handleUnlink = (): void => {
     updateMutation.mutate({
       findingId: finding.id,
-      input: { linked_file_id: null, linked_element_global_id: null },
+      input: { linked_model_id: null, linked_file_id: null, linked_element_global_id: null },
     });
   };
 

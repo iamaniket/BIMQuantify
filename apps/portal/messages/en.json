@@ -887,7 +887,18 @@
           "valid": "Valid",
           "expiring": "Expiring soon",
           "expired": "Expired"
-        }
+        },
+        "expandedType": "TYPE",
+        "expandedIssuer": "ISSUER",
+        "expandedNumber": "NUMBER",
+        "expandedValidFrom": "VALID FROM",
+        "expandedValidUntil": "VALID UNTIL",
+        "expandedDescription": "DESCRIPTION",
+        "expandedAdded": "ADDED",
+        "expandedRemove": "Remove",
+        "rowView": "View",
+        "rowExpand": "Expand",
+        "rowCollapse": "Collapse"
       },
       "deadlines": {
         "label": "Deadlines",
@@ -1019,6 +1030,24 @@
       "add": "Add",
       "remove": "Remove photo",
       "uploadError": "Could not upload {name}"
+    },
+    "expanded": {
+      "status": "STATUS",
+      "severity": "SEVERITY",
+      "assignee": "ASSIGNEE",
+      "deadline": "DEADLINE",
+      "bblRef": "BBL REF",
+      "photos": "PHOTOS",
+      "linkedElement": "LINKED",
+      "created": "CREATED",
+      "updated": "UPDATED",
+      "noAssignee": "Unassigned",
+      "photoCount": "{count, plural, =0 {None} one {1 photo} other {# photos}}",
+      "linkedYes": "Linked to element",
+      "view": "View",
+      "openDetail": "Open detail",
+      "delete": "Delete",
+      "promote": "Promote"
     }
   },
   "reports": {
@@ -2176,6 +2205,7 @@
       "inspectProperties": "Inspect Properties",
       "attach": "Attach",
       "addFindings": "Add Findings",
+      "viewCertificates": "Certificates",
       "showAll": "Show All",
       "hideAll": "Hide All",
       "hide": "Hide",
@@ -2191,6 +2221,7 @@
     "panelTitle": "Attachments & Findings",
     "tabAttachments": "Attachments",
     "tabFindings": "Findings",
+    "tabCertificates": "Certificates",
     "pdfPageHeader": "Page {page}",
     "messages": {
       "allSelected": "All {count, number} elements selected. Select a single element to inspect it.",
@@ -2206,6 +2237,20 @@
     "loading": "Loading findings…",
     "emptyNoItems": "No findings linked to this element yet.",
     "emptyProjectEmpty": "No project-level findings."
+  },
+  "viewerCertificates": {
+    "filterPlaceholder": "Search certificates…",
+    "uploadButton": "Upload",
+    "loading": "Loading certificates…",
+    "emptyNoItems": "No certificates linked to this element yet.",
+    "emptyProjectEmpty": "No project-level certificates."
+  },
+  "viewerOrphans": {
+    "title": "Not in this version",
+    "summary": "{count, plural, one {# linked item references an element not in this version.} other {# linked items reference elements not in this version.}}",
+    "kindFinding": "Finding",
+    "kindCertificate": "Certificate",
+    "kindAttachment": "Attachment"
   },
   "viewerModelInfo": {
     "loading": "Loading model info…",
@@ -2298,6 +2343,8 @@
     "allCaughtUp": "You're all caught up.",
     "summary": "{unread} unread · {total} total",
     "markAllRead": "Mark all read",
+    "clearAll": "Clear all",
+    "dismiss": "Dismiss",
     "justNow": "just now",
     "minutesAgo": "{count} min ago",
     "hoursAgo": "{count}h ago",

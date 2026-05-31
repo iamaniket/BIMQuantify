@@ -73,3 +73,136 @@ async def test_unread_count_cached_and_invalidated_on_mark_all_read(
     after = await client.get("/notifications/unread-count", headers=_auth(token))
     assert after.status_code == 200, after.text
     assert after.json()["count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Per-user dismiss / clear
+#
+# Notifications are org-shared (no `user_id` column); dismissal must be
+# per-user, mirroring read state. Dismissing hides the row for the caller
+# only — teammates still see it — and never hard-deletes the shared row.
+# ---------------------------------------------------------------------------
+
+
+async def _list_notifications(client: AsyncClient, token: str) -> dict:
+    resp = await client.get("/notifications", headers=_auth(token))
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+async def test_dismiss_hides_notification_for_caller_only(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _emit_finding_notification(client, token, project["id"], org_user["id"])
+
+    # Both members of the org see the same notification row.
+    owner_feed = await _list_notifications(client, token)
+    assert owner_feed["total"] == 1
+    assert owner_feed["unread_count"] == 1
+    notif_id = owner_feed["items"][0]["id"]
+
+    other_token = same_org_user["access_token"]
+    other_before = await _list_notifications(client, other_token)
+    assert any(n["id"] == notif_id for n in other_before["items"])
+
+    # Owner dismisses it.
+    resp = await client.post(f"/notifications/{notif_id}/dismiss", headers=_auth(token))
+    assert resp.status_code == 204, resp.text
+
+    # Gone from the owner's feed and both counts...
+    owner_after = await _list_notifications(client, token)
+    assert all(n["id"] != notif_id for n in owner_after["items"])
+    assert owner_after["total"] == 0
+    assert owner_after["unread_count"] == 0
+
+    # ...but the teammate is unaffected (per-user dismissal, not a hard delete).
+    other_after = await _list_notifications(client, other_token)
+    assert any(n["id"] == notif_id for n in other_after["items"])
+    assert other_after["total"] == other_before["total"]
+
+
+async def test_dismiss_is_idempotent(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _emit_finding_notification(client, token, project["id"], org_user["id"])
+    notif_id = (await _list_notifications(client, token))["items"][0]["id"]
+
+    first = await client.post(f"/notifications/{notif_id}/dismiss", headers=_auth(token))
+    assert first.status_code == 204, first.text
+    second = await client.post(f"/notifications/{notif_id}/dismiss", headers=_auth(token))
+    assert second.status_code == 204, second.text
+
+    assert (await _list_notifications(client, token))["total"] == 0
+
+
+async def test_dismiss_unknown_id_returns_404(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    from uuid import uuid4
+
+    resp = await client.post(
+        f"/notifications/{uuid4()}/dismiss", headers=_auth(org_user["access_token"])
+    )
+    assert resp.status_code == 404, resp.text
+
+
+async def test_clear_empties_caller_feed_only(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    # Two notifications: one will be read, one left unread — clear must drop both.
+    await _emit_finding_notification(client, token, project["id"], org_user["id"])
+    await _emit_finding_notification(client, token, project["id"], org_user["id"])
+
+    feed = await _list_notifications(client, token)
+    assert feed["total"] == 2
+    read_one = feed["items"][0]["id"]
+    marked = await client.patch(f"/notifications/{read_one}/read", headers=_auth(token))
+    assert marked.status_code == 204, marked.text
+
+    cleared = await client.post("/notifications/clear", headers=_auth(token))
+    assert cleared.status_code == 204, cleared.text
+
+    owner_after = await _list_notifications(client, token)
+    assert owner_after["total"] == 0
+    assert owner_after["unread_count"] == 0
+
+    # The teammate still has both notifications.
+    other_after = await _list_notifications(client, same_org_user["access_token"])
+    assert other_after["total"] == 2
+
+
+async def test_dismiss_invalidates_unread_count_cache(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    redis_client: Redis,
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _emit_finding_notification(client, token, project["id"], org_user["id"])
+
+    # Populate the per-(org, user) cache key.
+    first = await client.get("/notifications/unread-count", headers=_auth(token))
+    assert first.status_code == 200, first.text
+    assert first.json()["count"] == 1
+    assert len(await redis_client.keys("notif:unread:*")) == 1
+
+    notif_id = (await _list_notifications(client, token))["items"][0]["id"]
+    resp = await client.post(f"/notifications/{notif_id}/dismiss", headers=_auth(token))
+    assert resp.status_code == 204, resp.text
+
+    # Dismiss dropped the cache key; the recomputed count is fresh (0).
+    assert await redis_client.keys("notif:unread:*") == []
+    after = await client.get("/notifications/unread-count", headers=_auth(token))
+    assert after.json()["count"] == 0

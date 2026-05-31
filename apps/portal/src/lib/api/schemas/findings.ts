@@ -27,6 +27,7 @@ export const FindingSchema = z.object({
   created_by_user_id: z.string().uuid(),
   source_checklist_item_id: z.union([z.string().uuid(), z.null()]),
   borgingsmoment_id: z.union([z.string().uuid(), z.null()]),
+  linked_model_id: z.union([z.string().uuid(), z.null()]),
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   linked_element_global_id: z.union([z.string(), z.null()]),
   photo_ids: z.union([z.array(z.string()), z.null()]),
@@ -48,6 +49,9 @@ export const FindingCreateSchema = z.object({
   severity: FindingSeverityEnum,
   bbl_article_ref: z
     .union([z.string().max(50), z.null()])
+    .optional(),
+  linked_model_id: z
+    .union([z.string().uuid(), z.null()])
     .optional(),
   linked_file_id: z
     .union([z.string().uuid(), z.null()])
@@ -83,6 +87,9 @@ export const FindingUpdateSchema = z.object({
     .optional(),
   deadline_date: z
     .union([z.string(), z.null()])
+    .optional(),
+  linked_model_id: z
+    .union([z.string().uuid(), z.null()])
     .optional(),
   linked_file_id: z
     .union([z.string().uuid(), z.null()])

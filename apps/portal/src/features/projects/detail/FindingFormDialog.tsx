@@ -42,7 +42,10 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // When opened from the viewer (#49) the new finding is pre-linked to the
-  // selected IFC element so it round-trips to the 3D model.
+  // selected IFC element so it round-trips to the 3D model. `linkedModelId` is
+  // the version-independent identity (finding follows the element across
+  // versions); `linkedFileId` records which version it was raised on.
+  linkedModelId?: string | null;
   linkedFileId?: string | null;
   linkedElementGlobalId?: string | null;
 };
@@ -51,6 +54,7 @@ export function FindingFormDialog({
   projectId,
   open,
   onOpenChange,
+  linkedModelId,
   linkedFileId,
   linkedElementGlobalId,
 }: Props): JSX.Element {
@@ -90,6 +94,7 @@ export function FindingFormDialog({
           values.bbl_article_ref === undefined || values.bbl_article_ref === ''
             ? null
             : values.bbl_article_ref.trim(),
+        linked_model_id: linkedModelId === undefined ? null : linkedModelId,
         linked_file_id: linkedFileId === undefined ? null : linkedFileId,
         linked_element_global_id:
           linkedElementGlobalId === undefined ? null : linkedElementGlobalId,

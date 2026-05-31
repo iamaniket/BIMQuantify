@@ -30,6 +30,8 @@ if TYPE_CHECKING:
 # A 22-char IFC GlobalId for element-link tests (#49).
 ELEMENT_GLOBAL_ID = "3kF4p5c6m7N8o9P0q1rS2t"
 
+_file_counter = 0
+
 
 async def _create_ready_file(
     client: AsyncClient,
@@ -38,21 +40,29 @@ async def _create_ready_file(
     project_id: str,
     model_id: str,
 ) -> str:
-    """Create an IFC file through the two-phase upload. Returns file_id."""
-    sha = hashlib.sha256(VALID_IFC_HEADER).hexdigest()
+    """Create an IFC file through the two-phase upload. Returns file_id.
+
+    Content varies per call (counter suffix appended after the STEP header) so
+    several versions can be uploaded under one model without tripping the
+    content-sha dedup — needed by the cross-version element tests.
+    """
+    global _file_counter
+    _file_counter += 1
+    content = VALID_IFC_HEADER + f"\n{_file_counter}".encode()
+    sha = hashlib.sha256(content).hexdigest()
     init = (
         await client.post(
             f"/projects/{project_id}/models/{model_id}/files/initiate",
             json={
-                "filename": "elem.ifc",
-                "size_bytes": len(VALID_IFC_HEADER),
+                "filename": f"elem-{_file_counter}.ifc",
+                "size_bytes": len(content),
                 "content_type": "application/octet-stream",
                 "content_sha256": sha,
             },
             headers=_auth(token),
         )
     ).json()
-    fake.objects[init["storage_key"]] = VALID_IFC_HEADER
+    fake.objects[init["storage_key"]] = content
     complete = await client.post(
         f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
         headers=_auth(token),
@@ -1171,3 +1181,53 @@ async def test_list_findings_filter_unlinked(
     )
     assert unlinked.status_code == 200, unlinked.text
     assert [f["title"] for f in unlinked.json()] == ["project-level-one"]
+
+
+async def test_finding_follows_element_across_versions(
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    org_user: dict[str, str],
+) -> None:
+    """A finding attached to an element on file v1 is found by the
+    version-independent (model + GlobalId) query, so it carries over when a new
+    version of the model is uploaded (#N9). `linked_file_id` stays as the
+    "raised on this version" provenance and no longer scopes the lookup."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    model = await _create_model(client, token, project["id"])
+    file_v1 = await _create_ready_file(client, fake, token, project["id"], model["id"])
+    file_v2 = await _create_ready_file(client, fake, token, project["id"], model["id"])
+
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings",
+            json=_payload(
+                linked_model_id=model["id"],
+                linked_file_id=file_v1,
+                linked_element_global_id=ELEMENT_GLOBAL_ID,
+            ),
+            headers=_auth(token),
+        )
+    ).json()
+    assert created["linked_model_id"] == model["id"]
+    assert created["linked_file_id"] == file_v1
+
+    # The viewer queries by model + GlobalId — returns the v1 finding regardless
+    # of which file version is open.
+    by_model = await client.get(
+        f"/projects/{project['id']}/findings"
+        f"?linked_model_id={model['id']}&linked_element_global_id={ELEMENT_GLOBAL_ID}",
+        headers=_auth(token),
+    )
+    assert by_model.status_code == 200, by_model.text
+    assert [f["id"] for f in by_model.json()] == [created["id"]]
+
+    # The old file-pinned query against v2 would NOT surface it — proving the
+    # carry-over comes from the model-level identity, not the file link.
+    by_v2_file = await client.get(
+        f"/projects/{project['id']}/findings"
+        f"?linked_file_id={file_v2}&linked_element_global_id={ELEMENT_GLOBAL_ID}",
+        headers=_auth(token),
+    )
+    assert by_v2_file.status_code == 200, by_v2_file.text
+    assert by_v2_file.json() == []

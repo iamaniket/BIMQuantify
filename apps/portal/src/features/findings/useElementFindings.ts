@@ -10,15 +10,17 @@ import { elementFindingsKey } from './queryKeys';
 
 export function useElementFindings(
   projectId: string,
-  fileId: string,
+  modelId: string,
   globalId: string | null,
 ): UseQueryResult<FindingList> {
   return useAuthQuery({
-    queryKey: elementFindingsKey(projectId, fileId, globalId ?? ''),
+    queryKey: elementFindingsKey(projectId, modelId, globalId ?? ''),
     queryFn: (accessToken) => {
       if (globalId === null) throw new Error('Missing globalId');
+      // Version-independent identity: (model, GlobalId). A finding raised on any
+      // version of the model surfaces here regardless of the open file version.
       return listFindings(accessToken, projectId, {
-        linkedFileId: fileId,
+        linkedModelId: modelId,
         linkedElementGlobalId: globalId,
       });
     },

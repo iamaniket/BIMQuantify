@@ -21,7 +21,10 @@ class FindingCreate(FindingBase):
     source_checklist_item_id: UUID | None = None
     borgingsmoment_id: UUID | None = None
     # Element link (#49): set when a finding is created against a specific IFC
-    # element in the viewer so it round-trips to the 3D model.
+    # element in the viewer so it round-trips to the 3D model. `linked_model_id`
+    # is the version-independent identity (the finding follows the element across
+    # versions); `linked_file_id` records which version it was first raised on.
+    linked_model_id: UUID | None = None
     linked_file_id: UUID | None = None
     linked_element_global_id: str | None = Field(default=None, max_length=255)
     # Attachment ids (photos) captured while logging the finding. Stored as a
@@ -42,7 +45,9 @@ class FindingUpdate(BaseModel):
     status: FindingStatus | None = None
     assignee_user_id: UUID | None = None
     deadline_date: date | None = None
-    # Element link (#49): PATCH to link/relink; send null to unlink.
+    # Element link (#49): PATCH to link/relink; send null to unlink. Re-mapping
+    # an orphaned finding (element absent from a new version) sets these.
+    linked_model_id: UUID | None = None
     linked_file_id: UUID | None = None
     linked_element_global_id: str | None = Field(default=None, max_length=255)
     # Replace the photo set (add/remove). Omit to leave unchanged.
@@ -62,6 +67,7 @@ class FindingRead(FindingBase):
     created_by_user_id: UUID
     source_checklist_item_id: UUID | None
     borgingsmoment_id: UUID | None
+    linked_model_id: UUID | None
     linked_file_id: UUID | None
     linked_element_global_id: str | None
     photo_ids: list[str] | None

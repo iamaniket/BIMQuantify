@@ -28,6 +28,11 @@ type Props = {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  linkedElementGlobalId?: string | null;
+  // Version-independent identity (cert follows the element across versions);
+  // linkedFileId records which version it was uploaded against.
+  linkedModelId?: string | null;
+  linkedFileId?: string | null;
 };
 
 const CERTIFICATE_TYPES: CertificateTypeValue[] = [
@@ -44,6 +49,9 @@ export function CertificateUploadDialog({
   projectId,
   open,
   onOpenChange,
+  linkedElementGlobalId,
+  linkedModelId,
+  linkedFileId,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.certificates');
   const uploadMutation = useUploadCertificate(projectId);
@@ -88,6 +96,9 @@ export function CertificateUploadDialog({
       valid_from: validFrom === '' ? null : validFrom,
       valid_until: validUntil === '' ? null : validUntil,
       description: description === '' ? null : description,
+      linked_element_global_id: linkedElementGlobalId ?? null,
+      linked_model_id: linkedModelId ?? null,
+      linked_file_id: linkedFileId ?? null,
     };
     uploadMutation.mutate(
       { file, metadata },
@@ -107,6 +118,9 @@ export function CertificateUploadDialog({
     validFrom,
     validUntil,
     description,
+    linkedElementGlobalId,
+    linkedModelId,
+    linkedFileId,
     uploadMutation,
     t,
     handleClose,

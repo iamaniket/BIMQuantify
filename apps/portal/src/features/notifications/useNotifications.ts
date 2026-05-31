@@ -3,6 +3,8 @@
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
 import {
+  clearNotifications,
+  dismissNotification,
   getUnreadCount,
   listNotifications,
   markAllNotificationsRead,
@@ -41,6 +43,21 @@ export function useMarkRead(): UseMutationResult<void, Error, string> {
 export function useMarkAllRead(): UseMutationResult<void, Error, void> {
   return useAuthMutation({
     mutationFn: (accessToken) => markAllNotificationsRead(accessToken),
+    invalidateKeys: [notificationsKey, unreadCountKey],
+  });
+}
+
+export function useDismiss(): UseMutationResult<void, Error, string> {
+  return useAuthMutation({
+    mutationFn: (accessToken, notificationId) =>
+      dismissNotification(accessToken, notificationId),
+    invalidateKeys: [notificationsKey, unreadCountKey],
+  });
+}
+
+export function useClearAll(): UseMutationResult<void, Error, void> {
+  return useAuthMutation({
+    mutationFn: (accessToken) => clearNotifications(accessToken),
     invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }

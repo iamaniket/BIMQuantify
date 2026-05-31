@@ -870,6 +870,51 @@ async def test_list_filters_by_element_and_file(
 
 
 @pytest.mark.asyncio
+async def test_attachment_follows_element_across_versions(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """An attachment on an element of file v1 is found by the version-independent
+    (model + GlobalId) query, so it carries over to a re-uploaded version (#N9).
+    `linked_file_id` stays as provenance and no longer scopes the lookup."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    gid = "0aB1cD2eF3gH4iJ5kL6mN7"
+    project = await _create_project(client, token)
+    model = await _create_model(client, token, project["id"])
+    file_v1 = await _create_ready_file(client, fake, token, project["id"], model["id"])
+    file_v2 = await _create_ready_file(client, fake, token, project["id"], model["id"])
+
+    att = await _initiate_att(
+        client, token, project["id"],
+        linked_model_id=model["id"],
+        linked_file_id=file_v1,
+        linked_element_global_id=gid,
+    )
+    completed = await _complete_att(client, fake, token, project["id"], att)
+    assert completed["linked_model_id"] == model["id"]
+
+    # The viewer queries by model + GlobalId — returns the v1 attachment
+    # regardless of which file version is open.
+    by_model = await client.get(
+        f"/projects/{project['id']}/attachments"
+        f"?linked_model_id={model['id']}&linked_element_global_id={gid}",
+        headers=_auth(token),
+    )
+    assert by_model.status_code == 200, by_model.text
+    assert [a["id"] for a in by_model.json()] == [completed["id"]]
+
+    # The old file-pinned query against v2 would NOT surface it.
+    by_v2_file = await client.get(
+        f"/projects/{project['id']}/attachments"
+        f"?linked_file_id={file_v2}&linked_element_global_id={gid}",
+        headers=_auth(token),
+    )
+    assert by_v2_file.status_code == 200, by_v2_file.text
+    assert by_v2_file.json() == []
+
+
+@pytest.mark.asyncio
 async def test_list_unlinked_filter(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],

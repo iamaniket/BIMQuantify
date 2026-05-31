@@ -887,7 +887,18 @@
           "valid": "Geldig",
           "expiring": "Verloopt binnenkort",
           "expired": "Verlopen"
-        }
+        },
+        "expandedType": "TYPE",
+        "expandedIssuer": "UITGEVER",
+        "expandedNumber": "NUMMER",
+        "expandedValidFrom": "GELDIG VANAF",
+        "expandedValidUntil": "GELDIG TOT",
+        "expandedDescription": "OMSCHRIJVING",
+        "expandedAdded": "TOEGEVOEGD",
+        "expandedRemove": "Verwijderen",
+        "rowView": "Bekijken",
+        "rowExpand": "Uitklappen",
+        "rowCollapse": "Inklappen"
       },
       "deadlines": {
         "label": "Deadlines",
@@ -1019,6 +1030,24 @@
       "add": "Toevoegen",
       "remove": "Foto verwijderen",
       "uploadError": "Kon {name} niet uploaden"
+    },
+    "expanded": {
+      "status": "STATUS",
+      "severity": "ERNST",
+      "assignee": "TOEGEWEZEN",
+      "deadline": "DEADLINE",
+      "bblRef": "BBL REF",
+      "photos": "FOTO'S",
+      "linkedElement": "GEKOPPELD",
+      "created": "AANGEMAAKT",
+      "updated": "BIJGEWERKT",
+      "noAssignee": "Niet toegewezen",
+      "photoCount": "{count, plural, =0 {Geen} one {1 foto} other {# foto's}}",
+      "linkedYes": "Gekoppeld aan element",
+      "view": "Bekijken",
+      "openDetail": "Detail openen",
+      "delete": "Verwijderen",
+      "promote": "Promoveren"
     }
   },
   "reports": {
@@ -2176,6 +2205,7 @@
       "inspectProperties": "Eigenschappen",
       "attach": "Bijlagen",
       "addFindings": "Bevindingen",
+      "viewCertificates": "Certificaten",
       "showAll": "Alles tonen",
       "hideAll": "Alles verbergen",
       "hide": "Verbergen",
@@ -2191,6 +2221,7 @@
     "panelTitle": "Bijlagen & Bevindingen",
     "tabAttachments": "Bijlagen",
     "tabFindings": "Bevindingen",
+    "tabCertificates": "Certificaten",
     "pdfPageHeader": "Pagina {page}",
     "messages": {
       "allSelected": "Alle {count, number} elementen geselecteerd. Selecteer één element om het te inspecteren.",
@@ -2206,6 +2237,20 @@
     "loading": "Bevindingen laden…",
     "emptyNoItems": "Nog geen bevindingen gekoppeld aan dit element.",
     "emptyProjectEmpty": "Geen bevindingen op projectniveau."
+  },
+  "viewerCertificates": {
+    "filterPlaceholder": "Certificaten zoeken…",
+    "uploadButton": "Uploaden",
+    "loading": "Certificaten laden…",
+    "emptyNoItems": "Nog geen certificaten gekoppeld aan dit element.",
+    "emptyProjectEmpty": "Geen certificaten op projectniveau."
+  },
+  "viewerOrphans": {
+    "title": "Niet in deze versie",
+    "summary": "{count, plural, one {# gekoppeld item verwijst naar een element dat niet in deze versie bestaat.} other {# gekoppelde items verwijzen naar elementen die niet in deze versie bestaan.}}",
+    "kindFinding": "Bevinding",
+    "kindCertificate": "Certificaat",
+    "kindAttachment": "Bijlage"
   },
   "viewerModelInfo": {
     "loading": "Modelinfo laden…",
@@ -2298,6 +2343,8 @@
     "allCaughtUp": "U bent helemaal bij.",
     "summary": "{unread} ongelezen · {total} totaal",
     "markAllRead": "Alles als gelezen markeren",
+    "clearAll": "Alles wissen",
+    "dismiss": "Verwijderen",
     "justNow": "zojuist",
     "minutesAgo": "{count} min geleden",
     "hoursAgo": "{count} u geleden",

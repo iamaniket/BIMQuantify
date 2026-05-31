@@ -1,17 +1,26 @@
 'use client';
 
-import { AlertTriangle, Plus, Search } from 'lucide-react';
+import { AlertTriangle, Eye, Plus, Search, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useState, type JSX } from 'react';
+import { useCallback, useState, type JSX } from 'react';
 
 import {
   Badge,
   Button,
   EmptyState,
+  MetaGrid,
   Skeleton,
 } from '@bimstitch/ui';
+import {
+  DetailCard,
+  DetailCardBody,
+  DetailCardFooter,
+  DetailCardRow,
+} from '@bimstitch/ui';
 
+import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useFindings } from '@/features/findings/useFindings';
+import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import type { Finding } from '@/lib/api/schemas';
 
 import { FindingDetailModal } from './FindingDetailModal';
@@ -22,14 +31,38 @@ type Props = {
   projectId: string;
 };
 
+function formatDate(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—';
+  return new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export function BevindingenTab({ projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.bevindingen');
   const tSeverity = useTranslations('findings.severity');
   const tStatus = useTranslations('findings.status');
+  const tExpanded = useTranslations('findings.expanded');
   const findingsQuery = useFindings(projectId);
+  const membersQuery = useProjectMembers(projectId);
+  const deleteMutation = useDeleteFinding(projectId);
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const members = membersQuery.data ?? [];
+
+  const getAssigneeName = useCallback(
+    (userId: string | null): string | null => {
+      if (userId === null) return null;
+      const member = members.find((m) => m.user_id === userId);
+      return member?.full_name ?? member?.email ?? null;
+    },
+    [members],
+  );
 
   const allFindings = findingsQuery.data ?? [];
   const findings = searchQuery === ''
@@ -42,6 +75,17 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
           (f.bbl_article_ref?.toLowerCase().includes(q) ?? false)
         );
       });
+
+  const handleDelete = useCallback(
+    (finding: Finding) => {
+      deleteMutation.mutate(finding.id, {
+        onSuccess: () => {
+          if (expandedId === finding.id) setExpandedId(null);
+        },
+      });
+    },
+    [deleteMutation, expandedId],
+  );
 
   if (findingsQuery.isLoading) {
     return (
@@ -104,33 +148,117 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
           {t('noResults')}
         </p>
       ) : (
-      <div className="rounded-lg border border-border bg-background">
-        {findings.map((finding, idx) => (
-          <button
-            key={finding.id}
-            type="button"
-            onClick={() => { setSelected(finding); }}
-            className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-background-hover ${
-              idx > 0 ? 'border-t border-border' : ''
-            }`}
-          >
-            <Badge variant={severityBadgeVariant(finding.severity)} className="w-fit shrink-0">
-              {tSeverity(finding.severity)}
-            </Badge>
-            <span className="min-w-0 flex-1 truncate text-body3 font-medium text-foreground">
-              {finding.title}
-            </span>
-            {finding.deadline_date !== null && (
-              <span className="shrink-0 text-caption tabular-nums text-foreground-tertiary">
-                {new Date(finding.deadline_date).toLocaleDateString()}
-              </span>
-            )}
-            <Badge variant={statusBadgeVariant(finding.status)} className="w-fit shrink-0">
-              {tStatus(finding.status)}
-            </Badge>
-          </button>
-        ))}
-      </div>
+        <div className="overflow-hidden rounded-lg border border-border bg-background">
+          {findings.map((finding) => {
+            const isExpanded = expandedId === finding.id;
+            const assigneeName = getAssigneeName(finding.assignee_user_id);
+
+            const entries: Array<{ label: string; value: string }> = [
+              { label: tExpanded('status'), value: tStatus(finding.status) },
+              { label: tExpanded('severity'), value: tSeverity(finding.severity) },
+              { label: tExpanded('assignee'), value: assigneeName ?? tExpanded('noAssignee') },
+            ];
+            if (finding.deadline_date !== null) {
+              entries.push({ label: tExpanded('deadline'), value: formatDate(finding.deadline_date) });
+            }
+            if (finding.bbl_article_ref !== null && finding.bbl_article_ref !== '') {
+              entries.push({ label: tExpanded('bblRef'), value: finding.bbl_article_ref });
+            }
+            if (finding.photo_ids !== null && finding.photo_ids.length > 0) {
+              entries.push({ label: tExpanded('photos'), value: tExpanded('photoCount', { count: finding.photo_ids.length }) });
+            }
+            if (finding.linked_element_global_id !== null) {
+              entries.push({ label: tExpanded('linkedElement'), value: tExpanded('linkedYes') });
+            }
+            entries.push({ label: tExpanded('created'), value: formatDate(finding.created_at) });
+            if (finding.updated_at !== finding.created_at) {
+              entries.push({ label: tExpanded('updated'), value: formatDate(finding.updated_at) });
+            }
+
+            return (
+              <DetailCard
+                key={finding.id}
+                expanded={isExpanded}
+                onToggle={() => { setExpandedId(isExpanded ? null : finding.id); }}
+              >
+                <DetailCardRow
+                  media={
+                    <Badge variant={severityBadgeVariant(finding.severity)} className="w-fit shrink-0">
+                      {tSeverity(finding.severity)}
+                    </Badge>
+                  }
+                  actions={
+                    <button
+                      type="button"
+                      title={tExpanded('view')}
+                      onClick={(e) => { e.stopPropagation(); setSelected(finding); }}
+                      className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                  }
+                >
+                  <div className="truncate text-body3 font-semibold leading-tight text-foreground">
+                    {finding.title}
+                  </div>
+                  <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
+                    {assigneeName !== null && (
+                      <>
+                        <span className="truncate">{assigneeName}</span>
+                        <span className="shrink-0">·</span>
+                      </>
+                    )}
+                    {finding.deadline_date !== null && (
+                      <>
+                        <span className="shrink-0">{formatDate(finding.deadline_date)}</span>
+                        <span className="shrink-0">·</span>
+                      </>
+                    )}
+                    {finding.bbl_article_ref !== null && finding.bbl_article_ref !== '' && (
+                      <>
+                        <span className="shrink-0">{finding.bbl_article_ref}</span>
+                        <span className="shrink-0">·</span>
+                      </>
+                    )}
+                    <Badge variant={statusBadgeVariant(finding.status)} size="sm" className="w-fit shrink-0">
+                      {tStatus(finding.status)}
+                    </Badge>
+                  </div>
+                </DetailCardRow>
+
+                <DetailCardBody>
+                  {finding.description !== '' && (
+                    <div className="whitespace-pre-wrap border-b border-dashed border-border py-2.5 text-body3 leading-snug text-foreground-secondary">
+                      {finding.description}
+                    </div>
+                  )}
+                  <MetaGrid entries={entries} />
+                </DetailCardBody>
+
+                <DetailCardFooter className="justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setSelected(finding); }}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    {tExpanded('view')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { handleDelete(finding); }}
+                    disabled={deleteMutation.isPending}
+                    className="text-error hover:text-error"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {tExpanded('delete')}
+                  </Button>
+                </DetailCardFooter>
+              </DetailCard>
+            );
+          })}
+        </div>
       )}
 
       <FindingFormDialog

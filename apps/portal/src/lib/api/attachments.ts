@@ -69,6 +69,7 @@ export async function listAttachments(
   filters?: {
     category?: AttachmentCategoryValue;
     linkedElementGlobalId?: string;
+    linkedModelId?: string;
     linkedFileId?: string;
     unlinked?: boolean;
     linkedPointType?: string;
@@ -78,6 +79,7 @@ export async function listAttachments(
   const params = new URLSearchParams();
   if (filters?.category !== undefined) params.set('category', filters.category);
   if (filters?.linkedElementGlobalId !== undefined) params.set('linked_element_global_id', filters.linkedElementGlobalId);
+  if (filters?.linkedModelId !== undefined) params.set('linked_model_id', filters.linkedModelId);
   if (filters?.linkedFileId !== undefined) params.set('linked_file_id', filters.linkedFileId);
   if (filters?.unlinked === true) params.set('unlinked', 'true');
   if (filters?.linkedPointType !== undefined) params.set('linked_point_type', filters.linkedPointType);

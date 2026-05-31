@@ -140,7 +140,7 @@ export default function ViewerPage(): JSX.Element {
   const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
 
   const [inspectorRequest, setInspectorRequest] = useState<{
-    view: 'attachments' | 'findings';
+    view: 'attachments' | 'findings' | 'certificates';
     nonce: number;
   } | null>(null);
   const [propertiesExpanded, setPropertiesExpanded] = useState(true);

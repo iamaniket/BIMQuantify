@@ -277,7 +277,9 @@ async def list_certificates(
     response: Response,
     certificate_type: Annotated[CertificateType | None, Query()] = None,
     linked_element_global_id: Annotated[str | None, Query(max_length=22)] = None,
+    linked_model_id: Annotated[UUID | None, Query()] = None,
     linked_file_id: Annotated[UUID | None, Query()] = None,
+    unlinked: Annotated[bool, Query()] = False,
     expiring_before: Annotated[date | None, Query()] = None,
     expired: Annotated[bool, Query()] = False,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
@@ -298,8 +300,14 @@ async def list_certificates(
         base = base.where(Certificate.certificate_type == certificate_type)
     if linked_element_global_id is not None:
         base = base.where(Certificate.linked_element_global_id == linked_element_global_id)
+    # Version-independent identity (model + GlobalId): a certificate attached to
+    # an element shows on every version of the model that still contains it.
+    if linked_model_id is not None:
+        base = base.where(Certificate.linked_model_id == linked_model_id)
     if linked_file_id is not None:
         base = base.where(Certificate.linked_file_id == linked_file_id)
+    if unlinked:
+        base = base.where(Certificate.linked_element_global_id.is_(None))
     # Expiry filters drive the #N6 expiry-warning surface. A null valid_until is
     # "never expires", so it is excluded from both expiry views.
     if expired:

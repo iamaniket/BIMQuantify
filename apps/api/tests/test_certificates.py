@@ -17,6 +17,7 @@ from tests.conftest import (
     FakeStorage,
     _add_member,
     _auth,
+    _create_model,
     _create_project,
     _latest_audit,
     _new_hash,
@@ -244,6 +245,43 @@ async def test_list_filters_by_type(
     items = resp.json()
     assert len(items) == 1
     assert items[0]["certificate_type"] == "warranty"
+
+
+@pytest.mark.asyncio
+async def test_list_filters_by_model_and_element(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Certificates attach to an element by (model, GlobalId) so they carry over
+    across model versions (#N9). The model-level identity query returns the cert
+    regardless of file version, and never leaks across models with the same GUID."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    gid = "0aB1cD2eF3gH4iJ5kL6mN7"
+    project = await _create_project(client, token)
+    model_a = await _create_model(client, token, project["id"], name="Model A")
+    model_b = await _create_model(client, token, project["id"], name="Model B")
+
+    cert_a = await _initiate_cert(
+        client, token, project["id"],
+        linked_model_id=model_a["id"], linked_element_global_id=gid,
+    )
+    completed = await _complete_cert(client, fake, token, project["id"], cert_a)
+    assert completed["linked_model_id"] == model_a["id"]
+    # Same GlobalId on a different model — must not bleed into model A's results.
+    cert_b = await _initiate_cert(
+        client, token, project["id"],
+        linked_model_id=model_b["id"], linked_element_global_id=gid,
+    )
+    await _complete_cert(client, fake, token, project["id"], cert_b)
+
+    resp = await client.get(
+        f"/projects/{project['id']}/certificates"
+        f"?linked_model_id={model_a['id']}&linked_element_global_id={gid}",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert [c["id"] for c in resp.json()] == [completed["id"]]
 
 
 async def _seed_expiry_set(

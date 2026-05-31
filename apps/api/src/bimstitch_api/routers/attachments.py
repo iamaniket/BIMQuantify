@@ -319,6 +319,7 @@ async def list_attachments(
     response: Response,
     category: Annotated[AttachmentCategory | None, Query()] = None,
     linked_element_global_id: Annotated[str | None, Query(max_length=22)] = None,
+    linked_model_id: Annotated[UUID | None, Query()] = None,
     linked_file_id: Annotated[UUID | None, Query()] = None,
     unlinked: Annotated[bool, Query()] = False,
     linked_point_type: Annotated[str | None, Query(max_length=10)] = None,
@@ -341,6 +342,10 @@ async def list_attachments(
         base = base.where(Attachment.attachment_category == category)
     if linked_element_global_id is not None:
         base = base.where(Attachment.linked_element_global_id == linked_element_global_id)
+    # Version-independent identity (model + GlobalId): an attachment shows on
+    # every version of the model that still contains the element.
+    if linked_model_id is not None:
+        base = base.where(Attachment.linked_model_id == linked_model_id)
     if linked_file_id is not None:
         base = base.where(Attachment.linked_file_id == linked_file_id)
     if unlinked:

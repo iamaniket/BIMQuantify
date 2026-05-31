@@ -67,7 +67,9 @@ export async function listCertificates(
   filters?: {
     certificateType?: CertificateTypeValue;
     linkedElementGlobalId?: string;
+    linkedModelId?: string;
     linkedFileId?: string;
+    unlinked?: boolean;
     expiringBefore?: string;
     expired?: boolean;
   },
@@ -75,7 +77,9 @@ export async function listCertificates(
   const params = new URLSearchParams();
   if (filters?.certificateType !== undefined) params.set('certificate_type', filters.certificateType);
   if (filters?.linkedElementGlobalId !== undefined) params.set('linked_element_global_id', filters.linkedElementGlobalId);
+  if (filters?.linkedModelId !== undefined) params.set('linked_model_id', filters.linkedModelId);
   if (filters?.linkedFileId !== undefined) params.set('linked_file_id', filters.linkedFileId);
+  if (filters?.unlinked === true) params.set('unlinked', 'true');
   if (filters?.expiringBefore !== undefined) params.set('expiring_before', filters.expiringBefore);
   if (filters?.expired === true) params.set('expired', 'true');
   const query = params.size === 0 ? '' : `?${params.toString()}`;
@@ -93,6 +97,19 @@ export async function getCertificateDownloadUrl(
 ): Promise<CertificateDownloadResponse> {
   return apiClient.get<CertificateDownloadResponse>(
     `/projects/${projectId}/certificates/${certificateId}/download`,
+    CertificateDownloadResponseSchema,
+    accessToken,
+  );
+}
+
+/** Inline-disposition presigned URL for previewing a certificate in-browser. */
+export async function getCertificateViewUrl(
+  accessToken: string,
+  projectId: string,
+  certificateId: string,
+): Promise<CertificateDownloadResponse> {
+  return apiClient.get<CertificateDownloadResponse>(
+    `/projects/${projectId}/certificates/${certificateId}/download?disposition=inline`,
     CertificateDownloadResponseSchema,
     accessToken,
   );

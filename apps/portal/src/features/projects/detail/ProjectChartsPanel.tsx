@@ -28,11 +28,11 @@ function PanelSection({
   children: ReactNode;
 }): JSX.Element {
   return (
-    <div className="flex min-h-0 flex-col items-center gap-2 px-1 py-1">
+    <div className="flex h-full min-h-0 flex-col items-center gap-2 px-1 py-1">
       <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
         {title}
       </span>
-      <div className="flex w-full flex-1 items-center justify-center overflow-auto">
+      <div className="flex w-full min-h-0 flex-1 items-center justify-center overflow-auto">
         {children}
       </div>
     </div>
@@ -56,7 +56,7 @@ export function ProjectChartsPanel({
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
       <div className="flex min-h-0 flex-1 flex-col gap-1 p-3">
         {/* Dossier completeness donut — ~80% of the panel height */}
-        <div className="flex-[4]">
+        <div className="min-h-0 flex-[4]">
           <PanelSection title={t('dossierTitle')}>
             <DossierDonut pct={dossier.pct} categories={dossier.categories} />
           </PanelSection>

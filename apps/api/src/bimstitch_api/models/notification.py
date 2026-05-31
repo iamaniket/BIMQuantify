@@ -90,3 +90,30 @@ class NotificationRead(TenantBase):
     read_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class NotificationDismissal(TenantBase):
+    """Per-user dismissal of an org-shared notification.
+
+    Notifications carry no ``user_id`` — the row is visible to every member of
+    the org. Dismissal is therefore tracked per user (exactly like
+    ``NotificationRead``): a dismissed notification is filtered out of *this*
+    user's feed and counts, while teammates still see it. There is no hard
+    delete of the shared row.
+    """
+
+    __tablename__ = "notification_dismissals"
+
+    notification_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("notifications.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("public.users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    dismissed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

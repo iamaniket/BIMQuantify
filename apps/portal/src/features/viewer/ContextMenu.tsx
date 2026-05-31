@@ -2,6 +2,7 @@
 
 import {
   Eye,
+  FileBadge,
   Flag,
   Glasses,
   Paperclip,
@@ -136,6 +137,15 @@ function buildMenu(
           command: 'inspect.findings',
           targetItem: item,
           shortcut: sc('inspect.findings'),
+        }
+      : null,
+    hasItem
+      ? {
+          label: t('viewCertificates'),
+          icon: <FileBadge className={ICON_CLASS} />,
+          command: 'inspect.certificates',
+          targetItem: item,
+          shortcut: sc('inspect.certificates'),
         }
       : null,
     hasItem ? { label: '', separator: true } : null,

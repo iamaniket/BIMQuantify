@@ -16,6 +16,7 @@ export async function listFindings(
   filters?: {
     status?: string;
     severity?: string;
+    linkedModelId?: string;
     linkedFileId?: string;
     linkedElementGlobalId?: string;
     unlinked?: boolean;
@@ -24,6 +25,7 @@ export async function listFindings(
   const params = new URLSearchParams();
   if (filters?.status !== undefined) params.set('status_filter', filters.status);
   if (filters?.severity !== undefined) params.set('severity', filters.severity);
+  if (filters?.linkedModelId !== undefined) params.set('linked_model_id', filters.linkedModelId);
   if (filters?.linkedFileId !== undefined) params.set('linked_file_id', filters.linkedFileId);
   if (filters?.linkedElementGlobalId !== undefined) {
     params.set('linked_element_global_id', filters.linkedElementGlobalId);

@@ -20,6 +20,8 @@ import {
   useRetryJob,
 } from '@/features/jobs/hooks';
 import {
+  useClearAll,
+  useDismiss,
   useMarkAllRead,
   useNotifications,
   useUnreadCount,
@@ -150,7 +152,13 @@ function JobControls({
   );
 }
 
-function NotificationRow({ notification }: { notification: Notification }): JSX.Element {
+function NotificationRow({
+  notification,
+  onDismiss,
+}: {
+  notification: Notification;
+  onDismiss: (id: string) => void;
+}): JSX.Element {
   const t = useTranslations('notifications');
   const n = notification;
   return (
@@ -174,9 +182,23 @@ function NotificationRow({ notification }: { notification: Notification }): JSX.
         </div>
         <JobControls notification={n} />
       </div>
-      {n.is_read ? null : (
-        <span className="mt-1.5 h-[7px] w-[7px] shrink-0 self-center rounded-full bg-primary" />
-      )}
+      <div className="flex shrink-0 flex-col items-center gap-1.5">
+        <button
+          type="button"
+          aria-label={t('dismiss')}
+          title={t('dismiss')}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDismiss(n.id);
+          }}
+          className="grid h-5 w-5 place-items-center rounded text-foreground-tertiary hover:bg-background-hover hover:text-foreground"
+        >
+          <X className="h-3 w-3" aria-hidden />
+        </button>
+        {n.is_read ? null : (
+          <span className="h-[7px] w-[7px] rounded-full bg-primary" />
+        )}
+      </div>
     </li>
   );
 }
@@ -184,9 +206,11 @@ function NotificationRow({ notification }: { notification: Notification }): JSX.
 function NotificationListBody({
   isLoading,
   items,
+  onDismiss,
 }: {
   isLoading: boolean;
   items: Notification[];
+  onDismiss: (id: string) => void;
 }): JSX.Element {
   const t = useTranslations('notifications');
   if (isLoading) {
@@ -206,7 +230,7 @@ function NotificationListBody({
   return (
     <ul>
       {items.map((n) => (
-        <NotificationRow key={n.id} notification={n} />
+        <NotificationRow key={n.id} notification={n} onDismiss={onDismiss} />
       ))}
     </ul>
   );
@@ -219,6 +243,8 @@ export function NotificationsBell(): JSX.Element {
   const unreadQuery = useUnreadCount();
   const listQuery = useNotifications();
   const markAll = useMarkAllRead();
+  const clearAll = useClearAll();
+  const dismiss = useDismiss();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -267,18 +293,36 @@ export function NotificationsBell(): JSX.Element {
                 {t('summary', { unread: unreadCount, total })}
               </div>
             </div>
-            <button
-              type="button"
-              disabled={unreadCount === 0 || markAll.isPending}
-              onClick={() => {
-                markAll.mutate();
-              }}
-              className="rounded p-1 text-[11px] font-semibold text-primary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
-            >
-              {t('markAllRead')}
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                disabled={unreadCount === 0 || markAll.isPending}
+                onClick={() => {
+                  markAll.mutate();
+                }}
+                className="rounded p-1 text-[11px] font-semibold text-primary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
+              >
+                {t('markAllRead')}
+              </button>
+              <button
+                type="button"
+                disabled={total === 0 || clearAll.isPending}
+                onClick={() => {
+                  clearAll.mutate();
+                }}
+                className="rounded p-1 text-[11px] font-semibold text-foreground-secondary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
+              >
+                {t('clearAll')}
+              </button>
+            </div>
           </div>
-          <NotificationListBody isLoading={listQuery.isLoading} items={items} />
+          <NotificationListBody
+            isLoading={listQuery.isLoading}
+            items={items}
+            onDismiss={(id) => {
+              dismiss.mutate(id);
+            }}
+          />
         </div>
       ) : null}
     </div>

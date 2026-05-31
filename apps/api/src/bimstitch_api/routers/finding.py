@@ -73,6 +73,7 @@ def _finding_snapshot(finding: Finding) -> dict[str, str | None]:
         "borgingsmoment_id": (
             str(finding.borgingsmoment_id) if finding.borgingsmoment_id else None
         ),
+        "linked_model_id": str(finding.linked_model_id) if finding.linked_model_id else None,
         "linked_file_id": str(finding.linked_file_id) if finding.linked_file_id else None,
         "linked_element_global_id": finding.linked_element_global_id,
         "resolution_note": finding.resolution_note,
@@ -149,6 +150,7 @@ async def list_findings(
     response: Response,
     status_filter: FindingStatus | None = None,
     severity: FindingSeverity | None = None,
+    linked_model_id: UUID | None = None,
     linked_file_id: UUID | None = None,
     linked_element_global_id: str | None = Query(default=None, max_length=22),
     unlinked: bool = False,
@@ -166,6 +168,10 @@ async def list_findings(
         stmt = stmt.where(Finding.status == status_filter)
     if severity is not None:
         stmt = stmt.where(Finding.severity == severity)
+    # Version-independent identity: model + GlobalId. This is what the viewer
+    # element panel queries so a finding follows the element across versions.
+    if linked_model_id is not None:
+        stmt = stmt.where(Finding.linked_model_id == linked_model_id)
     if linked_file_id is not None:
         stmt = stmt.where(Finding.linked_file_id == linked_file_id)
     if linked_element_global_id is not None:
