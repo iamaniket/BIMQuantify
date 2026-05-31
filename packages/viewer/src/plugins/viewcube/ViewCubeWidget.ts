@@ -27,10 +27,32 @@ export interface Region {
   direction: THREE.Vector3;
 }
 
+export type ViewCubeLocale = 'en' | 'nl';
+
+interface ViewCubeLabels {
+  faces: Record<'top' | 'bottom' | 'front' | 'back' | 'left' | 'right', string>;
+  home: string;
+  homeAria: string;
+}
+
+const LABELS: Record<ViewCubeLocale, ViewCubeLabels> = {
+  en: {
+    faces: { top: 'TOP', bottom: 'BOTTOM', front: 'FRONT', back: 'BACK', left: 'LEFT', right: 'RIGHT' },
+    home: 'Home',
+    homeAria: 'Home view',
+  },
+  nl: {
+    faces: { top: 'BOVEN', bottom: 'ONDER', front: 'VOOR', back: 'ACHTER', left: 'LINKS', right: 'RECHTS' },
+    home: 'Home',
+    homeAria: 'Thuisweergave',
+  },
+};
+
 export interface ViewCubeWidgetOptions {
   size: number;
   showCompass: boolean;
   showHomeButton: boolean;
+  locale: ViewCubeLocale;
   onPick: (region: Region) => void;
   /** Called continuously while dragging the cube body (radians). */
   onOrbit: (deltaAzimuth: number, deltaPolar: number) => void;
@@ -75,6 +97,7 @@ export class ViewCubeWidget {
   private readonly options: ViewCubeWidgetOptions;
   private readonly regionMeshes: RegionMesh[] = [];
   private readonly meshById = new Map<string, RegionMesh>();
+  private readonly labels: ViewCubeLabels;
   private readonly tooltip: HTMLDivElement;
   private readonly compassSvg: SVGSVGElement | null = null;
   private readonly compassLabels: SVGGElement | null = null;
@@ -101,6 +124,7 @@ export class ViewCubeWidget {
 
   constructor(options: ViewCubeWidgetOptions) {
     this.options = options;
+    this.labels = LABELS[options.locale] ?? LABELS.en;
 
     this.element = document.createElement('div');
     this.element.dataset.viewcube = 'true';
@@ -199,13 +223,14 @@ export class ViewCubeWidget {
   // ─── geometry construction ────────────────────────────────────────
 
   private buildRegions(): void {
+    const f = this.labels.faces;
     const faceLabels: { id: string; dir: [number, number, number]; label: string }[] = [
-      { id: 'face:right', dir: [1, 0, 0], label: 'RIGHT' },
-      { id: 'face:left', dir: [-1, 0, 0], label: 'LEFT' },
-      { id: 'face:top', dir: [0, 1, 0], label: 'TOP' },
-      { id: 'face:bottom', dir: [0, -1, 0], label: 'BOTTOM' },
-      { id: 'face:front', dir: [0, 0, 1], label: 'FRONT' },
-      { id: 'face:back', dir: [0, 0, -1], label: 'BACK' },
+      { id: 'face:right', dir: [1, 0, 0], label: f.right },
+      { id: 'face:left', dir: [-1, 0, 0], label: f.left },
+      { id: 'face:top', dir: [0, 1, 0], label: f.top },
+      { id: 'face:bottom', dir: [0, -1, 0], label: f.bottom },
+      { id: 'face:front', dir: [0, 0, 1], label: f.front },
+      { id: 'face:back', dir: [0, 0, -1], label: f.back },
     ];
     for (const f of faceLabels) this.addFace(f.id, f.dir, f.label);
 
@@ -392,8 +417,8 @@ export class ViewCubeWidget {
   private buildHomeButton(): HTMLDivElement {
     const btn = document.createElement('div');
     btn.setAttribute('role', 'button');
-    btn.setAttribute('aria-label', 'Home view');
-    btn.setAttribute('title', 'Home');
+    btn.setAttribute('aria-label', this.labels.homeAria);
+    btn.setAttribute('title', this.labels.home);
     btn.innerHTML =
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>';
     Object.assign(btn.style, {
@@ -520,7 +545,7 @@ export class ViewCubeWidget {
   }
 
   private showTooltip(region: Region): void {
-    this.tooltip.textContent = friendlyLabel(region);
+    this.tooltip.textContent = this.friendlyLabel(region);
     this.tooltip.style.opacity = '1';
     // Position above the cube center
     this.tooltip.style.left = `${String(this.options.size / 2)}px`;
@@ -529,6 +554,23 @@ export class ViewCubeWidget {
 
   private hideTooltip(): void {
     this.tooltip.style.opacity = '0';
+  }
+
+  private friendlyLabel(region: Region): string {
+    const f = this.labels.faces;
+    const wordMap: Record<string, string> = {
+      top: titleCase(f.top),
+      bottom: titleCase(f.bottom),
+      front: titleCase(f.front),
+      back: titleCase(f.back),
+      left: titleCase(f.left),
+      right: titleCase(f.right),
+    };
+    const after = region.id.split(':')[1] ?? region.id;
+    return after
+      .split('-')
+      .map((w) => wordMap[w] ?? titleCase(w))
+      .join(' ');
   }
 
   private onCubePointerDown = (ev: PointerEvent): void => {
@@ -711,11 +753,7 @@ function roundedRect(
   ctx.closePath();
 }
 
-function friendlyLabel(region: Region): string {
-  // 'face:top' → 'Top'; 'corner:top-front-right' → 'Top Front Right'.
-  const after = region.id.split(':')[1] ?? region.id;
-  return after
-    .split('-')
-    .map((w) => (w.length ? (w[0]?.toUpperCase() ?? '') + w.slice(1) : ''))
-    .join(' ');
+function titleCase(s: string): string {
+  if (!s.length) return s;
+  return (s[0]?.toUpperCase() ?? '') + s.slice(1).toLowerCase();
 }

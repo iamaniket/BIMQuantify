@@ -2,6 +2,8 @@ import type { JurisdictionDossierRequirement } from '@/lib/api/jurisdictions';
 import type { Attachment } from '@/lib/api/schemas/attachments';
 import type { Certificate } from '@/lib/api/schemas/certificates';
 
+import { getCertificateExpiryState } from '@/features/certificates/expiry';
+
 /** A resolved checklist requirement: a jurisdiction template + its met/missing state. */
 export type DossierRequirementResult = {
   code: string;
@@ -12,6 +14,7 @@ export type DossierRequirementResult = {
   sourceValue: string;
   fulfilled: boolean;
   count: number;
+  hasExpiredCert: boolean;
 };
 
 /** Requirements grouped under one localized category header. */
@@ -45,32 +48,36 @@ function resolveFulfillment(
   readyAttachments: Attachment[],
   readyCertificates: Certificate[],
   derived: Required<DossierDerivedInput>,
-): { fulfilled: boolean; count: number } {
+): { fulfilled: boolean; count: number; hasExpiredCert: boolean } {
   switch (req.source_kind) {
     case 'attachment_slot': {
       const count = readyAttachments.filter((a) => a.dossier_slot === req.source_value).length;
-      return { fulfilled: count > 0, count };
+      return { fulfilled: count > 0, count, hasExpiredCert: false };
     }
     case 'certificate_type': {
-      const count = readyCertificates.filter(
+      const matching = readyCertificates.filter(
         (c) => c.certificate_type === req.source_value,
-      ).length;
-      return { fulfilled: count > 0, count };
+      );
+      const hasExpiredCert = matching.some((c) => {
+        const state = getCertificateExpiryState(c.valid_until);
+        return state === 'expired' || state === 'expiring';
+      });
+      return { fulfilled: matching.length > 0, count: matching.length, hasExpiredCert };
     }
     case 'derived': {
       switch (req.source_value) {
         case 'models':
-          return { fulfilled: derived.modelCount > 0, count: derived.modelCount };
+          return { fulfilled: derived.modelCount > 0, count: derived.modelCount, hasExpiredCert: false };
         case 'findings':
-          return { fulfilled: derived.findingsOpen === 0, count: derived.findingsOpen };
+          return { fulfilled: derived.findingsOpen === 0, count: derived.findingsOpen, hasExpiredCert: false };
         case 'deadlines':
-          return { fulfilled: derived.deadlinesOverdue === 0, count: derived.deadlinesOverdue };
+          return { fulfilled: derived.deadlinesOverdue === 0, count: derived.deadlinesOverdue, hasExpiredCert: false };
         default:
-          return { fulfilled: false, count: 0 };
+          return { fulfilled: false, count: 0, hasExpiredCert: false };
       }
     }
     default:
-      return { fulfilled: false, count: 0 };
+      return { fulfilled: false, count: 0, hasExpiredCert: false };
   }
 }
 
@@ -100,7 +107,7 @@ export function computeDossierCompleteness(
   const readyCertificates = certificates.filter((c) => c.status === 'ready');
 
   const requirements: DossierRequirementResult[] = template.map((req) => {
-    const { fulfilled, count } = resolveFulfillment(
+    const { fulfilled, count, hasExpiredCert } = resolveFulfillment(
       req,
       readyAttachments,
       readyCertificates,
@@ -115,6 +122,7 @@ export function computeDossierCompleteness(
       sourceValue: req.source_value,
       fulfilled,
       count,
+      hasExpiredCert,
     };
   });
 

@@ -234,7 +234,8 @@
   "projects": {
     "page": {
       "searchPlaceholder": "Zoek projecten...",
-      "searchAriaLabel": "Zoek projecten"
+      "searchAriaLabel": "Zoek projecten",
+      "expiryWarning": "{count, plural, one {# certificaat} other {# certificaten}} verlopen of verloopt binnen 60 dagen"
     },
     "list": {
       "errors": {
@@ -590,7 +591,8 @@
         "linkDialogDescription": "Kies een al geüpload document om aan deze eis te voldoen.",
         "linkEmpty": "Geen ongetagde documenten beschikbaar. Upload een nieuw document.",
         "emptyTitle": "Geen dossierchecklist beschikbaar",
-        "emptyDescription": "Voor de jurisdictie van dit project zijn nog geen dossiereisen geconfigureerd."
+        "emptyDescription": "Voor de jurisdictie van dit project zijn nog geen dossiereisen geconfigureerd.",
+        "expiredCertWarning": "Certificaat verlopen of verloopt binnenkort"
       },
       "overviewCard": {
         "address": "Adres",

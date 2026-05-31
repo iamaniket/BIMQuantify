@@ -183,9 +183,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
               >
                 <DetailCardRow
                   media={
-                    <Badge variant={severityBadgeVariant(finding.severity)} className="w-fit shrink-0">
-                      {tSeverity(finding.severity)}
-                    </Badge>
+                    <AlertTriangle className="h-5 w-5 text-foreground-tertiary" aria-hidden />
                   }
                   actions={
                     <button
@@ -198,8 +196,13 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
                     </button>
                   }
                 >
-                  <div className="truncate text-body3 font-semibold leading-tight text-foreground">
-                    {finding.title}
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-body3 font-semibold leading-tight text-foreground">
+                      {finding.title}
+                    </span>
+                    <Badge variant={severityBadgeVariant(finding.severity)} size="sm" bordered>
+                      {tSeverity(finding.severity)}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
                     {assigneeName !== null && (

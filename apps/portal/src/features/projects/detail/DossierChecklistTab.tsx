@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
   ChevronRight,
@@ -314,6 +315,12 @@ function DossierRow({
         <div className="text-caption text-foreground-tertiary">
           {req.fulfilled ? t('statusProvided', { count: req.count }) : t('statusMissing')}
         </div>
+        {req.fulfilled && req.hasExpiredCert && (
+          <div className="flex items-center gap-1 text-caption font-medium text-warning">
+            <AlertTriangle className="h-3 w-3" />
+            {t('expiredCertWarning')}
+          </div>
+        )}
       </div>
 
       {/* CTAs by source kind */}

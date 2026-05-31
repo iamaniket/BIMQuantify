@@ -131,6 +131,7 @@ function IfcViewerImpl(
         ? [
             viewCubePlugin({
               ...(viewCubeOpts?.size ? { size: viewCubeOpts.size } : {}),
+              ...(viewCubeOpts?.locale ? { locale: viewCubeOpts.locale } : {}),
             }),
           ]
         : []),

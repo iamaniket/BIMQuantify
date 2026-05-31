@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 
 import type { Plugin, ViewerContext } from '../../core/types.js';
-import { ViewCubeWidget } from './ViewCubeWidget.js';
+import { ViewCubeWidget, type ViewCubeLocale } from './ViewCubeWidget.js';
 
 const NAME = 'viewcube' as const;
 
@@ -16,6 +16,7 @@ interface ViewCubePluginOptions {
   size?: number;
   showCompass?: boolean;
   showHomeButton?: boolean;
+  locale?: ViewCubeLocale;
 }
 
 export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
@@ -31,6 +32,7 @@ export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
         size: options.size ?? 160,
         showCompass: options.showCompass ?? false,
         showHomeButton: options.showHomeButton ?? true,
+        locale: options.locale ?? 'nl',
         onPick: (region) => {
           void ctx.commands
             .execute('camera.view.fromVector', {

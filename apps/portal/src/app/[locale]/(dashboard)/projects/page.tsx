@@ -1,11 +1,12 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { AlertTriangle, Search } from 'lucide-react';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
 import { Input } from '@bimstitch/ui';
 
+import { useExpiringCertificates } from '@/features/certificates/useExpiringCertificates';
 import { NewProjectButton } from '@/features/projects/NewProjectButton';
 import { ProjectList } from '@/features/projects/ProjectList';
 import { ProjectStatusFilter, type StatusFilter } from '@/features/projects/ProjectStatusFilter';
@@ -17,9 +18,19 @@ export default function ProjectsPage(): JSX.Element {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const projectsQuery = useProjects();
   const projects = projectsQuery.data ?? [];
+  const certWarning = useExpiringCertificates(projects);
 
   return (
     <main className="w-full overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+      {certWarning.total > 0 && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-warning bg-warning/10 px-4 py-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          <span className="text-body3 font-medium text-foreground">
+            {t('expiryWarning', { count: certWarning.total })}
+          </span>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="relative w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-tertiary" />

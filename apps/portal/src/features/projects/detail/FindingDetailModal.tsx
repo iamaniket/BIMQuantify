@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash2, Unlink } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
@@ -18,7 +18,6 @@ import {
 
 import { Field } from '@/components/shared/forms/Field';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
-import { useFindingHistory } from '@/features/findings/useFindingHistory';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useRegisterField } from '@/hooks/useRegisterField';
@@ -29,28 +28,6 @@ import { FindingPhotos } from './FindingPhotos';
 import { statusBadgeVariant } from './findingBadges';
 
 const SEVERITIES = ['low', 'medium', 'high'] as const;
-
-const STATUS_VALUES: readonly FindingStatusValue[] = [
-  'draft',
-  'open',
-  'in_progress',
-  'resolved',
-  'verified',
-];
-
-function isStatus(value: string | null): value is FindingStatusValue {
-  return value !== null && (STATUS_VALUES as readonly string[]).includes(value);
-}
-
-// audit_log action -> findings.detail.history.actions key
-const HISTORY_ACTION_KEY: Record<string, string> = {
-  'finding.created': 'created',
-  'finding.promoted': 'promoted',
-  'finding.resolved': 'resolved',
-  'finding.verified': 'verified',
-  'finding.updated': 'updated',
-  'finding.deleted': 'deleted',
-};
 
 const FormSchema = z.object({
   title: z.string().trim().min(1).max(255),
@@ -118,15 +95,12 @@ export function FindingDetailModal({
   onOpenChange,
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
-  const tHistory = useTranslations('findings.detail.history');
   const tSeverity = useTranslations('findings.severity');
   const tStatus = useTranslations('findings.status');
-  const locale = useLocale();
   const { me } = useAuth();
   const membersQuery = useProjectMembers(projectId);
   const updateMutation = useUpdateFinding(projectId);
   const deleteMutation = useDeleteFinding(projectId);
-  const historyQuery = useFindingHistory(projectId, finding?.id ?? null, open);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [photoIds, setPhotoIds] = useState<string[]>([]);
   const [resolutionNote, setResolutionNote] = useState('');
@@ -232,11 +206,40 @@ export function FindingDetailModal({
 
   const isLinked = finding.linked_element_global_id !== null;
 
-  const history = historyQuery.data ?? [];
-  const dateFmt = new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  const deleteFooter = confirmDelete ? (
+    <div className="flex items-center gap-2">
+      <span className="text-body3 text-foreground-secondary">
+        {t('delete.confirm')}
+      </span>
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        disabled={isPending}
+        onClick={handleDelete}
+      >
+        {t('delete.confirmAction')}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => { setConfirmDelete(false); }}
+      >
+        {t('delete.cancel')}
+      </Button>
+    </div>
+  ) : (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={() => { setConfirmDelete(true); }}
+    >
+      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+      {t('delete.action')}
+    </Button>
+  );
 
   return (
     <AppDialog
@@ -252,16 +255,18 @@ export function FindingDetailModal({
       onSave={form.handleSubmit(onSubmit)}
       saveLabel={t('save')}
       saveDisabled={isPending}
+      footerInfo={deleteFooter}
+      width={680}
     >
-      <div className="flex flex-col gap-4">
-        <Field form={form} name="title" label={t('fields.title')}>
+      <div className="grid grid-cols-2 gap-4">
+        <Field form={form} name="title" label={t('fields.title')} className="col-span-2">
           {({ id }) => (
             <Input id={id} {...titleField} />
           )}
         </Field>
-        <Field form={form} name="description" label={t('fields.description')}>
+        <Field form={form} name="description" label={t('fields.description')} className="col-span-2">
           {({ id }) => (
-            <Textarea id={id} rows={4} {...descriptionField} />
+            <Textarea id={id} rows={3} {...descriptionField} />
           )}
         </Field>
         <Field form={form} name="severity" label={t('fields.severity')}>
@@ -296,15 +301,17 @@ export function FindingDetailModal({
           )}
         </Field>
 
-        <FindingPhotos
-          projectId={projectId}
-          photoIds={photoIds}
-          onChange={setPhotoIds}
-          disabled={isPending}
-        />
+        <div className="col-span-2">
+          <FindingPhotos
+            projectId={projectId}
+            photoIds={photoIds}
+            onChange={setPhotoIds}
+            disabled={isPending}
+          />
+        </div>
 
         {isLinked && (
-          <div className="flex items-start justify-between gap-2 rounded-md border border-border bg-surface-low p-3">
+          <div className="col-span-2 flex items-start justify-between gap-2 rounded-md border border-border bg-surface-low p-3">
             <div className="min-w-0">
               <div className="text-label2 font-medium text-foreground">
                 {t('linkedElement.title')}
@@ -327,7 +334,7 @@ export function FindingDetailModal({
         )}
 
         {finding.status === 'draft' && (
-          <div className="rounded-md border border-border bg-surface-low p-3">
+          <div className="col-span-2 rounded-md border border-border bg-surface-low p-3">
             <div className="text-label2 font-medium text-foreground">
               {t('promote.title')}
             </div>
@@ -348,7 +355,7 @@ export function FindingDetailModal({
         )}
 
         {showResolve && (
-          <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
+          <div className="col-span-2 flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
             <div>
               <div className="text-label2 font-medium text-foreground">
                 {t('resolution.title')}
@@ -390,7 +397,7 @@ export function FindingDetailModal({
         )}
 
         {isResolved && (
-          <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
+          <div className="col-span-2 flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
             <div>
               <div className="text-label2 font-medium text-foreground">
                 {t('resolution.recordedTitle')}
@@ -433,92 +440,6 @@ export function FindingDetailModal({
           </div>
         )}
 
-        <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
-          <div className="text-label2 font-medium text-foreground">
-            {tHistory('title')}
-          </div>
-          {historyQuery.isLoading ? (
-            <p className="text-caption text-foreground-tertiary">
-              {tHistory('loading')}
-            </p>
-          ) : history.length === 0 ? (
-            <p className="text-caption text-foreground-tertiary">
-              {tHistory('empty')}
-            </p>
-          ) : (
-            <ol className="flex flex-col gap-3">
-              {history.map((entry) => {
-                const actionKey = HISTORY_ACTION_KEY[entry.action];
-                const actionLabel =
-                  actionKey !== undefined ? tHistory(`actions.${actionKey}`) : entry.action;
-                const actor = entry.actor_name ?? entry.actor_email ?? tHistory('system');
-                const from = entry.from_status;
-                const to = entry.to_status;
-                return (
-                  <li
-                    key={entry.id}
-                    className="flex flex-col gap-1 border-l-2 border-border pl-3"
-                  >
-                    <div className="text-body3 text-foreground">
-                      <span className="font-medium">{actor}</span>{' '}
-                      <span className="text-foreground-secondary">{actionLabel}</span>
-                    </div>
-                    {isStatus(from) && isStatus(to) && from !== to && (
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant={statusBadgeVariant(from)}>{tStatus(from)}</Badge>
-                        <span className="text-caption text-foreground-tertiary">→</span>
-                        <Badge variant={statusBadgeVariant(to)}>{tStatus(to)}</Badge>
-                      </div>
-                    )}
-                    <time
-                      className="text-caption text-foreground-tertiary"
-                      dateTime={entry.created_at}
-                    >
-                      {dateFmt.format(new Date(entry.created_at))}
-                    </time>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </div>
-
-        <div className="border-t border-border pt-3">
-          {confirmDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-body3 text-foreground-secondary">
-                {t('delete.confirm')}
-              </span>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={isPending}
-                onClick={handleDelete}
-              >
-                {t('delete.confirmAction')}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => { setConfirmDelete(false); }}
-              >
-                {t('delete.cancel')}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => { setConfirmDelete(true); }}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              {t('delete.action')}
-            </Button>
-          )}
-        </div>
       </div>
     </AppDialog>
   );

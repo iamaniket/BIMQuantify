@@ -38,6 +38,8 @@ export type ViewCubeOptions = {
   showCompass?: boolean;
   /** Show the home/reset button. Default: true. */
   showHomeButton?: boolean;
+  /** Face / tooltip language. Default: 'nl'. */
+  locale?: 'en' | 'nl';
 };
 
 export type BackgroundOptions = {

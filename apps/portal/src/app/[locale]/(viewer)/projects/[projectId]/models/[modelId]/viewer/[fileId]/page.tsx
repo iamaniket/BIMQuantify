@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
+import { useLocale } from 'next-intl';
 import { useParams } from 'next/navigation';
 import {
   useCallback,
@@ -103,6 +104,7 @@ function bundleErrorMessage(err: Error | null): string | null {
 export default function ViewerPage(): JSX.Element {
   const params = useParams<{ projectId: string; modelId: string; fileId: string }>();
   const { projectId, modelId, fileId } = params;
+  const locale = useLocale();
   const { tokens } = useAuth();
 
   const accessToken = tokens === null ? null : tokens.access_token;
@@ -403,6 +405,7 @@ export default function ViewerPage(): JSX.Element {
         bundle={buildBundle(bundle)}
         viewCube={{
           enabled: settings.viewCube.enabled,
+          locale: locale as 'en' | 'nl',
         }}
         shadows={{
           enabled: settings.shadows.enabled,

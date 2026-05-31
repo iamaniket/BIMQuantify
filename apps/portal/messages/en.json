@@ -234,7 +234,8 @@
   "projects": {
     "page": {
       "searchPlaceholder": "Search projects...",
-      "searchAriaLabel": "Search projects"
+      "searchAriaLabel": "Search projects",
+      "expiryWarning": "{count, plural, one {# certificate} other {# certificates}} expired or expiring within 60 days"
     },
     "list": {
       "errors": {
@@ -590,7 +591,8 @@
         "linkDialogDescription": "Pick an already-uploaded document to satisfy this requirement.",
         "linkEmpty": "No untagged documents available. Upload a new one instead.",
         "emptyTitle": "No dossier checklist available",
-        "emptyDescription": "This project's jurisdiction has no dossier requirements configured yet."
+        "emptyDescription": "This project's jurisdiction has no dossier requirements configured yet.",
+        "expiredCertWarning": "Certificate expired or expiring soon"
       },
       "overviewCard": {
         "address": "Address",
