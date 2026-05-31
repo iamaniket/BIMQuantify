@@ -9,6 +9,13 @@ here. The former 0002 (scaling indexes), 0003 (finding-resolution columns), and
 certificates table come for free from the models, and 0002's three raw-SQL indexes
 are recreated explicitly in upgrade() below.
 
+The later job-lifecycle increment (jobs.retriable/error_kind/progress/retry_of/
+attempt + the `cancelled` jobstatus value + the partial ix_jobs_retry_of index +
+the retry_of self-FK) and the CAD-filetypes increment (dxf/dwg on `filetype`,
+`dxf_extraction` on `jobtype`) are likewise folded in — all come for free from the
+models, so create_all emits them and the matching DROP TYPEs below already cover the
+enums.
+
 Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables (users)
 are emitted as `public.users(id)` so they resolve regardless of search_path —
 audit_log's user_id / impersonator_user_id rely on this.
