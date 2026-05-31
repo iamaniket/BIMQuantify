@@ -8,6 +8,7 @@ export type OrgDetailData = {
   status: string;
   seatLimit: number | null;
   seatCountUsed: number;
+  imageUrl: string | null;
   schemaName: string | null;
   createdAt: string | null;
   provisionedAt: string | null;
@@ -25,4 +26,6 @@ export type OrgDetailViewProps = {
   heroActions?: ReactNode;
   overviewQuickActions?: ReactNode;
   onDelete?: () => void;
+  onImageUpload?: (file: File) => void;
+  onImageRemove?: () => void;
 };

@@ -232,6 +232,23 @@
     }
   },
   "projects": {
+    "hero": {
+      "title": "Projecten",
+      "badge": "Portfoliooverzicht",
+      "subtitle": "{active} actief · {archived} gearchiveerd",
+      "activeLabel": "Actief",
+      "activeSub": "{count} totaal",
+      "constructionLabel": "In uitvoering",
+      "constructionSub": "{design} in ontwerp",
+      "deadlinesLabel": "Deadlines",
+      "deadlinesApproaching": "{count, plural, one {# naderend} other {# naderend}}",
+      "deadlinesOverdue": "{count} te laat",
+      "deadlinesOnTrack": "op schema",
+      "deadlinesNone": "geen datums",
+      "certificatesLabel": "Certificaten",
+      "certificatesSub": "{expired} verlopen · {expiring} verloopt",
+      "certificatesOk": "allemaal geldig"
+    },
     "page": {
       "searchPlaceholder": "Zoek projecten...",
       "searchAriaLabel": "Zoek projecten",
@@ -285,12 +302,18 @@
         "deleteTitle": "Project verwijderen",
         "deleteDescription": "\"{name}\" verwijderen uit actieve weergaven? Het wordt verborgen in normale projectlijsten.",
         "deleteConfirm": "Verwijderen",
+        "archiveTitle": "Project archiveren",
+        "archiveDescription": "\"{name}\" archiveren? Het project wordt alleen-lezen — niemand kan bewerken, controles uitvoeren of rapporten genereren totdat het opnieuw is geactiveerd.",
+        "archiveConfirm": "Archiveren",
+        "archiveSuccess": "Project gearchiveerd",
+        "reactivateSuccess": "Project geheractiveerd",
         "cancel": "Annuleren",
         "errors": {
           "forbidden": "U heeft geen rechten om dit project te verwijderen.",
           "notFound": "Project niet gevonden. Het is mogelijk al verwijderd.",
           "deleteFailed": "Verwijderen mislukt: {detail}",
-          "deleteUnknown": "Project kon niet worden verwijderd."
+          "deleteUnknown": "Project kon niet worden verwijderd.",
+          "archiveFailed": "Project kon niet worden gearchiveerd."
         }
       }
     },
@@ -1388,7 +1411,10 @@
       "ago": "geleden",
       "eventsToday": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} vandaag",
       "noEvents": "Nog geen gebeurtenissen",
-      "today": "vandaag"
+      "today": "vandaag",
+      "changeImage": "Logo wijzigen",
+      "removeImage": "Logo verwijderen",
+      "uploadImage": "Logo uploaden"
     },
     "panel": {
       "overviewEyebrow": "Organisatieoverzicht",

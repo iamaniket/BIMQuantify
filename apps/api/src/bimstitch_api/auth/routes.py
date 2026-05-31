@@ -24,6 +24,7 @@ from bimstitch_api.cache.blocklist import revoke_jti
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_async_session
 from bimstitch_api.models.organization import Organization, OrganizationStatus
+from bimstitch_api.storage import get_attachments_bucket, get_storage
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
@@ -52,6 +53,7 @@ class OrgMembershipBrief(BaseModel):
     member_status: str
     seat_limit: int | None
     seat_count_used: int
+    organization_image_url: str | None = None
 
 
 class AuthMeResponse(BaseModel):
@@ -340,6 +342,16 @@ def build_auth_router() -> APIRouter:
             seat_result = await session.execute(seat_stmt)
             seat_counts = {row[0]: int(row[1]) for row in seat_result.all()}
 
+        # Resolve org image presigned URLs
+        storage = get_storage()
+        att_bucket = get_attachments_bucket()
+        image_urls: dict[UUID, str] = {}
+        for _m, org in rows:
+            if org.image_key:
+                image_urls[org.id] = await storage.presigned_get_url(
+                    org.image_key, "org-logo", bucket=att_bucket,
+                )
+
         memberships: list[OrgMembershipBrief] = []
         for m, org in rows:
             memberships.append(
@@ -351,6 +363,7 @@ def build_auth_router() -> APIRouter:
                     member_status=m.status.value,
                     seat_limit=org.seat_limit,
                     seat_count_used=seat_counts.get(org.id, 0),
+                    organization_image_url=image_urls.get(org.id),
                 )
             )
 

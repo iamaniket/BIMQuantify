@@ -11,6 +11,7 @@ export const OrganizationReadSchema = z.object({
   status: z.string(),
   seat_limit: z.union([z.number().int(), z.null()]),
   seat_count_used: z.number().int(),
+  image_url: z.union([z.string(), z.null()]).optional(),
   created_at: z.string(),
   provisioned_at: z.union([z.string(), z.null()]),
   deleted_at: z.union([z.string(), z.null()]),

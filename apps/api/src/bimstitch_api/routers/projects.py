@@ -671,6 +671,9 @@ async def archive_project(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="PROJECT_ARCHIVED")
 
     project.lifecycle_state = ProjectLifecycleState.archived
+    # TODO(tier-2-archive): Dispatch async job to transition S3 objects to
+    # GLACIER/STANDARD_IA, zip project files into a single archive bundle,
+    # and move tenant DB rows to shadow tables (no indexes → saves IO/vacuum).
     await session.flush()
     await session.refresh(project)
     await audit.record(
@@ -707,6 +710,10 @@ async def reactivate_project(
         )
 
     project.lifecycle_state = ProjectLifecycleState.active
+    # TODO(tier-2-archive): Dispatch async unarchive job — restore S3
+    # objects from GLACIER (minutes-to-hours), unzip archive bundle, move
+    # rows back from shadow tables, rebuild indexes.  Return a pending
+    # status and show "restoring…" in the portal until the worker completes.
     await session.flush()
     await session.refresh(project)
     await audit.record(

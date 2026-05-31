@@ -40,6 +40,7 @@ export const OrgMembershipBriefSchema = z.object({
   member_status: z.string(),
   seat_limit: z.union([z.number().int(), z.null()]),
   seat_count_used: z.number().int(),
+  organization_image_url: z.union([z.string(), z.null()]).optional(),
 });
 
 export type OrgMembershipBrief = z.infer<typeof OrgMembershipBriefSchema>;

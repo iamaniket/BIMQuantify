@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useMemo, useState, type JSX } from 'react';
+import { useCallback, useMemo, useState, type JSX } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
 
@@ -11,11 +11,12 @@ import { InviteMemberDialog } from '@/features/admin/members/InviteMemberDialog'
 import { useOrgMembers } from '@/features/admin/members/useOrgMembers';
 import { OrgDetailView } from '@/features/org-detail';
 import type { OrgDetailData } from '@/features/org-detail';
+import { deleteOrgImage, uploadOrgImage } from '@/lib/api/organizationImage';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function TenantAdminPage(): JSX.Element {
   const t = useTranslations('tenantAdmin');
-  const { activeMembership } = useAuth();
+  const { tokens, activeMembership, refreshMe } = useAuth();
   const organizationId = activeMembership?.organization_id ?? null;
 
   const membersQuery = useOrgMembers(organizationId ?? '', {});
@@ -33,6 +34,18 @@ export default function TenantAdminPage(): JSX.Element {
   useHeaderCrumbsOverride(crumbs);
 
   const [inviteOpen, setInviteOpen] = useState(false);
+
+  const handleImageUpload = useCallback(async (file: File) => {
+    if (!tokens || !organizationId) return;
+    await uploadOrgImage(tokens.access_token, organizationId, file);
+    await refreshMe();
+  }, [tokens, organizationId, refreshMe]);
+
+  const handleImageRemove = useCallback(async () => {
+    if (!tokens || !organizationId) return;
+    await deleteOrgImage(tokens.access_token, organizationId);
+    await refreshMe();
+  }, [tokens, organizationId, refreshMe]);
 
   if (activeMembership === null || organizationId === null) {
     return (
@@ -61,6 +74,7 @@ export default function TenantAdminPage(): JSX.Element {
     status: activeMembership.organization_status,
     seatLimit: activeMembership.seat_limit,
     seatCountUsed: activeMembership.seat_count_used,
+    imageUrl: activeMembership.organization_image_url ?? null,
     schemaName: null,
     createdAt: null,
     provisionedAt: null,
@@ -77,6 +91,8 @@ export default function TenantAdminPage(): JSX.Element {
         auditLoading={auditQuery.isLoading}
         auditError={auditQuery.isError}
         onInvite={() => { setInviteOpen(true); }}
+        onImageUpload={handleImageUpload}
+        onImageRemove={handleImageRemove}
       />
       <InviteMemberDialog
         organizationId={organizationId}

@@ -7,6 +7,7 @@ the super-admin role.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from uuid import UUID
 
@@ -44,6 +45,7 @@ from bimstitch_api.schemas.admin import (
     OrganizationRead,
     OrganizationUpdate,
 )
+from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
 from bimstitch_api.tenancy import resolve_platform_schema, schema_name_for
 
 
@@ -70,7 +72,17 @@ async def _seat_counts_for(
     return {row[0]: int(row[1]) for row in result.all()}
 
 
-def _serialize_org(org: Organization, seat_count_used: int) -> OrganizationRead:
+async def _serialize_org(
+    org: Organization,
+    seat_count_used: int,
+    storage: StorageBackend,
+) -> OrganizationRead:
+    image_url: str | None = None
+    if org.image_key:
+        bucket = get_attachments_bucket()
+        image_url = await storage.presigned_get_url(
+            org.image_key, "org-logo", bucket=bucket,
+        )
     return OrganizationRead(
         id=org.id,
         name=org.name,
@@ -78,6 +90,7 @@ def _serialize_org(org: Organization, seat_count_used: int) -> OrganizationRead:
         status=org.status.value,
         seat_limit=org.seat_limit,
         seat_count_used=seat_count_used,
+        image_url=image_url,
         created_at=org.created_at,
         provisioned_at=org.provisioned_at,
         deleted_at=org.deleted_at,
@@ -102,6 +115,7 @@ async def create_organization(
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
     user_manager: UserManager = Depends(get_user_manager),
+    storage: StorageBackend = Depends(get_storage),
 ) -> OrganizationCreateResponse:
     try:
         result = await provision_organization(
@@ -135,7 +149,7 @@ async def create_organization(
 
     seat_count = await count_consumed_seats(session, result.organization.id)
     return OrganizationCreateResponse(
-        organization=_serialize_org(result.organization, seat_count),
+        organization=await _serialize_org(result.organization, seat_count, storage),
         admin_user_id=result.admin.id,
         admin_email=result.admin.email,
         activation_required=result.activation_required,
@@ -146,6 +160,7 @@ async def create_organization(
 async def list_organizations(
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
+    storage: StorageBackend = Depends(get_storage),
     status_filter: str | None = Query(default=None, alias="status"),
     q: str | None = None,
     include_deleted: bool = False,
@@ -163,7 +178,9 @@ async def list_organizations(
     result = await session.execute(stmt)
     orgs = list(result.scalars())
     seats = await _seat_counts_for(session, [o.id for o in orgs])
-    return [_serialize_org(o, seats.get(o.id, 0)) for o in orgs]
+    return await asyncio.gather(
+        *[_serialize_org(o, seats.get(o.id, 0), storage) for o in orgs]
+    )
 
 
 @router.get("/organizations/{organization_id}", response_model=OrganizationRead)
@@ -171,12 +188,13 @@ async def get_organization(
     organization_id: UUID,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
+    storage: StorageBackend = Depends(get_storage),
 ) -> OrganizationRead:
     org = await session.get(Organization, organization_id)
     if org is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND")
     seat_count = await count_consumed_seats(session, organization_id)
-    return _serialize_org(org, seat_count)
+    return await _serialize_org(org, seat_count, storage)
 
 
 @router.patch("/organizations/{organization_id}", response_model=OrganizationRead)
@@ -186,6 +204,7 @@ async def update_organization(
     request: Request,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
+    storage: StorageBackend = Depends(get_storage),
 ) -> OrganizationRead:
     # `require_superuser` already issued queries → session has an auto-begun
     # transaction. Write directly + commit at the end; the dependency teardown
@@ -279,7 +298,7 @@ async def update_organization(
         org = refreshed
 
     seat_count = await count_consumed_seats(session, organization_id)
-    return _serialize_org(org, seat_count)
+    return await _serialize_org(org, seat_count, storage)
 
 
 @router.delete("/organizations/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)

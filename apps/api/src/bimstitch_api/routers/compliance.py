@@ -30,6 +30,7 @@ from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
     _require_project_read_access,
+    _require_project_writable,
 )
 from bimstitch_api.schemas.compliance import (
     ComplianceCheckRequest,
@@ -79,6 +80,7 @@ async def check_compliance(
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.compliance, Action.create)
+    _require_project_writable(project)
     await _load_model_or_404(session, project.id, model_id)
 
     pf = (

@@ -18,7 +18,11 @@ from bimstitch_api.jobs import DispatchJobError
 from bimstitch_api.jobs.lifecycle import cancel_job, retry_job
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import _require_membership
+from bimstitch_api.routers.projects import (
+    _load_project_or_404,
+    _require_membership,
+    _require_project_writable,
+)
 from bimstitch_api.schemas.job import JobListResponse, JobRead
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
@@ -48,6 +52,8 @@ async def _authorize_job_mutation(session: AsyncSession, job: Job, user: User) -
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="JOB_TYPE_NOT_RETRYABLE"
         )
+    project = await _load_project_or_404(session, job.project_id)
+    _require_project_writable(project)
     membership = await _require_membership(session, job.project_id, user.id)
     require_permission(membership.role, perm[0], perm[1])
 

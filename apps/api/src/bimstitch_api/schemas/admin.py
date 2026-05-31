@@ -36,6 +36,7 @@ class OrganizationRead(BaseModel):
     status: str
     seat_limit: int | None
     seat_count_used: int
+    image_url: str | None = None
     created_at: datetime
     provisioned_at: datetime | None
     deleted_at: datetime | None

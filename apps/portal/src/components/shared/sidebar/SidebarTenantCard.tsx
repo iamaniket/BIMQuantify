@@ -67,18 +67,28 @@ export function SidebarTenantCard(): JSX.Element | null {
     }
   };
 
+  const imageUrl = activeMembership.organization_image_url ?? null;
+
   if (collapsed) {
     return (
       <div className="flex justify-center px-0 py-3">
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label={ariaLabel}
-              className="grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-md bg-gradient-to-br from-sidebar-accent to-sidebar-accent-strong text-[10.5px] font-extrabold text-sidebar-fg"
-            >
-              {acronym}
-            </button>
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={name}
+                className="h-[30px] w-[30px] cursor-pointer rounded-md object-cover"
+              />
+            ) : (
+              <button
+                type="button"
+                aria-label={ariaLabel}
+                className="grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-md bg-gradient-to-br from-sidebar-accent to-sidebar-accent-strong text-[10.5px] font-extrabold text-sidebar-fg"
+              >
+                {acronym}
+              </button>
+            )}
           </TooltipTrigger>
           <TooltipContent side="right">{ariaLabel}</TooltipContent>
         </Tooltip>
@@ -104,9 +114,17 @@ export function SidebarTenantCard(): JSX.Element | null {
             }
           }}
         >
-          <div className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded bg-gradient-to-br from-sidebar-accent to-sidebar-accent-strong text-[8px] font-extrabold text-sidebar-fg">
-            {acronym}
-          </div>
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={name}
+              className="h-[18px] w-[18px] shrink-0 rounded object-cover"
+            />
+          ) : (
+            <div className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded bg-gradient-to-br from-sidebar-accent to-sidebar-accent-strong text-[8px] font-extrabold text-sidebar-fg">
+              {acronym}
+            </div>
+          )}
           <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-sidebar-fg">{name}</span>
           {canSwitch && <ChevronDown className="h-3 w-3 shrink-0 text-sidebar-fg-muted" />}
         </button>
@@ -131,7 +149,20 @@ export function SidebarTenantCard(): JSX.Element | null {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate">{membership.organization_name}</span>
+                      <span className="flex items-center gap-2 truncate">
+                        {membership.organization_image_url ? (
+                          <img
+                            src={membership.organization_image_url}
+                            alt=""
+                            className="h-4 w-4 shrink-0 rounded object-cover"
+                          />
+                        ) : (
+                          <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-sidebar-accent text-[6px] font-extrabold text-sidebar-fg">
+                            {initials(membership.organization_name)}
+                          </span>
+                        )}
+                        <span className="truncate">{membership.organization_name}</span>
+                      </span>
                       {membership.is_org_admin && (
                         <span className="rounded bg-sidebar-hover px-1.5 py-0.5 text-[10px] text-sidebar-fg-subtle">
                           {tOrgSwitcher('adminBadge')}

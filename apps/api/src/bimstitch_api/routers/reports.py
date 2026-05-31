@@ -59,6 +59,7 @@ from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
     _require_project_read_access,
+    _require_project_writable,
 )
 from bimstitch_api.schemas.report import (
     ReportCreateRequest,
@@ -589,6 +590,7 @@ async def create_report(
     settings: Settings = Depends(get_settings),
 ) -> ReportResponse:
     project = await _load_project_or_404(session, project_id)
+    _require_project_writable(project)
     membership = await _require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.report, Action.create)
 
@@ -810,6 +812,7 @@ async def sign_report(
     embeds an audit-id hash, and re-renders the stamped PDF over the same key.
     Idempotency-guarded: a second sign returns 409."""
     project = await _load_project_or_404(session, project_id)
+    _require_project_writable(project)
     membership = await _require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.completion_declaration, Action.sign)
 

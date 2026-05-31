@@ -631,3 +631,35 @@ async def test_inspector_role_can_submit(
         headers=_auth(inspector["access_token"]),
     )
     assert resp.status_code == 201
+
+
+# ---------------------------------------------------------------------------
+# Archived project
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_start_inspection_rejected_when_project_archived(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+) -> None:
+    user = await _provision_user_in_org(
+        client, session_maker, engine, email="arch-insp@test.nl"
+    )
+    project = await _create_project(client, user["access_token"])
+    plan = await _generate_borgingsplan(client, user["access_token"], project["id"])
+    moment = _first_moment(plan)
+
+    archive = await client.post(
+        f"/projects/{project['id']}/archive",
+        headers=_auth(user["access_token"]),
+    )
+    assert archive.status_code == 200
+
+    resp = await client.post(
+        f"/borgingsmomenten/{moment['id']}/start-inspection",
+        headers=_auth(user["access_token"]),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "PROJECT_ARCHIVED"

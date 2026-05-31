@@ -95,6 +95,11 @@ export async function frameView(
   // Drop the look target along screen-up so the model rises in the frame.
   const target = center.clone().addScaledVector(up, -raise);
 
+  // Reset residual focalOffset accumulated by setOrbitPoint (pivot-rotate
+  // orbit drags) and truck (panning). setLookAt does not clear it, so the
+  // camera would land at desiredPosition + staleOffset.
+  void controls.setFocalOffset(0, 0, 0, animate);
+
   await controls.setLookAt(
     target.x + d.x * distance,
     target.y + d.y * distance,

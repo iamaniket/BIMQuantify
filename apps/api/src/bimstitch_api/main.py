@@ -61,6 +61,12 @@ from bimstitch_api.routers.me_invitations import router as me_invitations_router
 from bimstitch_api.routers.me_profile import router as me_profile_router
 from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.notifications import router as notifications_router
+from bimstitch_api.routers.organization_image import (
+    admin_router as org_image_admin_router,
+)
+from bimstitch_api.routers.organization_image import (
+    org_router as org_image_router,
+)
 from bimstitch_api.routers.organization_members import router as organization_members_router
 from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
@@ -164,6 +170,8 @@ def create_app() -> FastAPI:
     app.include_router(build_auth_router())
     app.include_router(admin_organizations_router)
     app.include_router(admin_impersonate_router)
+    app.include_router(org_image_admin_router)
+    app.include_router(org_image_router)
     app.include_router(organization_members_router)
     app.include_router(me_invitations_router)
     app.include_router(me_memberships_router)

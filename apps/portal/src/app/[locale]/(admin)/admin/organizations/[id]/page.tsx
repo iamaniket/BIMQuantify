@@ -3,7 +3,7 @@
 import { Pause, Pencil, Play, Trash2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { use, useMemo, useState, type JSX } from 'react';
+import { use, useCallback, useMemo, useState, type JSX } from 'react';
 
 import { Button, ConfirmDialog, Skeleton } from '@bimstitch/ui';
 
@@ -17,6 +17,8 @@ import { useDeleteOrganization } from '@/features/admin/organizations/useDeleteO
 import { useUpdateOrganization } from '@/features/admin/organizations/useUpdateOrganization';
 import { OrgDetailView } from '@/features/org-detail';
 import type { OrgDetailData } from '@/features/org-detail';
+import { deleteAdminOrgImage, uploadAdminOrgImage } from '@/lib/api/organizationImage';
+import { useAuth } from '@/providers/AuthProvider';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -27,11 +29,26 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
   const router = useRouter();
   const { id } = use(params);
 
+  const { tokens, refreshMe } = useAuth();
   const orgQuery = useAdminOrganization(id);
   const membersQuery = useOrgMembers(id);
   const auditQuery = useOrgAuditLog(id, { limit: 50 });
   const deleteMutation = useDeleteOrganization();
   const statusMutation = useUpdateOrganization();
+
+  const handleImageUpload = useCallback(async (file: File) => {
+    if (!tokens) return;
+    await uploadAdminOrgImage(tokens.access_token, id, file);
+    await orgQuery.refetch();
+    await refreshMe();
+  }, [tokens, id, orgQuery, refreshMe]);
+
+  const handleImageRemove = useCallback(async () => {
+    if (!tokens) return;
+    await deleteAdminOrgImage(tokens.access_token, id);
+    await orgQuery.refetch();
+    await refreshMe();
+  }, [tokens, id, orgQuery, refreshMe]);
 
   const orgName = orgQuery.data?.name;
   const crumbs = useMemo(
@@ -97,6 +114,7 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
     status: raw.status,
     seatLimit: raw.seat_limit,
     seatCountUsed: raw.seat_count_used,
+    imageUrl: raw.image_url ?? null,
     schemaName: raw.schema_name,
     createdAt: raw.created_at,
     provisionedAt: raw.provisioned_at,
@@ -114,6 +132,8 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
         auditError={auditQuery.isError}
         onInvite={() => { setInviteOpen(true); }}
         onDelete={handleDelete}
+        onImageUpload={handleImageUpload}
+        onImageRemove={handleImageRemove}
         heroActions={
           <div className="flex gap-2">
             <Button variant="border" size="sm" onClick={() => { setEditOpen(true); }}>

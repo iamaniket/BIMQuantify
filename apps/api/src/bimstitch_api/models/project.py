@@ -31,6 +31,8 @@ class ProjectLifecycleState(StrEnum):
     active = "active"
     archived = "archived"
     removed = "removed"
+    # TODO(tier-2-archive): Add 'restoring' transitional state for the async
+    # Glacier restore flow (active → archived → restoring → active).
 
 
 class ProjectPhase(StrEnum):

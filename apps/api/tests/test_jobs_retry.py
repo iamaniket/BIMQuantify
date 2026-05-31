@@ -175,3 +175,32 @@ async def test_retry_dispatch_failure_marks_new_job_failed(
     assert body["retriable"] is True
     assert body["error_kind"] == "dispatch"
     assert body["retry_of"] == failed["id"]
+
+
+async def test_retry_job_rejected_when_project_archived(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    async def _boom(*_args: object, **_kwargs: object) -> None:
+        raise DispatchJobError("connection refused")
+
+    set_job_dispatcher(_boom)
+    client, fake = fake_storage_client
+    project_id, _model_id, _file_id = await _ready_file(client, fake, org_user, name="arch.ifc")
+
+    failed = await _latest_job(client, org_user["access_token"], project_id)
+    assert failed["status"] == "failed"
+
+    archive = await client.post(
+        f"/projects/{project_id}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert archive.status_code == 200
+
+    resp = await client.post(
+        f"/jobs/{failed['id']}/retry",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "PROJECT_ARCHIVED"

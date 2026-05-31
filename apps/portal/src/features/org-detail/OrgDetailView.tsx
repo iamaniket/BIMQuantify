@@ -3,6 +3,7 @@
 import {
   Activity,
   Bell,
+  Camera,
   ChevronRight,
   Clock,
   Download,
@@ -15,9 +16,10 @@ import {
   Trash2,
   UserPlus,
   Users,
+  X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useMemo, useState, type JSX, type ReactNode } from 'react';
+import { useRef, useMemo, useState, type JSX, type ReactNode } from 'react';
 
 import {
   Badge,
@@ -71,18 +73,27 @@ function relativeTime(dateStr: string): string {
 // Hero
 // ---------------------------------------------------------------------------
 
+const IMAGE_ALLOWED_TYPES = 'image/png,image/jpeg,image/webp';
+const IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+
 function OrgDetailHero({
   org,
   members,
   auditEntries,
   actions,
+  onImageUpload,
+  onImageRemove,
 }: {
   org: OrgDetailViewProps['org'];
   members: MemberRead[];
   auditEntries: AuditEntry[];
   actions?: ReactNode;
+  onImageUpload?: (file: File) => void;
+  onImageRemove?: () => void;
 }): JSX.Element {
   const t = useTranslations('orgDetail.hero');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const canEdit = onImageUpload !== undefined;
 
   const adminCount = members.filter((m) => m.is_org_admin && m.status === 'active').length;
   const memberCount = members.filter((m) => !m.is_org_admin && m.status === 'active').length;
@@ -101,8 +112,53 @@ function OrgDetailHero({
   return (
     <HeroShell
       image={
-        <div className="flex h-[80px] w-[80px] items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light text-[28px] font-extrabold text-primary-foreground shadow-md">
-          {orgInitials(org.name)}
+        <div className="group relative">
+          {org.imageUrl ? (
+            <img
+              src={org.imageUrl}
+              alt={org.name}
+              className="h-[80px] w-[80px] rounded-xl object-cover shadow-md"
+            />
+          ) : (
+            <div className="flex h-[80px] w-[80px] items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light text-[28px] font-extrabold text-primary-foreground shadow-md">
+              {orgInitials(org.name)}
+            </div>
+          )}
+          {canEdit && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={IMAGE_ALLOWED_TYPES}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > IMAGE_MAX_BYTES) return;
+                  onImageUpload(file);
+                  e.target.value = '';
+                }}
+              />
+              <button
+                type="button"
+                className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label={org.imageUrl ? t('changeImage') : t('uploadImage')}
+              >
+                <Camera className="h-5 w-5 text-white" />
+              </button>
+              {org.imageUrl && onImageRemove && (
+                <button
+                  type="button"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-error text-white opacity-0 shadow transition-opacity group-hover:opacity-100"
+                  onClick={onImageRemove}
+                  aria-label={t('removeImage')}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </>
+          )}
         </div>
       }
       title={org.name}
@@ -490,6 +546,8 @@ export function OrgDetailView({
   heroActions,
   overviewQuickActions,
   onDelete,
+  onImageUpload,
+  onImageRemove,
 }: OrgDetailViewProps): JSX.Element {
   const t = useTranslations('orgDetail');
 
@@ -548,6 +606,8 @@ export function OrgDetailView({
           members={members}
           auditEntries={auditEntries}
           actions={heroActions}
+          {...(onImageUpload !== undefined ? { onImageUpload } : {})}
+          {...(onImageRemove !== undefined ? { onImageRemove } : {})}
         />
       }
     >

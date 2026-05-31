@@ -232,6 +232,23 @@
     }
   },
   "projects": {
+    "hero": {
+      "title": "Projects",
+      "badge": "Portfolio overview",
+      "subtitle": "{active} active · {archived} archived",
+      "activeLabel": "Active",
+      "activeSub": "{count} total",
+      "constructionLabel": "In construction",
+      "constructionSub": "{design} in design",
+      "deadlinesLabel": "Deadlines",
+      "deadlinesApproaching": "{count, plural, one {# approaching} other {# approaching}}",
+      "deadlinesOverdue": "{count} overdue",
+      "deadlinesOnTrack": "on track",
+      "deadlinesNone": "no dates set",
+      "certificatesLabel": "Certificates",
+      "certificatesSub": "{expired} expired · {expiring} expiring",
+      "certificatesOk": "all valid"
+    },
     "page": {
       "searchPlaceholder": "Search projects...",
       "searchAriaLabel": "Search projects",
@@ -285,12 +302,18 @@
         "deleteTitle": "Delete project",
         "deleteDescription": "Remove \"{name}\" from active views? It will be hidden from normal project lists.",
         "deleteConfirm": "Remove",
+        "archiveTitle": "Archive project",
+        "archiveDescription": "Archive \"{name}\"? The project becomes read-only — no one can edit, run checks, or generate reports until it is reactivated.",
+        "archiveConfirm": "Archive",
+        "archiveSuccess": "Project archived",
+        "reactivateSuccess": "Project reactivated",
         "cancel": "Cancel",
         "errors": {
           "forbidden": "You do not have permission to delete this project.",
           "notFound": "Project not found. It may have been deleted already.",
           "deleteFailed": "Delete failed: {detail}",
-          "deleteUnknown": "Could not delete project."
+          "deleteUnknown": "Could not delete project.",
+          "archiveFailed": "Could not archive project."
         }
       }
     },
@@ -1388,7 +1411,10 @@
       "ago": "ago",
       "eventsToday": "{count} {count, plural, =1 {event} other {events}} today",
       "noEvents": "No events yet",
-      "today": "today"
+      "today": "today",
+      "changeImage": "Change logo",
+      "removeImage": "Remove logo",
+      "uploadImage": "Upload logo"
     },
     "panel": {
       "overviewEyebrow": "Organization overview",

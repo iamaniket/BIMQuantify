@@ -13,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from '@bimstitch/ui';
 
+import { toast } from 'sonner';
+
 import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';
 
@@ -43,10 +45,19 @@ function formatDeleteError(
   return t('errors.deleteUnknown');
 }
 
+function formatArchiveError(
+  error: unknown,
+  t: ReturnType<typeof useTranslations>,
+): string | null {
+  if (error === null || error === undefined) return null;
+  return t('errors.archiveFailed');
+}
+
 export function ProjectCardMenu({ project }: Props): JSX.Element {
   const t = useTranslations('projects.card.menu');
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const archived = isProjectArchived(project);
 
   const archiveMutation = useArchiveProject();
@@ -66,6 +77,25 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
       {
         onSuccess: () => {
           setDeleteOpen(false);
+        },
+      },
+    );
+  };
+
+  const handleArchiveOpenChange = (open: boolean): void => {
+    setArchiveOpen(open);
+    if (!open) {
+      archiveMutation.reset();
+    }
+  };
+
+  const handleConfirmArchive = (): void => {
+    archiveMutation.mutate(
+      { id: project.id },
+      {
+        onSuccess: () => {
+          setArchiveOpen(false);
+          toast.success(t('archiveSuccess'));
         },
       },
     );
@@ -106,7 +136,14 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();
-                reactivateMutation.mutate({ id: project.id });
+                reactivateMutation.mutate(
+                  { id: project.id },
+                  {
+                    onSuccess: () => {
+                      toast.success(t('reactivateSuccess'));
+                    },
+                  },
+                );
               }}
             >
               {t('reactivate')}
@@ -115,7 +152,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();
-                archiveMutation.mutate({ id: project.id });
+                setArchiveOpen(true);
               }}
             >
               {t('archive')}
@@ -151,6 +188,19 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
         variant="destructive"
         isPending={deleteMutation.isPending}
         errorMessage={formatDeleteError(deleteMutation.error, t)}
+      />
+
+      <ConfirmDialog
+        open={archiveOpen}
+        onOpenChange={handleArchiveOpenChange}
+        title={t('archiveTitle')}
+        description={t('archiveDescription', { name: project.name })}
+        confirmLabel={t('archiveConfirm')}
+        cancelLabel={t('cancel')}
+        onConfirm={handleConfirmArchive}
+        variant="default"
+        isPending={archiveMutation.isPending}
+        errorMessage={formatArchiveError(archiveMutation.error, t)}
       />
     </>
   );

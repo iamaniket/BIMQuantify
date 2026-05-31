@@ -472,3 +472,63 @@ async def test_export_rules_csv_framework_filter(
         f'filename="compliance-rules-wkb-{file_id}.csv"'
         in wkb.headers["content-disposition"]
     )
+
+
+# ---------------------------------------------------------------------------
+# Archived project
+# ---------------------------------------------------------------------------
+
+
+async def test_compliance_check_rejected_when_project_archived(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id, file_id = await _ready_file(
+        client, fake, org_user, name="arch.ifc"
+    )
+
+    archive = await client.post(
+        f"/projects/{project_id}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert archive.status_code == 200
+
+    resp = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{file_id}/compliance/check",
+        json={"framework": "bbl"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "PROJECT_ARCHIVED"
+
+
+async def test_compliance_export_allowed_when_project_archived(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id, file_id = await _ready_file(
+        client, fake, org_user, name="arch-read.ifc"
+    )
+    await _seed_compliance_job(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(project_id),
+        UUID(file_id),
+    )
+
+    archive = await client.post(
+        f"/projects/{project_id}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert archive.status_code == 200
+
+    resp = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{file_id}/compliance/export.csv",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200

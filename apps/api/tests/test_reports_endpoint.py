@@ -1272,3 +1272,52 @@ async def test_create_dossier_report_works_with_no_data(
     assert isinstance(payload, dict)
     assert payload["findings"] == []
     assert payload["certificates"] == []
+
+
+# ---------------------------------------------------------------------------
+# Archived project
+# ---------------------------------------------------------------------------
+
+
+async def test_create_report_rejected_when_project_archived(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="P-arch")
+
+    archive = await client.post(
+        f"/projects/{project['id']}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert archive.status_code == 200
+
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "compliance_report"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "PROJECT_ARCHIVED"
+
+
+async def test_list_reports_allowed_when_project_archived(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="P-arch-read")
+
+    archive = await client.post(
+        f"/projects/{project['id']}/archive",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert archive.status_code == 200
+
+    resp = await client.get(
+        f"/projects/{project['id']}/reports",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
