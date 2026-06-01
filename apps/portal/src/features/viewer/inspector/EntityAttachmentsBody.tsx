@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  FileText, Loader2, Paperclip, Plus, StickyNote,
+  FileText, LinkIcon, Loader2, Paperclip, Plus, StickyNote,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -13,6 +13,7 @@ import { Button, Input, Spinner, SplitButton } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
+import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLinkDialog';
 import { useElementAttachments, useProjectAttachments } from '@/features/attachments/useAttachments';
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
@@ -44,6 +45,7 @@ export function EntityAttachmentsBody({
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [uploadPhase, setUploadPhase] = useState<string | null>(null);
+  const [captureLinkDialogOpen, setCaptureLinkDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastConsumedNonce = useRef<number | undefined>(undefined);
 
@@ -185,6 +187,12 @@ export function EntityAttachmentsBody({
               icon: <StickyNote className="h-4 w-4" />,
               onSelect: () => { setShowNoteInput(true); },
             },
+            {
+              id: 'capture-link',
+              label: t('createCaptureLink'),
+              icon: <LinkIcon className="h-4 w-4" />,
+              onSelect: () => { setCaptureLinkDialogOpen(true); },
+            },
           ]}
         />
         <input
@@ -266,6 +274,13 @@ export function EntityAttachmentsBody({
           </div>
         )}
       </div>
+
+      {/* Capture link dialog */}
+      <CreateCaptureLinkDialog
+        projectId={projectId}
+        open={captureLinkDialogOpen}
+        onOpenChange={setCaptureLinkDialogOpen}
+      />
 
       {/* Viewer dialog */}
       <AttachmentViewerDialog

@@ -842,6 +842,7 @@
         "title": "No findings logged",
         "description": "Findings from failed checklist items will show up here with their resolution and verification trail.",
         "ctaLabel": "Log finding",
+        "boardLabel": "Board view",
         "count": "{count, plural, one {# finding} other {# findings}}",
         "searchPlaceholder": "Search findings…",
         "noResults": "No findings match your search."
@@ -1135,6 +1136,36 @@
       "delete": "Delete",
       "promote": "Promote"
     }
+  },
+  "findingsBoard": {
+    "crumb": "Board",
+    "hero": {
+      "badge": "Quality tracking",
+      "subtitle": "Drag findings between columns to update status",
+      "totalLabel": "Total",
+      "totalSub": "{count, plural, one {# finding} other {# findings}} logged",
+      "activeLabel": "Active",
+      "activeSub": "need attention",
+      "overdueLabel": "Overdue",
+      "overdueSub": "{count, plural, one {# finding} other {# findings}} past deadline",
+      "overdueNone": "All on track",
+      "resolvedLabel": "Resolved",
+      "resolvedSub": "completion rate"
+    },
+    "columns": {
+      "draft": "Draft",
+      "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved",
+      "verified": "Verified"
+    },
+    "card": {
+      "noAssignee": "Unassigned",
+      "overdue": "Overdue"
+    },
+    "empty": "No findings",
+    "invalidDrop": "Cannot move here",
+    "logFinding": "Log finding"
   },
   "reports": {
     "page": {
@@ -2422,7 +2453,10 @@
     "fieldStatus": "Status",
     "fieldUploadedAt": "Added",
     "fieldUploadedBy": "Uploaded by",
-    "fieldLinkedElement": "Linked element"
+    "fieldLinkedElement": "Linked element",
+    "rowView": "View",
+    "expandedRemove": "Remove",
+    "deleteSuccess": "Certificate deleted."
   },
   "viewerOrphans": {
     "title": "Not in this version",
@@ -2465,6 +2499,7 @@
     "attachToElement": "Attach to element",
     "attachToProject": "Attach to project",
     "addNote": "Add note",
+    "createCaptureLink": "Create capture link",
     "notePlaceholder": "Type a note…",
     "noteSubmit": "Save note",
     "uploadHashing": "Hashing…",

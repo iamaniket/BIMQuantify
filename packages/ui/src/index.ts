@@ -111,4 +111,10 @@ export type {
 } from './DetailCard.js';
 export { MetaGrid } from './MetaGrid.js';
 export type { MetaGridProps, MetaGridEntry } from './MetaGrid.js';
+export { KanbanBoard } from './KanbanBoard.js';
+export type { KanbanBoardProps, KanbanColumnDef } from './KanbanBoard.js';
+export { KanbanColumn } from './KanbanColumn.js';
+export type { KanbanColumnProps } from './KanbanColumn.js';
+export { KanbanCard } from './KanbanCard.js';
+export type { KanbanCardProps } from './KanbanCard.js';
 

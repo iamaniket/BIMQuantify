@@ -5,7 +5,10 @@ dist
 *.log
 .env
 .env.local
-samples/
+samples/*
+!samples/Duplex.ifc
+!samples/IfcOpenHouse2x3.ifc
+!samples/IfcOpenHouse4.ifc
 
 # Playwright
 playwright-report/

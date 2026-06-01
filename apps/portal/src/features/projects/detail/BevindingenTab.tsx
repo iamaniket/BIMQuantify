@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Eye, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, Columns3, Eye, Plus, Search, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 
@@ -22,6 +22,8 @@ import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useFindings } from '@/features/findings/useFindings';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import type { Finding } from '@/lib/api/schemas';
+
+import { Link } from '@/i18n/navigation';
 
 import { FindingDetailModal } from './FindingDetailModal';
 import { FindingFormDialog } from './FindingFormDialog';
@@ -137,6 +139,12 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         <div className="shrink-0 text-body3 text-foreground-tertiary">
           {t('count', { count: findings.length })}
         </div>
+        <Link href={`/projects/${projectId}/findings`}>
+          <Button variant="border" size="sm">
+            <Columns3 className="mr-1.5 h-3.5 w-3.5" />
+            {t('boardLabel')}
+          </Button>
+        </Link>
         <Button variant="border" size="sm" onClick={() => { setCreateOpen(true); }}>
           <Plus className="mr-1.5 h-3.5 w-3.5" />
           {t('ctaLabel')}

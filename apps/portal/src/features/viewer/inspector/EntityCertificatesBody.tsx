@@ -1,13 +1,25 @@
 'use client';
 
-import { Eye, FileBadge, Loader2, Plus, Search } from 'lucide-react';
+import { Eye, FileBadge, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { toast } from 'sonner';
 
-import { Badge, Button, Input, type BadgeVariant } from '@bimstitch/ui';
+import {
+  Badge,
+  Button,
+  DetailCard,
+  DetailCardBody,
+  DetailCardFooter,
+  DetailCardRow,
+  Input,
+  MetaGrid,
+  type BadgeVariant,
+} from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/PanelEmptyState';
 import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
+import { useDeleteCertificate } from '@/features/certificates/useDeleteCertificate';
 import { useElementCertificates } from '@/features/certificates/useElementCertificates';
 import { useProjectCertificates } from '@/features/certificates/useCertificates';
 import {
@@ -34,6 +46,15 @@ const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
   expired: 'error',
 };
 
+function formatDate(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—';
+  return new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export function EntityCertificatesBody({
   projectId,
   modelId,
@@ -49,8 +70,10 @@ export function EntityCertificatesBody({
   const elementQuery = useElementCertificates(projectId, modelId, globalId);
   const projectQuery = useProjectCertificates(projectId, isProject);
   const query = isProject ? projectQuery : elementQuery;
+  const deleteMutation = useDeleteCertificate(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const lastConsumedNonce = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -72,6 +95,18 @@ export function EntityCertificatesBody({
       return c.certificate_number !== null && c.certificate_number.toLowerCase().includes(q);
     });
   }, [certificates, search]);
+
+  const handleDelete = useCallback(
+    (cert: Certificate) => {
+      deleteMutation.mutate(cert.id, {
+        onSuccess: () => {
+          if (expandedId === cert.id) setExpandedId(null);
+          toast.success(t('deleteSuccess'));
+        },
+      });
+    },
+    [deleteMutation, expandedId, t],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -110,24 +145,87 @@ export function EntityCertificatesBody({
           <div className="flex flex-col">
             {filteredCertificates.map((cert) => {
               const expiry = getCertificateExpiryState(cert.valid_until);
+              const isExpanded = expandedId === cert.id;
+
+              const entries: Array<{ label: string; value: string }> = [
+                { label: t('fieldType'), value: tTypes(cert.certificate_type) },
+              ];
+              if (cert.issuer !== null && cert.issuer !== '') {
+                entries.push({ label: t('fieldIssuer'), value: cert.issuer });
+              }
+              if (cert.certificate_number !== null && cert.certificate_number !== '') {
+                entries.push({ label: t('fieldNumber'), value: cert.certificate_number });
+              }
+              if (cert.valid_from !== null) {
+                entries.push({ label: t('fieldValidFrom'), value: formatDate(cert.valid_from) });
+              }
+              if (cert.valid_until !== null) {
+                entries.push({ label: t('fieldValidUntil'), value: formatDate(cert.valid_until) });
+              }
+              entries.push({ label: t('fieldUploadedAt'), value: formatDate(cert.created_at) });
+
               return (
-                <button
+                <DetailCard
                   key={cert.id}
-                  type="button"
-                  onClick={() => { setViewingCertificate(cert); }}
-                  className="flex w-full items-center gap-2 border-b border-border px-2.5 py-2 text-left transition-colors hover:bg-background-hover"
+                  expanded={isExpanded}
+                  onToggle={() => { setExpandedId(isExpanded ? null : cert.id); }}
                 >
-                  <Badge variant="default" className="w-fit shrink-0">
-                    {tTypes(cert.certificate_type)}
-                  </Badge>
-                  <span className="min-w-0 flex-1 truncate text-body3 font-medium text-foreground">
-                    {cert.original_filename}
-                  </span>
-                  <Badge variant={EXPIRY_BADGE[expiry]} className="w-fit shrink-0">
-                    {tExpiry(expiry)}
-                  </Badge>
-                  <Eye className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
-                </button>
+                  <DetailCardRow
+                    media={
+                      <FileBadge className="h-5 w-5 text-foreground-tertiary" aria-hidden />
+                    }
+                    actions={
+                      <button
+                        type="button"
+                        title={t('rowView')}
+                        onClick={(e) => { e.stopPropagation(); setViewingCertificate(cert); }}
+                        className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                    }
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-body3 font-semibold leading-tight text-foreground">
+                        {cert.original_filename}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
+                      <Badge variant="default" size="sm" className="w-fit shrink-0">
+                        {tTypes(cert.certificate_type)}
+                      </Badge>
+                      <span className="shrink-0">·</span>
+                      <Badge variant={EXPIRY_BADGE[expiry]} size="sm" className="w-fit shrink-0">
+                        {tExpiry(expiry)}
+                      </Badge>
+                    </div>
+                  </DetailCardRow>
+
+                  <DetailCardBody>
+                    <MetaGrid entries={entries} />
+                  </DetailCardBody>
+
+                  <DetailCardFooter className="justify-between">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setViewingCertificate(cert); }}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      {t('rowView')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { handleDelete(cert); }}
+                      disabled={deleteMutation.isPending}
+                      className="text-error hover:text-error"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {t('expandedRemove')}
+                    </Button>
+                  </DetailCardFooter>
+                </DetailCard>
               );
             })}
           </div>

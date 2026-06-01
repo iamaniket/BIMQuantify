@@ -842,6 +842,7 @@
         "title": "Nog geen bevindingen vastgelegd",
         "description": "Bevindingen uit afgekeurde checklistitems verschijnen hier met hun afhandeling en verificatie.",
         "ctaLabel": "Bevinding vastleggen",
+        "boardLabel": "Bordweergave",
         "count": "{count, plural, one {# bevinding} other {# bevindingen}}",
         "searchPlaceholder": "Zoek bevindingen…",
         "noResults": "Geen bevindingen komen overeen met uw zoekopdracht."
@@ -1135,6 +1136,36 @@
       "delete": "Verwijderen",
       "promote": "Promoveren"
     }
+  },
+  "findingsBoard": {
+    "crumb": "Bord",
+    "hero": {
+      "badge": "Kwaliteitsbewaking",
+      "subtitle": "Sleep bevindingen tussen kolommen om de status bij te werken",
+      "totalLabel": "Totaal",
+      "totalSub": "{count, plural, one {# bevinding} other {# bevindingen}} gelogd",
+      "activeLabel": "Actief",
+      "activeSub": "vereisen aandacht",
+      "overdueLabel": "Te laat",
+      "overdueSub": "{count, plural, one {# bevinding} other {# bevindingen}} over deadline",
+      "overdueNone": "Alles op schema",
+      "resolvedLabel": "Opgelost",
+      "resolvedSub": "voltooiingspercentage"
+    },
+    "columns": {
+      "draft": "Concept",
+      "open": "Open",
+      "in_progress": "In behandeling",
+      "resolved": "Opgelost",
+      "verified": "Geverifieerd"
+    },
+    "card": {
+      "noAssignee": "Niet toegewezen",
+      "overdue": "Te laat"
+    },
+    "empty": "Geen bevindingen",
+    "invalidDrop": "Kan hier niet naartoe",
+    "logFinding": "Bevinding vastleggen"
   },
   "reports": {
     "page": {
@@ -2422,7 +2453,10 @@
     "fieldStatus": "Status",
     "fieldUploadedAt": "Toegevoegd",
     "fieldUploadedBy": "Geüpload door",
-    "fieldLinkedElement": "Gekoppeld element"
+    "fieldLinkedElement": "Gekoppeld element",
+    "rowView": "Bekijken",
+    "expandedRemove": "Verwijderen",
+    "deleteSuccess": "Certificaat verwijderd."
   },
   "viewerOrphans": {
     "title": "Niet in deze versie",
@@ -2465,6 +2499,7 @@
     "attachToElement": "Toevoegen aan element",
     "attachToProject": "Toevoegen aan project",
     "addNote": "Notitie toevoegen",
+    "createCaptureLink": "Opnamelink aanmaken",
     "notePlaceholder": "Typ een notitie…",
     "noteSubmit": "Notitie opslaan",
     "uploadHashing": "Hashen…",
