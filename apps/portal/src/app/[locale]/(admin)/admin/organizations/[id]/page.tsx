@@ -134,8 +134,8 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
         onDelete={handleDelete}
         onImageUpload={handleImageUpload}
         onImageRemove={handleImageRemove}
-        heroActions={
-          <div className="flex gap-2">
+        tabBarActions={
+          <>
             <Button variant="border" size="sm" onClick={() => { setEditOpen(true); }}>
               <Pencil className="mr-1 h-3.5 w-3.5" />
               {t('editButton')}
@@ -156,7 +156,7 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
               <Trash2 className="mr-1 h-3.5 w-3.5" />
               {t('deleteButton')}
             </Button>
-          </div>
+          </>
         }
       />
       <OrgEditDialog organization={raw} open={editOpen} onOpenChange={setEditOpen} />

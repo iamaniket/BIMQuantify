@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useRef, useMemo, useState, type JSX, type ReactNode } from 'react';
+import { useCallback, useRef, useMemo, useState, type JSX, type ReactNode } from 'react';
 
 import {
   Badge,
@@ -39,6 +39,7 @@ import {
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
+import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
 import { MembersTable } from '@/features/admin/members/MembersTable';
 import { DeadlineNotificationDefaults } from '@/features/admin/notifications/DeadlineNotificationDefaults';
 import type { AuditEntry, MemberRead } from '@/lib/api/schemas';
@@ -56,6 +57,56 @@ function orgInitials(name: string): string {
     .map((w) => w[0])
     .join('')
     .toUpperCase();
+}
+
+const AUDIT_PAGE_SIZE = 50;
+
+function computeSince(filter: string): string | undefined {
+  if (filter === 'all') return undefined;
+  const now = new Date();
+  if (filter === 'today') {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  }
+  const days = parseInt(filter, 10);
+  if (isNaN(days)) return undefined;
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function matchesActionFilter(action: string, filter: string): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'auth') return action.startsWith('auth.');
+  if (filter === 'member')
+    return action.startsWith('organization_member.') || action.startsWith('member.');
+  if (filter === 'settings')
+    return action.startsWith('organization.') && !action.startsWith('organization_member.');
+  return true;
+}
+
+function summarizeCsv(entry: { before: Record<string, unknown> | null; after: Record<string, unknown> | null }): string {
+  const before = entry.before === null ? null : JSON.stringify(entry.before);
+  const after = entry.after === null ? null : JSON.stringify(entry.after);
+  if (before !== null && after !== null) return `${before} → ${after}`;
+  if (after !== null) return after;
+  if (before !== null) return before;
+  return '';
+}
+
+function exportAuditCsv(entries: AuditEntry[]): void {
+  const header = 'Timestamp,Action,Resource Type,Resource ID,Change';
+  const rows = entries.map((e) => {
+    const ts = new Date(e.created_at).toISOString();
+    const change = summarizeCsv(e).replace(/"/g, '""');
+    const resId = e.resource_id ?? '';
+    return `"${ts}","${e.action}","${e.resource_type}","${resId}","${change}"`;
+  });
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function relativeTime(dateStr: string): string {
@@ -112,15 +163,15 @@ function OrgDetailHero({
   return (
     <HeroShell
       image={
-        <div className="group relative">
+        <div className="group relative h-[130px] w-[195px] overflow-hidden rounded-[10px] border border-black/10 bg-black/5 shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
           {org.imageUrl ? (
             <img
               src={org.imageUrl}
               alt={org.name}
-              className="h-[80px] w-[80px] rounded-xl object-cover shadow-md"
+              className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-[80px] w-[80px] items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light text-[28px] font-extrabold text-primary-foreground shadow-md">
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-primary-light text-[36px] font-extrabold text-primary-foreground">
               {orgInitials(org.name)}
             </div>
           )}
@@ -141,11 +192,11 @@ function OrgDetailHero({
               />
               <button
                 type="button"
-                className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute inset-0 flex items-center justify-center rounded-[10px] bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
                 onClick={() => fileInputRef.current?.click()}
                 aria-label={org.imageUrl ? t('changeImage') : t('uploadImage')}
               >
-                <Camera className="h-5 w-5 text-white" />
+                <Camera className="h-6 w-6 text-white" />
               </button>
               {org.imageUrl && onImageRemove && (
                 <button
@@ -497,7 +548,7 @@ function MembersToolbar({
         <option value="suspended">{t('statusSuspended')}</option>
       </Select>
       <div className="flex-1" />
-      <Button size="sm" onClick={onInvite}>
+      <Button size="sm" className="whitespace-nowrap" onClick={onInvite}>
         <Plus className="mr-1 h-3.5 w-3.5" />
         {t('inviteButton')}
       </Button>
@@ -505,24 +556,36 @@ function MembersToolbar({
   );
 }
 
-function AuditToolbar(): JSX.Element {
+function AuditToolbar({
+  dateFilter,
+  onDateFilterChange,
+  actionFilter,
+  onActionFilterChange,
+  onExportCsv,
+}: {
+  dateFilter: string;
+  onDateFilterChange: (v: string) => void;
+  actionFilter: string;
+  onActionFilterChange: (v: string) => void;
+  onExportCsv: () => void;
+}): JSX.Element {
   const t = useTranslations('orgDetail.toolbar');
   return (
     <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
-      <Select selectSize="sm" defaultValue="7">
+      <Select selectSize="sm" value={dateFilter} onChange={(e) => { onDateFilterChange(e.target.value); }}>
         <option value="today">{t('dateToday')}</option>
         <option value="7">{t('date7')}</option>
         <option value="30">{t('date30')}</option>
         <option value="all">{t('dateAll')}</option>
       </Select>
-      <Select selectSize="sm" defaultValue="all">
+      <Select selectSize="sm" value={actionFilter} onChange={(e) => { onActionFilterChange(e.target.value); }}>
         <option value="all">{t('actionAll')}</option>
         <option value="auth">auth.*</option>
         <option value="member">member.*</option>
         <option value="settings">settings.*</option>
       </Select>
       <div className="flex-1" />
-      <Button variant="border" size="sm">
+      <Button variant="primary" size="sm" className="whitespace-nowrap" onClick={onExportCsv}>
         <Download className="mr-1 h-3.5 w-3.5" />
         {t('exportCsv')}
       </Button>
@@ -544,6 +607,7 @@ export function OrgDetailView({
   auditError,
   onInvite,
   heroActions,
+  tabBarActions,
   overviewQuickActions,
   onDelete,
   onImageUpload,
@@ -555,6 +619,40 @@ export function OrgDetailView({
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Audit filter + pagination state
+  const [dateFilter, setDateFilter] = useState('7');
+  const [actionFilter, setActionFilter] = useState('all');
+  const [auditLimit, setAuditLimit] = useState(AUDIT_PAGE_SIZE);
+
+  const auditSince = useMemo(() => computeSince(dateFilter), [dateFilter]);
+
+  const internalAuditQuery = useOrgAuditLog(org.id, {
+    since: auditSince,
+    limit: auditLimit,
+  });
+
+  const internalAuditEntries = internalAuditQuery.data ?? [];
+
+  const filteredAuditEntries = useMemo(
+    () => internalAuditEntries.filter((e) => matchesActionFilter(e.action, actionFilter)),
+    [internalAuditEntries, actionFilter],
+  );
+
+  const hasMoreAudit = internalAuditEntries.length >= auditLimit;
+
+  const handleDateFilterChange = useCallback((v: string) => {
+    setDateFilter(v);
+    setAuditLimit(AUDIT_PAGE_SIZE);
+  }, []);
+
+  const handleLoadOlder = useCallback(() => {
+    setAuditLimit((prev) => Math.min(prev + AUDIT_PAGE_SIZE, 500));
+  }, []);
+
+  const handleExportCsv = useCallback(() => {
+    exportAuditCsv(filteredAuditEntries);
+  }, [filteredAuditEntries]);
 
   const filteredMembers = useMemo(() => members.filter((m) => {
     if (roleFilter === 'admin' && !m.is_org_admin) return false;
@@ -585,8 +683,8 @@ export function OrgDetailView({
     },
     audit: {
       eyebrow: t('panel.auditEyebrow'),
-      title: t('panel.recentEvents', { count: auditEntries.length }),
-      sub: t('panel.lastDays', { days: 7 }),
+      title: t('panel.recentEvents', { count: filteredAuditEntries.length }),
+      sub: t(`audit.period.${dateFilter}`),
     },
     notifications: {
       eyebrow: t('panel.notificationsEyebrow'),
@@ -616,30 +714,37 @@ export function OrgDetailView({
         onValueChange={setTab}
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
-        <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
-          <TabsTrigger value="overview" className={tabTriggerClass}>
-            <LayoutGrid className="h-3.5 w-3.5" />
-            {t('tabs.overview')}
-          </TabsTrigger>
-          <TabsTrigger value="members" className={tabTriggerClass}>
-            <Users className="h-3.5 w-3.5" />
-            {t('tabs.members')}
-            <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
-              {members.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="audit" className={tabTriggerClass}>
-            <Activity className="h-3.5 w-3.5" />
-            {t('tabs.audit')}
-            <span className="rounded-full bg-background-hover px-1.5 py-px text-caption font-bold text-foreground-tertiary">
-              {auditEntries.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className={tabTriggerClass}>
-            <Bell className="h-3.5 w-3.5" />
-            {t('tabs.notifications')}
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex shrink-0 items-center border-b border-border bg-surface-main px-5">
+          <TabsList className="min-w-0 flex-1 gap-1 rounded-none border-b-0 bg-transparent p-0">
+            <TabsTrigger value="overview" className={tabTriggerClass}>
+              <LayoutGrid className="h-3.5 w-3.5" />
+              {t('tabs.overview')}
+            </TabsTrigger>
+            <TabsTrigger value="members" className={tabTriggerClass}>
+              <Users className="h-3.5 w-3.5" />
+              {t('tabs.members')}
+              <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
+                {members.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="audit" className={tabTriggerClass}>
+              <Activity className="h-3.5 w-3.5" />
+              {t('tabs.audit')}
+              <span className="rounded-full bg-background-hover px-1.5 py-px text-caption font-bold text-foreground-tertiary">
+                {auditEntries.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className={tabTriggerClass}>
+              <Bell className="h-3.5 w-3.5" />
+              {t('tabs.notifications')}
+            </TabsTrigger>
+          </TabsList>
+          {tabBarActions !== undefined && (
+            <div className="flex shrink-0 items-center gap-2">
+              {tabBarActions}
+            </div>
+          )}
+        </div>
 
         <div className="flex shrink-0 items-center gap-4 border-b border-border px-5 py-2.5">
           <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-3">
@@ -655,15 +760,6 @@ export function OrgDetailView({
               )}
             </div>
           </div>
-          {tab === 'overview' && (
-            <button
-              type="button"
-              className="flex items-center gap-1.5 text-body3 font-semibold text-primary hover:underline"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              {t('panel.manageSettings')}
-            </button>
-          )}
         </div>
 
         {tab === 'members' && (
@@ -677,7 +773,15 @@ export function OrgDetailView({
             onInvite={onInvite}
           />
         )}
-        {tab === 'audit' && <AuditToolbar />}
+        {tab === 'audit' && (
+          <AuditToolbar
+            dateFilter={dateFilter}
+            onDateFilterChange={handleDateFilterChange}
+            actionFilter={actionFilter}
+            onActionFilterChange={setActionFilter}
+            onExportCsv={handleExportCsv}
+          />
+        )}
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           <TabsContent value="overview" className="mt-0">
@@ -717,18 +821,24 @@ export function OrgDetailView({
           </TabsContent>
 
           <TabsContent value="audit" className="mt-0">
-            {auditLoading ? (
+            {internalAuditQuery.isLoading ? (
               <Skeleton className="h-32 w-full" />
-            ) : auditError ? (
+            ) : internalAuditQuery.isError ? (
               <p className="text-body3 text-error">{t('audit.loadError')}</p>
             ) : (
               <>
-                <AuditLogTable entries={auditEntries} />
+                <AuditLogTable entries={filteredAuditEntries} />
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-body3 text-foreground-tertiary">
-                  <span>{t('audit.eventCount', { count: auditEntries.length })}</span>
-                  <button type="button" className="font-semibold text-primary hover:underline">
-                    {t('audit.loadOlder')} →
-                  </button>
+                  <span>{t('audit.eventCount', { count: filteredAuditEntries.length, period: t(`audit.period.${dateFilter}`) })}</span>
+                  {hasMoreAudit && auditLimit < 500 && (
+                    <button
+                      type="button"
+                      className="font-semibold text-primary hover:underline"
+                      onClick={handleLoadOlder}
+                    >
+                      {t('audit.loadOlder')} →
+                    </button>
+                  )}
                 </div>
               </>
             )}

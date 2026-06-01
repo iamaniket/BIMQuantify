@@ -90,7 +90,7 @@ export function SideRail({
           >
             <Icon className="h-4 w-4 shrink-0" />
             <span
-              className="text-[11px] font-semibold leading-none tracking-[0.02em]"
+              className="text-[11px] font-bold uppercase leading-none tracking-[0.02em]"
               style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
             >
               {label}

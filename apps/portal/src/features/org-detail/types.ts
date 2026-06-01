@@ -24,6 +24,7 @@ export type OrgDetailViewProps = {
   auditError: boolean;
   onInvite: () => void;
   heroActions?: ReactNode;
+  tabBarActions?: ReactNode;
   overviewQuickActions?: ReactNode;
   onDelete?: () => void;
   onImageUpload?: (file: File) => void;

@@ -1515,14 +1515,40 @@
     },
     "audit": {
       "loadError": "Could not load audit log.",
-      "eventCount": "{count} {count, plural, =1 {event} other {events}} · last 7 days",
-      "loadOlder": "Load older events"
+      "eventCount": "{count} {count, plural, =1 {event} other {events}} · {period}",
+      "loadOlder": "Load older events",
+      "period": {
+        "today": "today",
+        "7": "last 7 days",
+        "30": "last 30 days",
+        "all": "all time"
+      }
     }
   },
   "tenantAdmin": {
     "crumb": "Organization",
     "pageSubtitle": "Manage members, seats, and audit activity for your organization.",
     "notAdmin": "You do not have admin access to this organization.",
+    "editOrgButton": "Edit",
+    "editOrg": {
+      "eyebrow": "Organization settings",
+      "title": "Edit organization",
+      "subtitle": "Update your organization's display name.",
+      "submit": "Save changes",
+      "fields": {
+        "logo": "Logo",
+        "name": "Organization name"
+      },
+      "uploadImage": "Upload logo",
+      "changeImage": "Change logo",
+      "removeImage": "Remove logo",
+      "hints": {
+        "logo": "PNG, JPG or WebP. Max 2 MB."
+      },
+      "errors": {
+        "nameTaken": "This name is already in use."
+      }
+    },
     "tabs": {
       "overview": "Overview",
       "members": "Members",
@@ -1609,8 +1635,14 @@
     },
     "audit": {
       "loadError": "Could not load audit log.",
-      "eventCount": "{count} {count, plural, =1 {event} other {events}} · last 7 days",
-      "loadOlder": "Load older events"
+      "eventCount": "{count} {count, plural, =1 {event} other {events}} · {period}",
+      "loadOlder": "Load older events",
+      "period": {
+        "today": "today",
+        "7": "last 7 days",
+        "30": "last 30 days",
+        "all": "all time"
+      }
     }
   },
   "admin": {
@@ -2045,10 +2077,10 @@
       "multiSummary": "{elements, plural, one {# element} other {# elements}} · {properties, plural, one {# common property} other {# common properties}}"
     },
     "sidePanel": {
-      "titleExplorer": "Model Tree",
-      "titleInspector": "Attachments & Findings",
-      "titleMeasure": "Measurement",
-      "titleSection": "Section Planes",
+      "titleExplorer": "Explorer",
+      "titleInspector": "Inspector",
+      "titleMeasure": "Measure",
+      "titleSection": "Sections",
       "titlePages": "Pages",
       "titleDrawingInfo": "Drawing Info",
       "comingSoon": "Coming soon"

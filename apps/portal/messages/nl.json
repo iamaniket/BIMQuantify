@@ -1515,14 +1515,40 @@
     },
     "audit": {
       "loadError": "Kan auditlog niet laden.",
-      "eventCount": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} · laatste 7 dagen",
-      "loadOlder": "Oudere gebeurtenissen laden"
+      "eventCount": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} · {period}",
+      "loadOlder": "Oudere gebeurtenissen laden",
+      "period": {
+        "today": "vandaag",
+        "7": "laatste 7 dagen",
+        "30": "laatste 30 dagen",
+        "all": "altijd"
+      }
     }
   },
   "tenantAdmin": {
     "crumb": "Organisatie",
     "pageSubtitle": "Beheer leden, licenties en auditactiviteit van uw organisatie.",
     "notAdmin": "U hebt geen beheerderstoegang tot deze organisatie.",
+    "editOrgButton": "Bewerken",
+    "editOrg": {
+      "eyebrow": "Organisatie-instellingen",
+      "title": "Organisatie bewerken",
+      "subtitle": "Werk de weergavenaam van uw organisatie bij.",
+      "submit": "Wijzigingen opslaan",
+      "fields": {
+        "logo": "Logo",
+        "name": "Organisatienaam"
+      },
+      "uploadImage": "Logo uploaden",
+      "changeImage": "Logo wijzigen",
+      "removeImage": "Logo verwijderen",
+      "hints": {
+        "logo": "PNG, JPG of WebP. Max 2 MB."
+      },
+      "errors": {
+        "nameTaken": "Deze naam is al in gebruik."
+      }
+    },
     "tabs": {
       "overview": "Overzicht",
       "members": "Leden",
@@ -1609,8 +1635,14 @@
     },
     "audit": {
       "loadError": "Kan auditlog niet laden.",
-      "eventCount": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} · laatste 7 dagen",
-      "loadOlder": "Oudere gebeurtenissen laden"
+      "eventCount": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} · {period}",
+      "loadOlder": "Oudere gebeurtenissen laden",
+      "period": {
+        "today": "vandaag",
+        "7": "laatste 7 dagen",
+        "30": "laatste 30 dagen",
+        "all": "altijd"
+      }
     }
   },
   "admin": {
@@ -2045,10 +2077,10 @@
       "multiSummary": "{elements, plural, one {# element} other {# elementen}} · {properties, plural, one {# gemeenschappelijke eigenschap} other {# gemeenschappelijke eigenschappen}}"
     },
     "sidePanel": {
-      "titleExplorer": "Modelboom",
-      "titleInspector": "Bijlagen & Bevindingen",
+      "titleExplorer": "Verkenner",
+      "titleInspector": "Inspecteur",
       "titleMeasure": "Meten",
-      "titleSection": "Snijvlakken",
+      "titleSection": "Doorsneden",
       "titlePages": "Pagina's",
       "titleDrawingInfo": "Tekeninginfo",
       "comingSoon": "Binnenkort beschikbaar"

@@ -29,6 +29,16 @@ class OrganizationUpdate(BaseModel):
     seat_limit: int | None = Field(default=None, ge=1, le=100_000)
 
 
+class OrgNameUpdate(BaseModel):
+    """Org-admin-level update: only the organization name."""
+    name: str = Field(min_length=1, max_length=255)
+
+
+class OrgNameUpdateResponse(BaseModel):
+    id: UUID
+    name: str
+
+
 class OrganizationRead(BaseModel):
     id: UUID
     name: str

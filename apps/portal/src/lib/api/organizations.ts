@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { apiClient } from './client';
 import {
   AuthMeResponseSchema,
@@ -9,6 +11,24 @@ import {
 /** Fetch the current user's profile + all org memberships + project roles. */
 export async function getAuthMe(accessToken: string): Promise<AuthMeResponse> {
   return apiClient.get('/auth/me', AuthMeResponseSchema, accessToken);
+}
+
+const OrgNameUpdateResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export async function updateOrganizationName(
+  accessToken: string,
+  organizationId: string,
+  name: string,
+): Promise<{ id: string; name: string }> {
+  return apiClient.patch(
+    `/organizations/${organizationId}`,
+    { name },
+    OrgNameUpdateResponseSchema,
+    accessToken,
+  );
 }
 
 /** Switch the active org for the current user. Re-mints both access + refresh

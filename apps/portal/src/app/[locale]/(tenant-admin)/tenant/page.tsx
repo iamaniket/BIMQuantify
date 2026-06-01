@@ -1,15 +1,16 @@
 'use client';
 
+import { Pencil } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Button, Skeleton } from '@bimstitch/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
 import { InviteMemberDialog } from '@/features/admin/members/InviteMemberDialog';
 import { useOrgMembers } from '@/features/admin/members/useOrgMembers';
-import { OrgDetailView } from '@/features/org-detail';
+import { OrgDetailView, TenantOrgEditDialog } from '@/features/org-detail';
 import type { OrgDetailData } from '@/features/org-detail';
 import { deleteOrgImage, uploadOrgImage } from '@/lib/api/organizationImage';
 import { useAuth } from '@/providers/AuthProvider';
@@ -34,6 +35,7 @@ export default function TenantAdminPage(): JSX.Element {
   useHeaderCrumbsOverride(crumbs);
 
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleImageUpload = useCallback(async (file: File) => {
     if (!tokens || !organizationId) return;
@@ -93,6 +95,22 @@ export default function TenantAdminPage(): JSX.Element {
         onInvite={() => { setInviteOpen(true); }}
         onImageUpload={handleImageUpload}
         onImageRemove={handleImageRemove}
+        tabBarActions={
+          <Button variant="border" size="sm" onClick={() => { setEditOpen(true); }}>
+            <Pencil className="mr-1 h-3.5 w-3.5" />
+            {t('editOrgButton')}
+          </Button>
+        }
+      />
+      <TenantOrgEditDialog
+        organizationId={organizationId}
+        currentName={activeMembership.organization_name}
+        imageUrl={activeMembership.organization_image_url ?? null}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onImageUpload={handleImageUpload}
+        onImageRemove={handleImageRemove}
+        onSuccess={refreshMe}
       />
       <InviteMemberDialog
         organizationId={organizationId}

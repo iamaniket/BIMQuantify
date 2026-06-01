@@ -67,6 +67,7 @@ from bimstitch_api.routers.organization_image import (
 from bimstitch_api.routers.organization_image import (
     org_router as org_image_router,
 )
+from bimstitch_api.routers.organization_settings import router as org_settings_router
 from bimstitch_api.routers.organization_members import router as organization_members_router
 from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
@@ -172,6 +173,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_impersonate_router)
     app.include_router(org_image_admin_router)
     app.include_router(org_image_router)
+    app.include_router(org_settings_router)
     app.include_router(organization_members_router)
     app.include_router(me_invitations_router)
     app.include_router(me_memberships_router)
