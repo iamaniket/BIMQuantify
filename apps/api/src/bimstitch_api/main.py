@@ -1,8 +1,10 @@
 import logging
+import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
+from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi_limiter import FastAPILimiter
@@ -80,14 +82,65 @@ from bimstitch_api.storage import get_attachments_bucket, get_storage
 logger = logging.getLogger(__name__)
 
 
+def _startup_fatal(header: str, errors: list[str]) -> None:
+    """Log a clear error block and terminate immediately.
+
+    Uses ``os._exit(1)`` instead of ``SystemExit`` to avoid the massive
+    ``merged_lifespan`` traceback that FastAPI produces when a lifespan
+    context manager raises.
+    """
+    logger.error("=" * 60)
+    logger.error("STARTUP FAILED — %s:", header)
+    for err in errors:
+        logger.error("  • %s", err)
+    logger.error("=" * 60)
+    logging.shutdown()
+    os._exit(1)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
+    errors: list[str] = []
+
+    # --- Redis ---
     redis = get_redis()
-    await FastAPILimiter.init(redis)
+    try:
+        await redis.ping()
+    except Exception as exc:
+        errors.append(f"Redis ({settings.redis_url}): {exc}")
+
+    # --- Database ---
+    engine = get_engine()
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        errors.append(f"Database: {exc}")
+
+    if errors:
+        _startup_fatal("cannot reach required services", errors)
+
+    # --- Rate limiter ---
+    try:
+        await FastAPILimiter.init(redis)
+    except Exception:
+        logger.warning("Rate limiter init failed; rate limiting disabled", exc_info=True)
+
+    # --- Notification manager ---
     manager = get_manager()
-    await manager.start(redis)
-    await check_pending_migrations(get_engine())
+    try:
+        await manager.start(redis)
+    except Exception:
+        logger.warning("Notification manager failed to start", exc_info=True)
+
+    # --- Database migration check ---
+    try:
+        await check_pending_migrations(engine)
+    except Exception as exc:
+        _startup_fatal("database migration check failed", [str(exc)])
+
+    # --- S3/MinIO storage ---
     try:
         storage = get_storage()
         await storage.ensure_bucket()
@@ -97,6 +150,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             "MinIO/S3 ensure_bucket failed; uploads will fail until storage is reachable",
             exc_info=True,
         )
+
+    # --- Background sweepers ---
     invitation_sweeper = InvitationExpirySweeper(settings.invitation_sweep_interval_minutes)
     invitation_sweeper.start()
     deadline_sweeper = DeadlineReminderSweeper(settings.deadline_sweep_interval_minutes)
@@ -106,6 +161,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         settings.job_stuck_timeout_minutes,
     )
     job_reconcile_sweeper.start()
+    logger.info("Startup complete — all services connected")
     try:
         yield
     finally:

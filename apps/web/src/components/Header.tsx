@@ -1,11 +1,27 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 import type { JSX } from 'react';
 
 import { Button, ThemeToggle } from '@bimstitch/ui';
+import { Menu, X } from 'lucide-react';
+
+import { LanguageToggle } from '@/components/LanguageToggle';
+import { useLocale } from '@/providers/LocaleProvider';
 
 const portalUrl = process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001';
 
 export function Header(): JSX.Element {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { t } = useLocale();
+
+  const navLinks = [
+    { label: t.header.features, href: '/#features' },
+    { label: t.header.blog, href: '/blog' },
+    { label: t.header.requestAccess, href: '/request-access' },
+  ] as const;
+
   return (
     <header className="sticky top-0 z-30 w-full border-b border-border bg-background-secondary/80 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
@@ -13,24 +29,61 @@ export function Header(): JSX.Element {
           href="/"
           className="text-title2 font-semibold text-foreground hover:text-primary"
         >
-          BIMstitch
+          {t.header.brand}
         </Link>
 
-        <nav className="flex items-center gap-2">
+        <nav className="hidden items-center gap-6 sm:flex">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-body2 font-medium text-foreground-secondary hover:text-primary"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
           <ThemeToggle />
-          <Link
-            href="/request-access"
-            className="hidden text-body2 font-semibold text-foreground-secondary hover:text-primary sm:inline-block"
-          >
-            Request access
-          </Link>
-          <a href={portalUrl}>
+          <a href={portalUrl} className="hidden sm:inline-block">
             <Button variant="primary" size="sm">
-              Log in
+              {t.header.signIn}
             </Button>
           </a>
-        </nav>
+          <button
+            type="button"
+            onClick={() => { setMobileOpen(!mobileOpen); }}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground-secondary hover:bg-background-hover sm:hidden"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
+
+      {mobileOpen && (
+        <div className="border-t border-border bg-background-secondary px-6 py-4 sm:hidden">
+          <nav className="flex flex-col gap-3">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => { setMobileOpen(false); }}
+                className="text-body2 font-medium text-foreground-secondary hover:text-primary"
+              >
+                {link.label}
+              </Link>
+            ))}
+            <a href={portalUrl}>
+              <Button variant="primary" size="sm" className="w-full">
+                {t.header.signIn}
+              </Button>
+            </a>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

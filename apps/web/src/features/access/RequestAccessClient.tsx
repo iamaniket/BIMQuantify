@@ -17,11 +17,11 @@ import { fetchProjectsMap, submitAccessRequest, WebApiError } from '@/lib/api';
 import { env } from '@/lib/env';
 import { formatApproxCount } from '@/lib/formatting/numbers';
 
-interface SubmittedState {
+type SubmittedState = {
   name: string;
   email: string;
   company: string;
-}
+};
 
 export function RequestAccessClient(): JSX.Element {
   const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
@@ -122,8 +122,9 @@ export function RequestAccessClient(): JSX.Element {
                 <span className="italic" style={{ color: 'var(--brand-accent-ink)' }}>dossier</span> stitched into one Wkb record.
               </h1>
               <p className="mt-3.5 max-w-md text-[13.5px] leading-snug text-white/70">
-                Tell us a little about your team and we&rsquo;ll spin up a sandbox preloaded with sample
-                Wkb projects, BBL libraries and a representative consumentendossier.
+                Tell us a little about your team and we&rsquo;ll spin up
+                a sandbox preloaded with sample Wkb projects, BBL
+                libraries and a representative consumentendossier.
               </p>
 
               <ul className="mt-5 flex list-none flex-col gap-2.5 p-0">
@@ -166,7 +167,8 @@ export function RequestAccessClient(): JSX.Element {
                   style={{ visibility: markers.length > 0 ? 'visible' : 'hidden' }}
                   aria-hidden={markers.length === 0}
                 >
-                  {formatApproxCount(totalProjects)} projects , {formatApproxCount(markers.length)} cities
+                  {formatApproxCount(totalProjects)} projects ,{' '}
+                  {formatApproxCount(markers.length)} cities
                 </div>
               </div>
             </div>
@@ -212,7 +214,7 @@ export function RequestAccessClient(): JSX.Element {
             name={submitted.name}
             email={submitted.email}
             company={submitted.company}
-            onReset={() => setSubmitted(null)}
+            onReset={() => { setSubmitted(null); }}
           />
         )
       )}

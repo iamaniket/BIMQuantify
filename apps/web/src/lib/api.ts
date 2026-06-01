@@ -11,7 +11,9 @@ import { env } from './env';
  */
 export class WebApiError extends Error {
   public readonly status: number;
+
   public readonly detail: string;
+
   public constructor(status: number, detail: string) {
     super(`API ${String(status)}: ${detail}`);
     this.status = status;
@@ -19,35 +21,34 @@ export class WebApiError extends Error {
   }
 }
 
-export interface AccessRequestPayload {
+export type AccessRequestPayload = {
   name: string;
   work_email: string;
   company: string;
   role: string;
   company_size: string;
   country: string;
-  notes?: string | undefined;
+  notes: string | undefined;
   terms_accepted: boolean;
-}
+};
 
-export interface AccessRequestResponse {
+export type AccessRequestResponse = {
   id: string;
   name: string;
   work_email: string;
   company: string;
   status: string;
   created_at: string;
-}
+};
 
 async function readErrorDetail(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as { detail?: unknown };
+    const body = (await response.json()) as { detail: unknown };
     if (typeof body.detail === 'string') return body.detail;
     if (Array.isArray(body.detail)) {
-      const first = body.detail.find(
-        (entry): entry is { msg: string } =>
-          typeof entry === 'object' && entry !== null && typeof (entry as { msg?: unknown }).msg === 'string',
-      );
+      const first = body.detail.find((entry): entry is { msg: string } => typeof entry === 'object'
+        && entry !== null
+        && typeof (entry as { msg: unknown }).msg === 'string');
       if (first) return first.msg;
     }
     if (body.detail !== undefined) return JSON.stringify(body.detail);
@@ -71,12 +72,12 @@ export async function submitAccessRequest(
   return (await response.json()) as AccessRequestResponse;
 }
 
-export interface PublicProjectsMapPoint {
+export type PublicProjectsMapPoint = {
   city: string;
   lat: number;
   lng: number;
   count: number;
-}
+};
 
 export async function fetchProjectsMap(): Promise<PublicProjectsMapPoint[]> {
   const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/public/projects-map`);

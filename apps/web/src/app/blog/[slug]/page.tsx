@@ -1,0 +1,85 @@
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { compileMDX } from 'next-mdx-remote/rsc';
+import type { JSX } from 'react';
+
+import { BlogPostHeader } from '@/components/blog/BlogPostHeader';
+import { mdxComponents } from '@/components/blog/MdxComponents';
+import { getAllSlugs, getPostBySlug } from '@/lib/blog/mdx';
+
+type Params = { slug: string };
+
+export function generateStaticParams(): Params[] {
+  return getAllSlugs().map((slug) => ({ slug }));
+}
+
+export function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>;
+}): Promise<Metadata> {
+  return params.then(({ slug }) => {
+    try {
+      const { meta } = getPostBySlug(slug);
+      return {
+        title: `${meta.title} — BimDossier`,
+        description: meta.description,
+        openGraph: {
+          title: meta.title,
+          description: meta.description,
+          type: 'article',
+          publishedTime: meta.date,
+          authors: [meta.author],
+          tags: meta.tags,
+        },
+      };
+    } catch {
+      return { title: 'Post not found — BimDossier' };
+    }
+  });
+}
+
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<Params>;
+}): Promise<JSX.Element> {
+  const { slug } = await params;
+
+  let post;
+  try {
+    post = getPostBySlug(slug);
+  } catch {
+    notFound();
+  }
+
+  const { content: mdxContent } = await compileMDX({
+    source: post.content,
+    components: mdxComponents,
+  });
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.meta.title,
+    description: post.meta.description,
+    datePublished: post.meta.date,
+    author: {
+      '@type': 'Organization',
+      name: post.meta.author,
+    },
+  };
+
+  return (
+    <main className="mx-auto w-full max-w-3xl px-6 py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <BlogPostHeader meta={post.meta} />
+      <article className="prose prose-neutral max-w-none dark:prose-invert [&>h2]:mt-10 [&>h2]:text-h4 [&>h2]:font-semibold [&>h3]:mt-8 [&>h3]:text-title2 [&>h3]:font-semibold [&>p]:text-body1 [&>p]:text-foreground-secondary [&>p]:leading-relaxed [&>ul]:text-body1 [&>ul]:text-foreground-secondary [&>ol]:text-body1 [&>ol]:text-foreground-secondary">
+        {mdxContent}
+      </article>
+    </main>
+  );
+}

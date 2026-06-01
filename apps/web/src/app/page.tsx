@@ -1,86 +1,17 @@
-import { Boxes, FileSearch, Sparkles } from 'lucide-react';
-import type { JSX, ReactNode } from 'react';
+import type { JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
-
-const portalUrl = process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001';
-
-type Feature = {
-  icon: ReactNode;
-  title: string;
-  body: string;
-};
-
-const features: Feature[] = [
-  {
-    icon: <Boxes className="h-6 w-6" aria-hidden />,
-    title: 'IFC parsing',
-    body: 'Stream large IFC models directly in the browser, with structured access to every entity and property.',
-  },
-  {
-    icon: <FileSearch className="h-6 w-6" aria-hidden />,
-    title: 'BCF workflows',
-    body: 'Open, edit and round-trip BCF issues alongside the model, so coordination notes never lose their context.',
-  },
-  {
-    icon: <Sparkles className="h-6 w-6" aria-hidden />,
-    title: 'AI takeoff',
-    body: 'Let the model do the counting. Quantities, areas and volumes pulled from the IFC, ready for export.',
-  },
-];
+import { CtaSection } from '@/components/sections/CtaSection';
+import { FeaturesSection } from '@/components/sections/FeaturesSection';
+import { HeroSection } from '@/components/sections/HeroSection';
+import { HowItWorksSection } from '@/components/sections/HowItWorksSection';
 
 export default function WelcomePage(): JSX.Element {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-16">
-      <section className="flex flex-col items-start gap-6">
-        <span className="rounded-full border border-border bg-background-secondary px-3 py-1 text-body3 text-foreground-tertiary">
-          AI-assisted BIM takeoff
-        </span>
-        <h1 className="max-w-3xl text-h2 font-semibold text-foreground">
-          Quantify BIM models in minutes, not days.
-        </h1>
-        <p className="max-w-2xl text-title3 text-foreground-secondary">
-          BIMstitch reads IFC and BCF files, extracts structured quantities, and lets your team
-          collaborate on takeoffs without leaving the model.
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <a href={portalUrl}>
-            <Button variant="primary" size="lg">
-              Get started
-            </Button>
-          </a>
-          <Button variant="ghost" size="lg" disabled>
-            View demo
-          </Button>
-        </div>
-      </section>
-
-      <section
-        aria-label="Capabilities"
-        className="grid grid-cols-1 gap-4 md:grid-cols-3"
-      >
-        {features.map((feature) => (
-          <article
-            key={feature.title}
-            className="group flex flex-col overflow-hidden rounded-2xl border border-primary-light bg-surface-main shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary hover:shadow-xl hover:shadow-primary/15"
-          >
-            <div className="flex items-start gap-4 bg-gradient-to-br from-primary via-primary-hover to-primary-dark px-6 py-5 text-primary-foreground">
-              <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/16 text-primary-foreground shadow-sm ring-1 ring-white/20 transition-all duration-200 group-hover:scale-105 group-hover:bg-white/24 group-hover:shadow-md">
-                {feature.icon}
-              </div>
-              <div className="space-y-1">
-                <h2 className="text-h6 font-semibold text-primary-foreground">{feature.title}</h2>
-                <p className="text-body3 text-primary-foreground/80">
-                  Structured BIM workflows with faster visual scanning.
-                </p>
-              </div>
-            </div>
-            <div className="p-6 pt-5">
-              <p className="text-body2 text-foreground-secondary">{feature.body}</p>
-            </div>
-          </article>
-        ))}
-      </section>
+    <main>
+      <HeroSection />
+      <FeaturesSection />
+      <HowItWorksSection />
+      <CtaSection />
     </main>
   );
 }

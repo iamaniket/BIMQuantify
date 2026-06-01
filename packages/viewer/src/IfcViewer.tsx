@@ -112,13 +112,8 @@ function IfcViewerImpl(
       visibilityPlugin(),
       inspectPlugin(),
       modePlugin(),
-      // Outline + x-ray install BEFORE keyboard-shortcuts so their command
-      // `defaultShortcut`s (e.g. xray.toggleAll → X) get seeded and user
-      // overrides resolve to a real command. x-ray depends on selection +
-      // outline, both of which precede it here.
       outlinePlugin(props.outline ?? {}),
       xrayPlugin(),
-      keyboardShortcutsPlugin(shortcuts ? { overrides: shortcuts } : {}),
       // Mouse-bindings registers AFTER selection/hover so the default
       // bindings can resolve `selection.pickSet` etc. at install time.
       mouseBindingsPlugin(props.mouseBindings ? { overrides: props.mouseBindings } : {}),
@@ -153,6 +148,11 @@ function IfcViewerImpl(
       screenshotPlugin(),
       colorCodingPlugin(),
       exploderPlugin(),
+      // Keyboard-shortcuts must install LAST among built-ins so it can
+      // seed bindings from every command's `defaultShortcut` metadata.
+      // Earlier placement caused navigate(3), eraser(4), screenshot(5),
+      // snapping(S), and measure-axis-lock(A) shortcuts to be missed.
+      keyboardShortcutsPlugin(shortcuts ? { overrides: shortcuts } : {}),
     ];
 
     const viewer = new Viewer({

@@ -11,14 +11,14 @@
  * has no shared package with the portal, so this is duplicated by design
  * — the surface is one tiny pure function.
  */
-export function formatApproxCount(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return '0';
-  const floored = approxCountFloor(n);
-  return n < 10 ? String(floored) : `${String(floored)}+`;
-}
-
 function approxCountFloor(n: number): number {
   if (n < 10) return Math.max(0, Math.floor(n));
   const magnitude = 10 ** Math.floor(Math.log10(n));
   return Math.floor(n / magnitude) * magnitude;
+}
+
+export function formatApproxCount(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  const floored = approxCountFloor(n);
+  return n < 10 ? String(floored) : `${String(floored)}+`;
 }

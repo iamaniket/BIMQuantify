@@ -20,7 +20,7 @@ import { FileDropZone } from '@/components/shared/FileDropZone';
 import { ApiError } from '@/lib/api/client';
 import type { FileTypeValue, Model, ProjectFile } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
-import { acceptedExtensions, isAllowedFile } from '@/features/models/fileValidation.js';
+import { acceptedExtensions, isAllowedFile } from '@/features/models/fileValidation';
 import { useModelFiles } from '@/features/models/useModelFiles';
 import { useUploadModelFile } from '@/features/models/useUploadModelFile';
 import { UploadProgressItem, type UploadState } from '@/features/models/UploadProgressItem';

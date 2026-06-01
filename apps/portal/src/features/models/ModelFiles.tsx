@@ -48,7 +48,7 @@ import {
 import { UploadProgressItem, type UploadState } from './UploadProgressItem';
 import { useCheckCompliance } from '@/features/compliance/hooks';
 import { useDeleteModelFile } from './useDeleteModelFile';
-import { acceptedExtensions, isAllowedFile } from './fileValidation.js';
+import { acceptedExtensions, isAllowedFile } from './fileValidation';
 import { useModelFiles } from './useModelFiles';
 import { useRetryExtraction } from './useRetryExtraction';
 import { useUploadModelFile } from './useUploadModelFile';
