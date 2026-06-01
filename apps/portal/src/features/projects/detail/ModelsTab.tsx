@@ -14,10 +14,9 @@ import { ModelsTableRow } from './ModelsTableRow';
 type Props = {
   projectId: string;
   models: Model[];
-  onUpload: (modelId: string) => void;
 };
 
-export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
+export function ModelsTab({ projectId, models }: Props): JSX.Element {
   const [newModelOpen, setNewModelOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const t = useTranslations('projectDetail.tabs.models');
@@ -48,7 +47,6 @@ export function ModelsTab({ projectId, models, onUpload }: Props): JSX.Element {
               model={m}
               isOpen={expandedId === m.id}
               onToggle={() => { setExpandedId(expandedId === m.id ? null : m.id); }}
-              onUpload={onUpload}
             />
           ))}
         </div>

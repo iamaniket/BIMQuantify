@@ -494,7 +494,7 @@ export function SettingsDialog(props: Props): JSX.Element {
       title={t('viewerTitle')}
       subtitle={t('viewerSubtitle')}
       width={900}
-      height={836}
+      height={866}
       bodyClassName="overflow-hidden"
       onReset={handleReset}
       resetLabel={t('resetDefaults')}

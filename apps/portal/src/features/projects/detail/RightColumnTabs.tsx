@@ -22,14 +22,12 @@ type Props = {
   projectId: string;
   projectCountry: string;
   models: Model[];
-  onUpload: (modelId: string) => void;
 };
 
 export function RightColumnTabs({
   projectId,
   projectCountry,
   models,
-  onUpload,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const [tab, setTab] = useState('overzicht');
@@ -101,7 +99,7 @@ export function RightColumnTabs({
         {tab === 'certificates' && <CertificatesTab projectId={projectId} />}
         {tab === 'bevindingen' && <BevindingenTab projectId={projectId} />}
         {tab === 'models' && (
-          <ModelsTab projectId={projectId} models={models} onUpload={onUpload} />
+          <ModelsTab projectId={projectId} models={models} />
         )}
         {tab === 'rapporten' && <RapportenTab projectId={projectId} />}
       </div>

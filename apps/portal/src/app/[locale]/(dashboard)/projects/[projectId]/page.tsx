@@ -2,11 +2,9 @@
 
 import { useParams } from 'next/navigation';
 
-import { useMemo, useState, type JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, Skeleton } from '@bimstitch/ui';
-
-import { ModelFiles } from '@/features/models/ModelFiles';
+import { Skeleton } from '@bimstitch/ui';
 
 import { ApiError } from '@/lib/api/client';
 import { useModels } from '@/features/models/useModels';
@@ -38,8 +36,6 @@ export default function ProjectDetailPage(): JSX.Element {
   const activityQuery = useProjectActivity(projectId);
   const findingsQuery = useFindings(projectId);
   const certificatesQuery = useCertificates(projectId);
-
-  const [uploadModelId, setUploadModelId] = useState<string | null>(null);
 
   const deadlines = deadlinesQuery.data ?? [];
   const attachments = attachmentsQuery.data ?? [];
@@ -119,10 +115,6 @@ export default function ProjectDetailPage(): JSX.Element {
 
   const models = modelsQuery.data ?? [];
 
-  const uploadModel = uploadModelId !== null
-    ? models.find((m) => m.id === uploadModelId)
-    : undefined;
-
   return (
     <PageShell
       hero={
@@ -134,28 +126,6 @@ export default function ProjectDetailPage(): JSX.Element {
         />
       }
     >
-      <Dialog
-        open={uploadModelId !== null}
-        onOpenChange={(open) => { if (!open) setUploadModelId(null); }}
-      >
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
-              {uploadModel !== undefined ? `Upload — ${uploadModel.name}` : 'Upload file'}
-            </DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            {uploadModelId !== null && (
-              <ModelFiles
-                projectId={projectId}
-                modelId={uploadModelId}
-                primaryFileType={uploadModel?.primary_file_type ?? null}
-              />
-            )}
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
-
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 xl:grid-cols-[2fr_3fr]">
         <ProjectChartsPanel
           dossier={dossier}
@@ -171,7 +141,6 @@ export default function ProjectDetailPage(): JSX.Element {
             projectId={projectId}
             projectCountry={project.country}
             models={models}
-            onUpload={setUploadModelId}
           />
           <ActivityPanel projectId={projectId} />
         </div>

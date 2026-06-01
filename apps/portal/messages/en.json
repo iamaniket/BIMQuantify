@@ -1161,7 +1161,12 @@
     },
     "card": {
       "noAssignee": "Unassigned",
-      "overdue": "Overdue"
+      "overdue": "Overdue",
+      "justNow": "Just now",
+      "minutesAgo": "{count}m ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count}d ago",
+      "weeksAgo": "{count}w ago"
     },
     "empty": "No findings",
     "invalidDrop": "Cannot move here",

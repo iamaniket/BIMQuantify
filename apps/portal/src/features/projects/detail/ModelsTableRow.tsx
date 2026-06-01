@@ -3,7 +3,9 @@
 import { Eye, ShieldCheck, Upload, Trash2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, type JSX } from 'react';
+import {
+  useCallback, useRef, useState, type ChangeEvent, type JSX,
+} from 'react';
 import { useTranslations } from 'next-intl';
 
 import { Badge, Button, Spinner } from '@bimstitch/ui';
@@ -14,9 +16,14 @@ import {
   DetailCardRow,
 } from '@bimstitch/ui';
 
+import { FileDropZone } from '@/components/shared/FileDropZone';
+import { ApiError } from '@/lib/api/client';
 import type { FileTypeValue, Model, ProjectFile } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
+import { acceptedExtensions, isAllowedFile } from '@/features/models/fileValidation.js';
 import { useModelFiles } from '@/features/models/useModelFiles';
+import { useUploadModelFile } from '@/features/models/useUploadModelFile';
+import { UploadProgressItem, type UploadState } from '@/features/models/UploadProgressItem';
 import { viewerKeys } from '@/features/viewer/queryKeys';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
@@ -56,20 +63,29 @@ function FileTypePill({ fileType, schema }: FileTypePillProps): JSX.Element {
   );
 }
 
+type PendingUpload = {
+  id: string;
+  file: File;
+  state: UploadState;
+};
+
 type Props = {
   projectId: string;
   model: Model;
   isOpen: boolean;
   onToggle: () => void;
-  onUpload: (modelId: string) => void;
 };
 
-export function ModelsTableRow({ projectId, model, isOpen, onToggle, onUpload }: Props): JSX.Element {
+export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.models.row');
+  const tFiles = useTranslations('projectDetail.tabs.models.files');
   const filesQuery = useModelFiles(projectId, model.id);
   const complianceMutation = useCheckCompliance(projectId, model.id);
+  const uploadMutation = useUploadModelFile();
   const queryClient = useQueryClient();
   const { tokens } = useAuth();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [pending, setPending] = useState<PendingUpload[]>([]);
   const files = filesQuery.data ?? [];
   const colors = disciplineChipColors(model.discipline);
   const latestFile = files.length > 0 ? files[0] : undefined;
@@ -79,10 +95,86 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle, onUpload }:
       : latestFile.extraction_status === 'succeeded'
   );
   const canCheckBbl = latestFile?.file_type === 'ifc' && latestFile.extraction_status === 'succeeded';
+  const lockedFileType: FileTypeValue | null = model.primary_file_type ?? null;
 
   const viewHref = latestFile !== undefined
     ? `/projects/${projectId}/models/${model.id}/viewer/${latestFile.id}`
     : '';
+
+  const startUpload = useCallback((file: File): void => {
+    if (!isAllowedFile(file, lockedFileType)) {
+      const id = crypto.randomUUID();
+      setPending((prev) => [
+        ...prev,
+        { id, file, state: { kind: 'rejected', reason: 'INVALID_FILE_EXTENSION' } },
+      ]);
+      return;
+    }
+
+    const id = crypto.randomUUID();
+    setPending((prev) => [...prev, { id, file, state: { kind: 'hashing', fraction: 0 } }]);
+
+    uploadMutation.mutate(
+      {
+        projectId,
+        modelId: model.id,
+        file,
+        onProgress: (event) => {
+          setPending((prev) => prev.map((p) => {
+            if (p.id !== id) return p;
+            if (event.phase === 'hashing') {
+              return { ...p, state: { kind: 'hashing', fraction: event.fraction } };
+            }
+            return { ...p, state: { kind: 'uploading' } };
+          }));
+        },
+      },
+      {
+        onSuccess: (result) => {
+          if (result.status === 'rejected') {
+            setPending((prev) => prev.map((p) => (
+              p.id === id
+                ? { ...p, state: { kind: 'rejected', reason: result.rejection_reason ?? 'UNKNOWN' } }
+                : p
+            )));
+            return;
+          }
+          setPending((prev) => prev.filter((p) => p.id !== id));
+        },
+        onError: (error) => {
+          let message: string;
+          if (error instanceof ApiError) {
+            const obj = error.detailObject;
+            if (obj !== null && obj['code'] === 'DUPLICATE_FILE_CONTENT') {
+              const msg = obj['message'];
+              message = typeof msg === 'string' ? msg : tFiles('duplicateContent');
+            } else {
+              message = error.detail;
+            }
+          } else {
+            message = tFiles('uploadFailed');
+          }
+          setPending((prev) => prev.map((p) => (
+            p.id === id ? { ...p, state: { kind: 'error', message } } : p
+          )));
+        },
+      },
+    );
+  }, [projectId, model.id, uploadMutation, lockedFileType, tFiles]);
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const chosen = event.target.files;
+    if (chosen !== null) {
+      Array.from(chosen).forEach(startUpload);
+    }
+    if (inputRef.current !== null) {
+      inputRef.current.value = '';
+    }
+  };
+
+  const dismissPending = (id: string): void => {
+    setPending((prev) => prev.filter((p) => p.id !== id));
+  };
 
   const prewarmViewer = useCallback(() => {
     if (!isViewable || latestFile === undefined || tokens === null) return;
@@ -136,12 +228,20 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle, onUpload }:
             )}
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
+              onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
               title={t('uploadFile')}
               className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
             >
               <Upload className="h-3.5 w-3.5" />
             </button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept={acceptedExtensions(lockedFileType).join(',')}
+              multiple
+              className="hidden"
+              onChange={handleInputChange}
+            />
           </>
         }
       >
@@ -171,7 +271,32 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle, onUpload }:
       </DetailCardRow>
 
       <DetailCardBody>
-        <div className="rounded-md border border-border bg-background">
+        <FileDropZone
+          accept={acceptedExtensions(lockedFileType).join(',')}
+          multiple
+          onFiles={(chosen) => { Array.from(chosen).forEach(startUpload); }}
+          hint={
+            lockedFileType !== null
+              ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> {tFiles('hintLockedSuffix')}</>
+              : tFiles('hintAllTypes')
+          }
+        />
+
+        {pending.length > 0 && (
+          <div className="mt-2 flex flex-col gap-2">
+            {pending.map((p) => (
+              <UploadProgressItem
+                key={p.id}
+                filename={p.file.name}
+                sizeBytes={p.file.size}
+                state={p.state}
+                onRemove={p.state.kind === 'uploading' || p.state.kind === 'hashing' ? undefined : () => { dismissPending(p.id); }}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="mt-2 rounded-md border border-border bg-background">
           {files.length === 0 ? (
             <div className="px-3 py-4 text-center text-body3 text-foreground-tertiary">
               {t('noVersionsUploaded')}
@@ -231,7 +356,7 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle, onUpload }:
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); onUpload(model.id); }}
+            onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
           >
             <Upload className="h-3.5 w-3.5" />
             {t('upload')}

@@ -1161,7 +1161,12 @@
     },
     "card": {
       "noAssignee": "Niet toegewezen",
-      "overdue": "Te laat"
+      "overdue": "Te laat",
+      "justNow": "Zojuist",
+      "minutesAgo": "{count}m geleden",
+      "hoursAgo": "{count}u geleden",
+      "daysAgo": "{count}d geleden",
+      "weeksAgo": "{count}w geleden"
     },
     "empty": "Geen bevindingen",
     "invalidDrop": "Kan hier niet naartoe",

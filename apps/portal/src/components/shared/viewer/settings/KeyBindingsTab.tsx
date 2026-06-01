@@ -432,6 +432,7 @@ export function KeyBindingsTab(props: Props): JSX.Element {
   const [filter, setFilter] = useState<ShortcutCategory | null>(null);
   const [query, setQuery] = useState('');
 
+
   const selectedBinding = useMemo(() => {
     if (!selectedCode) return null;
     const comboKey = codeToComboKey(selectedCode);
@@ -533,7 +534,7 @@ export function KeyBindingsTab(props: Props): JSX.Element {
             />
           </div>
 
-          {/* Pinned: toolbar — search + filter, each 25% width */}
+          {/* Pinned: toolbar — search + filter */}
           <div className="flex shrink-0 items-center gap-2 px-1 pb-2 pt-2">
             <Input
               inputSize="sm"

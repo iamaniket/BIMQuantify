@@ -76,7 +76,7 @@ export function ShortcutList({
               </Eyebrow>
               <span className="text-caption text-foreground-tertiary">{t(sec.subtitleKey)}</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {rows.map((b) => {
                 const isActive = selected === b.command;
                 const isCapturing = capturing === b.command;

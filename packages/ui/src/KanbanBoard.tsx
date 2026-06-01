@@ -33,6 +33,7 @@ export type KanbanBoardProps<T> = {
   renderOverlay?: (item: T) => ReactNode;
   emptyLabel?: string;
   className?: string;
+  cardClassName?: string;
   isItemDisabled?: (item: T) => boolean;
   onCardClick?: (item: T) => void;
 };
@@ -48,6 +49,7 @@ export function KanbanBoard<T>({
   renderOverlay,
   emptyLabel,
   className,
+  cardClassName,
   isItemDisabled,
   onCardClick,
 }: KanbanBoardProps<T>): JSX.Element {
@@ -125,6 +127,7 @@ export function KanbanBoard<T>({
                     id={itemId}
                     disabled={itemDisabled}
                     onCardClick={() => { onCardClick?.(item); }}
+                    className={cardClassName}
                   >
                     {renderCard(item)}
                   </KanbanCard>
@@ -137,7 +140,7 @@ export function KanbanBoard<T>({
 
       <DragOverlay dropAnimation={null}>
         {activeItem !== null && (
-          <div className="w-[256px] rounded-lg border border-primary bg-background p-3 shadow-lg">
+          <div className={cn('max-w-[320px] rounded-lg border border-primary bg-background shadow-lg', cardClassName)}>
             {(renderOverlay ?? renderCard)(activeItem)}
           </div>
         )}

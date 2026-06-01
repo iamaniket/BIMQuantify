@@ -130,6 +130,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
           emptyLabel={t('empty')}
           isItemDisabled={isItemDisabled}
           onCardClick={handleCardClick}
+          cardClassName="overflow-hidden rounded-xl bg-surface-main p-0"
           className="h-full"
         />
       </div>
