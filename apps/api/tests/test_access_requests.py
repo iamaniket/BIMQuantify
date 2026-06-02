@@ -105,15 +105,67 @@ async def test_create_access_request_accepts_endash_size(
 
 
 @pytest.mark.asyncio
-async def test_duplicate_submissions_are_both_stored(
+async def test_submit_same_email_with_pending_returns_409(
     client: "AsyncClient", session: "AsyncSession"
 ) -> None:
-    """Two requests from the same email both land — admins de-dupe later."""
-    await client.post("/access-requests", json=VALID_BODY)
+    """While a prior request is still `new`, a second one from the same email
+    is rejected with a friendly code so the form can show 'we have it'."""
+    first = await client.post("/access-requests", json=VALID_BODY)
+    assert first.status_code == 201
+
     second = await client.post("/access-requests", json=VALID_BODY)
-    assert second.status_code == 201
+    assert second.status_code == 409
+    assert second.json()["detail"] == "ACCESS_REQUEST_PENDING_DUPLICATE"
 
     from bimstitch_api.models.access_request import AccessRequest
 
     count = len((await session.execute(select(AccessRequest))).scalars().all())
-    assert count == 2
+    assert count == 1, "second submission must not have created a row"
+
+
+@pytest.mark.asyncio
+async def test_submit_same_email_after_approved_returns_409(
+    client: "AsyncClient", session: "AsyncSession"
+) -> None:
+    """Once a request has been approved, the prospect's account exists —
+    further form submissions point them at their email instead of creating
+    another row."""
+    from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
+
+    first = await client.post("/access-requests", json=VALID_BODY)
+    assert first.status_code == 201
+
+    # Flip to approved (skipping the real saga — we're testing the route, not
+    # provisioning).
+    row = (await session.execute(select(AccessRequest))).scalar_one()
+    row.status = AccessRequestStatus.approved
+    await session.commit()
+
+    second = await client.post("/access-requests", json=VALID_BODY)
+    assert second.status_code == 409
+    assert second.json()["detail"] == "ACCESS_REQUEST_ALREADY_APPROVED"
+
+
+@pytest.mark.asyncio
+async def test_submit_same_email_after_rejected_allowed(
+    client: "AsyncClient", session: "AsyncSession"
+) -> None:
+    """A previously-rejected applicant can retry — they may have addressed
+    whatever caused the rejection."""
+    from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
+
+    first = await client.post("/access-requests", json=VALID_BODY)
+    assert first.status_code == 201
+
+    row = (await session.execute(select(AccessRequest))).scalar_one()
+    row.status = AccessRequestStatus.rejected
+    await session.commit()
+
+    second = await client.post("/access-requests", json=VALID_BODY)
+    assert second.status_code == 201, second.text
+
+    # Both rows must exist — the rejected one and the brand-new one.
+    rows = (await session.execute(select(AccessRequest))).scalars().all()
+    assert len(rows) == 2
+    statuses = sorted(r.status.value for r in rows)
+    assert statuses == ["new", "rejected"]

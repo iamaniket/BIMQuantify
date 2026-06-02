@@ -5,6 +5,7 @@ import {
   RequestAccessSuccess,
   type RequestAccessValues,
 } from '@bimstitch/brand';
+import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
@@ -23,6 +24,7 @@ interface SubmittedState {
  * in the page file.
  */
 export function RequestAccessPanel(): JSX.Element {
+  const t = useTranslations('requestAccess.errors');
   const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
   const [submitError, setSubmitError] = useState<string | undefined>(undefined);
 
@@ -42,15 +44,19 @@ export function RequestAccessPanel(): JSX.Element {
       setSubmitted({ name: values.name, email: values.work_email, company: values.company });
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 422) {
+        if (err.status === 409 && err.detail === 'ACCESS_REQUEST_PENDING_DUPLICATE') {
+          setSubmitError(t('pendingDuplicate'));
+        } else if (err.status === 409 && err.detail === 'ACCESS_REQUEST_ALREADY_APPROVED') {
+          setSubmitError(t('alreadyApproved'));
+        } else if (err.status === 422) {
           setSubmitError(err.detail);
         } else if (err.status === 429) {
-          setSubmitError('Too many requests from your network — please try again in an hour.');
+          setSubmitError(t('rateLimited'));
         } else {
-          setSubmitError(`We couldn't submit your request: ${err.detail}`);
+          setSubmitError(t('generic', { detail: err.detail }));
         }
       } else {
-        setSubmitError('We couldn’t reach the BimDossier API. Please try again in a moment.');
+        setSubmitError(t('unreachable'));
       }
     }
   };

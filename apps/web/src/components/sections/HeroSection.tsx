@@ -44,8 +44,8 @@ export function HeroSection(): JSX.Element {
         </div>
 
         <div className="absolute bottom-6 right-6 flex items-center gap-2">
-          <LanguageToggle />
-          <ThemeToggle />
+          <LanguageToggle className="text-white hover:text-white hover:bg-white/10" />
+          <ThemeToggle className="text-white hover:text-white hover:bg-white/10" />
         </div>
       </div>
     </section>

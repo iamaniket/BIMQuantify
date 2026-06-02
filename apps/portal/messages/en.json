@@ -22,6 +22,15 @@
     },
     "success": "Account activated. You can sign in now."
   },
+  "requestAccess": {
+    "errors": {
+      "pendingDuplicate": "We've already received your request. Give us a day to review — we'll email you.",
+      "alreadyApproved": "Your BimDossier account is already set up. Check your email for the activation link, or contact support if you didn't receive one.",
+      "rateLimited": "Too many requests from your network — please try again in an hour.",
+      "generic": "We couldn't submit your request: {detail}",
+      "unreachable": "We couldn't reach the BimDossier API. Please try again in a moment."
+    }
+  },
   "forgotPassword": {
     "eyebrow": "Account recovery",
     "title": "Forgot your password?",
@@ -1941,7 +1950,8 @@
           "seatLimit": "Leave empty for unlimited seats."
         },
         "errors": {
-          "seatLimitInvalid": "Seat limit must be a positive integer."
+          "seatLimitInvalid": "Seat limit must be a positive integer.",
+          "orgNameTaken": "An organization with this name already exists. Pick a different name."
         },
         "success": "Approved! Tenant \"{org}\" has been provisioned and an activation email sent."
       }

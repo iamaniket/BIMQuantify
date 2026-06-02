@@ -97,6 +97,13 @@
     "backToSite": "Back to site"
   },
   "requestAccessPage": {
-    "backToHome": "Back to home"
+    "backToHome": "Back to home",
+    "errors": {
+      "pendingDuplicate": "We've already received your request. Give us a day to review — we'll email you.",
+      "alreadyApproved": "Your BimDossier account is already set up. Check your email for the activation link, or contact support if you didn't receive one.",
+      "rateLimited": "Too many requests from your network — please try again in an hour.",
+      "generic": "We couldn't submit your request: {detail}",
+      "unreachable": "We couldn't reach the BimDossier API. Please try again in a moment."
+    }
   }
 }

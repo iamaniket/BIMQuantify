@@ -147,4 +147,10 @@ class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
             "created_at",
             postgresql_where="deleted_at IS NULL",
         ),
+        Index(
+            "ix_certificates_linked_element",
+            "linked_model_id",
+            "linked_element_global_id",
+            postgresql_where="linked_model_id IS NOT NULL AND linked_element_global_id IS NOT NULL",
+        ),
     )

@@ -4,9 +4,15 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useTransition } from 'react';
 import type { JSX } from 'react';
 
+import { cn } from '@bimstitch/ui';
+
 import { usePathname, useRouter } from '@/i18n/navigation';
 
-export function LanguageToggle(): JSX.Element {
+type Props = {
+  className?: string;
+};
+
+export function LanguageToggle({ className }: Props): JSX.Element {
   const locale = useLocale();
   const t = useTranslations('languageToggle');
   const router = useRouter();
@@ -24,7 +30,10 @@ export function LanguageToggle(): JSX.Element {
         });
       }}
       disabled={isPending}
-      className="inline-flex h-8 items-center rounded-md px-2 text-body3 font-semibold text-foreground-secondary hover:bg-background-hover disabled:opacity-50"
+      className={cn(
+        'inline-flex h-8 items-center rounded-md px-2 text-body3 font-semibold text-foreground-secondary hover:bg-background-hover disabled:opacity-50',
+        className,
+      )}
       aria-label={`Switch to ${t('label')}`}
     >
       {t('label')}

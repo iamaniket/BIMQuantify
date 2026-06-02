@@ -72,8 +72,8 @@ export function FindingsBoardHero({ projectName, findings }: Props): JSX.Element
   return (
     <HeroShell
       image={
-        <div className="flex h-[80px] w-[80px] items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light text-primary-foreground shadow-md">
-          <ClipboardCheck className="h-9 w-9" />
+        <div className="flex h-[130px] w-[195px] items-center justify-center rounded-[10px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
+          <ClipboardCheck className="h-12 w-12" />
         </div>
       }
       title={projectName}

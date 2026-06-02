@@ -11,6 +11,7 @@ import { AppDialog, Input } from '@bimstitch/ui';
 
 import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';
+import { ApiError } from '@/lib/api/client';
 import type { AccessRequestRead } from '@/lib/api/schemas';
 
 import { useApproveAccessRequest } from './useAccessRequestActions';
@@ -61,11 +62,29 @@ export function AccessRequestApproveDialog({ request, open, onOpenChange }: Prop
       return;
     }
     mutation.mutate(
-      { id: request.id },
+      {
+        id: request.id,
+        org_name: values.org_name.trim(),
+        seat_limit: parsedLimit ?? null,
+      },
       {
         onSuccess: () => {
           toast.success(t('success', { org: values.org_name.trim() }));
           onOpenChange(false);
+        },
+        onError: (err) => {
+          // Surface the org-name collision inline on the input so the admin
+          // can fix it in place instead of guessing from a toast. All other
+          // errors fall through to the global mutation toast.
+          if (
+            err instanceof ApiError
+            && err.status === 409
+            && err.detailObject?.['code'] === 'ORG_NAME_TAKEN'
+          ) {
+            form.setError('org_name', { message: t('errors.orgNameTaken') });
+            return;
+          }
+          throw err;
         },
       },
     );

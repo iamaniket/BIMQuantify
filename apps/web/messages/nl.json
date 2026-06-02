@@ -97,6 +97,13 @@
     "backToSite": "Terug naar site"
   },
   "requestAccessPage": {
-    "backToHome": "Terug naar home"
+    "backToHome": "Terug naar home",
+    "errors": {
+      "pendingDuplicate": "We hebben je aanvraag al ontvangen. Geef ons een dag om hem te beoordelen — we sturen je een e-mail.",
+      "alreadyApproved": "Je BimDossier-account staat al klaar. Controleer je e-mail voor de activatielink, of neem contact op met support als je hem niet hebt ontvangen.",
+      "rateLimited": "Te veel verzoeken vanuit jouw netwerk — probeer het over een uur opnieuw.",
+      "generic": "We konden je aanvraag niet versturen: {detail}",
+      "unreachable": "We konden de BimDossier-API niet bereiken. Probeer het zo opnieuw."
+    }
   }
 }

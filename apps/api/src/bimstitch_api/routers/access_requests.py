@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.db import get_async_session
-from bimstitch_api.models.access_request import AccessRequest
+from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
 from bimstitch_api.schemas.access_request import (
     AccessRequestCreate,
     AccessRequestRead,
@@ -28,6 +30,31 @@ ACCESS_REQUEST_RATE_LIMITER = RateLimiter(times=5, seconds=3600)
 router = APIRouter(prefix="/access-requests", tags=["access-requests"])
 
 
+async def _detect_duplicate(
+    session: AsyncSession, work_email: str
+) -> AccessRequest | None:
+    """Return any blocking prior row for this email — `new` or `approved`.
+    Rejected rows are skipped so retries are allowed."""
+    stmt = (
+        select(AccessRequest)
+        .where(AccessRequest.work_email == work_email)
+        .where(
+            AccessRequest.status.in_(
+                [AccessRequestStatus.new, AccessRequestStatus.approved]
+            )
+        )
+        .order_by(AccessRequest.created_at.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+def _duplicate_detail(existing: AccessRequest) -> str:
+    if existing.status == AccessRequestStatus.new:
+        return "ACCESS_REQUEST_PENDING_DUPLICATE"
+    return "ACCESS_REQUEST_ALREADY_APPROVED"
+
+
 @router.post(
     "",
     response_model=AccessRequestRead,
@@ -38,6 +65,12 @@ async def create_access_request(
     payload: AccessRequestCreate,
     session: AsyncSession = Depends(get_async_session),
 ) -> AccessRequestRead:
+    # `payload.work_email` is already lowercased by AccessRequestCreate's
+    # validator, so a direct equality comparison is correct.
+    existing = await _detect_duplicate(session, payload.work_email)
+    if existing is not None:
+        raise HTTPException(status_code=409, detail=_duplicate_detail(existing))
+
     row = AccessRequest(
         name=payload.name,
         work_email=payload.work_email,
@@ -48,7 +81,20 @@ async def create_access_request(
         notes=payload.notes,
     )
     session.add(row)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        # Race: two concurrent submissions both passed the SELECT and both
+        # tried to INSERT. The partial unique index
+        # `ux_access_requests_active_email` catches the loser. Re-query so
+        # we know which detail code to surface.
+        await session.rollback()
+        existing = await _detect_duplicate(session, payload.work_email)
+        if existing is not None:
+            raise HTTPException(
+                status_code=409, detail=_duplicate_detail(existing)
+            ) from None
+        raise  # unexpected — let it bubble as 500
     await session.refresh(row)
     logger.info("access_request_created id=%s email=%s", row.id, row.work_email)
     return AccessRequestRead.model_validate(row)

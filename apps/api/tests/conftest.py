@@ -161,6 +161,13 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
             "ON borgingsplans(project_id) "
             "WHERE status IN ('draft', 'published')"
         )
+        # Partial unique index for "one active access-request per email" —
+        # mirrors alembic migration 0003_dedup_pending_access_requests.
+        await conn.exec_driver_sql(
+            "CREATE UNIQUE INDEX ux_access_requests_active_email "
+            "ON access_requests(lower(work_email)) "
+            "WHERE status IN ('new', 'approved')"
+        )
         for stmt in create_app_role_statements():
             await conn.exec_driver_sql(stmt)
         # The production saga runs tenant migrations against per-org schemas

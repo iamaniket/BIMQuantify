@@ -1,5 +1,6 @@
 import { apiClient, triggerBrowserDownload } from './client';
 import {
+  AccessRequestApproveResponseSchema,
   AccessRequestListSchema,
   AdminUserListSchema,
   AdminUserReadSchema,
@@ -7,6 +8,8 @@ import {
   OrganizationCreateResponseSchema,
   OrganizationListSchema,
   OrganizationReadSchema,
+  type AccessRequestApproveInput,
+  type AccessRequestApproveResponse,
   type AccessRequestRead,
   type AdminUserRead,
   type AuditEntry,
@@ -209,11 +212,12 @@ export async function listAccessRequests(
 export async function approveAccessRequest(
   accessToken: string,
   id: string,
-): Promise<AccessRequestRead> {
-  return apiClient.post<AccessRequestRead>(
+  input: AccessRequestApproveInput = {},
+): Promise<AccessRequestApproveResponse> {
+  return apiClient.post<AccessRequestApproveResponse>(
     `/admin/access-requests/${id}/approve`,
-    undefined,
-    AccessRequestListSchema.element,
+    input,
+    AccessRequestApproveResponseSchema,
     accessToken,
   );
 }

@@ -1,12 +1,13 @@
 """Initial master schema: users, organizations, organization_members, access_requests.
 
-Creates the identity layer in the `public` schema. Tenant tables (projects, jobs,
-audit_log, etc.) are NOT created here — they live in per-org schemas managed by
-the tenant chain.
+Creates the identity layer in the `public` schema via `Base.metadata.create_all`
+over the live models — anything the master-side models declare lands here. Tenant
+tables (projects, jobs, audit_log, etc.) are NOT created here — they live in
+per-org schemas managed by the tenant chain.
 
 Revision ID: 0001_master
 Revises:
-Create Date: 2026-05-19
+Create Date: 2026-06-02
 """
 
 from __future__ import annotations
@@ -56,6 +57,20 @@ def upgrade() -> None:
     bind = op.get_bind()
     master_tables = [t for t in Base.metadata.tables.values() if is_master_table(t)]
     Base.metadata.create_all(bind, tables=master_tables)
+
+    # Partial unique index that dedups active access-requests by email. The
+    # filter excludes `rejected` rows so a previously-rejected applicant can
+    # retry. The expression can't be declared in __table_args__ (lower() +
+    # postgresql_where is awkward), so we create it as raw SQL after the
+    # tables exist. Mirrored in tests/conftest.py for the create_all-based
+    # test bootstrap.
+    op.execute(
+        """
+        CREATE UNIQUE INDEX ux_access_requests_active_email
+        ON public.access_requests (lower(work_email))
+        WHERE status IN ('new', 'approved')
+        """
+    )
 
     for stmt in create_app_role_statements():
         op.execute(stmt)

@@ -6,19 +6,33 @@ import {
   approveAccessRequest,
   rejectAccessRequest,
 } from '@/lib/api/admin';
-import type { AccessRequestRead } from '@/lib/api/schemas';
+import type {
+  AccessRequestApproveInput,
+  AccessRequestApproveResponse,
+  AccessRequestRead,
+} from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { adminAccessRequestsKey } from './queryKeys';
 
+export type ApproveAccessRequestVariables = {
+  id: string;
+  org_name?: string;
+  seat_limit?: number | null;
+};
+
 export function useApproveAccessRequest(): UseMutationResult<
-  AccessRequestRead,
+  AccessRequestApproveResponse,
   Error,
-  { id: string }
+  ApproveAccessRequestVariables
 > {
   return useAuthMutation({
-    mutationFn: (accessToken, { id }) =>
-      approveAccessRequest(accessToken, id),
+    mutationFn: (accessToken, { id, org_name, seat_limit }) => {
+      const input: AccessRequestApproveInput = {};
+      if (org_name !== undefined) input.org_name = org_name;
+      if (seat_limit !== undefined) input.seat_limit = seat_limit;
+      return approveAccessRequest(accessToken, id, input);
+    },
     invalidateKeys: [adminAccessRequestsKey],
   });
 }

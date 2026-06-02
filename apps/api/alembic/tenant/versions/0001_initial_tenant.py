@@ -1,28 +1,24 @@
-"""Initial tenant schema: projects, project_members, models, project_files, jobs, reports,
-contractors, notifications, notification_reads, risks, borgingsplans, borgingsmomenten,
-checklist_items, attachments, capture_links, findings, certificates, audit_log.
+"""Initial tenant schema.
+
+Tables: projects, project_members, models, project_files, jobs, reports,
+contractors, notifications, notification_reads, notification_dismissals, risks,
+borgingsplans, borgingsmomenten, checklist_items, checklist_item_results,
+attachments, capture_links, findings, certificates, audit_log,
+deadline_notification_log, deadline_notification_settings.
 
 This baseline is the full current tenant schema — `Base.metadata.create_all` over
-the live models emits every table/column, so anything the models declare lands
-here. The former 0002 (scaling indexes), 0003 (finding-resolution columns), and
-0004 (certificates table) increments are squashed in: the resolution columns and
-certificates table come for free from the models, and 0002's three raw-SQL indexes
-are recreated explicitly in upgrade() below.
+the live models emits every table, column, enum, and model-declared index, so
+anything the models declare lands here. The expression / partial / cross-column
+indexes the model layer doesn't emit (the JSONB framework path, the
+soft-delete-aware feeds, etc.) are created explicitly in upgrade() below.
 
-The later job-lifecycle increment (jobs.retriable/error_kind/progress/retry_of/
-attempt + the `cancelled` jobstatus value + the partial ix_jobs_retry_of index +
-the retry_of self-FK) and the CAD-filetypes increment (dxf/dwg on `filetype`,
-`dxf_extraction` on `jobtype`) are likewise folded in — all come for free from the
-models, so create_all emits them and the matching DROP TYPEs below already cover the
-enums.
-
-Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables (users)
-are emitted as `public.users(id)` so they resolve regardless of search_path —
-audit_log's user_id / impersonator_user_id rely on this.
+Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables
+(users) are emitted as `public.users(id)` so they resolve regardless of
+search_path — audit_log's user_id / impersonator_user_id rely on this.
 
 Revision ID: 0001_tenant
 Revises:
-Create Date: 2026-05-19
+Create Date: 2026-06-02
 """
 
 from __future__ import annotations

@@ -40,6 +40,8 @@ from bimstitch_api.models.organization_member import (
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.admin import (
     AccessRequestAdminRead,
+    AccessRequestApproveInput,
+    AccessRequestApproveResponse,
     AdminUserRead,
     AuditEntry,
     OrganizationCreate,
@@ -557,14 +559,17 @@ async def list_access_requests(
 
 @router.post(
     "/access-requests/{request_id}/approve",
-    response_model=AccessRequestAdminRead,
+    response_model=AccessRequestApproveResponse,
 )
 async def approve_access_request(
     request_id: UUID,
     request: Request,
+    payload: AccessRequestApproveInput | None = None,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
-) -> AccessRequestAdminRead:
+    user_manager: UserManager = Depends(get_user_manager),
+    storage: StorageBackend = Depends(get_storage),
+) -> AccessRequestApproveResponse:
     ar = await session.get(AccessRequest, request_id)
     if ar is None:
         raise HTTPException(
@@ -577,6 +582,63 @@ async def approve_access_request(
             detail="ACCESS_REQUEST_NOT_PENDING",
         )
 
+    # `payload` is optional so the route still accepts an empty body; fall
+    # back to the requester's company name when org_name is omitted.
+    org_name = (payload.org_name if payload and payload.org_name else ar.company).strip()
+    seat_limit = payload.seat_limit if payload else None
+
+    # Pre-check for `Organization.name` uniqueness (case-insensitive). Catching
+    # this here gives the admin a clean inline error on the dialog's org_name
+    # field; otherwise the provisioning saga would spin up + tear down a schema
+    # before raising a generic 500.
+    collision = (
+        await session.execute(
+            select(Organization).where(
+                func.lower(Organization.name) == org_name.lower()
+            )
+        )
+    ).scalar_one_or_none()
+    if collision is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "ORG_NAME_TAKEN",
+                "existing_org_id": str(collision.id),
+            },
+        )
+
+    try:
+        result = await provision_organization(
+            name=org_name,
+            admin_email=ar.work_email,
+            admin_full_name=ar.name,
+            seat_limit=seat_limit,
+            requester=requester,
+            request=request,
+        )
+    except ProvisioningError as exc:
+        # The saga compensates internally, so the DB is back to its pre-call
+        # state. Surface a 500 (matches `create_organization` at line 131).
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"PROVISIONING_FAILED: {exc}",
+        ) from exc
+
+    # Dispatch email AFTER the saga has committed — a flaky SMTP must not
+    # roll back a successfully-provisioned org.
+    if result.activation_required:
+        await user_manager.request_verify(result.admin, request)
+    else:
+        await send_invite_notification(
+            invitee=result.admin,
+            organization=result.organization,
+            inviter_email=requester.email,
+        )
+
+    # Refresh AR — `provision_organization` opens its own sessions, so our
+    # `ar` instance may be detached. Reload to keep SQLAlchemy happy.
+    ar = await session.get(AccessRequest, request_id)
+    assert ar is not None  # we just fetched it above; race would be DB corruption
     ar.status = AccessRequestStatus.approved
     await audit.record_for_org(
         session,
@@ -584,13 +646,25 @@ async def approve_access_request(
         action="access_request.approved",
         resource_type="access_request",
         resource_id=ar.id,
-        after={"work_email": ar.work_email, "company": ar.company},
+        after={
+            "work_email": ar.work_email,
+            "company": ar.company,
+            "organization_id": str(result.organization.id),
+            "organization_name": result.organization.name,
+        },
         actor_user_id=requester.id,
         request=request,
     )
     await session.commit()
     await session.refresh(ar)
-    return AccessRequestAdminRead.model_validate(ar, from_attributes=True)
+
+    seat_count = await count_consumed_seats(session, result.organization.id)
+    return AccessRequestApproveResponse(
+        access_request=AccessRequestAdminRead.model_validate(ar, from_attributes=True),
+        organization=await _serialize_org(result.organization, seat_count, storage),
+        admin_email=result.admin.email,
+        activation_required=result.activation_required,
+    )
 
 
 @router.post(

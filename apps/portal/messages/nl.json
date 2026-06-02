@@ -22,6 +22,15 @@
     },
     "success": "Account geactiveerd. U kunt nu inloggen."
   },
+  "requestAccess": {
+    "errors": {
+      "pendingDuplicate": "We hebben je aanvraag al ontvangen. Geef ons een dag om hem te beoordelen — we sturen je een e-mail.",
+      "alreadyApproved": "Je BimDossier-account staat al klaar. Controleer je e-mail voor de activatielink, of neem contact op met support als je hem niet hebt ontvangen.",
+      "rateLimited": "Te veel verzoeken vanuit jouw netwerk — probeer het over een uur opnieuw.",
+      "generic": "We konden je aanvraag niet versturen: {detail}",
+      "unreachable": "We konden de BimDossier-API niet bereiken. Probeer het zo opnieuw."
+    }
+  },
   "forgotPassword": {
     "eyebrow": "Account herstellen",
     "title": "Wachtwoord vergeten?",
@@ -1941,7 +1950,8 @@
           "seatLimit": "Laat leeg voor onbeperkt aantal stoelen."
         },
         "errors": {
-          "seatLimitInvalid": "Stoellimiet moet een positief geheel getal zijn."
+          "seatLimitInvalid": "Stoellimiet moet een positief geheel getal zijn.",
+          "orgNameTaken": "Er bestaat al een organisatie met deze naam. Kies een andere naam."
         },
         "success": "Goedgekeurd! Tenant \"{org}\" is ingericht en een activatie-e-mail is verzonden."
       }
