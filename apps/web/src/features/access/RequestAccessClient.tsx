@@ -6,9 +6,11 @@ import {
   RequestAccessSuccess,
   type RequestAccessValues,
 } from '@bimstitch/brand';
+import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
 import { MarketingBrandPanel } from '@/components/MarketingBrandPanel';
+import { Link } from '@/i18n/navigation';
 import { submitAccessRequest, WebApiError } from '@/lib/api';
 import { env } from '@/lib/env';
 
@@ -19,6 +21,7 @@ type SubmittedState = {
 };
 
 export function RequestAccessClient(): JSX.Element {
+  const t = useTranslations('requestAccessPage');
   const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
   const [submitError, setSubmitError] = useState<string | undefined>(undefined);
 
@@ -57,10 +60,10 @@ export function RequestAccessClient(): JSX.Element {
     <AuthShell
       brand={<MarketingBrandPanel />}
       topRight={(
-        <a href={signInHref} className="inline-flex items-center gap-1.5 font-sans text-[11.5px] tracking-[0.02em] text-foreground-tertiary no-underline hover:text-foreground">
+        <Link href="/" className="inline-flex items-center gap-1.5 font-sans text-[11.5px] tracking-[0.02em] text-foreground-tertiary no-underline hover:text-foreground">
           <span aria-hidden>&larr;</span>
-          Back to sign in
-        </a>
+          {t('backToHome')}
+        </Link>
       )}
       form={(
         submitted === null ? (

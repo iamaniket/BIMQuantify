@@ -1,11 +1,11 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { BrandMark } from '@bimstitch/brand';
 
-import { useLocale } from '@/providers/LocaleProvider';
+import { Link } from '@/i18n/navigation';
 
 type FooterLink = {
   label: string;
@@ -19,28 +19,29 @@ type FooterColumn = {
 };
 
 export function Footer(): JSX.Element {
-  const { t } = useLocale();
+  const tHeader = useTranslations('header');
+  const tFooter = useTranslations('footer');
 
   const columns: FooterColumn[] = [
     {
-      title: t.footer.product,
+      title: tFooter('product'),
       links: [
-        { label: t.header.features, href: '/#features', external: undefined },
-        { label: t.header.requestAccess, href: '/request-access', external: undefined },
+        { label: tHeader('features'), href: '/#features', external: undefined },
+        { label: tHeader('requestAccess'), href: '/request-access', external: undefined },
       ],
     },
     {
-      title: t.footer.resources,
+      title: tFooter('resources'),
       links: [
-        { label: t.header.blog, href: '/blog', external: undefined },
+        { label: tHeader('blog'), href: '/blog', external: undefined },
       ],
     },
     {
-      title: t.footer.legal,
+      title: tFooter('legal'),
       links: [
-        { label: t.footer.privacy, href: '/legal/privacy', external: undefined },
-        { label: t.footer.terms, href: '/legal/terms', external: undefined },
-        { label: t.footer.dpa, href: '/legal/dpa', external: undefined },
+        { label: tFooter('privacy'), href: '/legal/privacy', external: undefined },
+        { label: tFooter('terms'), href: '/legal/terms', external: undefined },
+        { label: tFooter('dpa'), href: '/legal/dpa', external: undefined },
       ],
     },
   ];
@@ -53,11 +54,11 @@ export function Footer(): JSX.Element {
             <div className="flex items-center gap-2">
               <BrandMark size={28} tone="on-light" />
               <span className="text-title3 font-semibold text-foreground">
-                {t.header.brand}
+                {tHeader('brand')}
               </span>
             </div>
             <p className="text-body3 text-foreground-tertiary">
-              {t.footer.tagline}
+              {tFooter('tagline')}
             </p>
           </div>
 
@@ -92,7 +93,7 @@ export function Footer(): JSX.Element {
         </div>
 
         <div className="mt-10 border-t border-border pt-6 text-center text-caption text-foreground-tertiary">
-          © {new Date().getFullYear()} {t.footer.copyright}
+          © {new Date().getFullYear()} {tFooter('copyright')}
         </div>
       </div>
     </footer>

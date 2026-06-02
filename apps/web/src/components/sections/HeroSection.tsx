@@ -1,16 +1,16 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { HeroGrid } from '@bimstitch/brand';
 import { Button, ThemeToggle } from '@bimstitch/ui';
 
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { useLocale } from '@/providers/LocaleProvider';
+import { Link } from '@/i18n/navigation';
 
 export function HeroSection(): JSX.Element {
-  const { t } = useLocale();
+  const t = useTranslations('hero');
 
   return (
     <section className="relative overflow-hidden">
@@ -20,15 +20,15 @@ export function HeroSection(): JSX.Element {
 
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-24 sm:py-32">
         <span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1 text-body3 font-medium text-white/90">
-          {t.hero.badge}
+          {t('badge')}
         </span>
 
         <h1 className="max-w-3xl text-h2 font-semibold text-white sm:text-h1">
-          {t.hero.headline}
+          {t('headline')}
         </h1>
 
         <p className="max-w-2xl text-title3 text-white/80">
-          {t.hero.subtitle}
+          {t('subtitle')}
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -38,7 +38,7 @@ export function HeroSection(): JSX.Element {
               size="lg"
               className="bg-[var(--brand-accent)] text-[var(--brand-gradient-start)] hover:bg-[var(--brand-accent-soft)]"
             >
-              {t.hero.ctaPrimary}
+              {t('ctaPrimary')}
             </Button>
           </Link>
         </div>

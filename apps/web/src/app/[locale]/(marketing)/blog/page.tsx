@@ -1,0 +1,49 @@
+import type { Metadata } from 'next';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import type { JSX } from 'react';
+
+import type { Locale } from '@bimstitch/i18n';
+
+import { BlogHero } from '@/components/blog/BlogHero';
+import { BlogPostCard } from '@/components/blog/BlogPostCard';
+import { getAllPosts } from '@/lib/blog/mdx';
+
+type Props = {
+  params: Promise<{ locale: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'blog' });
+  return {
+    title: `${t('headline')} — BimDossier`,
+    description: t('subtitle'),
+  };
+}
+
+export default async function BlogListingPage({ params }: Props): Promise<JSX.Element> {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'blog' });
+  const posts = getAllPosts(locale as Locale);
+
+  return (
+    <main>
+      <BlogHero />
+
+      <div className="mx-auto w-full max-w-5xl px-6 py-12">
+        {posts.length === 0 ? (
+          <p className="text-body1 text-foreground-tertiary">
+            {t('empty')}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {posts.map((post) => (
+              <BlogPostCard key={post.slug} post={post} />
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

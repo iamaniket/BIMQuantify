@@ -1,20 +1,33 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
+import { useTransition } from 'react';
 import type { JSX } from 'react';
 
-import { useLocale } from '@/providers/LocaleProvider';
+import { usePathname, useRouter } from '@/i18n/navigation';
 
 export function LanguageToggle(): JSX.Element {
-  const { locale, t, setLocale } = useLocale();
+  const locale = useLocale();
+  const t = useTranslations('languageToggle');
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+
+  const nextLocale = locale === 'en' ? 'nl' : 'en';
 
   return (
     <button
       type="button"
-      onClick={() => { setLocale(locale === 'en' ? 'nl' : 'en'); }}
-      className="inline-flex h-8 items-center rounded-md px-2 text-body3 font-semibold text-foreground-secondary hover:bg-background-hover"
-      aria-label={`Switch to ${t.languageToggle.label}`}
+      onClick={() => {
+        startTransition(() => {
+          router.replace(pathname, { locale: nextLocale });
+        });
+      }}
+      disabled={isPending}
+      className="inline-flex h-8 items-center rounded-md px-2 text-body3 font-semibold text-foreground-secondary hover:bg-background-hover disabled:opacity-50"
+      aria-label={`Switch to ${t('label')}`}
     >
-      {t.languageToggle.label}
+      {t('label')}
     </button>
   );
 }

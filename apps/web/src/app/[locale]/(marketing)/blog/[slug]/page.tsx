@@ -1,16 +1,21 @@
 import type { Metadata } from 'next';
+import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import type { JSX } from 'react';
+
+import { supportedLocales, type Locale } from '@bimstitch/i18n';
 
 import { BlogPostHero } from '@/components/blog/BlogPostHero';
 import { mdxComponents } from '@/components/blog/MdxComponents';
 import { getAllSlugs, getPostBySlug } from '@/lib/blog/mdx';
 
-type Params = { slug: string };
+type Params = { locale: string; slug: string };
 
 export function generateStaticParams(): Params[] {
-  return getAllSlugs().map((slug) => ({ slug }));
+  return supportedLocales.flatMap((locale) =>
+    getAllSlugs(locale).map((slug) => ({ locale, slug })),
+  );
 }
 
 export function generateMetadata({
@@ -18,9 +23,9 @@ export function generateMetadata({
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  return params.then(({ slug }) => {
+  return params.then(({ locale, slug }) => {
     try {
-      const { meta } = getPostBySlug(slug);
+      const { meta } = getPostBySlug(slug, locale as Locale);
       return {
         title: `${meta.title} — BimDossier`,
         description: meta.description,
@@ -44,11 +49,12 @@ export default async function BlogPostPage({
 }: {
   params: Promise<Params>;
 }): Promise<JSX.Element> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
+  setRequestLocale(locale);
 
   let post;
   try {
-    post = getPostBySlug(slug);
+    post = getPostBySlug(slug, locale as Locale);
   } catch {
     notFound();
   }

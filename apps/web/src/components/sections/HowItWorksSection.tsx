@@ -7,11 +7,10 @@ import {
   MapPin,
   Search,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 
 import { Eyebrow } from '@bimstitch/ui';
-
-import { useLocale } from '@/providers/LocaleProvider';
 
 type StepKey = 'step1' | 'step2' | 'step3' | 'step4';
 
@@ -25,21 +24,20 @@ const stepIcons: Record<StepKey, ReactNode> = {
 const stepKeys: StepKey[] = ['step1', 'step2', 'step3', 'step4'];
 
 export function HowItWorksSection(): JSX.Element {
-  const { t } = useLocale();
+  const t = useTranslations('howItWorks');
 
   return (
     <section className="bg-surface-low">
       <div className="mx-auto w-full max-w-6xl px-6 py-20">
         <div className="mb-12 flex flex-col items-center gap-3 text-center">
-          <Eyebrow size="sm">{t.howItWorks.eyebrow}</Eyebrow>
+          <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
           <h2 className="max-w-2xl text-h3 font-semibold text-foreground">
-            {t.howItWorks.headline}
+            {t('headline')}
           </h2>
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {stepKeys.map((key, i) => {
-            const step = t.howItWorks[key];
             const number = String(i + 1).padStart(2, '0');
             return (
               <div key={key} className="relative flex flex-col gap-4">
@@ -54,11 +52,11 @@ export function HowItWorksSection(): JSX.Element {
                 <div className="flex items-center gap-2 text-primary">
                   {stepIcons[key]}
                   <h3 className="text-title3 font-semibold text-foreground">
-                    {step.title}
+                    {t(`${key}.title`)}
                   </h3>
                 </div>
                 <p className="text-body2 text-foreground-secondary">
-                  {step.body}
+                  {t(`${key}.body`)}
                 </p>
               </div>
             );

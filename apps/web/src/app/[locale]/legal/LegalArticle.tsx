@@ -1,5 +1,3 @@
-'use client';
-
 import type { JSX } from 'react';
 
 import type { LegalDocument } from '@bimstitch/i18n';

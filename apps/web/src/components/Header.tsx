@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import type { JSX } from 'react';
 
@@ -8,18 +8,18 @@ import { Button, ThemeToggle } from '@bimstitch/ui';
 import { Menu, X } from 'lucide-react';
 
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { useLocale } from '@/providers/LocaleProvider';
+import { Link } from '@/i18n/navigation';
 
 const portalUrl = process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001';
 
 export function Header(): JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { t } = useLocale();
+  const t = useTranslations('header');
 
   const navLinks = [
-    { label: t.header.features, href: '/#features' },
-    { label: t.header.blog, href: '/blog' },
-    { label: t.header.requestAccess, href: '/request-access' },
+    { label: t('features'), href: '/#features' },
+    { label: t('blog'), href: '/blog' },
+    { label: t('requestAccess'), href: '/request-access' },
   ] as const;
 
   return (
@@ -29,7 +29,7 @@ export function Header(): JSX.Element {
           href="/"
           className="text-title2 font-semibold text-foreground hover:text-primary"
         >
-          {t.header.brand}
+          {t('brand')}
         </Link>
 
         <nav className="hidden items-center gap-6 sm:flex">
@@ -49,7 +49,7 @@ export function Header(): JSX.Element {
           <ThemeToggle />
           <a href={portalUrl} className="hidden sm:inline-block">
             <Button variant="primary" size="sm">
-              {t.header.signIn}
+              {t('signIn')}
             </Button>
           </a>
           <button
@@ -78,7 +78,7 @@ export function Header(): JSX.Element {
             ))}
             <a href={portalUrl}>
               <Button variant="primary" size="sm" className="w-full">
-                {t.header.signIn}
+                {t('signIn')}
               </Button>
             </a>
           </nav>
