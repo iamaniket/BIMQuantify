@@ -74,14 +74,9 @@
     "button": "Vraag toegang aan"
   },
   "footer": {
-    "tagline": "Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier voor Nederlandse aannemers.",
     "product": "Product",
     "resources": "Informatie",
-    "legal": "Juridisch",
-    "privacy": "Privacy",
-    "terms": "Voorwaarden",
-    "dpa": "DPA",
-    "copyright": "BimDossier B.V."
+    "legal": "Juridisch"
   },
   "blog": {
     "eyebrow": "Blog",
@@ -98,6 +93,10 @@
   },
   "requestAccessPage": {
     "backToHome": "Terug naar home",
+    "intro": {
+      "eyebrow": "Toegang aanvragen",
+      "subtitle": "Vul het formulier in met uw werkgegevens — we beoordelen uw aanvraag en sturen u zo snel mogelijk een persoonlijke uitnodiging."
+    },
     "errors": {
       "pendingDuplicate": "We hebben je aanvraag al ontvangen. Geef ons een dag om hem te beoordelen — we sturen je een e-mail.",
       "alreadyApproved": "Je BimDossier-account staat al klaar. Controleer je e-mail voor de activatielink, of neem contact op met support als je hem niet hebt ontvangen.",

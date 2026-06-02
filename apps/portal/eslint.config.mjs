@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import js from '@eslint/js';
 import { FlatCompat } from '@eslint/eslintrc';
+import i18next from 'eslint-plugin-i18next';
 import tseslint from 'typescript-eslint';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +39,40 @@ export default tseslint.config(
   ...tseslint.configs.stylisticTypeChecked,
   ...airbnbExtends,
   ...nextExtends,
+  i18next.configs['flat/recommended'],
+  {
+    // Currently 'warn' — graduate to 'error' once the existing JSX-text
+    // hardcodes (~80 today) have been migrated through useTranslations
+    // or @bimstitch/i18n. The audit underestimated the count vs. what
+    // the rule actually flags; rather than half-fixing or splatting
+    // eslint-disable comments, we keep the rule visible at warn level so
+    // every new violation surfaces in CI output without blocking ship.
+    rules: {
+      'i18next/no-literal-string': ['warn', {
+        message: 'String literals in JSX must be routed through useTranslations() or @bimstitch/i18n shared catalog.',
+      }],
+    },
+  },
+  {
+    // Literals are allowed in: test assertions, skeuomorphic art (raw
+    // brand label baked into a fake keyboard / mouse diagram, per
+    // CLAUDE.md exception), and OG/icon routes (Satori needs literal
+    // strings; no runtime translation pipeline).
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/*.spec.{ts,tsx}',
+      'tests/**',
+      'src/__tests__/**',
+      'src/components/shared/viewer/settings/VisualKeyboard.tsx',
+      'src/components/shared/viewer/settings/MouseDiagram.tsx',
+      'src/app/**/apple-icon.tsx',
+      'src/app/**/icon.tsx',
+      'src/app/**/opengraph-image.tsx',
+    ],
+    rules: {
+      'i18next/no-literal-string': 'off',
+    },
+  },
   {
     languageOptions: {
       parserOptions: {

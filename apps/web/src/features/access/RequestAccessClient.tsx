@@ -22,6 +22,8 @@ type SubmittedState = {
 
 export function RequestAccessClient(): JSX.Element {
   const t = useTranslations('requestAccessPage');
+  const tIntro = useTranslations('requestAccessPage.intro');
+  const tBrand = useTranslations('shared.brand');
   const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
   const [submitError, setSubmitError] = useState<string | undefined>(undefined);
 
@@ -76,14 +78,13 @@ export function RequestAccessClient(): JSX.Element {
           <>
             <div className="mb-5">
               <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">
-                Request access
+                {tIntro('eyebrow')}
               </div>
               <h2 className="m-0 font-display text-[30px] font-medium leading-tight tracking-tight text-foreground">
-                Get your BimDossier demo.
+                {tBrand('demoHeading')}
               </h2>
               <p className="mt-2 text-[13px] leading-snug text-foreground-tertiary">
-                Fill in the form with your work details — we&rsquo;ll review your request and send a
-                personalised invite shortly.
+                {tIntro('subtitle')}
               </p>
             </div>
             <RequestAccessForm

@@ -10,6 +10,8 @@ import { Link } from '@/i18n/navigation';
 // in particular is something B2B buyers will ask for during procurement.
 export function DashboardFooter(): JSX.Element {
   const t = useTranslations('dashboardFooter');
+  const tBrand = useTranslations('shared.brand');
+  const tLegal = useTranslations('shared.legal');
   const year = new Date().getFullYear();
 
   return (
@@ -18,16 +20,16 @@ export function DashboardFooter(): JSX.Element {
       className="shrink-0 border-t border-border bg-background px-6 py-2 text-caption text-foreground-tertiary"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span>{t('copyright', { year })}</span>
-        <nav aria-label="Legal" className="flex items-center gap-4">
+        <span>{t('copyright', { year, brand: tBrand('name') })}</span>
+        <nav aria-label={tLegal('navAriaLabel')} className="flex items-center gap-4">
           <Link href="/legal/privacy" className="hover:text-foreground">
-            {t('privacy')}
+            {tLegal('privacy')}
           </Link>
           <Link href="/legal/terms" className="hover:text-foreground">
-            {t('terms')}
+            {tLegal('terms')}
           </Link>
           <Link href="/legal/dpa" className="hover:text-foreground">
-            {t('dpa')}
+            {tLegal('dpa')}
           </Link>
         </nav>
       </div>

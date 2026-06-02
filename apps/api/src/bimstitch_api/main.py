@@ -204,7 +204,7 @@ async def _impersonator_middleware(
 def create_app() -> FastAPI:
     settings = get_settings()
     init_sentry()
-    app = FastAPI(title="BIMstitch API", version="0.0.1", lifespan=lifespan)
+    app = FastAPI(title="BimDossier API", version="0.0.1", lifespan=lifespan)
 
     app.middleware("http")(_impersonator_middleware)
 

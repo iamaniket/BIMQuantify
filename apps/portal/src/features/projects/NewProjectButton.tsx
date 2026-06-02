@@ -1,6 +1,7 @@
 'use client';
 
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';
@@ -9,6 +10,7 @@ import { ProjectFormDialog } from './ProjectFormDialog';
 
 export function NewProjectButton(): JSX.Element {
   const [open, setOpen] = useState(false);
+  const t = useTranslations('projects.actions');
 
   return (
     <>
@@ -19,7 +21,7 @@ export function NewProjectButton(): JSX.Element {
         onClick={() => { setOpen(true); }}
       >
         <Plus className="h-4 w-4" />
-        New project
+        {t('new')}
       </Button>
       <ProjectFormDialog
         mode="create"

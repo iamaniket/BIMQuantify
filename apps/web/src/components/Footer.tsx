@@ -21,6 +21,8 @@ type FooterColumn = {
 export function Footer(): JSX.Element {
   const tHeader = useTranslations('header');
   const tFooter = useTranslations('footer');
+  const tBrand = useTranslations('shared.brand');
+  const tLegal = useTranslations('shared.legal');
 
   const columns: FooterColumn[] = [
     {
@@ -39,9 +41,9 @@ export function Footer(): JSX.Element {
     {
       title: tFooter('legal'),
       links: [
-        { label: tFooter('privacy'), href: '/legal/privacy', external: undefined },
-        { label: tFooter('terms'), href: '/legal/terms', external: undefined },
-        { label: tFooter('dpa'), href: '/legal/dpa', external: undefined },
+        { label: tLegal('privacy'), href: '/legal/privacy', external: undefined },
+        { label: tLegal('terms'), href: '/legal/terms', external: undefined },
+        { label: tLegal('dpa'), href: '/legal/dpa', external: undefined },
       ],
     },
   ];
@@ -58,7 +60,7 @@ export function Footer(): JSX.Element {
               </span>
             </div>
             <p className="text-body3 text-foreground-tertiary">
-              {tFooter('tagline')}
+              {tBrand('tagline')}
             </p>
           </div>
 
@@ -93,7 +95,7 @@ export function Footer(): JSX.Element {
         </div>
 
         <div className="mt-10 border-t border-border pt-6 text-center text-caption text-foreground-tertiary">
-          © {new Date().getFullYear()} {tFooter('copyright')}
+          © {new Date().getFullYear()} {tBrand('legalEntity')}
         </div>
       </div>
     </footer>

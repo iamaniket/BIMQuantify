@@ -9,7 +9,7 @@
   "activate": {
     "eyebrow": "Activate account",
     "title": "Activate your account",
-    "subtitle": "Set a password to finish activating your BimStitch account.",
+    "subtitle": "Set a password to finish activating your BimDossier account.",
     "field": {
       "password": "New password",
       "passwordConfirm": "Confirm password"
@@ -22,7 +22,17 @@
     },
     "success": "Account activated. You can sign in now."
   },
+  "common": {
+    "dropzone": {
+      "prompt": "Drop a file here, or",
+      "chooseFile": "Choose file"
+    }
+  },
   "requestAccess": {
+    "intro": {
+      "eyebrow": "Request access",
+      "subtitle": "Fill in the form with your work details — we'll review your request and send a personalised invite shortly."
+    },
     "errors": {
       "pendingDuplicate": "We've already received your request. Give us a day to review — we'll email you.",
       "alreadyApproved": "Your BimDossier account is already set up. Check your email for the activation link, or contact support if you didn't receive one.",
@@ -34,7 +44,7 @@
   "forgotPassword": {
     "eyebrow": "Account recovery",
     "title": "Forgot your password?",
-    "subtitle": "Enter the email tied to your BimStitch account and we'll send you a reset link.",
+    "subtitle": "Enter the email tied to your BimDossier account and we'll send you a reset link.",
     "emailPlaceholder": "you@company.nl",
     "field": {
       "email": "Work email"
@@ -92,7 +102,7 @@
   "resetPassword": {
     "eyebrow": "Set new password",
     "title": "Choose a new password",
-    "subtitle": "Pick a strong password for your BimStitch account. The reset link expires after first use.",
+    "subtitle": "Pick a strong password for your BimDossier account. The reset link expires after first use.",
     "field": {
       "password": "New password",
       "passwordConfirm": "Confirm password"
@@ -154,7 +164,7 @@
     "workspace": "Workspace",
     "projects": "Projects",
     "bblLibrary": "BBL library",
-    "wkbLibrary": "Wet kwaliteitsborging voor het bouwen (Wkb) library",
+    "wkbLibrary": "Quality Assurance in Construction Act  (Wkb) library",
     "tenant": {
       "label": "Tenant",
       "seats": "seats"
@@ -173,7 +183,7 @@
     "accessRequests": "Access requests",
     "auditLog": "Audit log",
     "tenant": "Tenant",
-    "appName": "BimStitch"
+    "appName": "BimDossier"
   },
   "account": {
     "pageTitle": "Account",
@@ -271,6 +281,9 @@
       "certificatesLabel": "Certificates",
       "certificatesSub": "{expired} expired · {expiring} expiring",
       "certificatesOk": "all valid"
+    },
+    "actions": {
+      "new": "New project"
     },
     "page": {
       "searchPlaceholder": "Search projects...",
@@ -414,7 +427,7 @@
           "buildingType": "Building type",
           "consequenceClass": "Consequence class",
           "plannedStartDate": "Planned start date",
-          "instrument": "Approved Wet kwaliteitsborging voor het bouwen (Wkb) instrument",
+          "instrument": "Approved Quality Assurance in Construction Act  (Wkb) instrument",
           "instrumentPlaceholder": "Not yet known — KB will select",
           "instrumentHint": "Optional. Your quality inspector will select the instrument when they join."
         },
@@ -586,7 +599,7 @@
   },
   "projectDetail": {
     "hero": {
-      "wkbScore": "Wet kwaliteitsborging voor het bouwen (Wkb) score",
+      "wkbScore": "Quality Assurance in Construction Act  (Wkb) score",
       "issuesOpen": "Issues open",
       "holdback": "Holdback",
       "delivery": "Delivery",
@@ -929,7 +942,7 @@
         "eyebrow": "Proof of conformity",
         "subtitle": "{count, plural, =0 {No certificates} one {# certificate} other {# certificates}}",
         "title": "No certificates yet",
-        "description": "Upload product certificates, test reports, inspection certificates and warranties to build your Wet kwaliteitsborging voor het bouwen (Wkb) conformity dossier.",
+        "description": "Upload product certificates, test reports, inspection certificates and warranties to build your Quality Assurance in Construction Act  (Wkb) conformity dossier.",
         "ctaLabel": "Upload certificate",
         "searchPlaceholder": "Search certificates…",
         "filterAll": "All types",
@@ -1215,7 +1228,7 @@
         "articles": "Articles",
         "models": "Models"
       },
-      "donutCenterLabel": "Wet kwaliteitsborging voor het bouwen (Wkb) compliant",
+      "donutCenterLabel": "Quality Assurance in Construction Act  (Wkb) compliant",
       "failingSuffix": "{count} failing",
       "trendEyebrow": "30-day trend"
     },
@@ -1321,12 +1334,12 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Wet kwaliteitsborging voor het bouwen (Wkb)-compliant BIM platform"
+      "tagline": "Quality Assurance in Construction Act  (Wkb)-compliant BIM platform"
     },
     "hero": {
-      "readyBadge": "Wet kwaliteitsborging voor het bouwen (Wkb) {version} ready",
-      "headlineTemplate": "Stitch your <em>models</em>, <em>issues</em> and <em>dossier</em> into one Wet kwaliteitsborging voor het bouwen (Wkb) record.",
-      "subhead": "Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Wet kwaliteitsborging voor het bouwen (Wkb)."
+      "readyBadge": "Quality Assurance in Construction Act  (Wkb) {version} ready",
+      "headlineTemplate": "Stitch your <em>models</em>, <em>issues</em> and <em>dossier</em> into one Quality Assurance in Construction Act  (Wkb) record.",
+      "subhead": "Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act  (Wkb)."
     },
     "kpi": {
       "wkb": "Wkb",
@@ -1400,13 +1413,10 @@
     "searchClose": "Clear search"
   },
   "dashboardFooter": {
-    "privacy": "Privacy",
-    "terms": "Terms",
-    "dpa": "DPA",
-    "copyright": "© {year} BIMstitch"
+    "copyright": "© {year} {brand}"
   },
   "pwaInstall": {
-    "promptTitle": "Install BIMstitch",
+    "promptTitle": "Install BimDossier",
     "promptBody": "Add to your home screen for full-screen inspections, offline access and faster launches.",
     "install": "Install",
     "dismiss": "Not now",

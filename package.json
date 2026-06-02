@@ -6,12 +6,14 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "lint": "pnpm check:i18n && turbo run lint",
+    "check:i18n": "node scripts/check-i18n-parity.mjs",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "clean": "turbo run clean && rimraf node_modules"
   },
   "devDependencies": {
+    "eslint-plugin-i18next": "^6.1.4",
     "rimraf": "^5.0.10",
     "turbo": "^2.5.3",
     "typescript": "^5.8.3"

@@ -32,7 +32,7 @@ export async function htmlToPdf(html: string, opts: PdfOptions): Promise<Uint8Ar
       footerTemplate: `
         <div style="font-size:8pt;color:#6b7280;width:100%;
                     padding:0 18mm;display:flex;justify-content:space-between;">
-          <span>BIMstitch</span>
+          <span>BimDossier</span>
           <span class="pageNumber"></span>/<span class="totalPages"></span>
         </div>`,
     });
@@ -44,8 +44,8 @@ export async function htmlToPdf(html: string, opts: PdfOptions): Promise<Uint8Ar
       doc.setCreationDate(at);
       doc.setModificationDate(at);
     }
-    doc.setProducer('BIMstitch processor');
-    doc.setCreator('BIMstitch processor');
+    doc.setProducer('BimDossier processor');
+    doc.setCreator('BimDossier processor');
     return await doc.save({ useObjectStreams: false });
   } finally {
     await page.close();

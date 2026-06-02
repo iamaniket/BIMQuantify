@@ -37,7 +37,7 @@ export function layout({ title, generatedAt, body }: LayoutInput): string {
 <body>
   <main>${body}</main>
   <footer class="page-footer" data-generated-at="${generatedAt}">
-    BIMstitch · ${generatedAt}
+    BimDossier · ${generatedAt}
   </footer>
 </body>
 </html>`;

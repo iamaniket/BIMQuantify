@@ -15,3 +15,6 @@ export type { LegalContent, LegalDocument, LegalMeta, LegalSection } from './leg
 
 export { getWebMessages } from './web/index.js';
 export type { WebMessages } from './web/index.js';
+
+export { getSharedMessages } from './shared/index.js';
+export type { SharedMessages } from './shared/index.js';

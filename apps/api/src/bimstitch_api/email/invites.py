@@ -27,15 +27,15 @@ async def send_invite_notification(
 ) -> None:
     settings = get_settings()
     url = settings.frontend_invitations_url
-    inviter_label = inviter_email or "A BIMstitch admin"
+    inviter_label = inviter_email or "A BimDossier admin"
     body = (
         f"Hi {invitee.full_name or invitee.email},\n\n"
-        f'{inviter_label} has invited you to join "{organization.name}" on BIMstitch.\n\n'
+        f'{inviter_label} has invited you to join "{organization.name}" on BimDossier.\n\n'
         f"Sign in and visit {url} to accept or decline the invitation.\n"
     )
     await get_email_transport().send(
         to=invitee.email,
-        subject=f'Invitation to join "{organization.name}" on BIMstitch',
+        subject=f'Invitation to join "{organization.name}" on BimDossier',
         body=body,
     )
 
@@ -54,16 +54,16 @@ async def send_project_invite_notification(
     """
     settings = get_settings()
     url = settings.frontend_invitations_url
-    inviter_label = inviter_email or "A BIMstitch team member"
+    inviter_label = inviter_email or "A BimDossier team member"
     body = (
         f"Hi {invitee.full_name or invitee.email},\n\n"
         f"{inviter_label} has invited you to collaborate on the project "
-        f'"{project_name}" in "{organization.name}" on BIMstitch.\n\n'
+        f'"{project_name}" in "{organization.name}" on BimDossier.\n\n'
         f"Sign in and visit {url} to accept the invitation.\n"
     )
     await get_email_transport().send(
         to=invitee.email,
-        subject=f'Invitation to project "{project_name}" on BIMstitch',
+        subject=f'Invitation to project "{project_name}" on BimDossier',
         body=body,
     )
 
@@ -79,11 +79,11 @@ async def send_project_added_notification(
     body = (
         f"Hi {member.full_name or member.email},\n\n"
         f"{inviter_label} has added you to the project "
-        f'"{project_name}" on BIMstitch.\n\n'
+        f'"{project_name}" on BimDossier.\n\n'
         f"Sign in to start collaborating.\n"
     )
     await get_email_transport().send(
         to=member.email,
-        subject=f'You\'ve been added to "{project_name}" on BIMstitch',
+        subject=f'You\'ve been added to "{project_name}" on BimDossier',
         body=body,
     )

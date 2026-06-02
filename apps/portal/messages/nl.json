@@ -9,7 +9,7 @@
   "activate": {
     "eyebrow": "Account activeren",
     "title": "Activeer uw account",
-    "subtitle": "Stel een wachtwoord in om uw BimStitch-account te activeren.",
+    "subtitle": "Stel een wachtwoord in om uw BimDossier-account te activeren.",
     "field": {
       "password": "Nieuw wachtwoord",
       "passwordConfirm": "Bevestig wachtwoord"
@@ -22,7 +22,17 @@
     },
     "success": "Account geactiveerd. U kunt nu inloggen."
   },
+  "common": {
+    "dropzone": {
+      "prompt": "Sleep een bestand hierheen, of",
+      "chooseFile": "Kies bestand"
+    }
+  },
   "requestAccess": {
+    "intro": {
+      "eyebrow": "Toegang aanvragen",
+      "subtitle": "Vul het formulier in met uw werkgegevens — we beoordelen uw aanvraag en sturen u zo snel mogelijk een persoonlijke uitnodiging."
+    },
     "errors": {
       "pendingDuplicate": "We hebben je aanvraag al ontvangen. Geef ons een dag om hem te beoordelen — we sturen je een e-mail.",
       "alreadyApproved": "Je BimDossier-account staat al klaar. Controleer je e-mail voor de activatielink, of neem contact op met support als je hem niet hebt ontvangen.",
@@ -34,7 +44,7 @@
   "forgotPassword": {
     "eyebrow": "Account herstellen",
     "title": "Wachtwoord vergeten?",
-    "subtitle": "Vul het e-mailadres van uw BimStitch-account in en we sturen u een resetlink.",
+    "subtitle": "Vul het e-mailadres van uw BimDossier-account in en we sturen u een resetlink.",
     "emailPlaceholder": "u@bedrijf.nl",
     "field": {
       "email": "Werkmail"
@@ -92,7 +102,7 @@
   "resetPassword": {
     "eyebrow": "Nieuw wachtwoord",
     "title": "Kies een nieuw wachtwoord",
-    "subtitle": "Kies een sterk wachtwoord voor uw BimStitch-account. De resetlink vervalt na eerste gebruik.",
+    "subtitle": "Kies een sterk wachtwoord voor uw BimDossier-account. De resetlink vervalt na eerste gebruik.",
     "field": {
       "password": "Nieuw wachtwoord",
       "passwordConfirm": "Bevestig wachtwoord"
@@ -173,7 +183,7 @@
     "accessRequests": "Toegangsverzoeken",
     "auditLog": "Auditlog",
     "tenant": "Tenant",
-    "appName": "BimStitch"
+    "appName": "BimDossier"
   },
   "account": {
     "pageTitle": "Account",
@@ -271,6 +281,9 @@
       "certificatesLabel": "Certificaten",
       "certificatesSub": "{expired} verlopen · {expiring} verloopt",
       "certificatesOk": "allemaal geldig"
+    },
+    "actions": {
+      "new": "Nieuw project"
     },
     "page": {
       "searchPlaceholder": "Zoek projecten...",
@@ -1400,13 +1413,10 @@
     "searchClose": "Zoekopdracht wissen"
   },
   "dashboardFooter": {
-    "privacy": "Privacy",
-    "terms": "Voorwaarden",
-    "dpa": "Verwerkersovereenkomst",
-    "copyright": "© {year} BIMstitch"
+    "copyright": "© {year} {brand}"
   },
   "pwaInstall": {
-    "promptTitle": "BIMstitch installeren",
+    "promptTitle": "BimDossier installeren",
     "promptBody": "Voeg toe aan je beginscherm voor full-screen inspecties, offline gebruik en sneller starten.",
     "install": "Installeren",
     "dismiss": "Niet nu",

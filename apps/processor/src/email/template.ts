@@ -74,7 +74,7 @@ export function renderEmailHtml(input: EmailTemplateInput): string {
           <!-- Header -->
           <tr>
             <td style="padding:24px 32px 0">
-              <span style="font-size:18px;font-weight:700;color:#111827">BIMstitch</span>
+              <span style="font-size:18px;font-weight:700;color:#111827">BimDossier</span>
             </td>
           </tr>
           <!-- Body -->
@@ -88,7 +88,7 @@ export function renderEmailHtml(input: EmailTemplateInput): string {
           <tr>
             <td style="padding:16px 32px;border-top:1px solid #e5e7eb;
                         color:#9ca3af;font-size:12px;text-align:center">
-              &copy; BIMstitch &middot; This is an automated message
+              &copy; BimDossier &middot; This is an automated message
             </td>
           </tr>
         </table>

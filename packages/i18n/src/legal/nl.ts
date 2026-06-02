@@ -7,7 +7,7 @@ export const legalNlContent: LegalContent = {
   },
   privacy: {
     title: 'Privacyverklaring',
-    intro: 'BIMstitch verwerkt persoonsgegevens van kwaliteitsborgers, aannemers en projectteams die gebruikmaken van het BIMstitch-portaal. Deze verklaring beschrijft welke gegevens we verzamelen, met welk doel, en welke rechten je hebt onder de AVG/GDPR.',
+    intro: 'BimDossier verwerkt persoonsgegevens van kwaliteitsborgers, aannemers en projectteams die gebruikmaken van het BimDossier-portaal. Deze verklaring beschrijft welke gegevens we verzamelen, met welk doel, en welke rechten je hebt onder de AVG/GDPR.',
     lastUpdated: '2026-05-10',
     sections: [
       {
@@ -34,12 +34,12 @@ export const legalNlContent: LegalContent = {
   },
   terms: {
     title: 'Algemene voorwaarden',
-    intro: 'Deze voorwaarden zijn van toepassing op het gebruik van het BIMstitch-portaal door zakelijke gebruikers. Door een account aan te maken of het portaal te gebruiken, ga je akkoord met deze voorwaarden.',
+    intro: 'Deze voorwaarden zijn van toepassing op het gebruik van het BimDossier-portaal door zakelijke gebruikers. Door een account aan te maken of het portaal te gebruiken, ga je akkoord met deze voorwaarden.',
     lastUpdated: '2026-05-10',
     sections: [
       {
         title: 'De dienst',
-        body: 'BIMstitch is een softwareplatform voor kwaliteitsborging onder de Wet kwaliteitsborging voor het bouwen (Wkb). Het portaal ondersteunt onder andere risicobeoordelingen, borgingsplannen, inspecties, bevindingen en dossiervorming.',
+        body: 'BimDossier is een softwareplatform voor kwaliteitsborging onder de Wet kwaliteitsborging voor het bouwen (Wkb). Het portaal ondersteunt onder andere risicobeoordelingen, borgingsplannen, inspecties, bevindingen en dossiervorming.',
       },
       {
         title: 'Jouw verplichtingen',
@@ -61,7 +61,7 @@ export const legalNlContent: LegalContent = {
   },
   dpa: {
     title: 'Verwerkersovereenkomst (DPA)',
-    intro: 'Deze concept-DPA beschrijft hoe BIMstitch (verwerker) persoonsgegevens verwerkt namens de klant (verantwoordelijke) bij het gebruik van het BIMstitch-portaal. Een ondertekenbare PDF-versie wordt op verzoek toegestuurd.',
+    intro: 'Deze concept-DPA beschrijft hoe BimDossier (verwerker) persoonsgegevens verwerkt namens de klant (verantwoordelijke) bij het gebruik van het BimDossier-portaal. Een ondertekenbare PDF-versie wordt op verzoek toegestuurd.',
     lastUpdated: '2026-05-10',
     sections: [
       {

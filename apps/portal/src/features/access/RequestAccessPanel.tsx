@@ -25,6 +25,8 @@ interface SubmittedState {
  */
 export function RequestAccessPanel(): JSX.Element {
   const t = useTranslations('requestAccess.errors');
+  const tIntro = useTranslations('requestAccess.intro');
+  const tBrand = useTranslations('shared.brand');
   const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
   const [submitError, setSubmitError] = useState<string | undefined>(undefined);
 
@@ -75,14 +77,9 @@ export function RequestAccessPanel(): JSX.Element {
   return (
     <>
       <AuthFormIntro
-        eyebrow="Request access"
-        heading="Get your BimDossier demo."
-        subtitle={
-          <>
-            Fill in the form with your work details — we&rsquo;ll review your request and send a
-            personalised invite shortly.
-          </>
-        }
+        eyebrow={tIntro('eyebrow')}
+        heading={tBrand('demoHeading')}
+        subtitle={tIntro('subtitle')}
       />
       <RequestAccessForm
         onSubmit={onSubmit}

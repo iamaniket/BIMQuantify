@@ -76,7 +76,7 @@ function TopPanel(): JSX.Element {
         fontFamily: 'var(--font-sans)',
         color: '#f4eee0', lineHeight: 1, fontStyle: 'italic',
       }}>
-        BimStitch<span style={{ position: 'relative', top: -6, fontSize: 10 }}>&deg;</span>
+        BimDossier<span style={{ position: 'relative', top: -6, fontSize: 10 }}>&deg;</span>
       </div>
       <div style={{
         fontSize: 9, letterSpacing: 2, color: '#f4eee0',

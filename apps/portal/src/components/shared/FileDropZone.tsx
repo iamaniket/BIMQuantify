@@ -1,6 +1,7 @@
 'use client';
 
 import { UploadCloud } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   useCallback, useRef, useState,
   type ChangeEvent, type DragEvent, type JSX, type ReactNode,
@@ -23,6 +24,7 @@ export function FileDropZone({
 }: Props): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const t = useTranslations('common.dropzone');
 
   const handleFiles = useCallback((files: FileList | null): void => {
     if (files === null || files.length === 0) return;
@@ -55,14 +57,14 @@ export function FileDropZone({
       )}
     >
       <UploadCloud className="h-6 w-6 text-foreground-tertiary" />
-      <p className="text-body3 text-foreground">Drop a file here, or</p>
+      <p className="text-body3 text-foreground">{t('prompt')}</p>
       <Button
         type="button"
         variant="primary"
         size="sm"
         onClick={() => { inputRef.current?.click(); }}
       >
-        Choose file
+        {t('chooseFile')}
       </Button>
       {hint !== undefined && (
         <p className="text-caption text-foreground-tertiary">{hint}</p>

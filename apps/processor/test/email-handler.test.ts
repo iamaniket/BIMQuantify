@@ -44,7 +44,7 @@ describe('renderEmailHtml', () => {
 
     expect(html).toContain('Test Subject');
     expect(html).toContain('Hello world');
-    expect(html).toContain('BIMstitch');
+    expect(html).toContain('BimDossier');
     expect(html).toContain('<!doctype html>');
   });
 

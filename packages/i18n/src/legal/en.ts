@@ -7,7 +7,7 @@ export const legalEnContent: LegalContent = {
   },
   privacy: {
     title: 'Privacy policy',
-    intro: 'BIMstitch processes personal data from kwaliteitsborgers, contractors and project teams using the BIMstitch portal. This policy describes which data we collect, for what purpose, and which rights you have under the GDPR.',
+    intro: 'BimDossier processes personal data from kwaliteitsborgers, contractors and project teams using the BimDossier portal. This policy describes which data we collect, for what purpose, and which rights you have under the GDPR.',
     lastUpdated: '2026-05-10',
     sections: [
       {
@@ -34,12 +34,12 @@ export const legalEnContent: LegalContent = {
   },
   terms: {
     title: 'Terms of service',
-    intro: 'These terms apply to use of the BIMstitch portal by business users. By creating an account or using the portal, you agree to these terms.',
+    intro: 'These terms apply to use of the BimDossier portal by business users. By creating an account or using the portal, you agree to these terms.',
     lastUpdated: '2026-05-10',
     sections: [
       {
         title: 'The service',
-        body: 'BIMstitch is a software platform for quality assurance under the Dutch Wet kwaliteitsborging voor het bouwen (Wkb). The portal supports risk assessments, assurance plans, inspections, findings and dossier preparation.',
+        body: 'BimDossier is a software platform for quality assurance under the Dutch Wet kwaliteitsborging voor het bouwen (Wkb). The portal supports risk assessments, assurance plans, inspections, findings and dossier preparation.',
       },
       {
         title: 'Your obligations',
@@ -61,7 +61,7 @@ export const legalEnContent: LegalContent = {
   },
   dpa: {
     title: 'Data processing agreement (DPA)',
-    intro: 'This draft DPA describes how BIMstitch (processor) processes personal data on behalf of the customer (controller) when using the BIMstitch portal. A signable PDF version is available on request.',
+    intro: 'This draft DPA describes how BimDossier (processor) processes personal data on behalf of the customer (controller) when using the BimDossier portal. A signable PDF version is available on request.',
     lastUpdated: '2026-05-10',
     sections: [
       {

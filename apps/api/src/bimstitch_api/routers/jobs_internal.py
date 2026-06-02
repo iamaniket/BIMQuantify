@@ -489,9 +489,9 @@ async def report_callback(
                     else "Dossier for the authority is ready"
                 )
                 body = (
-                    f"Het dossier '{report.title}' staat klaar in BIMstitch."
+                    f"Het dossier '{report.title}' staat klaar in BimDossier."
                     if locale == "nl"
-                    else f"The dossier '{report.title}' is ready in BIMstitch."
+                    else f"The dossier '{report.title}' is ready in BimDossier."
                 )
                 await get_email_transport().send(recipient, subject, body)
         except Exception:

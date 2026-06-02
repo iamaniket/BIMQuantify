@@ -56,12 +56,12 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         activate_url = f"{settings.frontend_activate_url}?token={token}"
         body = (
             f"Hi {user.full_name or user.email},\n\n"
-            f"Activate your BIMstitch account and set your password: {activate_url}\n\n"
+            f"Activate your BimDossier account and set your password: {activate_url}\n\n"
             f"Token: {token}\n"
         )
         await get_email_transport().send(
             to=user.email,
-            subject="Activate your BIMstitch account",
+            subject="Activate your BimDossier account",
             body=body,
         )
 
@@ -116,7 +116,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         )
         await get_email_transport().send(
             to=user.email,
-            subject="Reset your BIMstitch password",
+            subject="Reset your BimDossier password",
             body=body,
         )
 

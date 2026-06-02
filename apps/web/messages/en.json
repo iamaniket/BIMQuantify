@@ -74,14 +74,9 @@
     "button": "Get early access"
   },
   "footer": {
-    "tagline": "Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digital dossier for Dutch contractors.",
     "product": "Product",
     "resources": "Resources",
-    "legal": "Legal",
-    "privacy": "Privacy",
-    "terms": "Terms",
-    "dpa": "DPA",
-    "copyright": "BimDossier B.V."
+    "legal": "Legal"
   },
   "blog": {
     "eyebrow": "Blog",
@@ -98,6 +93,10 @@
   },
   "requestAccessPage": {
     "backToHome": "Back to home",
+    "intro": {
+      "eyebrow": "Request access",
+      "subtitle": "Fill in the form with your work details — we'll review your request and send a personalised invite shortly."
+    },
     "errors": {
       "pendingDuplicate": "We've already received your request. Give us a day to review — we'll email you.",
       "alreadyApproved": "Your BimDossier account is already set up. Check your email for the activation link, or contact support if you didn't receive one.",

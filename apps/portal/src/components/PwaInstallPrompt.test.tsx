@@ -64,7 +64,7 @@ describe('PwaInstallPrompt', () => {
     });
 
     expect(screen.getByTestId('pwa-install-prompt')).toBeInTheDocument();
-    expect(screen.getByText('Install BIMstitch')).toBeInTheDocument();
+    expect(screen.getByText('Install BimDossier')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('pwa-install-accept'));
     expect(ev.prompt).toHaveBeenCalled();
