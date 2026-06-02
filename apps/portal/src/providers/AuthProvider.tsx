@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { tokenManager } from '@/lib/auth/tokenManager';
 
 import { ApiError } from '@/lib/api/client';
@@ -144,6 +145,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
       const nextTokens = await switchOrgApi(organizationId, current.access_token);
       setTokens(nextTokens);
       await queryClient.invalidateQueries();
+      track(PORTAL_EVENTS.ORGANIZATION_SWITCHED, { organization_id: organizationId });
       // /auth/me will be re-fetched by the effect that watches `tokens`.
     },
     [setTokens, queryClient],

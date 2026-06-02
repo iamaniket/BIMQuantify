@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from bimstitch_api.config import get_settings
 from bimstitch_api.email.transport import get_email_transport
+from bimstitch_api.i18n import resolve_user_locale, t
 from bimstitch_api.models.organization import Organization
 from bimstitch_api.models.user import User
 
@@ -26,16 +27,21 @@ async def send_invite_notification(
     inviter_email: str | None,
 ) -> None:
     settings = get_settings()
-    url = settings.frontend_invitations_url
-    inviter_label = inviter_email or "A BimDossier admin"
-    body = (
-        f"Hi {invitee.full_name or invitee.email},\n\n"
-        f'{inviter_label} has invited you to join "{organization.name}" on BimDossier.\n\n'
-        f"Sign in and visit {url} to accept or decline the invitation.\n"
+    locale = resolve_user_locale(invitee)
+    inviter_label = inviter_email or t("invites.fallback_inviter.org", locale)
+    name = invitee.full_name or invitee.email
+    subject = t("invites.org_invite.subject", locale, org_name=organization.name)
+    body = t(
+        "invites.org_invite.body",
+        locale,
+        name=name,
+        inviter_label=inviter_label,
+        org_name=organization.name,
+        url=settings.frontend_invitations_url,
     )
     await get_email_transport().send(
         to=invitee.email,
-        subject=f'Invitation to join "{organization.name}" on BimDossier',
+        subject=subject,
         body=body,
     )
 
@@ -53,17 +59,22 @@ async def send_project_invite_notification(
     an org as a guest to collaborate on a named project.
     """
     settings = get_settings()
-    url = settings.frontend_invitations_url
-    inviter_label = inviter_email or "A BimDossier team member"
-    body = (
-        f"Hi {invitee.full_name or invitee.email},\n\n"
-        f"{inviter_label} has invited you to collaborate on the project "
-        f'"{project_name}" in "{organization.name}" on BimDossier.\n\n'
-        f"Sign in and visit {url} to accept the invitation.\n"
+    locale = resolve_user_locale(invitee)
+    inviter_label = inviter_email or t("invites.fallback_inviter.project", locale)
+    name = invitee.full_name or invitee.email
+    subject = t("invites.project_invite.subject", locale, project_name=project_name)
+    body = t(
+        "invites.project_invite.body",
+        locale,
+        name=name,
+        inviter_label=inviter_label,
+        project_name=project_name,
+        org_name=organization.name,
+        url=settings.frontend_invitations_url,
     )
     await get_email_transport().send(
         to=invitee.email,
-        subject=f'Invitation to project "{project_name}" on BimDossier',
+        subject=subject,
         body=body,
     )
 
@@ -75,15 +86,19 @@ async def send_project_added_notification(
     inviter_email: str | None,
 ) -> None:
     """Notify an existing org member they were added to a project."""
-    inviter_label = inviter_email or "A team member"
-    body = (
-        f"Hi {member.full_name or member.email},\n\n"
-        f"{inviter_label} has added you to the project "
-        f'"{project_name}" on BimDossier.\n\n'
-        f"Sign in to start collaborating.\n"
+    locale = resolve_user_locale(member)
+    inviter_label = inviter_email or t("invites.fallback_inviter.team", locale)
+    name = member.full_name or member.email
+    subject = t("invites.project_added.subject", locale, project_name=project_name)
+    body = t(
+        "invites.project_added.body",
+        locale,
+        name=name,
+        inviter_label=inviter_label,
+        project_name=project_name,
     )
     await get_email_transport().send(
         to=member.email,
-        subject=f'You\'ve been added to "{project_name}" on BimDossier',
+        subject=subject,
         body=body,
     )

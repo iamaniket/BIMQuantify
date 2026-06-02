@@ -34,6 +34,7 @@ from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.i18n import coerce_locale, t
 from bimstitch_api.jobs import (
     DispatchJobError,
     JobConcurrencyError,
@@ -82,57 +83,22 @@ _COMPLIANCE_JOB_TYPES = (JobType.compliance_check,)
 # ---------------------------------------------------------------------------
 
 
-# Per-type, per-locale report titles + "generating…" notification bodies. NL is
-# the committed default; adding a locale is a one-line entry. Phase 4 will
-# migrate these into the shared i18n message catalog.
-_REPORT_TITLE_TEMPLATES: dict[ReportType, dict[str, str]] = {
-    ReportType.compliance_report: {
-        "nl": "Nalevingsrapport — {name}",
-        "en": "Compliance report — {name}",
-    },
-    ReportType.assurance_plan: {
-        "nl": "Borgingsplan — {name}",
-        "en": "Assurance plan — {name}",
-    },
-    ReportType.completion_declaration: {
-        "nl": "Verklaring kwaliteitsborger — {name}",
-        "en": "Completion declaration — {name}",
-    },
-    ReportType.dossier: {
-        "nl": "Dossier bevoegd gezag — {name}",
-        "en": "Dossier for the competent authority — {name}",
-    },
-}
-
-_REPORT_NOTIFICATION_BODY: dict[ReportType, dict[str, str]] = {
-    ReportType.compliance_report: {
-        "nl": "Nalevingsrapport wordt gegenereerd…",
-        "en": "Compliance report is being generated…",
-    },
-    ReportType.assurance_plan: {
-        "nl": "Borgingsplan-PDF wordt gegenereerd…",
-        "en": "Assurance plan PDF is being generated…",
-    },
-    ReportType.completion_declaration: {
-        "nl": "Verklaring wordt gegenereerd…",
-        "en": "Completion declaration is being generated…",
-    },
-    ReportType.dossier: {
-        "nl": "Dossier bevoegd gezag wordt gegenereerd…",
-        "en": "Dossier for the competent authority is being generated…",
-    },
-}
-
-
 def _report_title(report_type: ReportType, project_name: str, locale: str) -> str:
-    by_locale = _REPORT_TITLE_TEMPLATES[report_type]
-    template = by_locale.get(locale, by_locale["en"])
-    return template.format(name=project_name)
+    return t(
+        f"notifications.report.{report_type.value}.title",
+        coerce_locale(locale),
+        name=project_name,
+    )
 
 
 def _report_notification_body(report_type: ReportType, locale: str) -> str:
-    by_locale = _REPORT_NOTIFICATION_BODY[report_type]
-    return by_locale.get(locale, by_locale["en"])
+    # The notification body templates don't take {name}; passing a stray
+    # `name` through `t()` is harmless because we omit vars when none are
+    # needed (see `t()`'s no-vars branch).
+    return t(
+        f"notifications.report.{report_type.value}.body",
+        coerce_locale(locale),
+    )
 
 
 def _project_payload(project: Project, contractor: Contractor | None) -> dict[str, object]:

@@ -27,6 +27,12 @@ from bimstitch_api.actions.dispatcher import dispatch_action
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_session_maker
 from bimstitch_api.deadlines.settings import get_effective_settings
+from bimstitch_api.i18n import (
+    BILINGUAL_SEPARATOR,
+    PLATFORM_DEFAULT_LOCALE,
+    resolve_org_locale,
+    t,
+)
 from bimstitch_api.jobs.dispatcher import DispatchJobError
 from bimstitch_api.jurisdictions import get_deadline_rules, pick_label
 from bimstitch_api.models.deadline import Deadline, DeadlineStatus
@@ -158,24 +164,44 @@ async def _sweep_deadline(
             days_word_en = "day" if days_until_due == 1 else "days"
             due_str = deadline.due_date.isoformat()
 
+            project_locale = resolve_org_locale(project.country)
+            common_email_vars = {
+                "project_name": project.name,
+                "due_date": due_str,
+                "days_remaining": days_until_due,
+                "project_url": project_url,
+            }
+            body_en = t(
+                "deadlines.reminder_email.body",
+                "en",
+                deadline_label=label_en,
+                days_word=days_word_en,
+                **common_email_vars,
+            )
+            body_nl = t(
+                "deadlines.reminder_email.body",
+                "nl",
+                deadline_label=label_nl,
+                days_word=days_word_nl,
+                **common_email_vars,
+            )
+            subject_label = label_nl if PLATFORM_DEFAULT_LOCALE == "nl" else label_en
+            subject = t(
+                "deadlines.reminder_email.subject",
+                PLATFORM_DEFAULT_LOCALE,
+                deadline_label=subject_label,
+                project_name=project.name,
+            )
+
             for user in recipients:
                 name = user.full_name or user.email
-                body = (
-                    f"Hi {name},\n\n"
-                    f'Reminder: the deadline "{label_en}" for project '
-                    f'"{project.name}" is due on {due_str} '
-                    f"({days_until_due} {days_word_en} remaining).\n\n"
-                    f"---\n\n"
-                    f'Herinnering: de deadline "{label_nl}" voor project '
-                    f'"{project.name}" vervalt op {due_str} '
-                    f"(nog {days_until_due} {days_word_nl})."
-                )
+                body = f"Hi {name},\n\n{body_en}{BILINGUAL_SEPARATOR}{body_nl}"
                 try:
                     await dispatch_action(
                         "send_email",
                         {
                             "to": user.email,
-                            "subject": f"Deadline reminder: {label_en} — {project.name}",
+                            "subject": subject,
                             "body": body,
                             "action_url": project_url,
                             "action_label": "View project",
@@ -191,16 +217,25 @@ async def _sweep_deadline(
                         deadline.id,
                     )
 
-            # In-app notification
+            # In-app notification — single-locale per project's jurisdiction.
+            notif_label = label_nl if project_locale == "nl" else label_en
+            notif_days_word = days_word_nl if project_locale == "nl" else days_word_en
             try:
                 notification = await create_notification(
                     session,
                     event_type=NotificationEventType.deadline_upcoming,
-                    title=f"Deadline reminder: {label_en}",
-                    body=(
-                        f'The deadline "{label_en}" for project '
-                        f'"{project.name}" is due in '
-                        f"{days_until_due} days."
+                    title=t(
+                        "deadlines.reminder_notification.title",
+                        project_locale,
+                        deadline_label=notif_label,
+                    ),
+                    body=t(
+                        "deadlines.reminder_notification.body",
+                        project_locale,
+                        deadline_label=notif_label,
+                        project_name=project.name,
+                        days_remaining=days_until_due,
+                        days_word=notif_days_word,
                     ),
                     project_id=project.id,
                 )
@@ -221,24 +256,41 @@ async def _sweep_deadline(
         recipients = await _get_recipients(session, project.id, effective.recipient_roles)
         due_str = deadline.due_date.isoformat()
 
+        project_locale = resolve_org_locale(project.country)
+        common_missed_vars = {
+            "project_name": project.name,
+            "due_date": due_str,
+            "project_url": project_url,
+        }
+        body_en = t(
+            "deadlines.missed_email.body",
+            "en",
+            deadline_label=label_en,
+            **common_missed_vars,
+        )
+        body_nl = t(
+            "deadlines.missed_email.body",
+            "nl",
+            deadline_label=label_nl,
+            **common_missed_vars,
+        )
+        subject_label = label_nl if PLATFORM_DEFAULT_LOCALE == "nl" else label_en
+        subject = t(
+            "deadlines.missed_email.subject",
+            PLATFORM_DEFAULT_LOCALE,
+            deadline_label=subject_label,
+            project_name=project.name,
+        )
+
         for user in recipients:
             name = user.full_name or user.email
-            body = (
-                f"Hi {name},\n\n"
-                f'The deadline "{label_en}" for project '
-                f'"{project.name}" was due on {due_str} and has not been met.\n\n'
-                f"Please take action as soon as possible.\n\n"
-                f"---\n\n"
-                f'De deadline "{label_nl}" voor project '
-                f'"{project.name}" is op {due_str} verlopen en is niet afgehandeld.\n\n'
-                f"Onderneem zo snel mogelijk actie."
-            )
+            body = f"Hi {name},\n\n{body_en}{BILINGUAL_SEPARATOR}{body_nl}"
             try:
                 await dispatch_action(
                     "send_email",
                     {
                         "to": user.email,
-                        "subject": f"Missed deadline: {label_en} — {project.name}",
+                        "subject": subject,
                         "body": body,
                         "action_url": project_url,
                         "action_label": "View project",
@@ -254,16 +306,23 @@ async def _sweep_deadline(
                     deadline.id,
                 )
 
-        # In-app notification
+        # In-app notification — single-locale per project's jurisdiction.
+        notif_label = label_nl if project_locale == "nl" else label_en
         try:
             notification = await create_notification(
                 session,
                 event_type=NotificationEventType.deadline_missed,
-                title=f"Missed deadline: {label_en}",
-                body=(
-                    f'The deadline "{label_en}" for project '
-                    f'"{project.name}" was due on '
-                    f"{deadline.due_date.isoformat()} and has not been met."
+                title=t(
+                    "deadlines.missed_notification.title",
+                    project_locale,
+                    deadline_label=notif_label,
+                ),
+                body=t(
+                    "deadlines.missed_notification.body",
+                    project_locale,
+                    deadline_label=notif_label,
+                    project_name=project.name,
+                    due_date=deadline.due_date.isoformat(),
                 ),
                 project_id=project.id,
             )

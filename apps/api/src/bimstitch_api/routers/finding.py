@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
+from bimstitch_api.i18n import resolve_org_locale, t
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimstitch_api.models.notification import NotificationEventType
@@ -347,20 +348,21 @@ async def update_finding(
     await session.flush()
     await session.refresh(finding)
 
-    if promoted:
+    if promoted or resolving:
+        # Finding notifications are project-scoped fan-outs (everyone in
+        # the org sees the row). Pick the locale from the project's
+        # jurisdiction default — there is no single recipient to key off.
+        locale = resolve_org_locale(project.country)
+        key = "notifications.finding_assigned" if promoted else "notifications.finding_resolved"
         await create_notification(
             session,
-            event_type=NotificationEventType.finding_created,
-            title="Nieuwe bevinding toegewezen",
-            body=finding.title,
-            project_id=project.id,
-        )
-    elif resolving:
-        await create_notification(
-            session,
-            event_type=NotificationEventType.finding_resolved,
-            title="Bevinding opgelost",
-            body=finding.title,
+            event_type=(
+                NotificationEventType.finding_created
+                if promoted
+                else NotificationEventType.finding_resolved
+            ),
+            title=t(f"{key}.title", locale),
+            body=t(f"{key}.body", locale, title=finding.title),
             project_id=project.id,
         )
 

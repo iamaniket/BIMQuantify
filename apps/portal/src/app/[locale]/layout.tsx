@@ -19,6 +19,7 @@ import { PwaInstallPrompt } from '@/components/PwaInstallPrompt';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import { routing } from '@/i18n/routing';
 import { AuthProvider } from '@/providers/AuthProvider';
+import { PostHogProvider } from '@/providers/PostHogProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 
@@ -47,9 +48,11 @@ export default async function LocaleLayout({ children, params }: Props): Promise
           <ThemeProvider>
             <QueryProvider>
               <AuthProvider>
-                {children}
-                <PwaInstallPrompt />
-                <Toaster richColors closeButton position="top-right" />
+                <PostHogProvider>
+                  {children}
+                  <PwaInstallPrompt />
+                  <Toaster richColors closeButton position="top-right" />
+                </PostHogProvider>
               </AuthProvider>
             </QueryProvider>
           </ThemeProvider>

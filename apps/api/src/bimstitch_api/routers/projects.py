@@ -1081,12 +1081,20 @@ async def invite_to_project(
     # In-app notification (best-effort, after commit).
     from bimstitch_api.notifications.service import emit_notification_for_org
     from bimstitch_api.models.notification import NotificationEventType
+    from bimstitch_api.i18n import resolve_org_locale, t
 
+    # Project-scoped — use the project's jurisdiction default locale.
+    locale = resolve_org_locale(project.country)
     await emit_notification_for_org(
         organization_id=active_org_id,
         event_type=NotificationEventType.invitation_sent,
-        title="Project invitation sent",
-        body=f"{target_user.email} has been invited to {project.name}",
+        title=t("notifications.project_member_invited.title", locale),
+        body=t(
+            "notifications.project_member_invited.body",
+            locale,
+            invitee_email=target_user.email,
+            project_name=project.name,
+        ),
         project_id=project.id,
     )
 

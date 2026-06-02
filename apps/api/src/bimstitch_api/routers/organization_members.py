@@ -299,12 +299,22 @@ async def invite_member(
     # In-app notification (best-effort, after commit).
     from bimstitch_api.notifications.service import emit_notification_for_org
     from bimstitch_api.models.notification import NotificationEventType
+    from bimstitch_api.i18n import PLATFORM_DEFAULT_LOCALE, t
 
+    # Org-level event with no specific recipient — use platform default.
+    # When Organization.default_locale is added in a future PR, swap this
+    # for resolve_org_locale-style routing.
+    locale = PLATFORM_DEFAULT_LOCALE
     await emit_notification_for_org(
         organization_id=organization_id,
         event_type=NotificationEventType.invitation_sent,
-        title="Team invitation sent",
-        body=f"{target_user.email} has been invited to {org.name}",
+        title=t("notifications.org_member_invited.title", locale),
+        body=t(
+            "notifications.org_member_invited.body",
+            locale,
+            invitee_email=target_user.email,
+            org_name=org.name,
+        ),
     )
 
     # Send invite email after commit so a flaky SMTP doesn't roll back the

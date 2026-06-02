@@ -10,6 +10,12 @@ from sqlalchemy import select
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_user_db
 from bimstitch_api.email.transport import get_email_transport
+from bimstitch_api.i18n import (
+    PLATFORM_DEFAULT_LOCALE,
+    resolve_user_locale,
+    t,
+    t_bilingual,
+)
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
@@ -54,14 +60,20 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         # legacy verify URL is kept as a fallback for the existing email
         # template when the user already had a verified account.
         activate_url = f"{settings.frontend_activate_url}?token={token}"
-        body = (
-            f"Hi {user.full_name or user.email},\n\n"
-            f"Activate your BimDossier account and set your password: {activate_url}\n\n"
-            f"Token: {token}\n"
+        # New user — `user.locale` is NULL at this point. Send a bilingual
+        # body and the platform-default subject so neither EN nor NL
+        # recipients are caught off guard.
+        name = user.full_name or user.email
+        body = t_bilingual(
+            "auth.activate_email.body",
+            name=name,
+            url=activate_url,
+            token=token,
         )
+        subject = t("auth.activate_email.subject", PLATFORM_DEFAULT_LOCALE)
         await get_email_transport().send(
             to=user.email,
-            subject="Activate your BimDossier account",
+            subject=subject,
             body=body,
         )
 
@@ -110,13 +122,20 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
     ) -> None:
         settings = get_settings()
         reset_url = f"{settings.frontend_reset_password_url}?token={token}"
-        body = (
-            f"Password reset requested for {user.email}.\n\n"
-            f"Reset link: {reset_url}\n\nToken: {token}\n"
+        # Existing user — use their `User.locale` (resolves to platform
+        # default if unset).
+        locale = resolve_user_locale(user)
+        body = t(
+            "auth.reset_password_email.body",
+            locale,
+            email=user.email,
+            url=reset_url,
+            token=token,
         )
+        subject = t("auth.reset_password_email.subject", locale)
         await get_email_transport().send(
             to=user.email,
-            subject="Reset your BimDossier password",
+            subject=subject,
             body=body,
         )
 

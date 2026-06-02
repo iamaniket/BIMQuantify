@@ -137,8 +137,8 @@ class TestReminderEngine:
         reminder_actions = [
             c for c in action_dispatch_calls
             if c["action_type"] == "send_email"
-            and "Deadline reminder" in c["payload"]["subject"]
-            and "Construction notification" in c["payload"]["subject"]
+            and "Deadline-herinnering" in c["payload"]["subject"]
+            and "Bouwmelding" in c["payload"]["subject"]
         ]
         assert len(reminder_actions) >= 1
 
@@ -212,7 +212,7 @@ class TestReminderEngine:
         cn_actions = [
             c for c in action_dispatch_calls
             if c["action_type"] == "send_email"
-            and "Construction notification" in c["payload"]["subject"]
+            and "Bouwmelding" in c["payload"]["subject"]
         ]
         assert len(cn_actions) == 0
 
@@ -258,7 +258,7 @@ class TestReminderEngine:
         missed_actions = [
             c for c in action_dispatch_calls
             if c["action_type"] == "send_email"
-            and "Missed deadline" in c["payload"]["subject"]
+            and "Gemiste deadline" in c["payload"]["subject"]
         ]
         assert len(missed_actions) >= 1
 
@@ -301,7 +301,7 @@ class TestReminderEngine:
         cn_actions = [
             c for c in action_dispatch_calls
             if c["action_type"] == "send_email"
-            and "Construction notification" in c["payload"]["subject"]
+            and "Bouwmelding" in c["payload"]["subject"]
         ]
         assert len(cn_actions) == 0
 

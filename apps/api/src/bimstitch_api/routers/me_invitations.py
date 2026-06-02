@@ -146,13 +146,21 @@ async def accept_invitation(
     # In-app notification (best-effort, after commit).
     from bimstitch_api.notifications.service import emit_notification_for_org
     from bimstitch_api.models.notification import NotificationEventType
+    from bimstitch_api.i18n import PLATFORM_DEFAULT_LOCALE, t
 
     display_name = user.full_name or user.email
+    # Org-level event — platform default until Organization.default_locale lands.
+    locale = PLATFORM_DEFAULT_LOCALE
     await emit_notification_for_org(
         organization_id=org.id,
         event_type=NotificationEventType.invitation_accepted,
-        title="Invitation accepted",
-        body=f"{display_name} accepted the invitation to {org.name}",
+        title=t("notifications.invitation_accepted.title", locale),
+        body=t(
+            "notifications.invitation_accepted.body",
+            locale,
+            display_name=display_name,
+            org_name=org.name,
+        ),
     )
 
     return InvitationAcceptResponse(

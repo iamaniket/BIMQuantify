@@ -11,6 +11,7 @@ import { useState, type JSX } from 'react';
 
 import { MarketingBrandPanel } from '@/components/MarketingBrandPanel';
 import { Link } from '@/i18n/navigation';
+import { captureEvent } from '@/lib/analytics';
 import { submitAccessRequest, WebApiError } from '@/lib/api';
 import { env } from '@/lib/env';
 
@@ -43,6 +44,11 @@ export function RequestAccessClient(): JSX.Element {
         terms_accepted: values.terms_accepted,
       });
       setSubmitted({ name: values.name, email: values.work_email, company: values.company });
+      captureEvent('web.request_access_submitted', {
+        company_size: values.company_size,
+        country: values.country,
+        role: values.role,
+      });
     } catch (err) {
       if (err instanceof WebApiError) {
         if (err.status === 409 && err.detail === 'ACCESS_REQUEST_PENDING_DUPLICATE') {

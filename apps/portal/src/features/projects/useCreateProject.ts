@@ -2,6 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
+import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import {
   createProject, createProjectWithThumbnail, updateProject,
 } from '@/lib/api/projects';
@@ -36,5 +37,11 @@ export function useCreateProject(): UseMutationResult<Project, Error, ProjectCre
       return updateProject(accessToken, created.id, extras);
     },
     invalidateKeys: [projectsKey],
+    onSuccess: (project) => {
+      track(PORTAL_EVENTS.PROJECT_CREATED, {
+        project_id: project.id,
+        country: project.country,
+      });
+    },
   });
 }

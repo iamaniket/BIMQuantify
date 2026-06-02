@@ -5,6 +5,7 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 
+import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import {
   getComplianceLatest,
   listProjectReports,
@@ -212,5 +213,13 @@ export function useCheckCompliance(
       issuesKey(projectId),
       ['projects', projectId, 'compliance'],
     ],
+    onSuccess: (_response, vars) => {
+      track(PORTAL_EVENTS.COMPLIANCE_CHECK_RUN, {
+        project_id: projectId,
+        model_id: modelId,
+        file_id: vars.fileId,
+        building_type: vars.buildingType ?? null,
+      });
+    },
   });
 }

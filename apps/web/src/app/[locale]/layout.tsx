@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import type { JSX, ReactNode } from 'react';
 
 import { routing } from '@/i18n/routing';
+import { PostHogProvider } from '@/providers/PostHogProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 
 const fraunces = Fraunces({
@@ -68,7 +69,9 @@ export default async function LocaleLayout({ children, params }: Props): Promise
     <html lang={locale} className={fraunces.variable} suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <NextIntlClientProvider>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <PostHogProvider>{children}</PostHogProvider>
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

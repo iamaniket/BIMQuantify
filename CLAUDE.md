@@ -177,6 +177,27 @@ Where each kind of string lives:
 
 When you add a new label, template field, or jurisdiction entry: write the `nl` and `en` values in the same edit, never as a follow-up TODO. Same goes for adding any new `t('...')` key in the portal — the en.json and nl.json edits ship together.
 
+### API i18n catalog
+
+`apps/api/src/bimstitch_api/i18n/` is the single source of truth for every user-visible string the API itself emits (email subjects/bodies, in-app notification titles/bodies). Mirrors the frontend pattern (`packages/i18n/src/shared/`) on the Python side.
+
+Public surface:
+- `t(key, locale, **vars)` — single-locale lookup with `{var}` interpolation. Falls back to `PLATFORM_DEFAULT_LOCALE` if a key is missing in the requested locale (parity tests prevent this in practice).
+- `t_bilingual(key, **vars)` — returns `"EN section\n\n---\n\nNL section"`. Used for emails where the recipient has no locale preference yet (activation email — recipient is a brand-new user). When vars differ per locale (e.g. the deadline label is itself localized), compose imperatively: call `t()` twice and join with `BILINGUAL_SEPARATOR`.
+- `resolve_user_locale(user)` — pick `User.locale` (added by migration `0002_user_locale`) or fall back to `PLATFORM_DEFAULT_LOCALE`. Use for member-context paths (org-invite emails, password-reset emails).
+- `resolve_org_locale(country)` — derive from `Project.country` → `jurisdiction.default_locale`. Use for project-scoped fan-outs (finding notifications, deadline reminders) where there's no single recipient to key off.
+- `coerce_locale(value)` — narrow any string (e.g. `Report.locale`) to a supported `Locale`, falling back to platform default.
+
+Catalogs are flat `dict[str, str]` with dotted keys (e.g. `"auth.activate_email.subject"`). Adding a string: append the key to **both** `messages/en.py` and `messages/nl.py` with the same `{placeholders}` in the same edit. `tests/test_i18n_catalog.py` walks both catalogs and fails CI on key drift or placeholder drift.
+
+Email policy:
+- **Bilingual** (no locale preference): activation email only — invitee has no `User.locale` set yet.
+- **Single-locale via `resolve_user_locale`**: password reset, org/project invites — recipient is an existing verified user.
+- **Single-locale via `resolve_org_locale(project.country)`**: project-scoped fan-out notifications (findings, deadline reminders, project-member invites). There's no single recipient to key off.
+- **Single-locale via `coerce_locale(report.locale)`**: report-pipeline emails and notifications (already locale-tagged at report-creation time).
+
+Error responses are unchanged: every `HTTPException(detail=...)` returns a SCREAMING_SNAKE code; the portal maps codes to translated strings via its `useTranslations()` catalog. The two free-text leaks in `auth/refresh.py` (`"refresh token revoked"` / `"user no longer active"`) were converted to `REFRESH_TOKEN_REVOKED` / `USER_NO_LONGER_ACTIVE` with matching portal keys under `auth.login.errors.*`.
+
 **Rate limiting**: Redis-backed via `fastapi-limiter`. Defaults in `config.py`: login 5/min, register 3/hour, refresh 10/min, forgot-password 3/hour. (The `register` limiter now guards the admin invite path — the public `/auth/register` route is gone — but the knob is unchanged.)
 
 ### Storage

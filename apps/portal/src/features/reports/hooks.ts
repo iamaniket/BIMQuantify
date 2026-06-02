@@ -5,6 +5,7 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 
+import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import {
   createReport,
   getReport,
@@ -72,6 +73,13 @@ export function useGenerateReport(
       reportsListKey(projectId),
       reportKey(projectId, data.id),
     ],
+    onSuccess: (report, vars) => {
+      track(PORTAL_EVENTS.REPORT_GENERATED, {
+        project_id: projectId,
+        report_id: report.id,
+        report_type: vars.report_type,
+      });
+    },
   });
 }
 

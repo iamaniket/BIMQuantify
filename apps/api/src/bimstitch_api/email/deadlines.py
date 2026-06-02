@@ -1,8 +1,15 @@
 """Email templates for deadline reminders and missed-deadline alerts.
 
-Bilingual (NL + EN) plain-text emails, following the invite email
-pattern. Both languages appear in the same email body so the recipient
-can read whichever they prefer.
+Bilingual (NL + EN) plain-text emails — the project can have members in
+either locale, and sending one bilingual email per recipient avoids
+fanning out per-locale duplicates.
+
+Strings live in the i18n catalog (``bimstitch_api.i18n``). The deadline
+label differs per locale ("Bouwmelding" vs "Construction notification"),
+so this module composes imperatively: it calls ``t()`` once with the EN
+label, once with the NL label, then joins with the bilingual separator.
+``t_bilingual()`` doesn't fit here because the same placeholder takes
+different values per side.
 """
 
 from __future__ import annotations
@@ -10,6 +17,11 @@ from __future__ import annotations
 from datetime import date
 
 from bimstitch_api.email.transport import get_email_transport
+from bimstitch_api.i18n import (
+    BILINGUAL_SEPARATOR,
+    PLATFORM_DEFAULT_LOCALE,
+    t,
+)
 
 
 async def send_deadline_reminder_email(
@@ -24,31 +36,36 @@ async def send_deadline_reminder_email(
     project_url: str,
 ) -> None:
     """Upcoming-deadline reminder email (bilingual NL/EN)."""
-    name = full_name or to
     due_str = due_date.isoformat()
-    days_word_nl = "dag" if days_remaining == 1 else "dagen"
-    days_word_en = "day" if days_remaining == 1 else "days"
-
-    body = (
-        f"Hi {name},\n\n"
-        # English section
-        f'Reminder: the deadline "{deadline_label_en}" for project '
-        f'"{project_name}" is due on {due_str} '
-        f"({days_remaining} {days_word_en} remaining).\n\n"
-        f"View the project: {project_url}\n\n"
-        f"---\n\n"
-        # Dutch section
-        f'Herinnering: de deadline "{deadline_label_nl}" voor project '
-        f'"{project_name}" vervalt op {due_str} '
-        f"(nog {days_remaining} {days_word_nl}).\n\n"
-        f"Bekijk het project: {project_url}\n"
+    common = dict(
+        project_name=project_name,
+        due_date=due_str,
+        days_remaining=days_remaining,
+        project_url=project_url,
     )
-
-    await get_email_transport().send(
-        to=to,
-        subject=f"Deadline reminder: {deadline_label_en} — {project_name}",
-        body=body,
+    body_en = t(
+        "deadlines.reminder_email.body",
+        "en",
+        deadline_label=deadline_label_en,
+        days_word="day" if days_remaining == 1 else "days",
+        **common,
     )
+    body_nl = t(
+        "deadlines.reminder_email.body",
+        "nl",
+        deadline_label=deadline_label_nl,
+        days_word="dag" if days_remaining == 1 else "dagen",
+        **common,
+    )
+    name = full_name or to
+    body = f"Hi {name},\n\n{body_en}{BILINGUAL_SEPARATOR}{body_nl}"
+    subject = t(
+        "deadlines.reminder_email.subject",
+        PLATFORM_DEFAULT_LOCALE,
+        deadline_label=deadline_label_nl if PLATFORM_DEFAULT_LOCALE == "nl" else deadline_label_en,
+        project_name=project_name,
+    )
+    await get_email_transport().send(to=to, subject=subject, body=body)
 
 
 async def send_deadline_missed_email(
@@ -62,26 +79,30 @@ async def send_deadline_missed_email(
     project_url: str,
 ) -> None:
     """Missed-deadline alert email (bilingual NL/EN). Sent once per deadline."""
-    name = full_name or to
     due_str = due_date.isoformat()
-
-    body = (
-        f"Hi {name},\n\n"
-        # English section
-        f'The deadline "{deadline_label_en}" for project '
-        f'"{project_name}" was due on {due_str} and has not been met.\n\n'
-        f"Please take action as soon as possible.\n\n"
-        f"View the project: {project_url}\n\n"
-        f"---\n\n"
-        # Dutch section
-        f'De deadline "{deadline_label_nl}" voor project '
-        f'"{project_name}" is op {due_str} verlopen en is niet afgehandeld.\n\n'
-        f"Onderneem zo snel mogelijk actie.\n\n"
-        f"Bekijk het project: {project_url}\n"
+    common = dict(
+        project_name=project_name,
+        due_date=due_str,
+        project_url=project_url,
     )
-
-    await get_email_transport().send(
-        to=to,
-        subject=f"Missed deadline: {deadline_label_en} — {project_name}",
-        body=body,
+    body_en = t(
+        "deadlines.missed_email.body",
+        "en",
+        deadline_label=deadline_label_en,
+        **common,
     )
+    body_nl = t(
+        "deadlines.missed_email.body",
+        "nl",
+        deadline_label=deadline_label_nl,
+        **common,
+    )
+    name = full_name or to
+    body = f"Hi {name},\n\n{body_en}{BILINGUAL_SEPARATOR}{body_nl}"
+    subject = t(
+        "deadlines.missed_email.subject",
+        PLATFORM_DEFAULT_LOCALE,
+        deadline_label=deadline_label_nl if PLATFORM_DEFAULT_LOCALE == "nl" else deadline_label_en,
+        project_name=project_name,
+    )
+    await get_email_transport().send(to=to, subject=subject, body=body)

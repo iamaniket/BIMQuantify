@@ -2,10 +2,11 @@
 
 import { useParams } from 'next/navigation';
 
-import { useMemo, type JSX } from 'react';
+import { useEffect, useMemo, type JSX } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
 
+import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
@@ -30,6 +31,10 @@ export default function ProjectDetailPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
   const projectQuery = useProject(projectId);
+
+  useEffect(() => {
+    track(PORTAL_EVENTS.PROJECT_OPENED, { project_id: projectId });
+  }, [projectId]);
   const modelsQuery = useModels(projectId);
   const deadlinesQuery = useDeadlines(projectId);
   const attachmentsQuery = useAttachments(projectId);

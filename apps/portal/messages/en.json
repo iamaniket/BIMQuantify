@@ -1390,7 +1390,9 @@
         "invalidCredentials": "Invalid email or password",
         "organizationSwitchFailed": "Could not switch organization. Please try again.",
         "loginFailedDetail": "Login failed: {detail}",
-        "loginFailedGeneric": "Login failed. Please try again."
+        "loginFailedGeneric": "Login failed. Please try again.",
+        "refreshTokenRevoked": "Your session has expired. Please sign in again.",
+        "userNoLongerActive": "Your account is no longer active. Please contact your administrator."
       }
     }
   },

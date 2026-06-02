@@ -23,6 +23,12 @@ class User(SQLAlchemyBaseUserTableUUID, MasterBase):
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
+    # Preferred UI / email language. NULL means "use platform default"
+    # (currently "nl"). Resolved via `bimstitch_api.i18n.resolve_user_locale`;
+    # callers should never read `user.locale` directly so the platform
+    # default stays the single source of truth for unconfigured users.
+    locale: Mapped[str | None] = mapped_column(String(8), nullable=True)
+
     # The org this user is currently working in. NULL is valid for a platform
     # superadmin who hasn't picked an org, or for a newly-created user before
     # they've accepted any invite. The login flow auto-sets this to the first

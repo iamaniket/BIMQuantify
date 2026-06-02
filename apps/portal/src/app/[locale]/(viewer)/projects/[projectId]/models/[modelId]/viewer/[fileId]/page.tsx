@@ -13,6 +13,7 @@ import {
 } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
+import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import type {
   DocumentActiveTool,
@@ -106,6 +107,14 @@ export default function ViewerPage(): JSX.Element {
   const { projectId, modelId, fileId } = params;
   const locale = useLocale();
   const { tokens } = useAuth();
+
+  useEffect(() => {
+    track(PORTAL_EVENTS.VIEWER_OPENED, {
+      project_id: projectId,
+      model_id: modelId,
+      file_id: fileId,
+    });
+  }, [projectId, modelId, fileId]);
 
   const accessToken = tokens === null ? null : tokens.access_token;
   const bundleQuery = useQuery({

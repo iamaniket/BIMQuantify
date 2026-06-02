@@ -1390,7 +1390,9 @@
         "invalidCredentials": "Onjuist e-mailadres of wachtwoord",
         "organizationSwitchFailed": "Organisatie wisselen is mislukt. Probeer het opnieuw.",
         "loginFailedDetail": "Aanmelden mislukt: {detail}",
-        "loginFailedGeneric": "Aanmelden mislukt. Probeer het opnieuw."
+        "loginFailedGeneric": "Aanmelden mislukt. Probeer het opnieuw.",
+        "refreshTokenRevoked": "Uw sessie is verlopen. Meld u opnieuw aan.",
+        "userNoLongerActive": "Uw account is niet langer actief. Neem contact op met uw beheerder."
       }
     }
   },

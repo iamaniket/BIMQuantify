@@ -62,13 +62,13 @@ async def refresh_access_token(
 
     if await is_revoked(redis, decoded.jti):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh token revoked"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="REFRESH_TOKEN_REVOKED"
         )
 
     user = await session.get(User, decoded.user_id)
     if user is None or not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="user no longer active"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="USER_NO_LONGER_ACTIVE"
         )
 
     # Propagate active_organization_id from the refresh token but verify the

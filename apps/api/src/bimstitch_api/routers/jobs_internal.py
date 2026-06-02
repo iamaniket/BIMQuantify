@@ -24,6 +24,7 @@ from sqlalchemy.orm import selectinload
 from bimstitch_api import audit
 from bimstitch_api.db import get_async_session
 from bimstitch_api.email.transport import get_email_transport
+from bimstitch_api.i18n import coerce_locale, t
 from bimstitch_api.jobs import require_worker_secret
 from bimstitch_api.models.attachment import Attachment
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
@@ -411,39 +412,16 @@ async def report_callback(
     if payload.status == "running" and payload.progress is not None:
         event_type = None
     if event_type is not None:
-        # NL stays the default locale; English is the fallback for any other
-        # locale until the Phase 4 i18n migration moves these into the shared
-        # message catalog.
-        locale = report.locale or "nl"
-        report_title = report.title
-        unknown_error_by_locale = {"nl": "onbekende fout", "en": "unknown error"}
-        title_map: dict[str, dict[str, str]] = {
-            "nl": {
-                "running": "Rapport wordt gegenereerd",
-                "ready": "Rapport gereed",
-                "failed": "Genereren van rapport mislukt",
-            },
-            "en": {
-                "running": "Report is being generated",
-                "ready": "Report ready",
-                "failed": "Report generation failed",
-            },
-        }
-        unknown_error = unknown_error_by_locale.get(locale, unknown_error_by_locale["en"])
-        body_map: dict[str, dict[str, str]] = {
-            "nl": {
-                "running": f"{report_title} wordt gegenereerd…",
-                "ready": f"{report_title} is gereed om te bekijken",
-                "failed": f"{report_title}: {(payload.error or unknown_error)[:200]}",
-            },
-            "en": {
-                "running": f"{report_title} is being generated…",
-                "ready": f"{report_title} is ready to view",
-                "failed": f"{report_title}: {(payload.error or unknown_error)[:200]}",
-            },
-        }
-        titles = title_map.get(locale, title_map["en"])
-        bodies = body_map.get(locale, body_map["en"])
+        locale = coerce_locale(report.locale)
+        unknown_error = t("notifications.job.unknown_error", locale)
+        status_value = payload.status  # "running" | "ready" | "failed"
+        notif_title = t(f"notifications.job.{status_value}.title", locale)
+        notif_body = t(
+            f"notifications.job.{status_value}.body",
+            locale,
+            report_title=report.title,
+            error=(payload.error or unknown_error)[:200],
+        )
         # Re-anchor search_path inside this txn (see the matching comment in
         # `_emit_notification` above — `SET LOCAL` only persists until commit,
         # and the outer callback's transaction has already closed).
@@ -455,8 +433,8 @@ async def report_callback(
             notification = await create_notification(
                 session,
                 event_type=event_type,
-                title=titles[payload.status],
-                body=bodies[payload.status],
+                title=notif_title,
+                body=notif_body,
                 project_id=report.project_id,
                 file_id=None,
                 job_id=payload.job_id,
@@ -482,16 +460,12 @@ async def report_callback(
                     )
                 ).scalar_one_or_none()
             if recipient:
-                locale = report.locale or "nl"
-                subject = (
-                    "Dossier bevoegd gezag gereed"
-                    if locale == "nl"
-                    else "Dossier for the authority is ready"
-                )
-                body = (
-                    f"Het dossier '{report.title}' staat klaar in BimDossier."
-                    if locale == "nl"
-                    else f"The dossier '{report.title}' is ready in BimDossier."
+                locale = coerce_locale(report.locale)
+                subject = t("notifications.dossier_ready_email.subject", locale)
+                body = t(
+                    "notifications.dossier_ready_email.body",
+                    locale,
+                    title=report.title,
                 )
                 await get_email_transport().send(recipient, subject, body)
         except Exception:
