@@ -84,6 +84,12 @@ function resolveCrumbs(
       { label: t('users'), href: undefined },
     ];
   }
+  if (pathname.startsWith('/admin/access-requests')) {
+    return [
+      { label: t('admin'), href: '/admin/organizations' },
+      { label: t('accessRequests'), href: undefined },
+    ];
+  }
   if (pathname.startsWith('/admin/audit-log')) {
     return [
       { label: t('admin'), href: '/admin/organizations' },

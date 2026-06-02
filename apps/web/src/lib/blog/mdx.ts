@@ -31,6 +31,7 @@ export function getPostBySlug(slug: string): { meta: PostMeta; content: string }
       author: String(data['author'] ?? 'BimDossier'),
       slug,
       readingTime: stats.text,
+      image: typeof data['image'] === 'string' ? data['image'] : undefined,
     },
     content,
   };

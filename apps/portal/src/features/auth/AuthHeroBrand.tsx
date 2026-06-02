@@ -20,7 +20,7 @@ import { formatApproxCount } from '@/lib/formatting/numbers';
 
 /**
  * Shared "brand canvas" content for `AuthShell.brand` — the dark blue
- * pane with the BimStitch wordmark, hero copy, KPI strip, live NL map,
+ * pane with the BimDossier wordmark, hero copy, KPI strip, live NL map,
  * and the legal footer.
  *
  * Used by every non-dashboard auth page so they share an identical
@@ -65,7 +65,7 @@ export function AuthHeroBrand(): JSX.Element {
         <BrandMark size={38} tone="on-dark" />
         <div>
           <div className="font-display text-[18px] font-semibold leading-tight tracking-tight text-white">
-            BimStitch
+            BimDossier
           </div>
           <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
             {t('brand.tagline')}
@@ -155,7 +155,7 @@ export function AuthHeroBrand(): JSX.Element {
                 fill="var(--color-primary-light, #e5ecf6)"
                 markers={markers}
                 animatePulse
-                ariaLabel="Live BimStitch project locations across the Netherlands"
+                ariaLabel="Live BimDossier project locations across the Netherlands"
                 className="drop-shadow-[0_24px_48px_rgba(0,0,0,0.30)]"
               />
             </div>
@@ -183,7 +183,7 @@ export function AuthHeroBrand(): JSX.Element {
         <LegalFooter
           tone="on-dark"
           links={legalLinks}
-          tail={`Wkb ${wkb}`}
+          tail={`Wet kwaliteitsborging voor het bouwen (Wkb) ${wkb}`}
         />
       </div>
     </>

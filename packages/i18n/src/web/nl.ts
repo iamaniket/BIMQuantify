@@ -3,7 +3,7 @@ import type { WebMessages } from './types.js';
 export const webNlMessages: WebMessages = {
   metadata: {
     title: 'BimDossier',
-    description: 'Wkb-compliant digitaal dossier voor Nederlandse aannemers. Houd deadlines bij, beheer documenten, los bevindingen op en dien op tijd in.',
+    description: 'Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier voor Nederlandse aannemers. Houd deadlines bij, beheer documenten, los bevindingen op en dien op tijd in.',
   },
   header: {
     brand: 'BimDossier',
@@ -15,15 +15,15 @@ export const webNlMessages: WebMessages = {
   },
   hero: {
     badge: 'Early access — nu beschikbaar',
-    headline: 'Nooit meer een Wkb-deadline missen.',
+    headline: 'Nooit meer een Wet kwaliteitsborging voor het bouwen (Wkb)-deadline missen.',
     subtitle: 'BimDossier is het digitale dossierplatform voor Nederlandse aannemers. Houd bouwmelding- en gereedmeldingsdeadlines bij, beheer uw documenten, los bevindingen op en dien uw dossier bevoegd gezag op tijd in.',
     ctaPrimary: 'Vraag toegang aan',
     ctaSecondary: 'Inloggen',
   },
   features: {
     eyebrow: 'Mogelijkheden',
-    headline: 'Alles wat een aannemer nodig heeft voor Wkb-compliance',
-    subtitle: 'Van projectstart tot gereedmelding — één platform voor uw hele Wkb-dossier.',
+    headline: 'Alles wat een aannemer nodig heeft voor Wet kwaliteitsborging voor het bouwen (Wkb)-compliance',
+    subtitle: 'Van projectstart tot gereedmelding — één platform voor uw hele Wet kwaliteitsborging voor het bouwen (Wkb)-dossier.',
     deadlines: {
       title: 'Deadlines bijhouden',
       body: 'Automatische berekening van bouwmelding-, informatieplicht- en gereedmeldingsdeadlines. E-mailherinneringen op T-30, T-14, T-7 en T-1 dagen zodat u geen indienmoment mist.',
@@ -71,26 +71,30 @@ export const webNlMessages: WebMessages = {
   },
   cta: {
     headline: 'Stop met documenten najagen. Begin op tijd in te dienen.',
-    subtitle: 'Sluit u aan bij het early access programma. Krijg uw Wkb-dossier onder controle vóór uw volgende deadline.',
+    subtitle: 'Sluit u aan bij het early access programma. Krijg uw Wet kwaliteitsborging voor het bouwen (Wkb)-dossier onder controle vóór uw volgende deadline.',
     button: 'Vraag toegang aan',
   },
   footer: {
-    tagline: 'Wkb-compliant digitaal dossier voor Nederlandse aannemers.',
+    tagline: 'Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier voor Nederlandse aannemers.',
     product: 'Product',
     resources: 'Informatie',
     legal: 'Juridisch',
     privacy: 'Privacy',
     terms: 'Voorwaarden',
+    dpa: 'DPA',
     copyright: 'BimDossier B.V.',
   },
   blog: {
     eyebrow: 'Blog',
     headline: 'Inzichten & updates',
-    subtitle: 'Wkb-compliance, Nederlandse bouwregelgeving en productupdates.',
+    subtitle: 'Wet kwaliteitsborging voor het bouwen (Wkb)-compliance, Nederlandse bouwregelgeving en productupdates.',
     empty: 'Nog geen berichten. Kom snel terug.',
     readingTime: 'min leestijd',
   },
   languageToggle: {
     label: 'EN',
+  },
+  legalBrand: {
+    backToSite: 'Terug naar site',
   },
 };

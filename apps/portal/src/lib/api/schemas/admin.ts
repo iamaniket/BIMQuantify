@@ -129,6 +129,42 @@ export const MemberUpdateInputSchema = z.object({
 export type MemberUpdateInput = z.infer<typeof MemberUpdateInputSchema>;
 
 // ----------------------------------------------------------------------------
+// Access requests (super-admin lead review)
+// ----------------------------------------------------------------------------
+
+export const AccessRequestReadSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  work_email: z.string(),
+  company: z.string(),
+  role: z.string(),
+  company_size: z.string(),
+  country: z.string(),
+  notes: z.union([z.string(), z.null()]),
+  status: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type AccessRequestRead = z.infer<typeof AccessRequestReadSchema>;
+
+export const AccessRequestListSchema = z.array(AccessRequestReadSchema);
+
+export const AccessRequestApproveResponseSchema = z.object({
+  access_request: AccessRequestReadSchema,
+  organization: OrganizationReadSchema,
+  admin_email: z.string().email(),
+  activation_required: z.boolean(),
+});
+
+export type AccessRequestApproveResponse = z.infer<typeof AccessRequestApproveResponseSchema>;
+
+export type AccessRequestApproveInput = {
+  org_name?: string;
+  seat_limit?: number | null;
+};
+
+// ----------------------------------------------------------------------------
 // Audit log
 // ----------------------------------------------------------------------------
 

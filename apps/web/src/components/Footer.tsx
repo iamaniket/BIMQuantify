@@ -7,8 +7,6 @@ import { BrandMark } from '@bimstitch/brand';
 
 import { useLocale } from '@/providers/LocaleProvider';
 
-const portalUrl = process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001';
-
 type FooterLink = {
   label: string;
   href: string;
@@ -29,7 +27,6 @@ export function Footer(): JSX.Element {
       links: [
         { label: t.header.features, href: '/#features', external: undefined },
         { label: t.header.requestAccess, href: '/request-access', external: undefined },
-        { label: t.header.signIn, href: portalUrl, external: true },
       ],
     },
     {
@@ -43,6 +40,7 @@ export function Footer(): JSX.Element {
       links: [
         { label: t.footer.privacy, href: '/legal/privacy', external: undefined },
         { label: t.footer.terms, href: '/legal/terms', external: undefined },
+        { label: t.footer.dpa, href: '/legal/dpa', external: undefined },
       ],
     },
   ];

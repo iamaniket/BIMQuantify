@@ -343,18 +343,22 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
   const history = readyFiles.slice(1);
   const fileError = filesQuery.error;
 
+  const hasFiles = readyFiles.length > 0;
+
   return (
     <div className="flex flex-col gap-3">
-      <FileDropZone
-        accept={acceptedExtensions(lockedFileType).join(',')}
-        multiple
-        onFiles={(files) => { Array.from(files).forEach(startUpload); }}
-        hint={
-          lockedFileType !== null
-            ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> {t('hintLockedSuffix')}</>
-            : t('hintAllTypes')
-        }
-      />
+      {!hasFiles && (
+        <FileDropZone
+          accept={acceptedExtensions(lockedFileType).join(',')}
+          multiple
+          onFiles={(files) => { Array.from(files).forEach(startUpload); }}
+          hint={
+            lockedFileType !== null
+              ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> {t('hintLockedSuffix')}</>
+              : t('hintAllTypes')
+          }
+        />
+      )}
 
       {pending.length === 0 ? null : (
         <div className="flex flex-col gap-2">

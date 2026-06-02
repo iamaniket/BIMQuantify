@@ -50,7 +50,7 @@ export function RequestAccessPanel(): JSX.Element {
           setSubmitError(`We couldn't submit your request: ${err.detail}`);
         }
       } else {
-        setSubmitError('We couldn’t reach the BimStitch API. Please try again in a moment.');
+        setSubmitError('We couldn’t reach the BimDossier API. Please try again in a moment.');
       }
     }
   };
@@ -70,7 +70,7 @@ export function RequestAccessPanel(): JSX.Element {
     <>
       <AuthFormIntro
         eyebrow="Request access"
-        heading="Get your BimStitch demo."
+        heading="Get your BimDossier demo."
         subtitle={
           <>
             Fill in the form with your work details — we&rsquo;ll review your request and send a

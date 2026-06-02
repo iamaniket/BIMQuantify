@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import type { JSX } from 'react';
 
-import { BlogPostHeader } from '@/components/blog/BlogPostHeader';
+import { BlogPostHero } from '@/components/blog/BlogPostHero';
 import { mdxComponents } from '@/components/blog/MdxComponents';
 import { getAllSlugs, getPostBySlug } from '@/lib/blog/mdx';
 
@@ -71,15 +71,17 @@ export default async function BlogPostPage({
   };
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-16">
+    <main>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <BlogPostHeader meta={post.meta} />
-      <article className="prose prose-neutral max-w-none dark:prose-invert [&>h2]:mt-10 [&>h2]:text-h4 [&>h2]:font-semibold [&>h3]:mt-8 [&>h3]:text-title2 [&>h3]:font-semibold [&>p]:text-body1 [&>p]:text-foreground-secondary [&>p]:leading-relaxed [&>ul]:text-body1 [&>ul]:text-foreground-secondary [&>ol]:text-body1 [&>ol]:text-foreground-secondary">
-        {mdxContent}
-      </article>
+      <BlogPostHero meta={post.meta} />
+      <div className="mx-auto w-full max-w-4xl px-6 py-12">
+        <article className="prose prose-neutral max-w-none dark:prose-invert [&>h2]:mt-10 [&>h2]:text-h4 [&>h2]:font-semibold [&>h3]:mt-8 [&>h3]:text-title2 [&>h3]:font-semibold [&>p]:text-body1 [&>p]:text-foreground-secondary [&>p]:leading-relaxed [&>ul]:text-body1 [&>ul]:text-foreground-secondary [&>ol]:text-body1 [&>ol]:text-foreground-secondary">
+          {mdxContent}
+        </article>
+      </div>
     </main>
   );
 }

@@ -4,11 +4,10 @@ import Link from 'next/link';
 import type { JSX } from 'react';
 
 import { HeroGrid } from '@bimstitch/brand';
-import { Button } from '@bimstitch/ui';
+import { Button, ThemeToggle } from '@bimstitch/ui';
 
+import { LanguageToggle } from '@/components/LanguageToggle';
 import { useLocale } from '@/providers/LocaleProvider';
-
-const portalUrl = process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001';
 
 export function HeroSection(): JSX.Element {
   const { t } = useLocale();
@@ -42,15 +41,11 @@ export function HeroSection(): JSX.Element {
               {t.hero.ctaPrimary}
             </Button>
           </Link>
-          <a href={portalUrl}>
-            <Button
-              variant="ghost"
-              size="lg"
-              className="border border-white/20 text-white hover:bg-white/10"
-            >
-              {t.hero.ctaSecondary}
-            </Button>
-          </a>
+        </div>
+
+        <div className="absolute bottom-6 right-6 flex items-center gap-2">
+          <LanguageToggle />
+          <ThemeToggle />
         </div>
       </div>
     </section>

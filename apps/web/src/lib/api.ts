@@ -72,6 +72,23 @@ export async function submitAccessRequest(
   return (await response.json()) as AccessRequestResponse;
 }
 
+export type PublicSystemStatus = {
+  status: 'normal' | 'degraded' | 'down';
+  region: string;
+  node: string;
+  wkb_version: string;
+  bbl_version: string;
+  ifc_version: string;
+};
+
+export async function fetchSystemStatus(): Promise<PublicSystemStatus> {
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/public/system-status`);
+  if (!response.ok) {
+    throw new WebApiError(response.status, await readErrorDetail(response));
+  }
+  return (await response.json()) as PublicSystemStatus;
+}
+
 export type PublicProjectsMapPoint = {
   city: string;
   lat: number;

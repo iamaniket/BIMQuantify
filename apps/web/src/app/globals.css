@@ -12,6 +12,25 @@
   --brand-accent-soft: #9ff0bf;
   --brand-accent-ink: #9bbce8;
 
+  /* Auth hero brand pane status-pill tones — tuned for the dark-blue
+     gradient background, constant across light/dark themes. */
+  --header-status-success-bg: rgba(95, 217, 158, 0.20);
+  --header-status-success-fg: #9ff0bf;
+  --header-status-success-border: rgba(95, 217, 158, 0.35);
+  --header-status-success-dot: #5fd99e;
+  --header-status-warning-bg: rgba(244, 196, 91, 0.18);
+  --header-status-warning-fg: #ffe2a3;
+  --header-status-warning-border: rgba(244, 196, 91, 0.32);
+  --header-status-warning-dot: #f4c45b;
+  --header-status-error-bg: rgba(255, 141, 118, 0.18);
+  --header-status-error-fg: #ffb3a3;
+  --header-status-error-border: rgba(255, 141, 118, 0.32);
+  --header-status-error-dot: #ff8d76;
+  --header-status-info-bg: rgba(155, 188, 232, 0.18);
+  --header-status-info-fg: #cfe1f7;
+  --header-status-info-border: rgba(155, 188, 232, 0.32);
+  --header-status-info-dot: #9bbce8;
+
   /* Inline/SVG font references resolve to the system sans-serif stack.
      Fraunces (--font-display, injected by next/font) is reserved for
      login/auth. --font-mono is aliased to the same system sans stack. */

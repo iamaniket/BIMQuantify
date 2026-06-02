@@ -4,12 +4,12 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BIMstitch',
-  description: 'BIMstitch portal — sign in to manage your projects.',
-  applicationName: 'BIMstitch',
+  title: 'BimDossier',
+  description: 'BimDossier portal — sign in to manage your projects.',
+  applicationName: 'BimDossier',
   appleWebApp: {
     capable: true,
-    title: 'BIMstitch',
+    title: 'BimDossier',
     statusBarStyle: 'default',
   },
   formatDetection: { telephone: false },

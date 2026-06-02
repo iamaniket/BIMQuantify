@@ -21,7 +21,7 @@ export default function AppleIcon(): ImageResponse {
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        BS
+        BD
       </div>
     ),
     { ...size },

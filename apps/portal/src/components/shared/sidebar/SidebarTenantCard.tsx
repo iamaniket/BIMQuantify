@@ -13,7 +13,7 @@ import { useSidebar } from './SidebarContext';
 
 /**
  * Renders a 2-3 letter initials block from an org name. "Acme Construction"
- * -> "AC"; "BIMstitch Platform" -> "BP"; single-word "Acme" -> "Ac".
+ * -> "AC"; "BimDossier Platform" -> "BP"; single-word "Acme" -> "Ac".
  */
 function initials(name: string): string {
   const words = name.split(/\s+/).filter(Boolean);

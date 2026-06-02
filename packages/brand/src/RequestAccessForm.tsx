@@ -18,7 +18,7 @@ const FREE_DOMAINS = new Set([
 ]);
 
 const ROLES = [
-  'Wkb-inspecteur (kwaliteitsborger)',
+  'Wet kwaliteitsborging voor het bouwen (Wkb)-inspecteur (kwaliteitsborger)',
   'BIM Manager / BIM-coördinator',
   'Project Manager / Werkvoorbereider',
   'Architect',
@@ -241,12 +241,12 @@ export function RequestAccessForm({
         <FormField
           label="What would you like to see in the demo?"
           className="col-span-2"
-          hint="Optional — projects, Wkb workflow, BBL checks, IFC review, etc."
+          hint="Optional — projects, Wet kwaliteitsborging voor het bouwen (Wkb) workflow, BBL checks, IFC review, etc."
         >
           <Textarea
             value={values.notes}
             onChange={(e: ChangeEvent<HTMLTextAreaElement>) => update('notes', e.target.value)}
-            placeholder="e.g. We're a contractor running 40 Wkb-1 projects/yr — show us federated IFC review and the dossier export."
+            placeholder="e.g. We're a contractor running 40 Wet kwaliteitsborging voor het bouwen (Wkb)-1 projects/yr — show us federated IFC review and the dossier export."
             rows={3}
           />
         </FormField>
@@ -260,7 +260,7 @@ export function RequestAccessForm({
           className="mt-0.5"
         />
         <span className="text-[12px] leading-snug text-foreground-secondary">
-          I agree that BimStitch may contact me about this demo, and I accept the{' '}
+          I agree that BimDossier may contact me about this demo, and I accept the{' '}
           <a href="/legal/privacy" className="font-semibold text-primary no-underline">
             Privacy notice
           </a>{' '}
@@ -288,7 +288,7 @@ export function RequestAccessForm({
       </Button>
 
       <div className="mt-1 text-center text-[11.5px] text-foreground-tertiary">
-        Already on BimStitch?{' '}
+        Already on BimDossier?{' '}
         <a href={signInHref} className="font-semibold text-primary no-underline">
           Sign in →
         </a>

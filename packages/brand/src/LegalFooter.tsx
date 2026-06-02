@@ -24,8 +24,8 @@ const DEFAULT_LINKS: readonly LegalFooterLink[] = [
 
 export function LegalFooter({
   year = new Date().getFullYear(),
-  company = 'BimStitch B.V.',
-  tail = 'Wkb 2026.1',
+  company = 'BimDossier B.V.',
+  tail = 'Wet kwaliteitsborging voor het bouwen (Wkb) 2026.1',
   tone = 'on-light',
   links = DEFAULT_LINKS,
   className,

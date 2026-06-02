@@ -4,9 +4,9 @@ export const dynamic = 'force-static';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'BIMstitch',
-    short_name: 'BIMstitch',
-    description: 'BIMstitch portal for BIM/Wkb project management.',
+    name: 'BimDossier',
+    short_name: 'BimDossier',
+    description: 'BimDossier portal for Wkb project management.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

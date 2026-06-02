@@ -48,12 +48,12 @@ export const MOCK_ISSUES: ComplianceIssue[] = [
 
 export const MOCK_ACTIVITY: ActivityItem[] = [
   { id: '1', type: 'upload', actor: 'S. de Wit', description: 'Installaties · v09.ifc', detail: '+1,402 elements · 18 fixes', timestamp: '23 min' },
-  { id: '2', type: 'scan', actor: 'BimStitch', description: 'Compliance scan finished', detail: '1,216 checks · 71 issues', timestamp: '26 min' },
+  { id: '2', type: 'scan', actor: 'BimDossier', description: 'Compliance scan finished', detail: '1,216 checks · 71 issues', timestamp: '26 min' },
   { id: '3', type: 'pin', actor: 'J. Hofman', description: 'Pinned cert. to wall WL-204', detail: 'EN 13501-1 A2-s1,d0', timestamp: '1h' },
   { id: '4', type: 'fix', actor: 'M. Janssen', description: 'Resolved 4 fire issues', detail: 'Bbl 4.30 · sector B', timestamp: '2h' },
   { id: '5', type: 'upload', actor: 'B. Akkerman', description: 'Architectuur · v07.ifc', detail: '+62 doors retagged', timestamp: '2h' },
   { id: '6', type: 'pin', actor: 'Site team', description: '12 inspection photos', detail: 'Floor 3 · stairwells', timestamp: '5h' },
-  { id: '7', type: 'scan', actor: 'BimStitch', description: 'Auto-scan: routes', detail: 'Bbl 4.24 · 142 checks', timestamp: '6h' },
+  { id: '7', type: 'scan', actor: 'BimDossier', description: 'Auto-scan: routes', detail: 'Bbl 4.24 · 142 checks', timestamp: '6h' },
   { id: '8', type: 'report', actor: 'L. van der Berg', description: 'Inspector signed off F2', detail: 'Holdback unlock 30%', timestamp: '1d' },
 ];
 

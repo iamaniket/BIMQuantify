@@ -56,8 +56,11 @@ export function BrandMark({
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d="M3 12 L9 6 L15 12 L21 6" />
-        <path d="M3 18 L9 12 L15 18 L21 12" />
+        {/* Document / dossier outline */}
+        <path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+        <path d="M14 2v5h5" />
+        {/* Checkmark */}
+        <path d="M8.5 14 l2 2 l4.5-5" />
       </svg>
     </span>
   );

@@ -8,11 +8,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./wasm-path": {
       "types": "./dist/wasm.d.ts",
-      "import": "./dist/wasm.js"
+      "import": "./dist/wasm.js",
+      "default": "./dist/wasm.js"
     }
   },
   "files": [

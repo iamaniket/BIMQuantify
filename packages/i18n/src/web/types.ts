@@ -49,6 +49,7 @@ export type WebMessages = {
     legal: string;
     privacy: string;
     terms: string;
+    dpa: string;
     copyright: string;
   };
   blog: {
@@ -60,5 +61,8 @@ export type WebMessages = {
   };
   languageToggle: {
     label: string;
+  };
+  legalBrand: {
+    backToSite: string;
   };
 };

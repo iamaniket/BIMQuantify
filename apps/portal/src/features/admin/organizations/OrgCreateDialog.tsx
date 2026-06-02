@@ -36,15 +36,24 @@ const EMPTY: FormValues = {
   seat_limit: '',
 };
 
+export type OrgCreatePrefill = {
+  name?: string;
+  admin_email?: string;
+  admin_full_name?: string;
+  seat_limit?: string;
+};
+
 // Quick check before we burn an API round-trip on every keystroke.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  prefill?: OrgCreatePrefill | undefined;
+  onCreated?: (() => void) | undefined;
 };
 
-export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
+export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Props): JSX.Element {
   const t = useTranslations('admin.organizations.create');
   const tCommon = useTranslations('admin.common');
   const mutation = useCreateOrganization();
@@ -69,13 +78,13 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
 
   useEffect(() => {
     if (open) {
-      resetForm(EMPTY);
+      resetForm(prefill !== undefined ? { ...EMPTY, ...prefill } : EMPTY);
       resetMutation();
       setExistingUser(null);
       setLookupPending(false);
       fullNameTouchedRef.current = false;
     }
-  }, [open, resetForm, resetMutation]);
+  }, [open, prefill, resetForm, resetMutation]);
 
   // Debounced lookup whenever the email field stabilises on a syntactically
   // valid email. We accept the result only if the email hasn't changed in
@@ -142,6 +151,7 @@ export function OrgCreateDialog({ open, onOpenChange }: Props): JSX.Element {
       {
         onSuccess: () => {
           onOpenChange(false);
+          if (onCreated !== undefined) onCreated();
         },
         onError: (error) => {
           if (error instanceof ApiError && error.status === 409) {

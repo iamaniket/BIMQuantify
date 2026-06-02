@@ -4,7 +4,7 @@ import type { JSX } from 'react';
 
 import { TooltipProvider } from '@bimstitch/ui';
 
-import { StitchLogo } from '@/components/shared/charts/StitchLogo';
+import { DossierLogo } from '@/components/shared/charts/StitchLogo';
 import { SidebarWorkspaceNav } from '@/features/projects/SidebarWorkspaceNav';
 
 import { SidebarCollapseToggle } from './SidebarCollapseToggle';
@@ -48,19 +48,19 @@ export function Sidebar(): JSX.Element {
           <SidebarNav />
         </div>
 
-        {/* BimStitch brand footer */}
+        {/* BimDossier brand footer */}
         <div
           className={`border-t border-white/12 ${
             collapsed ? 'flex justify-center px-0 py-3' : 'flex items-center gap-2.5 px-4 py-3'
           }`}
         >
           <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-md border border-white/[0.28] bg-white/[0.16]">
-            <StitchLogo size={17} color="#fff" />
+            <DossierLogo size={17} color="#fff" />
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
               <div className="text-[14.5px] font-semibold leading-[1.1] tracking-tight text-white">
-                BimStitch
+                BimDossier
               </div>
               <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/55">
                 Wkb 2026.1

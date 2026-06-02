@@ -31,7 +31,7 @@ export function GET(): Response {
   <channel>
     <title>BimDossier Blog</title>
     <link>${siteUrl}/blog</link>
-    <description>Wkb compliance, Dutch building regulations, and product updates.</description>
+    <description>Wet kwaliteitsborging voor het bouwen (Wkb) compliance, Dutch building regulations, and product updates.</description>
     <language>en</language>
     <atom:link href="${siteUrl}/feed.xml" rel="self" type="application/rss+xml" />
 ${items}

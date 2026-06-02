@@ -191,6 +191,39 @@ class MemberRead(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# /admin/access-requests
+# ---------------------------------------------------------------------------
+
+
+class AccessRequestAdminRead(BaseModel):
+    id: UUID
+    name: str
+    work_email: str
+    company: str
+    role: str
+    company_size: str
+    country: str
+    notes: str | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AccessRequestApproveInput(BaseModel):
+    org_name: str | None = Field(default=None, min_length=1, max_length=255)
+    seat_limit: int | None = Field(default=None, ge=1, le=100_000)
+
+
+class AccessRequestApproveResponse(BaseModel):
+    access_request: AccessRequestAdminRead
+    organization: OrganizationRead
+    admin_email: EmailStr
+    activation_required: bool
+
+
+# ---------------------------------------------------------------------------
 # Audit log
 # ---------------------------------------------------------------------------
 

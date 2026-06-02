@@ -2,13 +2,16 @@
 
 import {
   Building2,
+  Download,
+  Inbox,
   LayoutGrid,
   Plus,
   Search,
   Table2,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useMemo, useState, type JSX } from 'react';
+import { useCallback, useMemo, useState, type JSX } from 'react';
+import { toast } from 'sonner';
 
 import {
   Badge,
@@ -25,10 +28,15 @@ import {
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
-import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';
+import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
+import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
+import { useApproveAccessRequest, useRejectAccessRequest } from '@/features/admin/access-requests/useAccessRequestActions';
+import { OrgCreateDialog, type OrgCreatePrefill } from '@/features/admin/organizations/OrgCreateDialog';
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
-import type { OrganizationRead } from '@/lib/api/schemas';
+import { exportAccessRequests } from '@/lib/api/admin';
+import type { AccessRequestRead, OrganizationRead } from '@/lib/api/schemas';
+import { useAuth } from '@/providers/AuthProvider';
 
 const TAB_CLASS =
   'relative gap-2 rounded-none bg-transparent px-4 py-3 text-body3 font-medium text-foreground-tertiary shadow-none transition-colors hover:text-foreground-secondary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary';
@@ -39,14 +47,15 @@ const TAB_CLASS =
 
 function AdminOrgsHero({
   organizations,
+  pendingRequests,
 }: {
   organizations: OrganizationRead[];
+  pendingRequests: number;
 }): JSX.Element {
   const t = useTranslations('admin.organizations.hero');
 
   const total = organizations.length;
   const activeCount = organizations.filter((o) => o.status === 'active').length;
-  const suspendedCount = organizations.filter((o) => o.status === 'suspended').length;
   const totalSeats = organizations.reduce((sum, o) => sum + o.seat_count_used, 0);
 
   return (
@@ -81,10 +90,10 @@ function AdminOrgsHero({
           sub: t('seatsSub'),
         },
         {
-          label: t('suspendedLabel'),
-          value: String(suspendedCount),
-          ...(suspendedCount > 0 && { color: 'var(--warning)' }),
-          sub: t('suspendedSub'),
+          label: t('pendingRequestsLabel'),
+          value: String(pendingRequests),
+          ...(pendingRequests > 0 && { color: 'var(--primary)' }),
+          sub: t('pendingRequestsSub'),
         },
       ]}
     />
@@ -251,10 +260,21 @@ function OverviewPane({
 
 export default function AdminOrganizationsPage(): JSX.Element {
   const t = useTranslations('admin.organizations');
+  const tReq = useTranslations('admin.accessRequests');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<OrgCreatePrefill | undefined>(undefined);
+  const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
   const [tab, setTab] = useState('overview');
+
+  // Access-request state
+  const [reqSearch, setReqSearch] = useState('');
+  const [reqStatusFilter, setReqStatusFilter] = useState<string>('all');
+
+  const { tokens } = useAuth();
+  const rejectMutation = useRejectAccessRequest();
+  const approveMutation = useApproveAccessRequest();
 
   const params = {
     q: search === '' ? undefined : search,
@@ -263,6 +283,14 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const query = useAdminOrganizations(params);
   const allOrgs = query.data ?? [];
 
+  const reqParams = {
+    q: reqSearch === '' ? undefined : reqSearch,
+    status: reqStatusFilter === 'all' ? undefined : reqStatusFilter,
+  };
+  const reqQuery = useAccessRequests(reqParams);
+  const allRequests = reqQuery.data ?? [];
+  const pendingRequestCount = allRequests.filter((r) => r.status === 'new').length;
+
   const crumbs = useMemo(
     () => [
       { label: t('pageTitle'), href: undefined },
@@ -270,6 +298,45 @@ export default function AdminOrganizationsPage(): JSX.Element {
     [t],
   );
   useHeaderCrumbsOverride(crumbs);
+
+  const handleApprove = useCallback((req: AccessRequestRead) => {
+    setApproveTargetId(req.id);
+    setCreatePrefill({
+      name: req.company,
+      admin_email: req.work_email,
+      admin_full_name: req.name,
+      seat_limit: '3',
+    });
+    setCreateOpen(true);
+  }, []);
+
+  const handleOrgCreated = useCallback(() => {
+    if (approveTargetId !== null) {
+      approveMutation.mutate(
+        { id: approveTargetId },
+        { onSuccess: () => { toast.success(tReq('approveSuccess')); } },
+      );
+      setApproveTargetId(null);
+    }
+    setCreatePrefill(undefined);
+  }, [approveTargetId, approveMutation, tReq]);
+
+  const handleReject = useCallback((req: AccessRequestRead) => {
+    rejectMutation.mutate(
+      { id: req.id },
+      { onSuccess: () => { toast.success(tReq('rejectSuccess')); } },
+    );
+  }, [rejectMutation, tReq]);
+
+  const handleExport = useCallback(async () => {
+    const accessToken = tokens?.access_token;
+    if (accessToken === undefined) return;
+    try {
+      await exportAccessRequests(accessToken, reqParams);
+    } catch {
+      toast.error(tReq('exportError'));
+    }
+  }, [tokens, reqParams, tReq]);
 
   const panelHeading = {
     organizations: {
@@ -282,12 +349,17 @@ export default function AdminOrganizationsPage(): JSX.Element {
       title: t('panel.overviewTitle'),
       sub: '',
     },
+    requests: {
+      eyebrow: t('panel.requestsEyebrow'),
+      title: t('panel.requestsTitle', { count: allRequests.length }),
+      sub: '',
+    },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
 
   return (
     <PageShell
       hero={
-        <AdminOrgsHero organizations={allOrgs} />
+        <AdminOrgsHero organizations={allOrgs} pendingRequests={pendingRequestCount} />
       }
     >
       <Tabs
@@ -307,6 +379,15 @@ export default function AdminOrganizationsPage(): JSX.Element {
             <Badge variant="primary" size="sm" bordered={false}>
               {allOrgs.length}
             </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="requests" className={TAB_CLASS}>
+            <Inbox className="h-3.5 w-3.5" />
+            {t('tabs.requests')}
+            {pendingRequestCount > 0 && (
+              <Badge variant="primary" size="sm" bordered={false}>
+                {pendingRequestCount}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -334,8 +415,41 @@ export default function AdminOrganizationsPage(): JSX.Element {
             onSearchChange={setSearch}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
-            onCreate={() => { setCreateOpen(true); }}
+            onCreate={() => { setCreatePrefill(undefined); setApproveTargetId(null); setCreateOpen(true); }}
           />
+        )}
+
+        {/* Toolbar for requests tab */}
+        {tab === 'requests' && (
+          <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
+            <div className="relative min-w-[260px]">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-placeholder" />
+              <Input
+                inputSize="sm"
+                className="pl-9"
+                placeholder={tReq('searchPlaceholder')}
+                value={reqSearch}
+                onChange={(e) => { setReqSearch(e.target.value); }}
+                aria-label={tReq('searchAria')}
+              />
+            </div>
+            <Select
+              selectSize="sm"
+              value={reqStatusFilter}
+              onChange={(e) => { setReqStatusFilter(e.target.value); }}
+              aria-label={tReq('statusFilterAria')}
+            >
+              <option value="all">{tReq('statusFilters.all')}</option>
+              <option value="new">{tReq('statusFilters.new')}</option>
+              <option value="approved">{tReq('statusFilters.approved')}</option>
+              <option value="rejected">{tReq('statusFilters.rejected')}</option>
+            </Select>
+            <div className="flex-1" />
+            <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
+              <Download className="mr-1 h-3.5 w-3.5" />
+              {tReq('exportButton')}
+            </Button>
+          </div>
         )}
 
         {/* Scrollable tab content */}
@@ -366,10 +480,38 @@ export default function AdminOrganizationsPage(): JSX.Element {
               <OverviewPane organizations={allOrgs} />
             )}
           </TabsContent>
+
+          <TabsContent value="requests" className="mt-0">
+            {reqQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : reqQuery.isError ? (
+              <p className="text-body3 text-error">{tReq('loadError')}</p>
+            ) : (
+              <>
+                <AccessRequestsTable
+                  requests={allRequests}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                />
+                <div className="mt-3 flex items-center justify-between text-body3 text-foreground-tertiary">
+                  <span>{tReq('showing', { count: allRequests.length })}</span>
+                </div>
+              </>
+            )}
+          </TabsContent>
         </div>
       </Tabs>
 
-      <OrgCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <OrgCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        prefill={createPrefill}
+        onCreated={handleOrgCreated}
+      />
     </PageShell>
   );
 }

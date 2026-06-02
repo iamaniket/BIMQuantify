@@ -49,9 +49,9 @@ export function RequestAccessSuccess({
         </div>
         <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
           {[
-            ['1', 'A BimStitch admin reviews your request', 'Usually within one business day, in NL or EN.'],
+            ['1', 'A BimDossier admin reviews your request', 'Usually within one business day, in NL or EN.'],
             ['2', 'You receive an invite email', "It includes a verified link to set your password."],
-            ['3', 'Your sandbox is ready', 'Pre-loaded with sample Wkb projects and BBL libraries.'],
+            ['3', 'Your sandbox is ready', 'Pre-loaded with sample Wet kwaliteitsborging voor het bouwen (Wkb) projects and BBL libraries.'],
           ].map(([n, t, d]) => (
             <li key={n} className="flex items-start gap-3">
               <span className="grid size-5 shrink-0 place-items-center rounded-full border border-border bg-surface-low font-sans text-[11px] font-bold text-foreground-secondary">

@@ -3,6 +3,7 @@ import type { JSX } from 'react';
 
 import { Badge } from '@bimstitch/ui';
 
+import { BlogCardThumbnail } from '@/components/blog/BlogCardThumbnail';
 import type { PostMeta } from '@/lib/blog/types';
 
 type BlogPostCardProps = {
@@ -13,32 +14,42 @@ export function BlogPostCard({ post }: BlogPostCardProps): JSX.Element {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group flex flex-col gap-3 rounded-lg border border-border bg-background p-6 transition-all hover:border-border-hover hover:shadow-lg"
+      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-background transition-all hover:border-border-hover hover:shadow-lg"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        {post.tags.map((tag) => (
-          <Badge key={tag} variant="primary" size="sm">
-            {tag}
-          </Badge>
-        ))}
-      </div>
+      <BlogCardThumbnail
+        slug={post.slug}
+        image={post.image}
+        title={post.title}
+      />
 
-      <h3 className="text-title2 font-semibold text-foreground group-hover:text-primary">
-        {post.title}
-      </h3>
+      <div className="flex flex-col gap-3 p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          {post.tags.map((tag) => (
+            <Badge key={tag} variant="primary" size="sm">
+              {tag}
+            </Badge>
+          ))}
+        </div>
 
-      <p className="text-body2 text-foreground-secondary">{post.description}</p>
+        <h3 className="text-title2 font-semibold text-foreground group-hover:text-primary">
+          {post.title}
+        </h3>
 
-      <div className="mt-auto flex items-center gap-3 text-caption text-foreground-tertiary">
-        <time dateTime={post.date}>
-          {new Date(post.date).toLocaleDateString('en-GB', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })}
-        </time>
-        <span>·</span>
-        <span>{post.readingTime}</span>
+        <p className="text-body2 text-foreground-secondary">
+          {post.description}
+        </p>
+
+        <div className="mt-auto flex items-center gap-3 text-caption text-foreground-tertiary">
+          <time dateTime={post.date}>
+            {new Date(post.date).toLocaleDateString('en-GB', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </time>
+          <span>·</span>
+          <span>{post.readingTime}</span>
+        </div>
       </div>
     </Link>
   );

@@ -1,11 +1,13 @@
-import { apiClient } from './client';
+import { apiClient, triggerBrowserDownload } from './client';
 import {
+  AccessRequestListSchema,
   AdminUserListSchema,
   AdminUserReadSchema,
   AuditEntryListSchema,
   OrganizationCreateResponseSchema,
   OrganizationListSchema,
   OrganizationReadSchema,
+  type AccessRequestRead,
   type AdminUserRead,
   type AuditEntry,
   type OrganizationCreateInput,
@@ -179,6 +181,65 @@ export async function deactivateUser(
     AdminUserReadSchema,
     accessToken,
   );
+}
+
+// ----------------------------------------------------------------------------
+// Access requests
+// ----------------------------------------------------------------------------
+
+export type ListAccessRequestsParams = {
+  status?: string | undefined;
+  q?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+};
+
+export async function listAccessRequests(
+  accessToken: string,
+  params: ListAccessRequestsParams = {},
+): Promise<AccessRequestRead[]> {
+  const query = buildQuery(params);
+  return apiClient.get<AccessRequestRead[]>(
+    `/admin/access-requests${query}`,
+    AccessRequestListSchema,
+    accessToken,
+  );
+}
+
+export async function approveAccessRequest(
+  accessToken: string,
+  id: string,
+): Promise<AccessRequestRead> {
+  return apiClient.post<AccessRequestRead>(
+    `/admin/access-requests/${id}/approve`,
+    undefined,
+    AccessRequestListSchema.element,
+    accessToken,
+  );
+}
+
+export async function rejectAccessRequest(
+  accessToken: string,
+  id: string,
+): Promise<AccessRequestRead> {
+  return apiClient.post<AccessRequestRead>(
+    `/admin/access-requests/${id}/reject`,
+    undefined,
+    AccessRequestListSchema.element,
+    accessToken,
+  );
+}
+
+export async function exportAccessRequests(
+  accessToken: string,
+  params: ListAccessRequestsParams = {},
+): Promise<void> {
+  const query = buildQuery(params);
+  const { blob, filename } = await apiClient.getBlob(
+    `/admin/access-requests/export${query}`,
+    accessToken,
+  );
+  triggerBrowserDownload(blob, filename ?? 'access-requests.csv');
 }
 
 // ----------------------------------------------------------------------------

@@ -30,6 +30,7 @@ from bimstitch_api.auth.dependencies import require_superuser
 from bimstitch_api.auth.manager import UserManager, get_user_manager
 from bimstitch_api.db import get_async_session
 from bimstitch_api.email.invites import send_invite_notification
+from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
@@ -38,6 +39,7 @@ from bimstitch_api.models.organization_member import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.admin import (
+    AccessRequestAdminRead,
     AdminUserRead,
     AuditEntry,
     OrganizationCreate,
@@ -466,6 +468,167 @@ async def deactivate_user(
     user = await _toggle_active(user_id, False, requester, session, request)
     await session.commit()
     return AdminUserRead.model_validate(user, from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Access requests — lead review + approve/reject
+# ---------------------------------------------------------------------------
+
+
+@router.get("/access-requests/export")
+async def export_access_requests(
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    status_filter: str | None = Query(default=None, alias="status"),
+    q: str | None = None,
+) -> "StreamingResponse":
+    from starlette.responses import StreamingResponse
+    import csv
+    import io
+
+    stmt = select(AccessRequest).order_by(AccessRequest.created_at.desc())
+    if status_filter:
+        stmt = stmt.where(AccessRequest.status == AccessRequestStatus(status_filter))
+    if q:
+        like = f"%{q.lower()}%"
+        stmt = stmt.where(
+            or_(
+                func.lower(AccessRequest.name).like(like),
+                func.lower(AccessRequest.work_email).like(like),
+                func.lower(AccessRequest.company).like(like),
+            )
+        )
+    result = await session.execute(stmt)
+    rows = list(result.scalars())
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "id", "name", "work_email", "company", "role",
+        "company_size", "country", "notes", "status",
+        "created_at", "updated_at",
+    ])
+    for r in rows:
+        writer.writerow([
+            str(r.id), r.name, r.work_email, r.company, r.role,
+            r.company_size, r.country, r.notes or "",
+            r.status.value, r.created_at.isoformat(),
+            r.updated_at.isoformat(),
+        ])
+
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=access-requests.csv"},
+    )
+
+
+@router.get(
+    "/access-requests",
+    response_model=list[AccessRequestAdminRead],
+)
+async def list_access_requests(
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    status_filter: str | None = Query(default=None, alias="status"),
+    q: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[AccessRequestAdminRead]:
+    stmt = select(AccessRequest).order_by(AccessRequest.created_at.desc())
+    if status_filter:
+        stmt = stmt.where(AccessRequest.status == AccessRequestStatus(status_filter))
+    if q:
+        like = f"%{q.lower()}%"
+        stmt = stmt.where(
+            or_(
+                func.lower(AccessRequest.name).like(like),
+                func.lower(AccessRequest.work_email).like(like),
+                func.lower(AccessRequest.company).like(like),
+            )
+        )
+    stmt = stmt.limit(limit).offset(offset)
+    result = await session.execute(stmt)
+    return [
+        AccessRequestAdminRead.model_validate(r, from_attributes=True)
+        for r in result.scalars()
+    ]
+
+
+@router.post(
+    "/access-requests/{request_id}/approve",
+    response_model=AccessRequestAdminRead,
+)
+async def approve_access_request(
+    request_id: UUID,
+    request: Request,
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+) -> AccessRequestAdminRead:
+    ar = await session.get(AccessRequest, request_id)
+    if ar is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ACCESS_REQUEST_NOT_FOUND",
+        )
+    if ar.status != AccessRequestStatus.new:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="ACCESS_REQUEST_NOT_PENDING",
+        )
+
+    ar.status = AccessRequestStatus.approved
+    await audit.record_for_org(
+        session,
+        None,
+        action="access_request.approved",
+        resource_type="access_request",
+        resource_id=ar.id,
+        after={"work_email": ar.work_email, "company": ar.company},
+        actor_user_id=requester.id,
+        request=request,
+    )
+    await session.commit()
+    await session.refresh(ar)
+    return AccessRequestAdminRead.model_validate(ar, from_attributes=True)
+
+
+@router.post(
+    "/access-requests/{request_id}/reject",
+    response_model=AccessRequestAdminRead,
+)
+async def reject_access_request(
+    request_id: UUID,
+    request: Request,
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+) -> AccessRequestAdminRead:
+    ar = await session.get(AccessRequest, request_id)
+    if ar is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ACCESS_REQUEST_NOT_FOUND",
+        )
+    if ar.status != AccessRequestStatus.new:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="ACCESS_REQUEST_NOT_PENDING",
+        )
+
+    ar.status = AccessRequestStatus.rejected
+    await audit.record_for_org(
+        session,
+        None,
+        action="access_request.rejected",
+        resource_type="access_request",
+        resource_id=ar.id,
+        after={"work_email": ar.work_email, "company": ar.company},
+        actor_user_id=requester.id,
+        request=request,
+    )
+    await session.commit()
+    await session.refresh(ar)
+    return AccessRequestAdminRead.model_validate(ar, from_attributes=True)
 
 
 # ---------------------------------------------------------------------------

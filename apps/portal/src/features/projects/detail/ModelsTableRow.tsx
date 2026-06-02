@@ -271,16 +271,18 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
       </DetailCardRow>
 
       <DetailCardBody>
-        <FileDropZone
-          accept={acceptedExtensions(lockedFileType).join(',')}
-          multiple
-          onFiles={(chosen) => { Array.from(chosen).forEach(startUpload); }}
-          hint={
-            lockedFileType !== null
-              ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> {tFiles('hintLockedSuffix')}</>
-              : tFiles('hintAllTypes')
-          }
-        />
+        {files.length === 0 && (
+          <FileDropZone
+            accept={acceptedExtensions(lockedFileType).join(',')}
+            multiple
+            onFiles={(chosen) => { Array.from(chosen).forEach(startUpload); }}
+            hint={
+              lockedFileType !== null
+                ? <><span className="font-medium uppercase text-foreground-secondary">{lockedFileType}</span> {tFiles('hintLockedSuffix')}</>
+                : tFiles('hintAllTypes')
+            }
+          />
+        )}
 
         {pending.length > 0 && (
           <div className="mt-2 flex flex-col gap-2">
