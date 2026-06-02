@@ -43,7 +43,7 @@ export default function FindingsBoardPage(): JSX.Element {
       <PageShell
         hero={
           <div className="relative flex h-full items-center gap-5 bg-surface-main px-5 py-4">
-            <Skeleton className="h-[80px] w-[80px] rounded-xl" />
+            <Skeleton className="h-[140px] w-[200px] rounded-[10px]" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-8 w-64" />
               <Skeleton className="h-4 w-48" />

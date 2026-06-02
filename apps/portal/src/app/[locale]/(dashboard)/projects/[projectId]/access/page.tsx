@@ -81,7 +81,7 @@ function ProjectAccessHero({
   return (
     <HeroShell
       image={
-        <div className="flex h-[130px] w-[195px] items-center justify-center rounded-[10px] bg-gradient-to-br from-primary to-primary-light text-[28px] font-extrabold text-primary-foreground shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
+        <div className="flex h-[140px] w-[200px] items-center justify-center rounded-[10px] bg-gradient-to-br from-primary to-primary-light text-[28px] font-extrabold text-primary-foreground shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
           {projectInitials(projectName)}
         </div>
       }
@@ -360,7 +360,7 @@ export default function ProjectAccessPage(): JSX.Element {
       <PageShell
         hero={
           <div className="relative flex h-full items-center gap-5 bg-surface-main px-5 py-4">
-            <Skeleton className="h-[80px] w-[80px] rounded-xl" />
+            <Skeleton className="h-[140px] w-[200px] rounded-[10px]" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-8 w-64" />
               <Skeleton className="h-4 w-48" />

@@ -83,7 +83,7 @@ export default function AdminAccessRequestsPage(): JSX.Element {
       hero={
         <HeroShell
           image={
-            <div className="flex h-[130px] w-[195px] items-center justify-center overflow-hidden rounded-[10px] bg-gradient-to-br from-primary to-primary-light shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
+            <div className="flex h-[140px] w-[200px] items-center justify-center overflow-hidden rounded-[10px] bg-gradient-to-br from-primary to-primary-light shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
               <Inbox className="h-12 w-12 text-primary-foreground" />
             </div>
           }
