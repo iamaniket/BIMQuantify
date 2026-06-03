@@ -16,11 +16,11 @@ export const legalEnContent: LegalContent = {
       },
       {
         title: 'Purpose of the processing',
-        body: 'To run the Wet kwaliteitsborging voor het bouwen (Wkb) workflows you perform with us: managing assurance plans, inspections, findings and dossier preparation for the competent authority. We do not sell your data and do not use it for profiling or automated decision-making.',
+        body: 'To run the Quality Assurance in Construction Act (Wkb) workflows you perform with us: managing assurance plans, inspections, findings and dossier preparation for the competent authority. We do not sell your data and do not use it for profiling or automated decision-making.',
       },
       {
         title: 'Retention',
-        body: 'Data that is part of a Wet kwaliteitsborging voor het bouwen (Wkb) dossier is retained for 10 years after delivery in line with statutory retention obligations. Account and billing data is kept as long as necessary to perform the contract and any applicable tax retention period.',
+        body: 'Data that is part of a Quality Assurance in Construction Act (Wkb) dossier is retained for 10 years after delivery in line with statutory retention obligations. Account and billing data is kept as long as necessary to perform the contract and any applicable tax retention period.',
       },
       {
         title: 'Your rights',
@@ -39,7 +39,7 @@ export const legalEnContent: LegalContent = {
     sections: [
       {
         title: 'The service',
-        body: 'BimDossier is a software platform for quality assurance under the Dutch Wet kwaliteitsborging voor het bouwen (Wkb). The portal supports risk assessments, assurance plans, inspections, findings and dossier preparation.',
+        body: 'BimDossier is a software platform for quality assurance under the Dutch Quality Assurance in Construction Act (Wkb). The portal supports risk assessments, assurance plans, inspections, findings and dossier preparation.',
       },
       {
         title: 'Your obligations',
@@ -55,7 +55,7 @@ export const legalEnContent: LegalContent = {
       },
       {
         title: 'Termination',
-        body: 'You can cancel the subscription from the portal settings. Upon termination, Wet kwaliteitsborging voor het bouwen (Wkb) dossiers remain available for as long as legally required; afterwards they are securely deleted.',
+        body: 'You can cancel the subscription from the portal settings. Upon termination, Quality Assurance in Construction Act (Wkb) dossiers remain available for as long as legally required; afterwards they are securely deleted.',
       },
     ],
   },
@@ -90,7 +90,7 @@ export const legalEnContent: LegalContent = {
       },
       {
         title: 'Return and deletion',
-        body: 'Upon termination of the main agreement, personal data is returned or securely deleted on request, subject to statutory retention obligations such as the 10-year Wet kwaliteitsborging voor het bouwen (Wkb) dossier retention.',
+        body: 'Upon termination of the main agreement, personal data is returned or securely deleted on request, subject to statutory retention obligations such as the 10-year Quality Assurance in Construction Act (Wkb) dossier retention.',
       },
     ],
   },

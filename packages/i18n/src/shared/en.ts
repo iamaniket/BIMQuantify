@@ -5,9 +5,9 @@ export const sharedEnMessages: SharedMessages = {
     name: 'BimDossier',
     legalEntity: 'BimDossier B.V.',
     tagline:
-      'Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digital dossier for Dutch contractors.',
+      'Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors.',
     productDescription:
-      'Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digital dossier for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time.',
+      'Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time.',
     demoHeading: 'Get your BimDossier demo.',
   },
   legal: {
@@ -21,7 +21,7 @@ export const sharedEnMessages: SharedMessages = {
   framework: {
     wkb: {
       abbr: 'Wkb',
-      full: 'Wet kwaliteitsborging voor het bouwen',
+      full: 'Quality Assurance in Construction Act',
     },
     bbl: {
       abbr: 'Bbl',
