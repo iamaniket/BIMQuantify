@@ -1,8 +1,8 @@
 {
   "metadata": {
     "title": "BimDossier",
-    "defaultTitle": "BimDossier — Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digital dossier",
-    "description": "Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digital dossier for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time."
+    "defaultTitle": "BimDossier — Quality Assurance in Construction Act (Wkb)-compliant digital dossier",
+    "description": "Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time."
   },
   "header": {
     "brand": "BimDossier",
@@ -14,15 +14,15 @@
   },
   "hero": {
     "badge": "Early access — now open",
-    "headline": "Never miss a Wet kwaliteitsborging voor het bouwen (Wkb) deadline again.",
+    "headline": "Never miss a Quality Assurance in Construction Act (Wkb) deadline again.",
     "subtitle": "BimDossier is the digital dossier platform for Dutch contractors. Track bouwmelding and gereedmelding deadlines, manage your documents, resolve findings, and file your dossier bevoegd gezag on time.",
     "ctaPrimary": "Get early access",
     "ctaSecondary": "Log in"
   },
   "features": {
     "eyebrow": "Capabilities",
-    "headline": "Everything a contractor needs for Wet kwaliteitsborging voor het bouwen (Wkb) compliance",
-    "subtitle": "From project kickoff to gereedmelding — one platform for your entire Wet kwaliteitsborging voor het bouwen (Wkb) dossier.",
+    "headline": "Everything a contractor needs for Quality Assurance in Construction Act (Wkb) compliance",
+    "subtitle": "From project kickoff to gereedmelding — one platform for your entire Quality Assurance in Construction Act (Wkb) dossier.",
     "deadlines": {
       "title": "Deadline tracking",
       "body": "Automatic computation of bouwmelding, informatieplicht, and gereedmelding deadlines. Email reminders at T-30, T-14, T-7, and T-1 days so you never miss a filing."
@@ -70,7 +70,7 @@
   },
   "cta": {
     "headline": "Stop chasing documents. Start filing on time.",
-    "subtitle": "Join the early access program. Get your Wet kwaliteitsborging voor het bouwen (Wkb) dossier under control before your next deadline.",
+    "subtitle": "Join the early access program. Get your Quality Assurance in Construction Act (Wkb) dossier under control before your next deadline.",
     "button": "Get early access"
   },
   "footer": {
@@ -81,7 +81,7 @@
   "blog": {
     "eyebrow": "Blog",
     "headline": "Insights & updates",
-    "subtitle": "Wet kwaliteitsborging voor het bouwen (Wkb) compliance, Dutch building regulations, and product updates.",
+    "subtitle": "Quality Assurance in Construction Act (Wkb) compliance, Dutch building regulations, and product updates.",
     "empty": "No posts yet. Check back soon.",
     "readingTime": "min read"
   },
