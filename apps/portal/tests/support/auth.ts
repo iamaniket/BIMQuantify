@@ -150,3 +150,22 @@ export async function clearAuth(page: Page): Promise<void> {
     window.localStorage.removeItem(key);
   }, STORAGE_KEY);
 }
+
+/**
+ * Return the access_token previously cached for `email` (set by loginViaUI /
+ * loginViaAPI / updateTokenCacheFromPage). Used by Node-side helpers that
+ * call the admin API directly without going through a Page — e.g. the blog
+ * cleanup helper that deletes stale posts before the spec runs.
+ *
+ * Returns undefined if no login has happened yet for this email this run.
+ */
+export function getCachedAccessToken(email: string): string | undefined {
+  const stored = tokenCache.get(email);
+  if (stored === undefined) return undefined;
+  try {
+    const parsed = JSON.parse(stored) as { access_token?: unknown };
+    return typeof parsed.access_token === 'string' ? parsed.access_token : undefined;
+  } catch {
+    return undefined;
+  }
+}

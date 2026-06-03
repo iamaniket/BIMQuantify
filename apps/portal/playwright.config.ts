@@ -34,12 +34,29 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3001',
-    /* Always reuse a running server — avoids starting a second Next.js
-     * instance when the dev server is already up. */
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'pnpm dev',
+      url: 'http://localhost:3001',
+      /* Always reuse a running server — avoids starting a second Next.js
+       * instance when the dev server is already up. */
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+    /* The marketing web app on port 3000 is only needed by admin-blog.spec.ts
+     * (one render check at /nl/blog/<slug>). Reuse any running instance so
+     * `pnpm --filter=web dev` in another terminal isn't duplicated. */
+    {
+      command: 'pnpm --filter=web dev',
+      cwd: '../..',
+      url: 'http://localhost:3000',
+      reuseExistingServer: true,
+      timeout: 180_000,
+      env: {
+        NEXT_PUBLIC_API_URL: process.env['E2E_API_URL']
+          ?? process.env['NEXT_PUBLIC_API_URL']
+          ?? 'http://localhost:8000',
+      },
+    },
+  ],
 });
