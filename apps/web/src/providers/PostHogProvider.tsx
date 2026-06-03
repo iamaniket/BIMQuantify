@@ -16,11 +16,44 @@ import { env } from '@/lib/env';
 function PageviewCapture(): null {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // Tracks the most recent URL we sent so a same-page anchor click followed
+  // by a (no-op) router event — or vice versa — doesn't double-fire.
+  const lastUrlRef = useRef<string | null>(null);
 
-  useEffect(() => {
+  function buildUrl(hash: string): string {
     const qs = searchParams.toString();
-    const url = qs.length > 0 ? `${pathname}?${qs}` : pathname;
+    const base = qs.length > 0 ? `${pathname}?${qs}` : pathname;
+    return hash.length > 0 ? `${base}${hash}` : base;
+  }
+
+  function fire(url: string): void {
+    if (lastUrlRef.current === url) return;
+    lastUrlRef.current = url;
     capturePageview(url);
+  }
+
+  // Fires on full route change (pathname / query) AND on initial mount.
+  // Includes any hash already in the URL (covers direct links like
+  // /en#features pasted into the address bar).
+  useEffect(() => {
+    const hash = typeof window === 'undefined' ? '' : window.location.hash;
+    fire(buildUrl(hash));
+    // buildUrl/fire close over pathname/searchParams via this effect's scope.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, searchParams]);
+
+  // Fires on same-page anchor clicks (#features, #pricing, #how-it-works).
+  // Next.js doesn't re-render usePathname() for hash-only changes, so without
+  // this listener those navigations are invisible to PostHog.
+  useEffect(() => {
+    function onHashChange(): void {
+      fire(buildUrl(window.location.hash));
+    }
+    window.addEventListener('hashchange', onHashChange);
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]);
 
   return null;
