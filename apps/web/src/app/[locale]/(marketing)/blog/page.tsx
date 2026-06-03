@@ -31,7 +31,7 @@ export default async function BlogListingPage({ params }: Props): Promise<JSX.El
     <main>
       <BlogHero />
 
-      <div className="mx-auto w-full max-w-5xl px-6 py-12">
+      <div className="mx-auto w-full max-w-6xl px-6 py-12">
         {posts.length === 0 ? (
           <p className="text-body1 text-foreground-tertiary">
             {t('empty')}

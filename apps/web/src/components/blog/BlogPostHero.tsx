@@ -15,7 +15,7 @@ export function BlogPostHero({ meta }: BlogPostHeroProps): JSX.Element {
       <HeroGrid opacity={0.08} stroke="#ffffff" step={36} />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(95,217,158,0.15),transparent)]" />
 
-      <div className="relative mx-auto flex w-full max-w-4xl flex-col gap-4 px-6 py-16 sm:py-20">
+      <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-16 sm:py-20">
         <div className="flex flex-wrap items-center gap-2">
           {meta.tags.map((tag) => (
             <span

@@ -9,7 +9,7 @@ export function BlogHero(): JSX.Element {
       <HeroGrid opacity={0.08} stroke="#ffffff" step={36} />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(95,217,158,0.15),transparent)]" />
 
-      <div className="relative mx-auto flex w-full max-w-5xl flex-col gap-3 px-6 py-16 sm:py-20">
+      <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-16 sm:py-20">
         <span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1 text-body3 font-medium text-white/90">
           Blog
         </span>
