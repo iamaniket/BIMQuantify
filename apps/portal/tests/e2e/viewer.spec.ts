@@ -16,7 +16,7 @@ const ACME_ADMIN_PASSWORD = process.env['SEED_ACME_ADMIN_PASSWORD'] ?? 'Admin123
 // Two small IFC fixtures so both conversions stay fast. Driven by an array
 // so adding a third model later is a one-line change.
 
-const SAMPLES_DIR = resolve(__dirname, '../../../../samples');
+const SAMPLES_DIR = resolve(__dirname, '../../../../assets/ifc');
 
 const MODELS = [
   { name: 'Duplex', discipline: 'architectural', file: 'Duplex.ifc' },
