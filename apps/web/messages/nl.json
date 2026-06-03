@@ -76,7 +76,11 @@
   "footer": {
     "product": "Product",
     "resources": "Informatie",
-    "legal": "Juridisch"
+    "legal": "Juridisch",
+    "connect": "Contact",
+    "youtube": "YouTube",
+    "linkedin": "LinkedIn",
+    "email": "Mail ons"
   },
   "blog": {
     "eyebrow": "Blog",

@@ -76,7 +76,11 @@
   "footer": {
     "product": "Product",
     "resources": "Resources",
-    "legal": "Legal"
+    "legal": "Legal",
+    "connect": "Connect",
+    "youtube": "YouTube",
+    "linkedin": "LinkedIn",
+    "email": "Email us"
   },
   "blog": {
     "eyebrow": "Blog",
