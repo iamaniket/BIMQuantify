@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  BookOpen,
   Building2,
   Download,
   Inbox,
@@ -32,11 +33,20 @@ import { AccessRequestApproveDialog } from '@/features/admin/access-requests/Acc
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
 import { useRejectAccessRequest } from '@/features/admin/access-requests/useAccessRequestActions';
+import { BlogPostCreateDialog } from '@/features/admin/blog/BlogPostCreateDialog';
+import { BlogPostsTable } from '@/features/admin/blog/BlogPostsTable';
+import { useAdminBlogPosts } from '@/features/admin/blog/useAdminBlogPosts';
+import { useDeleteBlogPost } from '@/features/admin/blog/useDeleteBlogPost';
+import { useUpdateBlogPost } from '@/features/admin/blog/useUpdateBlogPost';
 import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
 import { exportAccessRequests } from '@/lib/api/admin';
-import type { AccessRequestRead, OrganizationRead } from '@/lib/api/schemas';
+import type {
+  AccessRequestRead,
+  BlogPostRead,
+  OrganizationRead,
+} from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
 const TAB_CLASS =
@@ -262,6 +272,7 @@ function OverviewPane({
 export default function AdminOrganizationsPage(): JSX.Element {
   const t = useTranslations('admin.organizations');
   const tReq = useTranslations('admin.accessRequests');
+  const tBlog = useTranslations('admin.blog');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
@@ -272,6 +283,13 @@ export default function AdminOrganizationsPage(): JSX.Element {
   // Access-request state
   const [reqSearch, setReqSearch] = useState('');
   const [reqStatusFilter, setReqStatusFilter] = useState<string>('all');
+
+  // Blog state
+  const [blogLocale, setBlogLocale] = useState<string>('all');
+  const [blogStatus, setBlogStatus] = useState<string>('all');
+  const [blogCreateOpen, setBlogCreateOpen] = useState(false);
+  const [blogDeletingId, setBlogDeletingId] = useState<string | null>(null);
+  const [blogTogglingId, setBlogTogglingId] = useState<string | null>(null);
 
   const { tokens } = useAuth();
   const rejectMutation = useRejectAccessRequest();
@@ -290,6 +308,59 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const reqQuery = useAccessRequests(reqParams);
   const allRequests = reqQuery.data ?? [];
   const pendingRequestCount = allRequests.filter((r) => r.status === 'new').length;
+
+  const blogParams = {
+    locale: blogLocale === 'all' ? undefined : (blogLocale as 'en' | 'nl'),
+    status: blogStatus === 'all' ? undefined : (blogStatus as 'draft' | 'published'),
+  };
+  const blogQuery = useAdminBlogPosts(blogParams);
+  const blogPosts = blogQuery.data ?? [];
+  const deleteBlogMutation = useDeleteBlogPost();
+  const updateBlogMutation = useUpdateBlogPost();
+
+  const handleBlogToggleStatus = useCallback((post: BlogPostRead) => {
+    const nextStatus = post.status === 'published' ? 'draft' : 'published';
+    setBlogTogglingId(post.id);
+    updateBlogMutation.mutate(
+      { id: post.id, input: { status: nextStatus } },
+      {
+        onSuccess: () => {
+          toast.success(
+            nextStatus === 'published'
+              ? tBlog('toast.published')
+              : tBlog('toast.unpublished'),
+          );
+        },
+        onError: () => {
+          toast.error(tBlog('toast.statusError'));
+        },
+        onSettled: () => {
+          setBlogTogglingId(null);
+        },
+      },
+    );
+  }, [updateBlogMutation, tBlog]);
+
+  const handleBlogDelete = useCallback((post: BlogPostRead) => {
+    if (typeof window === 'undefined') return;
+    const ok = window.confirm(tBlog('confirmDelete', { title: post.title }));
+    if (!ok) return;
+    setBlogDeletingId(post.id);
+    deleteBlogMutation.mutate(
+      { id: post.id },
+      {
+        onSuccess: () => {
+          toast.success(tBlog('toast.deleted'));
+        },
+        onError: () => {
+          toast.error(tBlog('toast.deleteError'));
+        },
+        onSettled: () => {
+          setBlogDeletingId(null);
+        },
+      },
+    );
+  }, [deleteBlogMutation, tBlog]);
 
   const crumbs = useMemo(
     () => [
@@ -346,6 +417,11 @@ export default function AdminOrganizationsPage(): JSX.Element {
       title: t('panel.requestsTitle', { count: allRequests.length }),
       sub: '',
     },
+    blog: {
+      eyebrow: tBlog('panel.eyebrow'),
+      title: tBlog('panel.title', { count: blogPosts.length }),
+      sub: '',
+    },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
 
   return (
@@ -381,6 +457,13 @@ export default function AdminOrganizationsPage(): JSX.Element {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="blog" className={TAB_CLASS}>
+            <BookOpen className="h-3.5 w-3.5" />
+            {tBlog('tab')}
+            <Badge variant="default" size="sm" bordered={false}>
+              {blogPosts.length}
+            </Badge>
+          </TabsTrigger>
         </TabsList>
 
         {/* Panel header */}
@@ -409,6 +492,41 @@ export default function AdminOrganizationsPage(): JSX.Element {
             onStatusFilterChange={setStatusFilter}
             onCreate={() => { setCreateOpen(true); }}
           />
+        )}
+
+        {/* Toolbar for blog tab */}
+        {tab === 'blog' && (
+          <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
+            <Select
+              selectSize="sm"
+              value={blogLocale}
+              onChange={(e) => { setBlogLocale(e.target.value); }}
+              aria-label={tBlog('localeFilterAria')}
+            >
+              <option value="all">{tBlog('localeFilters.all')}</option>
+              <option value="en">EN</option>
+              <option value="nl">NL</option>
+            </Select>
+            <Select
+              selectSize="sm"
+              value={blogStatus}
+              onChange={(e) => { setBlogStatus(e.target.value); }}
+              aria-label={tBlog('statusFilterAria')}
+            >
+              <option value="all">{tBlog('statusFilters.all')}</option>
+              <option value="published">{tBlog('statusFilters.published')}</option>
+              <option value="draft">{tBlog('statusFilters.draft')}</option>
+            </Select>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              className="whitespace-nowrap"
+              onClick={() => { setBlogCreateOpen(true); }}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              {tBlog('createButton')}
+            </Button>
+          </div>
         )}
 
         {/* Toolbar for requests tab */}
@@ -473,6 +591,26 @@ export default function AdminOrganizationsPage(): JSX.Element {
             )}
           </TabsContent>
 
+          <TabsContent value="blog" className="mt-0">
+            {blogQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : blogQuery.isError ? (
+              <p className="text-body3 text-error">{tBlog('loadError')}</p>
+            ) : (
+              <BlogPostsTable
+                posts={blogPosts}
+                onDelete={handleBlogDelete}
+                onToggleStatus={handleBlogToggleStatus}
+                deletingId={blogDeletingId}
+                togglingId={blogTogglingId}
+              />
+            )}
+          </TabsContent>
+
           <TabsContent value="requests" className="mt-0">
             {reqQuery.isLoading ? (
               <div className="space-y-2">
@@ -506,6 +644,10 @@ export default function AdminOrganizationsPage(): JSX.Element {
         request={approveTarget}
         open={approveOpen}
         onOpenChange={setApproveOpen}
+      />
+      <BlogPostCreateDialog
+        open={blogCreateOpen}
+        onOpenChange={setBlogCreateOpen}
       />
     </PageShell>
   );

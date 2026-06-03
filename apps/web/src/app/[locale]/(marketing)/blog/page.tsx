@@ -6,7 +6,12 @@ import type { Locale } from '@bimstitch/i18n';
 
 import { BlogHero } from '@/components/blog/BlogHero';
 import { BlogPostCard } from '@/components/blog/BlogPostCard';
-import { getAllPosts } from '@/lib/blog/mdx';
+import { getAllPostsMerged } from '@/lib/blog/mdx';
+
+// Re-render at most once per minute so newly-published API posts appear
+// without redeploying. Committed in-repo posts are still baked in at build
+// time — the revalidation only refreshes the API fetch.
+export const revalidate = 60;
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -25,7 +30,7 @@ export default async function BlogListingPage({ params }: Props): Promise<JSX.El
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: 'blog' });
-  const posts = getAllPosts(locale as Locale);
+  const posts = await getAllPostsMerged(locale as Locale);
 
   return (
     <main>

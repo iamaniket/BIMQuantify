@@ -27,6 +27,11 @@ import type { Project } from '@/lib/api/schemas';
 
 import { formatAddress, isProjectArchived } from '@/lib/formatting/projects';
 import {
+  THUMBNAIL_ACCEPT,
+  THUMBNAIL_MAX_BYTES,
+  compressImage,
+} from '@/lib/images/compressImage';
+import {
   ProjectFormSchema,
   type ProjectFormValues,
 } from './projectFormSchema';
@@ -39,46 +44,6 @@ import {
 import { StepAddress } from './wizard/StepAddress';
 import { StepBasics } from './wizard/StepBasics';
 import { StepDetails } from './wizard/StepDetails';
-
-const THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-const THUMBNAIL_MAX_DIM = 800;
-const THUMBNAIL_ACCEPT = 'image/jpeg,image/png,image/webp';
-
-async function compressImage(file: File): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image();
-    const blobUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(blobUrl);
-      let { width, height } = img;
-      if (width > THUMBNAIL_MAX_DIM) {
-        height = Math.round((height * THUMBNAIL_MAX_DIM) / width);
-        width = THUMBNAIL_MAX_DIM;
-      }
-      if (height > THUMBNAIL_MAX_DIM) {
-        width = Math.round((width * THUMBNAIL_MAX_DIM) / height);
-        height = THUMBNAIL_MAX_DIM;
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (ctx === null) { reject(new Error('Canvas unavailable')); return; }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          if (blob === null) { reject(new Error('Encode failed')); return; }
-          const outName = file.name.replace(/\.[^.]+$/, '.jpg');
-          resolve(new File([blob], outName, { type: 'image/jpeg' }));
-        },
-        'image/jpeg',
-        0.82,
-      );
-    };
-    img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error('Load failed')); };
-    img.src = blobUrl;
-  });
-}
 
 type Props =
   | { mode: 'create'; open: boolean; onOpenChange: (open: boolean) => void }

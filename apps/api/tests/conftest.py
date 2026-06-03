@@ -74,6 +74,7 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
+        BlogPost,
         Borgingsmoment,
         Borgingsplan,
         CaptureLink,
@@ -153,6 +154,7 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS deadlinestatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS attachmentcategory")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS attachmentstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS blogpoststatus")
         await conn.run_sync(Base.metadata.create_all)
         # Partial unique index for "one active borgingsplan per project" — not
         # expressible in __table_args__, so mirror the migration here.
@@ -293,7 +295,7 @@ async def _clean_tables(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
                         "borgingsmomenten, borgingsplans, deadlines, attachments, "
-                        "capture_links, "
+                        "capture_links, blog_posts, "
                         "risks, access_requests, reports, jobs, project_files, models, "
                         "project_members, projects, contractors, notification_reads, "
                         "notifications, audit_log, organization_members, users, "

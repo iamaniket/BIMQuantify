@@ -6,9 +6,15 @@ import type { JSX } from 'react';
 
 import { supportedLocales, type Locale } from '@bimstitch/i18n';
 
+import { BlogPostCoverImage } from '@/components/blog/BlogPostCoverImage';
 import { BlogPostHero } from '@/components/blog/BlogPostHero';
 import { mdxComponents } from '@/components/blog/MdxComponents';
-import { getAllSlugs, getPostBySlug } from '@/lib/blog/mdx';
+import { getAllSlugs, getPostBySlugMerged } from '@/lib/blog/mdx';
+
+// API-published posts must be reachable, so allow params outside the
+// `generateStaticParams` set to render on-demand and be cached for 60s.
+export const dynamicParams = true;
+export const revalidate = 60;
 
 type Params = { locale: string; slug: string };
 
@@ -18,30 +24,29 @@ export function generateStaticParams(): Params[] {
   );
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   params,
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  return params.then(({ locale, slug }) => {
-    try {
-      const { meta } = getPostBySlug(slug, locale as Locale);
-      return {
-        title: `${meta.title} — BimDossier`,
-        description: meta.description,
-        openGraph: {
-          title: meta.title,
-          description: meta.description,
-          type: 'article',
-          publishedTime: meta.date,
-          authors: [meta.author],
-          tags: meta.tags,
-        },
-      };
-    } catch {
-      return { title: 'Post not found — BimDossier' };
-    }
-  });
+  const { locale, slug } = await params;
+  const post = await getPostBySlugMerged(slug, locale as Locale);
+  if (post === null) {
+    return { title: 'Post not found — BimDossier' };
+  }
+  return {
+    title: `${post.meta.title} — BimDossier`,
+    description: post.meta.description,
+    openGraph: {
+      title: post.meta.title,
+      description: post.meta.description,
+      type: 'article',
+      publishedTime: post.meta.date,
+      authors: [post.meta.author],
+      tags: post.meta.tags,
+      ...(post.meta.image ? { images: [post.meta.image] } : {}),
+    },
+  };
 }
 
 export default async function BlogPostPage({
@@ -52,10 +57,8 @@ export default async function BlogPostPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  let post;
-  try {
-    post = getPostBySlug(slug, locale as Locale);
-  } catch {
+  const post = await getPostBySlugMerged(slug, locale as Locale);
+  if (post === null) {
     notFound();
   }
 
@@ -83,7 +86,12 @@ export default async function BlogPostPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <BlogPostHero meta={post.meta} />
-      <div className="mx-auto w-full max-w-6xl px-6 py-12">
+      {post.meta.image ? (
+        <div className="mx-auto w-full max-w-6xl px-6 pt-12">
+          <BlogPostCoverImage image={post.meta.image} title={post.meta.title} />
+        </div>
+      ) : null}
+      <div className="mx-auto w-full max-w-6xl px-6 pb-12 pt-8">
         <article className="prose prose-neutral max-w-none dark:prose-invert [&>h2]:mt-10 [&>h2]:text-h4 [&>h2]:font-semibold [&>h3]:mt-8 [&>h3]:text-title2 [&>h3]:font-semibold [&>p]:text-body1 [&>p]:text-foreground-secondary [&>p]:leading-relaxed [&>ul]:text-body1 [&>ul]:text-foreground-secondary [&>ol]:text-body1 [&>ol]:text-foreground-secondary">
           {mdxContent}
         </article>

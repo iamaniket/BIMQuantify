@@ -19,3 +19,4 @@ export * from './schemas/certificates';
 export * from './schemas/activity';
 export * from './schemas/elementInspections';
 export * from './schemas/findings';
+export * from './schemas/blog';

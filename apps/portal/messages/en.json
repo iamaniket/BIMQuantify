@@ -2008,6 +2008,130 @@
         "change": "Change",
         "empty": "No audit entries match your filters."
       }
+    },
+    "blog": {
+      "tab": "Blog",
+      "createButton": "New post",
+      "loadError": "Could not load blog posts.",
+      "localeFilterAria": "Filter posts by language",
+      "statusFilterAria": "Filter posts by status",
+      "localeFilters": {
+        "all": "All languages"
+      },
+      "statusFilters": {
+        "all": "All statuses",
+        "draft": "Drafts",
+        "published": "Published"
+      },
+      "confirmDelete": "Delete the post \"{title}\"? This cannot be undone from the UI.",
+      "panel": {
+        "eyebrow": "Blog management",
+        "title": "{count, plural, =0 {No posts} =1 {1 post} other {# posts}}"
+      },
+      "table": {
+        "title": "Title",
+        "locale": "Lang",
+        "status": "Status",
+        "published": "Published",
+        "deleteAria": "Delete post \"{title}\"",
+        "publish": "Publish",
+        "unpublish": "Move to draft",
+        "publishAria": "Publish post \"{title}\"",
+        "unpublishAria": "Move post \"{title}\" to draft",
+        "empty": "No blog posts yet. Click \"New post\" to create the first one.",
+        "statusLabel": {
+          "draft": "Draft",
+          "published": "Published"
+        }
+      },
+      "toast": {
+        "deleted": "Post deleted.",
+        "deleteError": "Could not delete post.",
+        "published": "Post published.",
+        "unpublished": "Post moved to draft.",
+        "statusError": "Could not update post status."
+      },
+      "create": {
+        "title": "New blog post",
+        "subtitle": "Walk through three quick steps. Cover image and metadata first, then translate each language.",
+        "steps": {
+          "meta": {
+            "title": "Photo & details",
+            "description": "Cover, date, author, tags"
+          },
+          "english": {
+            "title": "English version",
+            "description": "Title and body"
+          },
+          "dutch": {
+            "title": "Dutch version",
+            "description": "Title and body"
+          }
+        },
+        "actions": {
+          "cancel": "Cancel",
+          "back": "Back",
+          "next": "Next",
+          "publish": "Publish",
+          "publishing": "Publishing…",
+          "addCoverImage": "Add cover image",
+          "removeCoverImage": "Remove cover image"
+        },
+        "dropzone": {
+          "aria": "Drop a Markdown file here",
+          "hint": "Drop an .md or .mdx file to autofill, or",
+          "hintNl": "Drop an .nl.md or .nl.mdx file to autofill, or",
+          "pickMarkdown": "pick a file"
+        },
+        "fields": {
+          "coverImage": "Cover image",
+          "coverPreviewAlt": "Cover preview",
+          "coverHint": "JPEG, PNG or WebP · max 2 MB · auto-resized to 800 px. Shown above both languages.",
+          "publishDate": "Publish date",
+          "description": "Description",
+          "status": "Status",
+          "author": "Author",
+          "tags": "Tags",
+          "title": "Title",
+          "content": "Markdown body",
+          "optional": "optional",
+          "dropMdxHint": "drop an .mdx file to autofill",
+          "dropMdxHintNl": "drop an .nl.mdx file to autofill"
+        },
+        "placeholders": {
+          "title": "WKB Compliance Explained",
+          "titleNl": "Wkb uitgelegd",
+          "description": "A short summary shown on the card and in search results.",
+          "tags": "wkb, compliance, regulations",
+          "content": "## Heading\n\nWrite your post body in Markdown.",
+          "contentNl": "## Kop\n\nSchrijf je bericht in Markdown."
+        },
+        "hints": {
+          "tags": "Comma-separated.",
+          "content": "Plain Markdown. Headings, lists, links, bold, and images all work."
+        },
+        "statuses": {
+          "draft": "Draft (hidden)",
+          "published": "Published (live)"
+        },
+        "errors": {
+          "coverRequired": "Please pick a cover image before continuing.",
+          "coverType": "Cover must be JPEG, PNG, or WebP.",
+          "coverSize": "Cover image must be 2 MB or smaller.",
+          "coverProcess": "Could not process the cover image. Please try another file.",
+          "fillMetadataFirst": "Please fill in the cover and metadata before continuing.",
+          "fillEnFirst": "Please fill the English fields before continuing.",
+          "slugTaken": "This title produces a slug that already exists. Choose a different English title.",
+          "unknownDrop": "Can't use \"{filename}\" — drop an .md or .mdx file.",
+          "serverGeneric": "Could not save the post. Please try again.",
+          "serverCode": "Server rejected the post: {code}"
+        },
+        "toast": {
+          "parsedFileEn": "Parsed \"{filename}\" into the English fields.",
+          "parsedFileNl": "Parsed \"{filename}\" into the Dutch fields.",
+          "bothCreated": "Published in EN and NL."
+        }
+      }
     }
   },
   "inspection": {

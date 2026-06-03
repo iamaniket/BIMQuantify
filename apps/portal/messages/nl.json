@@ -2008,6 +2008,130 @@
         "change": "Verandering",
         "empty": "Geen audit-regels gevonden voor deze filters."
       }
+    },
+    "blog": {
+      "tab": "Blog",
+      "createButton": "Nieuw bericht",
+      "loadError": "Blogberichten konden niet worden geladen.",
+      "localeFilterAria": "Filter berichten op taal",
+      "statusFilterAria": "Filter berichten op status",
+      "localeFilters": {
+        "all": "Alle talen"
+      },
+      "statusFilters": {
+        "all": "Alle statussen",
+        "draft": "Concepten",
+        "published": "Gepubliceerd"
+      },
+      "confirmDelete": "Bericht \"{title}\" verwijderen? Dit kan niet via de UI worden teruggedraaid.",
+      "panel": {
+        "eyebrow": "Blogbeheer",
+        "title": "{count, plural, =0 {Geen berichten} =1 {1 bericht} other {# berichten}}"
+      },
+      "table": {
+        "title": "Titel",
+        "locale": "Taal",
+        "status": "Status",
+        "published": "Gepubliceerd",
+        "deleteAria": "Bericht \"{title}\" verwijderen",
+        "publish": "Publiceren",
+        "unpublish": "Naar concept",
+        "publishAria": "Bericht \"{title}\" publiceren",
+        "unpublishAria": "Bericht \"{title}\" naar concept verplaatsen",
+        "empty": "Nog geen blogberichten. Klik op \"Nieuw bericht\" om het eerste aan te maken.",
+        "statusLabel": {
+          "draft": "Concept",
+          "published": "Gepubliceerd"
+        }
+      },
+      "toast": {
+        "deleted": "Bericht verwijderd.",
+        "deleteError": "Bericht kon niet worden verwijderd.",
+        "published": "Bericht gepubliceerd.",
+        "unpublished": "Bericht verplaatst naar concept.",
+        "statusError": "Berichtstatus kon niet worden bijgewerkt."
+      },
+      "create": {
+        "title": "Nieuw blogbericht",
+        "subtitle": "Drie korte stappen. Eerst omslag en details, daarna elke taal vertalen.",
+        "steps": {
+          "meta": {
+            "title": "Foto & details",
+            "description": "Omslag, datum, auteur, tags"
+          },
+          "english": {
+            "title": "Engelse versie",
+            "description": "Titel en tekst"
+          },
+          "dutch": {
+            "title": "Nederlandse versie",
+            "description": "Titel en tekst"
+          }
+        },
+        "actions": {
+          "cancel": "Annuleren",
+          "back": "Terug",
+          "next": "Volgende",
+          "publish": "Publiceren",
+          "publishing": "Bezig met publiceren…",
+          "addCoverImage": "Omslagafbeelding toevoegen",
+          "removeCoverImage": "Omslagafbeelding verwijderen"
+        },
+        "dropzone": {
+          "aria": "Sleep hier een Markdown-bestand",
+          "hint": "Sleep een .md- of .mdx-bestand om in te vullen, of",
+          "hintNl": "Sleep een .nl.md- of .nl.mdx-bestand om in te vullen, of",
+          "pickMarkdown": "kies een bestand"
+        },
+        "fields": {
+          "coverImage": "Omslagafbeelding",
+          "coverPreviewAlt": "Voorbeeld van omslagafbeelding",
+          "coverHint": "JPEG, PNG of WebP · max 2 MB · automatisch verkleind naar 800 px. Wordt boven beide talen getoond.",
+          "publishDate": "Publicatiedatum",
+          "description": "Omschrijving",
+          "status": "Status",
+          "author": "Auteur",
+          "tags": "Tags",
+          "title": "Titel",
+          "content": "Markdown-tekst",
+          "optional": "optioneel",
+          "dropMdxHint": "sleep een .mdx-bestand om in te vullen",
+          "dropMdxHintNl": "sleep een .nl.mdx-bestand om in te vullen"
+        },
+        "placeholders": {
+          "title": "WKB Compliance Explained",
+          "titleNl": "Wkb uitgelegd",
+          "description": "Een korte samenvatting voor de kaart en zoekresultaten.",
+          "tags": "wkb, compliance, regelgeving",
+          "content": "## Heading\n\nWrite your post body in Markdown.",
+          "contentNl": "## Kop\n\nSchrijf je bericht in Markdown."
+        },
+        "hints": {
+          "tags": "Gescheiden door komma's.",
+          "content": "Pure Markdown. Koppen, lijsten, links, vet en afbeeldingen werken allemaal."
+        },
+        "statuses": {
+          "draft": "Concept (verborgen)",
+          "published": "Gepubliceerd (live)"
+        },
+        "errors": {
+          "coverRequired": "Kies eerst een omslagafbeelding voordat je verder gaat.",
+          "coverType": "Omslag moet JPEG, PNG of WebP zijn.",
+          "coverSize": "Omslagafbeelding moet 2 MB of kleiner zijn.",
+          "coverProcess": "Omslagafbeelding kon niet worden verwerkt. Probeer een ander bestand.",
+          "fillMetadataFirst": "Vul eerst de omslag en details in voordat je verder gaat.",
+          "fillEnFirst": "Vul eerst de Engelse velden in voordat je verder gaat.",
+          "slugTaken": "Deze titel levert een slug op die al bestaat. Kies een andere Engelse titel.",
+          "unknownDrop": "Kan \"{filename}\" niet gebruiken — sleep een .md- of .mdx-bestand.",
+          "serverGeneric": "Bericht kon niet worden opgeslagen. Probeer het opnieuw.",
+          "serverCode": "Server weigerde het bericht: {code}"
+        },
+        "toast": {
+          "parsedFileEn": "\"{filename}\" is verwerkt in de Engelse velden.",
+          "parsedFileNl": "\"{filename}\" is verwerkt in de Nederlandse velden.",
+          "bothCreated": "Gepubliceerd in EN en NL."
+        }
+      }
     }
   },
   "inspection": {

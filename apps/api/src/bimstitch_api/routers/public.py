@@ -24,12 +24,15 @@ from bimstitch_api.approx import approx_count_floor
 from bimstitch_api.cache.client import get_redis
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.db import get_async_session
+from bimstitch_api.models.blog_post import BlogPost, BlogPostStatus
 from bimstitch_api.models.organization import Organization, OrganizationStatus
+from bimstitch_api.routers.admin_blog import _fetch_content
+from bimstitch_api.schemas.blog import BLOG_LOCALES, BlogPostPublicRead
 from bimstitch_api.schemas.public import (
     ProjectsMapPoint,
     SystemStatusResponse,
 )
-from bimstitch_api.storage import get_storage
+from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -142,3 +145,126 @@ async def system_status(
         node=settings.deploy_node,
         checks=checks,
     )
+
+
+# ---------------------------------------------------------------------------
+# Blog (public, marketing-side)
+# ---------------------------------------------------------------------------
+
+
+def _estimate_reading_minutes(markdown: str) -> int:
+    """Rough reading-time estimate. Matches the `reading-time` package the
+    web app uses (≈200 wpm). Floor-of-1 so a stub post still reads as a
+    real piece of content.
+    """
+    words = len(markdown.split())
+    return max(1, round(words / 200))
+
+
+async def _serialize_public(
+    post: BlogPost,
+    storage: StorageBackend,
+    *,
+    include_content: bool,
+) -> BlogPostPublicRead:
+    bucket = get_attachments_bucket()
+    cover_url = await storage.presigned_get_url(
+        post.cover_image_key,
+        f"{post.slug}-cover",
+        disposition="inline",
+        bucket=bucket,
+    )
+    body: str | None = None
+    reading_min = 1
+    if include_content:
+        try:
+            body = await _fetch_content(storage, post.content_key, bucket)
+            reading_min = _estimate_reading_minutes(body)
+        except Exception:
+            logger.exception(
+                "public_blog_content_fetch_failed post_id=%s", post.id
+            )
+            body = ""
+    else:
+        reading_min = max(1, len(post.description.split()) // 200)
+    return BlogPostPublicRead(
+        slug=post.slug,
+        locale=post.locale,
+        title=post.title,
+        description=post.description,
+        author=post.author,
+        tags=list(post.tags or []),
+        published_at=post.published_at,
+        cover_image_url=cover_url,
+        content=body,
+        reading_time_minutes=reading_min,
+    )
+
+
+def _validate_public_locale(locale: str) -> None:
+    if locale not in BLOG_LOCALES:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="BLOG_LOCALE_INVALID")
+
+
+@router.get(
+    "/blog/posts",
+    response_model=list[BlogPostPublicRead],
+)
+async def public_list_blog_posts(
+    response: Response,
+    session: AsyncSession = Depends(get_async_session),
+    storage: StorageBackend = Depends(get_storage),
+    locale: str = "en",
+) -> list[BlogPostPublicRead]:
+    """Marketing-site list. Returns only published, non-deleted posts.
+
+    Cached for 60s at the edge — new posts in the admin tool appear within
+    a minute on /blog. Cover URLs are freshly presigned per request; their
+    TTL is enforced by the storage backend (default 15 min).
+    """
+    _validate_public_locale(locale)
+    stmt = (
+        select(BlogPost)
+        .where(
+            BlogPost.locale == locale,
+            BlogPost.status == BlogPostStatus.published,
+            BlogPost.deleted_at.is_(None),
+        )
+        .order_by(BlogPost.published_at.desc())
+    )
+    rows = list((await session.execute(stmt)).scalars())
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return [
+        await _serialize_public(p, storage, include_content=False) for p in rows
+    ]
+
+
+@router.get(
+    "/blog/posts/{slug}",
+    response_model=BlogPostPublicRead,
+)
+async def public_get_blog_post(
+    slug: str,
+    response: Response,
+    session: AsyncSession = Depends(get_async_session),
+    storage: StorageBackend = Depends(get_storage),
+    locale: str = "en",
+) -> BlogPostPublicRead:
+    """Marketing-site detail. 404s on unknown slug, draft, or deleted. The
+    web app falls back to the in-repo MDX reader if this 404s, so an unknown
+    slug here is not necessarily a real not-found.
+    """
+    _validate_public_locale(locale)
+    stmt = select(BlogPost).where(
+        BlogPost.slug == slug,
+        BlogPost.locale == locale,
+        BlogPost.status == BlogPostStatus.published,
+        BlogPost.deleted_at.is_(None),
+    )
+    post = (await session.execute(stmt)).scalar_one_or_none()
+    if post is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="BLOG_POST_NOT_FOUND")
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return await _serialize_public(post, storage, include_content=True)

@@ -31,15 +31,29 @@ export function BlogCardThumbnail({
   title,
 }: BlogCardThumbnailProps): JSX.Element {
   if (image) {
+    // Absolute URLs (presigned MinIO/S3 covers from API-published posts)
+    // need plain `<img>` because next/image rejects domains not declared in
+    // `remotePatterns`. Committed posts use `/blog/foo.jpg` from /public and
+    // go through next/image as before.
+    const isRemote = /^https?:\/\//i.test(image);
     return (
       <div className="relative aspect-[16/10] w-full">
-        <Image
-          src={image}
-          alt={title}
-          fill
-          className="object-cover"
-          sizes="(max-width: 640px) 100vw, 50vw"
-        />
+        {isRemote ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt={title}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <Image
+            src={image}
+            alt={title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, 50vw"
+          />
+        )}
       </div>
     );
   }

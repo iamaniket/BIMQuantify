@@ -23,6 +23,7 @@ from bimstitch_api.notifications.manager import get_manager
 from bimstitch_api.observability import init_sentry
 from bimstitch_api.routers.access_requests import router as access_requests_router
 from bimstitch_api.routers.activity import router as activity_router
+from bimstitch_api.routers.admin_blog import router as admin_blog_router
 from bimstitch_api.routers.admin_impersonate import router as admin_impersonate_router
 from bimstitch_api.routers.admin_organizations import router as admin_organizations_router
 from bimstitch_api.routers.borgingsplan import (
@@ -226,6 +227,7 @@ def create_app() -> FastAPI:
     app.include_router(jurisdictions_router)
     app.include_router(build_auth_router())
     app.include_router(admin_organizations_router)
+    app.include_router(admin_blog_router)
     app.include_router(admin_impersonate_router)
     app.include_router(org_image_admin_router)
     app.include_router(org_image_router)

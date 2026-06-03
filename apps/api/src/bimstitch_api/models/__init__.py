@@ -1,5 +1,6 @@
 from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
 from bimstitch_api.models.audit_log import AuditLog
+from bimstitch_api.models.blog_post import BlogPost, BlogPostStatus
 from bimstitch_api.models.borgingsmoment import (
     Borgingsmoment,
     BorgingsmomentPhase,
@@ -62,6 +63,8 @@ __all__ = [
     "AccessRequest",
     "AccessRequestStatus",
     "AuditLog",
+    "BlogPost",
+    "BlogPostStatus",
     "Borgingsmoment",
     "BorgingsmomentPhase",
     "BorgingsmomentStatus",
