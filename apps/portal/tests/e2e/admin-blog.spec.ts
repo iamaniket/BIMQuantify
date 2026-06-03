@@ -99,7 +99,7 @@ test.describe.serial('Admin blog publish lifecycle', () => {
     await injectSavedAuth(page, email);
 
     await page.goto('/en/admin/organizations');
-    await page.getByRole('tab', { name: 'Blog', exact: true }).click();
+    await page.getByRole('tab', { name: /^Blog\b/ }).click();
 
     const newPostBtn = page.getByRole('button', { name: 'New post' });
     await expect(newPostBtn).toBeVisible({ timeout: 10_000 });
@@ -248,15 +248,18 @@ test.describe.serial('Admin blog publish lifecycle', () => {
     }
     expect(rendered, `Expected post page at ${url} to render within 90s`).toBe(true);
 
-    // Verify all the form-submitted data appears on the page.
-    await expect(page.getByRole('heading', { level: 1, name: TITLE_NL })).toBeVisible();
-    await expect(page.getByText(DESCRIPTION)).toBeVisible();
-    await expect(page.getByText(AUTHOR, { exact: true })).toBeVisible();
+    // Verify all the form-submitted data appears on the page. Scope to the
+    // <main> region — 'BimDossier' and tag strings also appear in the site
+    // footer/nav, which would trigger strict-mode multi-match errors.
+    const main = page.getByRole('main');
+    await expect(main.getByRole('heading', { level: 1, name: TITLE_NL })).toBeVisible();
+    await expect(main.getByText(DESCRIPTION)).toBeVisible();
+    await expect(main.getByText(AUTHOR, { exact: true }).first()).toBeVisible();
     for (const tag of TAGS_ARRAY) {
-      await expect(page.getByText(tag, { exact: true }).first()).toBeVisible();
+      await expect(main.getByText(tag, { exact: true }).first()).toBeVisible();
     }
     await expect(
-      page.locator('time', { hasText: expectedDate }),
+      main.locator('time', { hasText: expectedDate }).first(),
     ).toBeVisible();
   });
 
@@ -264,7 +267,7 @@ test.describe.serial('Admin blog publish lifecycle', () => {
     const { email } = requireSuperAdminCreds();
     await injectSavedAuth(page, email);
     await page.goto('/en/admin/organizations');
-    await page.getByRole('tab', { name: 'Blog', exact: true }).click();
+    await page.getByRole('tab', { name: /^Blog\b/ }).click();
 
     const row = findRow(page, 'EN');
     const unpublishBtn = row.getByRole('button', {
@@ -295,7 +298,7 @@ test.describe.serial('Admin blog publish lifecycle', () => {
     const { email } = requireSuperAdminCreds();
     await injectSavedAuth(page, email);
     await page.goto('/en/admin/organizations');
-    await page.getByRole('tab', { name: 'Blog', exact: true }).click();
+    await page.getByRole('tab', { name: /^Blog\b/ }).click();
 
     const row = findRow(page, 'NL');
     const unpublishBtn = row.getByRole('button', {
@@ -336,7 +339,7 @@ test.describe.serial('Admin blog publish lifecycle', () => {
     const { email } = requireSuperAdminCreds();
     await injectSavedAuth(page, email);
     await page.goto('/en/admin/organizations');
-    await page.getByRole('tab', { name: 'Blog', exact: true }).click();
+    await page.getByRole('tab', { name: /^Blog\b/ }).click();
     // Make sure drafts are visible in the table filter — defaults to "all"
     // which already shows drafts, but be explicit.
     await page
@@ -371,7 +374,7 @@ test.describe.serial('Admin blog publish lifecycle', () => {
     const { email } = requireSuperAdminCreds();
     await injectSavedAuth(page, email);
     await page.goto('/en/admin/organizations');
-    await page.getByRole('tab', { name: 'Blog', exact: true }).click();
+    await page.getByRole('tab', { name: /^Blog\b/ }).click();
     await page
       .getByLabel('Filter posts by status')
       .selectOption('all');

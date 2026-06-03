@@ -26,6 +26,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Idempotent: on fresh DBs `0001_master`'s `create_all` already creates
+    # `public.blog_posts` from the current models, so this delta would
+    # otherwise fail with `relation already exists`. Older DBs (no model at
+    # 0001 time) still need this delta to land the table.
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if inspector.has_table("blog_posts", schema="public"):
+        return
     op.create_table(
         "blog_posts",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
@@ -85,6 +93,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("blog_posts", schema="public"):
+        return
     op.drop_index("ix_blog_posts_published_at", table_name="blog_posts", schema="public")
     op.drop_index("ix_blog_posts_locale", table_name="blog_posts", schema="public")
     op.drop_index("ix_blog_posts_status", table_name="blog_posts", schema="public")
