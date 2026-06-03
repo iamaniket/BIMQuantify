@@ -519,3 +519,59 @@ async def test_approve_existing_verified_user_skips_activation_email(
     sent = email_transport.last_for("lieke@heijmans.nl")
     assert sent is not None
     assert "Token:" not in sent.body
+
+
+@pytest.mark.asyncio
+async def test_approve_marks_ar_approved_when_email_dispatch_raises(
+    client: AsyncClient,
+    session: AsyncSession,
+    stub_provisioning: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Email dispatch is best-effort: if SMTP / FastAPI Users state / anything
+    after the saga raises, the AR row MUST still be flipped to `approved`.
+
+    Regression guard for the half-completion bug where a thrown email left the
+    saga's org+user+member committed but AR stranded at `new` — the admin then
+    hit ORG_NAME_TAKEN on retry. See admin_organizations._dispatch_invite_email.
+    """
+    from bimstitch_api.email.transport import (
+        InMemoryEmailTransport,
+        set_email_transport,
+    )
+
+    class _BrokenTransport(InMemoryEmailTransport):
+        async def send(self, to: str, subject: str, body: str) -> None:
+            raise RuntimeError("simulated SMTP outage")
+
+    broken = _BrokenTransport()
+    set_email_transport(broken)
+    try:
+        await _make_superuser(session, "admin@test.nl")
+        ar = await _seed_access_request(session)
+        token = await _login(client, "admin@test.nl")
+
+        response = await client.post(
+            f"/admin/access-requests/{ar.id}/approve",
+            headers=_auth(token),
+            json={"org_name": "Heijmans BV"},
+        )
+    finally:
+        # Restore so other tests' email_transport fixture starts clean.
+        set_email_transport(InMemoryEmailTransport())
+
+    # Route returns 200 — the org is real, AR is approved. Admin retries the
+    # email via /resend-invite, not by re-approving.
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["access_request"]["status"] == "approved"
+    assert body["organization"]["name"] == "Heijmans BV"
+
+    # Most important assertion: AR is approved in the DB even though the email
+    # transport raised. This is what was broken before the reorder.
+    await session.refresh(ar)
+    assert ar.status == AccessRequestStatus.approved
+
+    # The broken transport never recorded the email — confirms the exception
+    # actually fired in the dispatch path.
+    assert broken.sent == []

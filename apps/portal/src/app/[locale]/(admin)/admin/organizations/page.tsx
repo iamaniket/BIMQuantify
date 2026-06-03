@@ -28,10 +28,11 @@ import {
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
+import { AccessRequestApproveDialog } from '@/features/admin/access-requests/AccessRequestApproveDialog';
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
-import { useApproveAccessRequest, useRejectAccessRequest } from '@/features/admin/access-requests/useAccessRequestActions';
-import { OrgCreateDialog, type OrgCreatePrefill } from '@/features/admin/organizations/OrgCreateDialog';
+import { useRejectAccessRequest } from '@/features/admin/access-requests/useAccessRequestActions';
+import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
 import { exportAccessRequests } from '@/lib/api/admin';
@@ -264,8 +265,8 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
-  const [createPrefill, setCreatePrefill] = useState<OrgCreatePrefill | undefined>(undefined);
-  const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
+  const [approveTarget, setApproveTarget] = useState<AccessRequestRead | null>(null);
+  const [approveOpen, setApproveOpen] = useState(false);
   const [tab, setTab] = useState('overview');
 
   // Access-request state
@@ -274,7 +275,6 @@ export default function AdminOrganizationsPage(): JSX.Element {
 
   const { tokens } = useAuth();
   const rejectMutation = useRejectAccessRequest();
-  const approveMutation = useApproveAccessRequest();
 
   const params = {
     q: search === '' ? undefined : search,
@@ -300,26 +300,18 @@ export default function AdminOrganizationsPage(): JSX.Element {
   useHeaderCrumbsOverride(crumbs);
 
   const handleApprove = useCallback((req: AccessRequestRead) => {
-    setApproveTargetId(req.id);
-    setCreatePrefill({
-      name: req.company,
-      admin_email: req.work_email,
-      admin_full_name: req.name,
-      seat_limit: '3',
-    });
-    setCreateOpen(true);
+    // Approving an access request must go through the dedicated dialog +
+    // /admin/access-requests/{id}/approve endpoint, which atomically
+    // provisions the org AND flips the AR status in one transaction.
+    //
+    // The earlier flow opened OrgCreateDialog (which POSTs /admin/organizations
+    // to create the org) and THEN posted to /approve afterwards — the second
+    // call would always 409 with ORG_NAME_TAKEN because the first call had
+    // already created an org with that name. The AR would be stranded at `new`
+    // forever.
+    setApproveTarget(req);
+    setApproveOpen(true);
   }, []);
-
-  const handleOrgCreated = useCallback(() => {
-    if (approveTargetId !== null) {
-      approveMutation.mutate(
-        { id: approveTargetId },
-        { onSuccess: () => { toast.success(tReq('approveSuccess')); } },
-      );
-      setApproveTargetId(null);
-    }
-    setCreatePrefill(undefined);
-  }, [approveTargetId, approveMutation, tReq]);
 
   const handleReject = useCallback((req: AccessRequestRead) => {
     rejectMutation.mutate(
@@ -415,7 +407,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
             onSearchChange={setSearch}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
-            onCreate={() => { setCreatePrefill(undefined); setApproveTargetId(null); setCreateOpen(true); }}
+            onCreate={() => { setCreateOpen(true); }}
           />
         )}
 
@@ -509,8 +501,11 @@ export default function AdminOrganizationsPage(): JSX.Element {
       <OrgCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        prefill={createPrefill}
-        onCreated={handleOrgCreated}
+      />
+      <AccessRequestApproveDialog
+        request={approveTarget}
+        open={approveOpen}
+        onOpenChange={setApproveOpen}
       />
     </PageShell>
   );

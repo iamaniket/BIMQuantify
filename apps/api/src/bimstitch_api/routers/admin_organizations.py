@@ -8,6 +8,7 @@ the super-admin role.
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime
 from uuid import UUID
 
@@ -22,6 +23,7 @@ from bimstitch_api.admin.membership_rules import (
 )
 from bimstitch_api.admin.provisioning import (
     ProvisioningError,
+    ProvisionResult,
     delete_organization,
     provision_organization,
 )
@@ -51,6 +53,41 @@ from bimstitch_api.schemas.admin import (
 )
 from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
 from bimstitch_api.tenancy import resolve_platform_schema, schema_name_for
+
+logger = logging.getLogger(__name__)
+
+
+async def _dispatch_invite_email(
+    *,
+    result: ProvisionResult,
+    user_manager: UserManager,
+    requester_email: str,
+    request: Request,
+) -> bool:
+    """Send the activation / invite notification email after provisioning.
+
+    Returns True on success, False on failure. Failures are logged but never
+    re-raised — a flaky SMTP must not strand callers in an inconsistent state.
+    The admin can re-trigger via `POST /organizations/{org}/members/{user}/resend-invite`.
+    """
+    try:
+        if result.activation_required:
+            await user_manager.request_verify(result.admin, request)
+        else:
+            await send_invite_notification(
+                invitee=result.admin,
+                organization=result.organization,
+                inviter_email=requester_email,
+            )
+        return True
+    except Exception:  # noqa: BLE001 — best-effort side channel
+        logger.exception(
+            "invite_email_dispatch_failed admin_email=%s org=%s; "
+            "admin can resend via /resend-invite",
+            result.admin.email,
+            result.organization.name,
+        )
+        return False
 
 
 async def _seat_counts_for(
@@ -137,19 +174,14 @@ async def create_organization(
         ) from exc
 
     # Dispatch invite email AFTER the saga has committed. A flaky SMTP must
-    # not roll back a successfully-provisioned org — the admin can resend.
-    if result.activation_required:
-        # Brand-new (or never-verified) admin → activation email so they
-        # can set a password.
-        await user_manager.request_verify(result.admin, request)
-    else:
-        # Existing verified user gets a notification; they sign in and
-        # accept via /me/invitations.
-        await send_invite_notification(
-            invitee=result.admin,
-            organization=result.organization,
-            inviter_email=requester.email,
-        )
+    # not roll back a successfully-provisioned org — the admin can resend
+    # via POST /organizations/{org}/members/{user}/resend-invite.
+    await _dispatch_invite_email(
+        result=result,
+        user_manager=user_manager,
+        requester_email=requester.email,
+        request=request,
+    )
 
     seat_count = await count_consumed_seats(session, result.organization.id)
     return OrganizationCreateResponse(
@@ -624,19 +656,12 @@ async def approve_access_request(
             detail=f"PROVISIONING_FAILED: {exc}",
         ) from exc
 
-    # Dispatch email AFTER the saga has committed — a flaky SMTP must not
-    # roll back a successfully-provisioned org.
-    if result.activation_required:
-        await user_manager.request_verify(result.admin, request)
-    else:
-        await send_invite_notification(
-            invitee=result.admin,
-            organization=result.organization,
-            inviter_email=requester.email,
-        )
-
-    # Refresh AR — `provision_organization` opens its own sessions, so our
-    # `ar` instance may be detached. Reload to keep SQLAlchemy happy.
+    # Flip the AR to `approved` BEFORE dispatching the activation email. If the
+    # AR update happens AFTER email send, any exception in the email path (SMTP
+    # blip, transport-layer race, FastAPI Users state) strands the AR at `new`
+    # while the saga's org/user/member commits remain — admin retries then hit
+    # `ORG_NAME_TAKEN` from the pre-flight check above. Commit here first; the
+    # email dispatch below is best-effort and admin can resend on failure.
     ar = await session.get(AccessRequest, request_id)
     assert ar is not None  # we just fetched it above; race would be DB corruption
     ar.status = AccessRequestStatus.approved
@@ -657,6 +682,15 @@ async def approve_access_request(
     )
     await session.commit()
     await session.refresh(ar)
+
+    # Email dispatch happens after the AR commit. Failures are logged but never
+    # re-raised — admin can resend via /organizations/{org}/members/{user}/resend-invite.
+    await _dispatch_invite_email(
+        result=result,
+        user_manager=user_manager,
+        requester_email=requester.email,
+        request=request,
+    )
 
     seat_count = await count_consumed_seats(session, result.organization.id)
     return AccessRequestApproveResponse(

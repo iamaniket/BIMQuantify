@@ -36,7 +36,7 @@ export function AccessRequestApproveDialog({ request, open, onOpenChange }: Prop
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
-    defaultValues: { org_name: '', seat_limit: '' },
+    defaultValues: { org_name: '', seat_limit: '3' },
   });
 
   const { reset: resetForm } = form;
@@ -46,7 +46,7 @@ export function AccessRequestApproveDialog({ request, open, onOpenChange }: Prop
     if (open && request !== null) {
       resetForm({
         org_name: request.company,
-        seat_limit: '',
+        seat_limit: '3',
       });
       resetMutation();
     }
