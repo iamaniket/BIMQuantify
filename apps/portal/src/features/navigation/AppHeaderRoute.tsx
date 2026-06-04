@@ -60,6 +60,9 @@ function resolveCrumbs(
   if (pathname.startsWith('/projects')) {
     return [{ label: t('projects'), href: undefined }];
   }
+  if (pathname.startsWith('/certificates')) {
+    return [{ label: t('certificates'), href: undefined }];
+  }
   if (pathname.startsWith('/settings')) {
     return [{ label: t('settings'), href: undefined }];
   }
@@ -67,34 +70,12 @@ function resolveCrumbs(
   // so the tenant's actual name shows up; the rest get static crumbs.
   if (ADMIN_ORG_DETAIL_RE.test(pathname)) {
     return [
-      { label: t('admin'), href: '/admin/organizations' },
-      { label: t('tenants'), href: '/admin/organizations' },
+      { label: t('adminConsole'), href: '/admin/organizations' },
       { label: t('tenant'), href: undefined },
     ];
   }
-  if (pathname.startsWith('/admin/organizations')) {
-    return [
-      { label: t('admin'), href: '/admin/organizations' },
-      { label: t('tenants'), href: undefined },
-    ];
-  }
-  if (pathname.startsWith('/admin/users')) {
-    return [
-      { label: t('admin'), href: '/admin/organizations' },
-      { label: t('users'), href: undefined },
-    ];
-  }
-  if (pathname.startsWith('/admin/access-requests')) {
-    return [
-      { label: t('admin'), href: '/admin/organizations' },
-      { label: t('accessRequests'), href: undefined },
-    ];
-  }
-  if (pathname.startsWith('/admin/audit-log')) {
-    return [
-      { label: t('admin'), href: '/admin/organizations' },
-      { label: t('auditLog'), href: undefined },
-    ];
+  if (pathname.startsWith('/admin')) {
+    return [{ label: t('adminConsole'), href: undefined }];
   }
   return [{ label: t('appName'), href: undefined }];
 }

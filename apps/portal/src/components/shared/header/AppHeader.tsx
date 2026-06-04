@@ -6,6 +6,8 @@ import { ThemeToggle } from '@bimstitch/ui';
 
 import { Link } from '@/i18n/navigation';
 
+import { LocaleToggle } from './LocaleToggle';
+
 export type Crumb = {
   label: string;
   href: string | undefined;
@@ -117,6 +119,7 @@ export function AppHeader({
 
       <div className="relative flex shrink-0 items-center gap-1">
         {rightSlot}
+        <LocaleToggle className="text-white/80 hover:bg-white/10 hover:text-white" />
         <ThemeToggle className="h-[30px] w-[30px] rounded-md text-white/80 hover:bg-white/10 hover:text-white" />
         {action === null ? null : (
           <button

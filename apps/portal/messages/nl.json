@@ -179,11 +179,13 @@
     "report": "Rapport",
     "settings": "Instellingen",
     "admin": "Beheer",
+    "adminConsole": "Beheerconsole",
     "tenants": "Tenants",
     "users": "Gebruikers",
     "accessRequests": "Toegangsverzoeken",
     "auditLog": "Auditlog",
     "tenant": "Tenant",
+    "certificates": "Certificaten",
     "appName": "BimDossier"
   },
   "account": {

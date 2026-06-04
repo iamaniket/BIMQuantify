@@ -179,11 +179,13 @@
     "report": "Report",
     "settings": "Settings",
     "admin": "Admin",
+    "adminConsole": "Admin Console",
     "tenants": "Tenants",
     "users": "Users",
     "accessRequests": "Access requests",
     "auditLog": "Audit log",
     "tenant": "Tenant",
+    "certificates": "Certificates",
     "appName": "BimDossier"
   },
   "account": {

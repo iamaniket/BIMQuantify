@@ -362,11 +362,13 @@ export default function AdminOrganizationsPage(): JSX.Element {
     );
   }, [deleteBlogMutation, tBlog]);
 
+  const tBreadcrumbs = useTranslations('breadcrumbs');
+
   const crumbs = useMemo(
     () => [
-      { label: t('pageTitle'), href: undefined },
+      { label: tBreadcrumbs('adminConsole'), href: undefined },
     ],
-    [t],
+    [tBreadcrumbs],
   );
   useHeaderCrumbsOverride(crumbs);
 

@@ -41,12 +41,13 @@ export default function AdminAccessRequestsPage(): JSX.Element {
   const query = useAccessRequests(params);
   const allRequests = query.data ?? [];
 
+  const tBreadcrumbs = useTranslations('breadcrumbs');
+
   const crumbs = useMemo(
     () => [
-      { label: t('breadcrumb.admin'), href: '/admin/organizations' as const },
-      { label: t('breadcrumb.accessRequests'), href: undefined },
+      { label: tBreadcrumbs('adminConsole'), href: undefined },
     ],
-    [t],
+    [tBreadcrumbs],
   );
   useHeaderCrumbsOverride(crumbs);
 

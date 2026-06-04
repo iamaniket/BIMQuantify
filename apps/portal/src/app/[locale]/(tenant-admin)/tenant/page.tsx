@@ -27,10 +27,9 @@ export default function TenantAdminPage(): JSX.Element {
     () => (activeMembership === null
       ? null
       : [
-        { label: t('crumb'), href: undefined },
         { label: activeMembership.organization_name, href: undefined },
       ]),
-    [activeMembership, t],
+    [activeMembership],
   );
   useHeaderCrumbsOverride(crumbs);
 

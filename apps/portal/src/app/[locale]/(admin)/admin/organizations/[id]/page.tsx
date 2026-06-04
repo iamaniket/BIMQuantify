@@ -50,16 +50,17 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
     await refreshMe();
   }, [tokens, id, orgQuery, refreshMe]);
 
+  const tBreadcrumbs = useTranslations('breadcrumbs');
+
   const orgName = orgQuery.data?.name;
   const crumbs = useMemo(
     () => (orgName === undefined
       ? null
       : [
-        { label: 'Admin', href: '/admin/organizations' },
-        { label: 'Tenants', href: '/admin/organizations' },
+        { label: tBreadcrumbs('adminConsole'), href: '/admin/organizations' },
         { label: orgName, href: undefined },
       ]),
-    [orgName],
+    [orgName, tBreadcrumbs],
   );
   useHeaderCrumbsOverride(crumbs);
 

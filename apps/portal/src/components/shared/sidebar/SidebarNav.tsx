@@ -28,8 +28,10 @@ export function SidebarNav(): JSX.Element {
   const isSuperuser = me?.user.is_superuser === true;
   const isOrgAdmin = activeMembership?.is_org_admin === true;
 
+  const orgName = activeMembership?.organization_name ?? t('orgMembers');
+
   const labels = {
-    orgMembers: t('orgMembers'),
+    orgMembers: orgName,
     admin: t('adminConsole'),
     settings: t('settings'),
     help: t('helpAndDocs'),
