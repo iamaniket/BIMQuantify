@@ -1,5 +1,8 @@
 from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
 from bimstitch_api.models.audit_log import AuditLog
+from bimstitch_api.models.bcf_comment import BcfComment
+from bimstitch_api.models.bcf_topic import BcfTopic
+from bimstitch_api.models.bcf_viewpoint import BcfViewpoint
 from bimstitch_api.models.blog_post import BlogPost, BlogPostStatus
 from bimstitch_api.models.borgingsmoment import (
     Borgingsmoment,
@@ -64,6 +67,9 @@ __all__ = [
     "AccessRequest",
     "AccessRequestStatus",
     "AuditLog",
+    "BcfComment",
+    "BcfTopic",
+    "BcfViewpoint",
     "BlogPost",
     "BlogPostStatus",
     "Borgingsmoment",

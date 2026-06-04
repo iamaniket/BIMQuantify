@@ -56,17 +56,24 @@ function IfcInspector({
   const t = useTranslations('viewerInspector');
   const tAttachments = useTranslations('viewerAttachments');
   const [tab, setTab] = useState<Tab>('attachments');
+  const [consumedNonce, setConsumedNonce] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (requestedView !== undefined && requestNonce !== undefined) {
       setTab(requestedView);
+      // A new external trigger resets the consumed state so the body can fire once.
+      setConsumedNonce(undefined);
     }
   }, [requestedView, requestNonce]);
 
   const autoOpenNonce =
-    requestedView !== undefined && requestNonce !== undefined
+    requestedView !== undefined &&
+    requestNonce !== undefined &&
+    requestNonce !== consumedNonce
       ? requestNonce
       : undefined;
+
+  const handleAutoOpenConsumed = () => setConsumedNonce(requestNonce);
 
   const {
     element,
@@ -150,7 +157,8 @@ function IfcInspector({
           modelId={modelId}
           fileId={fileId}
           globalId={null}
-          autoOpenNonce={autoOpenNonce}
+          autoOpenNonce={requestedView === 'attachments' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       ) : tab === 'findings' ? (
         <EntityFindingsBody
@@ -158,7 +166,8 @@ function IfcInspector({
           modelId={modelId}
           fileId={fileId}
           globalId={null}
-          autoOpenNonce={autoOpenNonce}
+          autoOpenNonce={requestedView === 'findings' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       ) : (
         <EntityCertificatesBody
@@ -166,7 +175,8 @@ function IfcInspector({
           modelId={modelId}
           fileId={fileId}
           globalId={null}
-          autoOpenNonce={autoOpenNonce}
+          autoOpenNonce={requestedView === 'certificates' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       );
   } else if (element !== null) {
@@ -180,7 +190,8 @@ function IfcInspector({
           modelId={modelId}
           fileId={fileId}
           globalId={element.globalId}
-          autoOpenNonce={autoOpenNonce}
+          autoOpenNonce={requestedView === 'attachments' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       ) : tab === 'findings' ? (
         <EntityFindingsBody
@@ -188,7 +199,8 @@ function IfcInspector({
           modelId={modelId}
           fileId={fileId}
           globalId={element.globalId}
-          autoOpenNonce={autoOpenNonce}
+          autoOpenNonce={requestedView === 'findings' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       ) : (
         <EntityCertificatesBody
@@ -196,7 +208,8 @@ function IfcInspector({
           modelId={modelId}
           fileId={fileId}
           globalId={element.globalId}
-          autoOpenNonce={autoOpenNonce}
+          autoOpenNonce={requestedView === 'certificates' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       );
   } else {

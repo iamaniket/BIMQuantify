@@ -11,8 +11,8 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
@@ -112,6 +112,10 @@ async def create_capture_link(
 @router.get("", response_model=list[CaptureLinkRead])
 async def list_capture_links(
     project_id: UUID,
+    response: Response,
+    # Generous cap: the portal renders all links for a project (no paging UI).
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -120,10 +124,11 @@ async def list_capture_links(
     membership = await _require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.capture_link, Action.read)
 
+    base = select(CaptureLink).where(CaptureLink.project_id == project.id)
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
     result = await session.execute(
-        select(CaptureLink)
-        .where(CaptureLink.project_id == project.id)
-        .order_by(CaptureLink.created_at.desc())
+        base.order_by(CaptureLink.created_at.desc()).limit(limit).offset(offset)
     )
     return list(result.scalars().all())
 

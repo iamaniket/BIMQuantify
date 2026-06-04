@@ -83,6 +83,9 @@ export type {
   ExploderPluginAPI,
   ExploderPluginOptions,
   ExplodeMode,
+  BcfPluginAPI,
+  BcfViewpointData,
+  BcfPluginOptions,
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
@@ -131,3 +134,4 @@ export { gridPlugin } from './plugins/grid/index.js';
 export { screenshotPlugin } from './plugins/screenshot/index.js';
 export { colorCodingPlugin } from './plugins/color-coding/index.js';
 export { exploderPlugin } from './plugins/exploder/index.js';
+export { bcfPlugin } from './plugins/bcf/index.js';

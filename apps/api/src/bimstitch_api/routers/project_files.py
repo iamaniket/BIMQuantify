@@ -587,7 +587,11 @@ async def complete_upload(
 async def list_files(
     project_id: UUID,
     model_id: UUID,
+    response: Response,
     status_filter: Annotated[Literal["ready", "all"], Query(alias="status")] = "ready",
+    # Generous cap: the portal lists all versions/files for a model (no paging).
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -596,11 +600,14 @@ async def list_files(
     await _require_project_read_access(session, project.id, user, active_org_id)
     model = await _load_model_or_404(session, project.id, model_id)
 
-    stmt = select(ProjectFile).where(ProjectFile.model_id == model.id)
+    base = select(ProjectFile).where(ProjectFile.model_id == model.id)
     if status_filter == "ready":
-        stmt = stmt.where(ProjectFile.status == ProjectFileStatus.ready)
-    stmt = stmt.order_by(ProjectFile.version_number.desc())
-    result = await session.execute(stmt)
+        base = base.where(ProjectFile.status == ProjectFileStatus.ready)
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+    result = await session.execute(
+        base.order_by(ProjectFile.version_number.desc()).limit(limit).offset(offset)
+    )
     return list(result.scalars().all())
 
 

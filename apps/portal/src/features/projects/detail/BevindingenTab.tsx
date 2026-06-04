@@ -99,30 +99,6 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
     );
   }
 
-  if (allFindings.length === 0) {
-    return (
-      <>
-        <EmptyState
-          icon={AlertTriangle}
-          title={t('title')}
-          description={t('description')}
-          action={(
-            <Button variant="border" size="sm" onClick={() => { setCreateOpen(true); }}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              {t('ctaLabel')}
-            </Button>
-          )}
-          className={undefined}
-        />
-        <FindingFormDialog
-          projectId={projectId}
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-        />
-      </>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
@@ -139,19 +115,34 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         <div className="shrink-0 text-body3 text-foreground-tertiary">
           {t('count', { count: findings.length })}
         </div>
-        <Link href={`/projects/${projectId}/findings`}>
-          <Button variant="border" size="sm">
-            <Columns3 className="mr-1.5 h-3.5 w-3.5" />
-            {t('boardLabel')}
-          </Button>
-        </Link>
-        <Button variant="border" size="sm" onClick={() => { setCreateOpen(true); }}>
+        {allFindings.length > 0 && (
+          <Link href={`/projects/${projectId}/findings`}>
+            <Button variant="primary" size="sm">
+              <Columns3 className="mr-1.5 h-3.5 w-3.5" />
+              {t('boardLabel')}
+            </Button>
+          </Link>
+        )}
+        <Button variant="primary" size="sm" onClick={() => { setCreateOpen(true); }}>
           <Plus className="mr-1.5 h-3.5 w-3.5" />
           {t('ctaLabel')}
         </Button>
       </div>
 
-      {findings.length === 0 ? (
+      {allFindings.length === 0 ? (
+        <EmptyState
+          icon={AlertTriangle}
+          title={t('title')}
+          description={t('description')}
+          action={(
+            <Button variant="primary" size="sm" onClick={() => { setCreateOpen(true); }}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              {t('ctaLabel')}
+            </Button>
+          )}
+          className={undefined}
+        />
+      ) : findings.length === 0 ? (
         <p className="py-6 text-center text-body3 text-foreground-tertiary">
           {t('noResults')}
         </p>

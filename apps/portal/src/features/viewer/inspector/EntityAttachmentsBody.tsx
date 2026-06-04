@@ -28,6 +28,8 @@ type EntityAttachmentsBodyProps = {
   globalId: string | null;
   /** When this nonce changes, auto-click the file picker to start the attach flow. */
   autoOpenNonce?: number | undefined;
+  /** Called once the nonce has been consumed so the parent can clear it. */
+  onAutoOpenConsumed?: () => void;
 };
 
 export function EntityAttachmentsBody({
@@ -36,6 +38,7 @@ export function EntityAttachmentsBody({
   fileId,
   globalId,
   autoOpenNonce,
+  onAutoOpenConsumed,
 }: EntityAttachmentsBodyProps): JSX.Element {
   const t = useTranslations('viewerAttachments');
 
@@ -56,8 +59,9 @@ export function EntityAttachmentsBody({
     if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
       lastConsumedNonce.current = autoOpenNonce;
       fileInputRef.current?.click();
+      onAutoOpenConsumed?.();
     }
-  }, [autoOpenNonce]);
+  }, [autoOpenNonce, onAutoOpenConsumed]);
 
   const isProject = globalId === null;
   const elementQuery = useElementAttachments(projectId, modelId, globalId);

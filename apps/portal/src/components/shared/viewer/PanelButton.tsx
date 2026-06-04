@@ -39,7 +39,7 @@ const variantMap: Record<PanelButtonVariant, ButtonProps['variant']> = {
  */
 export const PanelButton = forwardRef<HTMLButtonElement, PanelButtonProps>(
   ({
-    variant = 'primary', active = false, segmented = false, icon, className, children, ...rest
+    variant = 'secondary', active = false, segmented = false, icon, className, children, ...rest
   }, ref) => (
     <Button
       ref={ref}

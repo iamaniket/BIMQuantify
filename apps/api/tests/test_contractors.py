@@ -107,6 +107,30 @@ async def test_list_contractors_org_scoped(
     assert bob_names == ["Beta-Bouw"]
 
 
+async def test_list_contractors_pagination_and_total_count(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    for name in ("Aaa", "Bbb", "Ccc"):
+        resp = await client.post(
+            "/contractors", json={"name": name}, headers=_auth(org_user["access_token"])
+        )
+        assert resp.status_code == 201
+
+    page = await client.get(
+        "/contractors?limit=2&offset=0", headers=_auth(org_user["access_token"])
+    )
+    assert page.status_code == 200
+    assert page.headers["X-Total-Count"] == "3"  # full total, not the page size
+    assert [c["name"] for c in page.json()] == ["Aaa", "Bbb"]
+
+    rest = await client.get(
+        "/contractors?limit=2&offset=2", headers=_auth(org_user["access_token"])
+    )
+    assert rest.status_code == 200
+    assert rest.headers["X-Total-Count"] == "3"
+    assert [c["name"] for c in rest.json()] == ["Ccc"]
+
+
 async def test_same_name_allowed_across_orgs(
     client: AsyncClient,
     org_user: dict[str, str],

@@ -7,8 +7,23 @@ import { defineConfig, devices } from '@playwright/test';
  * reachable. That is a second, separate cause of "UI mode hangs on Loading…".
  * Only include it when the run targets admin-blog, or when no specific spec is
  * named (a full `playwright test` run, which does include admin-blog). */
-const argv = process.argv.join(' ');
+const runtimeProcess = (globalThis as {
+  process?: {
+    argv?: string[];
+    env?: Record<string, string | undefined>;
+  };
+}).process;
+const env = runtimeProcess?.env ?? {};
+
+const argv = (runtimeProcess?.argv ?? []).join(' ');
 const includeWebApp = !/\.spec\.ts\b/.test(argv) || argv.includes('admin-blog');
+const e2eApiPort = env['E2E_API_PORT'] ?? '8010';
+const e2eApiUrl = env['E2E_API_URL'] ?? `http://localhost:${e2eApiPort}`;
+
+if (runtimeProcess?.env) {
+  runtimeProcess.env['E2E_API_PORT'] = e2eApiPort;
+  runtimeProcess.env['E2E_API_URL'] = e2eApiUrl;
+}
 
 export default defineConfig({
   globalSetup: './tests/support/global-setup.ts',
@@ -19,8 +34,8 @@ export default defineConfig({
    * workers: 1 ensures the sequential journey never runs alongside itself. */
   fullyParallel: false,
   workers: 1,
-  forbidOnly: Boolean(process.env['CI']),
-  retries: process.env['CI'] ? 2 : 0,
+  forbidOnly: Boolean(env['CI']),
+  retries: env['CI'] ? 2 : 0,
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
@@ -30,7 +45,7 @@ export default defineConfig({
    * browser competes for resources during the first Next.js cold compile. */
   timeout: 120_000,
   use: {
-    baseURL: 'http://localhost:3001',
+    baseURL: 'http://localhost:3002',
     /* First navigation in --ui mode triggers lazy Next.js page compilation.
      * Default 30 s is too tight on slower machines; 60 s covers cold starts. */
     navigationTimeout: 60_000,
@@ -56,10 +71,16 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm dev',
-      url: 'http://localhost:3001',
-      /* Always reuse a running server — avoids starting a second Next.js
-       * instance when the dev server is already up. */
+      /* E2E portal runs on port 3002 (separate from the dev portal on 3001) so
+       * Playwright always starts it fresh with the correct NEXT_PUBLIC_API_URL.
+       * NEXT_PUBLIC_API_URL is baked in at compile time by Turbopack — reusing the
+       * dev portal (compiled against port 8000) would cause every login/API request
+       * in tests to hit the wrong URL and time out. */
+      command: 'pnpm exec next dev --turbopack --port 3002',
+      url: 'http://localhost:3002',
+      env: {
+        NEXT_PUBLIC_API_URL: e2eApiUrl,
+      },
       reuseExistingServer: true,
       timeout: 120_000,
     },
@@ -76,9 +97,7 @@ export default defineConfig({
           reuseExistingServer: true,
           timeout: 180_000,
           env: {
-            NEXT_PUBLIC_API_URL: process.env['E2E_API_URL']
-              ?? process.env['NEXT_PUBLIC_API_URL']
-              ?? 'http://localhost:8000',
+            NEXT_PUBLIC_API_URL: e2eApiUrl,
           },
         }]
       : []),

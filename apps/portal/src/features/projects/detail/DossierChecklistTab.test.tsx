@@ -11,13 +11,15 @@ vi.mock('@bimstitch/ui', () => ({
     onClick,
     title,
     disabled,
+    variant,
   }: {
     children: React.ReactNode;
     onClick?: () => void;
     title?: string;
     disabled?: boolean;
+    variant?: string;
   }) => (
-    <button type="button" onClick={onClick} title={title} disabled={disabled}>
+    <button type="button" onClick={onClick} title={title} disabled={disabled} data-variant={variant}>
       {children}
     </button>
   ),
@@ -162,5 +164,12 @@ describe('DossierChecklistTab', () => {
       { attachmentId: 'a1', input: { dossier_slot: 'drawings' } },
       expect.anything(),
     );
+  });
+
+  it('renders dossier upload actions as primary buttons', () => {
+    renderTab();
+
+    expect(screen.getByRole('button', { name: 'Upload' })).toHaveAttribute('data-variant', 'primary');
+    expect(screen.getByRole('button', { name: 'Upload certificate' })).toHaveAttribute('data-variant', 'primary');
   });
 });

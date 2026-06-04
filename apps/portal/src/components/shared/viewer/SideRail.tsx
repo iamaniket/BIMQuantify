@@ -84,7 +84,7 @@ export function SideRail({
             className={cn(
               'flex min-h-[92px] w-full flex-col items-center justify-start gap-[9px] rounded border pt-[10px] pb-[13px] transition-colors duration-150',
               isActive
-                ? 'border-[var(--brand-gradient-start)] bg-[var(--brand-gradient-start)] text-white shadow-[0_2px_10px_-2px_rgba(0,0,0,0.35)]'
+                ? 'border-white/45 bg-white/22 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.42),0_2px_10px_-2px_rgba(0,0,0,0.35)]'
                 : 'border-white/25 bg-white text-foreground-secondary hover:border-white/40 hover:bg-white/90',
             )}
           >

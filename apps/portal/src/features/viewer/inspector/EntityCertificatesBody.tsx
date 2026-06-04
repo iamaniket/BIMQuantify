@@ -37,6 +37,8 @@ type EntityCertificatesBodyProps = {
   fileId: string;
   globalId: string | null;
   autoOpenNonce?: number | undefined;
+  /** Called once the nonce has been consumed so the parent can clear it. */
+  onAutoOpenConsumed?: () => void;
 };
 
 const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
@@ -61,6 +63,7 @@ export function EntityCertificatesBody({
   fileId,
   globalId,
   autoOpenNonce,
+  onAutoOpenConsumed,
 }: EntityCertificatesBodyProps): JSX.Element {
   const t = useTranslations('viewerCertificates');
   const tTypes = useTranslations('projectDetail.tabs.certificates.type');
@@ -80,8 +83,9 @@ export function EntityCertificatesBody({
     if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
       lastConsumedNonce.current = autoOpenNonce;
       setUploadOpen(true);
+      onAutoOpenConsumed?.();
     }
-  }, [autoOpenNonce]);
+  }, [autoOpenNonce, onAutoOpenConsumed]);
 
   const certificates = query.data ?? [];
 

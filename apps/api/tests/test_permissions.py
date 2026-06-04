@@ -196,6 +196,7 @@ def test_matrix_snapshot() -> None:
             "capture_link": {"read", "create", "update", "delete"},
             "compliance": {"read", "create"},
             "report": {"read", "create"},
+            "bcf_topic": {"read", "create", "update", "delete"},
         },
         "editor": {
             "project": {"read", "update"},
@@ -215,6 +216,7 @@ def test_matrix_snapshot() -> None:
             "capture_link": {"read", "create", "update"},
             "compliance": {"read", "create"},
             "report": {"read", "create"},
+            "bcf_topic": {"read", "create", "update", "delete"},
         },
         "viewer": {
             "project": {"read"},
@@ -234,6 +236,7 @@ def test_matrix_snapshot() -> None:
             "capture_link": {"read"},
             "compliance": {"read"},
             "report": {"read"},
+            "bcf_topic": {"read"},
         },
         "inspector": {
             "project": {"read"},
@@ -253,6 +256,7 @@ def test_matrix_snapshot() -> None:
             "capture_link": {"read"},
             "compliance": {"read", "create"},
             "report": {"read", "create"},
+            "bcf_topic": {"read", "create", "update"},
         },
         "contractor": {
             "project": {"read"},
@@ -272,6 +276,7 @@ def test_matrix_snapshot() -> None:
             "capture_link": {"read"},
             "compliance": {"read"},
             "report": {"read"},
+            "bcf_topic": {"read", "create", "update"},
         },
         "client": {
             "project": {"read"},
@@ -291,6 +296,7 @@ def test_matrix_snapshot() -> None:
             "capture_link": {"read"},
             "compliance": {"read"},
             "report": {"read"},
+            "bcf_topic": {"read"},
         },
     }
 

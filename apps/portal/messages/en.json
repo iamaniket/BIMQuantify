@@ -1043,6 +1043,7 @@
         "searchPlaceholder": "Search certificates…",
         "filterAll": "All types",
         "uploadButton": "Upload",
+        "moreUploadOptions": "More upload options",
         "uploadTitle": "Upload certificate",
         "uploadDescription": "Add a proof-of-conformity document with its type and validity window.",
         "uploadSuccess": "{name} uploaded",

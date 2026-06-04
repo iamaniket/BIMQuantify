@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,10 +54,17 @@ async def create_contractor(
 
 @router.get("", response_model=list[ContractorRead])
 async def list_contractors(
+    response: Response,
+    # Generous cap: the portal loads all contractors into a picker (no paging).
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
 ) -> list[Contractor]:
-    result = await session.execute(select(Contractor).order_by(Contractor.name))
+    base = select(Contractor)
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+    result = await session.execute(base.order_by(Contractor.name).limit(limit).offset(offset))
     return list(result.scalars().all())
 
 

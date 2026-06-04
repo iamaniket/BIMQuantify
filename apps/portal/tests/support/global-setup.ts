@@ -5,7 +5,8 @@
  * All service URLs are configurable via E2E_* env vars so the same setup works
  * with both dev containers (default) and the dedicated test compose.
  *
- * The dev API must NOT be running on port 8000 when E2E tests start.
+ * By default, E2E API runs on a dedicated port (8010) to avoid clashing with
+ * a dev API that may already be running on 8000.
  */
 
 import { execSync, spawn } from 'child_process';
@@ -31,7 +32,7 @@ const S3_ENDPOINT = process.env['E2E_S3_ENDPOINT']
 const REDIS_CONTAINER = process.env['E2E_REDIS_CONTAINER']
   ?? 'bimstitch-redis';
 const REDIS_DB = process.env['E2E_REDIS_DB'] ?? '2';
-const API_PORT = process.env['E2E_API_PORT'] ?? '8000';
+const API_PORT = process.env['E2E_API_PORT'] ?? '8010';
 
 const API_URL = `http://localhost:${API_PORT}`;
 

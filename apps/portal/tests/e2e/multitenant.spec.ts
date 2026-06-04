@@ -111,7 +111,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     //    triggers lazy page compilation that can take 30-90 s per route.
     //    First poll with a lightweight Node fetch so we don't waste a browser
     //    page on a server that isn't up yet.
-    const portalUrl = 'http://localhost:3001';
+    const portalUrl = E2E_ENV.PORTAL_URL;
     log('waiting for portal to be reachable');
     let portalReady = false;
     for (let attempt = 0; attempt < 30; attempt++) {

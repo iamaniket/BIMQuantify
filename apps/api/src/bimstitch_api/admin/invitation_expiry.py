@@ -12,7 +12,6 @@ invites naturally.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -20,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.background.periodic import PeriodicSweeper
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_session_maker
 from bimstitch_api.models.organization_member import (
@@ -79,42 +79,18 @@ async def _sweep_once() -> None:
         logger.exception("invitation_expiry sweep failed")
 
 
-class InvitationExpirySweeper:
-    """Runs `_sweep_once` on an interval inside the API process.
-
-    Lifespan: `start()` schedules the task, `stop()` cancels and awaits
-    it. Set `interval_minutes=0` to disable (useful in tests or when a
-    cron handles it externally).
+class InvitationExpirySweeper(PeriodicSweeper):
+    """Runs `_sweep_once` on an interval inside the API process. When more than
+    one instance runs, only one executes each cycle (advisory lock). Set
+    `interval_minutes=0` to disable (useful in tests or when a cron handles it).
     """
 
     def __init__(self, interval_minutes: int) -> None:
-        self.interval_seconds = interval_minutes * 60
-        self._task: asyncio.Task[None] | None = None
+        super().__init__(
+            name="invitation_expiry_sweeper",
+            interval_seconds=interval_minutes * 60,
+            lock_key="sweep:invitation_expiry",
+        )
 
-    async def _loop(self) -> None:
-        while True:
-            try:
-                await asyncio.sleep(self.interval_seconds)
-                await _sweep_once()
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                logger.exception("invitation_expiry loop iteration failed")
-
-    def start(self) -> None:
-        if self.interval_seconds <= 0:
-            logger.info("invitation_expiry sweeper disabled (interval=0)")
-            return
-        if self._task is not None:
-            return
-        self._task = asyncio.create_task(self._loop(), name="invitation_expiry_sweeper")
-
-    async def stop(self) -> None:
-        if self._task is None:
-            return
-        self._task.cancel()
-        try:
-            await self._task
-        except asyncio.CancelledError:
-            pass
-        self._task = None
+    async def run_once(self) -> None:
+        await _sweep_once()

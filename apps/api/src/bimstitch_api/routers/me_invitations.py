@@ -12,9 +12,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
@@ -76,10 +76,14 @@ async def _load_pending(
 
 @router.get("", response_model=list[InvitationRead])
 async def list_my_invitations(
+    response: Response,
+    # Naturally small (pending invites for one user), but cap defensively.
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> list[InvitationRead]:
-    stmt = (
+    base = (
         select(OrganizationMember, Organization, User)
         .join(Organization, Organization.id == OrganizationMember.organization_id)
         .join(User, User.id == OrganizationMember.invited_by, isouter=True)
@@ -88,8 +92,10 @@ async def list_my_invitations(
             OrganizationMember.status == OrganizationMemberStatus.pending,
             Organization.deleted_at.is_(None),
         )
-        .order_by(OrganizationMember.invited_at.desc())
     )
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+    stmt = base.order_by(OrganizationMember.invited_at.desc()).limit(limit).offset(offset)
     rows = (await session.execute(stmt)).all()
     settings = get_settings()
     return [

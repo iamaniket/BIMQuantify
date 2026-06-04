@@ -12,6 +12,7 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
@@ -219,21 +220,21 @@ export function CertificateUploadDialog({
               placeholder={t('fieldDescriptionPlaceholder')}
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <DialogClose asChild>
-              <Button variant="ghost" size="sm">{t('cancel')}</Button>
-            </DialogClose>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleUpload}
-              disabled={file === null || validityInvalid || uploadMutation.isPending}
-            >
-              <Upload className="mr-1.5 h-3.5 w-3.5" />
-              {t('uploadButton')}
-            </Button>
-          </div>
         </DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost" size="sm">{t('cancel')}</Button>
+          </DialogClose>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleUpload}
+            disabled={file === null || validityInvalid || uploadMutation.isPending}
+          >
+            <Upload className="mr-1.5 h-3.5 w-3.5" />
+            {t('uploadButton')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

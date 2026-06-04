@@ -8,7 +8,7 @@ import type { FullConfig } from '@playwright/test';
 
 import { PID_FILE, SETUP_LOCK, killProcessOnPort } from './e2eApiProcess';
 
-const API_PORT = process.env['E2E_API_PORT'] ?? '8000';
+const API_PORT = process.env['E2E_API_PORT'] ?? '8010';
 
 export default async function globalTeardown(_config: FullConfig): Promise<void> {
   if (existsSync(PID_FILE)) {

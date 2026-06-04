@@ -184,6 +184,8 @@ export type { ColorCodingPluginAPI, ColorCodingOptions, ColorScheme, LegendEntry
 
 export type { ExploderPluginAPI, ExploderPluginOptions, ExplodeMode } from './plugins/exploder/index.js';
 
+export type { BcfPluginAPI, BcfViewpointData, BcfPluginOptions } from './plugins/bcf/index.js';
+
 export type {
   Plugin,
   ViewerContext,

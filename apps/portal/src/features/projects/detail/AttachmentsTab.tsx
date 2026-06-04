@@ -14,6 +14,7 @@ import {
   Button,
   EmptyState,
   Select,
+  SplitButton,
   Skeleton,
 } from '@bimstitch/ui';
 
@@ -134,23 +135,36 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
             <option key={value} value={value}>{t(labelKey)}</option>
           ))}
         </Select>
-        <Button
-          variant="border"
-          size="sm"
-          onClick={() => { setShowCaptureLinks(!showCaptureLinks); }}
-        >
-          <Camera className="mr-1.5 h-3.5 w-3.5" />
-          {t('captureLink')}
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => { fileInputRef.current?.click(); }}
+        <SplitButton
+          label={t('uploadButton')}
+          icon={<Upload className="h-3.5 w-3.5" />}
           disabled={uploadMutation.isPending}
-        >
-          <Upload className="mr-1.5 h-3.5 w-3.5" />
-          {t('uploadButton')}
-        </Button>
+          onClick={() => { fileInputRef.current?.click(); }}
+          menuLabel={t('captureLink')}
+          items={[
+            {
+              id: 'upload-file',
+              label: t('uploadButton'),
+              icon: <Upload className="h-4 w-4" />,
+              onSelect: () => { fileInputRef.current?.click(); },
+            },
+            {
+              id: 'capture-link',
+              label: t('captureLink'),
+              icon: <Camera className="h-4 w-4" />,
+              onSelect: () => { setShowCaptureLinks((prev) => !prev); },
+            },
+            {
+              id: 'create-capture-link',
+              label: t('captureLinkCreate'),
+              icon: <Camera className="h-4 w-4" />,
+              onSelect: () => {
+                setShowCaptureLinks(true);
+                setCaptureLinkDialogOpen(true);
+              },
+            },
+          ]}
+        />
         <input
           ref={fileInputRef}
           type="file"

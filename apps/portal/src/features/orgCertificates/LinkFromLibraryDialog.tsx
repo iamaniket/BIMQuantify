@@ -13,8 +13,10 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
   Skeleton,
 } from '@bimstitch/ui';
 
@@ -75,16 +77,13 @@ export function LinkFromLibraryDialog({ projectId, open, onOpenChange }: Props):
           <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <DialogBody className="space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); }}
-              placeholder={t('searchPlaceholder')}
-              className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-3 text-body3 text-foreground placeholder:text-foreground-disabled focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
+          <Input
+            inputSize="sm"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); }}
+            placeholder={t('searchPlaceholder')}
+            leading={<Search className="h-3.5 w-3.5" />}
+          />
 
           {certsQuery.isLoading && (
             <div className="space-y-2">
@@ -146,21 +145,21 @@ export function LinkFromLibraryDialog({ projectId, open, onOpenChange }: Props):
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <DialogClose asChild>
-              <Button variant="ghost" size="sm">{t('cancel')}</Button>
-            </DialogClose>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleLink}
-              disabled={selectedId === null || linkMutation.isPending}
-            >
-              <Link2 className="mr-1.5 h-3.5 w-3.5" />
-              {t('linkButton')}
-            </Button>
-          </div>
         </DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost" size="sm">{t('cancel')}</Button>
+          </DialogClose>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleLink}
+            disabled={selectedId === null || linkMutation.isPending}
+          >
+            <Link2 className="mr-1.5 h-3.5 w-3.5" />
+            {t('linkButton')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

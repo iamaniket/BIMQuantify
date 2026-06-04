@@ -335,7 +335,7 @@ function DossierRow({
             <Link2 className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant={req.fulfilled ? 'ghost' : 'border'}
+            variant="primary"
             size="sm"
             onClick={() => { onUpload(req.sourceValue as DossierSlotValue); }}
             disabled={busy}
@@ -347,7 +347,7 @@ function DossierRow({
       )}
       {req.sourceKind === 'certificate_type' && (
         <Button
-          variant={req.fulfilled ? 'ghost' : 'border'}
+          variant="primary"
           size="sm"
           className="shrink-0"
           onClick={() => { onUploadCertificate(req.sourceValue as CertificateTypeValue); }}

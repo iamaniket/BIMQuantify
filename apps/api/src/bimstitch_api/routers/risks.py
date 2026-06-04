@@ -9,8 +9,8 @@ or editor.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
@@ -95,6 +95,12 @@ async def create_risk(
 @router.get("", response_model=list[RiskRead])
 async def list_risks(
     project_id: UUID,
+    response: Response,
+    # Generous defensive cap: the portal fetches the whole list (no pagination
+    # UI yet), so the default must exceed realistic counts to avoid truncating.
+    # X-Total-Count is exposed so the portal can adopt real paging later.
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -102,10 +108,12 @@ async def list_risks(
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
 
+    base = select(Risk).where(Risk.project_id == project.id)
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
+
     result = await session.execute(
-        select(Risk)
-        .where(Risk.project_id == project.id)
-        .order_by(Risk.category, Risk.level, Risk.created_at)
+        base.order_by(Risk.category, Risk.level, Risk.created_at).limit(limit).offset(offset)
     )
     return list(result.scalars().all())
 

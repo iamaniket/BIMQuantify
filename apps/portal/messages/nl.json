@@ -1043,6 +1043,7 @@
         "searchPlaceholder": "Certificaten zoeken…",
         "filterAll": "Alle typen",
         "uploadButton": "Uploaden",
+        "moreUploadOptions": "Meer uploadopties",
         "uploadTitle": "Certificaat uploaden",
         "uploadDescription": "Voeg een bewijs-van-conformiteit document toe met type en geldigheidsperiode.",
         "uploadSuccess": "{name} geüpload",

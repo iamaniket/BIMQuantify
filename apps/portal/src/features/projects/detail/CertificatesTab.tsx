@@ -12,6 +12,7 @@ import {
   MetaGrid,
   Select,
   Skeleton,
+  SplitButton,
   type BadgeVariant,
 } from '@bimstitch/ui';
 import {
@@ -147,24 +148,26 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
           ))}
         </Select>
         {canUpload && (
-          <>
-            <Button
-              variant="border"
-              size="sm"
-              onClick={() => { setLinkOpen(true); }}
-            >
-              <Library className="mr-1.5 h-3.5 w-3.5" />
-              {t('linkFromLibrary')}
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => { setUploadOpen(true); }}
-            >
-              <Upload className="mr-1.5 h-3.5 w-3.5" />
-              {t('uploadButton')}
-            </Button>
-          </>
+          <SplitButton
+            label={t('uploadButton')}
+            icon={<Upload className="h-3.5 w-3.5" />}
+            onClick={() => { setUploadOpen(true); }}
+            menuLabel={t('moreUploadOptions')}
+            items={[
+              {
+                id: 'upload-certificate',
+                label: t('uploadButton'),
+                icon: <Upload className="h-4 w-4" />,
+                onSelect: () => { setUploadOpen(true); },
+              },
+              {
+                id: 'link-from-library',
+                label: t('linkFromLibrary'),
+                icon: <Library className="h-4 w-4" />,
+                onSelect: () => { setLinkOpen(true); },
+              },
+            ]}
+          />
         )}
       </div>
 
@@ -174,7 +177,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
           title={t('title')}
           description={t('description')}
           action={canUpload ? (
-            <Button variant="border" size="sm" onClick={() => { setUploadOpen(true); }}>
+            <Button variant="primary" size="sm" onClick={() => { setUploadOpen(true); }}>
               {t('ctaLabel')}
             </Button>
           ) : undefined}

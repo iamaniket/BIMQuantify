@@ -14,6 +14,7 @@ import logging
 import os
 import pathlib
 import secrets
+import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -41,6 +42,15 @@ logger = logging.getLogger(__name__)
 _API_DIR = pathlib.Path(__file__).resolve().parents[3]
 _TENANT_INI = str(_API_DIR / "alembic.tenant.ini")
 
+# Alembic's command API drives migrations through module-level `op`/`context`
+# proxies, and the tenant chain resolves its target schema from a process-global
+# env var. Neither is safe to run concurrently in one process, so serialize
+# tenant upgrades: two simultaneous provisionings (each running the chain in a
+# worker thread via run_in_executor) would otherwise clobber each other's run.
+# Batch upgrades across many schemas use separate processes instead — see
+# scripts/migrate_all.py.
+_MIGRATION_LOCK = threading.Lock()
+
 
 @dataclass
 class ProvisionResult:
@@ -53,19 +63,6 @@ class ProvisionResult:
 class ProvisioningError(RuntimeError):
     """Saga failed and compensations have run. The DB is back to its
     pre-saga state — caller can safely surface a 500 to the user."""
-
-
-async def _run_tenant_migrations(schema: str) -> None:
-    """Run the tenant Alembic chain against `schema`. Synchronous because
-    Alembic's `command.upgrade` blocks; called via run_in_executor in
-    `provision_organization`.
-    """
-    cfg = Config(_TENANT_INI)
-    os.environ["BIMSTITCH_TENANT_SCHEMA"] = schema
-    try:
-        command.upgrade(cfg, "head")
-    finally:
-        os.environ.pop("BIMSTITCH_TENANT_SCHEMA", None)
 
 
 async def _find_or_create_user(
@@ -241,13 +238,19 @@ async def provision_organization(
 
 def _run_sync_tenant_migrations(schema: str) -> None:
     """Sync wrapper for the alembic command. Runs in a thread executor
-    because Alembic uses sync SQLAlchemy under the hood."""
+    because Alembic uses sync SQLAlchemy under the hood.
+
+    Holds `_MIGRATION_LOCK` for the whole upgrade: the env var and Alembic's
+    op/context proxies are process-global, so two threads running this at once
+    (e.g. two concurrent org provisionings) would clobber each other.
+    """
     cfg = Config(_TENANT_INI)
-    os.environ["BIMSTITCH_TENANT_SCHEMA"] = schema
-    try:
-        command.upgrade(cfg, "head")
-    finally:
-        os.environ.pop("BIMSTITCH_TENANT_SCHEMA", None)
+    with _MIGRATION_LOCK:
+        os.environ["BIMSTITCH_TENANT_SCHEMA"] = schema
+        try:
+            command.upgrade(cfg, "head")
+        finally:
+            os.environ.pop("BIMSTITCH_TENANT_SCHEMA", None)
 
 
 async def _compensate(schema: str, org_id: UUID, completed: set[str]) -> None:

@@ -12,6 +12,7 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
@@ -124,7 +125,7 @@ export function OrgCertificateUploadDialog({ open, onOpenChange }: Props): JSX.E
               type="file"
               accept={ACCEPT}
               onChange={(e) => { setFile(e.target.files?.[0] ?? null); }}
-              className="mt-1 block w-full text-body3 file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-body3 file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+              className="mt-1 block w-full text-body3 text-foreground-secondary file:mr-3 file:rounded-md file:border file:border-border file:bg-background-secondary file:px-3 file:py-1.5 file:text-body3 file:text-foreground hover:file:bg-background-hover"
             />
           </div>
 
@@ -222,21 +223,21 @@ export function OrgCertificateUploadDialog({ open, onOpenChange }: Props): JSX.E
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <DialogClose asChild>
-              <Button variant="ghost" size="sm">{t('cancel')}</Button>
-            </DialogClose>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSubmit}
-              disabled={file === null || uploadMutation.isPending || validityError}
-            >
-              <Upload className="mr-1.5 h-3.5 w-3.5" />
-              {t('submit')}
-            </Button>
-          </div>
         </DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost" size="sm">{t('cancel')}</Button>
+          </DialogClose>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSubmit}
+            disabled={file === null || uploadMutation.isPending || validityError}
+          >
+            <Upload className="mr-1.5 h-3.5 w-3.5" />
+            {t('submit')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

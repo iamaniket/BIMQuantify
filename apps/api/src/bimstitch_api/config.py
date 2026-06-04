@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     job_stuck_timeout_minutes: int = Field(
         default=60, alias="JOB_STUCK_TIMEOUT_MINUTES"
     )
+    # Max org schemas a per-org sweep (deadlines, job-reconcile) processes
+    # concurrently. Bounds DB connection use while keeping one slow tenant from
+    # blocking the rest as org count grows.
+    sweep_org_concurrency: int = Field(default=8, alias="SWEEP_ORG_CONCURRENCY")
 
     smtp_host: str = Field(default="localhost", alias="SMTP_HOST")
     smtp_port: int = Field(default=1025, alias="SMTP_PORT")

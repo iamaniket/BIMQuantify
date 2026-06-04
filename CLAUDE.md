@@ -164,6 +164,17 @@ Isolation is **schema-per-tenant**: each org gets its own Postgres schema `org_<
 
 **`ProjectStatus` / `ProjectPhase` enum values are language-neutral** (`design`, `permit_review`, `construction`, `handover`, `complete` for status; `design`, `tender`, `work_prep`, `shell`, `finishing`, `handover` for phase). Display strings (Dutch terms in the wizard) live in the portal's i18n catalog and the wizard step option labels — DB values stay neutral so a German project can render German labels for the same codes.
 
+### Enum evolution rule (schema-per-tenant tax)
+
+Postgres `Enum` types are **redefined inside every tenant schema**, so changing one is a per-schema fan-out: `ALTER TYPE ... ADD VALUE` (or a drop/recreate for a rename/removal) has to run against every `org_*` schema, the same as any tenant migration. The `JobType` collapse of `bbl_compliance_check`/`wkb_compliance_check` into a single `compliance_check` was driven by exactly this cost — **framework is data, not schema**.
+
+Forward convention for new fields:
+- A field whose value set is likely to **grow** (statuses, types, categories, phases, severities, disciplines) → prefer `String` + a `CHECK` constraint, or app-level validation, over a Postgres `Enum`. If you do use an `Enum`, know that adding a value is a tenant-fan-out migration — run it via `uv run python -m bimstitch_api.scripts.migrate_all` (parallel, state-tracked fan-out; `--check` reports drift).
+- Enum **values stay language-neutral** (see the rule above); localized labels live in the jurisdiction registry / i18n catalogs.
+- **Never** encode jurisdiction or framework into an enum — it's data (`Project.country`, `Job.payload["framework"]`).
+
+This applies to *new* fields and the next few migrations; the existing ~30 enums are not being rewritten. Rough split — likely-to-grow (lean toward `String`+`CHECK` if reworked): `FindingSeverity`/`FindingStatus`, `RiskCategory`, `ProjectStatus`/`ProjectPhase`/`ProjectLifecycleState`, `BuildingType`, `FileType`, `IfcSchema`, `JobType`, `ChecklistItemType`, `EvidenceType`, `AttachmentCategory`, `DossierSlot`, `CertificateType`, `ReportType`, `NotificationEventType`, `BorgingsmomentPhase`, `ProjectRole`. Stable (fine as enums): the terminal-state status sets, `RiskLevel`, `ConsequenceClass`, `ModelDiscipline`, `InspectionVerdict`, org/member statuses.
+
 ### Bilingual (NL + EN) rule
 
 **Hard rule**: every user-visible string the portal can render in either Dutch or English MUST exist in both languages. The portal supports two locales today (`nl`, `en`, declared in `packages/i18n/src/common.ts`). Mixed Dutch-in-English or English-in-Dutch screens are bugs.

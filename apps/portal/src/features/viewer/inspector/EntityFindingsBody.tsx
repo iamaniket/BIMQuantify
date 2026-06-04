@@ -42,6 +42,8 @@ type EntityFindingsBodyProps = {
   globalId: string | null;
   /** When this nonce changes, auto-open the new-finding dialog. */
   autoOpenNonce?: number | undefined;
+  /** Called once the nonce has been consumed so the parent can clear it. */
+  onAutoOpenConsumed?: () => void;
 };
 
 export function EntityFindingsBody({
@@ -50,6 +52,7 @@ export function EntityFindingsBody({
   fileId,
   globalId,
   autoOpenNonce,
+  onAutoOpenConsumed,
 }: EntityFindingsBodyProps): JSX.Element {
   const t = useTranslations('viewerFindings');
   const tSeverity = useTranslations('findings.severity');
@@ -71,8 +74,9 @@ export function EntityFindingsBody({
     if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
       lastConsumedNonce.current = autoOpenNonce;
       setCreateOpen(true);
+      onAutoOpenConsumed?.();
     }
-  }, [autoOpenNonce]);
+  }, [autoOpenNonce, onAutoOpenConsumed]);
 
   const findings = query.data ?? [];
 

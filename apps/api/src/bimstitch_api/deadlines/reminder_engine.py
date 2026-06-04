@@ -14,7 +14,6 @@ means a retry on the next sweep, but never a double-send after commit.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import date, datetime
 from uuid import UUID
@@ -24,6 +23,8 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.actions.dispatcher import dispatch_action
+from bimstitch_api.background.concurrency import map_bounded
+from bimstitch_api.background.periodic import PeriodicSweeper
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_session_maker
 from bimstitch_api.deadlines.settings import get_effective_settings
@@ -383,7 +384,6 @@ async def _sweep_org(
 async def sweep_all_orgs() -> int:
     """One-shot sweep across all active orgs. Returns total deadlines processed."""
     session_maker = get_session_maker()
-    total = 0
 
     async with session_maker() as session:
         result = await session.execute(
@@ -392,14 +392,20 @@ async def sweep_all_orgs() -> int:
                 Organization.deleted_at.is_(None),
             )
         )
-        orgs = list(result.all())
+        orgs: list[tuple[UUID, str]] = [
+            (row.id, row.schema_name) for row in result.all()
+        ]
 
-    for org_id, schema in orgs:
+    async def _one(org: tuple[UUID, str]) -> int:
+        org_id, schema = org
         try:
-            count = await _sweep_org(org_id, schema)
-            total += count
+            return await _sweep_org(org_id, schema)
         except Exception:
             logger.exception("Deadline sweep failed for org %s", org_id)
+            return 0
+
+    counts = await map_bounded(orgs, _one, limit=get_settings().sweep_org_concurrency)
+    total = sum(counts)
 
     if total:
         logger.info("deadline_reminder: processed %d deadlines across %d orgs", total, len(orgs))
@@ -411,41 +417,18 @@ async def sweep_all_orgs() -> int:
 # ---------------------------------------------------------------------------
 
 
-class DeadlineReminderSweeper:
-    """Runs ``sweep_all_orgs`` on an interval inside the API process.
-
-    Mirrors ``InvitationExpirySweeper``: ``start()`` schedules the task,
-    ``stop()`` cancels and awaits it. Set ``interval_minutes=0`` to disable.
+class DeadlineReminderSweeper(PeriodicSweeper):
+    """Runs ``sweep_all_orgs`` on an interval inside the API process. When more
+    than one instance runs, only one executes each cycle (advisory lock). Set
+    ``interval_minutes=0`` to disable.
     """
 
     def __init__(self, interval_minutes: int) -> None:
-        self.interval_seconds = interval_minutes * 60
-        self._task: asyncio.Task[None] | None = None
+        super().__init__(
+            name="deadline_reminder_sweeper",
+            interval_seconds=interval_minutes * 60,
+            lock_key="sweep:deadline_reminder",
+        )
 
-    async def _loop(self) -> None:
-        while True:
-            try:
-                await asyncio.sleep(self.interval_seconds)
-                await sweep_all_orgs()
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                logger.exception("deadline_reminder loop iteration failed")
-
-    def start(self) -> None:
-        if self.interval_seconds <= 0:
-            logger.info("deadline_reminder sweeper disabled (interval=0)")
-            return
-        if self._task is not None:
-            return
-        self._task = asyncio.create_task(self._loop(), name="deadline_reminder_sweeper")
-
-    async def stop(self) -> None:
-        if self._task is None:
-            return
-        self._task.cancel()
-        try:
-            await self._task
-        except asyncio.CancelledError:
-            pass
-        self._task = None
+    async def run_once(self) -> None:
+        await sweep_all_orgs()

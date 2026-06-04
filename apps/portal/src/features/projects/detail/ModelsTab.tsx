@@ -25,7 +25,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-end px-1">
         <Button
-          variant="border"
+          variant="primary"
           size="sm"
           onClick={() => { setNewModelOpen(true); }}
         >

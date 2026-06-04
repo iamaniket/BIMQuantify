@@ -14,7 +14,7 @@ verdict. These endpoints manage that flow:
 from datetime import UTC, date, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -215,21 +215,29 @@ async def submit_result(
 )
 async def list_results(
     moment_id: UUID,
+    response: Response,
+    # Generous cap: the portal restores the full result set on reconnect.
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[ChecklistItemResult]:
     moment, _project_id = await _require_moment_readable(session, moment_id, user)
 
+    base = (
+        select(ChecklistItemResult)
+        .where(ChecklistItemResult.borgingsmoment_id == moment.id)
+        .join(
+            ChecklistItem,
+            ChecklistItemResult.checklist_item_id == ChecklistItem.id,
+        )
+    )
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
     rows = (
         await session.execute(
-            select(ChecklistItemResult)
-            .where(ChecklistItemResult.borgingsmoment_id == moment.id)
-            .join(
-                ChecklistItem,
-                ChecklistItemResult.checklist_item_id == ChecklistItem.id,
-            )
-            .order_by(ChecklistItem.sequence)
+            base.order_by(ChecklistItem.sequence).limit(limit).offset(offset)
         )
     ).scalars().all()
     return list(rows)

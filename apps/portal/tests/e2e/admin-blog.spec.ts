@@ -68,7 +68,7 @@ test.describe.serial('Admin blog publish lifecycle', () => {
     const { email, password } = requireSuperAdminCreds();
     const loginPage = await browser.newPage();
     try {
-      await loginPage.goto('http://localhost:3001/en/login');
+      await loginPage.goto(`${E2E_ENV.PORTAL_URL}/en/login`);
       await loginPage.waitForLoadState('domcontentloaded');
       await loginViaUI(loginPage, email, password);
     } finally {

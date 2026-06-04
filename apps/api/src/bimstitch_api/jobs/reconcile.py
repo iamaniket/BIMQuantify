@@ -27,13 +27,15 @@ there is no request-scoped tenant context for a background job.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select, text
 
+from bimstitch_api.background.concurrency import map_bounded
+from bimstitch_api.background.periodic import PeriodicSweeper
+from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_session_maker
 from bimstitch_api.models.job import Job, JobStatus
 from bimstitch_api.models.organization import Organization, OrganizationStatus
@@ -158,14 +160,20 @@ async def sweep_all_orgs(stuck_timeout_minutes: int) -> int:
                 Organization.deleted_at.is_(None),
             )
         )
-        orgs = list(result.all())
+        orgs: list[tuple[UUID, str]] = [
+            (row.id, row.schema_name) for row in result.all()
+        ]
 
-    total = 0
-    for org_id, schema in orgs:
+    async def _one(org: tuple[UUID, str]) -> int:
+        org_id, schema = org
         try:
-            total += await _sweep_org(schema, stuck_timeout_minutes)
+            return await _sweep_org(schema, stuck_timeout_minutes)
         except Exception:
             logger.exception("Job reconciliation failed for org %s", org_id)
+            return 0
+
+    counts = await map_bounded(orgs, _one, limit=get_settings().sweep_org_concurrency)
+    total = sum(counts)
 
     if total:
         logger.info(
@@ -174,42 +182,19 @@ async def sweep_all_orgs(stuck_timeout_minutes: int) -> int:
     return total
 
 
-class JobReconcileSweeper:
-    """Runs ``sweep_all_orgs`` on an interval inside the API process.
-
-    Mirrors ``DeadlineReminderSweeper``: ``start()`` schedules the task,
-    ``stop()`` cancels and awaits it. Set ``interval_minutes=0`` to disable.
+class JobReconcileSweeper(PeriodicSweeper):
+    """Runs ``sweep_all_orgs`` on an interval inside the API process. When more
+    than one instance runs, only one executes each cycle (advisory lock). Set
+    ``interval_minutes=0`` to disable.
     """
 
     def __init__(self, interval_minutes: int, stuck_timeout_minutes: int) -> None:
-        self.interval_seconds = interval_minutes * 60
+        super().__init__(
+            name="job_reconcile_sweeper",
+            interval_seconds=interval_minutes * 60,
+            lock_key="sweep:job_reconcile",
+        )
         self.stuck_timeout_minutes = stuck_timeout_minutes
-        self._task: asyncio.Task[None] | None = None
 
-    async def _loop(self) -> None:
-        while True:
-            try:
-                await asyncio.sleep(self.interval_seconds)
-                await sweep_all_orgs(self.stuck_timeout_minutes)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                logger.exception("job_reconcile loop iteration failed")
-
-    def start(self) -> None:
-        if self.interval_seconds <= 0:
-            logger.info("job_reconcile sweeper disabled (interval=0)")
-            return
-        if self._task is not None:
-            return
-        self._task = asyncio.create_task(self._loop(), name="job_reconcile_sweeper")
-
-    async def stop(self) -> None:
-        if self._task is None:
-            return
-        self._task.cancel()
-        try:
-            await self._task
-        except asyncio.CancelledError:
-            pass
-        self._task = None
+    async def run_once(self) -> None:
+        await sweep_all_orgs(self.stuck_timeout_minutes)

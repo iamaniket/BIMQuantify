@@ -52,6 +52,7 @@ class Resource(StrEnum):
     audit_log = "audit_log"
     compliance = "compliance"
     report = "report"
+    bcf_topic = "bcf_topic"
 
 
 class Action(StrEnum):
@@ -108,6 +109,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.audit_log: _READ,
                 Resource.compliance: _READ_CREATE,
                 Resource.report: _READ_CREATE,
+                Resource.bcf_topic: _READ_WRITE_DELETE,
             }
         ),
         ProjectRole.editor: MappingProxyType(
@@ -129,6 +131,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.audit_log: _NONE,
                 Resource.compliance: _READ_CREATE,
                 Resource.report: _READ_CREATE,
+                Resource.bcf_topic: _READ_WRITE_DELETE,
             }
         ),
         ProjectRole.viewer: MappingProxyType(
@@ -150,6 +153,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.audit_log: _NONE,
                 Resource.compliance: _READ,
                 Resource.report: _READ,
+                Resource.bcf_topic: _READ,
             }
         ),
         # Inspector (NL: kwaliteitsborger): full inspect rights + sole holder
@@ -178,6 +182,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.audit_log: _READ,
                 Resource.compliance: _READ_CREATE,
                 Resource.report: _READ_CREATE,
+                Resource.bcf_topic: _READ_WRITE,
             }
         ),
         # Contractor (NL: aannemer): reads all project data, logs findings
@@ -202,6 +207,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.audit_log: _NONE,
                 Resource.compliance: _READ,
                 Resource.report: _READ,
+                Resource.bcf_topic: _READ_WRITE,
             }
         ),
         # Client / principal (NL: opdrachtgever): reads most things, writes
@@ -225,6 +231,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.audit_log: _NONE,
                 Resource.compliance: _READ,
                 Resource.report: _READ,
+                Resource.bcf_topic: _READ,
             }
         ),
     }
