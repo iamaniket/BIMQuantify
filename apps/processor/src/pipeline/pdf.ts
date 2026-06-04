@@ -11,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import { postCallback } from '../api/callback.js';
 import { logger } from '../log.js';
@@ -44,8 +44,11 @@ function parsePdfPayload(raw: Record<string, unknown>): PdfExtractionPayload {
   return { file_id, project_id, storage_key };
 }
 
-// pdfjs-dist in Node.js doesn't use a worker thread; set to empty string to disable.
-GlobalWorkerOptions.workerSrc = '';
+// Worker setup is left to pdfjs-dist: its legacy build's PDFWorker static block
+// detects Node.js, disables the real worker thread, and defaults
+// GlobalWorkerOptions.workerSrc to "./pdf.worker.mjs" so the worker code runs on
+// the main thread. Overriding workerSrc here (e.g. to '') clobbers that default and
+// makes getDocument throw `Setting up fake worker failed`. See test/pdf-worker.test.ts.
 
 let cachedVersion: string | null = null;
 
