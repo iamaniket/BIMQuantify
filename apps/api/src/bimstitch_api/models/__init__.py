@@ -30,6 +30,7 @@ from bimstitch_api.models.deadline_notification_settings import DeadlineNotifica
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
+from bimstitch_api.models.org_certificate import OrgCertificate
 from bimstitch_api.models.notification import (
     Notification,
     NotificationEventType,
@@ -101,6 +102,7 @@ __all__ = [
     "Notification",
     "NotificationEventType",
     "NotificationRead",
+    "OrgCertificate",
     "Organization",
     "OrganizationMember",
     "OrganizationMemberStatus",

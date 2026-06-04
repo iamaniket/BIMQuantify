@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Eye, FileBadge, Search, Trash2, Upload } from 'lucide-react';
+import { Download, Eye, FileBadge, Library, Search, Trash2, Upload } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -32,6 +32,8 @@ import {
 } from '@/features/certificates/expiry';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useAuth } from '@/providers/AuthProvider';
+
+import { LinkFromLibraryDialog } from '@/features/orgCertificates/LinkFromLibraryDialog';
 
 import { CertificateUploadDialog } from './CertificateUploadDialog';
 
@@ -68,6 +70,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
   const [typeFilter, setTypeFilter] = useState<CertificateTypeValue | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
 
@@ -144,14 +147,24 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
           ))}
         </Select>
         {canUpload && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => { setUploadOpen(true); }}
-          >
-            <Upload className="mr-1.5 h-3.5 w-3.5" />
-            {t('uploadButton')}
-          </Button>
+          <>
+            <Button
+              variant="border"
+              size="sm"
+              onClick={() => { setLinkOpen(true); }}
+            >
+              <Library className="mr-1.5 h-3.5 w-3.5" />
+              {t('linkFromLibrary')}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => { setUploadOpen(true); }}
+            >
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+              {t('uploadButton')}
+            </Button>
+          </>
         )}
       </div>
 
@@ -297,6 +310,12 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
         projectId={projectId}
         open={uploadOpen}
         onOpenChange={setUploadOpen}
+      />
+
+      <LinkFromLibraryDialog
+        projectId={projectId}
+        open={linkOpen}
+        onOpenChange={setLinkOpen}
       />
 
       <CertificateViewerDialog

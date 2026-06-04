@@ -298,7 +298,8 @@ async def _clean_tables(
                         "capture_links, blog_posts, "
                         "risks, access_requests, reports, jobs, project_files, models, "
                         "project_members, projects, contractors, notification_reads, "
-                        "notifications, audit_log, organization_members, users, "
+                        "notifications, audit_log, certificates, org_certificates, "
+                        "organization_members, users, "
                         "organizations RESTART IDENTITY CASCADE"
                     )
                 )
@@ -576,6 +577,13 @@ class FakeStorage:
         if key in self.objects:
             del self.objects[key]
         self.deleted.append(key)
+
+    async def copy_object(self, source_key: str, dest_key: str, *, bucket: str | None = None) -> None:
+        from bimstitch_api.storage.minio import ObjectNotFoundError
+
+        if source_key not in self.objects:
+            raise ObjectNotFoundError(source_key)
+        self.objects[dest_key] = self.objects[source_key]
 
     async def ensure_bucket(self, *, bucket: str | None = None) -> None:
         return

@@ -45,6 +45,10 @@ class StorageBackend(Protocol):
 
     async def delete_object(self, key: str, *, bucket: str | None = None) -> None: ...
 
+    async def copy_object(
+        self, source_key: str, dest_key: str, *, bucket: str | None = None
+    ) -> None: ...
+
     async def ensure_bucket(self, bucket: str | None = None) -> None: ...
 
     @property
@@ -172,6 +176,17 @@ class S3Storage:
     async def delete_object(self, key: str, *, bucket: str | None = None) -> None:
         client = await self._get_client()
         await client.delete_object(Bucket=self._resolve_bucket(bucket), Key=key)
+
+    async def copy_object(
+        self, source_key: str, dest_key: str, *, bucket: str | None = None
+    ) -> None:
+        resolved = self._resolve_bucket(bucket)
+        client = await self._get_client()
+        await client.copy_object(
+            Bucket=resolved,
+            Key=dest_key,
+            CopySource={"Bucket": resolved, "Key": source_key},
+        )
 
     async def ensure_bucket(self, bucket: str | None = None) -> None:
         resolved = self._resolve_bucket(bucket)

@@ -163,6 +163,7 @@
     "signOut": "Sign out",
     "workspace": "Workspace",
     "projects": "Projects",
+    "certificates": "Certificates",
     "bblLibrary": "BBL library",
     "wkbLibrary": "Quality Assurance in Construction Act  (Wkb) library",
     "tenant": {
@@ -482,6 +483,99 @@
           "cancel": "Cancel"
         }
       }
+    }
+  },
+  "orgCertificates": {
+    "hero": {
+      "title": "Certificate Library",
+      "badge": "Organisation",
+      "totalLabel": "Total",
+      "totalSub": "certificates",
+      "expiringLabel": "Expiring",
+      "expiringSub": "within 30 days",
+      "expiredLabel": "Expired",
+      "expiredSub": "past validity"
+    },
+    "list": {
+      "searchPlaceholder": "Search certificates...",
+      "filterAll": "All types",
+      "uploadButton": "Upload certificate",
+      "emptyTitle": "No certificates yet",
+      "emptyDescription": "Upload product certificates once and link them to any project.",
+      "emptyAction": "Upload certificate",
+      "product": "Product",
+      "supplier": "Supplier",
+      "validUntilShort": "Valid until {date}",
+      "download": "Download",
+      "view": "View",
+      "remove": "Remove",
+      "removeSuccess": "{name} removed",
+      "downloadError": "Could not download certificate"
+    },
+    "upload": {
+      "title": "Upload certificate",
+      "description": "Add a product certificate to the organisation library.",
+      "fieldType": "Certificate type",
+      "fieldProductName": "Product name",
+      "fieldProductNamePlaceholder": "e.g. Isover Cavity Batt 32",
+      "fieldSupplierName": "Supplier",
+      "fieldSupplierNamePlaceholder": "e.g. Saint-Gobain Isover",
+      "fieldNumber": "Certificate number",
+      "fieldIssuer": "Issuer",
+      "fieldValidFrom": "Valid from",
+      "fieldValidUntil": "Valid until",
+      "fieldDescription": "Description",
+      "fieldTags": "Tags",
+      "fieldTagsPlaceholder": "e.g. insulation, CE, KOMO",
+      "fieldFile": "File",
+      "submit": "Upload",
+      "cancel": "Cancel"
+    },
+    "linkDialog": {
+      "title": "Link from library",
+      "description": "Select a certificate from the organisation library to copy into this project.",
+      "searchPlaceholder": "Search library...",
+      "linkButton": "Link to project",
+      "cancel": "Cancel",
+      "success": "Certificate linked to project",
+      "empty": "No certificates in the organisation library yet."
+    },
+    "type": {
+      "product": "Product",
+      "installation_test": "Installation test",
+      "inspection": "Inspection",
+      "warranty": "Warranty",
+      "other": "Other"
+    },
+    "expiry": {
+      "none": "No expiry",
+      "valid": "Valid",
+      "expiring": "Expiring",
+      "expired": "Expired"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "certificates": "Certificates"
+    },
+    "panel": {
+      "overviewEyebrow": "Library",
+      "overviewTitle": "Overview",
+      "certificatesEyebrow": "Library",
+      "certificatesTitle": "{count} certificates",
+      "showing": "Showing {count} certificates"
+    },
+    "table": {
+      "product": "Product / File",
+      "type": "Type",
+      "supplier": "Supplier",
+      "issuer": "Issuer",
+      "validUntil": "Valid until",
+      "tags": "Tags"
+    },
+    "overview": {
+      "byTypeTitle": "Certificates by type",
+      "byExpiryTitle": "Expiry status",
+      "recentTitle": "Recently added"
     }
   },
   "projectAccess": {
@@ -993,7 +1087,8 @@
         "expandedRemove": "Remove",
         "rowView": "View",
         "rowExpand": "Expand",
-        "rowCollapse": "Collapse"
+        "rowCollapse": "Collapse",
+        "linkFromLibrary": "Link from library"
       },
       "rapporten": {
         "label": "Reports",
@@ -2639,6 +2734,9 @@
     "fieldUploadedAt": "Added",
     "fieldUploadedBy": "Uploaded by",
     "fieldLinkedElement": "Linked element",
+    "fieldProduct": "Product",
+    "fieldSupplier": "Supplier",
+    "fieldTags": "Tags",
     "rowView": "View",
     "expandedRemove": "Remove",
     "deleteSuccess": "Certificate deleted."

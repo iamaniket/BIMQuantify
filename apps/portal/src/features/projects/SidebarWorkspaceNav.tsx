@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutGrid } from 'lucide-react';
+import { FileBadge, LayoutGrid } from 'lucide-react';
 import { usePathname } from '@/i18n/navigation';
 import type { JSX } from 'react';
 
@@ -13,6 +13,7 @@ import { useProjects } from './useProjects';
 
 const itemDefinitions = [
   { key: 'projects', icon: LayoutGrid, href: '/projects' },
+  { key: 'certificates', icon: FileBadge, href: '/certificates' },
 ] as const;
 
 export function SidebarWorkspaceNav(): JSX.Element {
@@ -24,6 +25,7 @@ export function SidebarWorkspaceNav(): JSX.Element {
 
   const labels = {
     projects: t('projects'),
+    certificates: t('certificates'),
   } as const;
 
   return (

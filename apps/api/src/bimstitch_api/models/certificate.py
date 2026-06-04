@@ -23,6 +23,7 @@ from bimstitch_api.models._mixins import SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from bimstitch_api.models.model import Model
+    from bimstitch_api.models.org_certificate import OrgCertificate
     from bimstitch_api.models.project import Project
     from bimstitch_api.models.project_file import ProjectFile
     from bimstitch_api.models.user import User
@@ -113,6 +114,11 @@ class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
         ForeignKey("project_files.id", ondelete="SET NULL"),
         nullable=True,
     )
+    org_certificate_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org_certificates.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     project: Mapped[Project] = relationship(foreign_keys=[project_id], lazy="raise")
     uploaded_by_user: Mapped[User | None] = relationship(
@@ -121,6 +127,9 @@ class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
     linked_model: Mapped[Model | None] = relationship(foreign_keys=[linked_model_id], lazy="raise")
     linked_file: Mapped[ProjectFile | None] = relationship(
         foreign_keys=[linked_file_id], lazy="raise"
+    )
+    org_certificate: Mapped[OrgCertificate | None] = relationship(
+        foreign_keys=[org_certificate_id], lazy="raise"
     )
 
     @property
@@ -152,5 +161,10 @@ class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
             "linked_model_id",
             "linked_element_global_id",
             postgresql_where="linked_model_id IS NOT NULL AND linked_element_global_id IS NOT NULL",
+        ),
+        Index(
+            "ix_certificates_org_certificate_id",
+            "org_certificate_id",
+            postgresql_where="org_certificate_id IS NOT NULL",
         ),
     )

@@ -9,12 +9,12 @@
  */
 
 import { execSync, spawn } from 'child_process';
-import { writeFileSync } from 'fs';
-import { resolve, join } from 'path';
-import { tmpdir } from 'os';
+import { writeFileSync, existsSync, unlinkSync } from 'fs';
+import { resolve } from 'path';
 import type { FullConfig } from '@playwright/test';
 
-const PID_FILE = join(tmpdir(), 'bimstitch-e2e-api.pid');
+import { PID_FILE, SETUP_LOCK, killProcessOnPort } from './e2eApiProcess';
+
 const API_DIR = resolve(__dirname, '../../../api');
 const REPO_ROOT = resolve(__dirname, '../../../..');
 
@@ -35,32 +35,99 @@ const API_PORT = process.env['E2E_API_PORT'] ?? '8000';
 
 const API_URL = `http://localhost:${API_PORT}`;
 
+async function isApiHealthy(timeoutMs = 2_000): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function waitForHealth(timeoutMs = 30_000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    try {
-      const res = await fetch(`${API_URL}/health`);
-      if (res.ok) return;
-    } catch {
-      // not ready yet
-    }
+    if (await isApiHealthy()) return;
     await new Promise((r) => setTimeout(r, 2_000));
   }
   throw new Error(`API did not become healthy within ${timeoutMs / 1000}s`);
 }
 
+/** Like waitForHealth but returns false instead of throwing on timeout. */
+async function waitForHealthBool(timeoutMs: number): Promise<boolean> {
+  return waitForHealth(timeoutMs).then(() => true).catch(() => false);
+}
+
 export default async function globalSetup(_config: FullConfig): Promise<void> {
-  // 1. Port guard — abort if something is already on the API port
+  // ---------------------------------------------------------------------------
+  // 1. Reuse-aware, concurrency-safe guard.
+  //
+  // Playwright runs globalSetup more than once per `playwright test --ui`
+  // session — sometimes *concurrently* at startup. The original code
+  // unconditionally dropped + recreated the E2E database AND spawned a fresh
+  // API on the same port on every call, so a later invocation could reset the
+  // database out from under the API an earlier one had already started: the
+  // surviving API's pool pointed at a recreated DB, authenticated requests
+  // 500'd, and the portal silently redirected to /login. That is the "--ui mode
+  // hangs on the first test / nothing passes" symptom (tests then wait the full
+  // per-test timeout for an element that never appears).
+  //
+  // Fix: exactly one invocation does the real DB reset + API spawn; the rest
+  // reuse that API (like webServer's reuseExistingServer).
+
+  // Fast path: a healthy API we started is already up — reuse it untouched.
+  if ((await isApiHealthy()) && existsSync(PID_FILE)) {
+    console.log('[E2E Setup] Reusing the running E2E API (--ui re-entry) — skipping DB reset.');
+    return;
+  }
+
+  // Serialize concurrent invocations: whoever creates the lock first (atomic
+  // `wx` write) owns setup; the rest wait for the owner's API and reuse it.
+  let owner = false;
   try {
-    const res = await fetch(`${API_URL}/health`);
-    if (res.ok) {
-      throw new Error(
-        `Port ${API_PORT} is already in use (dev API running?).\n`
-          + 'Stop your dev API before running E2E tests.',
-      );
+    writeFileSync(SETUP_LOCK, String(process.pid), { flag: 'wx' });
+    owner = true;
+  } catch {
+    owner = false;
+  }
+
+  if (!owner) {
+    // Another invocation is setting up (or a stale lock remains). Wait for the
+    // API to come up and reuse it.
+    if (await waitForHealthBool(90_000)) {
+      console.log('[E2E Setup] Reusing the E2E API set up by a concurrent invocation.');
+      return;
     }
-  } catch (err) {
-    if (err instanceof Error && err.message.includes('already in use')) throw err;
+    // Lock is stale (owner crashed/force-closed) — reclaim and take over.
+    console.log('[E2E Setup] Stale setup lock and no healthy API — taking over.');
+    killProcessOnPort(API_PORT);
+    for (const f of [PID_FILE, SETUP_LOCK]) {
+      try { unlinkSync(f); } catch { /* already gone */ }
+    }
+    try {
+      writeFileSync(SETUP_LOCK, String(process.pid), { flag: 'wx' });
+    } catch {
+      // Lost the takeover race to yet another invocation — wait for its API.
+      if (await waitForHealthBool(90_000)) return;
+    }
+  }
+
+  // Owner path. A foreign (dev) API on the port is a hard stop — never reset or
+  // test against the dev database.
+  if ((await isApiHealthy()) && !existsSync(PID_FILE)) {
+    try { unlinkSync(SETUP_LOCK); } catch { /* ignore */ }
+    throw new Error(
+      `Port ${API_PORT} is already in use (dev API running?).\n`
+        + 'Stop your dev API before running E2E tests.',
+    );
+  }
+
+  // A stale PID file with nothing healthy means a previous session wasn't torn
+  // down — reap any orphan holding the port before starting fresh.
+  if (existsSync(PID_FILE)) {
+    console.log('[E2E Setup] Stale PID file (previous session not torn down) — reclaiming port.');
+    killProcessOnPort(API_PORT);
+    try { unlinkSync(PID_FILE); } catch { /* already gone */ }
   }
 
   // 2. Create E2E database, run migrations, seed

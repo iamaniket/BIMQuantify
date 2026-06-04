@@ -26,12 +26,21 @@ import {
 } from '@/features/certificates/expiry';
 import { useCertificateViewUrl } from '@/features/certificates/useCertificateViewUrl';
 import { getCertificateDownloadUrl } from '@/lib/api/certificates';
-import type { Certificate } from '@/lib/api/schemas';
+import { getOrgCertificateDownloadUrl, getOrgCertificateViewUrl } from '@/lib/api/orgCertificates';
+import type { Certificate, OrgCertificate } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
+import { useAuthQuery } from '@/lib/query/useAuthQuery';
 
 type Props = {
   certificate: Certificate | null;
   projectId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
+type OrgProps = {
+  certificate: OrgCertificate | null;
+  projectId?: undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -43,11 +52,13 @@ const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
   expired: 'error',
 };
 
-function isImage(c: Certificate): boolean {
+type FileLike = { content_type: string; original_filename: string };
+
+function isImage(c: FileLike): boolean {
   return c.content_type.startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(c.original_filename);
 }
 
-function isPdf(c: Certificate): boolean {
+function isPdf(c: FileLike): boolean {
   return c.content_type === 'application/pdf' || /\.pdf$/i.test(c.original_filename);
 }
 
@@ -76,7 +87,7 @@ function CertificatePreview({
   loadingLabel,
   noPreviewLabel,
 }: {
-  certificate: Certificate;
+  certificate: FileLike;
   viewUrl: string | undefined;
   isLoading: boolean;
   loadingLabel: string;
@@ -332,6 +343,181 @@ export function CertificateViewerDialog({
               size="md"
               onClick={handleDownload}
             >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {t('download')}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Org-level variant ──────────────────────────────────────────────
+
+function useOrgCertificateViewUrl(certId: string | null) {
+  return useAuthQuery({
+    queryKey: ['org-certificates', certId ?? '', 'view-url'] as const,
+    queryFn: (accessToken) => {
+      if (certId === null) throw new Error('Missing certId');
+      return getOrgCertificateViewUrl(accessToken, certId);
+    },
+    enabled: certId !== null,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function OrgCertificateViewerDialog({
+  certificate,
+  open,
+  onOpenChange,
+}: OrgProps): JSX.Element {
+  const t = useTranslations('viewerCertificates');
+  const tType = useTranslations('orgCertificates.type');
+  const tExpiry = useTranslations('orgCertificates.expiry');
+  const { tokens } = useAuth();
+
+  const viewUrlQuery = useOrgCertificateViewUrl(
+    open && certificate !== null ? certificate.id : null,
+  );
+  const viewUrl = viewUrlQuery.data !== undefined ? viewUrlQuery.data.download_url : undefined;
+
+  const handleDownload = useCallback(async () => {
+    if (tokens === null || certificate === null) return;
+    try {
+      const { download_url: downloadUrl } = await getOrgCertificateDownloadUrl(
+        tokens.access_token,
+        certificate.id,
+      );
+      window.open(downloadUrl, '_blank');
+    } catch {
+      toast.error(t('downloadError'));
+    }
+  }, [tokens, certificate, t]);
+
+  if (certificate === null) {
+    return (
+      <Dialog open={false}>
+        <DialogContent />
+      </Dialog>
+    );
+  }
+
+  const expiry = getCertificateExpiryState(certificate.valid_until);
+  const darkStage = isImage(certificate);
+
+  const fileRows: MetaValue[] = [
+    { label: t('fieldFilename'), value: certificate.original_filename, mono: true },
+    { label: t('fieldSize'), value: formatSize(certificate.size_bytes), mono: true },
+    { label: t('fieldFileType'), value: certificate.content_type, mono: true },
+  ];
+
+  const certRows: MetaValue[] = [
+    { label: t('fieldType'), value: tType(certificate.certificate_type), mono: false },
+  ];
+  if (certificate.certificate_number !== null && certificate.certificate_number !== '') {
+    certRows.push({ label: t('fieldNumber'), value: certificate.certificate_number, mono: true });
+  }
+  if (certificate.issuer !== null && certificate.issuer !== '') {
+    certRows.push({ label: t('fieldIssuer'), value: certificate.issuer, mono: false });
+  }
+  if (certificate.subject !== null && certificate.subject !== '') {
+    certRows.push({ label: t('fieldSubject'), value: certificate.subject, mono: false });
+  }
+  if (certificate.product_name !== null && certificate.product_name !== '') {
+    certRows.push({ label: t('fieldProduct'), value: certificate.product_name, mono: false });
+  }
+  if (certificate.supplier_name !== null && certificate.supplier_name !== '') {
+    certRows.push({ label: t('fieldSupplier'), value: certificate.supplier_name, mono: false });
+  }
+  if (certificate.valid_from !== null) {
+    certRows.push({ label: t('fieldValidFrom'), value: formatDate(certificate.valid_from), mono: true });
+  }
+  certRows.push({ label: t('fieldValidUntil'), value: formatDate(certificate.valid_until), mono: true });
+  certRows.push({
+    label: t('fieldStatus'),
+    value: (
+      <Badge variant={EXPIRY_BADGE[expiry]} size="sm" bordered>
+        {tExpiry(expiry)}
+      </Badge>
+    ),
+    mono: false,
+  });
+
+  const originRows: MetaValue[] = [
+    { label: t('fieldUploadedAt'), value: formatDateFull(certificate.created_at), mono: true },
+  ];
+  if (certificate.uploaded_by_name !== null) {
+    originRows.push({ label: t('fieldUploadedBy'), value: certificate.uploaded_by_name, mono: false });
+  }
+  if (certificate.tags !== null && certificate.tags.length > 0) {
+    originRows.push({
+      label: t('fieldTags'),
+      value: (
+        <span className="flex flex-wrap justify-end gap-1">
+          {certificate.tags.map((tag) => (
+            <Badge key={tag} variant="default" size="sm" bordered>{tag}</Badge>
+          ))}
+        </span>
+      ),
+      mono: false,
+    });
+  }
+
+  const uploadedByText = certificate.uploaded_by_name ?? '—';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="flex h-[620px] max-h-[calc(100vh-48px)] w-[880px] max-w-[calc(100vw-48px)] flex-col overflow-hidden p-0"
+        style={{ maxWidth: 'calc(100vw - 48px)' }}
+      >
+        <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-5">
+          <DialogTitle>{t('viewerTitle')}</DialogTitle>
+          <DialogDescription>{t('viewerSubtitle')}</DialogDescription>
+        </DialogHeader>
+
+        <DialogBody className="grid min-h-0 flex-1 grid-cols-[1fr_296px] gap-0 overflow-hidden p-0">
+          <div className="min-h-0 p-5">
+            <div
+              className={`relative h-full w-full overflow-hidden rounded-lg ${
+                darkStage ? 'bg-[#101316]' : 'bg-background-secondary'
+              }`}
+            >
+              <CertificatePreview
+                certificate={certificate}
+                viewUrl={viewUrl}
+                isLoading={viewUrlQuery.isLoading}
+                loadingLabel={t('viewerLoadingPreview')}
+                noPreviewLabel={t('viewerNoPreview')}
+              />
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-col gap-5 overflow-y-auto border-l border-border bg-surface-low px-5 py-5">
+            {certificate.description !== null && certificate.description !== '' && (
+              <div className="text-body3 leading-snug text-foreground-secondary">
+                {certificate.description}
+              </div>
+            )}
+            <MetaGroup title={t('groupFile')} rows={fileRows} />
+            <MetaGroup title={t('groupCertificate')} rows={certRows} />
+            <MetaGroup title={t('groupOrigin')} rows={originRows} />
+          </div>
+        </DialogBody>
+
+        <DialogFooter className="mx-0 shrink-0 items-center justify-between border-border bg-surface-low px-6 py-3.5">
+          <div className="flex min-w-0 items-center gap-2 text-foreground-tertiary">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate font-sans text-[11.5px]">
+              {`${formatDateFull(certificate.created_at)} · ${uploadedByText}`}
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button type="button" variant="border" size="md" onClick={() => { onOpenChange(false); }}>
+              {t('viewerClose')}
+            </Button>
+            <Button type="button" variant="primary" size="md" onClick={handleDownload}>
               <Download className="mr-1.5 h-3.5 w-3.5" />
               {t('download')}
             </Button>

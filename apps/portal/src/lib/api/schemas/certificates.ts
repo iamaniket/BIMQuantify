@@ -33,6 +33,7 @@ export const CertificateSchema = z.object({
   linked_element_global_id: z.union([z.string(), z.null()]),
   linked_model_id: z.union([z.string().uuid(), z.null()]),
   linked_file_id: z.union([z.string().uuid(), z.null()]),
+  org_certificate_id: z.union([z.string().uuid(), z.null()]),
   created_at: z.string(),
   updated_at: z.string(),
 });

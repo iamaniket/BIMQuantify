@@ -163,6 +163,7 @@
     "signOut": "Uitloggen",
     "workspace": "Werkruimte",
     "projects": "Projecten",
+    "certificates": "Certificaten",
     "bblLibrary": "BBL-bibliotheek",
     "wkbLibrary": "Wet kwaliteitsborging voor het bouwen (Wkb)-bibliotheek",
     "tenant": {
@@ -482,6 +483,99 @@
           "cancel": "Annuleren"
         }
       }
+    }
+  },
+  "orgCertificates": {
+    "hero": {
+      "title": "Certificatenbibliotheek",
+      "badge": "Organisatie",
+      "totalLabel": "Totaal",
+      "totalSub": "certificaten",
+      "expiringLabel": "Verlopend",
+      "expiringSub": "binnen 30 dagen",
+      "expiredLabel": "Verlopen",
+      "expiredSub": "voorbij geldigheid"
+    },
+    "list": {
+      "searchPlaceholder": "Zoek certificaten...",
+      "filterAll": "Alle typen",
+      "uploadButton": "Certificaat uploaden",
+      "emptyTitle": "Nog geen certificaten",
+      "emptyDescription": "Upload productcertificaten eenmalig en koppel ze aan elk project.",
+      "emptyAction": "Certificaat uploaden",
+      "product": "Product",
+      "supplier": "Leverancier",
+      "validUntilShort": "Geldig tot {date}",
+      "download": "Downloaden",
+      "view": "Bekijken",
+      "remove": "Verwijderen",
+      "removeSuccess": "{name} verwijderd",
+      "downloadError": "Kan certificaat niet downloaden"
+    },
+    "upload": {
+      "title": "Certificaat uploaden",
+      "description": "Voeg een productcertificaat toe aan de organisatiebibliotheek.",
+      "fieldType": "Certificaattype",
+      "fieldProductName": "Productnaam",
+      "fieldProductNamePlaceholder": "bijv. Isover Cavity Batt 32",
+      "fieldSupplierName": "Leverancier",
+      "fieldSupplierNamePlaceholder": "bijv. Saint-Gobain Isover",
+      "fieldNumber": "Certificaatnummer",
+      "fieldIssuer": "Uitgever",
+      "fieldValidFrom": "Geldig vanaf",
+      "fieldValidUntil": "Geldig tot",
+      "fieldDescription": "Omschrijving",
+      "fieldTags": "Tags",
+      "fieldTagsPlaceholder": "bijv. isolatie, CE, KOMO",
+      "fieldFile": "Bestand",
+      "submit": "Uploaden",
+      "cancel": "Annuleren"
+    },
+    "linkDialog": {
+      "title": "Koppelen uit bibliotheek",
+      "description": "Selecteer een certificaat uit de organisatiebibliotheek om naar dit project te kopiëren.",
+      "searchPlaceholder": "Zoek in bibliotheek...",
+      "linkButton": "Koppelen aan project",
+      "cancel": "Annuleren",
+      "success": "Certificaat gekoppeld aan project",
+      "empty": "Nog geen certificaten in de organisatiebibliotheek."
+    },
+    "type": {
+      "product": "Product",
+      "installation_test": "Installatietest",
+      "inspection": "Inspectie",
+      "warranty": "Garantie",
+      "other": "Overig"
+    },
+    "expiry": {
+      "none": "Geen vervaldatum",
+      "valid": "Geldig",
+      "expiring": "Verlopend",
+      "expired": "Verlopen"
+    },
+    "tabs": {
+      "overview": "Overzicht",
+      "certificates": "Certificaten"
+    },
+    "panel": {
+      "overviewEyebrow": "Bibliotheek",
+      "overviewTitle": "Overzicht",
+      "certificatesEyebrow": "Bibliotheek",
+      "certificatesTitle": "{count} certificaten",
+      "showing": "{count} certificaten weergegeven"
+    },
+    "table": {
+      "product": "Product / Bestand",
+      "type": "Type",
+      "supplier": "Leverancier",
+      "issuer": "Uitgever",
+      "validUntil": "Geldig tot",
+      "tags": "Tags"
+    },
+    "overview": {
+      "byTypeTitle": "Certificaten per type",
+      "byExpiryTitle": "Geldigheidsstatus",
+      "recentTitle": "Recent toegevoegd"
     }
   },
   "projectAccess": {
@@ -993,7 +1087,8 @@
         "expandedRemove": "Verwijderen",
         "rowView": "Bekijken",
         "rowExpand": "Uitklappen",
-        "rowCollapse": "Inklappen"
+        "rowCollapse": "Inklappen",
+        "linkFromLibrary": "Koppelen uit bibliotheek"
       },
       "rapporten": {
         "label": "Rapporten",
@@ -2639,6 +2734,9 @@
     "fieldUploadedAt": "Toegevoegd",
     "fieldUploadedBy": "Geüpload door",
     "fieldLinkedElement": "Gekoppeld element",
+    "fieldProduct": "Product",
+    "fieldSupplier": "Leverancier",
+    "fieldTags": "Tags",
     "rowView": "Bekijken",
     "expandedRemove": "Verwijderen",
     "deleteSuccess": "Certificaat verwijderd."

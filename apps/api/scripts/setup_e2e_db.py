@@ -70,13 +70,23 @@ async def _create_database() -> None:
         )
         sys.exit(1)
     try:
+        # Fail fast instead of hanging the whole run if the drop can't proceed:
+        # a plain DROP DATABASE blocks *indefinitely* while any session is
+        # connected to the target DB, and under Playwright --ui a previous
+        # invocation's API can immediately reconnect its pool right after we
+        # terminate it — an unbounded hang that surfaces as the first test
+        # spinning forever in UI mode.
+        await conn.execute("SET statement_timeout = '15s'")
         await conn.execute(
             "SELECT pg_terminate_backend(pid) "
             "FROM pg_stat_activity "
             f"WHERE datname = '{E2E_DB_NAME}' AND pid <> pg_backend_pid()"
         )
-        await conn.execute(f'DROP DATABASE IF EXISTS "{E2E_DB_NAME}"')
+        # WITH (FORCE) (PostgreSQL 13+) terminates any remaining/reconnecting
+        # sessions as part of the drop, closing the terminate->reconnect race.
+        await conn.execute(f'DROP DATABASE IF EXISTS "{E2E_DB_NAME}" WITH (FORCE)')
         await conn.execute(f'CREATE DATABASE "{E2E_DB_NAME}"')
+        await conn.execute("RESET statement_timeout")
 
         role_exists = await conn.fetchval(
             "SELECT 1 FROM pg_roles WHERE rolname = 'bim_app'"

@@ -30,6 +30,7 @@ from bimstitch_api.models.certificate import (
     CertificateStatus,
     CertificateType,
 )
+from bimstitch_api.models.org_certificate import OrgCertificate
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
@@ -44,6 +45,7 @@ from bimstitch_api.schemas.certificate import (
     CertificateRead,
     CertificateUpdateRequest,
 )
+from bimstitch_api.schemas.org_certificate import LinkFromLibraryRequest
 from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
 from bimstitch_api.storage.minio import ObjectNotFoundError
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
@@ -69,6 +71,7 @@ def _certificate_snapshot(cert: Certificate) -> dict[str, object]:
         "linked_element_global_id": cert.linked_element_global_id,
         "linked_model_id": str(cert.linked_model_id) if cert.linked_model_id else None,
         "linked_file_id": str(cert.linked_file_id) if cert.linked_file_id else None,
+        "org_certificate_id": str(cert.org_certificate_id) if cert.org_certificate_id else None,
     }
 
 
@@ -462,3 +465,97 @@ async def delete_certificate(
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/link-from-library",
+    response_model=CertificateRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def link_from_library(
+    project_id: UUID,
+    payload: LinkFromLibraryRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
+) -> Certificate:
+    project = await _load_project_or_404(session, project_id)
+    membership = await _require_membership(session, project.id, user.id)
+    try:
+        require_permission(membership.role, Resource.certificate, Action.create)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.certificate.value,
+            action=Action.create.value,
+            actor_user_id=user.id,
+            request=request,
+        )
+        raise
+    _require_project_writable(project)
+
+    org_cert = (
+        await session.execute(
+            select(OrgCertificate).where(
+                OrgCertificate.id == payload.org_certificate_id,
+                OrgCertificate.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if org_cert is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ORG_CERTIFICATE_NOT_FOUND",
+        )
+    if org_cert.status != CertificateStatus.ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="ORG_CERTIFICATE_NOT_READY",
+        )
+
+    fname_lower = org_cert.original_filename.lower()
+    dot_pos = fname_lower.rfind(".")
+    ext = fname_lower[dot_pos:] if dot_pos >= 0 else ""
+    new_storage_key = f"projects/{project.id}/certificates/{uuid4()}{ext}"
+
+    bucket = get_attachments_bucket()
+    await storage.copy_object(org_cert.storage_key, new_storage_key, bucket=bucket)
+
+    cert = Certificate(
+        project_id=project.id,
+        uploaded_by_user_id=user.id,
+        storage_key=new_storage_key,
+        original_filename=org_cert.original_filename,
+        size_bytes=org_cert.size_bytes,
+        content_type=org_cert.content_type,
+        content_sha256=org_cert.content_sha256,
+        certificate_type=org_cert.certificate_type,
+        status=CertificateStatus.ready,
+        description=org_cert.description,
+        certificate_number=org_cert.certificate_number,
+        issuer=org_cert.issuer,
+        subject=org_cert.subject,
+        valid_from=org_cert.valid_from,
+        valid_until=org_cert.valid_until,
+        org_certificate_id=org_cert.id,
+    )
+    session.add(cert)
+    await session.flush()
+    await session.refresh(cert, ["uploaded_by_user"])
+
+    await audit.record(
+        session,
+        action="certificate.linked_from_library",
+        resource_type="certificates",
+        resource_id=cert.id,
+        after={
+            **_certificate_snapshot(cert),
+            "source_org_certificate_id": str(org_cert.id),
+        },
+        actor_user_id=user.id,
+        project_id=project.id,
+        request=request,
+    )
+    return cert
