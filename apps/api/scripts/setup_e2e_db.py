@@ -41,7 +41,34 @@ def _e2e_sqlalchemy_url() -> str:
 
 async def _create_database() -> None:
     dsn = _maintenance_dsn()
-    conn = await asyncpg.connect(dsn)
+    parsed = urlparse(dsn)
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+    try:
+        conn = await asyncpg.connect(dsn)
+    except ConnectionRefusedError:
+        print(
+            f"\n  ERROR: Cannot connect to PostgreSQL at {host}:{port}.\n"
+            f"  Is the database running? Try:\n\n"
+            f"    docker compose up -d postgres\n",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except asyncpg.InvalidPasswordError:
+        print(
+            f"\n  ERROR: Authentication failed for PostgreSQL at {host}:{port}.\n"
+            f"  Check DATABASE_URL credentials.\n",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except OSError as exc:
+        print(
+            f"\n  ERROR: Could not reach PostgreSQL at {host}:{port}: {exc}\n"
+            f"  Ensure the database container is running:\n\n"
+            f"    docker compose up -d postgres\n",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     try:
         await conn.execute(
             "SELECT pg_terminate_backend(pid) "
