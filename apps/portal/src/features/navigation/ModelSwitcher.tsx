@@ -1,9 +1,8 @@
 'use client';
 
 import { useQueries } from '@tanstack/react-query';
-import { ChevronDown, Check } from '@bimstitch/ui/icons';
+import { ChevronDown } from '@bimstitch/ui/icons';
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,7 +15,7 @@ import { useCallback, useState, type JSX } from 'react';
 
 import { useRouter } from '@/i18n/navigation';
 import { getModel } from '@/lib/api/models';
-import type { FileTypeValue, Model, ModelWithVersions, ProjectFile } from '@/lib/api/schemas';
+import type { Model, ModelWithVersions, ProjectFile } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 import { kindForFormat, type ViewerFormat, type ViewerKind } from '@/components/shared/viewer/shared/viewerMode';
 
@@ -26,17 +25,9 @@ import { modelKey } from '../models/queryKeys';
 type ModelSwitcherItem = {
   id: string;
   name: string;
-  primaryFileType: FileTypeValue | null;
   viewerKind: ViewerKind | null;
   latestViewableFileId: string | null;
   isCurrent: boolean;
-};
-
-const PILL_VARIANT: Record<FileTypeValue, 'info' | 'error' | 'warning'> = {
-  ifc: 'info',
-  pdf: 'error',
-  dxf: 'warning',
-  dwg: 'warning',
 };
 
 function latestViewableFile(versions: ProjectFile[]): ProjectFile | undefined {
@@ -59,7 +50,6 @@ function buildItems(
     return {
       id: m.id,
       name: m.name,
-      primaryFileType: fileType,
       viewerKind: fileType !== null ? kindForFormat(fileType as ViewerFormat) : null,
       latestViewableFileId: viewable?.id ?? null,
       isCurrent: m.id === currentModelId,
@@ -131,9 +121,9 @@ export function ModelSwitcher({ projectId, currentModelId, currentModelName }: P
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-8 w-[180px] items-center gap-1.5 rounded-md border border-white/20 bg-white/10 px-2.5 text-body3 font-medium text-white outline-none hover:bg-white/15"
+          className="inline-flex h-8 w-[140px] items-center gap-1.5 rounded-md border border-white/20 bg-white/10 px-2.5 text-body3 font-medium text-white outline-none hover:bg-white/15"
         >
-          <span className="min-w-0 flex-1 truncate">{currentModelName}</span>
+          <span className="min-w-0 flex-1 truncate text-left">{currentModelName}</span>
           <ChevronDown className="h-3 w-3 shrink-0 text-white/70" />
         </button>
       </DropdownMenuTrigger>
@@ -159,19 +149,6 @@ export function ModelSwitcher({ projectId, currentModelId, currentModelName }: P
                 <span className="inline-flex h-[18px] w-5" />
               )}
               <span className="min-w-0 flex-1 truncate text-body3">{item.name}</span>
-              {item.primaryFileType !== null ? (
-                <Badge
-                  variant={PILL_VARIANT[item.primaryFileType]}
-                  size="sm"
-                  bordered={false}
-                  className="shrink-0 uppercase"
-                >
-                  {item.primaryFileType.toUpperCase()}
-                </Badge>
-              ) : null}
-              {item.isCurrent ? (
-                <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
-              ) : null}
               {item.latestViewableFileId === null ? (
                 <span className="shrink-0 text-micro text-foreground-disabled">
                   {t('noViewableFile')}
