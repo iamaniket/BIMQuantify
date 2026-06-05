@@ -92,46 +92,73 @@ export type {
 export { EventBus } from './core/EventBus.js';
 export { CommandRegistry, CommandNotFoundError } from './core/CommandRegistry.js';
 export type { CommandHandler, CommandMeta } from './core/CommandRegistry.js';
+// Generic, mode-agnostic plugin core — shared by the 3D viewer and the PDF
+// document engine. Custom engines build on these directly.
+export { PluginManager as GenericPluginManager } from './core/plugin.js';
+export type {
+  Plugin as GenericPlugin,
+  PluginRegistryView,
+  PluginLifecycleEvents,
+} from './core/plugin.js';
+
+// PDF document engine + plugins. `DocumentViewer` (above) is the React host
+// over `DocumentEngine`; these are exposed for custom PDF plugins / hosts.
+export { DocumentEngine } from './pdf-core/DocumentEngine.js';
+export type {
+  DocumentContext,
+  DocumentEvents,
+  DocumentPlugin,
+  PdfTool,
+  PdfRotation,
+  SearchHighlightState,
+} from './pdf-core/documentTypes.js';
+export { MIN_SCALE, MAX_SCALE, clampScale } from './pdf-core/documentTypes.js';
+export { pdfZoomPlugin } from './plugins/pdf/zoom/index.js';
+export { pdfPanPlugin } from './plugins/pdf/pan/index.js';
+export { pdfToolsPlugin } from './plugins/pdf/tools/index.js';
+export type { ToolsPluginAPI } from './plugins/pdf/tools/index.js';
+export { pdfRotatePlugin } from './plugins/pdf/rotate/index.js';
+export { pdfSearchPlugin } from './plugins/pdf/search/index.js';
 
 // Built-in plugin factories — re-exported so consumers can disable a
 // built-in (by passing `viewCube: { enabled: false }`) and re-add it
 // elsewhere, or compose them with custom ones.
-export { cameraPlugin } from './plugins/camera/index.js';
-export { hoverHighlightPlugin } from './plugins/hover-highlight/index.js';
-export { selectionPlugin } from './plugins/selection/index.js';
-export { keyboardShortcutsPlugin } from './plugins/keyboard-shortcuts/index.js';
+export { cameraPlugin } from './plugins/3d/camera/index.js';
+export { hoverHighlightPlugin } from './plugins/3d/hover-highlight/index.js';
+export { selectionPlugin } from './plugins/3d/selection/index.js';
+export { keyboardShortcutsPlugin } from './plugins/3d/keyboard-shortcuts/index.js';
 export {
   mouseBindingsPlugin,
   DEFAULT_MOUSE_BINDINGS,
-} from './plugins/mouse-bindings/index.js';
-export { navigatePlugin } from './plugins/navigate/index.js';
-export { viewCubePlugin } from './plugins/viewcube/index.js';
-export { effectsPlugin } from './plugins/effects/index.js';
-export { interactivePerformancePlugin } from './plugins/interactive-performance/index.js';
-export { pivotRotatePlugin } from './plugins/pivot-rotate/index.js';
-export { visibilityPlugin } from './plugins/visibility/index.js';
-export { inspectPlugin } from './plugins/inspect/index.js';
-export { eraserPlugin } from './plugins/eraser/index.js';
-export { contextMenuPlugin } from './plugins/context-menu/index.js';
-export { xrayPlugin } from './plugins/xray/index.js';
-export { outlinePlugin } from './plugins/outline/index.js';
+} from './plugins/3d/mouse-bindings/index.js';
+export { navigatePlugin } from './plugins/3d/navigate/index.js';
+export { viewCubePlugin } from './plugins/3d/viewcube/index.js';
+export { effectsPlugin } from './plugins/3d/effects/index.js';
+export { interactivePerformancePlugin } from './plugins/3d/interactive-performance/index.js';
+export { pivotRotatePlugin } from './plugins/3d/pivot-rotate/index.js';
+export { visibilityPlugin } from './plugins/3d/visibility/index.js';
+export { inspectPlugin } from './plugins/3d/inspect/index.js';
+export { eraserPlugin } from './plugins/3d/eraser/index.js';
+export { contextMenuPlugin } from './plugins/3d/context-menu/index.js';
+export { xrayPlugin } from './plugins/3d/xray/index.js';
+export { outlinePlugin } from './plugins/3d/outline/index.js';
 export type {
   OutlinePluginOptions,
   OutlinePluginAPI,
-} from './plugins/outline/index.js';
-export { sectionPlugin } from './plugins/section/index.js';
-export { snappingPlugin } from './plugins/snapping/index.js';
-export { modePlugin } from './plugins/mode/index.js';
-export { measurementPlugin } from './plugins/measurement/index.js';
-export { walkthroughPlugin } from './plugins/walkthrough/index.js';
-export { wireframePlugin } from './plugins/wireframe/index.js';
-export { classifierPlugin } from './plugins/classifier/index.js';
-export { itemsFinderPlugin } from './plugins/items-finder/index.js';
-export { boundingBoxerPlugin } from './plugins/bounding-boxer/index.js';
-export { viewpointsPlugin } from './plugins/viewpoints/index.js';
-export { markerPlugin } from './plugins/marker/index.js';
-export { gridPlugin } from './plugins/grid/index.js';
-export { screenshotPlugin } from './plugins/screenshot/index.js';
-export { colorCodingPlugin } from './plugins/color-coding/index.js';
-export { exploderPlugin } from './plugins/exploder/index.js';
-export { bcfPlugin } from './plugins/bcf/index.js';
+} from './plugins/3d/outline/index.js';
+export { sectionPlugin } from './plugins/3d/section/index.js';
+export { snappingPlugin } from './plugins/3d/snapping/index.js';
+export { modePlugin } from './plugins/3d/mode/index.js';
+export { measurementPlugin } from './plugins/3d/measurement/index.js';
+export { walkthroughPlugin } from './plugins/3d/walkthrough/index.js';
+export { wireframePlugin } from './plugins/3d/wireframe/index.js';
+export { classifierPlugin } from './plugins/3d/classifier/index.js';
+export { itemsFinderPlugin } from './plugins/3d/items-finder/index.js';
+export { boundingBoxerPlugin } from './plugins/3d/bounding-boxer/index.js';
+export { viewpointsPlugin } from './plugins/3d/viewpoints/index.js';
+export { markerPlugin } from './plugins/3d/marker/index.js';
+export { gridPlugin } from './plugins/3d/grid/index.js';
+export { screenshotPlugin } from './plugins/3d/screenshot/index.js';
+export { colorCodingPlugin } from './plugins/3d/color-coding/index.js';
+export { exploderPlugin } from './plugins/3d/exploder/index.js';
+export { bcfPlugin } from './plugins/3d/bcf/index.js';

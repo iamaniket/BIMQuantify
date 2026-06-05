@@ -13,15 +13,15 @@ import type {
   ViewerEvents,
 } from './core/types.js';
 import type { CameraAction, ControlsOptions, ZoomOptions } from './core/Viewer.js';
-import type { EffectsOptions } from './plugins/effects/types.js';
-import type { OutlinePluginOptions } from './plugins/outline/index.js';
-import type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
-import type { InteractivePerformanceOptions } from './plugins/interactive-performance/index.js';
-import type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
-import type { SelectionPluginOptions } from './plugins/selection/index.js';
-import type { SectionPluginOptions } from './plugins/section/index.js';
-import type { SnappingPluginOptions } from './plugins/snapping/index.js';
-import type { WalkthroughPluginOptions } from './plugins/walkthrough/index.js';
+import type { EffectsOptions } from './plugins/3d/effects/types.js';
+import type { OutlinePluginOptions } from './plugins/3d/outline/index.js';
+import type { HoverPluginOptions } from './plugins/3d/hover-highlight/index.js';
+import type { InteractivePerformanceOptions } from './plugins/3d/interactive-performance/index.js';
+import type { PivotRotateOptions } from './plugins/3d/pivot-rotate/index.js';
+import type { SelectionPluginOptions } from './plugins/3d/selection/index.js';
+import type { SectionPluginOptions } from './plugins/3d/section/index.js';
+import type { SnappingPluginOptions } from './plugins/3d/snapping/index.js';
+import type { WalkthroughPluginOptions } from './plugins/3d/walkthrough/index.js';
 
 export type ViewerBundle = {
   fragmentsUrl: string;
@@ -123,21 +123,21 @@ export type IfcViewerProps = {
   ref?: Ref<ViewerHandle>;
 };
 
-export type { EffectsOptions, EffectsQuality } from './plugins/effects/types.js';
+export type { EffectsOptions, EffectsQuality } from './plugins/3d/effects/types.js';
 
-export type { PivotRotateOptions } from './plugins/pivot-rotate/index.js';
+export type { PivotRotateOptions } from './plugins/3d/pivot-rotate/index.js';
 
 export type { CameraAction, ControlsOptions, ZoomOptions } from './core/Viewer.js';
 
-export type { HoverPluginOptions } from './plugins/hover-highlight/index.js';
+export type { HoverPluginOptions } from './plugins/3d/hover-highlight/index.js';
 
-export type { InteractivePerformanceOptions } from './plugins/interactive-performance/index.js';
+export type { InteractivePerformanceOptions } from './plugins/3d/interactive-performance/index.js';
 
-export type { SelectionPluginOptions } from './plugins/selection/index.js';
+export type { SelectionPluginOptions } from './plugins/3d/selection/index.js';
 
-export type { XrayPluginOptions } from './plugins/xray/index.js';
+export type { XrayPluginOptions } from './plugins/3d/xray/index.js';
 
-export type { XrayPluginAPI } from './plugins/xray/index.js';
+export type { XrayPluginAPI } from './plugins/3d/xray/index.js';
 
 /**
  * Snapshot of all visual overrides for a single entity.
@@ -152,39 +152,39 @@ export interface EntityAppearance {
   opacity: number | null;
 }
 
-export type { SectionPluginOptions, SectionPluginAPI, SectionPlane, SectionConfig } from './plugins/section/index.js';
+export type { SectionPluginOptions, SectionPluginAPI, SectionPlane, SectionConfig } from './plugins/3d/section/index.js';
 
-export type { ModePluginAPI, ModeToolDescriptor, ViewerMode } from './plugins/mode/index.js';
+export type { ModePluginAPI, ModeToolDescriptor, ViewerMode } from './plugins/3d/mode/index.js';
 
-export type { MeasurementPluginAPI, Measurement, MeasurementMode, MeasurementConfig } from './plugins/measurement/index.js';
+export type { MeasurementPluginAPI, Measurement, MeasurementMode, MeasurementConfig } from './plugins/3d/measurement/index.js';
 
-export type { WalkthroughPluginOptions, WalkthroughPluginAPI } from './plugins/walkthrough/index.js';
+export type { WalkthroughPluginOptions, WalkthroughPluginAPI } from './plugins/3d/walkthrough/index.js';
 
-export type { SnappingPluginOptions, SnappingPluginAPI, SnapType } from './plugins/snapping/index.js';
+export type { SnappingPluginOptions, SnappingPluginAPI, SnapType } from './plugins/3d/snapping/index.js';
 
-export type { WireframePluginAPI } from './plugins/wireframe/index.js';
+export type { WireframePluginAPI } from './plugins/3d/wireframe/index.js';
 
-export type { ClassifierPluginAPI, ClassificationStrategy, ClassificationGroup } from './plugins/classifier/index.js';
+export type { ClassifierPluginAPI, ClassificationStrategy, ClassificationGroup } from './plugins/3d/classifier/index.js';
 
-export type { ItemsFinderPluginAPI, FinderQuery, FinderOperator } from './plugins/items-finder/index.js';
+export type { ItemsFinderPluginAPI, FinderQuery, FinderOperator } from './plugins/3d/items-finder/index.js';
 
-export type { BoundingBoxerPluginAPI, BboxDimensions } from './plugins/bounding-boxer/index.js';
+export type { BoundingBoxerPluginAPI, BboxDimensions } from './plugins/3d/bounding-boxer/index.js';
 
-export type { ViewpointsPluginAPI, Viewpoint } from './plugins/viewpoints/index.js';
+export type { ViewpointsPluginAPI, Viewpoint } from './plugins/3d/viewpoints/index.js';
 
-export type { MarkerPluginAPI, MarkerPluginOptions, MarkerData } from './plugins/marker/index.js';
+export type { MarkerPluginAPI, MarkerPluginOptions, MarkerData } from './plugins/3d/marker/index.js';
 
-export type { GridPluginAPI, GridPluginOptions } from './plugins/grid/index.js';
+export type { GridPluginAPI, GridPluginOptions } from './plugins/3d/grid/index.js';
 
-export type { EraserPluginAPI } from './plugins/eraser/index.js';
+export type { EraserPluginAPI } from './plugins/3d/eraser/index.js';
 
-export type { ScreenshotPluginAPI, ScreenshotPluginOptions, ScreenshotCaptureOptions, ScreenshotResult } from './plugins/screenshot/index.js';
+export type { ScreenshotPluginAPI, ScreenshotPluginOptions, ScreenshotCaptureOptions, ScreenshotResult } from './plugins/3d/screenshot/index.js';
 
-export type { ColorCodingPluginAPI, ColorCodingOptions, ColorScheme, LegendEntry } from './plugins/color-coding/index.js';
+export type { ColorCodingPluginAPI, ColorCodingOptions, ColorScheme, LegendEntry } from './plugins/3d/color-coding/index.js';
 
-export type { ExploderPluginAPI, ExploderPluginOptions, ExplodeMode } from './plugins/exploder/index.js';
+export type { ExploderPluginAPI, ExploderPluginOptions, ExplodeMode } from './plugins/3d/exploder/index.js';
 
-export type { BcfPluginAPI, BcfViewpointData, BcfPluginOptions } from './plugins/bcf/index.js';
+export type { BcfPluginAPI, BcfViewpointData, BcfPluginOptions } from './plugins/3d/bcf/index.js';
 
 export type {
   Plugin,

@@ -24,7 +24,7 @@ import { acceptedExtensions, isAllowedFile } from '@/features/models/fileValidat
 import { useModelFiles } from '@/features/models/useModelFiles';
 import { useUploadModelFile } from '@/features/models/useUploadModelFile';
 import { UploadProgressItem, type UploadState } from '@/features/models/UploadProgressItem';
-import { viewerKeys } from '@/features/viewer/queryKeys';
+import { viewerKeys } from '@/features/viewer/shared/queryKeys';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 import { useAuth } from '@/providers/AuthProvider';

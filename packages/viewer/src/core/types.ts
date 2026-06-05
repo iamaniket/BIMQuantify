@@ -8,6 +8,7 @@ import type { Components, SimpleCamera } from '@thatopen/components';
 
 import type { CommandRegistry } from './CommandRegistry.js';
 import type { EventBus } from './EventBus.js';
+import type { Plugin as GenericPlugin, PluginRegistryView } from './plugin.js';
 
 /** Re-derived from SimpleCamera so we don't need camera-controls in deps. */
 export type CameraControls = SimpleCamera['controls'];
@@ -113,20 +114,15 @@ export interface ViewerContext {
   models: () => Map<string, FRAGS.FragmentsModel>;
 }
 
-export interface PluginRegistryView {
-  get<T = Plugin>(name: string): T | null;
-  has(name: string): boolean;
-}
+export type { PluginRegistryView };
 
-export interface Plugin {
-  /** Unique name. Used as the key in dependency lists. */
-  readonly name: string;
-  readonly version?: string;
-  /** Other plugin names that must be installed before this one. */
-  readonly dependencies?: readonly string[];
-  install(ctx: ViewerContext): void | Promise<void>;
-  uninstall?(): void | Promise<void>;
-}
+/**
+ * A 3D viewer plugin: the generic {@link GenericPlugin} bound to
+ * {@link ViewerContext}. Existing plugins `import { Plugin } from
+ * '../../core/types.js'` and keep narrowing `install(ctx: ViewerContext)`
+ * with no change.
+ */
+export type Plugin = GenericPlugin<ViewerContext>;
 
 /** Map of `keyCombo → commandName` for the keyboard-shortcuts plugin. */
 export type ShortcutMap = Record<string, string>;

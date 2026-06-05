@@ -1,0 +1,670 @@
+'use client';
+
+import { RotateCcw, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type JSX,
+} from 'react';
+
+import { Button, Select, Tabs, TabsContent, TabsList, TabsTrigger } from '@bimstitch/ui';
+import type { ViewerHandle } from '@bimstitch/viewer';
+
+import {
+  DEFAULT_VIEWER_SETTINGS,
+  colorToHex,
+  hexToColor,
+  saveViewerSettings,
+  type CameraAction,
+  type EffectsQuality,
+  type InteractivePerformanceSettings,
+  type ViewerSettings,
+} from '@/lib/viewerSettings';
+
+import { ColorField, Field, Section, Toggle } from '@/components/shared/viewer/shared/settings/primitives';
+
+const EFFECTS_QUALITIES: EffectsQuality[] = ['low', 'medium', 'high'];
+
+const CAMERA_ACTIONS: { value: CameraAction; labelKey: string }[] = [
+  { value: 'rotate', labelKey: 'cameraRotate' },
+  { value: 'truck', labelKey: 'cameraTruck' },
+  { value: 'dolly', labelKey: 'cameraDolly' },
+  { value: 'zoom', labelKey: 'cameraZoom' },
+  { value: 'offset', labelKey: 'cameraOffset' },
+  { value: 'none', labelKey: 'cameraNone' },
+];
+
+const DRAG_BUTTONS: { key: 'left' | 'middle' | 'right' | 'wheel'; labelKey: string }[] = [
+  { key: 'left', labelKey: 'leftButton' },
+  { key: 'middle', labelKey: 'middleButton' },
+  { key: 'right', labelKey: 'rightButton' },
+  { key: 'wheel', labelKey: 'wheel' },
+];
+
+type Props = {
+  handle: ViewerHandle | null;
+  settings: ViewerSettings;
+  onSettingsChange: (next: ViewerSettings) => void;
+  onClose: () => void;
+  onReloadViewer: () => void;
+};
+
+type Binding = { combo: string; command: string };
+
+function comboFromEvent(ev: KeyboardEvent): string {
+  const ordered: string[] = [];
+  if (ev.ctrlKey) ordered.push('Ctrl');
+  if (ev.altKey) ordered.push('Alt');
+  if (ev.shiftKey) ordered.push('Shift');
+  if (ev.metaKey) ordered.push('Meta');
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(ev.key)) return '';
+  const { code } = ev;
+  if (code.startsWith('Key') && code.length === 4) {
+    ordered.push(code.slice(3));
+    return ordered.join('+');
+  }
+  if (code.startsWith('Numpad')) {
+    ordered.push(code);
+    return ordered.join('+');
+  }
+  let { key } = ev;
+  if (key === ' ') key = 'Space';
+  if (key.length === 1) key = key.toUpperCase();
+  ordered.push(key);
+  return ordered.join('+');
+}
+
+function ShortcutsSection({
+  handle,
+  settings,
+  onChange,
+}: {
+  handle: ViewerHandle;
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  const t = useTranslations('viewer.settings');
+  const [bindings, setBindings] = useState<Binding[]>([]);
+  const [capturing, setCapturing] = useState<string | null>(null);
+
+  useEffect(() => {
+    handle.commands
+      .execute<Binding[]>('shortcuts.list')
+      .then((list) => {
+        setBindings(list);
+      })
+      .catch(() => undefined);
+  }, [handle]);
+
+  const rebind = async (command: string, combo: string): Promise<void> => {
+    const existing = bindings.find((b) => b.command === command);
+    if (existing) {
+      await handle.commands.execute('shortcuts.unbind', {
+        combo: existing.combo,
+      });
+    }
+    await handle.commands.execute('shortcuts.bind', { combo, command });
+    const next = await handle.commands.execute<Binding[]>('shortcuts.list');
+    setBindings(next);
+    onChange({
+      ...settings,
+      shortcuts: { ...settings.shortcuts, [command]: combo },
+    });
+  };
+
+  useEffect(() => {
+    if (capturing === null) return undefined;
+    const onKey = (ev: KeyboardEvent): void => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const combo = comboFromEvent(ev);
+      if (combo === '' || combo === 'Escape') {
+        setCapturing(null);
+        return;
+      }
+      rebind(capturing, combo).catch(() => undefined);
+      setCapturing(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capturing]);
+
+  return (
+    <Section title={t('keyboardShortcuts')} note={t('noteLive')}>
+      <ul
+        className="max-h-40 space-y-1 overflow-y-auto"
+        data-testid="viewer-settings-shortcuts"
+      >
+        {bindings.length === 0 ? (
+          <li className="text-caption text-foreground-secondary">{t('noShortcuts')}</li>
+        ) : (
+          bindings.map((b) => (
+            <li
+              key={b.command}
+              className="flex items-center justify-between gap-2 text-caption"
+            >
+              <span className="truncate font-sans text-foreground-secondary">
+                {b.command}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCapturing(b.command);
+                }}
+                className="min-w-[5rem] rounded border border-border px-2 py-0.5 font-sans text-foreground hover:bg-background-secondary"
+              >
+                {capturing === b.command ? t('pressKey') : b.combo}
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+    </Section>
+  );
+}
+
+type MouseBinding = { gesture: string; command: string };
+
+function MouseBindingsSection({
+  handle,
+  settings,
+  onChange,
+}: {
+  handle: ViewerHandle;
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  const t = useTranslations('viewer.settings');
+  const [bindings, setBindings] = useState<MouseBinding[]>([]);
+  const [commandList, setCommandList] = useState<string[]>([]);
+
+  useEffect(() => {
+    handle.commands
+      .execute<MouseBinding[]>('mouseBindings.list')
+      .then((list) => {
+        setBindings(list);
+      })
+      .catch(() => undefined);
+    // Pull all known commands so the dropdown only offers callable
+    // targets. Filter out the binder/list/get helpers so users don't
+    // accidentally bind a click to "list bindings".
+    const all = handle.commands.list();
+    setCommandList(
+      all
+        .map((c) => c.name)
+        .filter((n) => {
+          if (n.startsWith('shortcuts.')) return false;
+          if (n.startsWith('mouseBindings.')) return false;
+          if (n === 'selection.get') return false;
+          if (n === 'selection.has') return false;
+          if (n === 'effects.get') return false;
+          return true;
+        })
+        .sort(),
+    );
+  }, [handle]);
+
+  const rebind = async (gesture: string, command: string): Promise<void> => {
+    if (command === '__unbind__') {
+      await handle.commands.execute('mouseBindings.unbind', { gesture });
+      const nextBindings = await handle.commands.execute<MouseBinding[]>(
+        'mouseBindings.list',
+      );
+      setBindings(nextBindings);
+      const nextMap = Object.fromEntries(
+        Object.entries(settings.mouseBindings).filter(([k]) => k !== gesture),
+      );
+      onChange({ ...settings, mouseBindings: nextMap });
+      return;
+    }
+    await handle.commands.execute('mouseBindings.bind', { gesture, command });
+    const nextBindings = await handle.commands.execute<MouseBinding[]>(
+      'mouseBindings.list',
+    );
+    setBindings(nextBindings);
+    onChange({
+      ...settings,
+      mouseBindings: { ...settings.mouseBindings, [gesture]: command },
+    });
+  };
+
+  // Stable list of gestures we surface in the UI. We always show the
+  // common ones — left/right/middle click with optional Shift/Ctrl/Meta —
+  // plus `move` and `move:leave`, regardless of whether they're bound.
+  const knownGestures: string[] = [
+    'click:left',
+    'click:Shift+left',
+    'click:Ctrl+left',
+    'click:Meta+left',
+    'click:middle',
+    'click:right',
+    'click:Shift+right',
+    'click:Ctrl+right',
+    'move',
+    'move:leave',
+  ];
+
+  const bindingFor = (gesture: string): string => {
+    const m = bindings.find((b) => b.gesture === gesture);
+    return m ? m.command : '';
+  };
+
+  return (
+    <Section title={t('mouseBindings')} note={t('noteLive')}>
+      <ul
+        className="max-h-48 space-y-1 overflow-y-auto"
+        data-testid="viewer-settings-mouse-bindings"
+      >
+        {knownGestures.map((g) => (
+          <li
+            key={g}
+            className="flex items-center justify-between gap-2 text-caption"
+          >
+            <span className="truncate font-sans text-foreground-secondary">
+              {g}
+            </span>
+            <Select
+              className="max-w-[10rem]"
+              value={bindingFor(g)}
+              onChange={(e) => {
+                rebind(g, e.target.value).catch(() => undefined);
+              }}
+            >
+              <option value="__unbind__">{t('mouseBindingNone')}</option>
+              {commandList.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+function PerformanceSection({
+  handle,
+  settings,
+  onChange,
+}: {
+  handle: ViewerHandle | null;
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  const t = useTranslations('viewer.settings');
+  const ip = settings.interactivePerformance;
+
+  const update = (patch: Partial<InteractivePerformanceSettings>): void => {
+    const next: InteractivePerformanceSettings = { ...ip, ...patch };
+    onChange({ ...settings, interactivePerformance: next });
+    // Live: push the change straight into the running plugin so the next
+    // orbit reflects it without a viewer reload.
+    handle?.commands.execute('interactivePerformance.set', patch).catch(() => undefined);
+  };
+
+  return (
+    <Section title={t('performanceDuringNav')} note={t('noteLive')}>
+      <p className="text-caption text-foreground-secondary">
+        {t('performanceDescription')}
+      </p>
+      <Toggle
+        label={t('hideSmall')}
+        checked={ip.hideSmall}
+        onChange={(hideSmall) => {
+          update({ hideSmall });
+        }}
+      />
+      <Toggle
+        label={t('envelopeOnly')}
+        checked={ip.envelopeOnly}
+        onChange={(envelopeOnly) => {
+          update({ envelopeOnly });
+        }}
+      />
+      <Toggle
+        label={t('hideTransparent')}
+        checked={ip.hideTransparent}
+        onChange={(hideTransparent) => {
+          update({ hideTransparent });
+        }}
+      />
+      <Toggle
+        label={t('cullSubPixel')}
+        checked={ip.pixelSizeCull}
+        onChange={(pixelSizeCull) => {
+          update({ pixelSizeCull });
+        }}
+      />
+      <Toggle
+        label={t('lowerResolution')}
+        checked={ip.dynamicPixelRatio}
+        onChange={(dynamicPixelRatio) => {
+          update({ dynamicPixelRatio });
+        }}
+      />
+      <Toggle
+        label={t('tightenFarPlane')}
+        checked={ip.tightenFarPlane}
+        onChange={(tightenFarPlane) => {
+          update({ tightenFarPlane });
+        }}
+      />
+      <Toggle
+        label={t('flatShading')}
+        checked={ip.flatShadeOverride}
+        onChange={(flatShadeOverride) => {
+          update({ flatShadeOverride });
+        }}
+      />
+      <Toggle
+        label={t('pauseHover')}
+        checked={ip.pauseHover}
+        onChange={(pauseHover) => {
+          update({ pauseHover });
+        }}
+      />
+    </Section>
+  );
+}
+
+function MouseControlsSection({
+  settings,
+  onChange,
+}: {
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  const t = useTranslations('viewer.settings');
+  return (
+    <Section title={t('mouseDragActions')} note={t('noteApplyOnReload')}>
+      {DRAG_BUTTONS.map((btn) => (
+        <Field key={btn.key} label={t(btn.labelKey)}>
+          <Select
+            value={settings.controls[btn.key]}
+            onChange={(e) => {
+              onChange({
+                ...settings,
+                controls: {
+                  ...settings.controls,
+                  [btn.key]: e.target.value as CameraAction,
+                },
+              });
+            }}
+          >
+            {CAMERA_ACTIONS.map((a) => (
+              <option key={a.value} value={a.value}>
+                {t(a.labelKey)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      ))}
+    </Section>
+  );
+}
+
+export function SettingsPopover({
+  handle,
+  settings,
+  onSettingsChange,
+  onClose,
+  onReloadViewer,
+}: Props): JSX.Element {
+  const t = useTranslations('viewer.settings');
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const onDocClick = (ev: MouseEvent): void => {
+      const node = ref.current;
+      if (!node) return;
+      if (!node.contains(ev.target as Node)) onClose();
+    };
+    const onEsc = (ev: KeyboardEvent): void => {
+      if (ev.key === 'Escape') onClose();
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [onClose]);
+
+  const update = (next: ViewerSettings): void => {
+    saveViewerSettings(next);
+    onSettingsChange(next);
+  };
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label={t('viewerSettingsAria')}
+      data-testid="viewer-settings-popover"
+      className="absolute bottom-12 left-1/2 z-20 w-[26rem] -translate-x-1/2 rounded-md border border-border bg-background p-4 shadow-lg"
+      onMouseDown={(e) => {
+        e.stopPropagation();
+      }}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-body2 font-medium text-foreground">{t('viewerSettingsShort')}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('closeSettings')}
+          className="inline-flex h-10 w-10 items-center justify-center rounded text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <Tabs defaultValue="appearance">
+        <TabsList className="shrink-0">
+          <TabsTrigger value="appearance" className="flex-1 text-caption">
+            {t('tabAppearance')}
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="flex-1 text-caption">
+            {t('tabPerformance')}
+          </TabsTrigger>
+          <TabsTrigger value="controls" className="flex-1 text-caption">
+            {t('tabControls')}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="appearance" className="max-h-[24rem] overflow-y-auto">
+          <div className="space-y-4 pt-3">
+
+
+            <Section title={t('shadows')} note={t('noteApplyOnReload')}>
+              <Toggle
+                label={t('enableShadows')}
+                checked={settings.shadows.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    shadows: { ...settings.shadows, enabled },
+                  });
+                }}
+              />
+            </Section>
+
+            <Section title={t('visualEffects')} note={t('noteApplyOnReload')}>
+              <Toggle
+                label={t('enableEffects')}
+                checked={settings.effects.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    effects: { ...settings.effects, enabled },
+                  });
+                }}
+              />
+              <Toggle
+                label={t('edgesOutline')}
+                checked={settings.outline.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    outline: { ...settings.outline, enabled },
+                  });
+                }}
+              />
+              <Field label={t('quality')}>
+                <Select
+                  value={settings.effects.quality}
+                  onChange={(e) => {
+                    update({
+                      ...settings,
+                      effects: {
+                        ...settings.effects,
+                        quality: e.target.value as EffectsQuality,
+                      },
+                    });
+                  }}
+                >
+                  {EFFECTS_QUALITIES.map((q) => (
+                    <option key={q} value={q}>
+                      {q}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Section>
+
+            <Section title={t('background')} note={t('noteApplyOnReload')}>
+              <ColorField
+                label={t('backgroundColor')}
+                value={colorToHex(settings.background.color)}
+                onChange={(hex) => {
+                  update({
+                    ...settings,
+                    background: { color: hexToColor(hex) },
+                  });
+                }}
+              />
+            </Section>
+
+            <Section title={t('behavior')} note={t('behaviorNoteToggle')}>
+              <Toggle
+                label={t('hoverHighlight')}
+                checked={settings.behavior.hoverHighlight.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, enabled } },
+                  });
+                  handle?.commands.execute('hover.setEnabled', enabled).catch(() => undefined);
+                }}
+              />
+              <ColorField
+                label={t('hoverColor')}
+                value={colorToHex(settings.behavior.hoverHighlight.color)}
+                onChange={(hex) => {
+                  update({
+                    ...settings,
+                    behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, color: hexToColor(hex) } },
+                  });
+                }}
+              />
+              <Toggle
+                label={t('clickToSelect')}
+                checked={settings.behavior.selection.enabled}
+                onChange={(enabled) => {
+                  update({
+                    ...settings,
+                    behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, enabled } },
+                  });
+                  handle?.commands.execute('selection.setEnabled', enabled).catch(() => undefined);
+                }}
+              />
+              <ColorField
+                label={t('selectionColor')}
+                value={colorToHex(settings.behavior.selection.color)}
+                onChange={(hex) => {
+                  update({
+                    ...settings,
+                    behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, color: hexToColor(hex) } },
+                  });
+                }}
+              />
+            </Section>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="performance" className="max-h-[24rem] overflow-y-auto">
+          <div className="pt-3">
+            <PerformanceSection
+              handle={handle}
+              settings={settings}
+              onChange={update}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="controls" className="max-h-[24rem] overflow-y-auto">
+          <div className="space-y-4 pt-3">
+            <MouseControlsSection settings={settings} onChange={update} />
+
+            {handle ? (
+              <ShortcutsSection
+                handle={handle}
+                settings={settings}
+                onChange={update}
+              />
+            ) : (
+              <Section title={t('keyboardShortcuts')} note={undefined}>
+                <p className="text-caption text-foreground-secondary">
+                  {t('viewerNotReady')}
+                </p>
+              </Section>
+            )}
+
+            {handle ? (
+              <MouseBindingsSection
+                handle={handle}
+                settings={settings}
+                onChange={update}
+              />
+            ) : (
+              <Section title={t('mouseBindings')} note={undefined}>
+                <p className="text-caption text-foreground-secondary">
+                  {t('viewerNotReady')}
+                </p>
+              </Section>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            update(DEFAULT_VIEWER_SETTINGS);
+          }}
+          className="text-caption text-foreground-secondary"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          {t('resetDefaults')}
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onReloadViewer}
+          data-testid="viewer-settings-reload"
+          className="text-caption"
+        >
+          {t('reloadViewer')}
+        </Button>
+      </div>
+    </div>
+  );
+}

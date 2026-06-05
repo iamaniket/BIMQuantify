@@ -24,7 +24,7 @@ import {
   requestGeolocation,
   type GeolocationResult,
 } from '@/lib/upload/captureMetadata';
-import { AttachmentRow } from '@/features/viewer/attachments/AttachmentRow';
+import { AttachmentRow } from '@/features/viewer/shared/attachments/AttachmentRow';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { CaptureLinksList } from '@/features/attachments/CaptureLinksList';
 import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLinkDialog';
