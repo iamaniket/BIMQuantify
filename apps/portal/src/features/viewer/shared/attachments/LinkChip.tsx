@@ -1,6 +1,7 @@
 'use client';
 
-import { Box, FileText, type LucideIcon } from 'lucide-react';
+import { Box, FileText } from '@bimstitch/ui/icons';
+import { type AppIcon as LucideIcon } from '@bimstitch/ui';
 import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';

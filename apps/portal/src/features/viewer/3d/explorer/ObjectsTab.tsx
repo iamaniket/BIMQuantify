@@ -1,6 +1,6 @@
 'use client';
 
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen } from '@bimstitch/ui/icons';
 import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';

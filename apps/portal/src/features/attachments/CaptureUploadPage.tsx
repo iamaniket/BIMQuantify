@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, CheckCircle, FileUp, XCircle } from 'lucide-react';
+import { Camera, CheckCircle, FileUp, XCircle } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 

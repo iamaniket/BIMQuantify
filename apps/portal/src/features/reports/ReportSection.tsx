@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, ExternalLink, FileText, Sparkles, X } from 'lucide-react';
+import { Download, ExternalLink, FileText, Sparkles, X } from '@bimstitch/ui/icons';
 import { useState, type JSX, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 

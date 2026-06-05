@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from '@bimstitch/ui/icons';
 import type { JSX } from 'react';
 
 import { useSidebar } from './SidebarContext';

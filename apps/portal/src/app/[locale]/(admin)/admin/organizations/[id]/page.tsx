@@ -1,6 +1,6 @@
 'use client';
 
-import { Pause, Pencil, Play, Trash2 } from 'lucide-react';
+import { Pause, Pencil, Play, Trash2 } from '@bimstitch/ui/icons';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { use, useCallback, useMemo, useState, type JSX } from 'react';

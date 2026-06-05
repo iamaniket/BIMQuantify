@@ -1,8 +1,7 @@
 'use client';
 
-import {
-  Box, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Square, Trash2, type LucideIcon,
-} from 'lucide-react';
+import { Box, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Square, Trash2 } from '@bimstitch/ui/icons';
+import { type AppIcon as LucideIcon } from '@bimstitch/ui';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useRef, useState, type JSX, type ReactNode,

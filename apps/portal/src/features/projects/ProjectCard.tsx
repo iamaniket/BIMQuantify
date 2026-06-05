@@ -1,9 +1,7 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  Building2, CalendarDays, FileText, Layers, MapPin, RefreshCw, Ruler, Truck,
-} from 'lucide-react';
+import { Building2, CalendarDays, FileText, Layers, MapPin, RefreshCw, Ruler, Truck } from '@bimstitch/ui/icons';
 import { Link } from '@/i18n/navigation';
 import { useCallback, useState, type JSX } from 'react';
 

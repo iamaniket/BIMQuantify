@@ -18,6 +18,7 @@ import { LocaleMigrationShim } from '@/components/LocaleMigrationShim';
 import { PwaInstallPrompt } from '@/components/PwaInstallPrompt';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import { routing } from '@/i18n/routing';
+import { IconProvider } from '@bimstitch/ui/providers';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { PostHogProvider } from '@/providers/PostHogProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -46,15 +47,17 @@ export default async function LocaleLayout({ children, params }: Props): Promise
           <LocaleMigrationShim />
           <ServiceWorkerRegistrar />
           <ThemeProvider>
-            <QueryProvider>
-              <AuthProvider>
-                <PostHogProvider>
-                  {children}
-                  <PwaInstallPrompt />
-                  <Toaster richColors closeButton position="top-right" />
-                </PostHogProvider>
-              </AuthProvider>
-            </QueryProvider>
+            <IconProvider>
+              <QueryProvider>
+                <AuthProvider>
+                  <PostHogProvider>
+                    {children}
+                    <PwaInstallPrompt />
+                    <Toaster richColors closeButton position="top-right" />
+                  </PostHogProvider>
+                </AuthProvider>
+              </QueryProvider>
+            </IconProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

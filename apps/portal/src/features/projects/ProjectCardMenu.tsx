@@ -1,6 +1,6 @@
 'use client';
 
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical } from '@bimstitch/ui/icons';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 

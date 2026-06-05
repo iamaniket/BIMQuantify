@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  Camera,
-  FileText,
-  Search,
-  Upload,
-} from 'lucide-react';
+import { Camera, FileText, Search, Upload } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';

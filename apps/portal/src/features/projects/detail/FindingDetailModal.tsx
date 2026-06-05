@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Trash2, Unlink } from 'lucide-react';
+import { Trash2, Unlink } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';

@@ -1,17 +1,6 @@
 'use client';
 
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  Link2,
-  ShieldCheck,
-  SlidersHorizontal,
-  Upload,
-  X,
-} from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Link2, ShieldCheck, SlidersHorizontal, Upload, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';

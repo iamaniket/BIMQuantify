@@ -1,6 +1,6 @@
 'use client';
 
-import type { LucideIcon } from 'lucide-react';
+import type { AppIcon as LucideIcon } from '@bimstitch/ui';
 import { useTranslations } from 'next-intl';
 import { Fragment, type JSX, type ReactNode } from 'react';
 
@@ -75,7 +75,7 @@ export function UnifiedToolbar({
                 isActive={def.isActive ?? false}
                 data-testid={`${testIdPrefix}-tool-${def.id}`}
               >
-                <def.icon className="h-5 w-5" strokeWidth={1.75} />
+                <def.icon className="h-[22px] w-[22px]" weight="bold" />
                 {def.badge}
               </ToolButton>
             );

@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, FileText, ShieldCheck } from 'lucide-react';
+import { ExternalLink, FileText, ShieldCheck } from '@bimstitch/ui/icons';
 import { Link } from '@/i18n/navigation';
 import { useMemo, useState, type JSX } from 'react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, X } from 'lucide-react';
+import { ImagePlus, X } from '@bimstitch/ui/icons';
 import {
   useId,
   useRef,

@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  BookOpen,
-  Building2,
-  Download,
-  Inbox,
-  LayoutGrid,
-  Plus,
-  Search,
-  Table2,
-} from 'lucide-react';
+import { BookOpen, Building2, Download, Inbox, LayoutGrid, Plus, Search, Table2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';

@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  ChevronLeft,
-  ChevronRight,
-  House,
-  MousePointer2,
-  Move,
-  Search as SearchIcon,
-  Settings,
-  X as XIcon,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, House, MousePointer2, Move, Search as SearchIcon, Settings, X as XIcon } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback,
@@ -265,7 +256,7 @@ export function DocumentToolbar({
                     aria-label={t('searchPrev')}
                     data-testid="document-search-prev"
                   >
-                    <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
+                    <ChevronLeft className="h-5 w-5" weight="bold" />
                   </ToolButton>
                   <ToolButton
                     type="button"
@@ -275,7 +266,7 @@ export function DocumentToolbar({
                     aria-label={t('searchNext')}
                     data-testid="document-search-next"
                   >
-                    <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
+                    <ChevronRight className="h-5 w-5" weight="bold" />
                   </ToolButton>
                   <ToolButton
                     type="button"
@@ -291,7 +282,7 @@ export function DocumentToolbar({
                     aria-label={t('searchClose')}
                     data-testid="document-search-close"
                   >
-                    <XIcon className="h-5 w-5" strokeWidth={1.75} />
+                    <XIcon className="h-5 w-5" weight="bold" />
                   </ToolButton>
                 </form>
               ),

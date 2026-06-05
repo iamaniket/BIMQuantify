@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  AlertTriangle,
-  Box,
-  Download,
-  FileText,
-  MoreVertical,
-  RotateCcw,
-  ShieldCheck,
-  Trash2,
-} from 'lucide-react';
+import { AlertTriangle, Box, Download, FileText, MoreVertical, RotateCcw, ShieldCheck, Trash2 } from '@bimstitch/ui/icons';
 import { Link } from '@/i18n/navigation';
 import {
   useCallback, useState, type JSX,

@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  FileAudio,
-  FileText,
-  FileVideo,
-  Image,
-} from 'lucide-react';
+import { FileAudio, FileText, FileVideo, Image } from '@bimstitch/ui/icons';
 import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';

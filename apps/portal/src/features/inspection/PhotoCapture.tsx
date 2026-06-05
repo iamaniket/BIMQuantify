@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, X } from 'lucide-react';
+import { Camera, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';

@@ -1,6 +1,6 @@
 'use client';
 
-import { LinkIcon, XCircle } from 'lucide-react';
+import { LinkIcon, XCircle } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, type JSX } from 'react';
 import { toast } from 'sonner';

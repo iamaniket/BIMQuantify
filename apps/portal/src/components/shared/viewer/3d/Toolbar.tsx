@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Camera,
-  Eraser,
-  Home,
-  MousePointer2,
-  Orbit,
-  Settings,
-} from 'lucide-react';
+import { Camera, Eraser, Home, MousePointer2, Orbit, Settings } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 

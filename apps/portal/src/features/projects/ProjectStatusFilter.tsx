@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown, ListFilter } from 'lucide-react';
+import { Check, ChevronDown, ListFilter } from '@bimstitch/ui/icons';
 import type { JSX } from 'react';
 
 import { useTranslations } from 'next-intl';

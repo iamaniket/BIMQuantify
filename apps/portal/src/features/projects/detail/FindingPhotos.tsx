@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, X } from 'lucide-react';
+import { ImagePlus, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';

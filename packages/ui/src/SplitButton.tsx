@@ -1,6 +1,8 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { CaretDown } from '@phosphor-icons/react';
+
+import { DEFAULT_ICON_WEIGHT } from './lib/icons.js';
 import type { JSX, ReactNode } from 'react';
 
 import { cn } from './lib/cn.js';
@@ -125,7 +127,7 @@ export function SplitButton({
             '[&[data-state=open]>svg]:rotate-180',
           )}
         >
-          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-150" />
+          <CaretDown weight={DEFAULT_ICON_WEIGHT} className="h-4 w-4 transition-transform duration-150" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[11rem]">
           {items.map((item) => (

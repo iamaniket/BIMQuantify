@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Search } from 'lucide-react';
+import { Download, Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, useMemo, type JSX } from 'react';
 

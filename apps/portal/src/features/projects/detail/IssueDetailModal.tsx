@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, UserCog, CheckCircle2 } from 'lucide-react';
+import { MapPin, UserCog, CheckCircle2 } from '@bimstitch/ui/icons';
 import type { JSX } from 'react';
 
 import {

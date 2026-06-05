@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Pencil } from 'lucide-react';
+import { Building2, Pencil } from '@bimstitch/ui/icons';
 import { useState, type JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, X } from '@bimstitch/ui/icons';
 import { type JSX, type ReactNode } from 'react';
 
 import { IconButton, Input } from '@bimstitch/ui';

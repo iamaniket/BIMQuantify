@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  AlertTriangle,
-  Check,
-  Clock,
-  Minus,
-} from 'lucide-react';
+import { AlertTriangle, Check, Clock, Minus } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  ChevronDown,
-  ChevronUp,
-  ClipboardCheck,
-  FileSignature,
-  Pencil,
-  Plus,
-  RotateCcw,
-  Trash2,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, ClipboardCheck, FileSignature, Pencil, Plus, RotateCcw, Trash2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type FormEvent, type JSX } from 'react';
 

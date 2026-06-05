@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  Building2, Hammer, Layers, MapPin, Ruler, Scale, Share2,
-} from 'lucide-react';
+import { Building2, Hammer, Layers, MapPin, Ruler, Scale, Share2 } from '@bimstitch/ui/icons';
 import { useState, type JSX } from 'react';
 
 import type { Project } from '@/lib/api/schemas';

@@ -1,8 +1,9 @@
 import { forwardRef, type HTMLAttributes } from 'react';
 
-import type { LucideIcon } from 'lucide-react';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 
 import { cn } from './lib/cn.js';
+import { DEFAULT_ICON_WEIGHT } from './lib/icons.js';
 
 const variantStyles = {
   default: 'bg-background-tertiary text-foreground-secondary border-border',
@@ -22,15 +23,15 @@ const sizeStyles: Record<BadgeSize, string> = {
 };
 
 const iconSizeStyles: Record<BadgeSize, string> = {
-  sm: 'h-2.5 w-2.5',
-  md: 'h-3 w-3',
+  sm: 'h-3 w-3',
+  md: 'h-3.5 w-3.5',
 };
 
 export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
   size?: BadgeSize;
-  /** Leading icon (lucide). */
-  icon?: LucideIcon;
+  /** Leading icon. */
+  icon?: PhosphorIcon;
   /** Render with a border. Defaults to true; set false for borderless count pills. */
   bordered?: boolean;
 };
@@ -48,7 +49,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       )}
       {...rest}
     >
-      {IconSvg ? <IconSvg className={iconSizeStyles[size]} aria-hidden /> : null}
+      {IconSvg ? <IconSvg className={iconSizeStyles[size]} weight={DEFAULT_ICON_WEIGHT} aria-hidden /> : null}
       {children}
     </span>
   ),

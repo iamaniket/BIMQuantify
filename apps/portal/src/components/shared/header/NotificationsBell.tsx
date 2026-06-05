@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  AlertTriangle,
-  Bell,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  RefreshCw,
-  X,
-} from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle2, Clock, Loader2, RefreshCw, X } from '@bimstitch/ui/icons';
 import {
   useEffect, useRef, useState, type JSX,
 } from 'react';

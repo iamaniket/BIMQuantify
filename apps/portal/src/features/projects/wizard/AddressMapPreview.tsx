@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin } from 'lucide-react';
+import { MapPin } from '@bimstitch/ui/icons';
 import { useMemo, useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 

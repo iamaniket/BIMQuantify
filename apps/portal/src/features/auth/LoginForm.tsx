@@ -3,7 +3,7 @@
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from '@/i18n/navigation';
-import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useId, useMemo, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
@@ -149,7 +149,7 @@ export function LoginForm(): JSX.Element {
               autoComplete="email"
               placeholder={t('emailPlaceholder')}
               invalid={usernameError !== undefined}
-              leading={<Mail size={14} />}
+              leading={<Mail size={18} />}
               {...form.register('username')}
             />
           </FormField>
@@ -170,7 +170,7 @@ export function LoginForm(): JSX.Element {
               autoComplete="current-password"
               placeholder={t('passwordPlaceholder')}
               invalid={passwordError !== undefined}
-              leading={<Lock size={14} />}
+              leading={<Lock size={18} />}
               trailing={
                 <button
                   type="button"
@@ -179,7 +179,7 @@ export function LoginForm(): JSX.Element {
                   aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                   className="grid size-7 cursor-pointer place-items-center rounded text-foreground-tertiary hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               }
               {...form.register('password')}
@@ -209,7 +209,7 @@ export function LoginForm(): JSX.Element {
             {login.isPending ? t('submitting') : (
               <>
                 {t('submit')}
-                <ArrowRight size={14} />
+                <ArrowRight size={18} />
               </>
             )}
           </Button>

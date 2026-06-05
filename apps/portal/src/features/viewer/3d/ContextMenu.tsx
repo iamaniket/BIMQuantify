@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Eye,
-  FileBadge,
-  Flag,
-  Glasses,
-  Paperclip,
-  Search,
-} from 'lucide-react';
+import { Eye, FileBadge, Flag, Glasses, Paperclip, Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   forwardRef,

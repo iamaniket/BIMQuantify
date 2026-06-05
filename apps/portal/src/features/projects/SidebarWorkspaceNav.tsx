@@ -1,6 +1,6 @@
 'use client';
 
-import { FileBadge, LayoutGrid } from 'lucide-react';
+import { FileBadge, LayoutGrid } from '@bimstitch/ui/icons';
 import { usePathname } from '@/i18n/navigation';
 import type { JSX } from 'react';
 

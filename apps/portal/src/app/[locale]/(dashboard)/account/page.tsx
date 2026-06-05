@@ -1,17 +1,6 @@
 'use client';
 
-import {
-  Camera,
-  Check,
-  ChevronRight,
-  Mail,
-  Pencil,
-  Shield,
-  Trash2,
-  UserRound,
-  Users,
-  X,
-} from 'lucide-react';
+import { Camera, Check, ChevronRight, Mail, Pencil, Shield, Trash2, UserRound, Users, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback,
@@ -250,7 +239,7 @@ function ProfilePane({
                         onClick={onSaveName}
                         className="flex items-center gap-1"
                       >
-                        <Check size={14} aria-hidden />
+                        <Check size={18} aria-hidden />
                         {t('saveName')}
                       </Button>
                       <Button
@@ -271,7 +260,7 @@ function ProfilePane({
                         className="grid h-6 w-6 place-items-center rounded text-foreground-tertiary hover:bg-background-secondary hover:text-foreground"
                         title={t('editName')}
                       >
-                        <Pencil size={13} />
+                        <Pencil size={15} />
                       </button>
                     </div>
                   )}
@@ -283,7 +272,7 @@ function ProfilePane({
                     {t('emailLabel')}
                   </div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-body2 text-foreground">
-                    <Mail size={13} className="text-foreground-tertiary" />
+                    <Mail size={15} className="text-foreground-tertiary" />
                     {email}
                   </div>
                 </div>
@@ -299,7 +288,7 @@ function ProfilePane({
                 onClick={() => { fileRef.current?.click(); }}
                 className="flex items-center gap-1.5"
               >
-                <Camera size={14} aria-hidden />
+                <Camera size={18} aria-hidden />
                 {hasAvatar ? t('changePhoto') : t('uploadPhoto')}
               </Button>
               {hasAvatar && (
@@ -310,7 +299,7 @@ function ProfilePane({
                   onClick={onAvatarRemove}
                   className="flex items-center gap-1.5 text-error"
                 >
-                  <Trash2 size={14} aria-hidden />
+                  <Trash2 size={18} aria-hidden />
                   {t('removePhoto')}
                 </Button>
               )}
@@ -457,7 +446,7 @@ function InvitationsPane({
                     {inv.organization_name}
                   </div>
                   <div className="flex items-center gap-1.5 text-[12px] text-foreground-tertiary">
-                    <Mail size={12} aria-hidden />
+                    <Mail size={18} aria-hidden />
                     {inv.invited_by_email !== null
                       ? t('invitedBy', { email: inv.invited_by_email })
                       : t('invitedByUnknown')}
@@ -476,7 +465,7 @@ function InvitationsPane({
                     onClick={() => { onAccept(inv.organization_id); }}
                     className="flex items-center gap-1.5"
                   >
-                    <Check size={14} aria-hidden />
+                    <Check size={18} aria-hidden />
                     {isPending ? t('accepting') : t('accept')}
                   </Button>
                   <Button
@@ -486,7 +475,7 @@ function InvitationsPane({
                     onClick={() => { onDecline(inv.organization_id); }}
                     className="flex items-center gap-1.5"
                   >
-                    <X size={14} aria-hidden />
+                    <X size={18} aria-hidden />
                     {isPending ? t('declining') : t('decline')}
                   </Button>
                 </div>

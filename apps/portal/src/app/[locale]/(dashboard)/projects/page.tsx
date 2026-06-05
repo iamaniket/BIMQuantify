@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Search } from 'lucide-react';
+import { AlertTriangle, Search } from '@bimstitch/ui/icons';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 

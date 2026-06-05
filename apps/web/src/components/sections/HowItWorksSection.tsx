@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  ArrowRight,
-  Bell,
-  FileUp,
-  MapPin,
-  Search,
-} from 'lucide-react';
+import { ArrowRight, Bell, FileUp, MapPin, Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 

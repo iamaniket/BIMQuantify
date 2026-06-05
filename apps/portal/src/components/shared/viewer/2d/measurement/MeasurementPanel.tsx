@@ -1,6 +1,6 @@
 'use client';
 
-import { DraftingCompass, Ruler, Square } from 'lucide-react';
+import { DraftingCompass, Ruler, Square } from '@bimstitch/ui/icons';
 import type { JSX } from 'react';
 
 import type { DocumentViewerHandle, PdfMeasurement } from '@bimstitch/viewer';

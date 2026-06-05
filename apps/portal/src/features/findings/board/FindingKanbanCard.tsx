@@ -1,4 +1,4 @@
-import { Clock, FileText, User } from 'lucide-react';
+import { Clock, FileText, User } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

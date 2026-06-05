@@ -1,6 +1,6 @@
 'use client';
 
-import { RotateCcw, X } from 'lucide-react';
+import { RotateCcw, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useEffect,

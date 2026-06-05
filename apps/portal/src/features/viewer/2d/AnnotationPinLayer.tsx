@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin } from 'lucide-react';
+import { MapPin } from '@bimstitch/ui/icons';
 import { useCallback, type JSX } from 'react';
 
 import type { PageDimensions } from '@bimstitch/viewer';

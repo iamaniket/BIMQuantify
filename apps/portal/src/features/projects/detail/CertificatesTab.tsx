@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Eye, FileBadge, Library, Search, Trash2, Upload } from 'lucide-react';
+import { Download, Eye, FileBadge, Library, Search, Trash2, Upload } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 import { toast } from 'sonner';

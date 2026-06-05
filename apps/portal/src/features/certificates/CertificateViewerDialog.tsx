@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, FileBadge, Info, LinkIcon } from 'lucide-react';
+import { Download, FileBadge, Info, LinkIcon } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, type JSX, type ReactNode } from 'react';
 import { toast } from 'sonner';

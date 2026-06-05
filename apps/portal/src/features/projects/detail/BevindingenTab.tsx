@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Columns3, Eye, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, Columns3, Eye, Plus, Search, Trash2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import type { LucideIcon } from 'lucide-react';
+import type { AppIcon as LucideIcon } from '@bimstitch/ui';
 import { Link } from '@/i18n/navigation';
 import type { JSX, ReactNode } from 'react';
 

@@ -1,12 +1,7 @@
 'use client';
 
-import {
-  Info,
-  ListTree,
-  Ruler,
-  Scan,
-  type LucideIcon,
-} from 'lucide-react';
+import { Info, ListTree, Ruler, Scan } from '@bimstitch/ui/icons';
+import { type AppIcon as LucideIcon } from '@bimstitch/ui';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

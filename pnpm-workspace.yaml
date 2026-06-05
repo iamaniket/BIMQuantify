@@ -4,3 +4,5 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
+patchedDependencies:
+  '@phosphor-icons/react': patches/@phosphor-icons__react.patch

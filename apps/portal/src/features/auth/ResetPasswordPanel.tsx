@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight, Lock } from '@bimstitch/ui/icons';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useId, useState, type FormEvent, type JSX } from 'react';
@@ -63,7 +63,7 @@ export function ResetPasswordPanel(): JSX.Element {
               required
               minLength={8}
               autoComplete="new-password"
-              leading={<Lock size={14} />}
+              leading={<Lock size={18} />}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -75,7 +75,7 @@ export function ResetPasswordPanel(): JSX.Element {
               required
               minLength={8}
               autoComplete="new-password"
-              leading={<Lock size={14} />}
+              leading={<Lock size={18} />}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
             />
@@ -91,7 +91,7 @@ export function ResetPasswordPanel(): JSX.Element {
             {pending ? t('submitting') : (
               <>
                 {t('cta')}
-                <ArrowRight size={14} />
+                <ArrowRight size={18} />
               </>
             )}
           </Button>

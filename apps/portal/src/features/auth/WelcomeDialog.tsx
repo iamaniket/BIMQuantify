@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -54,7 +54,7 @@ export function WelcomeDialog({
           <ul className="flex flex-col gap-2">
             {capabilities.map((cap) => (
               <li key={cap} className="flex items-start gap-2 text-body3 text-foreground-secondary">
-                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success" />
+                <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-success" />
                 <span>{cap}</span>
               </li>
             ))}
@@ -63,7 +63,7 @@ export function WelcomeDialog({
         <DialogFooter>
           <Button variant="primary" size="md" onClick={handleGetStarted} className="flex items-center gap-1.5">
             {t('getStarted')}
-            <ArrowRight size={14} aria-hidden />
+            <ArrowRight size={18} aria-hidden />
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Boxes } from 'lucide-react';
+import { Boxes } from '@bimstitch/ui/icons';
 import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';

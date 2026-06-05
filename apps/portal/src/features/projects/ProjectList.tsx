@@ -1,6 +1,6 @@
 'use client';
 
-import { FolderOpen, Search } from 'lucide-react';
+import { FolderOpen, Search } from '@bimstitch/ui/icons';
 import { type JSX } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';

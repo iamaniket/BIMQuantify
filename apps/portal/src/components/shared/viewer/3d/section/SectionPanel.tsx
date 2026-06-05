@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  Crosshair, Eraser, Eye, EyeOff, FlipVertical, Trash2,
-} from 'lucide-react';
+import { Crosshair, Eraser, Eye, EyeOff, FlipVertical, Trash2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useRef, useState, type JSX,

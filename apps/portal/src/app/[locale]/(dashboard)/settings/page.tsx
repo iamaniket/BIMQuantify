@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Monitor, Moon, SlidersHorizontal, Sun, UserRound } from 'lucide-react';
+import { Check, Monitor, Moon, SlidersHorizontal, Sun, UserRound } from '@bimstitch/ui/icons';
 import { useTheme } from 'next-themes';
 import { useEffect, useState, useTransition, type JSX } from 'react';
 

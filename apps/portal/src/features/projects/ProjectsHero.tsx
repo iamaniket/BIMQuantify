@@ -1,6 +1,6 @@
 'use client';
 
-import { FolderKanban } from 'lucide-react';
+import { FolderKanban } from '@bimstitch/ui/icons';
 import { useMemo, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 

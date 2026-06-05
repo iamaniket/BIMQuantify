@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutGrid, Plus, Search, Table2 } from 'lucide-react';
+import { LayoutGrid, Plus, Search, Table2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 import { toast } from 'sonner';

@@ -1,6 +1,6 @@
 'use client';
 
-import { Box } from 'lucide-react';
+import { Box } from '@bimstitch/ui/icons';
 import { useState, type JSX } from 'react';
 
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';

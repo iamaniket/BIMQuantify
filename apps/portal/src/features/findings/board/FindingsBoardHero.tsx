@@ -1,6 +1,6 @@
 'use client';
 
-import { ClipboardCheck } from 'lucide-react';
+import { ClipboardCheck } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Sun } from 'lucide-react';
+import { Sun } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';
 

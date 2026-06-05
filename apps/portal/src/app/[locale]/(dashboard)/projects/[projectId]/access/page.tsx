@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  ChevronRight,
-  Eye,
-  LayoutGrid,
-  Plus,
-  Search,
-  Shield,
-  UserPlus,
-  Users,
-} from 'lucide-react';
+import { ChevronRight, Eye, LayoutGrid, Plus, Search, Shield, UserPlus, Users } from '@bimstitch/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';

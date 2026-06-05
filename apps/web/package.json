@@ -21,7 +21,6 @@
     "@dnd-kit/utilities": "^3.2.2",
     "clsx": "^2.1.1",
     "gray-matter": "^4.0.3",
-    "lucide-react": "^0.468.0",
     "next": "^15.0.3",
     "next-intl": "^4.11.0",
     "next-mdx-remote": "^6.0.0",

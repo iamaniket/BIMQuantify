@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, X, Minus } from 'lucide-react';
+import { Check, X, Minus } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

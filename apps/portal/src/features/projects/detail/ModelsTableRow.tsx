@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, ShieldCheck, Upload, Trash2 } from 'lucide-react';
+import { Eye, ShieldCheck, Upload, Trash2 } from '@bimstitch/ui/icons';
 import { Link } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {

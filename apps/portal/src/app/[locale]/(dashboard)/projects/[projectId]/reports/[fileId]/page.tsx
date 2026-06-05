@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useParams, useSearchParams } from 'next/navigation';

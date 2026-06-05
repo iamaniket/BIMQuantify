@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search } from '@bimstitch/ui/icons';
 import {
   useEffect, useId, useRef, useState, type JSX,
 } from 'react';

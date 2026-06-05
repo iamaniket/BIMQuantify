@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  AlertTriangle,
-  Check,
-  FileText,
-  ShieldCheck,
-  SlidersHorizontal,
-  X,
-} from 'lucide-react';
+import { AlertTriangle, Check, FileText, ShieldCheck, SlidersHorizontal, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';

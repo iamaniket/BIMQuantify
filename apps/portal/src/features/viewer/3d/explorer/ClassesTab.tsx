@@ -1,6 +1,6 @@
 'use client';
 
-import { Layers } from 'lucide-react';
+import { Layers } from '@bimstitch/ui/icons';
 import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';

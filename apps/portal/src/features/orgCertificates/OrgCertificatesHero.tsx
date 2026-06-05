@@ -1,6 +1,6 @@
 'use client';
 
-import { FileBadge } from 'lucide-react';
+import { FileBadge } from '@bimstitch/ui/icons';
 import type { JSX } from 'react';
 import { useTranslations } from 'next-intl';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Eye, MapPin, Trash2 } from 'lucide-react';
+import { Download, Eye, MapPin, Trash2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  AlertTriangle,
-  Award,
-  Boxes,
-  CalendarClock,
-  ClipboardCheck,
-  FileText,
-} from 'lucide-react';
+import { AlertTriangle, Award, Boxes, CalendarClock, ClipboardCheck, FileText } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 

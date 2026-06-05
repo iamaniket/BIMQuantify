@@ -1,18 +1,18 @@
 import type { JSX } from 'react';
 
-import { Loader2, type LucideProps } from 'lucide-react';
+import { SpinnerGap, type IconProps as PhosphorIconProps } from '@phosphor-icons/react';
 
 import { cn } from './lib/cn.js';
 
 const spinnerSizeClassNames = {
-  sm: 'h-3.5 w-3.5',
-  md: 'h-5 w-5',
-  lg: 'h-8 w-8',
+  sm: 'h-4 w-4',
+  md: 'h-[22px] w-[22px]',
+  lg: 'h-9 w-9',
 } as const;
 
 export type SpinnerSize = keyof typeof spinnerSizeClassNames;
 
-export type SpinnerProps = Omit<LucideProps, 'size'> & {
+export type SpinnerProps = Omit<PhosphorIconProps, 'size' | 'weight'> & {
   size?: SpinnerSize;
   label?: string;
 };
@@ -24,8 +24,9 @@ export function Spinner({
   ...rest
 }: SpinnerProps): JSX.Element {
   return (
-    <Loader2
+    <SpinnerGap
       role="status"
+      weight="bold"
       aria-label={label ?? 'Loading'}
       className={cn('animate-spin text-foreground-tertiary', spinnerSizeClassNames[size], className)}
       {...rest}

@@ -1,7 +1,7 @@
 'use client';
 
 import { cn, CountChip } from '@bimstitch/ui';
-import { Info } from 'lucide-react';
+import { Info } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useRef, useState, type JSX,

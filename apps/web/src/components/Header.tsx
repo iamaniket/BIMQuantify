@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { JSX } from 'react';
 
 import { Button, ThemeToggle } from '@bimstitch/ui';
-import { Menu, X } from 'lucide-react';
+import { Menu, X } from '@bimstitch/ui/icons';
 
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { Link } from '@/i18n/navigation';

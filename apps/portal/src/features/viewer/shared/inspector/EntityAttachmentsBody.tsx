@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  FileText, LinkIcon, Loader2, MapPin, Paperclip, Plus, StickyNote,
-} from 'lucide-react';
+import { FileText, LinkIcon, Loader2, MapPin, Paperclip, Plus, StickyNote } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useMemo, useRef, useState, type JSX,

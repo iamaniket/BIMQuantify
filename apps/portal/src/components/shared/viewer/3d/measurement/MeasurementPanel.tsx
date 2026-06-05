@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  Crosshair, DraftingCompass, Ruler, Settings, Square,
-} from 'lucide-react';
+import { Crosshair, DraftingCompass, Ruler, Settings, Square } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useState, type JSX, type ReactNode,

@@ -1,6 +1,6 @@
 'use client';
 
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useRef, useState,

@@ -1,6 +1,8 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { CaretDown } from '@phosphor-icons/react';
+
+import { DEFAULT_ICON_WEIGHT } from './lib/icons.js';
 import {
   createContext,
   forwardRef,
@@ -119,8 +121,8 @@ export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
               onClick={(e) => { e.stopPropagation(); onToggle(); }}
               className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground"
             >
-              <ChevronDown className={cn(
-                'h-3 w-3 transition-transform duration-150',
+              <CaretDown weight={DEFAULT_ICON_WEIGHT} className={cn(
+                'h-3.5 w-3.5 transition-transform duration-150',
                 expanded && 'rotate-180',
               )} />
             </button>

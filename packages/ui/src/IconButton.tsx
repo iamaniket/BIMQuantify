@@ -1,14 +1,15 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
-import type { LucideIcon } from 'lucide-react';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 
 import { cn } from './lib/cn.js';
+import { DEFAULT_ICON_WEIGHT } from './lib/icons.js';
 
 export type IconButtonSize = 'sm' | 'md' | 'lg';
 
 export type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  /** Icon component (lucide). Alternatively pass arbitrary `children` (e.g. an inline svg). */
-  icon?: LucideIcon;
+  /** Icon component. Alternatively pass arbitrary `children` (e.g. an inline svg). */
+  icon?: PhosphorIcon;
   size?: IconButtonSize;
   /** Highlights the button with the primary colour (e.g. an active toggle). */
   active?: boolean;
@@ -21,6 +22,12 @@ const sizeStyles: Record<IconButtonSize, string> = {
   sm: 'h-6 w-6',
   md: 'h-[26px] w-[26px]',
   lg: 'h-8 w-8',
+};
+
+const iconSizeByButton: Record<IconButtonSize, string> = {
+  sm: 'h-3.5 w-3.5',
+  md: 'h-4 w-4',
+  lg: 'h-[18px] w-[18px]',
 };
 
 const baseStyles =
@@ -42,7 +49,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       )}
       {...rest}
     >
-      {IconSvg ? <IconSvg className="h-3.5 w-3.5" aria-hidden /> : children}
+      {IconSvg ? <IconSvg className={iconSizeByButton[size]} weight={DEFAULT_ICON_WEIGHT} aria-hidden /> : children}
     </button>
   ),
 );

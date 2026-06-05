@@ -1,23 +1,6 @@
 'use client';
 
-import {
-  Activity,
-  Bell,
-  Camera,
-  ChevronRight,
-  Clock,
-  Download,
-  Key,
-  LayoutGrid,
-  Plus,
-  Search,
-  Settings,
-  Shield,
-  Trash2,
-  UserPlus,
-  Users,
-  X,
-} from 'lucide-react';
+import { Activity, Bell, Camera, ChevronRight, Clock, Download, Key, LayoutGrid, Plus, Search, Settings, Shield, Trash2, UserPlus, Users, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useMemo, useState, type JSX, type ReactNode } from 'react';
 

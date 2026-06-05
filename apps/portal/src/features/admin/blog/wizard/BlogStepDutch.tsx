@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Upload } from 'lucide-react';
+import { FileText, Upload } from '@bimstitch/ui/icons';
 import {
   useCallback,
   useId,

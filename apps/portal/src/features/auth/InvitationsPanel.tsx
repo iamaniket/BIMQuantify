@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Mail, X } from 'lucide-react';
+import { Check, Mail, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -170,7 +170,7 @@ export function InvitationsPanel(): JSX.Element {
                   {inv.organization_name}
                 </div>
                 <div className="flex items-center gap-1.5 text-[12px] text-foreground-tertiary">
-                  <Mail size={12} aria-hidden />
+                  <Mail size={18} aria-hidden />
                   {inv.invited_by_email !== null
                     ? t('invitedBy', { email: inv.invited_by_email })
                     : t('invitedByUnknown')}
@@ -189,7 +189,7 @@ export function InvitationsPanel(): JSX.Element {
                   onClick={() => void onAccept(inv.organization_id)}
                   className="flex items-center gap-1.5"
                 >
-                  <Check size={14} aria-hidden />
+                  <Check size={18} aria-hidden />
                   {isPending ? t('accepting') : t('accept')}
                 </Button>
                 <Button
@@ -199,7 +199,7 @@ export function InvitationsPanel(): JSX.Element {
                   onClick={() => void onDecline(inv.organization_id)}
                   className="flex items-center gap-1.5"
                 >
-                  <X size={14} aria-hidden />
+                  <X size={18} aria-hidden />
                   {isPending ? t('declining') : t('decline')}
                 </Button>
               </div>

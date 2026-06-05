@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Inbox, Search } from 'lucide-react';
+import { Download, Inbox, Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, PenLine } from 'lucide-react';
+import { Check, PenLine } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

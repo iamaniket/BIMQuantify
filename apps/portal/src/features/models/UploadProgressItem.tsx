@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  AlertCircle, CheckCircle2, X,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle2, X } from '@bimstitch/ui/icons';
 import type { JSX } from 'react';
 
 import { Button, Spinner } from '@bimstitch/ui';

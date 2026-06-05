@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check } from '@bimstitch/ui/icons';
 import type { JSX } from 'react';
 
 export interface RequestAccessSuccessProps {
@@ -22,7 +22,7 @@ export function RequestAccessSuccess({
         className="grid size-12 place-items-center rounded-full"
         style={{ background: 'var(--color-success-light, #eaf6ef)', color: 'var(--color-success, #3f8f65)' }}
       >
-        <Check size={22} strokeWidth={3} />
+        <Check className="h-[22px] w-[22px]" weight="bold" />
       </div>
 
       <div>

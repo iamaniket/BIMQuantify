@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Mail } from 'lucide-react';
+import { ArrowRight, Mail } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useId, useState, type FormEvent, type JSX } from 'react';
 
@@ -61,7 +61,7 @@ export function ForgotPasswordPanel(): JSX.Element {
             required
             autoComplete="email"
             placeholder={t('emailPlaceholder')}
-            leading={<Mail size={14} />}
+            leading={<Mail size={18} />}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -76,7 +76,7 @@ export function ForgotPasswordPanel(): JSX.Element {
           {pending ? t('submitting') : (
             <>
               {t('cta')}
-              <ArrowRight size={14} />
+              <ArrowRight size={18} />
             </>
           )}
         </Button>

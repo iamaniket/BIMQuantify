@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  Camera,
-  Download,
-  FileAudio,
-  FileText,
-  FileVideo,
-  Image,
-  Info,
-  LinkIcon,
-} from 'lucide-react';
+import { Camera, Download, FileAudio, FileText, FileVideo, Image, Info, LinkIcon } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback,

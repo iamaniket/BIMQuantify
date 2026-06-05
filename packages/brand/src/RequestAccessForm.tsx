@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Globe2, GraduationCap, Mail, User } from 'lucide-react';
+import { Building2, Globe2, GraduationCap, Mail, User } from '@bimstitch/ui/icons';
 import { useState, type ChangeEvent, type FormEvent, type JSX } from 'react';
 
 import { Button, Checkbox, FormField, Input, Select, Textarea } from '@bimstitch/ui';
