@@ -413,6 +413,7 @@ export default function ViewerPage(): JSX.Element {
         activeTool={pdfActiveTool}
         searchHighlight={pdfSearchHighlight}
         className="absolute inset-0"
+        navCompass={{ enabled: true, locale: locale as 'en' | 'nl' }}
         onLoaded={handlePdfLoaded}
         onError={handlePdfError}
         onScaleChange={setPdfScale}

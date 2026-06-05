@@ -23,6 +23,7 @@ import type {
   SearchHighlightState,
 } from './pdf-core/documentTypes.js';
 import { measurePlugin } from './plugins/2d/measure/index.js';
+import { navCompassPlugin } from './plugins/2d/nav-compass/index.js';
 import { panPlugin } from './plugins/2d/pan/index.js';
 import { rotatePlugin } from './plugins/2d/rotate/index.js';
 import { searchPlugin } from './plugins/2d/search/index.js';
@@ -91,6 +92,11 @@ export type DocumentViewerProps = {
   className?: string;
   searchHighlight?: SearchHighlight | null;
   renderOverlay?: (dims: PageDimensions) => ReactNode;
+  /**
+   * Top-left orientation compass (the 2D analog of the 3D ViewCube). Enabled by
+   * default; `enabled: false` omits the plugin. `locale` defaults to 'nl'.
+   */
+  navCompass?: { enabled?: boolean; locale?: 'en' | 'nl' };
   onLoaded?: (info: DocumentLoadedInfo) => void;
   onError?: (err: Error) => void;
   onScaleChange?: (scale: number) => void;
@@ -108,6 +114,7 @@ function DocumentViewerInner(
     className,
     searchHighlight,
     renderOverlay,
+    navCompass,
     onLoaded,
     onError,
     onScaleChange,
@@ -120,6 +127,7 @@ function DocumentViewerInner(
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const viewportOverlayRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<DocumentEngine | null>(null);
 
   const [pageDims, setPageDims] = useState<PageDimensions | null>(null);
@@ -131,6 +139,7 @@ function DocumentViewerInner(
   const rotationRef = useRef<DocumentRotation>(rotation);
   const activeToolRef = useRef<DocumentActiveTool>(activeTool);
   const searchHighlightRef = useRef<SearchHighlight | null>(searchHighlight ?? null);
+  const navCompassRef = useRef(navCompass);
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
   const onScaleChangeRef = useRef(onScaleChange);
@@ -142,6 +151,7 @@ function DocumentViewerInner(
     rotationRef.current = rotation;
     activeToolRef.current = activeTool;
     searchHighlightRef.current = searchHighlight ?? null;
+    navCompassRef.current = navCompass;
     onLoadedRef.current = onLoaded;
     onErrorRef.current = onError;
     onScaleChangeRef.current = onScaleChange;
@@ -155,23 +165,35 @@ function DocumentViewerInner(
     const canvas = canvasRef.current;
     const textLayer = textLayerRef.current;
     const overlay = overlayRef.current;
-    if (!container || !canvas || !textLayer || !overlay) return undefined;
+    const viewportOverlay = viewportOverlayRef.current;
+    if (!container || !canvas || !textLayer || !overlay || !viewportOverlay) return undefined;
 
-    const engine = new DocumentEngine({
-      plugins: [
-        toolsPlugin(),
-        zoomPlugin(),
-        panPlugin(),
-        rotatePlugin(),
-        searchPlugin(),
-        measurePlugin(),
-      ],
-    });
+    const plugins: DocumentPlugin[] = [
+      toolsPlugin(),
+      zoomPlugin(),
+      panPlugin(),
+      rotatePlugin(),
+      searchPlugin(),
+      measurePlugin(),
+    ];
+    // nav-compass is read at mount only (like scale/rotation/tool) — kept out of
+    // the effect deps so a fresh `navCompass` object literal can't force a remount.
+    if (navCompassRef.current?.enabled !== false) {
+      plugins.push(navCompassPlugin({ locale: navCompassRef.current?.locale ?? 'nl' }));
+    }
+
+    const engine = new DocumentEngine({ plugins });
     engineRef.current = engine;
     let cancelled = false;
 
     (async () => {
-      await engine.mount({ container, canvas, textLayer, overlayHost: overlay });
+      await engine.mount({
+        container,
+        canvas,
+        textLayer,
+        overlayHost: overlay,
+        viewportOverlay,
+      });
       if (cancelled) return;
 
       engine.events.on('doc:loaded', ({ numPages }) => {
@@ -265,46 +287,66 @@ function DocumentViewerInner(
   const dims = pageDims ?? { width: 0, height: 0 };
 
   return (
+    // Outer shell carries the consumer's className (which must position it, e.g.
+    // `absolute inset-0`) so it becomes the containing block for the
+    // viewport-anchored overlay. The scroll container fills it.
     <div
-      ref={containerRef}
       className={className}
-      data-testid="document-viewer"
-      style={{
-        overflow: 'auto',
-        background: '#f3f4f6',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        padding: '16px',
-        touchAction: 'pan-x pan-y',
-      }}
+      data-testid="document-viewer-shell"
+      style={{ overflow: 'hidden' }}
     >
-      <div style={{ position: 'relative', display: 'inline-block' }}>
-        <canvas
-          ref={canvasRef}
-          style={{ display: 'block', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}
-        />
-        <div
-          ref={textLayerRef}
-          className="bq-text-layer"
-          style={{ width: dims.width, height: dims.height }}
-        />
-        <div
-          ref={overlayRef}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: dims.width,
-            height: dims.height,
-            pointerEvents: 'none',
-          }}
-        >
-          {renderOverlay !== undefined && pageDims !== null
-            ? renderOverlay(pageDims)
-            : null}
+      <div
+        ref={containerRef}
+        data-testid="document-viewer"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          overflow: 'auto',
+          background: '#f3f4f6',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          padding: '16px',
+          touchAction: 'pan-x pan-y',
+        }}
+      >
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <canvas
+            ref={canvasRef}
+            style={{ display: 'block', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}
+          />
+          <div
+            ref={textLayerRef}
+            className="bq-text-layer"
+            style={{ width: dims.width, height: dims.height }}
+          />
+          <div
+            ref={overlayRef}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: dims.width,
+              height: dims.height,
+              pointerEvents: 'none',
+            }}
+          >
+            {renderOverlay !== undefined && pageDims !== null
+              ? renderOverlay(pageDims)
+              : null}
+          </div>
         </div>
       </div>
+      {/* Viewport-anchored overlay: NOT inside the scroll container, so plugins
+          like nav-compass stay pinned to the viewport corner. */}
+      <div
+        ref={viewportOverlayRef}
+        data-testid="document-viewport-overlay"
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}
+      />
     </div>
   );
 }

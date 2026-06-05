@@ -122,6 +122,8 @@ export { searchPlugin } from './plugins/2d/search/index.js';
 export { measurePlugin } from './plugins/2d/measure/index.js';
 export type { MeasurePluginAPI } from './plugins/2d/measure/index.js';
 export type { PdfMeasureMode, PdfMeasurement } from './plugins/2d/measure/types.js';
+export { navCompassPlugin } from './plugins/2d/nav-compass/index.js';
+export type { NavCompassLocale } from './plugins/2d/nav-compass/NavCompassWidget.js';
 
 // Built-in plugin factories — re-exported so consumers can disable a
 // built-in (by passing `viewCube: { enabled: false }`) and re-add it

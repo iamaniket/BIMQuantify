@@ -44,6 +44,7 @@ interface MountElements {
   canvas: HTMLCanvasElement;
   textLayer: HTMLElement;
   overlayHost: HTMLElement;
+  viewportOverlay: HTMLElement;
 }
 
 export class DocumentEngine {
@@ -92,6 +93,7 @@ export class DocumentEngine {
       canvas: elements.canvas,
       textLayer: elements.textLayer,
       overlayHost: elements.overlayHost,
+      viewportOverlay: elements.viewportOverlay,
       getDocument: () => this.doc,
       getPage: () => this.page,
       getNumPages: () => this.numPages,

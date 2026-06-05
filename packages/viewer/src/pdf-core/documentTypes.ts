@@ -92,8 +92,15 @@ export interface DocumentContext {
   canvas: HTMLCanvasElement;
   /** pdf.js TextLayer host (sits over the canvas). */
   textLayer: HTMLElement;
-  /** Absolute overlay slot (host-app overlays render here). */
+  /** Page-anchored overlay slot (sized to the page; scrolls/zooms with it). */
   overlayHost: HTMLElement;
+  /**
+   * Viewport-anchored overlay slot: pinned to the scroll container's box, does
+   * NOT scroll or zoom with the page. For fixed-corner widgets (e.g. the
+   * nav-compass). `pointer-events:none` on the host; widgets opt in with
+   * `pointer-events:auto` on their own interactive elements.
+   */
+  viewportOverlay: HTMLElement;
 
   getDocument(): pdfjsLib.PDFDocumentProxy | null;
   getPage(): pdfjsLib.PDFPageProxy | null;
