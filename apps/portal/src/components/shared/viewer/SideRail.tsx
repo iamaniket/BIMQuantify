@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Files,
   Info,
   ListTree,
   Ruler,
@@ -18,7 +17,6 @@ export type PanelId =
   | 'inspector'
   | 'measure'
   | 'section'
-  | 'pages'
   | 'drawingInfo';
 
 export type Mode = 'ifc' | 'pdf' | 'drawing';
@@ -43,7 +41,6 @@ const IFC_BUTTONS: RailButton[] = [
 ];
 
 const PDF_BUTTONS: RailButton[] = [
-  { id: 'pages', labelKey: 'titlePages', icon: Files },
   { id: 'inspector', labelKey: 'titleInspector', icon: Info },
 ];
 

@@ -32,7 +32,6 @@ import { SideRail, type PanelId, type Mode } from '@/components/shared/viewer/Si
 import { Toolbar } from '@/components/shared/viewer/Toolbar';
 import { MeasurementPanel, MeasurementHeaderActions } from '@/components/shared/viewer/measurement/MeasurementPanel';
 import { SectionPanel } from '@/components/shared/viewer/section/SectionPanel';
-import { PagesPanel } from '@/components/shared/viewer/pages/PagesPanel';
 import { ContextMenu } from '@/features/viewer/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/inspector/EntityInspectorPanel';
@@ -509,13 +508,6 @@ export default function ViewerPage(): JSX.Element {
               ) : undefined}
               sectionContent={isIfc ? (
                 <SectionPanel handle={viewerHandleRef.current} />
-              ) : undefined}
-              pagesContent={isPdf ? (
-                <PagesPanel
-                  numPages={pdfNumPages}
-                  currentPage={pdfCurrentPage}
-                  onSelect={setPdfCurrentPage}
-                />
               ) : undefined}
               drawingInfoContent={isDrawing ? (
                 <DrawingInfoBody

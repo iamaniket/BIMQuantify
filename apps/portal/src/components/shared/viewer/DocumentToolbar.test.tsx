@@ -6,12 +6,6 @@ import { DEFAULT_DOCUMENT_SETTINGS } from '@/lib/documentSettings';
 
 import { DocumentToolbar } from './DocumentToolbar';
 
-// next-themes ships as a client component; we don't care about its behaviour
-// here, just stub useTheme so the toolbar renders.
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }),
-}));
-
 function buildHandle(
   matches: { pageIndex: number; matchesOnPage: number }[] = [],
 ): {

@@ -16,7 +16,6 @@ const PANEL_TITLE_KEYS: Record<PanelId, string> = {
   inspector: 'titleInspector',
   measure: 'titleMeasure',
   section: 'titleSection',
-  pages: 'titlePages',
   drawingInfo: 'titleDrawingInfo',
 };
 
@@ -26,7 +25,6 @@ type SidePanelProps = {
   inspectorContent?: ReactNode | undefined;
   measureContent?: ReactNode | undefined;
   sectionContent?: ReactNode | undefined;
-  pagesContent?: ReactNode | undefined;
   drawingInfoContent?: ReactNode | undefined;
   headerActions?: Partial<Record<PanelId, ReactNode>> | undefined;
   headerExpanded?: boolean | undefined;
@@ -57,7 +55,6 @@ export function SidePanel({
   inspectorContent,
   measureContent,
   sectionContent,
-  pagesContent,
   drawingInfoContent,
   headerActions,
   headerExpanded,
@@ -168,7 +165,6 @@ export function SidePanel({
               {activePanel === 'inspector' && (inspectorContent ?? <PlaceholderContent label={t('titleInspector')} />)}
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
-              {activePanel === 'pages' && pagesContent}
               {activePanel === 'drawingInfo' && drawingInfoContent}
             </div>
           </>

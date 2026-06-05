@@ -4,22 +4,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize,
-  Minus,
   Monitor,
-  Moon,
   MousePointer2,
   Move,
   PenLine,
-  Plus,
   RotateCcw,
   RotateCw,
   Search as SearchIcon,
   Settings,
-  Sun,
   X as XIcon,
-  ZoomIn,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { useTranslations } from 'next-intl';
 import {
   useCallback,
@@ -102,8 +96,6 @@ export function DocumentToolbar({
   const [globalMatchIndex, setGlobalMatchIndex] = useState(0);
   const [searchPending, setSearchPending] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -175,7 +167,6 @@ export function DocumentToolbar({
 
   const canPrev = currentPage > 1;
   const canNext = numPages === null ? false : currentPage < numPages;
-  const ThemeIcon = isDark ? Moon : Sun;
 
   const groups: ToolGroup[] = [
     {
@@ -190,12 +181,6 @@ export function DocumentToolbar({
           tooltip: tb('panTooltip'),
           isActive: activeTool === 'pan',
           onClick: () => { onActiveToolChange('pan'); },
-        },
-        {
-          type: 'button', id: 'zoom', icon: ZoomIn, label: tb('zoom'),
-          tooltip: tb('zoomTooltip'),
-          isActive: activeTool === 'zoom',
-          onClick: () => { onActiveToolChange('zoom'); },
         },
         {
           type: 'button', id: 'line', icon: PenLine, label: tb('line'),
@@ -245,25 +230,6 @@ export function DocumentToolbar({
           type: 'button', id: 'rotate-right', icon: RotateCw, label: tb('rotateRight'),
           disabled: documentHandle === null,
           onClick: () => { documentHandle?.rotateBy(90); },
-        },
-      ],
-    },
-    {
-      tools: [
-        {
-          type: 'button', id: 'zoom-out', icon: Minus, label: tb('zoomOut'),
-          disabled: scale <= MIN_SCALE,
-          onClick: () => { onScaleChange(Math.max(MIN_SCALE, scale - SCALE_STEP)); },
-        },
-        {
-          type: 'node',
-          id: 'zoom-readout',
-          node: <ToolbarReadout>{Math.round(scale * 100)}%</ToolbarReadout>,
-        },
-        {
-          type: 'button', id: 'zoom-in', icon: Plus, label: tb('zoomIn'),
-          disabled: scale >= MAX_SCALE,
-          onClick: () => { onScaleChange(Math.min(MAX_SCALE, scale + SCALE_STEP)); },
         },
       ],
     },
@@ -397,10 +363,6 @@ export function DocumentToolbar({
           type: 'button', id: 'settings', icon: Settings, label: tb('settings'),
           isActive: settingsOpen,
           onClick: () => { setSettingsOpen((v) => !v); },
-        },
-        {
-          type: 'button', id: 'theme', icon: ThemeIcon, label: tb('toggleTheme'),
-          onClick: () => { setTheme(isDark ? 'light' : 'dark'); },
         },
       ],
     },

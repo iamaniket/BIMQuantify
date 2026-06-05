@@ -143,7 +143,7 @@ export default function CertificatesPage(): JSX.Element {
               onChange={(e) => { setTypeFilter(e.target.value === 'all' ? undefined : e.target.value as CertificateTypeValue); }}
             >
               {TYPE_OPTIONS.map(({ value, key }) => (
-                <option key={value} value={value}>{t(key)}</option>
+                <option key={value} value={value}>{(key)}</option>
               ))}
             </Select>
             <div className="flex-1" />
