@@ -6,20 +6,23 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
-    BigInteger,
     CheckConstraint,
     Date,
-    Enum as SAEnum,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
+    text,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import TenantBase
-from bimstitch_api.models._mixins import SoftDeleteMixin, TimestampMixin
+from bimstitch_api.models._mixins import FileBackedMixin, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from bimstitch_api.models.model import Model
@@ -54,7 +57,7 @@ CERTIFICATE_ALLOWED_EXTENSIONS: frozenset[str] = frozenset(
 )
 
 
-class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
+class Certificate(TimestampMixin, SoftDeleteMixin, FileBackedMixin, TenantBase):
     __tablename__ = "certificates"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -69,11 +72,8 @@ class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
         nullable=True,
     )
 
-    storage_key: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)
-    original_filename: Mapped[str] = mapped_column(String(512), nullable=False)
-    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    content_type: Mapped[str] = mapped_column(String(255), nullable=False)
-    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # storage_key / original_filename / size_bytes / content_type /
+    # content_sha256 come from FileBackedMixin.
 
     certificate_type: Mapped[CertificateType] = mapped_column(
         SAEnum(
@@ -120,6 +120,20 @@ class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
         nullable=True,
     )
 
+    # Immutable versioning (#35), mirroring Attachment. A logical certificate is
+    # a group of rows sharing a root: the first upload is the root
+    # (parent_certificate_id IS NULL); every superseding version points its
+    # parent at the root, and version_number orders them. The head is the
+    # highest non-deleted version_number in the group.
+    version_number: Mapped[int] = mapped_column(
+        Integer, default=1, server_default="1", nullable=False
+    )
+    parent_certificate_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("certificates.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     project: Mapped[Project] = relationship(foreign_keys=[project_id], lazy="raise")
     uploaded_by_user: Mapped[User | None] = relationship(
         foreign_keys=[uploaded_by_user_id], lazy="raise"
@@ -130,6 +144,9 @@ class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
     )
     org_certificate: Mapped[OrgCertificate | None] = relationship(
         foreign_keys=[org_certificate_id], lazy="raise"
+    )
+    parent_certificate: Mapped[Certificate | None] = relationship(
+        foreign_keys=[parent_certificate_id], remote_side=[id], lazy="raise"
     )
 
     @property
@@ -166,5 +183,17 @@ class Certificate(TimestampMixin, SoftDeleteMixin, TenantBase):
             "ix_certificates_org_certificate_id",
             "org_certificate_id",
             postgresql_where="org_certificate_id IS NOT NULL",
+        ),
+        # Version group = coalesce(parent_certificate_id, id). Same shape as
+        # attachments: unique (group, version_number) + a partial parent index.
+        Index(
+            "ux_certificates_version_group",
+            text("coalesce(parent_certificate_id, id), version_number"),
+            unique=True,
+        ),
+        Index(
+            "ix_certificates_parent",
+            "parent_certificate_id",
+            postgresql_where="parent_certificate_id IS NOT NULL",
         ),
     )

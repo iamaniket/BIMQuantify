@@ -37,6 +37,9 @@ type Props = {
   // Preselects the certificate type (e.g. when opened from a dossier
   // checklist row for a specific required certificate kind).
   initialType?: CertificateTypeValue;
+  // When set, this upload supersedes the given certificate — it becomes the next
+  // version in that certificate's group rather than a new document (#35).
+  supersedesId?: string | null;
 };
 
 const CERTIFICATE_TYPES: CertificateTypeValue[] = [
@@ -57,6 +60,7 @@ export function CertificateUploadDialog({
   linkedModelId,
   linkedFileId,
   initialType = 'product',
+  supersedesId = null,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.certificates');
   const uploadMutation = useUploadCertificate(projectId);
@@ -107,6 +111,7 @@ export function CertificateUploadDialog({
       linked_element_global_id: linkedElementGlobalId ?? null,
       linked_model_id: linkedModelId ?? null,
       linked_file_id: linkedFileId ?? null,
+      supersedes_id: supersedesId,
     };
     uploadMutation.mutate(
       { file, metadata },
@@ -130,6 +135,7 @@ export function CertificateUploadDialog({
     linkedElementGlobalId,
     linkedModelId,
     linkedFileId,
+    supersedesId,
     uploadMutation,
     t,
     handleClose,
@@ -139,8 +145,10 @@ export function CertificateUploadDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('uploadTitle')}</DialogTitle>
-          <DialogDescription>{t('uploadDescription')}</DialogDescription>
+          <DialogTitle>{supersedesId === null ? t('uploadTitle') : t('newVersionTitle')}</DialogTitle>
+          <DialogDescription>
+            {supersedesId === null ? t('uploadDescription') : t('newVersionDescription')}
+          </DialogDescription>
         </DialogHeader>
         <DialogBody className="space-y-4">
           <div className="space-y-1.5">

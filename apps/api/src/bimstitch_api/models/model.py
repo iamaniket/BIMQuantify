@@ -71,6 +71,7 @@ class Model(TimestampMixin, SoftDeleteMixin, TenantBase):
     project: Mapped["Project"] = relationship(back_populates="models")
     files: Mapped[list["ProjectFile"]] = relationship(
         back_populates="model",
+        foreign_keys="ProjectFile.model_id",
         cascade="all, delete-orphan",
         order_by="ProjectFile.version_number.desc()",
     )

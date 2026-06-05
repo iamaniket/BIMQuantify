@@ -115,7 +115,7 @@ export function AttachmentThumbnail({
     );
   }
 
-  const Icon = CATEGORY_ICONS[attachment.attachment_category] ?? FileText;
+  const Icon = CATEGORY_ICONS[attachment.attachment_category ?? 'other'] ?? FileText;
   return (
     <div className={cn(
       'shrink-0 rounded border border-border bg-background-secondary',

@@ -521,3 +521,159 @@ async def test_get_nonexistent_certificate_404(
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Immutable versioning (#35)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_supersede_creates_new_version(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Re-uploading with supersedes_id mints version 2 in the same group, pointing
+    its parent at the v1 root — never overwriting v1's row or bytes."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    v1_init = await _initiate_cert(client, token, project["id"])
+    v1 = await _complete_cert(client, fake, token, project["id"], v1_init)
+    assert v1["version_number"] == 1
+    assert v1["parent_certificate_id"] is None
+
+    v2_init = await _initiate_cert(
+        client, token, project["id"], supersedes_id=v1_init["certificate_id"]
+    )
+    v2 = await _complete_cert(client, fake, token, project["id"], v2_init)
+    assert v2["version_number"] == 2
+    assert v2["parent_certificate_id"] == v1_init["certificate_id"]
+    # Distinct immutable rows + distinct storage keys.
+    assert v2["id"] != v1["id"]
+    assert v2_init["storage_key"] != v1_init["storage_key"]
+
+
+@pytest.mark.asyncio
+async def test_list_returns_head_only(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    v1_init = await _initiate_cert(client, token, project["id"])
+    await _complete_cert(client, fake, token, project["id"], v1_init)
+    v2_init = await _initiate_cert(
+        client, token, project["id"], supersedes_id=v1_init["certificate_id"]
+    )
+    await _complete_cert(client, fake, token, project["id"], v2_init)
+
+    resp = await client.get(
+        f"/projects/{project['id']}/certificates", headers=_auth(token)
+    )
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 1
+    assert items[0]["id"] == v2_init["certificate_id"]
+    assert items[0]["version_number"] == 2
+
+
+@pytest.mark.asyncio
+async def test_versions_endpoint_returns_history_newest_first(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    v1_init = await _initiate_cert(client, token, project["id"])
+    await _complete_cert(client, fake, token, project["id"], v1_init)
+    v2_init = await _initiate_cert(
+        client, token, project["id"], supersedes_id=v1_init["certificate_id"]
+    )
+    await _complete_cert(client, fake, token, project["id"], v2_init)
+
+    # Queryable through any version in the group (here the v1 root).
+    resp = await client.get(
+        f"/projects/{project['id']}/certificates/{v1_init['certificate_id']}/versions",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    items = resp.json()
+    assert [i["version_number"] for i in items] == [2, 1]
+    # Both versions remain individually retrievable.
+    for cid in (v1_init["certificate_id"], v2_init["certificate_id"]):
+        dl = await client.get(
+            f"/projects/{project['id']}/certificates/{cid}/download",
+            headers=_auth(token),
+        )
+        assert dl.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_soft_deleting_head_exposes_prior_version(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    v1_init = await _initiate_cert(client, token, project["id"])
+    await _complete_cert(client, fake, token, project["id"], v1_init)
+    v2_init = await _initiate_cert(
+        client, token, project["id"], supersedes_id=v1_init["certificate_id"]
+    )
+    await _complete_cert(client, fake, token, project["id"], v2_init)
+
+    await client.delete(
+        f"/projects/{project['id']}/certificates/{v2_init['certificate_id']}",
+        headers=_auth(token),
+    )
+    resp = await client.get(
+        f"/projects/{project['id']}/certificates", headers=_auth(token)
+    )
+    items = resp.json()
+    assert len(items) == 1
+    assert items[0]["id"] == v1_init["certificate_id"]
+    assert items[0]["version_number"] == 1
+
+
+@pytest.mark.asyncio
+async def test_version_added_emits_audit(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    v1_init = await _initiate_cert(client, token, project["id"])
+    await _complete_cert(client, fake, token, project["id"], v1_init)
+    v2_init = await _initiate_cert(
+        client, token, project["id"], supersedes_id=v1_init["certificate_id"]
+    )
+    await _complete_cert(client, fake, token, project["id"], v2_init)
+
+    row = await _latest_audit(session_maker, "certificate.version_added")
+    assert row is not None
+    assert row.resource_type == "certificates"
+    assert row.after is not None
+    assert row.after["version_number"] == 2
+
+
+@pytest.mark.asyncio
+async def test_supersede_unknown_certificate_404(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    resp = await client.post(
+        f"/projects/{project['id']}/certificates/initiate",
+        json=_cert_payload(supersedes_id=str(uuid4())),
+        headers=_auth(token),
+    )
+    assert resp.status_code == 404

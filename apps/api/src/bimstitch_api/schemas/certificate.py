@@ -25,6 +25,10 @@ class CertificateInitiateRequest(BaseModel):
     linked_element_global_id: str | None = Field(default=None, max_length=22)
     linked_model_id: UUID | None = None
     linked_file_id: UUID | None = None
+    # When set, supersede an existing certificate: the new row joins that
+    # certificate's version group as the next version. May reference any version
+    # in the group; the root is resolved server-side.
+    supersedes_id: UUID | None = None
 
     @model_validator(mode="after")
     def _check_validity_window(self) -> CertificateInitiateRequest:
@@ -68,6 +72,8 @@ class CertificateRead(BaseModel):
     linked_model_id: UUID | None
     linked_file_id: UUID | None
     org_certificate_id: UUID | None
+    version_number: int
+    parent_certificate_id: UUID | None
     created_at: datetime
     updated_at: datetime
 

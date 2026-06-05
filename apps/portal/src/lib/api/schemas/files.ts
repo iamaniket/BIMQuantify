@@ -12,6 +12,13 @@ export const ProjectFileStatusEnum = z.enum(['pending', 'ready', 'rejected']);
 
 export type ProjectFileStatusValue = z.infer<typeof ProjectFileStatusEnum>;
 
+// Role discriminator on the unified project_files table. Model files served by
+// the model-scoped endpoints are always 'model_source'; the field is included
+// so the schema matches the API shape.
+export const ProjectFileRoleEnum = z.enum(['model_source', 'attachment']);
+
+export type ProjectFileRoleValue = z.infer<typeof ProjectFileRoleEnum>;
+
 export const ExtractionStatusEnum = z.enum([
   'not_started',
   'queued',
@@ -24,6 +31,7 @@ export type ExtractionStatusValue = z.infer<typeof ExtractionStatusEnum>;
 
 export const ProjectFileSchema = z.object({
   id: z.string().uuid(),
+  role: ProjectFileRoleEnum,
   model_id: z.string().uuid(),
   project_id: z.string().uuid(),
   version_number: z.number().int().positive(),

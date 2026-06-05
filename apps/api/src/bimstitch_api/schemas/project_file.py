@@ -7,6 +7,7 @@ from bimstitch_api.models.project_file import (
     ExtractionStatus,
     FileType,
     IfcSchema,
+    ProjectFileRole,
     ProjectFileStatus,
 )
 
@@ -35,6 +36,7 @@ class ProjectFileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    role: ProjectFileRole
     model_id: UUID
     project_id: UUID
     version_number: int

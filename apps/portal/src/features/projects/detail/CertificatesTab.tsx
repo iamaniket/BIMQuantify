@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Eye, FileBadge, Library, Search, Trash2, Upload } from '@bimstitch/ui/icons';
+import { Clock, Download, Eye, FileBadge, Library, Search, Trash2, Upload } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -37,6 +37,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { LinkFromLibraryDialog } from '@/features/orgCertificates/LinkFromLibraryDialog';
 
 import { CertificateUploadDialog } from './CertificateUploadDialog';
+import { CertificateVersionHistoryDialog } from './CertificateVersionHistoryDialog';
 
 type Props = {
   projectId: string;
@@ -74,6 +75,8 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
   const [linkOpen, setLinkOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
+  const [supersedeCertificate, setSupersedeCertificate] = useState<Certificate | null>(null);
+  const [historyCertificate, setHistoryCertificate] = useState<Certificate | null>(null);
 
   const certificatesQuery = useCertificates(projectId, typeFilter);
   const deleteMutation = useDeleteCertificate(projectId);
@@ -246,6 +249,11 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
                     <Badge variant="default" size="sm" bordered>
                       {t(`type.${certificate.certificate_type}`)}
                     </Badge>
+                    {certificate.version_number > 1 && (
+                      <Badge variant="info" size="sm" bordered>
+                        {t('versionBadge', { n: certificate.version_number })}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
                     {certificate.issuer !== null && certificate.issuer !== '' && (
@@ -289,6 +297,26 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
                       <Download className="h-3.5 w-3.5" />
                       {t('download')}
                     </Button>
+                    {certificate.version_number > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setHistoryCertificate(certificate); }}
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                        {t('versionHistory')}
+                      </Button>
+                    )}
+                    {canUpload && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setSupersedeCertificate(certificate); }}
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        {t('uploadNewVersion')}
+                      </Button>
+                    )}
                   </div>
                   {canUpload && (
                     <Button
@@ -326,6 +354,23 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
         projectId={projectId}
         open={viewingCertificate !== null}
         onOpenChange={(o) => { if (!o) setViewingCertificate(null); }}
+      />
+
+      {supersedeCertificate !== null && (
+        <CertificateUploadDialog
+          projectId={projectId}
+          open
+          onOpenChange={(o) => { if (!o) setSupersedeCertificate(null); }}
+          supersedesId={supersedeCertificate.id}
+          initialType={supersedeCertificate.certificate_type}
+        />
+      )}
+
+      <CertificateVersionHistoryDialog
+        projectId={projectId}
+        certificateId={historyCertificate?.id ?? null}
+        open={historyCertificate !== null}
+        onOpenChange={(o) => { if (!o) setHistoryCertificate(null); }}
       />
     </div>
   );

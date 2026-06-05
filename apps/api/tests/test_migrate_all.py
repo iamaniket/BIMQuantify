@@ -14,8 +14,10 @@ from bimstitch_api.scripts import migrate_all as m
 
 def test_classify_splits_by_head() -> None:
     schemas = ["org_a", "org_b", "org_c"]
-    revs = {"org_a": "0003_tenant", "org_b": "0001_tenant", "org_c": None}
-    heads = {"0003_tenant"}
+    # Head is the single squashed baseline (0001_tenant). org_b sits on a
+    # hypothetical older rev, org_c was never migrated — both count as behind.
+    revs = {"org_a": "0001_tenant", "org_b": "0000_older", "org_c": None}
+    heads = {"0001_tenant"}
 
     at_head, behind = m.classify(schemas, revs, heads)
 
@@ -25,8 +27,8 @@ def test_classify_splits_by_head() -> None:
 
 def test_classify_all_at_head() -> None:
     schemas = ["org_a", "org_b"]
-    revs = {"org_a": "0003_tenant", "org_b": "0003_tenant"}
-    at_head, behind = m.classify(schemas, revs, {"0003_tenant"})
+    revs = {"org_a": "0001_tenant", "org_b": "0001_tenant"}
+    at_head, behind = m.classify(schemas, revs, {"0001_tenant"})
     assert behind == []
     assert at_head == ["org_a", "org_b"]
 

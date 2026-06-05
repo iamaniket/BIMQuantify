@@ -42,6 +42,9 @@ export async function initiateAttachmentUpload(
     linked_point?: Record<string, unknown> | null;
     linked_file_id?: string | null;
     capture_metadata?: Record<string, unknown> | null;
+    // Supersede an existing attachment: the upload becomes the next version in
+    // that attachment's version group instead of a fresh root (#35).
+    supersedes_id?: string | null;
   },
 ): Promise<AttachmentInitiateResponse> {
   return apiClient.post<AttachmentInitiateResponse>(
@@ -106,6 +109,20 @@ export async function getAttachment(
   return apiClient.get<Attachment>(
     `/projects/${projectId}/attachments/${attachmentId}`,
     AttachmentSchema,
+    accessToken,
+  );
+}
+
+/** Full version history of one logical attachment, newest version first (#35).
+ * Accepts any version id in the group; the head is the first element. */
+export async function listAttachmentVersions(
+  accessToken: string,
+  projectId: string,
+  attachmentId: string,
+): Promise<AttachmentList> {
+  return apiClient.get<AttachmentList>(
+    `/projects/${projectId}/attachments/${attachmentId}/versions`,
+    AttachmentListSchema,
     accessToken,
   );
 }
@@ -175,6 +192,7 @@ export async function uploadAttachmentEnd2End(
     linked_point?: Record<string, unknown> | null;
     linked_file_id?: string | null;
     capture_metadata?: Record<string, unknown> | null;
+    supersedes_id?: string | null;
   },
   onProgress?: (event: AttachmentUploadProgressEvent) => void,
 ): Promise<Attachment> {

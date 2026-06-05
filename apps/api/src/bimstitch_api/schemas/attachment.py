@@ -6,7 +6,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from bimstitch_api.models.attachment import AttachmentCategory, AttachmentStatus, DossierSlot
+from bimstitch_api.models.project_file import (
+    AttachmentCategory,
+    DossierSlot,
+    ProjectFileRole,
+    ProjectFileStatus,
+)
 
 _HEX_SHA256 = r"^[a-f0-9]{64}$"
 
@@ -84,6 +89,10 @@ class AttachmentInitiateRequest(BaseModel):
     linked_point: dict[str, Any] | None = None
     linked_file_id: UUID | None = None
     capture_metadata: CaptureMetadataInput | None = None
+    # When set, this upload supersedes an existing attachment: the new row joins
+    # that document's version group as the next version instead of starting a new
+    # one. May reference any version in the group; the root is resolved server-side.
+    supersedes_id: UUID | None = None
 
     @field_validator("linked_point")
     @classmethod
@@ -110,8 +119,9 @@ class AttachmentRead(BaseModel):
     size_bytes: int
     content_type: str
     content_sha256: str | None
-    attachment_category: AttachmentCategory
-    status: AttachmentStatus
+    role: ProjectFileRole
+    attachment_category: AttachmentCategory | None
+    status: ProjectFileStatus
     rejection_reason: str | None
     description: str | None
     dossier_slot: DossierSlot | None
@@ -122,7 +132,7 @@ class AttachmentRead(BaseModel):
     capture_metadata: dict[str, Any] | None
     server_metadata: dict[str, Any] | None
     version_number: int
-    parent_attachment_id: UUID | None
+    parent_file_id: UUID | None
     created_at: datetime
     updated_at: datetime
 

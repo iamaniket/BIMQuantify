@@ -200,7 +200,7 @@ async def test_initiate_emits_audit(
     await _initiate_att(client, org_user["access_token"], project["id"])
     row = await _latest_audit(session_maker, "attachment.initiated")
     assert row is not None
-    assert row.resource_type == "attachments"
+    assert row.resource_type == "project_files"
     assert row.after is not None
     assert row.after["original_filename"] == "photo.jpg"
     assert row.after["attachment_category"] == "image"
@@ -268,7 +268,7 @@ async def test_complete_emits_audit(
     await _complete_att(client, fake, org_user["access_token"], project["id"], att)
     row = await _latest_audit(session_maker, "attachment.completed")
     assert row is not None
-    assert row.resource_type == "attachments"
+    assert row.resource_type == "project_files"
     assert row.before is not None
     assert row.after is not None
     assert row.before["status"] == "pending"
@@ -407,7 +407,7 @@ async def test_update_emits_audit(
     )
     row = await _latest_audit(session_maker, "attachment.updated")
     assert row is not None
-    assert row.resource_type == "attachments"
+    assert row.resource_type == "project_files"
     assert row.before is not None
     assert row.after is not None
     assert row.after["description"] == "New desc"
@@ -453,7 +453,7 @@ async def test_delete_emits_audit(
     )
     row = await _latest_audit(session_maker, "attachment.deleted")
     assert row is not None
-    assert row.resource_type == "attachments"
+    assert row.resource_type == "project_files"
     assert row.before is not None
     assert row.after is None
 
@@ -1474,3 +1474,136 @@ async def test_contractor_can_tag_dossier_slot(
     )
     assert patch_resp.status_code == 200, patch_resp.text
     assert patch_resp.json()["dossier_slot"] == "installations"
+
+
+# ---------------------------------------------------------------------------
+# Immutable versioning (#35)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_supersede_creates_new_version(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    v1_init = await _initiate_att(client, token, project["id"])
+    v1 = await _complete_att(client, fake, token, project["id"], v1_init)
+    assert v1["version_number"] == 1
+    assert v1["parent_file_id"] is None
+
+    v2_init = await _initiate_att(
+        client, token, project["id"], supersedes_id=v1_init["attachment_id"]
+    )
+    v2 = await _complete_att(client, fake, token, project["id"], v2_init)
+    assert v2["version_number"] == 2
+    assert v2["parent_file_id"] == v1_init["attachment_id"]
+    assert v2["id"] != v1["id"]
+
+
+@pytest.mark.asyncio
+async def test_list_returns_head_only_and_versions_history(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    v1_init = await _initiate_att(client, token, project["id"])
+    await _complete_att(client, fake, token, project["id"], v1_init)
+    v2_init = await _initiate_att(
+        client, token, project["id"], supersedes_id=v1_init["attachment_id"]
+    )
+    await _complete_att(client, fake, token, project["id"], v2_init)
+
+    # Default list = head only.
+    listing = await client.get(
+        f"/projects/{project['id']}/attachments", headers=_auth(token)
+    )
+    items = listing.json()
+    assert len(items) == 1
+    assert items[0]["id"] == v2_init["attachment_id"]
+    assert items[0]["version_number"] == 2
+
+    # /versions = full history newest-first, both downloadable.
+    history = await client.get(
+        f"/projects/{project['id']}/attachments/{v2_init['attachment_id']}/versions",
+        headers=_auth(token),
+    )
+    assert history.status_code == 200, history.text
+    assert [i["version_number"] for i in history.json()] == [2, 1]
+    for aid in (v1_init["attachment_id"], v2_init["attachment_id"]):
+        dl = await client.get(
+            f"/projects/{project['id']}/attachments/{aid}/download",
+            headers=_auth(token),
+        )
+        assert dl.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_soft_deleting_head_exposes_prior_version(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    v1_init = await _initiate_att(client, token, project["id"])
+    await _complete_att(client, fake, token, project["id"], v1_init)
+    v2_init = await _initiate_att(
+        client, token, project["id"], supersedes_id=v1_init["attachment_id"]
+    )
+    await _complete_att(client, fake, token, project["id"], v2_init)
+
+    await client.delete(
+        f"/projects/{project['id']}/attachments/{v2_init['attachment_id']}",
+        headers=_auth(token),
+    )
+    listing = await client.get(
+        f"/projects/{project['id']}/attachments", headers=_auth(token)
+    )
+    items = listing.json()
+    assert len(items) == 1
+    assert items[0]["id"] == v1_init["attachment_id"]
+    assert items[0]["version_number"] == 1
+
+
+@pytest.mark.asyncio
+async def test_version_added_emits_audit(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    v1_init = await _initiate_att(client, token, project["id"])
+    await _complete_att(client, fake, token, project["id"], v1_init)
+    v2_init = await _initiate_att(
+        client, token, project["id"], supersedes_id=v1_init["attachment_id"]
+    )
+    await _complete_att(client, fake, token, project["id"], v2_init)
+
+    row = await _latest_audit(session_maker, "attachment.version_added")
+    assert row is not None
+    assert row.after is not None
+    assert row.after["version_number"] == 2
+
+
+@pytest.mark.asyncio
+async def test_supersede_unknown_attachment_404(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    resp = await client.post(
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(supersedes_id=str(uuid4())),
+        headers=_auth(token),
+    )
+    assert resp.status_code == 404

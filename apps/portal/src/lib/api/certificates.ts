@@ -28,6 +28,9 @@ export type CertificateMetadataInput = {
   linked_element_global_id?: string | null;
   linked_model_id?: string | null;
   linked_file_id?: string | null;
+  // Supersede an existing certificate: the upload becomes the next version in
+  // that certificate's version group instead of a fresh root (#35).
+  supersedes_id?: string | null;
 };
 
 export async function initiateCertificateUpload(
@@ -85,6 +88,20 @@ export async function listCertificates(
   const query = params.size === 0 ? '' : `?${params.toString()}`;
   return apiClient.get<CertificateList>(
     `/projects/${projectId}/certificates${query}`,
+    CertificateListSchema,
+    accessToken,
+  );
+}
+
+/** Full version history of one logical certificate, newest version first (#35).
+ * Accepts any version id in the group; the head is the first element. */
+export async function listCertificateVersions(
+  accessToken: string,
+  projectId: string,
+  certificateId: string,
+): Promise<CertificateList> {
+  return apiClient.get<CertificateList>(
+    `/projects/${projectId}/certificates/${certificateId}/versions`,
     CertificateListSchema,
     accessToken,
   );

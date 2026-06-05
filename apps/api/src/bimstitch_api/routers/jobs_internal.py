@@ -26,11 +26,15 @@ from bimstitch_api.db import get_async_session
 from bimstitch_api.email.transport import get_email_transport
 from bimstitch_api.i18n import coerce_locale, t
 from bimstitch_api.jobs import require_worker_secret
-from bimstitch_api.models.attachment import Attachment
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.organization import Organization
-from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile, ProjectFileStatus
+from bimstitch_api.models.project_file import (
+    ExtractionStatus,
+    ProjectFile,
+    ProjectFileRole,
+    ProjectFileStatus,
+)
 from bimstitch_api.models.report import _REPORT_TERMINAL, Report, ReportStatus, ReportType
 from bimstitch_api.notifications.service import create_notification, publish_notification
 from bimstitch_api.schemas.attachment import AttachmentCallbackRequest, AttachmentRead
@@ -491,7 +495,7 @@ async def report_callback(
 async def attachment_metadata_callback(
     payload: AttachmentCallbackRequest,
     session: AsyncSession = Depends(get_async_session),
-) -> Attachment:
+) -> ProjectFile:
     """Worker → API callback for `image_metadata_extraction` jobs.
 
     Same auth + RLS-bypass as the extraction callback (the worker has no
@@ -501,8 +505,11 @@ async def attachment_metadata_callback(
         await _set_tenant_schema(session, payload.organization_id)
         att = (
             await session.execute(
-                select(Attachment)
-                .where(Attachment.id == payload.attachment_id)
+                select(ProjectFile)
+                .where(
+                    ProjectFile.id == payload.attachment_id,
+                    ProjectFile.role == ProjectFileRole.attachment,
+                )
                 .with_for_update()
             )
         ).scalar_one_or_none()
@@ -539,9 +546,9 @@ async def attachment_metadata_callback(
         await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
         att = (
             await session.execute(
-                select(Attachment)
-                .options(selectinload(Attachment.uploaded_by_user))
-                .where(Attachment.id == payload.attachment_id)
+                select(ProjectFile)
+                .options(selectinload(ProjectFile.uploaded_by_user))
+                .where(ProjectFile.id == payload.attachment_id)
             )
         ).scalar_one()
     return att

@@ -55,7 +55,7 @@ const CATEGORY_ICONS: Record<string, typeof FileText> = {
 /** Treat PDFs as their own kind even though they live under the `office` category. */
 function fileKind(attachment: Attachment): string {
   if (attachment.content_type === 'application/pdf') return 'pdf';
-  return attachment.attachment_category;
+  return attachment.attachment_category ?? 'other';
 }
 
 const KIND_LABEL: Record<string, string> = {
@@ -76,7 +76,7 @@ function NoPreview({
   attachment: Attachment;
   t: ReturnType<typeof useTranslations>;
 }): JSX.Element {
-  const Icon = CATEGORY_ICONS[attachment.attachment_category] ?? FileText;
+  const Icon = CATEGORY_ICONS[attachment.attachment_category ?? 'other'] ?? FileText;
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
       <Icon className="h-12 w-12 text-foreground-tertiary" />

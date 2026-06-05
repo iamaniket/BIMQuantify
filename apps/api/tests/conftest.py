@@ -80,7 +80,6 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         CaptureLink,
         ChecklistItem,
         ChecklistItemResult,
-        Attachment,
         Contractor,
         Deadline,
         Job,
@@ -153,7 +152,7 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql("DROP TYPE IF EXISTS inspectionverdict")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS deadlinestatus")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS attachmentcategory")
-        await conn.exec_driver_sql("DROP TYPE IF EXISTS attachmentstatus")
+        await conn.exec_driver_sql("DROP TYPE IF EXISTS projectfilerole")
         await conn.exec_driver_sql("DROP TYPE IF EXISTS blogpoststatus")
         await conn.run_sync(Base.metadata.create_all)
         # Partial unique index for "one active borgingsplan per project" — not
@@ -294,7 +293,7 @@ async def _clean_tables(
                 await session.execute(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
-                        "borgingsmomenten, borgingsplans, deadlines, attachments, "
+                        "borgingsmomenten, borgingsplans, deadlines, "
                         "capture_links, blog_posts, "
                         "risks, access_requests, reports, jobs, project_files, models, "
                         "project_members, projects, contractors, notification_reads, "

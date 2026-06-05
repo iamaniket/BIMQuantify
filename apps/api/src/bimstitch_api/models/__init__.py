@@ -11,6 +11,11 @@ from bimstitch_api.models.borgingsmoment import (
 )
 from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
 from bimstitch_api.models.capture_link import CaptureLink
+from bimstitch_api.models.certificate import (
+    Certificate,
+    CertificateStatus,
+    CertificateType,
+)
 from bimstitch_api.models.checklist_item import (
     ChecklistItem,
     ChecklistItemType,
@@ -21,24 +26,18 @@ from bimstitch_api.models.checklist_item_result import (
     InspectionVerdict,
 )
 from bimstitch_api.models.contractor import Contractor
-from bimstitch_api.models.attachment import Attachment, AttachmentCategory, AttachmentStatus
-from bimstitch_api.models.certificate import (
-    Certificate,
-    CertificateStatus,
-    CertificateType,
-)
 from bimstitch_api.models.deadline import Deadline, DeadlineStatus
 from bimstitch_api.models.deadline_notification_log import DeadlineNotificationLog
 from bimstitch_api.models.deadline_notification_settings import DeadlineNotificationSettings
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
-from bimstitch_api.models.org_certificate import OrgCertificate
 from bimstitch_api.models.notification import (
     Notification,
     NotificationEventType,
     NotificationRead,
 )
+from bimstitch_api.models.org_certificate import OrgCertificate
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -51,9 +50,14 @@ from bimstitch_api.models.project import (
     ProjectStatus,
 )
 from bimstitch_api.models.project_file import (
+    ATTACHMENT_ALLOWED_EXTENSIONS,
+    AttachmentCategory,
+    DossierSlot,
     ExtractionStatus,
+    FileType,
     IfcSchema,
     ProjectFile,
+    ProjectFileRole,
     ProjectFileStatus,
 )
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
@@ -62,10 +66,12 @@ from bimstitch_api.models.risk import Risk, RiskCategory, RiskLevel
 from bimstitch_api.models.user import User
 
 __all__ = [
+    "ATTACHMENT_ALLOWED_EXTENSIONS",
     "_JOB_TERMINAL",
     "_REPORT_TERMINAL",
     "AccessRequest",
     "AccessRequestStatus",
+    "AttachmentCategory",
     "AuditLog",
     "BcfComment",
     "BcfTopic",
@@ -89,11 +95,10 @@ __all__ = [
     "DeadlineNotificationLog",
     "DeadlineNotificationSettings",
     "DeadlineStatus",
-    "Attachment",
-    "AttachmentCategory",
-    "AttachmentStatus",
+    "DossierSlot",
     "EvidenceType",
     "ExtractionStatus",
+    "FileType",
     "Finding",
     "FindingSeverity",
     "FindingStatus",
@@ -115,6 +120,7 @@ __all__ = [
     "OrganizationStatus",
     "Project",
     "ProjectFile",
+    "ProjectFileRole",
     "ProjectFileStatus",
     "ProjectLifecycleState",
     "ProjectMember",

@@ -13,12 +13,12 @@ from __future__ import annotations
 import logging
 from datetime import UTC, date, datetime
 from typing import Annotated, Literal
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
@@ -46,13 +46,38 @@ from bimstitch_api.schemas.certificate import (
     CertificateUpdateRequest,
 )
 from bimstitch_api.schemas.org_certificate import LinkFromLibraryRequest
-from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
-from bimstitch_api.storage.minio import ObjectNotFoundError
+from bimstitch_api.storage import (
+    StorageBackend,
+    get_attachments_bucket,
+    get_storage,
+    upload_service,
+)
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/projects/{project_id}/certificates", tags=["certificates"])
+
+
+async def _next_version_in_group(
+    session: AsyncSession, project_id: UUID, supersedes_id: UUID
+) -> tuple[int, UUID]:
+    """Resolve the version group of `supersedes_id` → (next_version, root_id).
+
+    Mirrors the attachments helper: the root is `parent_certificate_id` (or the
+    row itself); the next number is `max(version_number) + 1` over the whole
+    group, so numbers are never reused. 404 if not a live certificate here.
+    """
+    superseded = await _load_certificate_or_404(session, project_id, supersedes_id)
+    root_id = superseded.parent_certificate_id or superseded.id
+    max_version = (
+        await session.scalar(
+            select(func.max(Certificate.version_number)).where(
+                or_(Certificate.id == root_id, Certificate.parent_certificate_id == root_id)
+            )
+        )
+    ) or 0
+    return max_version + 1, root_id
 
 
 def _certificate_snapshot(cert: Certificate) -> dict[str, object]:
@@ -72,6 +97,10 @@ def _certificate_snapshot(cert: Certificate) -> dict[str, object]:
         "linked_model_id": str(cert.linked_model_id) if cert.linked_model_id else None,
         "linked_file_id": str(cert.linked_file_id) if cert.linked_file_id else None,
         "org_certificate_id": str(cert.org_certificate_id) if cert.org_certificate_id else None,
+        "version_number": cert.version_number,
+        "parent_certificate_id": (
+            str(cert.parent_certificate_id) if cert.parent_certificate_id else None
+        ),
     }
 
 
@@ -124,28 +153,20 @@ async def initiate_certificate_upload(
         raise
     _require_project_writable(project)
 
-    fname_lower = payload.filename.lower()
-    dot_pos = fname_lower.rfind(".")
-    ext = fname_lower[dot_pos:] if dot_pos >= 0 else ""
-    if ext not in CERTIFICATE_ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "INVALID_FILE_EXTENSION",
-                "allowed": sorted(CERTIFICATE_ALLOWED_EXTENSIONS),
-            },
+    ext = upload_service.parse_extension(payload.filename)
+    upload_service.ensure_allowed_extension(ext, CERTIFICATE_ALLOWED_EXTENSIONS)
+    upload_service.ensure_within_size_limit(payload.size_bytes, settings.attachment_max_bytes)
+
+    # New version of an existing certificate (supersedes_id set) joins that
+    # certificate's version group; otherwise a fresh root at version 1.
+    version_number = 1
+    parent_id: UUID | None = None
+    if payload.supersedes_id is not None:
+        version_number, parent_id = await _next_version_in_group(
+            session, project.id, payload.supersedes_id
         )
 
-    if payload.size_bytes > settings.attachment_max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={
-                "code": "FILE_TOO_LARGE",
-                "max_bytes": settings.attachment_max_bytes,
-            },
-        )
-
-    storage_key = f"projects/{project.id}/certificates/{uuid4()}{ext}"
+    storage_key = upload_service.build_storage_key(project.id, "certificates", ext)
     bucket = get_attachments_bucket()
 
     cert = Certificate(
@@ -167,6 +188,8 @@ async def initiate_certificate_upload(
         linked_element_global_id=payload.linked_element_global_id,
         linked_model_id=payload.linked_model_id,
         linked_file_id=payload.linked_file_id,
+        version_number=version_number,
+        parent_certificate_id=parent_id,
     )
     session.add(cert)
     await session.flush()
@@ -227,15 +250,7 @@ async def complete_certificate_upload(
         )
 
     bucket = get_attachments_bucket()
-    try:
-        head = await storage.head_object(cert.storage_key, bucket=bucket)
-    except ObjectNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="OBJECT_NOT_UPLOADED",
-        )
-
-    actual_size = head.get("ContentLength", 0)
+    actual_size = await upload_service.head_verify_size(storage, cert.storage_key, bucket=bucket)
     if actual_size != cert.size_bytes:
         cert.status = CertificateStatus.rejected
         cert.rejection_reason = "SIZE_MISMATCH"
@@ -260,9 +275,14 @@ async def complete_certificate_upload(
     await session.flush()
     await session.refresh(cert)
 
+    completed_action = (
+        "certificate.version_added"
+        if cert.parent_certificate_id is not None
+        else "certificate.completed"
+    )
     await audit.record(
         session,
-        action="certificate.completed",
+        action=completed_action,
         resource_type="certificates",
         resource_id=cert.id,
         before=before,
@@ -299,6 +319,21 @@ async def list_certificates(
         Certificate.status == CertificateStatus.ready,
         Certificate.deleted_at.is_(None),
     )
+    # Head-of-group only: hide superseded versions (same rule as attachments).
+    c2 = aliased(Certificate)
+    has_newer = (
+        select(c2.id)
+        .where(
+            c2.project_id == project.id,
+            c2.status == CertificateStatus.ready,
+            c2.deleted_at.is_(None),
+            func.coalesce(c2.parent_certificate_id, c2.id)
+            == func.coalesce(Certificate.parent_certificate_id, Certificate.id),
+            c2.version_number > Certificate.version_number,
+        )
+        .exists()
+    )
+    base = base.where(~has_newer)
     if certificate_type is not None:
         base = base.where(Certificate.certificate_type == certificate_type)
     if linked_element_global_id is not None:
@@ -348,6 +383,38 @@ async def get_certificate(
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
     return await _load_certificate_or_404(session, project.id, certificate_id)
+
+
+@router.get("/{certificate_id}/versions", response_model=list[CertificateRead])
+async def list_certificate_versions(
+    project_id: UUID,
+    certificate_id: UUID,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> list[Certificate]:
+    """Full version history of one logical certificate, newest version first.
+
+    `certificate_id` may be any version in the group; the first element returned
+    is the current head.
+    """
+    project = await _load_project_or_404(session, project_id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
+    anchor = await _load_certificate_or_404(session, project.id, certificate_id)
+    root_id = anchor.parent_certificate_id or anchor.id
+
+    stmt = (
+        select(Certificate)
+        .options(selectinload(Certificate.uploaded_by_user))
+        .where(
+            Certificate.project_id == project.id,
+            or_(Certificate.id == root_id, Certificate.parent_certificate_id == root_id),
+            Certificate.deleted_at.is_(None),
+        )
+        .order_by(Certificate.version_number.desc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
 @router.get("/{certificate_id}/download", response_model=CertificateDownloadResponse)
@@ -515,10 +582,8 @@ async def link_from_library(
             detail="ORG_CERTIFICATE_NOT_READY",
         )
 
-    fname_lower = org_cert.original_filename.lower()
-    dot_pos = fname_lower.rfind(".")
-    ext = fname_lower[dot_pos:] if dot_pos >= 0 else ""
-    new_storage_key = f"projects/{project.id}/certificates/{uuid4()}{ext}"
+    ext = upload_service.parse_extension(org_cert.original_filename)
+    new_storage_key = upload_service.build_storage_key(project.id, "certificates", ext)
 
     bucket = get_attachments_bucket()
     await storage.copy_object(org_cert.storage_key, new_storage_key, bucket=bucket)

@@ -17,3 +17,9 @@ export const certificateViewUrlKey = (
   projectId: string,
   certificateId: string,
 ) => ['projects', projectId, 'certificates', certificateId, 'view-url'] as const;
+
+// Version history of one logical certificate (#35).
+export const certificateVersionsKey = (
+  projectId: string,
+  certificateId: string,
+) => ['projects', projectId, 'certificates', certificateId, 'versions'] as const;

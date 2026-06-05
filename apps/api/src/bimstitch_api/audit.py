@@ -33,7 +33,7 @@ REDACT_FIELDS_BY_TABLE: dict[str, frozenset[str]] = {
     "organization_members": frozenset(),
     "organizations": frozenset(),
     "project_members": frozenset(),
-    "attachments": frozenset(),
+    "project_files": frozenset(),
     "capture_links": frozenset({"token"}),
 }
 
@@ -231,19 +231,18 @@ async def log_permission_denied(
 
     try:
         sm = get_session_maker()
-        async with sm() as ds:
-            async with ds.begin():
-                await record_for_org(
-                    ds,
-                    organization_id,
-                    action="permission.denied",
-                    resource_type=resource,
-                    resource_id=resource_id,
-                    before={"role": role, "resource": resource, "action": action},
-                    actor_user_id=actor_user_id,
-                    request=request,
-                )
-    except Exception:  # noqa: BLE001
+        async with sm() as ds, ds.begin():
+            await record_for_org(
+                ds,
+                organization_id,
+                action="permission.denied",
+                resource_type=resource,
+                resource_id=resource_id,
+                before={"role": role, "resource": resource, "action": action},
+                actor_user_id=actor_user_id,
+                request=request,
+            )
+    except Exception:
         logging.getLogger(__name__).warning(
             "Failed to record permission denial audit entry", exc_info=True
         )

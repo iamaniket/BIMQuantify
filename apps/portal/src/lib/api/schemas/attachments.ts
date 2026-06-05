@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { ProjectFileRoleEnum } from './files';
+
 export const AttachmentCategoryEnum = z.enum(['image', 'video', 'audio', 'office', 'other']);
 export type AttachmentCategoryValue = z.infer<typeof AttachmentCategoryEnum>;
 
@@ -28,7 +30,8 @@ export const AttachmentSchema = z.object({
   size_bytes: z.number(),
   content_type: z.string(),
   content_sha256: z.union([z.string(), z.null()]),
-  attachment_category: AttachmentCategoryEnum,
+  role: ProjectFileRoleEnum,
+  attachment_category: z.union([AttachmentCategoryEnum, z.null()]),
   status: AttachmentStatusEnum,
   rejection_reason: z.union([z.string(), z.null()]),
   description: z.union([z.string(), z.null()]),
@@ -40,7 +43,7 @@ export const AttachmentSchema = z.object({
   capture_metadata: z.union([z.record(z.unknown()), z.null()]),
   server_metadata: z.union([z.record(z.unknown()), z.null()]),
   version_number: z.number(),
-  parent_attachment_id: z.union([z.string().uuid(), z.null()]),
+  parent_file_id: z.union([z.string().uuid(), z.null()]),
   created_at: z.string(),
   updated_at: z.string(),
 });

@@ -28,7 +28,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
@@ -43,7 +43,6 @@ from bimstitch_api.jobs import (
 )
 from bimstitch_api.jurisdictions import find_instrument
 from bimstitch_api.jurisdictions import get as get_jurisdiction
-from bimstitch_api.models.attachment import Attachment
 from bimstitch_api.models.borgingsmoment import Borgingsmoment
 from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
 from bimstitch_api.models.certificate import Certificate, CertificateStatus
@@ -52,6 +51,7 @@ from bimstitch_api.models.finding import Finding
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.project import Project
+from bimstitch_api.models.project_file import ProjectFile, ProjectFileRole
 from bimstitch_api.models.report import Report, ReportStatus, ReportType
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
@@ -389,7 +389,7 @@ async def _resolve_completion_declaration_source(
 
 
 def _dossier_finding_payload(
-    finding: Finding, atts: dict[str, Attachment]
+    finding: Finding, atts: dict[str, ProjectFile]
 ) -> dict[str, object]:
     """A finding + its resolution + image-attachment storage keys (the worker
     embeds those photos). Only image attachments are embedded."""
@@ -461,17 +461,34 @@ async def _resolve_dossier_source(
                 att_ids.add(UUID(str(aid)))
             except (ValueError, TypeError):
                 continue
-    atts: dict[str, Attachment] = {}
+    atts: dict[str, ProjectFile] = {}
     if att_ids:
         rows = (
             await session.execute(
-                select(Attachment).where(
-                    Attachment.id.in_(att_ids), Attachment.deleted_at.is_(None)
+                select(ProjectFile).where(
+                    ProjectFile.id.in_(att_ids),
+                    ProjectFile.role == ProjectFileRole.attachment,
+                    ProjectFile.deleted_at.is_(None),
                 )
             )
         ).scalars().all()
         atts = {str(a.id): a for a in rows}
 
+    # Head-of-group only: a superseded certificate version must not be bundled
+    # into the dossier — only the current version of each logical certificate.
+    cert_alias = aliased(Certificate)
+    cert_has_newer = (
+        select(cert_alias.id)
+        .where(
+            cert_alias.project_id == project.id,
+            cert_alias.status == CertificateStatus.ready,
+            cert_alias.deleted_at.is_(None),
+            func.coalesce(cert_alias.parent_certificate_id, cert_alias.id)
+            == func.coalesce(Certificate.parent_certificate_id, Certificate.id),
+            cert_alias.version_number > Certificate.version_number,
+        )
+        .exists()
+    )
     certificates = list(
         (
             await session.execute(
@@ -480,6 +497,7 @@ async def _resolve_dossier_source(
                     Certificate.project_id == project.id,
                     Certificate.status == CertificateStatus.ready,
                     Certificate.deleted_at.is_(None),
+                    ~cert_has_newer,
                 )
                 .order_by(Certificate.created_at)
             )

@@ -1,16 +1,25 @@
-"""Initial tenant schema.
+"""Initial tenant schema (squashed baseline).
 
 Tables: projects, project_members, models, project_files, jobs, reports,
 contractors, notifications, notification_reads, notification_dismissals, risks,
 borgingsplans, borgingsmomenten, checklist_items, checklist_item_results,
-attachments, capture_links, findings, certificates, audit_log,
-deadline_notification_log, deadline_notification_settings.
+capture_links, findings, certificates, org_certificates, bcf_topics,
+bcf_comments, bcf_viewpoints, audit_log, deadline_notification_log,
+deadline_notification_settings.
 
-This baseline is the full current tenant schema — `Base.metadata.create_all` over
-the live models emits every table, column, enum, and model-declared index, so
-anything the models declare lands here. The expression / partial / cross-column
-indexes the model layer doesn't emit (the JSONB framework path, the
-soft-delete-aware feeds, etc.) are created explicitly in upgrade() below.
+This is the single squashed baseline for the tenant chain — the former
+0002 (org_certificates), 0003 (bcf_tables) and 0004 (document_versioning)
+migrations were folded in here. Because the upgrade is driven by
+`Base.metadata.create_all` over the live models, anything the models declare —
+every table, column, enum, and model-declared index (including expression /
+partial / unique indexes via `Index(text(...), postgresql_where=...)`) — lands
+here automatically. Only the handful of indexes the model layer cannot express
+are created explicitly in upgrade() below.
+
+There is no longer a separate `attachments` table: attachments are rows in the
+unified `project_files` table, distinguished by `role = 'attachment'`. The
+per-role dedup and version-group indexes are declared on the `ProjectFile`
+model, so create_all emits them — nothing attachment-specific is needed here.
 
 Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables
 (users) are emitted as `public.users(id)` so they resolve regardless of
@@ -45,10 +54,16 @@ def _schema() -> str:
 
 def upgrade() -> None:
     from bimstitch_api.db import Base, is_tenant_table
-    # Importing the models registers them with Base.metadata.
+
+    # Importing the models package registers every tenant model with
+    # Base.metadata (its __init__ imports all of them, incl. the BCF and
+    # org-certificate tables). The explicit names below are documentation.
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
+        BcfComment,
+        BcfTopic,
+        BcfViewpoint,
         Borgingsmoment,
         Borgingsplan,
         CaptureLink,
@@ -59,7 +74,6 @@ def upgrade() -> None:
         Deadline,
         DeadlineNotificationLog,
         DeadlineNotificationSettings,
-        Attachment,
         Finding,
         Job,
         Model,
@@ -90,24 +104,9 @@ def upgrade() -> None:
     )
     bind.execute(
         text(
-            f"CREATE UNIQUE INDEX IF NOT EXISTS ux_attachments_project_sha256 "
-            f'ON "{schema}".attachments(project_id, content_sha256) '
-            f"WHERE content_sha256 IS NOT NULL AND status IN ('pending', 'ready') "
-            f"AND deleted_at IS NULL"
-        )
-    )
-    bind.execute(
-        text(
             f"CREATE INDEX IF NOT EXISTS ix_checklist_items_element_link "
             f'ON "{schema}".checklist_items (linked_file_id, linked_element_global_id) '
             f"WHERE linked_element_global_id IS NOT NULL"
-        )
-    )
-    bind.execute(
-        text(
-            f"CREATE INDEX IF NOT EXISTS ix_attachments_element_link "
-            f'ON "{schema}".attachments (project_id, linked_file_id, linked_element_global_id) '
-            f"WHERE linked_element_global_id IS NOT NULL AND deleted_at IS NULL"
         )
     )
     # One auto-draft finding per failed checklist item (the future #22 hook
@@ -151,6 +150,9 @@ def downgrade() -> None:
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
+        BcfComment,
+        BcfTopic,
+        BcfViewpoint,
         Borgingsmoment,
         Borgingsplan,
         CaptureLink,
@@ -161,7 +163,6 @@ def downgrade() -> None:
         Deadline,
         DeadlineNotificationLog,
         DeadlineNotificationSettings,
-        Attachment,
         Finding,
         Job,
         Model,
@@ -184,10 +185,8 @@ def downgrade() -> None:
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_findings_project_created'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_jobs_payload_framework'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".uq_findings_source_item'))
-    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_attachments_element_link'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ix_checklist_items_element_link'))
     bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_borgingsplans_one_active'))
-    bind.execute(text(f'DROP INDEX IF EXISTS "{schema}".ux_attachments_project_sha256'))
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
     Base.metadata.drop_all(bind, tables=tenant_tables)
     for enum in (
@@ -198,7 +197,7 @@ def downgrade() -> None:
         "certificatetype",
         "certificatestatus",
         "attachmentcategory",
-        "attachmentstatus",
+        "dossierslot",
         "evidencetype",
         "extractionstatus",
         "findingseverity",
@@ -210,6 +209,7 @@ def downgrade() -> None:
         "modeldiscipline",
         "modelstatus",
         "notificationeventtype",
+        "projectfilerole",
         "projectfilestatus",
         "projectlifecyclestate",
         "projectphase",

@@ -17,13 +17,14 @@ from bimstitch_api import audit
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.db import get_session_maker
 from bimstitch_api.models.capture_link import CaptureLink
-from bimstitch_api.models.attachment import (
-    ATTACHMENT_ALLOWED_EXTENSIONS,
-    Attachment,
-    AttachmentStatus,
-)
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.project import Project
+from bimstitch_api.models.project_file import (
+    ATTACHMENT_ALLOWED_EXTENSIONS,
+    ProjectFile,
+    ProjectFileRole,
+    ProjectFileStatus,
+)
 from bimstitch_api.schemas.capture_link import (
     CaptureTokenValidation,
     CaptureUploadRequest,
@@ -143,11 +144,12 @@ async def initiate_capture_upload(
 
         existing = (
             await session.execute(
-                select(Attachment).where(
-                    Attachment.project_id == link.project_id,
-                    Attachment.content_sha256 == payload.content_sha256,
-                    Attachment.status.in_([AttachmentStatus.pending, AttachmentStatus.ready]),
-                    Attachment.deleted_at.is_(None),
+                select(ProjectFile).where(
+                    ProjectFile.project_id == link.project_id,
+                    ProjectFile.role == ProjectFileRole.attachment,
+                    ProjectFile.content_sha256 == payload.content_sha256,
+                    ProjectFile.status.in_([ProjectFileStatus.pending, ProjectFileStatus.ready]),
+                    ProjectFile.deleted_at.is_(None),
                 )
             )
         ).scalar_one_or_none()
@@ -169,8 +171,9 @@ async def initiate_capture_upload(
             capture_meta = payload.capture_metadata.model_dump(mode="json")
             capture_meta["server_received_at"] = datetime.now(UTC).isoformat()
 
-        att = Attachment(
+        att = ProjectFile(
             project_id=link.project_id,
+            role=ProjectFileRole.attachment,
             uploaded_by_user_id=None,
             capture_link_id=link.id,
             storage_key=storage_key,
@@ -179,7 +182,7 @@ async def initiate_capture_upload(
             content_type=payload.content_type,
             content_sha256=payload.content_sha256,
             attachment_category=category,
-            status=AttachmentStatus.pending,
+            status=ProjectFileStatus.pending,
             capture_metadata=capture_meta,
         )
         session.add(att)
@@ -195,12 +198,14 @@ async def initiate_capture_upload(
         await audit.record(
             session,
             action="attachment.initiated",
-            resource_type="attachments",
+            resource_type="project_files",
             resource_id=att.id,
             after={
                 "original_filename": att.original_filename,
                 "capture_link_id": str(link.id),
-                "attachment_category": att.attachment_category.value,
+                "attachment_category": (
+                    att.attachment_category.value if att.attachment_category else None
+                ),
             },
             actor_user_id=None,
             request=request,
@@ -228,24 +233,25 @@ async def complete_capture_upload(
     attachment_id: UUID,
     request: Request,
     storage: StorageBackend = Depends(get_storage),
-) -> dict:
+) -> dict[str, str]:
     session = await _open_tenant_session(org_id)
     try:
         link = await _load_and_validate_link(session, token)
 
         att = (
             await session.execute(
-                select(Attachment).where(
-                    Attachment.id == attachment_id,
-                    Attachment.capture_link_id == link.id,
-                    Attachment.deleted_at.is_(None),
+                select(ProjectFile).where(
+                    ProjectFile.id == attachment_id,
+                    ProjectFile.capture_link_id == link.id,
+                    ProjectFile.role == ProjectFileRole.attachment,
+                    ProjectFile.deleted_at.is_(None),
                 )
             )
         ).scalar_one_or_none()
         if att is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ATTACHMENT_NOT_FOUND")
 
-        if att.status != AttachmentStatus.pending:
+        if att.status != ProjectFileStatus.pending:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="ATTACHMENT_NOT_PENDING")
 
         bucket = get_attachments_bucket()
@@ -259,13 +265,13 @@ async def complete_capture_upload(
 
         actual_size = head.get("ContentLength", 0)
         if actual_size != att.size_bytes:
-            att.status = AttachmentStatus.rejected
+            att.status = ProjectFileStatus.rejected
             att.rejection_reason = "SIZE_MISMATCH"
             await session.flush()
             await audit.record(
                 session,
                 action="attachment.rejected",
-                resource_type="attachments",
+                resource_type="project_files",
                 resource_id=att.id,
                 after={"status": "rejected", "rejection_reason": "SIZE_MISMATCH"},
                 actor_user_id=None,
@@ -277,13 +283,13 @@ async def complete_capture_upload(
                 detail="SIZE_MISMATCH",
             )
 
-        att.status = AttachmentStatus.ready
+        att.status = ProjectFileStatus.ready
         await session.flush()
 
         await audit.record(
             session,
             action="attachment.completed",
-            resource_type="attachments",
+            resource_type="project_files",
             resource_id=att.id,
             before={"status": "pending"},
             after={"status": "ready"},

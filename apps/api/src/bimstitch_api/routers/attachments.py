@@ -1,37 +1,38 @@
 """Project-level attachment storage.
 
-Two-phase presigned upload (same pattern as project_files): initiate -> browser
-PUT -> complete. Attachments are project-scoped (not model-scoped) and support all
-file types (images, video, audio, office docs). Every mutation writes an audit
-entry in the same transaction.
+Two-phase presigned upload (same pattern as model files): initiate -> browser
+PUT -> complete. Attachments are project-scoped (not model-scoped) rows in the
+unified ``project_files`` table, distinguished by ``role = 'attachment'``. They
+support all file types (images, video, audio, office docs). Every mutation
+writes an audit entry in the same transaction.
 """
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Annotated, Literal
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import Integer, func, select
+from sqlalchemy import Integer, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
-import logging
+from sqlalchemy.orm import aliased, selectinload
 
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
-from bimstitch_api.jobs import DispatchJobError, dispatch_job
-from bimstitch_api.models.attachment import (
-    ATTACHMENT_ALLOWED_EXTENSIONS,
-    Attachment,
-    AttachmentCategory,
-    AttachmentStatus,
-    DossierSlot,
-)
+from bimstitch_api.jobs import dispatch_job
 from bimstitch_api.models.job import Job, JobStatus, JobType
+from bimstitch_api.models.project_file import (
+    ATTACHMENT_ALLOWED_EXTENSIONS,
+    AttachmentCategory,
+    DossierSlot,
+    ProjectFile,
+    ProjectFileRole,
+    ProjectFileStatus,
+)
 from bimstitch_api.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -48,19 +49,50 @@ from bimstitch_api.schemas.attachment import (
     AttachmentRead,
     AttachmentUpdateRequest,
 )
-from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
-from bimstitch_api.storage.minio import ObjectNotFoundError
+from bimstitch_api.storage import (
+    StorageBackend,
+    get_attachments_bucket,
+    get_storage,
+    upload_service,
+)
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 router = APIRouter(prefix="/projects/{project_id}/attachments", tags=["attachments"])
 
 
-def _attachment_snapshot(att: Attachment) -> dict:
+async def _next_version_in_group(
+    session: AsyncSession, project_id: UUID, supersedes_id: UUID
+) -> tuple[int, UUID]:
+    """Resolve the version group of `supersedes_id` and return
+    (next_version_number, root_id).
+
+    The root is the group anchor: `supersedes_id` may point at any version, so we
+    take its `parent_file_id` (the root) or, if it is itself the root, its own
+    id. The next number is `max(version_number) + 1` over the whole group
+    INCLUDING soft-deleted/abandoned rows, so version numbers are never reused.
+    404 if `supersedes_id` is not a live attachment in this project.
+    """
+    superseded = await _load_attachment_or_404(session, project_id, supersedes_id)
+    root_id = superseded.parent_file_id or superseded.id
+    max_version = (
+        await session.scalar(
+            select(func.max(ProjectFile.version_number)).where(
+                ProjectFile.role == ProjectFileRole.attachment,
+                or_(ProjectFile.id == root_id, ProjectFile.parent_file_id == root_id),
+            )
+        )
+    ) or 0
+    return max_version + 1, root_id
+
+
+def _attachment_snapshot(att: ProjectFile) -> dict[str, object]:
     return {
         "original_filename": att.original_filename,
         "size_bytes": att.size_bytes,
         "content_type": att.content_type,
-        "attachment_category": att.attachment_category.value,
+        "attachment_category": (
+            att.attachment_category.value if att.attachment_category else None
+        ),
         "status": att.status.value,
         "description": att.description,
         "dossier_slot": att.dossier_slot.value if att.dossier_slot else None,
@@ -70,20 +102,23 @@ def _attachment_snapshot(att: Attachment) -> dict:
         "linked_point": att.linked_point,
         "capture_link_id": str(att.capture_link_id) if att.capture_link_id else None,
         "has_capture_metadata": att.capture_metadata is not None,
+        "version_number": att.version_number,
+        "parent_file_id": (str(att.parent_file_id) if att.parent_file_id else None),
     }
 
 
 async def _load_attachment_or_404(
     session: AsyncSession, project_id: UUID, attachment_id: UUID
-) -> Attachment:
+) -> ProjectFile:
     att = (
         await session.execute(
-            select(Attachment)
-            .options(selectinload(Attachment.uploaded_by_user))
+            select(ProjectFile)
+            .options(selectinload(ProjectFile.uploaded_by_user))
             .where(
-                Attachment.id == attachment_id,
-                Attachment.project_id == project_id,
-                Attachment.deleted_at.is_(None),
+                ProjectFile.id == attachment_id,
+                ProjectFile.project_id == project_id,
+                ProjectFile.role == ProjectFileRole.attachment,
+                ProjectFile.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -118,35 +153,19 @@ async def initiate_attachment_upload(
         raise
     _require_project_writable(project)
 
-    fname_lower = payload.filename.lower()
-    dot_pos = fname_lower.rfind(".")
-    ext = fname_lower[dot_pos:] if dot_pos >= 0 else ""
-    category = ATTACHMENT_ALLOWED_EXTENSIONS.get(ext)
-    if category is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "INVALID_FILE_EXTENSION",
-                "allowed": sorted(ATTACHMENT_ALLOWED_EXTENSIONS.keys()),
-            },
-        )
-
-    if payload.size_bytes > settings.attachment_max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={
-                "code": "FILE_TOO_LARGE",
-                "max_bytes": settings.attachment_max_bytes,
-            },
-        )
+    ext = upload_service.parse_extension(payload.filename)
+    upload_service.ensure_allowed_extension(ext, ATTACHMENT_ALLOWED_EXTENSIONS)
+    category = ATTACHMENT_ALLOWED_EXTENSIONS[ext]
+    upload_service.ensure_within_size_limit(payload.size_bytes, settings.attachment_max_bytes)
 
     existing = (
         await session.execute(
-            select(Attachment).where(
-                Attachment.project_id == project.id,
-                Attachment.content_sha256 == payload.content_sha256,
-                Attachment.status.in_([AttachmentStatus.pending, AttachmentStatus.ready]),
-                Attachment.deleted_at.is_(None),
+            select(ProjectFile).where(
+                ProjectFile.project_id == project.id,
+                ProjectFile.role == ProjectFileRole.attachment,
+                ProjectFile.content_sha256 == payload.content_sha256,
+                ProjectFile.status.in_([ProjectFileStatus.pending, ProjectFileStatus.ready]),
+                ProjectFile.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -160,7 +179,16 @@ async def initiate_attachment_upload(
             },
         )
 
-    storage_key = f"projects/{project.id}/attachments/{uuid4()}{ext}"
+    # A new version of an existing document (supersedes_id set) joins that
+    # document's version group; otherwise this is a fresh root at version 1.
+    version_number = 1
+    parent_id: UUID | None = None
+    if payload.supersedes_id is not None:
+        version_number, parent_id = await _next_version_in_group(
+            session, project.id, payload.supersedes_id
+        )
+
+    storage_key = upload_service.build_storage_key(project.id, "attachments", ext)
     bucket = get_attachments_bucket()
 
     capture_meta = None
@@ -168,8 +196,9 @@ async def initiate_attachment_upload(
         capture_meta = payload.capture_metadata.model_dump(mode="json")
         capture_meta["server_received_at"] = datetime.now(UTC).isoformat()
 
-    att = Attachment(
+    att = ProjectFile(
         project_id=project.id,
+        role=ProjectFileRole.attachment,
         uploaded_by_user_id=user.id,
         storage_key=storage_key,
         original_filename=payload.filename,
@@ -177,7 +206,7 @@ async def initiate_attachment_upload(
         content_type=payload.content_type,
         content_sha256=payload.content_sha256,
         attachment_category=category,
-        status=AttachmentStatus.pending,
+        status=ProjectFileStatus.pending,
         description=payload.description,
         dossier_slot=payload.dossier_slot,
         linked_element_global_id=payload.linked_element_global_id,
@@ -185,6 +214,8 @@ async def initiate_attachment_upload(
         linked_point=payload.linked_point,
         linked_file_id=payload.linked_file_id,
         capture_metadata=capture_meta,
+        version_number=version_number,
+        parent_file_id=parent_id,
     )
     session.add(att)
     await session.flush()
@@ -197,7 +228,7 @@ async def initiate_attachment_upload(
     await audit.record(
         session,
         action="attachment.initiated",
-        resource_type="attachments",
+        resource_type="project_files",
         resource_id=att.id,
         after=_attachment_snapshot(att),
         actor_user_id=user.id,
@@ -223,7 +254,7 @@ async def complete_attachment_upload(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
-) -> Attachment:
+) -> ProjectFile:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     try:
@@ -239,30 +270,22 @@ async def complete_attachment_upload(
         raise
 
     att = await _load_attachment_or_404(session, project.id, attachment_id)
-    if att.status != AttachmentStatus.pending:
+    if att.status != ProjectFileStatus.pending:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="ATTACHMENT_NOT_PENDING",
         )
 
     bucket = get_attachments_bucket()
-    try:
-        head = await storage.head_object(att.storage_key, bucket=bucket)
-    except ObjectNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="OBJECT_NOT_UPLOADED",
-        )
-
-    actual_size = head.get("ContentLength", 0)
+    actual_size = await upload_service.head_verify_size(storage, att.storage_key, bucket=bucket)
     if actual_size != att.size_bytes:
-        att.status = AttachmentStatus.rejected
+        att.status = ProjectFileStatus.rejected
         att.rejection_reason = "SIZE_MISMATCH"
         await session.flush()
         await audit.record(
             session,
             action="attachment.rejected",
-            resource_type="attachments",
+            resource_type="project_files",
             resource_id=att.id,
             after={"status": "rejected", "rejection_reason": "SIZE_MISMATCH"},
             actor_user_id=user.id,
@@ -275,14 +298,19 @@ async def complete_attachment_upload(
         )
 
     before = {"status": att.status.value}
-    att.status = AttachmentStatus.ready
+    att.status = ProjectFileStatus.ready
     await session.flush()
     await session.refresh(att)
 
+    completed_action = (
+        "attachment.version_added"
+        if att.parent_file_id is not None
+        else "attachment.completed"
+    )
     await audit.record(
         session,
-        action="attachment.completed",
-        resource_type="attachments",
+        action=completed_action,
+        resource_type="project_files",
         resource_id=att.id,
         before=before,
         after=_attachment_snapshot(att),
@@ -334,45 +362,65 @@ async def list_attachments(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
-) -> list[Attachment]:
+) -> list[ProjectFile]:
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
 
-    base = select(Attachment).where(
-        Attachment.project_id == project.id,
-        Attachment.status == AttachmentStatus.ready,
-        Attachment.deleted_at.is_(None),
+    base = select(ProjectFile).where(
+        ProjectFile.project_id == project.id,
+        ProjectFile.role == ProjectFileRole.attachment,
+        ProjectFile.status == ProjectFileStatus.ready,
+        ProjectFile.deleted_at.is_(None),
     )
+    # Head-of-group only: hide superseded versions. A row is the head when no
+    # other ready, non-deleted row in its version group has a higher
+    # version_number. Re-uploads (supersedes_id) drop the prior version here but
+    # keep it reachable via the /versions endpoint.
+    a2 = aliased(ProjectFile)
+    has_newer = (
+        select(a2.id)
+        .where(
+            a2.project_id == project.id,
+            a2.role == ProjectFileRole.attachment,
+            a2.status == ProjectFileStatus.ready,
+            a2.deleted_at.is_(None),
+            func.coalesce(a2.parent_file_id, a2.id)
+            == func.coalesce(ProjectFile.parent_file_id, ProjectFile.id),
+            a2.version_number > ProjectFile.version_number,
+        )
+        .exists()
+    )
+    base = base.where(~has_newer)
     if category is not None:
-        base = base.where(Attachment.attachment_category == category)
+        base = base.where(ProjectFile.attachment_category == category)
     if dossier_slot is not None:
-        base = base.where(Attachment.dossier_slot == dossier_slot)
+        base = base.where(ProjectFile.dossier_slot == dossier_slot)
     # "Link existing" picker: office docs not yet tagged to any dossier slot.
     if unslotted:
-        base = base.where(Attachment.dossier_slot.is_(None))
+        base = base.where(ProjectFile.dossier_slot.is_(None))
     if linked_element_global_id is not None:
-        base = base.where(Attachment.linked_element_global_id == linked_element_global_id)
+        base = base.where(ProjectFile.linked_element_global_id == linked_element_global_id)
     # Version-independent identity (model + GlobalId): an attachment shows on
     # every version of the model that still contains the element.
     if linked_model_id is not None:
-        base = base.where(Attachment.linked_model_id == linked_model_id)
+        base = base.where(ProjectFile.linked_model_id == linked_model_id)
     if linked_file_id is not None:
-        base = base.where(Attachment.linked_file_id == linked_file_id)
+        base = base.where(ProjectFile.linked_file_id == linked_file_id)
     if unlinked:
-        base = base.where(Attachment.linked_element_global_id.is_(None))
+        base = base.where(ProjectFile.linked_element_global_id.is_(None))
     if linked_point_type is not None:
-        base = base.where(Attachment.linked_point["type"].astext == linked_point_type)
+        base = base.where(ProjectFile.linked_point["type"].astext == linked_point_type)
     if linked_point_page is not None:
         base = base.where(
-            Attachment.linked_point["page"].astext.cast(Integer) == linked_point_page
+            ProjectFile.linked_point["page"].astext.cast(Integer) == linked_point_page
         )
 
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
     response.headers["X-Total-Count"] = str(total)
 
     stmt = (
-        base.options(selectinload(Attachment.uploaded_by_user))
-        .order_by(Attachment.created_at.desc())
+        base.options(selectinload(ProjectFile.uploaded_by_user))
+        .order_by(ProjectFile.created_at.desc())
         .limit(limit)
         .offset(offset)
     )
@@ -387,10 +435,43 @@ async def get_attachment(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
-) -> Attachment:
+) -> ProjectFile:
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
     return await _load_attachment_or_404(session, project.id, attachment_id)
+
+
+@router.get("/{attachment_id}/versions", response_model=list[AttachmentRead])
+async def list_attachment_versions(
+    project_id: UUID,
+    attachment_id: UUID,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> list[ProjectFile]:
+    """Full version history of one logical attachment, newest version first.
+
+    `attachment_id` may be any version in the group — the root is resolved and
+    every non-deleted sibling returned. The first element is the current head.
+    """
+    project = await _load_project_or_404(session, project_id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
+    anchor = await _load_attachment_or_404(session, project.id, attachment_id)
+    root_id = anchor.parent_file_id or anchor.id
+
+    stmt = (
+        select(ProjectFile)
+        .options(selectinload(ProjectFile.uploaded_by_user))
+        .where(
+            ProjectFile.project_id == project.id,
+            ProjectFile.role == ProjectFileRole.attachment,
+            or_(ProjectFile.id == root_id, ProjectFile.parent_file_id == root_id),
+            ProjectFile.deleted_at.is_(None),
+        )
+        .order_by(ProjectFile.version_number.desc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
 @router.get("/{attachment_id}/download", response_model=AttachmentDownloadResponse)
@@ -407,7 +488,7 @@ async def download_attachment(
     await _require_project_read_access(session, project.id, user, active_org_id)
     att = await _load_attachment_or_404(session, project.id, attachment_id)
 
-    if att.status != AttachmentStatus.ready:
+    if att.status != ProjectFileStatus.ready:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="ATTACHMENT_NOT_READY",
@@ -429,7 +510,7 @@ async def update_attachment(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
-) -> Attachment:
+) -> ProjectFile:
     project = await _load_project_or_404(session, project_id)
     membership = await _require_membership(session, project.id, user.id)
     try:
@@ -457,7 +538,7 @@ async def update_attachment(
     await audit.record(
         session,
         action="attachment.updated",
-        resource_type="attachments",
+        resource_type="project_files",
         resource_id=att.id,
         before=before,
         after=_attachment_snapshot(att),
@@ -500,7 +581,7 @@ async def delete_attachment(
     await audit.record(
         session,
         action="attachment.deleted",
-        resource_type="attachments",
+        resource_type="project_files",
         resource_id=attachment_id,
         before=before,
         actor_user_id=user.id,

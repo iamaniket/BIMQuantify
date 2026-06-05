@@ -40,6 +40,7 @@ from bimstitch_api.models.project_file import (
     FileType,
     IfcSchema,
     ProjectFile,
+    ProjectFileRole,
     ProjectFileStatus,
 )
 from bimstitch_api.models.user import User
@@ -186,6 +187,7 @@ async def initiate_upload(
 
     row = ProjectFile(
         project_id=project.id,
+        role=ProjectFileRole.model_source,
         model_id=model.id,
         version_number=new_version,
         uploaded_by_user_id=user.id,
@@ -201,7 +203,7 @@ async def initiate_upload(
     try:
         await session.flush()
     except IntegrityError as exc:
-        # Two possible races: same version_number (uq_project_files_model_version)
+        # Two possible races: same version_number (ux_project_files_model_version)
         # or same content_sha256 within the project (uq_project_files_project_content_sha256).
         # Both surface the same 409 with a code distinguishing them.
         constraint = getattr(exc.orig, "constraint_name", None) or ""
