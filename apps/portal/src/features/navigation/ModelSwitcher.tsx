@@ -131,9 +131,9 @@ export function ModelSwitcher({ projectId, currentModelId, currentModelName }: P
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/20 bg-white/10 px-2.5 text-body3 font-medium text-white outline-none hover:bg-white/15"
+          className="inline-flex h-8 w-[180px] items-center gap-1.5 rounded-md border border-white/20 bg-white/10 px-2.5 text-body3 font-medium text-white outline-none hover:bg-white/15"
         >
-          <span className="max-w-[140px] truncate">{currentModelName}</span>
+          <span className="min-w-0 flex-1 truncate">{currentModelName}</span>
           <ChevronDown className="h-3 w-3 shrink-0 text-white/70" />
         </button>
       </DropdownMenuTrigger>
