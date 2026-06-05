@@ -21,11 +21,12 @@ from sqlalchemy.orm import selectinload
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.models.certificate import CertificateStatus, CertificateType
 from bimstitch_api.models.org_certificate import (
     ORG_CERTIFICATE_ALLOWED_EXTENSIONS,
     OrgCertificate,
 )
-from bimstitch_api.models.certificate import CertificateStatus, CertificateType
+from bimstitch_api.models.org_certificate_tag import OrgCertificateTag
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.projects import _is_org_admin
 from bimstitch_api.schemas.org_certificate import (
@@ -38,6 +39,7 @@ from bimstitch_api.schemas.org_certificate import (
 )
 from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
 from bimstitch_api.storage.minio import ObjectNotFoundError
+from bimstitch_api.tag_rows import replace_tags
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
@@ -197,11 +199,13 @@ async def initiate_org_certificate_upload(
         valid_until=payload.valid_until,
         product_name=payload.product_name,
         supplier_name=payload.supplier_name,
-        tags=payload.tags,
     )
+    replace_tags(cert.tag_rows, OrgCertificateTag, payload.tags)
     session.add(cert)
     await session.flush()
-    await session.refresh(cert)
+    # Async-load tag_rows so the audit snapshot's `tags` property works (a
+    # freshly-built row is not selectin-loaded).
+    await session.refresh(cert, attribute_names=["tag_rows"])
 
     upload_url = await storage.presigned_put_url(
         storage_key, payload.content_type, payload.size_bytes, bucket=bucket
@@ -274,7 +278,6 @@ async def complete_org_certificate_upload(
     before = {"status": cert.status.value}
     cert.status = CertificateStatus.ready
     await session.flush()
-    await session.refresh(cert)
 
     await audit.record(
         session,
@@ -286,7 +289,8 @@ async def complete_org_certificate_upload(
         actor_user_id=user.id,
         request=request,
     )
-    return cert
+    # Re-fetch so the response carries DB-side timestamps + selectin-loaded tags.
+    return await _load_org_cert_or_404(session, certificate_id)
 
 
 @router.get("", response_model=list[OrgCertificateRead])
@@ -296,6 +300,7 @@ async def list_org_certificates(
     search: Annotated[str | None, Query(max_length=200)] = None,
     expiring_before: Annotated[date | None, Query()] = None,
     expired: Annotated[bool, Query()] = False,
+    tag: Annotated[list[str] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     session: AsyncSession = Depends(get_tenant_session),
@@ -331,6 +336,18 @@ async def list_org_certificates(
             OrgCertificate.valid_until.is_not(None),
             OrgCertificate.valid_until <= expiring_before,
         )
+    # Tag filter: each requested tag must be present (AND semantics) so multiple
+    # tags narrow the list. Backed by ix_org_certificate_tags_name.
+    if tag:
+        for tag_name in tag:
+            base = base.where(
+                select(OrgCertificateTag.id)
+                .where(
+                    OrgCertificateTag.org_certificate_id == OrgCertificate.id,
+                    OrgCertificateTag.name == tag_name,
+                )
+                .exists()
+            )
 
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
     response.headers["X-Total-Count"] = str(total)
@@ -341,6 +358,31 @@ async def list_org_certificates(
         .limit(limit)
         .offset(offset)
     )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+@router.get("/tags", response_model=list[str])
+async def list_org_certificate_tags(
+    q: Annotated[str | None, Query(max_length=64)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> list[str]:
+    """Distinct tag names for autocomplete. Optional `q` prefix-matches (ILIKE).
+
+    Declared before `/{certificate_id}` so the static path wins the route match.
+    """
+    await _require_org_admin(session, user, active_org_id)
+    stmt = (
+        select(OrgCertificateTag.name)
+        .distinct()
+        .order_by(OrgCertificateTag.name)
+        .limit(limit)
+    )
+    if q and q.strip():
+        stmt = stmt.where(OrgCertificateTag.name.ilike(f"{q.strip()}%"))
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -396,10 +438,14 @@ async def update_org_certificate(
     before = _org_cert_snapshot(cert)
 
     updates = payload.model_dump(exclude_unset=True)
+    # Tags are normalized into rows, not a column — pop and replace the set.
+    has_tags = "tags" in updates
+    tags = updates.pop("tags", None)
     for field, value in updates.items():
         setattr(cert, field, value)
+    if has_tags:
+        replace_tags(cert.tag_rows, OrgCertificateTag, tags)
     await session.flush()
-    await session.refresh(cert)
 
     await audit.record(
         session,
@@ -411,7 +457,8 @@ async def update_org_certificate(
         actor_user_id=user.id,
         request=request,
     )
-    return cert
+    # Re-fetch so the response carries DB-side timestamps + selectin-loaded tags.
+    return await _load_org_cert_or_404(session, certificate_id)
 
 
 @router.delete("/{certificate_id}", status_code=status.HTTP_204_NO_CONTENT)

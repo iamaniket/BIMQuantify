@@ -17,10 +17,10 @@ if TYPE_CHECKING:
 from tests.conftest import (
     _add_member,
     _auth,
+    _create_attachment_row,
     _create_project,
     _provision_user_in_org,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -676,8 +676,6 @@ async def test_submit_result_with_reference_attachment_ids(
     session_maker: async_sessionmaker[AsyncSession],
     engine: AsyncEngine,
 ) -> None:
-    from uuid import uuid4
-
     user = await _provision_user_in_org(
         client, session_maker, engine, email="kb@test.nl"
     )
@@ -691,7 +689,10 @@ async def test_submit_result_with_reference_attachment_ids(
         headers=_auth(user["access_token"]),
     )
 
-    ref_ids = [str(uuid4()), str(uuid4())]
+    ref_ids = [
+        await _create_attachment_row(project["id"]),
+        await _create_attachment_row(project["id"]),
+    ]
     resp = await client.post(
         f"/borgingsmomenten/{moment['id']}/checklist-items/{item['id']}/result",
         json={"verdict": "pass", "reference_attachment_ids": ref_ids},

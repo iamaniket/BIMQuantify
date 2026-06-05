@@ -34,6 +34,22 @@ vi.mock('@bimstitch/ui', () => ({
       {action}
     </div>
   ),
+  // The findings list renders through DetailCard + FindingRow. Collapsed cards
+  // hide their body/footer, so the mocks render only the always-visible row.
+  DetailCard: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DetailCardRow: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DetailCardBody: () => null,
+  DetailCardFooter: () => null,
+  MetaGrid: () => null,
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+}));
+
+// next-intl's createNavigation pulls in `next/navigation`, which isn't fully
+// resolvable under happy-dom — stub Link (the findings board link) with an anchor.
+vi.mock('@/i18n/navigation', () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 
 vi.mock('./FindingFormDialog', () => ({ FindingFormDialog: () => null }));
@@ -42,6 +58,14 @@ vi.mock('./FindingDetailModal', () => ({ FindingDetailModal: () => null }));
 const mockUseFindings = vi.fn();
 vi.mock('@/features/findings/useFindings', () => ({
   useFindings: () => mockUseFindings(),
+}));
+
+vi.mock('@/features/projects/members/useProjectMembers', () => ({
+  useProjectMembers: () => ({ data: [] }),
+}));
+
+vi.mock('@/features/findings/useDeleteFinding', () => ({
+  useDeleteFinding: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 import { BevindingenTab } from './BevindingenTab';
@@ -63,6 +87,11 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     linked_model_id: null,
     linked_file_id: null,
     linked_element_global_id: null,
+    linked_file_type: null,
+    anchor_x: null,
+    anchor_y: null,
+    anchor_z: null,
+    anchor_page: null,
     photo_ids: null,
     resolution_note: null,
     resolution_evidence_ids: null,
@@ -84,7 +113,8 @@ describe('BevindingenTab', () => {
     );
 
     expect(screen.getByText('No findings logged')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Log finding/ })).toBeInTheDocument();
+    // The CTA appears both in the toolbar and the empty state — assert presence.
+    expect(screen.getAllByRole('button', { name: /Log finding/ }).length).toBeGreaterThan(0);
   });
 
   it('renders a list of findings with severity and status labels (English)', () => {

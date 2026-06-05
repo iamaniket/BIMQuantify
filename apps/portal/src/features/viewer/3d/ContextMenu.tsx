@@ -18,6 +18,8 @@ import type { ItemId, ViewerHandle, ViewerEvents } from '@bimstitch/viewer';
 import { prettyKey } from '@/components/shared/viewer/shared/settings/prettyKey';
 import { useViewerState } from '@/components/shared/viewer/shared/useViewerState';
 
+import { PENDING_ELEMENT_POINT_KEY } from '../shared/inspector/pendingElementPoint';
+
 type ContextMenuData = ViewerEvents['contextmenu:open'];
 
 type MenuItem = {
@@ -348,13 +350,21 @@ export function ContextMenu({ handle }: Props): JSX.Element | null {
       if (targetItem) {
         handle.commands.execute('selection.set', targetItem).catch(() => undefined);
       }
+      // Anchor handoff: when the user opens an attach/finding/certificate flow
+      // from a 3D pick, stash the world-space point so the inspector body can
+      // anchor the new item to it (linked_file_type='ifc' + {x,y,z}). Mirrors
+      // the PDF pin handoff. Consumed (removed) at upload time.
+      if (cmd.startsWith('inspect.') && menu?.point) {
+        const { x, y, z } = menu.point;
+        sessionStorage.setItem(PENDING_ELEMENT_POINT_KEY, JSON.stringify({ x, y, z }));
+      }
       handle.commands.execute(cmd).catch((err: unknown) => {
         // eslint-disable-next-line no-console
         console.warn(`[context-menu] ${cmd} failed:`, err);
       });
       handle.commands.execute('contextMenu.close').catch(() => undefined);
     },
-    [handle],
+    [handle, menu],
   );
 
   const items = useMemo(() => {

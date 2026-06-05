@@ -78,6 +78,10 @@ export interface DocumentEvents extends PluginLifecycleEvents {
   'measurement:complete': { id: string; type: string; valuePoints: number };
   /** Measurement mode exited (Escape / deactivate). */
   'measure:modeExit': undefined;
+  /** Right-click context menu opened at the given viewport position + page info. */
+  'contextmenu:open': { position: { x: number; y: number }; page: number };
+  /** Context menu dismissed. */
+  'contextmenu:close': undefined;
 }
 
 /**

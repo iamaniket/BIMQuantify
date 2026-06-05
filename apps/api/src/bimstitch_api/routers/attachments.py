@@ -15,7 +15,8 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import Integer, func, or_, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -77,6 +78,7 @@ async def _next_version_in_group(
     max_version = (
         await session.scalar(
             select(func.max(ProjectFile.version_number)).where(
+                ProjectFile.project_id == project_id,
                 ProjectFile.role == ProjectFileRole.attachment,
                 or_(ProjectFile.id == root_id, ProjectFile.parent_file_id == root_id),
             )
@@ -99,7 +101,11 @@ def _attachment_snapshot(att: ProjectFile) -> dict[str, object]:
         "linked_element_global_id": att.linked_element_global_id,
         "linked_model_id": str(att.linked_model_id) if att.linked_model_id else None,
         "linked_file_id": str(att.linked_file_id) if att.linked_file_id else None,
-        "linked_point": att.linked_point,
+        "linked_file_type": att.linked_file_type,
+        "anchor_x": att.anchor_x,
+        "anchor_y": att.anchor_y,
+        "anchor_z": att.anchor_z,
+        "anchor_page": att.anchor_page,
         "capture_link_id": str(att.capture_link_id) if att.capture_link_id else None,
         "has_capture_metadata": att.capture_metadata is not None,
         "version_number": att.version_number,
@@ -211,14 +217,33 @@ async def initiate_attachment_upload(
         dossier_slot=payload.dossier_slot,
         linked_element_global_id=payload.linked_element_global_id,
         linked_model_id=payload.linked_model_id,
-        linked_point=payload.linked_point,
+        linked_file_type=payload.linked_file_type,
+        anchor_x=payload.anchor_x,
+        anchor_y=payload.anchor_y,
+        anchor_z=payload.anchor_z,
+        anchor_page=payload.anchor_page,
         linked_file_id=payload.linked_file_id,
         capture_metadata=capture_meta,
         version_number=version_number,
         parent_file_id=parent_id,
     )
     session.add(att)
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        # The pre-check above catches the common duplicate; this guards the
+        # concurrent race (two uploads of the same bytes, or a racing version
+        # number in the group) so it surfaces as 409 rather than an unhandled
+        # 500 — mirroring the model-files path in routers/project_files.py.
+        constraint = getattr(exc.orig, "constraint_name", None) or ""
+        if "content_sha256" in constraint or "content_sha256" in str(exc.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "DUPLICATE_CONTENT"},
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="VERSION_NUMBER_CONFLICT"
+        ) from exc
     await session.refresh(att)
 
     upload_url = await storage.presigned_put_url(
@@ -351,12 +376,12 @@ async def list_attachments(
     category: Annotated[AttachmentCategory | None, Query()] = None,
     dossier_slot: Annotated[DossierSlot | None, Query()] = None,
     unslotted: Annotated[bool, Query()] = False,
-    linked_element_global_id: Annotated[str | None, Query(max_length=22)] = None,
+    linked_element_global_id: Annotated[str | None, Query(max_length=255)] = None,
     linked_model_id: Annotated[UUID | None, Query()] = None,
     linked_file_id: Annotated[UUID | None, Query()] = None,
     unlinked: Annotated[bool, Query()] = False,
-    linked_point_type: Annotated[str | None, Query(max_length=10)] = None,
-    linked_point_page: Annotated[int | None, Query(ge=1)] = None,
+    linked_file_type: Annotated[str | None, Query(max_length=16)] = None,
+    anchor_page: Annotated[int | None, Query(ge=1)] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     session: AsyncSession = Depends(get_tenant_session),
@@ -408,12 +433,10 @@ async def list_attachments(
         base = base.where(ProjectFile.linked_file_id == linked_file_id)
     if unlinked:
         base = base.where(ProjectFile.linked_element_global_id.is_(None))
-    if linked_point_type is not None:
-        base = base.where(ProjectFile.linked_point["type"].astext == linked_point_type)
-    if linked_point_page is not None:
-        base = base.where(
-            ProjectFile.linked_point["page"].astext.cast(Integer) == linked_point_page
-        )
+    if linked_file_type is not None:
+        base = base.where(ProjectFile.linked_file_type == linked_file_type)
+    if anchor_page is not None:
+        base = base.where(ProjectFile.anchor_page == anchor_page)
 
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
     response.headers["X-Total-Count"] = str(total)

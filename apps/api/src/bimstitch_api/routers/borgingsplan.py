@@ -30,6 +30,7 @@ from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.jurisdictions import pick_label
 from bimstitch_api.jurisdictions import require as require_jurisdiction
 from bimstitch_api.models.borgingsmoment import Borgingsmoment, BorgingsmomentPhase
@@ -38,7 +39,6 @@ from bimstitch_api.models.checklist_item import ChecklistItem, ChecklistItemType
 from bimstitch_api.models.project import Project
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
-from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,

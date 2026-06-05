@@ -99,8 +99,8 @@ export function usePdfPageAttachments(
       if (page === null) throw new Error('Missing page');
       return listAttachments(accessToken, projectId, {
         linkedFileId: fileId,
-        linkedPointType: 'pdf',
-        linkedPointPage: page,
+        linkedFileType: 'pdf',
+        anchorPage: page,
       });
     },
     enabled: page !== null,

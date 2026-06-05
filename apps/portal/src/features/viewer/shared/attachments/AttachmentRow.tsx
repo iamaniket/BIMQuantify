@@ -110,7 +110,7 @@ export function AttachmentRow({
               <span className="truncate">{attachment.uploaded_by_name}</span>
             </>
           )}
-          {(attachment.linked_element_global_id !== null || attachment.linked_point !== null) && (
+          {(attachment.linked_element_global_id !== null || attachment.linked_file_type !== null) && (
             <>
               <span className="shrink-0">·</span>
               <LinkChip attachment={attachment} compact />

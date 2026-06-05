@@ -4,10 +4,10 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
-from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi_limiter import FastAPILimiter
+from sqlalchemy import text
 
 from bimstitch_api.admin.invitation_expiry import InvitationExpirySweeper
 from bimstitch_api.auth.routes import build_auth_router
@@ -26,6 +26,7 @@ from bimstitch_api.routers.activity import router as activity_router
 from bimstitch_api.routers.admin_blog import router as admin_blog_router
 from bimstitch_api.routers.admin_impersonate import router as admin_impersonate_router
 from bimstitch_api.routers.admin_organizations import router as admin_organizations_router
+from bimstitch_api.routers.attachments import router as attachments_router
 from bimstitch_api.routers.borgingsplan import (
     moment_router as borgingsplan_moment_router,
 )
@@ -34,6 +35,7 @@ from bimstitch_api.routers.borgingsplan import (
 )
 from bimstitch_api.routers.capture_links import router as capture_links_router
 from bimstitch_api.routers.capture_public import router as capture_public_router
+from bimstitch_api.routers.certificates import router as certificates_router
 from bimstitch_api.routers.compliance import (
     project_router as compliance_project_router,
 )
@@ -41,7 +43,6 @@ from bimstitch_api.routers.compliance import (
     router as compliance_router,
 )
 from bimstitch_api.routers.contractors import router as contractors_router
-from bimstitch_api.routers.element_inspections import router as element_inspections_router
 from bimstitch_api.routers.deadline_notification_settings import (
     org_router as dl_notif_settings_org_router,
 )
@@ -49,9 +50,7 @@ from bimstitch_api.routers.deadline_notification_settings import (
     project_router as dl_notif_settings_project_router,
 )
 from bimstitch_api.routers.deadlines import router as deadlines_router
-from bimstitch_api.routers.attachments import router as attachments_router
-from bimstitch_api.routers.certificates import router as certificates_router
-from bimstitch_api.routers.org_certificates import router as org_certificates_router
+from bimstitch_api.routers.element_inspections import router as element_inspections_router
 from bimstitch_api.routers.finding import router as finding_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.inspection import router as inspection_router
@@ -65,14 +64,15 @@ from bimstitch_api.routers.me_invitations import router as me_invitations_router
 from bimstitch_api.routers.me_profile import router as me_profile_router
 from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.notifications import router as notifications_router
+from bimstitch_api.routers.org_certificates import router as org_certificates_router
 from bimstitch_api.routers.organization_image import (
     admin_router as org_image_admin_router,
 )
 from bimstitch_api.routers.organization_image import (
     org_router as org_image_router,
 )
-from bimstitch_api.routers.organization_settings import router as org_settings_router
 from bimstitch_api.routers.organization_members import router as organization_members_router
+from bimstitch_api.routers.organization_settings import router as org_settings_router
 from bimstitch_api.routers.project_files import router as project_files_router
 from bimstitch_api.routers.projects import router as projects_router
 from bimstitch_api.routers.public import router as public_router

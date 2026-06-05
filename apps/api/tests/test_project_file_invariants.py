@@ -151,3 +151,122 @@ async def test_duplicate_model_version_number_rejected(
         with pytest.raises(IntegrityError) as exc:
             await session.flush()
     assert "ux_project_files_model_version" in str(exc.value)
+
+
+async def test_duplicate_attachment_version_in_group_rejected(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """The attachment version-group unique index (coalesce(parent_file_id, id),
+    version_number) rejects two rows claiming the same version of one lineage."""
+    async with session_maker() as session:
+        project, _ = await _seed_project_and_model(session)
+        root = _file(project_id=project.id, role=ProjectFileRole.attachment, version_number=1)
+        session.add(root)
+        await session.flush()
+        session.add(
+            _file(
+                project_id=project.id,
+                role=ProjectFileRole.attachment,
+                version_number=1,
+                parent_file_id=root.id,
+            )
+        )
+        with pytest.raises(IntegrityError) as exc:
+            await session.flush()
+    assert "ux_project_files_version_group" in str(exc.value)
+
+
+async def test_same_bytes_in_different_roles_both_persist(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Dedup is per-role (role is in the unique key): a model source and an
+    attachment in the same project may carry identical bytes — both persist."""
+    sha = "b" * 64
+    async with session_maker() as session:
+        project, model = await _seed_project_and_model(session)
+        session.add(
+            _file(
+                project_id=project.id,
+                role=ProjectFileRole.model_source,
+                model_id=model.id,
+                content_sha256=sha,
+                status=ProjectFileStatus.ready,
+            )
+        )
+        session.add(
+            _file(
+                project_id=project.id,
+                role=ProjectFileRole.attachment,
+                content_sha256=sha,
+                status=ProjectFileStatus.ready,
+            )
+        )
+        # No IntegrityError despite identical (project_id, content_sha256).
+        await session.flush()
+
+
+async def test_soft_deleted_row_frees_the_dedup_slot(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Regression: the content dedup index excludes deleted rows. soft_delete()
+    only stamps deleted_at (status stays 'ready'), so without the
+    `deleted_at IS NULL` clause a re-upload of the same bytes after deletion
+    would trip the unique index. It must NOT."""
+    sha = "c" * 64
+    async with session_maker() as session:
+        project, _ = await _seed_project_and_model(session)
+        first = _file(
+            project_id=project.id,
+            role=ProjectFileRole.attachment,
+            content_sha256=sha,
+            status=ProjectFileStatus.ready,
+        )
+        session.add(first)
+        await session.flush()
+        first.soft_delete()
+        await session.flush()
+        # Same project/role/bytes again — allowed because `first` is deleted.
+        session.add(
+            _file(
+                project_id=project.id,
+                role=ProjectFileRole.attachment,
+                content_sha256=sha,
+                status=ProjectFileStatus.ready,
+            )
+        )
+        await session.flush()
+
+
+async def test_unknown_linked_file_type_rejected(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """The CHECK constraint is the DB backstop behind the Pydantic anchor
+    validation: an unknown linked_file_type is rejected at flush, even when the
+    HTTP validation layer is bypassed (direct ORM insert)."""
+    async with session_maker() as session:
+        project, _ = await _seed_project_and_model(session)
+        session.add(
+            _file(
+                project_id=project.id,
+                role=ProjectFileRole.attachment,
+                linked_file_type="bogus",
+            )
+        )
+        with pytest.raises(IntegrityError) as exc:
+            await session.flush()
+    assert "ck_project_files_linked_file_type" in str(exc.value)
+
+
+async def test_null_and_known_linked_file_type_accepted(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """NULL (unanchored) and any known value satisfy the CHECK."""
+    async with session_maker() as session:
+        project, _ = await _seed_project_and_model(session)
+        session.add(
+            _file(project_id=project.id, role=ProjectFileRole.attachment, linked_file_type=None)
+        )
+        session.add(
+            _file(project_id=project.id, role=ProjectFileRole.attachment, linked_file_type="dwg")
+        )
+        await session.flush()

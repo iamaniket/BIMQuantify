@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from bimstitch_api.models.finding import FindingSeverity, FindingStatus
+from bimstitch_api.schemas.anchor import validate_linked_anchor
 
 
 class FindingBase(BaseModel):
@@ -27,11 +30,29 @@ class FindingCreate(FindingBase):
     linked_model_id: UUID | None = None
     linked_file_id: UUID | None = None
     linked_element_global_id: str | None = Field(default=None, max_length=255)
-    # Attachment ids (photos) captured while logging the finding. Stored as a
-    # JSONB string list — match ChecklistItemResult.photo_ids, so values stay
-    # JSON-serializable (str, not UUID).
+    # Anchor geometry — dedicated fields keyed by linked_file_type (see
+    # schemas/anchor.py); validated together below.
+    linked_file_type: str | None = None
+    anchor_x: float | None = None
+    anchor_y: float | None = None
+    anchor_z: float | None = None
+    anchor_page: int | None = None
+    # Attachment ids (photos) captured while logging the finding. A string list
+    # on the wire — match ChecklistItemResult.photo_ids — normalized to link
+    # rows server-side.
     photo_ids: list[str] | None = None
     reference_attachment_ids: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _validate_anchor(self) -> FindingCreate:
+        validate_linked_anchor(
+            self.linked_file_type,
+            anchor_x=self.anchor_x,
+            anchor_y=self.anchor_y,
+            anchor_z=self.anchor_z,
+            anchor_page=self.anchor_page,
+        )
+        return self
 
 
 class FindingUpdate(BaseModel):
@@ -51,6 +72,11 @@ class FindingUpdate(BaseModel):
     linked_model_id: UUID | None = None
     linked_file_id: UUID | None = None
     linked_element_global_id: str | None = Field(default=None, max_length=255)
+    linked_file_type: str | None = None
+    anchor_x: float | None = None
+    anchor_y: float | None = None
+    anchor_z: float | None = None
+    anchor_page: int | None = None
     # Replace the photo set (add/remove). Omit to leave unchanged.
     photo_ids: list[str] | None = None
     # Resolution evidence (#26/#27): required (non-empty note + >=1 id) on a
@@ -58,6 +84,17 @@ class FindingUpdate(BaseModel):
     resolution_note: str | None = Field(default=None, max_length=4000)
     resolution_evidence_ids: list[str] | None = None
     reference_attachment_ids: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _validate_anchor(self) -> FindingUpdate:
+        validate_linked_anchor(
+            self.linked_file_type,
+            anchor_x=self.anchor_x,
+            anchor_y=self.anchor_y,
+            anchor_z=self.anchor_z,
+            anchor_page=self.anchor_page,
+        )
+        return self
 
 
 class FindingRead(FindingBase):
@@ -72,6 +109,11 @@ class FindingRead(FindingBase):
     linked_model_id: UUID | None
     linked_file_id: UUID | None
     linked_element_global_id: str | None
+    linked_file_type: str | None
+    anchor_x: float | None
+    anchor_y: float | None
+    anchor_z: float | None
+    anchor_page: int | None
     photo_ids: list[str] | None
     resolution_note: str | None
     resolution_evidence_ids: list[str] | None

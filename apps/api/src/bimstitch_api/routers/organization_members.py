@@ -297,9 +297,9 @@ async def invite_member(
     await session.commit()
 
     # In-app notification (best-effort, after commit).
-    from bimstitch_api.notifications.service import emit_notification_for_org
-    from bimstitch_api.models.notification import NotificationEventType
     from bimstitch_api.i18n import PLATFORM_DEFAULT_LOCALE, t
+    from bimstitch_api.models.notification import NotificationEventType
+    from bimstitch_api.notifications.service import emit_notification_for_org
 
     # Org-level event with no specific recipient — use platform default.
     # When Organization.default_locale is added in a future PR, swap this

@@ -15,14 +15,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.attachment_links import replace_attachment_links
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.i18n import resolve_org_locale, t
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
+from bimstitch_api.models.finding_attachment import FindingAttachment
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.user import User
@@ -59,7 +62,7 @@ _FINDING_TRANSITIONS: dict[FindingStatus, frozenset[FindingStatus]] = {
 }
 
 
-def _finding_snapshot(finding: Finding) -> dict[str, str | None]:
+def _finding_snapshot(finding: Finding) -> dict[str, object]:
     return {
         "title": finding.title,
         "description": finding.description,
@@ -77,6 +80,11 @@ def _finding_snapshot(finding: Finding) -> dict[str, str | None]:
         "linked_model_id": str(finding.linked_model_id) if finding.linked_model_id else None,
         "linked_file_id": str(finding.linked_file_id) if finding.linked_file_id else None,
         "linked_element_global_id": finding.linked_element_global_id,
+        "linked_file_type": finding.linked_file_type,
+        "anchor_x": finding.anchor_x,
+        "anchor_y": finding.anchor_y,
+        "anchor_z": finding.anchor_z,
+        "anchor_page": finding.anchor_page,
         "resolution_note": finding.resolution_note,
         "has_references": bool(finding.reference_attachment_ids),
     }
@@ -125,15 +133,37 @@ async def create_finding(
         raise
     _require_project_writable(project)
 
+    data = payload.model_dump()
+    photo_ids = data.pop("photo_ids", None)
+    reference_attachment_ids = data.pop("reference_attachment_ids", None)
     finding = Finding(
         project_id=project.id,
         created_by_user_id=user.id,
         status=FindingStatus.draft,
-        **payload.model_dump(),
+        **data,
+    )
+    replace_attachment_links(
+        finding.attachment_links, FindingAttachment, kind="photo", ids=photo_ids
+    )
+    replace_attachment_links(
+        finding.attachment_links,
+        FindingAttachment,
+        kind="reference",
+        ids=reference_attachment_ids,
     )
     session.add(finding)
-    await session.flush()
-    await session.refresh(finding)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        # A photo/reference id that doesn't reference a real attachment trips the
+        # FK — surface a clean 422 instead of a 500.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="ATTACHMENT_NOT_FOUND",
+        ) from exc
+    # Re-load so the eager attachment links are populated (a freshly-built row
+    # is not selectin-loaded) for both the audit snapshot and the response.
+    finding = await _load_finding_or_404(session, project.id, finding.id)
     await audit.record(
         session,
         action="finding.created",
@@ -154,7 +184,7 @@ async def list_findings(
     severity: FindingSeverity | None = None,
     linked_model_id: UUID | None = None,
     linked_file_id: UUID | None = None,
-    linked_element_global_id: str | None = Query(default=None, max_length=22),
+    linked_element_global_id: str | None = Query(default=None, max_length=255),
     unlinked: bool = False,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -292,8 +322,34 @@ async def update_finding(
     previous_status = finding.status
 
     updates = payload.model_dump(exclude_unset=True)
+    # Attachment id lists are normalized into link rows, not columns — pop them
+    # out and replace the link set per kind (only for kinds the caller sent).
+    has_photo = "photo_ids" in updates
+    has_resolution_evidence = "resolution_evidence_ids" in updates
+    has_reference = "reference_attachment_ids" in updates
+    photo_ids = updates.pop("photo_ids", None)
+    resolution_evidence_ids = updates.pop("resolution_evidence_ids", None)
+    reference_attachment_ids = updates.pop("reference_attachment_ids", None)
     for field, value in updates.items():
         setattr(finding, field, value)
+    if has_photo:
+        replace_attachment_links(
+            finding.attachment_links, FindingAttachment, kind="photo", ids=photo_ids
+        )
+    if has_resolution_evidence:
+        replace_attachment_links(
+            finding.attachment_links,
+            FindingAttachment,
+            kind="resolution_evidence",
+            ids=resolution_evidence_ids,
+        )
+    if has_reference:
+        replace_attachment_links(
+            finding.attachment_links,
+            FindingAttachment,
+            kind="reference",
+            ids=reference_attachment_ids,
+        )
 
     # Validate a chosen assignee actually belongs to the project so an invalid
     # id surfaces as a clean 422 rather than an FK IntegrityError 500.
@@ -345,8 +401,13 @@ async def update_finding(
             detail="FINDING_VERIFY_REQUIRES_INSPECTOR",
         )
 
-    await session.flush()
-    await session.refresh(finding)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="ATTACHMENT_NOT_FOUND",
+        ) from exc
 
     if promoted or resolving:
         # Finding notifications are project-scoped fan-outs (everyone in
@@ -385,7 +446,9 @@ async def update_finding(
         actor_user_id=user.id,
         request=request,
     )
-    return finding
+    # Re-fetch so the response carries the DB-side updated_at and the freshly
+    # selectin-loaded attachment links.
+    return await _load_finding_or_404(session, project.id, finding.id)
 
 
 @router.delete("/{finding_id}", status_code=status.HTTP_204_NO_CONTENT)

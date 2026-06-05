@@ -321,6 +321,38 @@ async def test_list_filters_by_category(
 
 
 @pytest.mark.asyncio
+async def test_list_excludes_model_source_files(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """The attachments list is the unified project_files table filtered to
+    role='attachment'. A model's source file (role='model_source') in the same
+    project must NEVER appear here — this is the load-bearing role isolation the
+    whole merge rests on, and the existing filter tests can't catch a dropped
+    role filter because their probes query linked_* columns a model file lacks."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    model = await _create_model(client, token, project["id"])
+    # A model-source file (role=model_source) — must be invisible to /attachments.
+    await _create_ready_file(client, fake, token, project["id"], model["id"])
+    # One genuine attachment.
+    att = await _initiate_att(client, token, project["id"])
+    await _complete_att(client, fake, token, project["id"], att)
+
+    resp = await client.get(
+        f"/projects/{project['id']}/attachments",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert resp.headers["X-Total-Count"] == "1"
+    assert len(body) == 1
+    assert body[0]["id"] == att["attachment_id"]
+    assert body[0]["role"] == "attachment"
+
+
+@pytest.mark.asyncio
 async def test_get_single_attachment(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
@@ -942,12 +974,12 @@ async def test_list_unlinked_filter(
 
 
 # ---------------------------------------------------------------------------
-# List — linked_point filters
+# List — anchor filters (linked_file_type / anchor_page)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_list_filters_by_linked_point_type(
+async def test_list_filters_by_linked_file_type(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
@@ -957,29 +989,29 @@ async def test_list_filters_by_linked_point_type(
 
     pdf_pin = await _initiate_att(
         client, token, project["id"],
-        linked_point={"type": "pdf", "page": 2, "x": 0.5, "y": 0.3},
+        linked_file_type="pdf", anchor_page=2, anchor_x=0.5, anchor_y=0.3,
     )
     await _complete_att(client, fake, token, project["id"], pdf_pin)
     ifc_pin = await _initiate_att(
         client, token, project["id"],
-        linked_point={"type": "ifc", "x": 1.0, "y": 2.0, "z": 3.0},
+        linked_file_type="ifc", anchor_x=1.0, anchor_y=2.0, anchor_z=3.0,
     )
     await _complete_att(client, fake, token, project["id"], ifc_pin)
     plain = await _initiate_att(client, token, project["id"])
     await _complete_att(client, fake, token, project["id"], plain)
 
     resp = await client.get(
-        f"/projects/{project['id']}/attachments?linked_point_type=pdf",
+        f"/projects/{project['id']}/attachments?linked_file_type=pdf",
         headers=_auth(token),
     )
     assert resp.status_code == 200
     items = resp.json()
     assert len(items) == 1
-    assert items[0]["linked_point"]["type"] == "pdf"
+    assert items[0]["linked_file_type"] == "pdf"
 
 
 @pytest.mark.asyncio
-async def test_list_filters_by_linked_point_page(
+async def test_list_filters_by_anchor_page(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
@@ -989,32 +1021,32 @@ async def test_list_filters_by_linked_point_page(
 
     page2 = await _initiate_att(
         client, token, project["id"],
-        linked_point={"type": "pdf", "page": 2, "x": 0.1, "y": 0.2},
+        linked_file_type="pdf", anchor_page=2, anchor_x=0.1, anchor_y=0.2,
     )
     await _complete_att(client, fake, token, project["id"], page2)
     page5 = await _initiate_att(
         client, token, project["id"],
-        linked_point={"type": "pdf", "page": 5, "x": 0.8, "y": 0.9},
+        linked_file_type="pdf", anchor_page=5, anchor_x=0.8, anchor_y=0.9,
     )
     await _complete_att(client, fake, token, project["id"], page5)
 
     resp = await client.get(
-        f"/projects/{project['id']}/attachments?linked_point_type=pdf&linked_point_page=2",
+        f"/projects/{project['id']}/attachments?linked_file_type=pdf&anchor_page=2",
         headers=_auth(token),
     )
     assert resp.status_code == 200
     items = resp.json()
     assert len(items) == 1
-    assert items[0]["linked_point"]["page"] == 2
+    assert items[0]["anchor_page"] == 2
 
 
 # ---------------------------------------------------------------------------
-# linked_point validation
+# Anchor validation
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_initiate_validates_linked_point_pdf(
+async def test_initiate_validates_pdf_anchor_page(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
@@ -1022,14 +1054,14 @@ async def test_initiate_validates_linked_point_pdf(
     project = await _create_project(client, org_user["access_token"])
     resp = await client.post(
         f"/projects/{project['id']}/attachments/initiate",
-        json=_att_payload(linked_point={"type": "pdf", "page": 0, "x": 0.5, "y": 0.5}),
+        json=_att_payload(linked_file_type="pdf", anchor_page=0, anchor_x=0.5, anchor_y=0.5),
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_initiate_validates_linked_point_bad_type(
+async def test_initiate_validates_bad_file_type(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
@@ -1037,14 +1069,14 @@ async def test_initiate_validates_linked_point_bad_type(
     project = await _create_project(client, org_user["access_token"])
     resp = await client.post(
         f"/projects/{project['id']}/attachments/initiate",
-        json=_att_payload(linked_point={"type": "bad", "x": 0, "y": 0}),
+        json=_att_payload(linked_file_type="bad", anchor_x=0, anchor_y=0),
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_initiate_accepts_valid_pdf_point(
+async def test_initiate_accepts_valid_pdf_anchor(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
@@ -1052,7 +1084,7 @@ async def test_initiate_accepts_valid_pdf_point(
     project = await _create_project(client, org_user["access_token"])
     resp = await client.post(
         f"/projects/{project['id']}/attachments/initiate",
-        json=_att_payload(linked_point={"type": "pdf", "page": 3, "x": 0.45, "y": 0.72}),
+        json=_att_payload(linked_file_type="pdf", anchor_page=3, anchor_x=0.45, anchor_y=0.72),
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 201
@@ -1061,9 +1093,222 @@ async def test_initiate_accepts_valid_pdf_point(
         f"/projects/{project['id']}/attachments/{body['attachment_id']}",
         headers=_auth(org_user["access_token"]),
     )
-    lp = detail.json()["linked_point"]
-    assert lp["type"] == "pdf"
-    assert lp["page"] == 3
+    data = detail.json()
+    assert data["linked_file_type"] == "pdf"
+    assert data["anchor_page"] == 3
+
+
+# ---------------------------------------------------------------------------
+# Generalized anchor (linked_file_type + 2D/3D linked_point)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_initiate_persists_3d_anchor(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A 3D anchor stores linked_file_type='ifc' and x/y/z, round-tripping on read."""
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    body = await _initiate_att(
+        client, org_user["access_token"], project["id"],
+        linked_file_type="ifc",
+        anchor_x=1.5, anchor_y=2.5, anchor_z=-3.0,
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/attachments/{body['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    data = detail.json()
+    assert data["linked_file_type"] == "ifc"
+    assert (data["anchor_x"], data["anchor_y"], data["anchor_z"]) == (1.5, 2.5, -3.0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("file_type", "anchor"),
+    [
+        ("pdf", {"anchor_page": 2, "anchor_x": 0.4, "anchor_y": 0.6}),
+        ("image", {"anchor_x": 0.1, "anchor_y": 0.9}),
+        ("dxf", {"anchor_x": 1234.5, "anchor_y": -678.9}),
+        ("dwg", {"anchor_x": 10.0, "anchor_y": 20.0}),
+    ],
+)
+async def test_initiate_persists_2d_anchor(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    file_type: str,
+    anchor: dict[str, object],
+) -> None:
+    """Each 2D anchor file type round-trips its flattened columns."""
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    body = await _initiate_att(
+        client, org_user["access_token"], project["id"],
+        linked_file_type=file_type,
+        **anchor,
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/attachments/{body['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    data = detail.json()
+    assert data["linked_file_type"] == file_type
+    for key, value in anchor.items():
+        assert data[key] == value
+
+
+@pytest.mark.asyncio
+async def test_initiate_rejects_point_shape_mismatch(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A page-bearing point declared as ifc is rejected with the mismatch code."""
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    resp = await client.post(
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(
+            linked_file_type="ifc",
+            anchor_page=2, anchor_x=0.5, anchor_y=0.5,
+        ),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 422
+    assert "LINKED_POINT_SHAPE_MISMATCH" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_initiate_rejects_point_without_file_type(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Anchor coordinates with no linked_file_type are rejected."""
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    resp = await client.post(
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(anchor_x=1.0, anchor_y=2.0),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 422
+    assert "LINKED_FILE_TYPE_REQUIRED_FOR_POINT" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_initiate_rejects_unknown_file_type(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    resp = await client.post(
+        f"/projects/{project['id']}/attachments/initiate",
+        json=_att_payload(linked_file_type="bogus"),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 422
+    assert "LINKED_FILE_TYPE_INVALID" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_initiate_allows_type_only_anchor(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A file type without a point (entity-only anchor) is allowed."""
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    body = await _initiate_att(
+        client, org_user["access_token"], project["id"], linked_file_type="ifc"
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/attachments/{body['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    data = detail.json()
+    assert data["linked_file_type"] == "ifc"
+    assert data["anchor_x"] is None and data["anchor_y"] is None
+
+
+@pytest.mark.asyncio
+async def test_initiate_accepts_long_entity_id(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """The entity id widened 22->255 so a non-IFC 2D handle fits (>22 chars)."""
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    long_handle = "drawing-entity-handle-" + "A" * 40
+    body = await _initiate_att(
+        client, org_user["access_token"], project["id"],
+        linked_element_global_id=long_handle,
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/attachments/{body['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert detail.json()["linked_element_global_id"] == long_handle
+
+
+@pytest.mark.asyncio
+async def test_patch_sets_and_clears_anchor(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """PATCH can attach an anchor, then clear the point."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    att = await _initiate_att(client, token, project["id"])
+    await _complete_att(client, fake, token, project["id"], att)
+
+    set_resp = await client.patch(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        json={"linked_file_type": "ifc", "anchor_x": 1, "anchor_y": 2, "anchor_z": 3},
+        headers=_auth(token),
+    )
+    assert set_resp.status_code == 200, set_resp.text
+    assert set_resp.json()["linked_file_type"] == "ifc"
+    assert (
+        set_resp.json()["anchor_x"],
+        set_resp.json()["anchor_y"],
+        set_resp.json()["anchor_z"],
+    ) == (1, 2, 3)
+
+    clear_resp = await client.patch(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        json={
+            "linked_file_type": None,
+            "anchor_x": None,
+            "anchor_y": None,
+            "anchor_z": None,
+            "anchor_page": None,
+        },
+        headers=_auth(token),
+    )
+    assert clear_resp.status_code == 200, clear_resp.text
+    assert clear_resp.json()["anchor_x"] is None
+
+
+@pytest.mark.asyncio
+async def test_patch_rejects_point_shape_mismatch(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    att = await _initiate_att(client, token, project["id"])
+    await _complete_att(client, fake, token, project["id"], att)
+    resp = await client.patch(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        json={"linked_file_type": "image", "anchor_x": 1, "anchor_y": 2, "anchor_z": 3},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 422
+    assert "LINKED_POINT_SHAPE_MISMATCH" in resp.text
 
 
 # ---------------------------------------------------------------------------

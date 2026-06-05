@@ -29,6 +29,7 @@ import { rotatePlugin } from './plugins/2d/rotate/index.js';
 import { searchPlugin } from './plugins/2d/search/index.js';
 import { toolsPlugin } from './plugins/2d/tools/index.js';
 import { zoomPlugin } from './plugins/2d/zoom/index.js';
+import { contextMenuPlugin } from './plugins/2d/context-menu/index.js';
 
 export type DocumentLoadedInfo = {
   numPages: number;
@@ -175,6 +176,7 @@ function DocumentViewerInner(
       rotatePlugin(),
       searchPlugin(),
       measurePlugin(),
+      contextMenuPlugin(),
     ];
     // nav-compass is read at mount only (like scale/rotation/tool) — kept out of
     // the effect deps so a fresh `navCompass` object literal can't force a remount.

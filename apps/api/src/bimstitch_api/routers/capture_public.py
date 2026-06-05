@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
@@ -188,7 +189,15 @@ async def initiate_capture_upload(
         session.add(att)
 
         link.use_count += 1
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            # Concurrent capture upload of the same bytes — surface 409 instead
+            # of a 500. The outer handler rolls back before this propagates.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "DUPLICATE_CONTENT"},
+            ) from exc
         await session.refresh(att)
 
         upload_url = await storage.presigned_put_url(

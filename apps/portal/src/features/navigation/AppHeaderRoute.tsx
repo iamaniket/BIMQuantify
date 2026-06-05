@@ -8,6 +8,7 @@ import { AppHeader, type Crumb } from '@/components/shared/header/AppHeader';
 import { useAppHeaderOverrides } from '@/components/shared/header/AppHeaderContext';
 import { NotificationsBell } from '@/components/shared/header/NotificationsBell';
 import { useModels } from '@/features/models/useModels';
+import { ModelSwitcher } from '@/features/navigation/ModelSwitcher';
 import { useProject } from '@/features/projects/useProject';
 import { usePathname } from '@/i18n/navigation';
 
@@ -101,6 +102,7 @@ export function AppHeaderRoute(): JSX.Element {
     if (found !== undefined) modelName = found.name;
   }
 
+  const isViewerRoute = VIEWER_RE.test(pathname);
   const crumbs = crumbsOverride
     ?? resolveCrumbs(pathname, { projectId, projectName, modelName }, t);
 
@@ -109,7 +111,18 @@ export function AppHeaderRoute(): JSX.Element {
       crumbs={crumbs}
       status={status}
       action={null}
-      rightSlot={<NotificationsBell />}
+      rightSlot={
+        <>
+          {isViewerRoute && modelId.length > 0 ? (
+            <ModelSwitcher
+              projectId={projectId}
+              currentModelId={modelId}
+              currentModelName={modelName ?? t('model')}
+            />
+          ) : null}
+          <NotificationsBell />
+        </>
+      }
     />
   );
 }

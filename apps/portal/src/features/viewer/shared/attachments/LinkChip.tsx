@@ -21,15 +21,17 @@ type ChipConfig = {
 
 export function LinkChip({ attachment, compact = false }: Props): JSX.Element | null {
   const isElement = attachment.linked_element_global_id !== null;
-  const lp = attachment.linked_point;
-  const isPdfPin = lp !== null && typeof lp === 'object' && 'page' in lp;
+  const isPdfPin = attachment.linked_file_type === 'pdf' && attachment.anchor_page !== null;
 
   let config: ChipConfig | null = null;
   if (isElement) {
     config = { icon: Box, label: '3D', colors: 'bg-primary-lighter text-primary' };
   } else if (isPdfPin) {
-    const { page } = lp as Record<string, number>;
-    config = { icon: FileText, label: `p.${String(page)}`, colors: 'bg-info-lighter text-info-hover' };
+    config = {
+      icon: FileText,
+      label: `p.${String(attachment.anchor_page)}`,
+      colors: 'bg-info-lighter text-info-hover',
+    };
   }
 
   if (config === null) return null;

@@ -1,11 +1,10 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Index, Text, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +15,9 @@ from bimstitch_api.models.user import User
 if TYPE_CHECKING:
     from bimstitch_api.models.borgingsmoment import Borgingsmoment
     from bimstitch_api.models.checklist_item import ChecklistItem
+    from bimstitch_api.models.checklist_item_result_attachment import (
+        ChecklistItemResultAttachment,
+    )
     from bimstitch_api.models.project import Project
 
 
@@ -61,14 +63,32 @@ class ChecklistItemResult(TimestampMixin, TenantBase):
     inspected_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False,
     )
-    photo_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
-    reference_attachment_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     voice_note_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
     checklist_item: Mapped["ChecklistItem"] = relationship()
     moment: Mapped["Borgingsmoment"] = relationship()
     project: Mapped["Project"] = relationship()
     inspector: Mapped[User] = relationship(User, foreign_keys=[inspector_user_id])
+    # Attachment links — normalize the former photo_ids / reference_attachment_ids
+    # JSONB arrays. Eager-loaded so the read-only id properties stay populated.
+    attachment_links: Mapped[list["ChecklistItemResultAttachment"]] = relationship(
+        back_populates="result",
+        cascade="all, delete-orphan",
+        order_by="ChecklistItemResultAttachment.position",
+        lazy="selectin",
+    )
+
+    def _attachment_ids(self, kind: str) -> list[str] | None:
+        ids = [str(link.attachment_id) for link in self.attachment_links if link.kind == kind]
+        return ids or None
+
+    @property
+    def photo_ids(self) -> list[str] | None:
+        return self._attachment_ids("photo")
+
+    @property
+    def reference_attachment_ids(self) -> list[str] | None:
+        return self._attachment_ids("reference")
 
     __table_args__ = (
         UniqueConstraint("checklist_item_id", name="uq_checklist_item_results_item"),

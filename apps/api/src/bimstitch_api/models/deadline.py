@@ -1,15 +1,15 @@
 from datetime import date, datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Date, DateTime, Enum as SAEnum, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from bimstitch_api.models.project import Project

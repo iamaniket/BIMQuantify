@@ -17,8 +17,9 @@ import {
 } from '@bimstitch/ui';
 
 import { FileDropZone } from '@/components/shared/FileDropZone';
+import { VersionBadge, VersionHistoryList } from '@/components/shared/resource';
 import { ApiError } from '@/lib/api/client';
-import type { FileTypeValue, Model, ProjectFile } from '@/lib/api/schemas';
+import type { FileTypeValue, Model } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
 import { acceptedExtensions, isAllowedFile } from '@/features/models/fileValidation';
 import { useModelFiles } from '@/features/models/useModelFiles';
@@ -38,11 +39,6 @@ function formatRelativeTime(iso: string, t: ReturnType<typeof useTranslations>):
   if (hours < 24) return t('hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
   return t('daysAgo', { count: days });
-}
-
-function fileExt(filename: string): string {
-  const dot = filename.lastIndexOf('.');
-  return dot >= 0 ? filename.slice(dot) : '';
 }
 
 type FileTypePillProps = { fileType: FileTypeValue; schema?: string | null };
@@ -195,10 +191,10 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
       <DetailCardRow
         media={
           <span
-            className="shrink-0 rounded-sm px-1 py-px text-center text-micro font-bold"
-            style={{ background: colors.bg, color: colors.fg, width: 30 }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-micro font-bold uppercase"
+            style={{ background: colors.bg, color: colors.fg }}
           >
-            {model.discipline.slice(0, 4).toUpperCase()}
+            {model.discipline.slice(0, 4)}
           </span>
         }
         actions={
@@ -245,8 +241,11 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
           </>
         }
       >
-        <div className="truncate text-body3 font-semibold leading-tight text-foreground">
-          {model.name}
+        <div className="flex items-center gap-2">
+          <span className="truncate text-body3 font-semibold leading-tight text-foreground">
+            {model.name}
+          </span>
+          <VersionBadge version={latestFile?.version_number ?? 0} />
         </div>
         <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
           {latestFile !== undefined ? (
@@ -259,8 +258,6 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
           ) : (
             <span>{t('noFiles')}</span>
           )}
-          <span className="shrink-0">·</span>
-          <span className="shrink-0">{files.length} {files.length === 1 ? 'version' : 'versions'}</span>
           {latestFile !== undefined && (
             <>
               <span className="shrink-0">·</span>
@@ -298,41 +295,16 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
           </div>
         )}
 
-        <div className="mt-2 rounded-md border border-border bg-background">
-          {files.length === 0 ? (
-            <div className="px-3 py-4 text-center text-body3 text-foreground-tertiary">
-              {t('noVersionsUploaded')}
-            </div>
-          ) : (
-            files.map((f: ProjectFile, i: number) => {
-              const isLatest = i === 0;
-              const ext = fileExt(f.original_filename);
-              return (
-                <div
-                  key={f.id}
-                  className={`grid grid-cols-[110px_1fr] items-center px-3 py-1.5 text-body3 ${
-                    i < files.length - 1 ? 'border-b border-border' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 font-sans font-bold">
-                    <span className={isLatest ? 'text-primary' : 'text-foreground'}>
-                      v{String(f.version_number).padStart(2, '0')}{ext}
-                    </span>
-                    {isLatest && (
-                      <span className="rounded-sm bg-primary px-1.5 py-px text-caption font-bold text-primary-foreground">
-                        {t('latest')}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-caption text-foreground-tertiary">
-                    <FileTypePill fileType={f.file_type} schema={f.ifc_schema} />
-                    <span className="truncate">{f.original_filename} · {(f.size_bytes / 1048576).toFixed(0)} MB</span>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+        <VersionHistoryList
+          versions={files.map((f) => ({
+            id: f.id,
+            versionNumber: f.version_number,
+            filename: f.original_filename,
+            sizeBytes: f.size_bytes,
+            createdAt: f.created_at,
+          }))}
+          isLoading={filesQuery.isLoading}
+        />
       </DetailCardBody>
 
       <DetailCardFooter className="justify-between">

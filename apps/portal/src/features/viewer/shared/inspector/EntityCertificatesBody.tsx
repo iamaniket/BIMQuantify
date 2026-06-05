@@ -29,6 +29,8 @@ import {
 import { CertificateUploadDialog } from '@/features/projects/detail/CertificateUploadDialog';
 import type { Certificate } from '@/lib/api/schemas';
 
+import { consumePendingElementPoint, type PendingElementPoint } from './pendingElementPoint';
+
 /**
  * How the certificates shown here are scoped — mirrors FindingsScope: by IFC
  * element (3D), by the whole project (unlinked), or by the open file (PDF).
@@ -89,17 +91,26 @@ export function EntityCertificatesBody({
     : elementQuery;
   const deleteMutation = useDeleteCertificate(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
+  // 3D pick point handed off by the context menu, anchored onto the new cert.
+  const [pendingPoint, setPendingPoint] = useState<PendingElementPoint | null>(null);
   const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const lastConsumedNonce = useRef<number | undefined>(undefined);
 
+  // Open the upload dialog, consuming a pending 3D pick point for element scope
+  // so the new certificate anchors to that {x,y,z}. Manual opens carry none.
+  const openUpload = useCallback(() => {
+    setPendingPoint(scope.kind === 'element' ? consumePendingElementPoint() : null);
+    setUploadOpen(true);
+  }, [scope]);
+
   useEffect(() => {
     if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
       lastConsumedNonce.current = autoOpenNonce;
-      setUploadOpen(true);
+      openUpload();
       onAutoOpenConsumed?.();
     }
-  }, [autoOpenNonce, onAutoOpenConsumed]);
+  }, [autoOpenNonce, onAutoOpenConsumed, openUpload]);
 
   const certificates = query.data ?? [];
 
@@ -143,7 +154,7 @@ export function EntityCertificatesBody({
         <Button
           variant="primary"
           size="sm"
-          onClick={() => { setUploadOpen(true); }}
+          onClick={openUpload}
           title={t('uploadButton')}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -259,10 +270,12 @@ export function EntityCertificatesBody({
       <CertificateUploadDialog
         projectId={projectId}
         open={uploadOpen}
-        onOpenChange={setUploadOpen}
+        onOpenChange={(o) => { setUploadOpen(o); if (!o) setPendingPoint(null); }}
         linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
         linkedModelId={scope.kind === 'element' ? scope.modelId : null}
         linkedFileId={scope.kind === 'project' ? null : scope.fileId}
+        linkedPoint={pendingPoint}
+        linkedFileType={pendingPoint !== null ? 'ifc' : null}
       />
 
       <CertificateViewerDialog

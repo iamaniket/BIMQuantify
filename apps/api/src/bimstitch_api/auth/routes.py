@@ -24,13 +24,13 @@ from bimstitch_api.cache.blocklist import revoke_jti
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_async_session
 from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.storage import get_attachments_bucket, get_storage
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.user import UserRead, UserUpdate
+from bimstitch_api.storage import get_attachments_bucket, get_storage
 
 LOGIN_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_login_per_min, seconds=60)
 FORGOT_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_forgot_per_hour, seconds=3600)

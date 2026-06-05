@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from bimstitch_api.models.project_file import (
     AttachmentCategory,
@@ -12,6 +12,7 @@ from bimstitch_api.models.project_file import (
     ProjectFileRole,
     ProjectFileStatus,
 )
+from bimstitch_api.schemas.anchor import validate_linked_anchor
 
 _HEX_SHA256 = r"^[a-f0-9]{64}$"
 
@@ -50,33 +51,6 @@ class CaptureMetadataInput(BaseModel):
     exif: ExifData | None = None
 
 
-class LinkedPointIfc(BaseModel):
-    type: str = Field(pattern=r"^ifc$")
-    x: float
-    y: float
-    z: float
-
-
-class LinkedPointPdf(BaseModel):
-    type: str = Field(pattern=r"^pdf$")
-    page: int = Field(ge=1)
-    x: float = Field(ge=0, le=1)
-    y: float = Field(ge=0, le=1)
-
-
-def _validate_linked_point(v: dict[str, Any] | None) -> dict[str, Any] | None:
-    if v is None:
-        return None
-    point_type = v.get("type")
-    if point_type == "ifc":
-        LinkedPointIfc.model_validate(v)
-    elif point_type == "pdf":
-        LinkedPointPdf.model_validate(v)
-    else:
-        raise ValueError(f"linked_point.type must be 'ifc' or 'pdf', got '{point_type}'")
-    return v
-
-
 class AttachmentInitiateRequest(BaseModel):
     filename: str = Field(min_length=1, max_length=512)
     size_bytes: int = Field(ge=1)
@@ -84,9 +58,15 @@ class AttachmentInitiateRequest(BaseModel):
     content_sha256: str = Field(pattern=_HEX_SHA256)
     description: str | None = Field(default=None, max_length=2000)
     dossier_slot: DossierSlot | None = None
-    linked_element_global_id: str | None = Field(default=None, max_length=22)
+    linked_element_global_id: str | None = Field(default=None, max_length=255)
     linked_model_id: UUID | None = None
-    linked_point: dict[str, Any] | None = None
+    # Anchor geometry — dedicated fields keyed by linked_file_type (see
+    # schemas/anchor.py); validated together below.
+    linked_file_type: str | None = None
+    anchor_x: float | None = None
+    anchor_y: float | None = None
+    anchor_z: float | None = None
+    anchor_page: int | None = None
     linked_file_id: UUID | None = None
     capture_metadata: CaptureMetadataInput | None = None
     # When set, this upload supersedes an existing attachment: the new row joins
@@ -94,10 +74,16 @@ class AttachmentInitiateRequest(BaseModel):
     # one. May reference any version in the group; the root is resolved server-side.
     supersedes_id: UUID | None = None
 
-    @field_validator("linked_point")
-    @classmethod
-    def validate_linked_point(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
-        return _validate_linked_point(v)
+    @model_validator(mode="after")
+    def _validate_anchor(self) -> AttachmentInitiateRequest:
+        validate_linked_anchor(
+            self.linked_file_type,
+            anchor_x=self.anchor_x,
+            anchor_y=self.anchor_y,
+            anchor_z=self.anchor_z,
+            anchor_page=self.anchor_page,
+        )
+        return self
 
 
 class AttachmentInitiateResponse(BaseModel):
@@ -127,7 +113,11 @@ class AttachmentRead(BaseModel):
     dossier_slot: DossierSlot | None
     linked_element_global_id: str | None
     linked_model_id: UUID | None
-    linked_point: dict[str, Any] | None
+    linked_file_type: str | None
+    anchor_x: float | None
+    anchor_y: float | None
+    anchor_z: float | None
+    anchor_page: int | None
     linked_file_id: UUID | None
     capture_metadata: dict[str, Any] | None
     server_metadata: dict[str, Any] | None
@@ -140,10 +130,25 @@ class AttachmentRead(BaseModel):
 class AttachmentUpdateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     dossier_slot: DossierSlot | None = None
-    linked_element_global_id: str | None = Field(default=None, max_length=22)
+    linked_element_global_id: str | None = Field(default=None, max_length=255)
     linked_model_id: UUID | None = None
-    linked_point: dict[str, Any] | None = None
+    linked_file_type: str | None = None
+    anchor_x: float | None = None
+    anchor_y: float | None = None
+    anchor_z: float | None = None
+    anchor_page: int | None = None
     linked_file_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _validate_anchor(self) -> AttachmentUpdateRequest:
+        validate_linked_anchor(
+            self.linked_file_type,
+            anchor_x=self.anchor_x,
+            anchor_y=self.anchor_y,
+            anchor_z=self.anchor_z,
+            anchor_page=self.anchor_page,
+        )
+        return self
 
 
 class AttachmentCallbackRequest(BaseModel):

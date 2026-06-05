@@ -264,9 +264,9 @@ export function NotificationsBell(): JSX.Element {
         }}
         title={t('title')}
         aria-label={t('title')}
-        className="relative grid h-[30px] w-[30px] place-items-center rounded-md text-white/80 hover:bg-white/10 hover:text-white"
+        className="relative grid h-[40px] w-[40px] place-items-center rounded-md text-white/80 hover:bg-white/10 hover:text-white"
       >
-        <Bell className="h-[14px] w-[14px]" aria-hidden />
+        <Bell className="h-[22px] w-[22px]" aria-hidden />
         {unreadCount > 0 ? (
           <span className="absolute -right-[3px] -top-[3px] grid h-[14px] min-w-[14px] place-items-center rounded-full border-[1.5px] border-[var(--brand-gradient-start)] bg-[var(--header-notify-dot)] px-[3px] text-micro font-extrabold leading-[14px] tabular-nums text-white">
             {unreadCount > 9 ? '9+' : String(unreadCount)}

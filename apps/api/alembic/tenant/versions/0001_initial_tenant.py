@@ -3,18 +3,23 @@
 Tables: projects, project_members, models, project_files, jobs, reports,
 contractors, notifications, notification_reads, notification_dismissals, risks,
 borgingsplans, borgingsmomenten, checklist_items, checklist_item_results,
-capture_links, findings, certificates, org_certificates, bcf_topics,
-bcf_comments, bcf_viewpoints, audit_log, deadline_notification_log,
-deadline_notification_settings.
+checklist_item_result_attachments, capture_links, findings, finding_attachments,
+certificates, org_certificates, org_certificate_tags, bcf_topics,
+bcf_topic_labels, bcf_comments, bcf_viewpoints, audit_log,
+deadline_notification_log, deadline_notification_settings.
 
 This is the single squashed baseline for the tenant chain — the former
-0002 (org_certificates), 0003 (bcf_tables) and 0004 (document_versioning)
-migrations were folded in here. Because the upgrade is driven by
-`Base.metadata.create_all` over the live models, anything the models declare —
-every table, column, enum, and model-declared index (including expression /
-partial / unique indexes via `Index(text(...), postgresql_where=...)`) — lands
-here automatically. Only the handful of indexes the model layer cannot express
-are created explicitly in upgrade() below.
+0002 (org_certificates), 0003 (bcf_tables), 0004 (document_versioning) and the
+later anchor-generalization migration were folded in here. The anchor geometry
+is now dedicated `anchor_x/y/z` + `anchor_page` columns (no JSONB), and the
+former JSONB id/tag arrays are normalized into `finding_attachments`,
+`checklist_item_result_attachments`, `org_certificate_tags` and
+`bcf_topic_labels`. Because the upgrade is driven by `Base.metadata.create_all`
+over the live models, anything the models declare — every table, column, enum,
+and model-declared index (including expression / partial / unique indexes via
+`Index(text(...), postgresql_where=...)`) — lands here automatically. Only the
+handful of indexes the model layer cannot express are created explicitly in
+upgrade() below.
 
 There is no longer a separate `attachments` table: attachments are rows in the
 unified `project_files` table, distinguished by `role = 'attachment'`. The
@@ -63,6 +68,7 @@ def upgrade() -> None:
         AuditLog,
         BcfComment,
         BcfTopic,
+        BcfTopicLabel,
         BcfViewpoint,
         Borgingsmoment,
         Borgingsplan,
@@ -70,16 +76,19 @@ def upgrade() -> None:
         Certificate,
         ChecklistItem,
         ChecklistItemResult,
+        ChecklistItemResultAttachment,
         Contractor,
         Deadline,
         DeadlineNotificationLog,
         DeadlineNotificationSettings,
         Finding,
+        FindingAttachment,
         Job,
         Model,
         Notification,
         NotificationRead,
         OrgCertificate,
+        OrgCertificateTag,
         Organization,
         OrganizationMember,
         Project,
@@ -152,6 +161,7 @@ def downgrade() -> None:
         AuditLog,
         BcfComment,
         BcfTopic,
+        BcfTopicLabel,
         BcfViewpoint,
         Borgingsmoment,
         Borgingsplan,
@@ -159,16 +169,19 @@ def downgrade() -> None:
         Certificate,
         ChecklistItem,
         ChecklistItemResult,
+        ChecklistItemResultAttachment,
         Contractor,
         Deadline,
         DeadlineNotificationLog,
         DeadlineNotificationSettings,
         Finding,
+        FindingAttachment,
         Job,
         Model,
         Notification,
         NotificationRead,
         OrgCertificate,
+        OrgCertificateTag,
         Organization,
         OrganizationMember,
         Project,

@@ -46,6 +46,7 @@ from bimstitch_api import audit
 from bimstitch_api.auth.dependencies import require_superuser
 from bimstitch_api.db import get_async_session
 from bimstitch_api.models.blog_post import BlogPost, BlogPostStatus
+from bimstitch_api.models.blog_post_tag import BlogPostTag
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.blog import (
     BLOG_LOCALES,
@@ -55,6 +56,7 @@ from bimstitch_api.schemas.blog import (
     BlogPostUpdate,
 )
 from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
+from bimstitch_api.tag_rows import replace_tags
 
 logger = logging.getLogger(__name__)
 
@@ -261,6 +263,7 @@ async def list_blog_posts(
     locale: str | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
     q: str | None = None,
+    tag: list[str] | None = Query(default=None),
     include_deleted: bool = False,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -281,10 +284,38 @@ async def list_blog_posts(
                 func.lower(BlogPost.slug).like(like),
             )
         )
+    # Tag filter: each requested tag must be present (AND narrows the list).
+    if tag:
+        for tag_name in tag:
+            stmt = stmt.where(
+                select(BlogPostTag.id)
+                .where(
+                    BlogPostTag.post_id == BlogPost.id,
+                    BlogPostTag.name == tag_name,
+                )
+                .exists()
+            )
     stmt = stmt.limit(limit).offset(offset)
     result = await session.execute(stmt)
     posts = list(result.scalars())
     return [await _serialize(p, storage, include_content=False) for p in posts]
+
+
+@router.get("/tags", response_model=list[str])
+async def list_blog_tags(
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    q: str | None = Query(default=None, max_length=64),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> list[str]:
+    """Distinct blog tag names for autocomplete. Optional `q` prefix-matches (ILIKE)."""
+    stmt = (
+        select(BlogPostTag.name).distinct().order_by(BlogPostTag.name).limit(limit)
+    )
+    if q and q.strip():
+        stmt = stmt.where(BlogPostTag.name.ilike(f"{q.strip()}%"))
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
 @router.get("/posts/{post_id}", response_model=BlogPostRead)
@@ -381,13 +412,13 @@ async def create_blog_post(
         title=title.strip(),
         description=description.strip(),
         author=author.strip() or "BimDossier",
-        tags=parsed_tags,
         published_at=parsed_published_at,
         cover_image_key=cover_key,
         content_key=content_key,
         status=status_enum,
         created_by_user_id=requester.id,
     )
+    replace_tags(post.tag_rows, BlogPostTag, parsed_tags)
     session.add(post)
 
     try:
@@ -415,7 +446,9 @@ async def create_blog_post(
             detail="BLOG_SLUG_TAKEN",
         ) from exc
 
-    await session.refresh(post)
+    # Refresh DB-side timestamps and async-load tag_rows so the `tags` property
+    # serializes (a freshly-built row is not selectin-loaded).
+    await session.refresh(post, attribute_names=["created_at", "updated_at", "tag_rows"])
     return await _serialize(post, storage, include_content=True)
 
 
@@ -538,7 +571,6 @@ async def create_blog_post_bilingual(
         title=title_en.strip(),
         description=cleaned_description,
         author=cleaned_author,
-        tags=parsed_tags,
         published_at=parsed_published_at,
         cover_image_key=cover_key,
         content_key=content_en_key,
@@ -552,13 +584,14 @@ async def create_blog_post_bilingual(
         title=title_nl.strip(),
         description=cleaned_description,
         author=cleaned_author,
-        tags=parsed_tags,
         published_at=parsed_published_at,
         cover_image_key=cover_key,
         content_key=content_nl_key,
         status=status_enum,
         created_by_user_id=requester.id,
     )
+    replace_tags(post_en.tag_rows, BlogPostTag, parsed_tags)
+    replace_tags(post_nl.tag_rows, BlogPostTag, parsed_tags)
     session.add(post_en)
     session.add(post_nl)
 
@@ -592,8 +625,8 @@ async def create_blog_post_bilingual(
             detail="BLOG_SLUG_TAKEN",
         ) from exc
 
-    await session.refresh(post_en)
-    await session.refresh(post_nl)
+    await session.refresh(post_en, attribute_names=["created_at", "updated_at", "tag_rows"])
+    await session.refresh(post_nl, attribute_names=["created_at", "updated_at", "tag_rows"])
     return BlogPostBilingualResponse(
         en=await _serialize(post_en, storage, include_content=True),
         nl=await _serialize(post_nl, storage, include_content=True),
@@ -640,15 +673,8 @@ async def update_blog_post(
     if "author" in fields_set and payload.author is not None:
         post.author = payload.author.strip() or "BimDossier"
     if "tags" in fields_set and payload.tags is not None:
-        # Re-clean: same dedup/strip logic as create.
-        seen: set[str] = set()
-        cleaned: list[str] = []
-        for tag in payload.tags:
-            t = tag.strip()
-            if t and t not in seen:
-                seen.add(t)
-                cleaned.append(t)
-        post.tags = cleaned
+        # replace_tags re-cleans (strip + dedup) and rebuilds the tag rows.
+        replace_tags(post.tag_rows, BlogPostTag, payload.tags)
     if "published_at" in fields_set and payload.published_at is not None:
         post.published_at = payload.published_at
 
@@ -695,7 +721,8 @@ async def update_blog_post(
             detail="BLOG_SLUG_TAKEN",
         ) from exc
 
-    await session.refresh(post)
+    # Partial refresh: keep the in-memory tag_rows loaded for the `tags` property.
+    await session.refresh(post, attribute_names=["created_at", "updated_at"])
     return await _serialize(post, storage, include_content=True)
 
 
@@ -750,7 +777,8 @@ async def replace_blog_cover(
         request=request,
     )
     await session.commit()
-    await session.refresh(post)
+    # Partial refresh: keep the selectin-loaded tag_rows for the `tags` property.
+    await session.refresh(post, attribute_names=["updated_at"])
     return await _serialize(post, storage, include_content=True)
 
 

@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Index
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import MasterBase
 from bimstitch_api.models._mixins import SoftDeleteMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from bimstitch_api.models.blog_post_tag import BlogPostTag
 
 
 class BlogPostStatus(str, enum.Enum):
@@ -47,7 +49,6 @@ class BlogPost(TimestampMixin, SoftDeleteMixin, MasterBase):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str] = mapped_column(String(120), nullable=False, default="BimDossier")
-    tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
 
     # The author-declared publish date — shown to readers as the post date.
     # Independent of `created_at` so backdating is allowed (matches the
@@ -77,6 +78,19 @@ class BlogPost(TimestampMixin, SoftDeleteMixin, MasterBase):
         ForeignKey("public.users.id", ondelete="SET NULL"),
         nullable=True,
     )
+
+    # Tags — normalize the former `tags` JSONB array into rows. Eager-loaded so
+    # the read-only `tags` property is always populated when serialized.
+    tag_rows: Mapped[list["BlogPostTag"]] = relationship(
+        back_populates="post",
+        cascade="all, delete-orphan",
+        order_by="BlogPostTag.position",
+        lazy="selectin",
+    )
+
+    @property
+    def tags(self) -> list[str]:
+        return [row.name for row in self.tag_rows]
 
     __table_args__ = (
         UniqueConstraint("slug", "locale", name="uq_blog_posts_slug_locale"),

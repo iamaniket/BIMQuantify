@@ -10,6 +10,7 @@ import {
   type CertificateInitiateResponse,
   type CertificateList,
   type CertificateTypeValue,
+  type LinkedFileTypeValue,
 } from './schemas';
 
 export type CertificateUploadProgressEvent =
@@ -28,6 +29,11 @@ export type CertificateMetadataInput = {
   linked_element_global_id?: string | null;
   linked_model_id?: string | null;
   linked_file_id?: string | null;
+  linked_file_type?: LinkedFileTypeValue | null;
+  anchor_x?: number | null;
+  anchor_y?: number | null;
+  anchor_z?: number | null;
+  anchor_page?: number | null;
   // Supersede an existing certificate: the upload becomes the next version in
   // that certificate's version group instead of a fresh root (#35).
   supersedes_id?: string | null;

@@ -100,7 +100,7 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
 
       {/* Header — filter pill bar left, eyebrow/title right */}
       <div className="relative flex shrink-0 items-center gap-4 px-5 pb-2.5 pt-4">
-        <div className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-surface-high p-[3px]">
+        <div className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-surface-high p-0.5">
           {FILTERS.map((key) => {
             const active = filter === key;
             return (
@@ -108,10 +108,10 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
                 key={key}
                 type="button"
                 onClick={() => { setFilter(key); }}
-                className={`rounded-md px-3 py-1.5 text-body3 font-semibold transition-colors ${
+                className={`rounded-md px-2.5 py-1 text-body3 font-medium transition-colors ${
                   active
-                    ? 'bg-primary text-primary-foreground font-bold'
-                    : 'text-primary hover:bg-primary-light/60 dark:text-primary-light'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-foreground-tertiary hover:text-foreground-secondary'
                 }`}
               >
                 {filterLabels[key]}

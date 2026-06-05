@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { anchorReadFields } from './anchor';
 import { ProjectFileRoleEnum } from './files';
 
 export const AttachmentCategoryEnum = z.enum(['image', 'video', 'audio', 'office', 'other']);
@@ -38,7 +39,7 @@ export const AttachmentSchema = z.object({
   dossier_slot: z.union([DossierSlotEnum, z.null()]),
   linked_element_global_id: z.union([z.string(), z.null()]),
   linked_model_id: z.union([z.string().uuid(), z.null()]),
-  linked_point: z.union([z.record(z.unknown()), z.null()]),
+  ...anchorReadFields,
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   capture_metadata: z.union([z.record(z.unknown()), z.null()]),
   server_metadata: z.union([z.record(z.unknown()), z.null()]),

@@ -1,11 +1,10 @@
 from datetime import date
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Date, ForeignKey, Index, String, Text
+from sqlalchemy import CheckConstraint, Date, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,6 +13,7 @@ from bimstitch_api.models._mixins import SoftDeleteMixin, TimestampMixin
 from bimstitch_api.models.user import User
 
 if TYPE_CHECKING:
+    from bimstitch_api.models.finding_attachment import FindingAttachment
     from bimstitch_api.models.project import Project
 
 
@@ -116,19 +116,58 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
         nullable=True,
     )
     linked_element_global_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    photo_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
+    # Anchor geometry — dedicated columns (no JSONB). The active set is keyed by
+    # linked_file_type (see schemas/anchor.py):
+    #   ifc     -> anchor_x/y/z (3D world meters)
+    #   pdf     -> anchor_page (>=1) + anchor_x/y (normalized 0..1)
+    #   image   -> anchor_x/y (normalized 0..1)
+    #   dxf/dwg -> anchor_x/y (drawing model-space units)
+    # linked_file_type is the single source of truth for which columns are set;
+    # String + CHECK (not an enum) because the value set grows.
+    anchor_x: Mapped[float | None] = mapped_column(Float, nullable=True)
+    anchor_y: Mapped[float | None] = mapped_column(Float, nullable=True)
+    anchor_z: Mapped[float | None] = mapped_column(Float, nullable=True)
+    anchor_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    linked_file_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # Resolution evidence (#26/#27): a transition into `resolved` requires both
-    # a written note and >=1 attachment id. `resolution_evidence_ids` mirrors
-    # `photo_ids` — a JSONB string list, kept JSON-serializable.
+    # a written note and >=1 evidence attachment.
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    resolution_evidence_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
-    reference_attachment_ids: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
 
     project: Mapped["Project"] = relationship()
     assignee: Mapped[User | None] = relationship(User, foreign_keys=[assignee_user_id])
     created_by: Mapped[User] = relationship(User, foreign_keys=[created_by_user_id])
+    # Attachment links — normalize the former photo_ids / resolution_evidence_ids
+    # / reference_attachment_ids JSONB arrays. `kind` discriminates the role.
+    # Eager-loaded (selectin) so the read-only id properties below are always
+    # populated when a finding is serialized.
+    attachment_links: Mapped[list["FindingAttachment"]] = relationship(
+        back_populates="finding",
+        cascade="all, delete-orphan",
+        order_by="FindingAttachment.position",
+        lazy="selectin",
+    )
+
+    def _attachment_ids(self, kind: str) -> list[str] | None:
+        ids = [str(link.attachment_id) for link in self.attachment_links if link.kind == kind]
+        return ids or None
+
+    @property
+    def photo_ids(self) -> list[str] | None:
+        return self._attachment_ids("photo")
+
+    @property
+    def resolution_evidence_ids(self) -> list[str] | None:
+        return self._attachment_ids("resolution_evidence")
+
+    @property
+    def reference_attachment_ids(self) -> list[str] | None:
+        return self._attachment_ids("reference")
 
     __table_args__ = (
+        CheckConstraint(
+            "linked_file_type IS NULL OR linked_file_type IN ('ifc','pdf','dxf','dwg','image')",
+            name="ck_findings_linked_file_type",
+        ),
         Index("ix_findings_project_id", "project_id"),
         Index("ix_findings_project_status", "project_id", "status"),
         # Drives the version-independent element lookup

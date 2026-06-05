@@ -19,6 +19,7 @@ from tests.conftest import (
     _add_member,
     _audit_rows,
     _auth,
+    _create_attachment_row,
     _create_model,
     _create_project,
 )
@@ -121,11 +122,15 @@ async def test_create_finding_with_fields(client: AsyncClient, org_user: dict[st
 async def test_create_finding_photo_ids_round_trips(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:
-    # N5: photos attached while logging a finding round-trip through the JSONB
-    # column. Bare UUID strings prove the field plumbing without real uploads.
+    # N5: photos attached while logging a finding round-trip through the
+    # normalized finding_attachments link table. Ids are real project_files rows
+    # (the link carries a FK), order is preserved by `position`.
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    photo_ids = [str(uuid4()), str(uuid4())]
+    photo_ids = [
+        await _create_attachment_row(project["id"]),
+        await _create_attachment_row(project["id"]),
+    ]
 
     create = await client.post(
         f"/projects/{project['id']}/findings",
@@ -143,7 +148,7 @@ async def test_create_finding_photo_ids_round_trips(
     assert got.status_code == 200, got.text
     assert got.json()["photo_ids"] == photo_ids
 
-    replacement = [str(uuid4())]
+    replacement = [await _create_attachment_row(project["id"])]
     patched = await client.patch(
         f"/projects/{project['id']}/findings/{finding_id}",
         json={"photo_ids": replacement},
@@ -158,7 +163,10 @@ async def test_create_finding_reference_attachment_ids_round_trips(
 ) -> None:
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    ref_ids = [str(uuid4()), str(uuid4())]
+    ref_ids = [
+        await _create_attachment_row(project["id"]),
+        await _create_attachment_row(project["id"]),
+    ]
 
     create = await client.post(
         f"/projects/{project['id']}/findings",
@@ -176,7 +184,7 @@ async def test_create_finding_reference_attachment_ids_round_trips(
     assert got.status_code == 200, got.text
     assert got.json()["reference_attachment_ids"] == ref_ids
 
-    replacement = [str(uuid4())]
+    replacement = [await _create_attachment_row(project["id"])]
     patched = await client.patch(
         f"/projects/{project['id']}/findings/{finding_id}",
         json={"reference_attachment_ids": replacement},
@@ -511,12 +519,13 @@ async def _promote_to_open(
 
 
 async def _resolve(client: AsyncClient, token: str, project_id: str, finding_id: str) -> None:
+    evidence = [await _create_attachment_row(project_id)]
     resp = await client.patch(
         f"/projects/{project_id}/findings/{finding_id}",
         json={
             "status": "resolved",
             "resolution_note": EVIDENCE_NOTE,
-            "resolution_evidence_ids": [str(uuid4())],
+            "resolution_evidence_ids": evidence,
         },
         headers=_auth(token),
     )
@@ -570,7 +579,7 @@ async def test_resolve_with_evidence_succeeds_and_notifies(
     ).json()
     await _promote_to_open(client, token, project["id"], created["id"], org_user["id"])
 
-    evidence = [str(uuid4())]
+    evidence = [await _create_attachment_row(project["id"])]
     resolved = await client.patch(
         f"/projects/{project['id']}/findings/{created['id']}",
         json={
@@ -1277,3 +1286,106 @@ async def test_finding_follows_element_across_versions(
     )
     assert by_v2_file.status_code == 200, by_v2_file.text
     assert by_v2_file.json() == []
+
+
+# ---------------------------------------------------------------------------
+# Generalized anchor (linked_file_type + flattened anchor_x/y/z/page columns)
+# ---------------------------------------------------------------------------
+
+
+async def test_create_finding_with_3d_anchor(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """A finding created against a 3D pick stores x/y/z + the ifc file type."""
+    project = await _create_project(client, org_user["access_token"])
+    resp = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(linked_file_type="ifc", anchor_x=1.0, anchor_y=2.0, anchor_z=3.0),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["linked_file_type"] == "ifc"
+    assert (body["anchor_x"], body["anchor_y"], body["anchor_z"]) == (1.0, 2.0, 3.0)
+    assert body["anchor_page"] is None
+
+
+async def test_create_finding_with_2d_image_anchor(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    resp = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(linked_file_type="image", anchor_x=0.2, anchor_y=0.8),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["linked_file_type"] == "image"
+    assert (body["anchor_x"], body["anchor_y"]) == (0.2, 0.8)
+    assert body["anchor_z"] is None and body["anchor_page"] is None
+
+
+async def test_create_finding_rejects_point_shape_mismatch(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    # ifc requires z and forbids page — a page-bearing ifc anchor is a mismatch.
+    resp = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(linked_file_type="ifc", anchor_page=1, anchor_x=0.5, anchor_y=0.5),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 422
+    assert "LINKED_POINT_SHAPE_MISMATCH" in resp.text
+
+
+async def test_create_finding_accepts_long_entity_id(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Findings already store a 255-char entity id — lock it in."""
+    project = await _create_project(client, org_user["access_token"])
+    long_handle = "x" * 200
+    resp = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(linked_element_global_id=long_handle),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["linked_element_global_id"] == long_handle
+
+
+async def test_patch_finding_attaches_then_clears_anchor(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    created = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(),
+        headers=_auth(org_user["access_token"]),
+    )
+    fid = created.json()["id"]
+
+    attach = await client.patch(
+        f"/projects/{project['id']}/findings/{fid}",
+        json={"linked_file_type": "dxf", "anchor_x": 100.0, "anchor_y": 200.0},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert attach.status_code == 200, attach.text
+    assert attach.json()["linked_file_type"] == "dxf"
+    assert (attach.json()["anchor_x"], attach.json()["anchor_y"]) == (100.0, 200.0)
+
+    clear = await client.patch(
+        f"/projects/{project['id']}/findings/{fid}",
+        json={
+            "linked_file_type": None,
+            "anchor_x": None,
+            "anchor_y": None,
+            "anchor_z": None,
+            "anchor_page": None,
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert clear.status_code == 200, clear.text
+    assert clear.json()["anchor_x"] is None
+    assert clear.json()["linked_file_type"] is None

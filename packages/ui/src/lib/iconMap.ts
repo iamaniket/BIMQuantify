@@ -69,6 +69,7 @@ export { FileArrowUp as FileUp } from '@phosphor-icons/react';
 export { FileVideo } from '@phosphor-icons/react';
 export { Flag } from '@phosphor-icons/react';
 export { ArrowsDownUp as FlipVertical } from '@phosphor-icons/react';
+export { FrameCorners } from '@phosphor-icons/react';
 export { Kanban as FolderKanban } from '@phosphor-icons/react';
 export { FolderOpen } from '@phosphor-icons/react';
 export { Funnel as ListFilter } from '@phosphor-icons/react';
@@ -108,6 +109,8 @@ export { SignOut as LogOut } from '@phosphor-icons/react';
 
 /* ── M ──────────────────────────────────────────────────────────── */
 export { MagnifyingGlass as Search } from '@phosphor-icons/react';
+export { MagnifyingGlassMinus } from '@phosphor-icons/react';
+export { MagnifyingGlassPlus } from '@phosphor-icons/react';
 export { MapPin } from '@phosphor-icons/react';
 export { List as Menu } from '@phosphor-icons/react';
 export { Microphone as Mic } from '@phosphor-icons/react';

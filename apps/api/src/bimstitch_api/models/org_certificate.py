@@ -8,13 +8,15 @@ from sqlalchemy import (
     BigInteger,
     CheckConstraint,
     Date,
-    Enum as SAEnum,
     ForeignKey,
     Index,
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy import (
+    Enum as SAEnum,
+)
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimstitch_api.db import TenantBase
@@ -26,6 +28,7 @@ from bimstitch_api.models.certificate import (
 )
 
 if TYPE_CHECKING:
+    from bimstitch_api.models.org_certificate_tag import OrgCertificateTag
     from bimstitch_api.models.user import User
 
 ORG_CERTIFICATE_ALLOWED_EXTENSIONS = CERTIFICATE_ALLOWED_EXTENSIONS
@@ -82,7 +85,6 @@ class OrgCertificate(TimestampMixin, SoftDeleteMixin, TenantBase):
         ForeignKey("org_certificates.id", ondelete="SET NULL"),
         nullable=True,
     )
-    tags: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
 
     uploaded_by_user: Mapped[User | None] = relationship(
         foreign_keys=[uploaded_by_user_id], lazy="raise"
@@ -90,12 +92,24 @@ class OrgCertificate(TimestampMixin, SoftDeleteMixin, TenantBase):
     replaced_by: Mapped[OrgCertificate | None] = relationship(
         foreign_keys=[replaced_by_id], lazy="raise", remote_side=[id]
     )
+    # Tags — normalize the former `tags` JSONB array into rows. Eager-loaded so
+    # the read-only `tags` property is always populated when serialized.
+    tag_rows: Mapped[list[OrgCertificateTag]] = relationship(
+        back_populates="org_certificate",
+        cascade="all, delete-orphan",
+        order_by="OrgCertificateTag.position",
+        lazy="selectin",
+    )
 
     @property
     def uploaded_by_name(self) -> str | None:
         if self.uploaded_by_user is None:
             return None
         return self.uploaded_by_user.full_name
+
+    @property
+    def tags(self) -> list[str]:
+        return [row.name for row in self.tag_rows]
 
     __table_args__ = (
         CheckConstraint("size_bytes >= 0", name="ck_org_certificates_size_non_negative"),

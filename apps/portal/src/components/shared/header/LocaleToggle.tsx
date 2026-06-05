@@ -32,7 +32,7 @@ export function LocaleToggle({ className }: Props): JSX.Element {
           router.replace(pathname, { locale: nextLocale });
         });
       }}
-      className={`inline-flex h-[30px] w-[30px] items-center justify-center rounded-md text-micro font-bold uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isPending ? 'opacity-50' : ''} ${className ?? ''}`}
+      className={`inline-flex h-[30px] w-[30px] items-center justify-center rounded-md text-body3 font-extrabold uppercase tracking-[0.02em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isPending ? 'opacity-50' : ''} ${className ?? ''}`}
     >
       {locale.toUpperCase()}
     </button>

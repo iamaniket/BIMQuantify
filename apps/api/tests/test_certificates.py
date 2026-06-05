@@ -677,3 +677,108 @@ async def test_supersede_unknown_certificate_404(
         headers=_auth(token),
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Generalized anchor (linked_file_type + 2D/3D linked_point)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_initiate_persists_3d_anchor(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    cert = await _initiate_cert(
+        client, token, project["id"],
+        linked_file_type="ifc",
+        anchor_x=1.0, anchor_y=2.0, anchor_z=3.0,
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/certificates/{cert['certificate_id']}",
+        headers=_auth(token),
+    )
+    data = detail.json()
+    assert data["linked_file_type"] == "ifc"
+    assert (data["anchor_x"], data["anchor_y"], data["anchor_z"]) == (1.0, 2.0, 3.0)
+
+
+@pytest.mark.asyncio
+async def test_initiate_persists_2d_anchor(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    cert = await _initiate_cert(
+        client, token, project["id"],
+        linked_file_type="pdf",
+        anchor_page=4, anchor_x=0.25, anchor_y=0.75,
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/certificates/{cert['certificate_id']}",
+        headers=_auth(token),
+    )
+    data = detail.json()
+    assert data["linked_file_type"] == "pdf"
+    assert (data["anchor_page"], data["anchor_x"], data["anchor_y"]) == (4, 0.25, 0.75)
+
+
+@pytest.mark.asyncio
+async def test_initiate_rejects_point_shape_mismatch(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    resp = await client.post(
+        f"/projects/{project['id']}/certificates/initiate",
+        json=_cert_payload(linked_file_type="ifc", anchor_page=1, anchor_x=0.5, anchor_y=0.5),
+        headers=_auth(token),
+    )
+    assert resp.status_code == 422
+    assert "LINKED_POINT_SHAPE_MISMATCH" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_initiate_accepts_long_entity_id(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    long_handle = "dxf-handle-" + "B" * 40
+    cert = await _initiate_cert(
+        client, token, project["id"], linked_element_global_id=long_handle
+    )
+    detail = await client.get(
+        f"/projects/{project['id']}/certificates/{cert['certificate_id']}",
+        headers=_auth(token),
+    )
+    assert detail.json()["linked_element_global_id"] == long_handle
+
+
+@pytest.mark.asyncio
+async def test_update_attaches_anchor(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    cert = await _initiate_cert(client, token, project["id"])
+    resp = await client.patch(
+        f"/projects/{project['id']}/certificates/{cert['certificate_id']}",
+        json={"linked_file_type": "ifc", "anchor_x": 1, "anchor_y": 2, "anchor_z": 3},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["linked_file_type"] == "ifc"
+    assert (resp.json()["anchor_x"], resp.json()["anchor_y"], resp.json()["anchor_z"]) == (1, 2, 3)
+

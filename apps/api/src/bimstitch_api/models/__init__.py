@@ -2,8 +2,10 @@ from bimstitch_api.models.access_request import AccessRequest, AccessRequestStat
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.bcf_comment import BcfComment
 from bimstitch_api.models.bcf_topic import BcfTopic
+from bimstitch_api.models.bcf_topic_label import BcfTopicLabel
 from bimstitch_api.models.bcf_viewpoint import BcfViewpoint
 from bimstitch_api.models.blog_post import BlogPost, BlogPostStatus
+from bimstitch_api.models.blog_post_tag import BlogPostTag
 from bimstitch_api.models.borgingsmoment import (
     Borgingsmoment,
     BorgingsmomentPhase,
@@ -25,11 +27,19 @@ from bimstitch_api.models.checklist_item_result import (
     ChecklistItemResult,
     InspectionVerdict,
 )
+from bimstitch_api.models.checklist_item_result_attachment import (
+    CHECKLIST_RESULT_ATTACHMENT_KINDS,
+    ChecklistItemResultAttachment,
+)
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.deadline import Deadline, DeadlineStatus
 from bimstitch_api.models.deadline_notification_log import DeadlineNotificationLog
 from bimstitch_api.models.deadline_notification_settings import DeadlineNotificationSettings
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
+from bimstitch_api.models.finding_attachment import (
+    FINDING_ATTACHMENT_KINDS,
+    FindingAttachment,
+)
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.notification import (
@@ -38,6 +48,7 @@ from bimstitch_api.models.notification import (
     NotificationRead,
 )
 from bimstitch_api.models.org_certificate import OrgCertificate
+from bimstitch_api.models.org_certificate_tag import OrgCertificateTag
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -67,6 +78,8 @@ from bimstitch_api.models.user import User
 
 __all__ = [
     "ATTACHMENT_ALLOWED_EXTENSIONS",
+    "CHECKLIST_RESULT_ATTACHMENT_KINDS",
+    "FINDING_ATTACHMENT_KINDS",
     "_JOB_TERMINAL",
     "_REPORT_TERMINAL",
     "AccessRequest",
@@ -75,9 +88,11 @@ __all__ = [
     "AuditLog",
     "BcfComment",
     "BcfTopic",
+    "BcfTopicLabel",
     "BcfViewpoint",
     "BlogPost",
     "BlogPostStatus",
+    "BlogPostTag",
     "Borgingsmoment",
     "BorgingsmomentPhase",
     "BorgingsmomentStatus",
@@ -89,6 +104,7 @@ __all__ = [
     "CertificateType",
     "ChecklistItem",
     "ChecklistItemResult",
+    "ChecklistItemResultAttachment",
     "ChecklistItemType",
     "Contractor",
     "Deadline",
@@ -100,6 +116,7 @@ __all__ = [
     "ExtractionStatus",
     "FileType",
     "Finding",
+    "FindingAttachment",
     "FindingSeverity",
     "FindingStatus",
     "IfcSchema",
@@ -114,6 +131,7 @@ __all__ = [
     "NotificationEventType",
     "NotificationRead",
     "OrgCertificate",
+    "OrgCertificateTag",
     "Organization",
     "OrganizationMember",
     "OrganizationMemberStatus",

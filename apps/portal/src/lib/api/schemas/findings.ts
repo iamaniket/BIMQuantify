@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { anchorReadFields, anchorWriteFields } from './anchor';
+
 export const FindingSeverityEnum = z.enum(['low', 'medium', 'high']);
 
 export type FindingSeverityValue = z.infer<typeof FindingSeverityEnum>;
@@ -30,6 +32,7 @@ export const FindingSchema = z.object({
   linked_model_id: z.union([z.string().uuid(), z.null()]),
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   linked_element_global_id: z.union([z.string(), z.null()]),
+  ...anchorReadFields,
   photo_ids: z.union([z.array(z.string()), z.null()]),
   resolution_note: z.union([z.string(), z.null()]),
   resolution_evidence_ids: z.union([z.array(z.string()), z.null()]),
@@ -60,6 +63,7 @@ export const FindingCreateSchema = z.object({
   linked_element_global_id: z
     .union([z.string().max(255), z.null()])
     .optional(),
+  ...anchorWriteFields,
   photo_ids: z.array(z.string().uuid()).optional(),
   reference_attachment_ids: z.array(z.string().uuid()).optional(),
 });
@@ -99,6 +103,7 @@ export const FindingUpdateSchema = z.object({
   linked_element_global_id: z
     .union([z.string().max(255), z.null()])
     .optional(),
+  ...anchorWriteFields,
   photo_ids: z.array(z.string().uuid()).optional(),
   resolution_note: z
     .union([z.string().max(4000), z.null()])

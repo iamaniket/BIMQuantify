@@ -548,7 +548,10 @@ async def attachment_metadata_callback(
             await session.execute(
                 select(ProjectFile)
                 .options(selectinload(ProjectFile.uploaded_by_user))
-                .where(ProjectFile.id == payload.attachment_id)
+                .where(
+                    ProjectFile.id == payload.attachment_id,
+                    ProjectFile.role == ProjectFileRole.attachment,
+                )
             )
         ).scalar_one()
     return att

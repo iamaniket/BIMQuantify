@@ -16,6 +16,7 @@ import {
   type AttachmentInitiateResponse,
   type AttachmentList,
   type DossierSlotValue,
+  type LinkedFileTypeValue,
 } from './schemas';
 
 export type AttachmentUploadProgressEvent =
@@ -39,7 +40,11 @@ export async function initiateAttachmentUpload(
     dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
     linked_model_id?: string | null;
-    linked_point?: Record<string, unknown> | null;
+    linked_file_type?: LinkedFileTypeValue | null;
+    anchor_x?: number | null;
+    anchor_y?: number | null;
+    anchor_z?: number | null;
+    anchor_page?: number | null;
     linked_file_id?: string | null;
     capture_metadata?: Record<string, unknown> | null;
     // Supersede an existing attachment: the upload becomes the next version in
@@ -79,8 +84,8 @@ export async function listAttachments(
     linkedModelId?: string;
     linkedFileId?: string;
     unlinked?: boolean;
-    linkedPointType?: string;
-    linkedPointPage?: number;
+    linkedFileType?: string;
+    anchorPage?: number;
   },
 ): Promise<AttachmentList> {
   const params = new URLSearchParams();
@@ -91,8 +96,8 @@ export async function listAttachments(
   if (filters?.linkedModelId !== undefined) params.set('linked_model_id', filters.linkedModelId);
   if (filters?.linkedFileId !== undefined) params.set('linked_file_id', filters.linkedFileId);
   if (filters?.unlinked === true) params.set('unlinked', 'true');
-  if (filters?.linkedPointType !== undefined) params.set('linked_point_type', filters.linkedPointType);
-  if (filters?.linkedPointPage !== undefined) params.set('linked_point_page', String(filters.linkedPointPage));
+  if (filters?.linkedFileType !== undefined) params.set('linked_file_type', filters.linkedFileType);
+  if (filters?.anchorPage !== undefined) params.set('anchor_page', String(filters.anchorPage));
   const query = params.size === 0 ? '' : `?${params.toString()}`;
   return apiClient.get<AttachmentList>(
     `/projects/${projectId}/attachments${query}`,
@@ -160,7 +165,11 @@ export async function updateAttachment(
     dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
     linked_model_id?: string | null;
-    linked_point?: Record<string, unknown> | null;
+    linked_file_type?: LinkedFileTypeValue | null;
+    anchor_x?: number | null;
+    anchor_y?: number | null;
+    anchor_z?: number | null;
+    anchor_page?: number | null;
     linked_file_id?: string | null;
   },
 ): Promise<Attachment> {
@@ -189,7 +198,11 @@ export async function uploadAttachmentEnd2End(
     dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
     linked_model_id?: string | null;
-    linked_point?: Record<string, unknown> | null;
+    linked_file_type?: LinkedFileTypeValue | null;
+    anchor_x?: number | null;
+    anchor_y?: number | null;
+    anchor_z?: number | null;
+    anchor_page?: number | null;
     linked_file_id?: string | null;
     capture_metadata?: Record<string, unknown> | null;
     supersedes_id?: string | null;

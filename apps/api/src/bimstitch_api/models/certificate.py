@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     CheckConstraint,
     Date,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -103,7 +104,10 @@ class Certificate(TimestampMixin, SoftDeleteMixin, FileBackedMixin, TenantBase):
     valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
 
-    linked_element_global_id: Mapped[str | None] = mapped_column(String(22), nullable=True)
+    # Generic entity id of the anchor (nullable). IFC GlobalId, or a 2D
+    # source-specific handle, or null for a loose-coordinate pin. 255 chars to
+    # hold non-IFC handles (mirrors Finding).
+    linked_element_global_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     linked_model_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("models.id", ondelete="SET NULL"),
@@ -114,6 +118,15 @@ class Certificate(TimestampMixin, SoftDeleteMixin, FileBackedMixin, TenantBase):
         ForeignKey("project_files.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Anchor geometry — dedicated columns (no JSONB), mirrors Attachment/Finding.
+    # The active set is keyed by linked_file_type (see schemas/anchor.py):
+    #   ifc -> anchor_x/y/z; pdf -> anchor_page + anchor_x/y; image -> anchor_x/y;
+    #   dxf/dwg -> anchor_x/y. String + CHECK (not an enum), set grows.
+    anchor_x: Mapped[float | None] = mapped_column(Float, nullable=True)
+    anchor_y: Mapped[float | None] = mapped_column(Float, nullable=True)
+    anchor_z: Mapped[float | None] = mapped_column(Float, nullable=True)
+    anchor_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    linked_file_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     org_certificate_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("org_certificates.id", ondelete="SET NULL"),
@@ -157,6 +170,10 @@ class Certificate(TimestampMixin, SoftDeleteMixin, FileBackedMixin, TenantBase):
 
     __table_args__ = (
         CheckConstraint("size_bytes >= 0", name="ck_certificates_size_non_negative"),
+        CheckConstraint(
+            "linked_file_type IS NULL OR linked_file_type IN ('ifc','pdf','dxf','dwg','image')",
+            name="ck_certificates_linked_file_type",
+        ),
         Index("ix_certificates_project_id", "project_id"),
         Index("ix_certificates_project_type", "project_id", "certificate_type"),
         Index("ix_certificates_uploaded_by", "uploaded_by_user_id"),

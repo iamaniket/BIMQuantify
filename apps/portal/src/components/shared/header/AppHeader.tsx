@@ -28,6 +28,7 @@ export type AppHeaderAction = {
 
 type Props = {
   crumbs: Crumb[];
+  lastCrumbSlot?: ReactNode;
   status: AppHeaderStatus | null;
   action: AppHeaderAction | null;
   rightSlot: ReactNode;
@@ -89,22 +90,25 @@ function CrumbItem({ crumb, isLast }: { crumb: Crumb; isLast: boolean }): JSX.El
   return text;
 }
 
-function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }): JSX.Element | null {
+function Breadcrumbs({ crumbs, lastCrumbSlot }: { crumbs: Crumb[]; lastCrumbSlot?: ReactNode }): JSX.Element | null {
   if (crumbs.length === 0) return null;
   return (
     <div className="flex min-w-0 items-center gap-1.5 text-body3 font-medium">
-      {crumbs.map((c, i) => (
-        <span key={`${String(i)}-${c.label}`} className="flex items-center gap-1.5">
-          {i > 0 ? <span className="text-caption text-white/55">/</span> : null}
-          <CrumbItem crumb={c} isLast={i === crumbs.length - 1} />
-        </span>
-      ))}
+      {crumbs.map((c, i) => {
+        const isLast = i === crumbs.length - 1;
+        return (
+          <span key={`${String(i)}-${c.label}`} className="flex items-center gap-1.5">
+            {i > 0 ? <span className="text-caption text-white/55">/</span> : null}
+            {isLast && lastCrumbSlot !== undefined ? lastCrumbSlot : <CrumbItem crumb={c} isLast={isLast} />}
+          </span>
+        );
+      })}
     </div>
   );
 }
 
 export function AppHeader({
-  crumbs, status, action, rightSlot,
+  crumbs, lastCrumbSlot, status, action, rightSlot,
 }: Props): JSX.Element {
   return (
     <header
@@ -113,14 +117,14 @@ export function AppHeader({
       <GridTexture />
 
       <div className="relative flex min-w-0 flex-1 items-center gap-2.5">
-        <Breadcrumbs crumbs={crumbs} />
+        <Breadcrumbs crumbs={crumbs} lastCrumbSlot={lastCrumbSlot} />
         {status === null ? null : <StatusPill status={status} />}
       </div>
 
       <div className="relative flex shrink-0 items-center gap-1">
         {rightSlot}
-        <LocaleToggle className="text-white/80 hover:bg-white/10 hover:text-white" />
-        <ThemeToggle className="h-[30px] w-[30px] rounded-md text-white/80 hover:bg-white/10 hover:text-white" />
+        <LocaleToggle className="h-[40px] w-[40px] text-white/80 hover:bg-white/10 hover:text-white" />
+        <ThemeToggle className="h-[40px] w-[40px] rounded-md text-white/80 hover:bg-white/10 hover:text-white" />
         {action === null ? null : (
           <button
             type="button"

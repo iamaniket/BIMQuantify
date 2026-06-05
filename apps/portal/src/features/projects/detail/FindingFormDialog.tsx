@@ -7,15 +7,16 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
 import {
-  AppDialog,
   Input,
   Select,
   Textarea,
 } from '@bimstitch/ui';
 
+import { FormDialog } from '@/components/shared/FormDialog';
 import { Field } from '@/components/shared/forms/Field';
 import { useCreateFinding } from '@/features/findings/useCreateFinding';
 import { useRegisterField } from '@/hooks/useRegisterField';
+import { anchorFieldsFromPoint, type LinkedFileTypeValue } from '@/lib/api/schemas';
 
 import { FindingPhotos } from './FindingPhotos';
 import { ReferenceDocumentPicker } from './ReferenceDocumentPicker';
@@ -49,6 +50,11 @@ type Props = {
   linkedModelId?: string | null;
   linkedFileId?: string | null;
   linkedElementGlobalId?: string | null;
+  // Anchor coordinates (#anchor): when opened from a viewer pick, the new
+  // finding is anchored to the picked point. `linkedFileType` keys the point's
+  // shape (ifc -> {x,y,z}; pdf/dxf/dwg/image -> 2D); both come together or not.
+  linkedPoint?: Record<string, number> | null;
+  linkedFileType?: LinkedFileTypeValue | null;
 };
 
 export function FindingFormDialog({
@@ -58,6 +64,8 @@ export function FindingFormDialog({
   linkedModelId,
   linkedFileId,
   linkedElementGlobalId,
+  linkedPoint,
+  linkedFileType,
 }: Props): JSX.Element {
   const t = useTranslations('findings.form');
   const tSeverity = useTranslations('findings.severity');
@@ -101,6 +109,7 @@ export function FindingFormDialog({
         linked_file_id: linkedFileId === undefined ? null : linkedFileId,
         linked_element_global_id:
           linkedElementGlobalId === undefined ? null : linkedElementGlobalId,
+        ...anchorFieldsFromPoint(linkedFileType, linkedPoint),
         photo_ids: photoIds.length > 0 ? photoIds : undefined,
         reference_attachment_ids: referenceAttachmentIds.length > 0 ? referenceAttachmentIds : undefined,
       },
@@ -111,14 +120,14 @@ export function FindingFormDialog({
   };
 
   return (
-    <AppDialog
+    <FormDialog
       open={open}
-      onClose={() => { onOpenChange(false); }}
+      onOpenChange={onOpenChange}
       title={t('createTitle')}
-      subtitle={t('createSubtitle')}
-      onSave={form.handleSubmit(onSubmit)}
-      saveLabel={t('submit')}
-      saveDisabled={mutation.isPending}
+      description={t('createSubtitle')}
+      onSubmit={form.handleSubmit(onSubmit)}
+      submitLabel={t('submit')}
+      submitDisabled={mutation.isPending}
     >
       <div className="flex flex-col gap-4">
         <Field form={form} name="title" label={t('fields.title')}>
@@ -175,6 +184,6 @@ export function FindingFormDialog({
           onChange={setReferenceAttachmentIds}
         />
       </div>
-    </AppDialog>
+    </FormDialog>
   );
 }

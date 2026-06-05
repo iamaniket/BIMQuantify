@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, FileText, Search, Upload } from '@bimstitch/ui/icons';
+import { Camera, FileText, Upload } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -10,9 +10,9 @@ import {
   EmptyState,
   Select,
   SplitButton,
-  Skeleton,
 } from '@bimstitch/ui';
 
+import { ResourceList, TabToolbar } from '@/components/shared/resource';
 import type { Attachment, AttachmentCategoryValue } from '@/lib/api/schemas';
 import {
   buildCaptureMetadata,
@@ -96,79 +96,65 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
     [deleteMutation, t],
   );
 
-  if (attachmentsQuery.isLoading) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); }}
-            placeholder={t('searchPlaceholder')}
-            className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-3 text-body3 text-foreground placeholder:text-foreground-disabled focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-        <Select
-          selectSize="sm"
-          value={categoryFilter ?? 'all'}
-          onChange={(e) => { setCategoryFilter(e.target.value === 'all' ? undefined : e.target.value as AttachmentCategoryValue); }}
-          className="w-auto shrink-0"
-        >
-          {CATEGORY_FILTERS.map(({ value, labelKey }) => (
-            <option key={value} value={value}>{t(labelKey)}</option>
-          ))}
-        </Select>
-        <SplitButton
-          label={t('uploadButton')}
-          icon={<Upload className="h-3.5 w-3.5" />}
-          disabled={uploadMutation.isPending}
-          onClick={() => { fileInputRef.current?.click(); }}
-          menuLabel={t('captureLink')}
-          items={[
-            {
-              id: 'upload-file',
-              label: t('uploadButton'),
-              icon: <Upload className="h-4 w-4" />,
-              onSelect: () => { fileInputRef.current?.click(); },
-            },
-            {
-              id: 'capture-link',
-              label: t('captureLink'),
-              icon: <Camera className="h-4 w-4" />,
-              onSelect: () => { setShowCaptureLinks((prev) => !prev); },
-            },
-            {
-              id: 'create-capture-link',
-              label: t('captureLinkCreate'),
-              icon: <Camera className="h-4 w-4" />,
-              onSelect: () => {
-                setShowCaptureLinks(true);
-                setCaptureLinkDialogOpen(true);
+      <TabToolbar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder={t('searchPlaceholder')}
+        filter={(
+          <Select
+            selectSize="sm"
+            value={categoryFilter ?? 'all'}
+            onChange={(e) => { setCategoryFilter(e.target.value === 'all' ? undefined : e.target.value as AttachmentCategoryValue); }}
+            className="w-auto shrink-0"
+          >
+            {CATEGORY_FILTERS.map(({ value, labelKey }) => (
+              <option key={value} value={value}>{t(labelKey)}</option>
+            ))}
+          </Select>
+        )}
+        actions={(
+          <SplitButton
+            label={t('uploadButton')}
+            icon={<Upload className="h-3.5 w-3.5" />}
+            disabled={uploadMutation.isPending}
+            onClick={() => { fileInputRef.current?.click(); }}
+            menuLabel={t('captureLink')}
+            items={[
+              {
+                id: 'upload-file',
+                label: t('uploadButton'),
+                icon: <Upload className="h-4 w-4" />,
+                onSelect: () => { fileInputRef.current?.click(); },
               },
-            },
-          ]}
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          accept="image/*,video/*,audio/*,.pdf,.docx,.xlsx,.pptx,.txt"
-          onChange={(e) => { void handleFileChange(e); }}
-        />
-      </div>
+              {
+                id: 'capture-link',
+                label: t('captureLink'),
+                icon: <Camera className="h-4 w-4" />,
+                onSelect: () => { setShowCaptureLinks((prev) => !prev); },
+              },
+              {
+                id: 'create-capture-link',
+                label: t('captureLinkCreate'),
+                icon: <Camera className="h-4 w-4" />,
+                onSelect: () => {
+                  setShowCaptureLinks(true);
+                  setCaptureLinkDialogOpen(true);
+                },
+              },
+            ]}
+          />
+        )}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        accept="image/*,video/*,audio/*,.pdf,.docx,.xlsx,.pptx,.txt"
+        onChange={(e) => { void handleFileChange(e); }}
+      />
 
       {/* Upload progress */}
       {uploadMutation.isPending && (
@@ -180,41 +166,42 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
         </div>
       )}
 
-      {/* Empty state */}
-      {attachments.length === 0 && !uploadMutation.isPending && (
-        <EmptyState
-          icon={FileText}
-          title={t('title')}
-          description={t('description')}
-          action={(
-            <Button
-              variant="border"
-              size="sm"
-              onClick={() => { fileInputRef.current?.click(); }}
-            >
-              {t('ctaLabel')}
-            </Button>
-          )}
-          className={undefined}
-        />
-      )}
-
-      {/* Attachment list */}
-      {attachments.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-border bg-background">
-          {attachments.map((attachment) => (
-            <AttachmentRow
-              key={attachment.id}
-              attachment={attachment}
-              projectId={projectId}
-              expanded={expandedId === attachment.id}
-              onToggle={() => { setExpandedId(expandedId === attachment.id ? null : attachment.id); }}
-              onView={() => { setViewingAttachment(attachment); }}
-              onDelete={() => { handleDelete(attachment); }}
-            />
-          ))}
-        </div>
-      )}
+      <ResourceList
+        isLoading={attachmentsQuery.isLoading}
+        total={allAttachments.length}
+        filteredCount={attachments.length}
+        searchActive={searchQuery !== ''}
+        noResultsLabel={t('noResults')}
+        empty={uploadMutation.isPending ? null : (
+          <EmptyState
+            icon={FileText}
+            title={t('title')}
+            description={t('description')}
+            action={(
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => { fileInputRef.current?.click(); }}
+              >
+                {t('ctaLabel')}
+              </Button>
+            )}
+            className={undefined}
+          />
+        )}
+      >
+        {attachments.map((attachment) => (
+          <AttachmentRow
+            key={attachment.id}
+            attachment={attachment}
+            projectId={projectId}
+            expanded={expandedId === attachment.id}
+            onToggle={() => { setExpandedId(expandedId === attachment.id ? null : attachment.id); }}
+            onView={() => { setViewingAttachment(attachment); }}
+            onDelete={() => { handleDelete(attachment); }}
+          />
+        ))}
+      </ResourceList>
 
       {/* Capture links section */}
       {showCaptureLinks && (

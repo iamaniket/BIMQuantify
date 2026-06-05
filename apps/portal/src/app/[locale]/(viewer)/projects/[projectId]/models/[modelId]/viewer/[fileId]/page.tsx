@@ -38,6 +38,7 @@ import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
 import { AnnotationPinLayer, type PdfPin } from '@/features/viewer/2d/AnnotationPinLayer';
+import { DocumentContextMenu } from '@/features/viewer/2d/DocumentContextMenu';
 import { DrawingCanvas } from '@/features/viewer/2d/drawing/DrawingCanvas';
 import { DrawingInfoBody } from '@/features/viewer/2d/drawing/DrawingInfoBody';
 import { useDrawingMetadata } from '@/features/viewer/2d/drawing/useDrawingMetadata';
@@ -234,6 +235,16 @@ export default function ViewerPage(): JSX.Element {
     setPdfSettings(loadDocumentSettings());
   }, []);
 
+  // Reset viewer state when switching models or files.
+  useEffect(() => {
+    setActivePanel(null);
+    setViewerReady(false);
+    setSceneReady(false);
+    setViewerError(null);
+    setProgress(null);
+    setInspectorRequest(null);
+  }, [modelId, fileId]);
+
   // Reset PDF state when switching to a different file.
   useEffect(() => {
     setPdfCurrentPage(1);
@@ -293,11 +304,11 @@ export default function ViewerPage(): JSX.Element {
     isPdf ? pdfCurrentPage : null,
   );
   const pdfPins: PdfPin[] = (pdfPinsQuery.data ?? [])
-    .filter((a): a is typeof a & { linked_point: Record<string, unknown> } => a.linked_point !== null)
+    .filter((a) => a.anchor_x !== null && a.anchor_y !== null)
     .map((a) => ({
       attachmentId: a.id,
-      x: Number(a.linked_point['x'] ?? 0),
-      y: Number(a.linked_point['y'] ?? 0),
+      x: a.anchor_x ?? 0,
+      y: a.anchor_y ?? 0,
       attachment: a,
     }));
 
@@ -360,6 +371,11 @@ export default function ViewerPage(): JSX.Element {
       documentHandle?.commands.execute('measure.deactivate').catch(() => undefined);
     }
   }, [documentHandle]);
+
+  const handleDocContextMenuInspector = useCallback((view: 'attachments' | 'findings' | 'certificates') => {
+    setActivePanel('inspector');
+    setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
+  }, []);
 
   useDocumentShortcuts({
     enabled: isPdf && documentHandle !== null,
@@ -487,6 +503,7 @@ export default function ViewerPage(): JSX.Element {
         ) : null}
 
         {isIfc ? <ContextMenu handle={viewerHandleRef.current} /> : null}
+        {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestInspector={handleDocContextMenuInspector} /> : null}
 
         {showChrome ? (
             <SidePanel

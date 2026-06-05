@@ -26,6 +26,12 @@
     "dropzone": {
       "prompt": "Sleep een bestand hierheen, of",
       "chooseFile": "Kies bestand"
+    },
+    "versions": {
+      "badge": "v{n}",
+      "latest": "Laatste",
+      "empty": "Nog geen versies geüpload.",
+      "download": "Downloaden"
     }
   },
   "requestAccess": {
@@ -187,6 +193,12 @@
     "tenant": "Tenant",
     "certificates": "Certificaten",
     "appName": "BimDossier"
+  },
+  "modelSwitcher": {
+    "switchModel": "Model wisselen",
+    "noViewableFile": "Niet bekijkbaar",
+    "type2d": "2D",
+    "type3d": "3D"
   },
   "account": {
     "pageTitle": "Account",
@@ -781,8 +793,11 @@
         "eyebrow": "BIM-werkruimte",
         "subtitle": "{count, plural, =0 {Nog geen modellen} =1 {1 model} other {# modellen}}",
         "columnName": "Naam",
+        "searchPlaceholder": "Modellen zoeken…",
+        "noResults": "Geen modellen komen overeen met uw zoekopdracht.",
         "newModel": "Nieuw model",
-        "emptyState": "Nog geen modellen. Maak er een aan om te beginnen.",
+        "emptyState": "Nog geen modellen",
+        "emptyDescription": "Upload IFC-bestanden om uw BIM-modellen te bekijken en beheren.",
         "newModelDialog": {
           "title": "Nieuw model",
           "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in het model.",
@@ -983,6 +998,7 @@
         "viaCapture": "Opname",
         "linked": "Gekoppeld",
         "searchPlaceholder": "Bestanden zoeken…",
+        "noResults": "Geen bijlagen komen overeen met uw zoekopdracht.",
         "filterAll": "Alle",
         "filterImage": "Afbeeldingen",
         "filterVideo": "Video's",
@@ -1041,6 +1057,7 @@
         "description": "Upload productcertificaten, testrapporten, inspectiecertificaten en garanties om je Wet kwaliteitsborging voor het bouwen (Wkb)-conformiteitsdossier op te bouwen.",
         "ctaLabel": "Certificaat uploaden",
         "searchPlaceholder": "Certificaten zoeken…",
+        "noResults": "Geen certificaten komen overeen met uw zoekopdracht.",
         "filterAll": "Alle typen",
         "uploadButton": "Uploaden",
         "moreUploadOptions": "Meer uploadopties",
@@ -2679,6 +2696,14 @@
       "zoomInOutAlways": "In-/uitzoomen (altijd beschikbaar)",
       "zoomInOutShort": "In-/uitzoomen",
       "mouseGestures": "Muisgebaren"
+    },
+    "docContextMenu": {
+      "addFindings": "Bevinding toevoegen",
+      "attach": "Bijlage toevoegen",
+      "viewCertificates": "Certificaten",
+      "zoomIn": "Inzoomen",
+      "zoomOut": "Uitzoomen",
+      "fitPage": "Pagina passend"
     },
     "contextMenu": {
       "inspectProperties": "Eigenschappen",

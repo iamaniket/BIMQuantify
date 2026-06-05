@@ -26,6 +26,12 @@
     "dropzone": {
       "prompt": "Drop a file here, or",
       "chooseFile": "Choose file"
+    },
+    "versions": {
+      "badge": "v{n}",
+      "latest": "Latest",
+      "empty": "No versions uploaded yet.",
+      "download": "Download"
     }
   },
   "requestAccess": {
@@ -187,6 +193,12 @@
     "tenant": "Tenant",
     "certificates": "Certificates",
     "appName": "BimDossier"
+  },
+  "modelSwitcher": {
+    "switchModel": "Switch model",
+    "noViewableFile": "Not viewable",
+    "type2d": "2D",
+    "type3d": "3D"
   },
   "account": {
     "pageTitle": "Account",
@@ -781,8 +793,11 @@
         "eyebrow": "BIM workspace",
         "subtitle": "{count, plural, =0 {No models yet} =1 {1 model} other {# models}}",
         "columnName": "Name",
+        "searchPlaceholder": "Search models…",
+        "noResults": "No models match your search.",
         "newModel": "New model",
-        "emptyState": "No models yet. Create one to get started.",
+        "emptyState": "No models yet",
+        "emptyDescription": "Upload IFC files to view and manage your BIM models.",
         "newModelDialog": {
           "title": "New model",
           "description": "Group file versions by discipline. You can upload a file into the model after creating it.",
@@ -983,6 +998,7 @@
         "viaCapture": "Capture",
         "linked": "Linked",
         "searchPlaceholder": "Search files…",
+        "noResults": "No attachments match your search.",
         "filterAll": "All",
         "filterImage": "Images",
         "filterVideo": "Videos",
@@ -1041,6 +1057,7 @@
         "description": "Upload product certificates, test reports, inspection certificates and warranties to build your Quality Assurance in Construction Act  (Wkb) conformity dossier.",
         "ctaLabel": "Upload certificate",
         "searchPlaceholder": "Search certificates…",
+        "noResults": "No certificates match your search.",
         "filterAll": "All types",
         "uploadButton": "Upload",
         "moreUploadOptions": "More upload options",
@@ -2679,6 +2696,14 @@
       "zoomInOutAlways": "Zoom in/out (always available)",
       "zoomInOutShort": "Zoom In/Out",
       "mouseGestures": "Mouse gestures"
+    },
+    "docContextMenu": {
+      "addFindings": "Add Finding",
+      "attach": "Add Attachment",
+      "viewCertificates": "Certificates",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
+      "fitPage": "Fit Page"
     },
     "contextMenu": {
       "inspectProperties": "Inspect Properties",

@@ -1079,9 +1079,9 @@ async def invite_to_project(
         await ms.commit()
 
     # In-app notification (best-effort, after commit).
-    from bimstitch_api.notifications.service import emit_notification_for_org
-    from bimstitch_api.models.notification import NotificationEventType
     from bimstitch_api.i18n import resolve_org_locale, t
+    from bimstitch_api.models.notification import NotificationEventType
+    from bimstitch_api.notifications.service import emit_notification_for_org
 
     # Project-scoped — use the project's jurisdiction default locale.
     locale = resolve_org_locale(project.country)

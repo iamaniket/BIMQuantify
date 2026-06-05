@@ -65,6 +65,13 @@ async def _ensure_test_db() -> None:
 @pytest.fixture(scope="session")
 async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     # Imported here so env vars above take effect first.
+    # NullPool ensures every checkout opens a fresh asyncpg connection, so
+    # the prepared-statement cache that asyncpg keeps per connection cannot
+    # outlive a DROP SCHEMA between tests. Sharing a pooled connection
+    # across tests would otherwise hit `InvalidCachedStatementError` once
+    # a previous test's schema/enums are gone.
+    from sqlalchemy.pool import NullPool
+
     from bimstitch_api._rls_sql import (
         create_app_role_statements,
         disable_rls_statements,
@@ -95,13 +102,6 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         Risk,
         User,
     )
-
-    # NullPool ensures every checkout opens a fresh asyncpg connection, so
-    # the prepared-statement cache that asyncpg keeps per connection cannot
-    # outlive a DROP SCHEMA between tests. Sharing a pooled connection
-    # across tests would otherwise hit `InvalidCachedStatementError` once
-    # a previous test's schema/enums are gone.
-    from sqlalchemy.pool import NullPool
 
     eng = create_async_engine(_TEST_DB_URL, future=True, poolclass=NullPool)
 
@@ -663,6 +663,55 @@ async def _create_model(
     resp = await client.post(f"/projects/{project_id}/models", json=body, headers=_auth(token))
     assert resp.status_code == 201, resp.text
     return resp.json()
+
+
+async def _create_attachment_row(project_id: str) -> str:
+    """Insert a minimal ready attachment (``project_files`` row) directly and
+    return its id.
+
+    Finding/inspection attachment links carry a real FK to ``project_files``;
+    this satisfies it without the full presigned-upload flow. Discovers which
+    schema actually holds the project (``public`` or an ``org_*`` tenant schema)
+    and inserts there with explicit schema qualification. Uses the app's session
+    maker (wired to the test engine by the ``client`` fixture) so callers need no
+    ``session_maker`` fixture.
+    """
+    from uuid import uuid4
+
+    from bimstitch_api.db import get_session_maker
+
+    att_id = str(uuid4())
+    async with get_session_maker()() as s, s.begin():
+        candidates = (
+            await s.execute(
+                text(
+                    "SELECT schema_name FROM information_schema.schemata "
+                    "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+                )
+            )
+        ).scalars().all()
+        target = "public"
+        for cand in candidates:
+            hit = (
+                await s.execute(
+                    text(f'SELECT 1 FROM "{cand}".projects WHERE id = :pid'),
+                    {"pid": project_id},
+                )
+            ).scalar()
+            if hit:
+                target = cand
+                break
+        await s.execute(
+            text(
+                f'INSERT INTO "{target}".project_files '
+                "(id, project_id, role, status, storage_key, original_filename, "
+                " size_bytes, content_type, version_number) "
+                "VALUES (:id, :pid, 'attachment', 'ready', :sk, 'photo.jpg', "
+                "100, 'image/jpeg', 1)"
+            ),
+            {"id": att_id, "pid": project_id, "sk": f"attachments/{att_id}.jpg"},
+        )
+    return att_id
 
 
 async def _add_member(

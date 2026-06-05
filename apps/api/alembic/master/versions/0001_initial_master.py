@@ -1,9 +1,12 @@
-"""Initial master schema: users, organizations, organization_members, access_requests.
+"""Initial master schema: users, organizations, organization_members,
+access_requests, blog_posts, blog_post_tags.
 
 Creates the identity layer in the `public` schema via `Base.metadata.create_all`
 over the live models — anything the master-side models declare lands here. Tenant
 tables (projects, jobs, audit_log, etc.) are NOT created here — they live in
-per-org schemas managed by the tenant chain.
+per-org schemas managed by the tenant chain. The former 0002 (users.locale) and
+0003 (blog_posts) deltas were folded in here; blog tags are normalized into the
+`blog_post_tags` table (no JSONB).
 
 Revision ID: 0001_master
 Revises:
@@ -34,6 +37,8 @@ def upgrade() -> None:
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
+        BlogPost,
+        BlogPostTag,
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
@@ -84,6 +89,8 @@ def downgrade() -> None:
     from bimstitch_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
+        BlogPost,
+        BlogPostTag,
         Borgingsmoment,
         Borgingsplan,
         ChecklistItem,
@@ -115,5 +122,6 @@ def downgrade() -> None:
         "organizationmemberstatus",
         "organizationstatus",
         "accessrequeststatus",
+        "blogpoststatus",
     ):
         op.execute(f"DROP TYPE IF EXISTS {enum}")

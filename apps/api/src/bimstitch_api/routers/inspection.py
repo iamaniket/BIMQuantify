@@ -16,23 +16,28 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
+from bimstitch_api.attachment_links import replace_attachment_links
 from bimstitch_api.auth.fastapi_users import current_verified_user
+from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.models.borgingsmoment import Borgingsmoment, BorgingsmomentStatus
 from bimstitch_api.models.checklist_item import ChecklistItem
 from bimstitch_api.models.checklist_item_result import (
     ChecklistItemResult,
     InspectionVerdict,
 )
+from bimstitch_api.models.checklist_item_result_attachment import (
+    ChecklistItemResultAttachment,
+)
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.borgingsplan import (
     _load_moment_by_id_or_404,
     _walk_to_project_via_moment,
 )
-from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.routers.projects import (
     _require_membership,
     _require_project_writable,
@@ -183,14 +188,38 @@ async def submit_result(
         project_id=project_id,
         verdict=payload.verdict,
         note=payload.note,
-        photo_ids=payload.photo_ids,
-        reference_attachment_ids=payload.reference_attachment_ids,
         inspector_user_id=user.id,
         inspected_at=datetime.now(UTC),
     )
+    replace_attachment_links(
+        result.attachment_links,
+        ChecklistItemResultAttachment,
+        kind="photo",
+        ids=payload.photo_ids,
+    )
+    replace_attachment_links(
+        result.attachment_links,
+        ChecklistItemResultAttachment,
+        kind="reference",
+        ids=payload.reference_attachment_ids,
+    )
     session.add(result)
-    await session.flush()
-    await session.refresh(result)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        # A photo/reference id that doesn't reference a real attachment trips the
+        # FK — surface a clean 422 instead of a 500.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="ATTACHMENT_NOT_FOUND",
+        ) from exc
+    # Re-fetch so the eager attachment links are populated (a freshly-built row
+    # is not selectin-loaded) for both the audit snapshot and the response.
+    result = (
+        await session.execute(
+            select(ChecklistItemResult).where(ChecklistItemResult.id == result.id)
+        )
+    ).scalar_one()
     await audit.record(
         session,
         action="inspection_result.submitted",

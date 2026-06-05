@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime  # noqa: TC003 — SQLAlchemy Mapped[] needs these at runtime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,6 +13,7 @@ from bimstitch_api.models._mixins import SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from bimstitch_api.models.bcf_comment import BcfComment
+    from bimstitch_api.models.bcf_topic_label import BcfTopicLabel
     from bimstitch_api.models.bcf_viewpoint import BcfViewpoint
     from bimstitch_api.models.finding import Finding
     from bimstitch_api.models.model import Model
@@ -46,7 +46,6 @@ class BcfTopic(TimestampMixin, SoftDeleteMixin, TenantBase):
     priority: Mapped[str | None] = mapped_column(String(50), nullable=True)
     stage: Mapped[str | None] = mapped_column(String(50), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    labels: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True, default=list)
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     creation_author: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -92,3 +91,16 @@ class BcfTopic(TimestampMixin, SoftDeleteMixin, TenantBase):
         order_by="BcfComment.date",
         lazy="raise",
     )
+    # Labels — normalize the former `labels` JSONB array into rows. Eager-loaded
+    # so the read-only `labels` property is always populated.
+    label_rows: Mapped[list[BcfTopicLabel]] = relationship(
+        "BcfTopicLabel",
+        back_populates="topic",
+        cascade="all, delete-orphan",
+        order_by="BcfTopicLabel.position",
+        lazy="selectin",
+    )
+
+    @property
+    def labels(self) -> list[str]:
+        return [row.name for row in self.label_rows]

@@ -24,6 +24,8 @@ import {
 } from '@/features/projects/detail/findingBadges';
 import type { Finding } from '@/lib/api/schemas';
 
+import { consumePendingElementPoint, type PendingElementPoint } from './pendingElementPoint';
+
 function formatDate(value: string | null | undefined): string {
   if (value === null || value === undefined || value === '') return '—';
   return new Date(value).toLocaleDateString(undefined, {
@@ -80,18 +82,27 @@ export function EntityFindingsBody({
     : elementQuery;
   const deleteMutation = useDeleteFinding(projectId);
   const [createOpen, setCreateOpen] = useState(false);
+  // 3D pick point handed off by the context menu, anchored onto the new finding.
+  const [pendingPoint, setPendingPoint] = useState<PendingElementPoint | null>(null);
   const [selected, setSelected] = useState<Finding | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const lastConsumedNonce = useRef<number | undefined>(undefined);
+
+  // Open the create dialog, consuming a pending 3D pick point for element scope
+  // so the new finding anchors to that {x,y,z}. Manual opens (no pick) carry none.
+  const openCreate = useCallback(() => {
+    setPendingPoint(scope.kind === 'element' ? consumePendingElementPoint() : null);
+    setCreateOpen(true);
+  }, [scope]);
 
   // Auto-open the new-finding dialog when triggered from a context-menu command.
   useEffect(() => {
     if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
       lastConsumedNonce.current = autoOpenNonce;
-      setCreateOpen(true);
+      openCreate();
       onAutoOpenConsumed?.();
     }
-  }, [autoOpenNonce, onAutoOpenConsumed]);
+  }, [autoOpenNonce, onAutoOpenConsumed, openCreate]);
 
   const findings = query.data ?? [];
 
@@ -133,7 +144,7 @@ export function EntityFindingsBody({
         <Button
           variant="primary"
           size="sm"
-          onClick={() => { setCreateOpen(true); }}
+          onClick={openCreate}
           title={t('createButton')}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -255,10 +266,12 @@ export function EntityFindingsBody({
       <FindingFormDialog
         projectId={projectId}
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(o) => { setCreateOpen(o); if (!o) setPendingPoint(null); }}
         linkedModelId={scope.kind === 'element' ? scope.modelId : null}
         linkedFileId={scope.kind === 'project' ? null : scope.fileId}
         linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
+        linkedPoint={pendingPoint}
+        linkedFileType={pendingPoint !== null ? 'ifc' : null}
       />
       <FindingDetailModal
         projectId={projectId}

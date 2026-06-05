@@ -516,9 +516,10 @@ async def export_access_requests(
     status_filter: str | None = Query(default=None, alias="status"),
     q: str | None = None,
 ) -> "StreamingResponse":
-    from starlette.responses import StreamingResponse
     import csv
     import io
+
+    from starlette.responses import StreamingResponse
 
     stmt = select(AccessRequest).order_by(AccessRequest.created_at.desc())
     if status_filter:

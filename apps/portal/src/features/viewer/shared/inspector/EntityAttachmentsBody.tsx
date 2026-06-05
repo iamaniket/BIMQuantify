@@ -23,7 +23,9 @@ import {
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 import { AttachmentRow } from '@/features/viewer/shared/attachments/AttachmentRow';
-import type { Attachment } from '@/lib/api/schemas';
+import { anchor3d, anchorPdf, type Attachment, type AnchorPayloadFields } from '@/lib/api/schemas';
+
+import { consumePendingElementPoint } from './pendingElementPoint';
 
 const PENDING_PIN_KEY = 'bimstitch.pendingPdfPin';
 
@@ -49,17 +51,28 @@ type LinkVars = {
   linked_element_global_id?: string;
   linked_file_id?: string;
   linked_model_id?: string;
-};
+} & AnchorPayloadFields;
 
-/** Link-vars attached to a plain file/note upload (the pin flow adds a point). */
+/**
+ * Link-vars attached to a plain file/note upload. For an element scope this also
+ * consumes the 3D pick point stashed by the context menu, so an attachment
+ * created from a right-click anchors to that exact {x,y,z} (linked_file_type='ifc').
+ * The PDF pin flow adds its own 2D point separately.
+ */
 function buildLinkVars(scope: AttachmentScope): LinkVars {
   switch (scope.kind) {
-    case 'element':
-      return {
+    case 'element': {
+      const vars: LinkVars = {
         linked_element_global_id: scope.globalId,
         linked_file_id: scope.fileId,
         linked_model_id: scope.modelId,
       };
+      const point = consumePendingElementPoint();
+      if (point !== null) {
+        Object.assign(vars, anchor3d(point));
+      }
+      return vars;
+    }
     case 'pdf-page':
       return { linked_file_id: scope.fileId, linked_model_id: scope.modelId };
     case 'project':
@@ -172,7 +185,7 @@ export function EntityAttachmentsBody({
             file,
             linked_file_id: fileId,
             linked_model_id: modelId,
-            linked_point: pinData,
+            ...anchorPdf(pinData.page, pinData.x, pinData.y),
             onProgress: (event) => {
               if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
               else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
