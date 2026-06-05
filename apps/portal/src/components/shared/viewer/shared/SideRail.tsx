@@ -12,6 +12,8 @@ import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
+import type { ViewerFormat } from '@/components/shared/viewer/shared/viewerMode';
+
 export type PanelId =
   | 'explorer'
   | 'inspector'
@@ -19,10 +21,8 @@ export type PanelId =
   | 'section'
   | 'drawingInfo';
 
-export type Mode = 'ifc' | 'pdf' | 'drawing';
-
 type SideRailProps = {
-  mode: Mode;
+  format: ViewerFormat;
   activePanel: PanelId | null;
   onTogglePanel: (id: PanelId) => void;
 };
@@ -42,25 +42,27 @@ const IFC_BUTTONS: RailButton[] = [
 
 const PDF_BUTTONS: RailButton[] = [
   { id: 'inspector', labelKey: 'titleInspector', icon: Info },
+  { id: 'measure', labelKey: 'titleMeasure', icon: Ruler },
 ];
 
 const DRAWING_BUTTONS: RailButton[] = [
   { id: 'drawingInfo', labelKey: 'titleDrawingInfo', icon: Info },
 ];
 
-const BUTTONS_BY_MODE: Record<Mode, RailButton[]> = {
+const BUTTONS_BY_FORMAT: Record<ViewerFormat, RailButton[]> = {
   ifc: IFC_BUTTONS,
   pdf: PDF_BUTTONS,
-  drawing: DRAWING_BUTTONS,
+  dxf: DRAWING_BUTTONS,
+  dwg: DRAWING_BUTTONS,
 };
 
 export function SideRail({
-  mode,
+  format,
   activePanel,
   onTogglePanel,
 }: SideRailProps): JSX.Element {
   const t = useTranslations('viewer.sidePanel');
-  const buttons = BUTTONS_BY_MODE[mode];
+  const buttons = BUTTONS_BY_FORMAT[format];
   return (
     <div
       className="z-30 flex w-[46px] shrink-0 flex-col items-center gap-[7px] border-l border-t border-white/12 px-[6px] py-3"

@@ -13,7 +13,7 @@ import type {
   SearchHighlightState,
 } from '../../../pdf-core/documentTypes.js';
 
-export function pdfSearchPlugin(): DocumentPlugin {
+export function searchPlugin(): DocumentPlugin {
   let ctx: DocumentContext | null = null;
   // Per-document joined-lowercased page text, for the find scan.
   const pageTextCache = new Map<number, string>();

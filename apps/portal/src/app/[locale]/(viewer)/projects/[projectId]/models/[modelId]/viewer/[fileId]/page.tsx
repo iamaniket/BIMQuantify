@@ -26,28 +26,29 @@ import type {
 } from '@bimstitch/viewer';
 
 import { useAppHeader } from '@/components/shared/header/AppHeaderContext';
-import { DocumentToolbar } from '@/components/shared/viewer/pdf/DocumentToolbar';
+import { DocumentToolbar } from '@/components/shared/viewer/2d/DocumentToolbar';
 import { ModeIndicator } from '@/components/shared/viewer/3d/ModeIndicator';
-import { SideRail, type PanelId, type Mode } from '@/components/shared/viewer/shared/SideRail';
+import { SideRail, type PanelId } from '@/components/shared/viewer/shared/SideRail';
+import { isDrawingFormat, type ViewerFormat } from '@/components/shared/viewer/shared/viewerMode';
 import { Toolbar } from '@/components/shared/viewer/3d/Toolbar';
 import { MeasurementPanel, MeasurementHeaderActions } from '@/components/shared/viewer/3d/measurement/MeasurementPanel';
+import { PdfMeasurementPanel } from '@/components/shared/viewer/2d/measurement/MeasurementPanel';
 import { SectionPanel } from '@/components/shared/viewer/3d/section/SectionPanel';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
-import { PdfAnnotationLayer, type PdfPin } from '@/features/viewer/pdf/PdfAnnotationLayer';
-import { PdfVectorOverlay } from '@/features/viewer/pdf/PdfVectorOverlay';
-import { DrawingCanvas } from '@/features/viewer/drawing/DrawingCanvas';
-import { DrawingInfoBody } from '@/features/viewer/drawing/DrawingInfoBody';
-import { useDrawingMetadata } from '@/features/viewer/drawing/useDrawingMetadata';
+import { AnnotationPinLayer, type PdfPin } from '@/features/viewer/2d/AnnotationPinLayer';
+import { DrawingCanvas } from '@/features/viewer/2d/drawing/DrawingCanvas';
+import { DrawingInfoBody } from '@/features/viewer/2d/drawing/DrawingInfoBody';
+import { useDrawingMetadata } from '@/features/viewer/2d/drawing/useDrawingMetadata';
 import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
 import { StatusBar } from '@/features/viewer/shared/StatusBar';
-import { useDocumentShortcuts } from '@/features/viewer/pdf/useDocumentShortcuts';
+import { useDocumentShortcuts } from '@/features/viewer/2d/useDocumentShortcuts';
 import { useModelMetadata } from '@/features/viewer/3d/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/3d/useModelProperties';
-import { usePdfGeometry } from '@/features/viewer/pdf/usePdfGeometry';
+import { usePdfGeometry } from '@/features/viewer/2d/usePdfGeometry';
 import { viewerKeys } from '@/features/viewer/shared/queryKeys';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useViewerMode } from '@/features/viewer/3d/useViewerMode';
@@ -252,10 +253,10 @@ export default function ViewerPage(): JSX.Element {
   }, []);
 
   const fileType = bundle?.file_type;
-  const isDrawing = fileType === 'dxf' || fileType === 'dwg';
-  const mode: Mode = fileType === 'pdf' ? 'pdf' : isDrawing ? 'drawing' : 'ifc';
-  const isPdf = mode === 'pdf';
-  const isIfc = mode === 'ifc';
+  const format: ViewerFormat = fileType ?? 'ifc';
+  const isDrawing = isDrawingFormat(format);
+  const isPdf = format === 'pdf';
+  const isIfc = format === 'ifc';
 
   // Apply fit-to-page only once when a PDF is first loaded.
   useEffect(() => {
@@ -325,38 +326,40 @@ export default function ViewerPage(): JSX.Element {
   // Per-page vector geometry (artifact `i` is 0-based; pdfCurrentPage is 1-based).
   const currentPageGeometry = pdfGeometry?.p.find((pg) => pg.i === pdfCurrentPage - 1) ?? null;
 
+  // Feed the current page's vector geometry to the measure plugin for snapping.
+  useEffect(() => {
+    if (!isPdf || documentHandle === null) return;
+    documentHandle.commands
+      .execute('measure.setPageGeometry', { pageGeometry: currentPageGeometry })
+      .catch(() => undefined);
+  }, [isPdf, documentHandle, currentPageGeometry]);
+
   const renderPdfOverlay = useCallback(
     (dims: PageDimensions) => (
-      <>
-        <PdfAnnotationLayer
-          pins={pdfPins}
-          dims={dims}
-          pinMode={pdfPinMode}
-          onPinClick={handlePdfPinClick}
-          onPinPlace={handlePdfPinPlace}
-        />
-        <PdfVectorOverlay
-          dims={dims}
-          pageGeometry={currentPageGeometry}
-          rotation={pdfRotation}
-          active={pdfActiveTool === 'line'}
-        />
-      </>
+      <AnnotationPinLayer
+        pins={pdfPins}
+        dims={dims}
+        pinMode={pdfPinMode}
+        onPinClick={handlePdfPinClick}
+        onPinPlace={handlePdfPinPlace}
+      />
     ),
-    [pdfPins, pdfPinMode, handlePdfPinClick, handlePdfPinPlace, currentPageGeometry, pdfRotation, pdfActiveTool],
+    [pdfPins, pdfPinMode, handlePdfPinClick, handlePdfPinPlace],
   );
 
-  // Line and pin placement both grab pointer events on the page — keep them
-  // mutually exclusive so the two overlays never fight.
   const handlePdfActiveToolChange = useCallback((tool: DocumentActiveTool) => {
     setPdfActiveTool(tool);
-    if (tool === 'line') setPdfPinMode(false);
   }, []);
 
+  // Pin placement and measurement both grab pointer events on the page — keep
+  // them mutually exclusive so the overlays never fight.
   const handlePdfPinModeChange = useCallback((next: boolean) => {
     setPdfPinMode(next);
-    if (next) setPdfActiveTool('select');
-  }, []);
+    if (next) {
+      setPdfActiveTool('select');
+      documentHandle?.commands.execute('measure.deactivate').catch(() => undefined);
+    }
+  }, [documentHandle]);
 
   useDocumentShortcuts({
     enabled: isPdf && documentHandle !== null,
@@ -517,6 +520,8 @@ export default function ViewerPage(): JSX.Element {
               ) : undefined}
               measureContent={isIfc ? (
                 <MeasurementPanel handle={viewerHandleRef.current} />
+              ) : isPdf ? (
+                <PdfMeasurementPanel handle={documentHandle} />
               ) : undefined}
               sectionContent={isIfc ? (
                 <SectionPanel handle={viewerHandleRef.current} />
@@ -589,7 +594,7 @@ export default function ViewerPage(): JSX.Element {
         ) : null}
       </div>
       <StatusBar
-        mode={mode}
+        format={format}
         metadata={metadata}
         drawingMetadata={drawingMetadata}
         viewerReady={viewerReady}
@@ -609,7 +614,7 @@ export default function ViewerPage(): JSX.Element {
       </div>
       {showChrome ? (
         <SideRail
-          mode={mode}
+          format={format}
           activePanel={activePanel}
           onTogglePanel={togglePanel}
         />

@@ -11,10 +11,10 @@ import { useFileFindingCount } from '@/features/findings/useFindings';
 import { useViewerFPS } from '@/features/viewer/3d/useViewerFPS';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
-import type { Mode } from '@/components/shared/viewer/shared/SideRail';
+import { isDrawingFormat, type ViewerFormat } from '@/components/shared/viewer/shared/viewerMode';
 
 type StatusBarProps = {
-  mode: Mode;
+  format: ViewerFormat;
   metadata?: ModelMetadata | undefined;
   drawingMetadata?: DrawingMetadata | undefined;
   viewerReady?: boolean;
@@ -233,7 +233,7 @@ function IfcStatusBar({
 }
 
 export function StatusBar({
-  mode,
+  format,
   metadata,
   drawingMetadata,
   viewerReady = false,
@@ -242,10 +242,10 @@ export function StatusBar({
   projectId,
   fileId,
 }: StatusBarProps): JSX.Element {
-  if (mode === 'pdf') {
+  if (format === 'pdf') {
     return <PdfStatusBar currentPage={currentPage} numPages={numPages} />;
   }
-  if (mode === 'drawing') {
+  if (isDrawingFormat(format)) {
     return <DrawingStatusBar metadata={drawingMetadata} />;
   }
   return <IfcStatusBar metadata={metadata} viewerReady={viewerReady} projectId={projectId} fileId={fileId} />;

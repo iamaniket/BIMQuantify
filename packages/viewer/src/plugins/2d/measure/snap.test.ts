@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Line } from '@/lib/api/schemas/geometry';
+import type { Line } from './geometryTypes';
 
-import { buildPageSnapData, findNearestSnap } from './pdfSnap';
-import { artifactToCss, type PdfTransformParams } from './pdfTransform';
+import { buildPageSnapData, findNearestSnap } from './snap';
+import { artifactToCss, type PdfTransformParams } from './transform';
 
 const L = (a: number, b: number, c: number, d: number): Line => [a, b, c, d];
 

@@ -1,30 +1,30 @@
 'use client';
 
 import {
-  Box, Crosshair, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Settings, Square, Trash2,
+  Crosshair, DraftingCompass, Ruler, Settings, Square,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
-  useCallback, useEffect, useRef, useState, type JSX,
+  useCallback, useEffect, useState, type JSX, type ReactNode,
 } from 'react';
 
 import {
-  AppDialog, ConfirmDialog, DialogField, DialogSection, Select, cn,
+  AppDialog, DialogField, DialogSection, Select, cn,
 } from '@bimstitch/ui';
 import type {
   Measurement, MeasurementConfig, MeasurementMode, ViewerHandle,
 } from '@bimstitch/viewer';
 
-import { PanelButton } from '@/components/shared/viewer/shared/PanelButton';
-import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
-import { PanelStatusStrip } from '@/components/shared/viewer/shared/PanelStatusStrip';
-import { PanelButtonRow, PanelToolbar } from '@/components/shared/viewer/shared/PanelToolbar';
+import {
+  MeasurementPanel as SharedMeasurementPanel,
+  type MeasureModeDef,
+} from '@/components/shared/viewer/measure/MeasurementPanel';
 
 type Props = {
   handle: ViewerHandle | null;
 };
 
-const MODE_DEFS: { id: MeasurementMode; labelKey: string; icon: typeof Ruler }[] = [
+const MODE_DEFS: MeasureModeDef[] = [
   { id: 'distance', labelKey: 'modeDistance', icon: Ruler },
   { id: 'angle', labelKey: 'modeAngle', icon: DraftingCompass },
   { id: 'area', labelKey: 'modeArea', icon: Square },
@@ -59,280 +59,53 @@ function formatValue(m: Measurement): string {
   return `${m.value.toFixed(1)} m`;
 }
 
+/**
+ * 3D measurement panel — a thin wrapper over the shared {@link SharedMeasurementPanel}.
+ * It supplies the 3D mode set, meters/m²/° formatting, the `mode:exit` event, and
+ * the axis-lock badge; the snapping toggle + settings live in
+ * {@link MeasurementHeaderActions} (rendered as the side-panel header action).
+ */
 export function MeasurementPanel({ handle }: Props): JSX.Element {
   const t = useTranslations('viewer.measurement');
-  const [activeMode, setActiveMode] = useState<MeasurementMode | null>(null);
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [axisLock, setAxisLock] = useState<{ active: boolean; axis: string | null }>({ active: false, axis: null });
-  const mountedRef = useRef(true);
+  const [axisLock, setAxisLock] = useState<{ active: boolean; axis: string | null }>({
+    active: false,
+    axis: null,
+  });
 
-  // Fetch existing measurements on mount
-  useEffect(() => {
-    mountedRef.current = true;
-    if (!handle) return undefined;
-
-    handle.commands.execute<Measurement[]>('measure.list')
-      .then((list) => {
-        if (mountedRef.current) setMeasurements(list ?? []);
-      })
-      .catch(() => undefined);
-
-    return () => {
-      mountedRef.current = false;
-      handle.commands.execute('measure.deactivate').catch(() => undefined);
-    };
-  }, [handle]);
-
-  // Subscribe to measurement events
   useEffect(() => {
     if (!handle) return undefined;
-
-    const unsub = handle.events.on('measurement:change', () => {
-      handle.commands
-        .execute<Measurement[]>('measure.list')
-        .then((list) => {
-          if (mountedRef.current) setMeasurements(list ?? []);
-        })
-        .catch(() => undefined);
-    });
-
-    return unsub;
+    const offLock = handle.events.on(
+      'measurement:axisLock',
+      (d: { active: boolean; axis: string | null }) => { setAxisLock(d); },
+    );
+    const offExit = handle.events.on('mode:exit', () => { setAxisLock({ active: false, axis: null }); });
+    return () => { offLock(); offExit(); };
   }, [handle]);
 
-  // Sync activeMode when edit mode exits (e.g. via ESC)
-  useEffect(() => {
-    if (!handle) return undefined;
-
-    const unsub = handle.events.on('mode:exit', () => {
-      if (mountedRef.current) {
-        setActiveMode(null);
-        setAxisLock({ active: false, axis: null });
-      }
-    });
-
-    return unsub;
-  }, [handle]);
-
-  // Axis-lock indicator
-  useEffect(() => {
-    if (!handle) return undefined;
-
-    const unsub = handle.events.on('measurement:axisLock', (data: { active: boolean; axis: string | null }) => {
-      if (mountedRef.current) setAxisLock(data);
-    });
-
-    return unsub;
-  }, [handle]);
-
-  const switchMode = useCallback(
-    (mode: MeasurementMode) => {
-      if (!handle) return;
-      if (activeMode === mode) {
-        handle.commands.execute('measure.deactivate').catch(() => undefined);
-        setActiveMode(null);
-      } else {
-        handle.commands
-          .execute('measure.activate', { mode })
-          .catch(() => undefined);
-        setActiveMode(mode);
-      }
-    },
-    [handle, activeMode],
-  );
-
-  const remove = useCallback(
-    (id: string) => {
-      if (!handle) return;
-      handle.commands.execute('measure.remove', { id }).catch(() => undefined);
-    },
-    [handle],
-  );
-
-  const toggleVisibility = useCallback(
-    (id: string, currentlyVisible: boolean) => {
-      if (!handle) return;
-      handle.commands
-        .execute('measure.setVisible', { id, visible: !currentlyVisible })
-        .catch(() => undefined);
-    },
-    [handle],
-  );
-
-  const cancelPending = useCallback(() => {
-    if (!handle) return;
-    handle.commands.execute('measure.cancelPending').catch(() => undefined);
-  }, [handle]);
-
-  const stopMeasuring = useCallback(() => {
-    if (!handle) return;
-    handle.commands.execute('measure.deactivate').catch(() => undefined);
-    setActiveMode(null);
-  }, [handle]);
-
-  const clearAll = useCallback(() => {
-    if (!handle) return;
-    handle.commands.execute('measure.clear').catch(() => undefined);
-    setShowClearConfirm(false);
-  }, [handle]);
+  const renderStatusExtra = useCallback((): ReactNode => {
+    if (!axisLock.active || axisLock.axis === null) return null;
+    return (
+      <span
+        className={cn(
+          'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-white',
+          AXIS_COLORS[axisLock.axis] ?? 'bg-foreground-secondary',
+        )}
+      >
+        {axisLock.axis}-{t('lock')}
+      </span>
+    );
+  }, [axisLock, t]);
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Mode toggle */}
-      <PanelToolbar>
-        <PanelButtonRow>
-          {MODE_DEFS.map(({ id, labelKey, icon: Icon }) => (
-            <PanelButton
-              key={id}
-              segmented
-              active={activeMode === id}
-              onClick={() => { switchMode(id); }}
-              icon={<Icon className="h-3.5 w-3.5" />}
-            >
-              {t(labelKey)}
-            </PanelButton>
-          ))}
-        </PanelButtonRow>
-      </PanelToolbar>
-
-      {/* Measurement list */}
-      <div className="min-h-0 flex-1 overflow-auto">
-        {measurements.length === 0 ? (
-          <PanelEmptyState
-            icon={Ruler}
-            message={t('emptyMessage')}
-          />
-        ) : (
-          <ul className="divide-y divide-border">
-            {measurements.map((m) => {
-              const Icon = m.type === 'angle' ? DraftingCompass : m.type === 'area' ? Square : m.type === 'volume' ? Box : Ruler;
-              const isVisible = m.visible;
-              return (
-                <li
-                  key={m.id}
-                  className={cn(
-                    'group flex items-center gap-2.5 px-3 py-2 hover:bg-background-secondary/50',
-                    !isVisible && 'opacity-40',
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0 text-foreground-secondary" />
-                  <span className="flex-1 truncate text-xs font-medium text-foreground">
-                    {formatValue(m)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => { toggleVisibility(m.id, isVisible); }}
-                    title={isVisible ? t('hide') : t('show')}
-                    className={cn(
-                      'shrink-0 rounded p-0.5 transition-colors hover:!bg-background-tertiary',
-                      isVisible
-                        ? 'text-foreground-secondary/0 group-hover:text-foreground-secondary'
-                        : 'text-foreground-secondary',
-                    )}
-                  >
-                    {isVisible ? (
-                      <Eye className="h-3.5 w-3.5" />
-                    ) : (
-                      <EyeOff className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { remove(m.id); }}
-                    title={t('remove')}
-                    className="shrink-0 rounded p-1 text-foreground-secondary transition-colors hover:text-error"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-
-      {/* Footer status strip */}
-      {activeMode !== null && (
-        <PanelStatusStrip
-          tone="active"
-          right={(
-            <span className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={cancelPending}
-                title={t('cancelPending')}
-                className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-hover"
-              >
-                {t('cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={stopMeasuring}
-                title={t('stop')}
-                className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:bg-background-hover"
-              >
-                {t('done')}
-              </button>
-            </span>
-          )}
-        >
-          <span className="truncate">{t(HELP_KEYS[activeMode])}</span>
-          {axisLock.active && axisLock.axis !== null && (
-            <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-white', AXIS_COLORS[axisLock.axis] ?? 'bg-foreground-secondary')}>
-              {axisLock.axis}-{t('lock')}
-            </span>
-          )}
-        </PanelStatusStrip>
-      )}
-      {activeMode === null && measurements.length > 0 && (
-        <PanelStatusStrip
-          tone="idle"
-          right={(
-            <button
-              type="button"
-              onClick={() => { setShowClearConfirm(true); }}
-              title={t('clearAll')}
-              className="rounded p-0.5 text-foreground-secondary transition-colors hover:text-error"
-            >
-              <Eraser className="h-3.5 w-3.5" />
-            </button>
-          )}
-        >
-          <span className="font-semibold text-foreground-secondary">{t('count', { count: measurements.length })}</span>
-          {measurements.some((m) => m.type === 'distance') && (
-            <span className="ml-2 flex items-center gap-1"><Ruler className="h-3 w-3" />{measurements.filter((m) => m.type === 'distance').length}</span>
-          )}
-          {measurements.some((m) => m.type === 'angle') && (
-            <span className="ml-2 flex items-center gap-1"><DraftingCompass className="h-3 w-3" />{measurements.filter((m) => m.type === 'angle').length}</span>
-          )}
-          {measurements.some((m) => m.type === 'area') && (
-            <span className="ml-2 flex items-center gap-1"><Square className="h-3 w-3" />{measurements.filter((m) => m.type === 'area').length}</span>
-          )}
-          {measurements.some((m) => m.type === 'volume') && (
-            <span className="ml-2 flex items-center gap-1"><Box className="h-3 w-3" />{measurements.filter((m) => m.type === 'volume').length}</span>
-          )}
-        </PanelStatusStrip>
-      )}
-      {activeMode === null && measurements.length === 0 && (
-        <PanelStatusStrip tone="idle" right={t('savedCount', { count: 0 })}>
-          <span className="font-semibold text-foreground-secondary">{t('statusReady')}</span>
-          <span className="text-foreground-tertiary">· {t('statusNoActive')}</span>
-        </PanelStatusStrip>
-      )}
-
-      <ConfirmDialog
-        open={showClearConfirm}
-        onOpenChange={setShowClearConfirm}
-        title={t('clearAll')}
-        description={t('clearConfirmDescription', { count: measurements.length })}
-        confirmLabel={t('clearConfirm')}
-        cancelLabel={t('cancel')}
-        onConfirm={clearAll}
-        variant="destructive"
-        isPending={false}
-        errorMessage={null}
-      />
-    </div>
+    <SharedMeasurementPanel<Measurement>
+      controller={handle}
+      modes={MODE_DEFS}
+      toListItem={(m) => ({ id: m.id, label: formatValue(m), type: m.type, visible: m.visible })}
+      helpKeys={HELP_KEYS}
+      modeExitEvent="mode:exit"
+      clearCommand="measure.clear"
+      renderStatusExtra={renderStatusExtra}
+    />
   );
 }
 

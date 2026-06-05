@@ -17,7 +17,7 @@ const FIT_PADDING = 24; // px of breathing room around the page when fitting.
 
 type Origin = { x: number; y: number };
 
-export function pdfZoomPlugin(): DocumentPlugin {
+export function zoomPlugin(): DocumentPlugin {
   let ctx: DocumentContext | null = null;
   let pendingScroll: { scale: number; left: number; top: number } | null = null;
   const touchPoints = new Map<number, { x: number; y: number }>();

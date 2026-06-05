@@ -15,10 +15,10 @@ import type {
 } from '../core/plugin.js';
 
 /** Pointer/tool mode the document viewer is in. */
-export type PdfTool = 'select' | 'pan' | 'zoom' | 'line';
+export type DocumentTool = 'select' | 'pan' | 'zoom';
 
 /** Page rotation in degrees, clockwise. */
-export type PdfRotation = 0 | 90 | 180 | 270;
+export type DocumentRotation = 0 | 90 | 180 | 270;
 
 /** Rendered (CSS px) size of the current page at the current scale + rotation. */
 export interface PageDimensions {
@@ -61,17 +61,23 @@ export interface DocumentEvents extends PluginLifecycleEvents {
     pageNumber: number;
     dims: PageDimensions;
     scale: number;
-    rotation: PdfRotation;
+    rotation: DocumentRotation;
   };
   'page:change': { pageNumber: number };
   'scale:change': { scale: number };
-  'rotation:change': { rotation: PdfRotation };
-  'tool:change': { tool: PdfTool };
+  'rotation:change': { rotation: DocumentRotation };
+  'tool:change': { tool: DocumentTool };
   'search:results': { query: string; hits: DocumentSearchHit[] };
   /** Active highlight changed (null clears it). */
   'search:highlight': { highlight: SearchHighlightState | null };
   /** Number of matches on the current page after a highlight pass. */
   'search:matchCount': { count: number };
+  /** A measurement was added / removed / toggled (panel re-pulls via measure.list). */
+  'measurement:change': { count: number };
+  /** A measurement was finalized. */
+  'measurement:complete': { id: string; type: string; valuePoints: number };
+  /** Measurement mode exited (Escape / deactivate). */
+  'measure:modeExit': undefined;
 }
 
 /**
@@ -94,8 +100,8 @@ export interface DocumentContext {
   getNumPages(): number;
   getCurrentPage(): number;
   getScale(): number;
-  getRotation(): PdfRotation;
-  getTool(): PdfTool;
+  getRotation(): DocumentRotation;
+  getTool(): DocumentTool;
   /** Rendered size of the current page, or null before first render. */
   getPageDimensions(): PageDimensions | null;
   /** Unscaled (scale=1) page size at the current rotation, or null. */
@@ -103,9 +109,9 @@ export interface DocumentContext {
 
   /** Idempotent. Clamps, re-renders, and emits `scale:change`. */
   setScale(scale: number): void;
-  setRotation(rotation: PdfRotation): void;
+  setRotation(rotation: DocumentRotation): void;
   setCurrentPage(pageNumber: number): void;
-  setTool(tool: PdfTool): void;
+  setTool(tool: DocumentTool): void;
   setSearchHighlight(value: SearchHighlightState | null): void;
 
   events: EventBus<DocumentEvents>;

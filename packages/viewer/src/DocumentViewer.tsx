@@ -11,27 +11,31 @@ import {
   type ReactNode,
 } from 'react';
 
+import type { EventBus } from './core/EventBus.js';
 import { DocumentEngine } from './pdf-core/DocumentEngine.js';
 import type {
+  DocumentEvents,
+  DocumentPlugin,
   DocumentSearchHit,
   PageDimensions,
-  PdfRotation,
-  PdfTool,
+  DocumentRotation,
+  DocumentTool,
   SearchHighlightState,
 } from './pdf-core/documentTypes.js';
-import { pdfPanPlugin } from './plugins/pdf/pan/index.js';
-import { pdfRotatePlugin } from './plugins/pdf/rotate/index.js';
-import { pdfSearchPlugin } from './plugins/pdf/search/index.js';
-import { pdfToolsPlugin } from './plugins/pdf/tools/index.js';
-import { pdfZoomPlugin } from './plugins/pdf/zoom/index.js';
+import { measurePlugin } from './plugins/2d/measure/index.js';
+import { panPlugin } from './plugins/2d/pan/index.js';
+import { rotatePlugin } from './plugins/2d/rotate/index.js';
+import { searchPlugin } from './plugins/2d/search/index.js';
+import { toolsPlugin } from './plugins/2d/tools/index.js';
+import { zoomPlugin } from './plugins/2d/zoom/index.js';
 
 export type DocumentLoadedInfo = {
   numPages: number;
 };
 
-export type DocumentActiveTool = PdfTool;
-export type DocumentRotation = PdfRotation;
+export type DocumentActiveTool = DocumentTool;
 export type SearchHighlight = SearchHighlightState;
+export type { DocumentRotation };
 export type { DocumentSearchHit, PageDimensions } from './pdf-core/documentTypes.js';
 
 /**
@@ -58,6 +62,24 @@ export type DocumentViewerHandle = {
    * Visual highlighting is handled by the `searchHighlight` prop.
    */
   searchText(query: string): Promise<DocumentSearchHit[]>;
+
+  /**
+   * Generic command / event / plugin surface — the 2D counterpart to the 3D
+   * `ViewerHandle`. Host apps drive measurement (and any future 2D plugin)
+   * through these without a typed façade per command. The façade methods above
+   * are kept so the existing toolbar + keyboard shortcuts work unchanged.
+   */
+  commands: {
+    execute<R = unknown>(name: string, args?: unknown): Promise<R>;
+    has(name: string): boolean;
+    list(): { name: string; meta: unknown }[];
+  };
+  events: Pick<EventBus<DocumentEvents>, 'on' | 'off' | 'once'>;
+  plugins: {
+    register(plugin: DocumentPlugin): Promise<void>;
+    unregister(name: string): Promise<void>;
+    get<T = unknown>(name: string): T | null;
+  };
 };
 
 export type DocumentViewerProps = {
@@ -137,11 +159,12 @@ function DocumentViewerInner(
 
     const engine = new DocumentEngine({
       plugins: [
-        pdfToolsPlugin(),
-        pdfZoomPlugin(),
-        pdfPanPlugin(),
-        pdfRotatePlugin(),
-        pdfSearchPlugin(),
+        toolsPlugin(),
+        zoomPlugin(),
+        panPlugin(),
+        rotatePlugin(),
+        searchPlugin(),
+        measurePlugin(),
       ],
     });
     engineRef.current = engine;
@@ -216,6 +239,25 @@ function DocumentViewerInner(
           'search.find',
           query,
         ) ?? Promise.resolve([]),
+      commands: {
+        execute: <R,>(name: string, args?: unknown): Promise<R> => {
+          const e = engineRef.current;
+          if (!e) return Promise.reject(new Error('DocumentViewer not mounted'));
+          return e.commands.execute<unknown, R>(name, args);
+        },
+        has: (name: string) => engineRef.current?.commands.has(name) ?? false,
+        list: () => engineRef.current?.commands.list() ?? [],
+      },
+      events: {
+        on: (key, h) => engineRef.current?.events.on(key, h) ?? (() => undefined),
+        off: (key, h) => engineRef.current?.events.off(key, h),
+        once: (key, h) => engineRef.current?.events.once(key, h) ?? (() => undefined),
+      },
+      plugins: {
+        register: async (p) => { await engineRef.current?.registerPlugin(p); },
+        unregister: async (name) => { await engineRef.current?.unregisterPlugin(name); },
+        get: <T,>(name: string): T | null => engineRef.current?.getPlugin<T>(name) ?? null,
+      },
     }),
     [],
   );

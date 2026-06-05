@@ -19,7 +19,7 @@ interface DragState {
   pointerId: number;
 }
 
-export function pdfPanPlugin(): DocumentPlugin {
+export function panPlugin(): DocumentPlugin {
   let ctx: DocumentContext | null = null;
   let drag: DragState | null = null;
   const cleanups: Array<() => void> = [];

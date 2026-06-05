@@ -9,9 +9,9 @@
  * survives zoom and rotation.
  */
 
-import type { Line } from '@/lib/api/schemas/geometry';
+import type { Line } from './geometryTypes';
 
-import { artifactToCss, type PdfTransformParams } from './pdfTransform';
+import { artifactToCss, type PdfTransformParams } from './transform';
 
 export type SnapKind = 'endpoint' | 'intersection';
 

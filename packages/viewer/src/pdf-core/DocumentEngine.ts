@@ -20,8 +20,8 @@ import {
   type DocumentEvents,
   type DocumentPlugin,
   type PageDimensions,
-  type PdfRotation,
-  type PdfTool,
+  type DocumentRotation,
+  type DocumentTool,
   type SearchHighlightState,
 } from './documentTypes.js';
 
@@ -67,8 +67,8 @@ export class DocumentEngine {
   // Authoritative viewer state.
   private currentPage = 1;
   private scale = 1;
-  private rotation: PdfRotation = 0;
-  private tool: PdfTool = 'select';
+  private rotation: DocumentRotation = 0;
+  private tool: DocumentTool = 'select';
   private searchHighlight: SearchHighlightState | null = null;
   private numPages = 0;
   private pageDims: PageDimensions | null = null;
@@ -191,14 +191,14 @@ export class DocumentEngine {
     void this.renderActive();
   }
 
-  setRotation(rotation: PdfRotation): void {
+  setRotation(rotation: DocumentRotation): void {
     if (rotation === this.rotation) return;
     this.rotation = rotation;
     this.events.emit('rotation:change', { rotation });
     void this.renderActive();
   }
 
-  setTool(tool: PdfTool): void {
+  setTool(tool: DocumentTool): void {
     if (tool === this.tool) return;
     this.tool = tool;
     this.events.emit('tool:change', { tool });

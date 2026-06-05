@@ -92,6 +92,7 @@ export type {
 export { EventBus } from './core/EventBus.js';
 export { CommandRegistry, CommandNotFoundError } from './core/CommandRegistry.js';
 export type { CommandHandler, CommandMeta } from './core/CommandRegistry.js';
+export type { CommandSurface, MeasurementController } from './core/handle.js';
 // Generic, mode-agnostic plugin core — shared by the 3D viewer and the PDF
 // document engine. Custom engines build on these directly.
 export { PluginManager as GenericPluginManager } from './core/plugin.js';
@@ -108,17 +109,19 @@ export type {
   DocumentContext,
   DocumentEvents,
   DocumentPlugin,
-  PdfTool,
-  PdfRotation,
+  DocumentTool,
   SearchHighlightState,
 } from './pdf-core/documentTypes.js';
 export { MIN_SCALE, MAX_SCALE, clampScale } from './pdf-core/documentTypes.js';
-export { pdfZoomPlugin } from './plugins/pdf/zoom/index.js';
-export { pdfPanPlugin } from './plugins/pdf/pan/index.js';
-export { pdfToolsPlugin } from './plugins/pdf/tools/index.js';
-export type { ToolsPluginAPI } from './plugins/pdf/tools/index.js';
-export { pdfRotatePlugin } from './plugins/pdf/rotate/index.js';
-export { pdfSearchPlugin } from './plugins/pdf/search/index.js';
+export { zoomPlugin } from './plugins/2d/zoom/index.js';
+export { panPlugin } from './plugins/2d/pan/index.js';
+export { toolsPlugin } from './plugins/2d/tools/index.js';
+export type { ToolsPluginAPI } from './plugins/2d/tools/index.js';
+export { rotatePlugin } from './plugins/2d/rotate/index.js';
+export { searchPlugin } from './plugins/2d/search/index.js';
+export { measurePlugin } from './plugins/2d/measure/index.js';
+export type { MeasurePluginAPI } from './plugins/2d/measure/index.js';
+export type { PdfMeasureMode, PdfMeasurement } from './plugins/2d/measure/types.js';
 
 // Built-in plugin factories — re-exported so consumers can disable a
 // built-in (by passing `viewCube: { enabled: false }`) and re-add it

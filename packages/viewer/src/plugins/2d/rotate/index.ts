@@ -6,14 +6,14 @@
 import type {
   DocumentContext,
   DocumentPlugin,
-  PdfRotation,
+  DocumentRotation,
 } from '../../../pdf-core/documentTypes.js';
 
-function rotateDelta(rot: PdfRotation, delta: 90 | -90): PdfRotation {
-  return (((rot + delta + 360) % 360) as PdfRotation);
+function rotateDelta(rot: DocumentRotation, delta: 90 | -90): DocumentRotation {
+  return (((rot + delta + 360) % 360) as DocumentRotation);
 }
 
-export function pdfRotatePlugin(): DocumentPlugin {
+export function rotatePlugin(): DocumentPlugin {
   return {
     name: 'rotate',
 
@@ -27,7 +27,7 @@ export function pdfRotatePlugin(): DocumentPlugin {
       context.commands.register('rotate.left', () => {
         context.setRotation(rotateDelta(context.getRotation(), -90));
       }, { title: 'Rotate left', defaultShortcut: 'Shift+R' });
-      context.commands.register<{ rotation: PdfRotation }>('rotate.to', (args) => {
+      context.commands.register<{ rotation: DocumentRotation }>('rotate.to', (args) => {
         context.setRotation(args.rotation);
       }, { title: 'Rotate to' });
     },

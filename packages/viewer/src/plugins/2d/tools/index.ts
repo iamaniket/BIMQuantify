@@ -8,7 +8,7 @@
 import type {
   DocumentContext,
   DocumentPlugin,
-  PdfTool,
+  DocumentTool,
 } from '../../../pdf-core/documentTypes.js';
 
 export interface ToolsPluginAPI {
@@ -16,13 +16,13 @@ export interface ToolsPluginAPI {
   refreshCursor(): void;
 }
 
-function cursorForTool(tool: PdfTool): string {
+function cursorForTool(tool: DocumentTool): string {
   if (tool === 'pan') return 'grab';
   if (tool === 'zoom') return 'zoom-in';
   return 'default';
 }
 
-export function pdfToolsPlugin(): DocumentPlugin & ToolsPluginAPI {
+export function toolsPlugin(): DocumentPlugin & ToolsPluginAPI {
   let ctx: DocumentContext | null = null;
   const cleanups: Array<() => void> = [];
 
@@ -47,7 +47,7 @@ export function pdfToolsPlugin(): DocumentPlugin & ToolsPluginAPI {
       applyTool();
       cleanups.push(context.events.on('tool:change', applyTool));
 
-      context.commands.register<{ tool: PdfTool }>('tool.set', (args) => {
+      context.commands.register<{ tool: DocumentTool }>('tool.set', (args) => {
         context.setTool(args.tool);
       }, { title: 'Set tool' });
       context.commands.register('tool.select', () => { context.setTool('select'); }, {

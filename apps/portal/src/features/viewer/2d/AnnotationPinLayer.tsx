@@ -13,7 +13,7 @@ export type PdfPin = {
   attachment: Attachment;
 };
 
-type PdfAnnotationLayerProps = {
+type AnnotationPinLayerProps = {
   pins: PdfPin[];
   dims: PageDimensions;
   pinMode: boolean;
@@ -21,13 +21,13 @@ type PdfAnnotationLayerProps = {
   onPinPlace: (point: { x: number; y: number }) => void;
 };
 
-export function PdfAnnotationLayer({
+export function AnnotationPinLayer({
   pins,
   dims,
   pinMode,
   onPinClick,
   onPinPlace,
-}: PdfAnnotationLayerProps): JSX.Element {
+}: AnnotationPinLayerProps): JSX.Element {
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!pinMode) return;

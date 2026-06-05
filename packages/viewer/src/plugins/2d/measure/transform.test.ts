@@ -5,7 +5,7 @@ import {
   artifactToCss,
   cssToArtifact,
   type PdfTransformParams,
-} from './pdfTransform';
+} from './transform';
 
 const W_BOX = 600;
 const H_BOX = 800;
