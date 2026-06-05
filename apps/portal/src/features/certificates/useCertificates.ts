@@ -38,3 +38,28 @@ export function useProjectCertificates(
 export function useProjectCertificateCount(projectId: string, enabled = true): number {
   return useProjectCertificates(projectId, enabled).data?.length ?? 0;
 }
+
+/** File-scoped certificates — those linked to a given file (e.g. a PDF
+ * document). Shown in the viewer inspector when a PDF is open (no element to
+ * anchor to), mirroring useFileFindings. */
+export function useFileCertificates(
+  projectId: string,
+  fileId: string | null,
+): UseQueryResult<CertificateList> {
+  return useAuthQuery({
+    queryKey: [...certificatesKey(projectId), 'file', fileId ?? ''] as const,
+    queryFn: (accessToken) => {
+      if (fileId === null) throw new Error('Missing fileId');
+      return listCertificates(accessToken, projectId, { linkedFileId: fileId });
+    },
+    enabled: fileId !== null,
+    staleTime: 30_000,
+  });
+}
+
+export function useFileCertificateCount(
+  projectId: string,
+  fileId: string | null,
+): number {
+  return useFileCertificates(projectId, fileId).data?.length ?? 0;
+}

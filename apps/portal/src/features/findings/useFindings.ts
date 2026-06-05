@@ -33,11 +33,13 @@ export function useProjectFindingCount(projectId: string, enabled = true): numbe
   return useProjectFindings(projectId, enabled).data?.length ?? 0;
 }
 
-export function useFileFindingCount(
+/** File-scoped findings — those linked to a given file (e.g. a PDF document).
+ * Shown in the viewer inspector when a PDF is open (no element to anchor to). */
+export function useFileFindings(
   projectId: string,
   fileId: string | null,
-): number {
-  const query = useAuthQuery({
+): UseQueryResult<FindingList> {
+  return useAuthQuery({
     queryKey: [...findingsKey(projectId), 'file', fileId ?? ''] as const,
     queryFn: (accessToken) => {
       if (fileId === null) throw new Error('Missing fileId');
@@ -46,5 +48,13 @@ export function useFileFindingCount(
     enabled: fileId !== null,
     staleTime: 30_000,
   });
-  return query.data?.length ?? 0;
+}
+
+export function useFileFindingCount(
+  projectId: string,
+  fileId: string | null,
+): number {
+  // Delegates to useFileFindings — same query key, so StatusBar's count and the
+  // inspector tab pill share one cache entry (no double fetch).
+  return useFileFindings(projectId, fileId).data?.length ?? 0;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  FileText, LinkIcon, Loader2, Paperclip, Plus, StickyNote,
+  FileText, LinkIcon, Loader2, MapPin, Paperclip, Plus, StickyNote,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -9,23 +9,70 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { Button, Input, Spinner, SplitButton } from '@bimstitch/ui';
+import {
+  Button, Input, Spinner, SplitButton, type SplitButtonItem,
+} from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
+import { PanelStatusStrip } from '@/components/shared/viewer/shared/PanelStatusStrip';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLinkDialog';
-import { useElementAttachments, useProjectAttachments } from '@/features/attachments/useAttachments';
+import {
+  useElementAttachments,
+  useProjectAttachments,
+  usePdfPageAttachments,
+} from '@/features/attachments/useAttachments';
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 import { AttachmentRow } from '@/features/viewer/shared/attachments/AttachmentRow';
 import type { Attachment } from '@/lib/api/schemas';
 
+const PENDING_PIN_KEY = 'bimstitch.pendingPdfPin';
+
+/**
+ * How the attachments shown here are linked. The 3D viewer scopes by IFC
+ * element (`globalId`) or by the whole project (unlinked); the PDF viewer
+ * scopes by page (pin-linked). The body renders identically for all three —
+ * only the query and the upload link-vars differ.
+ */
+export type AttachmentScope =
+  | { kind: 'element'; modelId: string; fileId: string; globalId: string }
+  | { kind: 'project' }
+  | {
+      kind: 'pdf-page';
+      fileId: string;
+      modelId: string;
+      page: number;
+      pinMode: boolean;
+      onPinModeChange: (enabled: boolean) => void;
+    };
+
+type LinkVars = {
+  linked_element_global_id?: string;
+  linked_file_id?: string;
+  linked_model_id?: string;
+};
+
+/** Link-vars attached to a plain file/note upload (the pin flow adds a point). */
+function buildLinkVars(scope: AttachmentScope): LinkVars {
+  switch (scope.kind) {
+    case 'element':
+      return {
+        linked_element_global_id: scope.globalId,
+        linked_file_id: scope.fileId,
+        linked_model_id: scope.modelId,
+      };
+    case 'pdf-page':
+      return { linked_file_id: scope.fileId, linked_model_id: scope.modelId };
+    case 'project':
+    default:
+      return {};
+  }
+}
+
 type EntityAttachmentsBodyProps = {
   projectId: string;
-  modelId: string;
-  fileId: string;
-  /** A single element's GlobalId, or `null` for the project-level (unlinked) view. */
-  globalId: string | null;
+  scope: AttachmentScope;
   /** When this nonce changes, auto-click the file picker to start the attach flow. */
   autoOpenNonce?: number | undefined;
   /** Called once the nonce has been consumed so the parent can clear it. */
@@ -34,9 +81,7 @@ type EntityAttachmentsBodyProps = {
 
 export function EntityAttachmentsBody({
   projectId,
-  modelId,
-  fileId,
-  globalId,
+  scope,
   autoOpenNonce,
   onAutoOpenConsumed,
 }: EntityAttachmentsBodyProps): JSX.Element {
@@ -51,6 +96,7 @@ export function EntityAttachmentsBody({
   const [captureLinkDialogOpen, setCaptureLinkDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastConsumedNonce = useRef<number | undefined>(undefined);
+  const pinUploadRef = useRef(false);
 
   // Auto-open the native file picker when triggered from a context-menu command.
   // Note: the browser may block this if transient user activation has expired;
@@ -63,10 +109,26 @@ export function EntityAttachmentsBody({
     }
   }, [autoOpenNonce, onAutoOpenConsumed]);
 
-  const isProject = globalId === null;
-  const elementQuery = useElementAttachments(projectId, modelId, globalId);
-  const projectQuery = useProjectAttachments(projectId, isProject);
-  const activeQuery = isProject ? projectQuery : elementQuery;
+  // Resolve the active query unconditionally (Hooks rules) — the inapplicable
+  // queries are disabled via their `enabled`/null args.
+  const elementScope = scope.kind === 'element' ? scope : null;
+  const pdfScope = scope.kind === 'pdf-page' ? scope : null;
+  const elementQuery = useElementAttachments(
+    projectId,
+    elementScope?.modelId ?? '',
+    elementScope?.globalId ?? null,
+  );
+  const projectQuery = useProjectAttachments(projectId, scope.kind === 'project');
+  const pdfPageQuery = usePdfPageAttachments(
+    projectId,
+    pdfScope?.fileId ?? '',
+    pdfScope?.page ?? null,
+  );
+  const activeQuery =
+    scope.kind === 'project' ? projectQuery
+    : scope.kind === 'pdf-page' ? pdfPageQuery
+    : elementQuery;
+
   const uploadMutation = useUploadAttachment(projectId);
   const deleteMutation = useDeleteAttachment(projectId);
 
@@ -80,18 +142,87 @@ export function EntityAttachmentsBody({
     });
   }, [items, query]);
 
+  const pinMode = scope.kind === 'pdf-page' ? scope.pinMode : false;
+  const prevPinModeRef = useRef(pinMode);
+
+  // PDF pin flow: when a pin is placed the page writes the dropped point into
+  // sessionStorage and flips pin mode off. We consume it here and auto-fire the
+  // file picker so the upload lands on the pin. Two triggers cover both cases:
+  //  - the pin-mode true→false edge (the inspector panel was already open), and
+  //  - mount (the panel was reopened after placement, e.g. from a closed state).
+  // Reading + removing the key is idempotent, so firing both is harmless.
+  const consumePendingPin = useCallback(() => {
+    if (scope.kind !== 'pdf-page') return;
+    const { fileId, modelId } = scope;
+    const raw = sessionStorage.getItem(PENDING_PIN_KEY);
+    if (raw === null) return;
+    sessionStorage.removeItem(PENDING_PIN_KEY);
+    try {
+      const pinData = JSON.parse(raw) as { type: string; page: number; x: number; y: number };
+      if (pinData.type !== 'pdf') return;
+      const input = fileInputRef.current;
+      if (!input) return;
+      pinUploadRef.current = true;
+      const handler = (): void => {
+        pinUploadRef.current = false;
+        const { files } = input;
+        if (files === null || files.length === 0) return;
+        const [file] = files;
+        if (file === undefined) return;
+        uploadMutation.mutate(
+          {
+            file,
+            linked_file_id: fileId,
+            linked_model_id: modelId,
+            linked_point: pinData,
+            onProgress: (event) => {
+              if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
+              else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
+              else setUploadPhase(t('uploadCompleting'));
+            },
+          },
+          {
+            onSuccess: () => {
+              setUploadPhase(null);
+              toast.success(t('pinSuccess'));
+            },
+            onError: () => {
+              setUploadPhase(null);
+              toast.error(t('uploadError'));
+            },
+          },
+        );
+        input.removeEventListener('change', handler);
+      };
+      input.addEventListener('change', handler);
+      input.click();
+    } catch {
+      // invalid JSON — ignore
+    }
+  }, [scope, uploadMutation, t]);
+
+  useEffect(() => {
+    consumePendingPin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const wasPinMode = prevPinModeRef.current;
+    prevPinModeRef.current = pinMode;
+    if (wasPinMode && !pinMode) consumePendingPin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinMode]);
+
   const handleFileUpload = useCallback(
     (files: FileList | null) => {
+      if (pinUploadRef.current) return;
       if (files === null || files.length === 0) return;
       const [file] = files;
       if (file === undefined) return;
-      const linkVars = globalId !== null
-        ? { linked_element_global_id: globalId, linked_file_id: fileId, linked_model_id: modelId }
-        : {};
       uploadMutation.mutate(
         {
           file,
-          ...linkVars,
+          ...buildLinkVars(scope),
           onProgress: (event) => {
             if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
             else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
@@ -110,7 +241,7 @@ export function EntityAttachmentsBody({
         },
       );
     },
-    [uploadMutation, globalId, fileId, modelId, t],
+    [uploadMutation, scope, t],
   );
 
   const handleNoteSubmit = useCallback(() => {
@@ -119,14 +250,11 @@ export function EntityAttachmentsBody({
     const blob = new Blob([text], { type: 'text/plain' });
     const now = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const file = new File([blob], `note-${now}.txt`, { type: 'text/plain' });
-    const linkVars = globalId !== null
-      ? { linked_element_global_id: globalId, linked_file_id: fileId, linked_model_id: modelId }
-      : {};
     uploadMutation.mutate(
       {
         file,
         description: text.slice(0, 200),
-        ...linkVars,
+        ...buildLinkVars(scope),
         onProgress: (event) => {
           if (event.phase === 'hashing') setUploadPhase(t('uploadHashing'));
           else if (event.phase === 'uploading') setUploadPhase(t('uploadUploading'));
@@ -146,7 +274,7 @@ export function EntityAttachmentsBody({
         },
       },
     );
-  }, [noteText, uploadMutation, globalId, fileId, modelId, t]);
+  }, [noteText, uploadMutation, scope, t]);
 
   const handleDelete = useCallback(
     (attachmentId: string) => {
@@ -156,6 +284,48 @@ export function EntityAttachmentsBody({
     },
     [deleteMutation, t],
   );
+
+  // SplitButton menu: file + note for every scope; "place pin" for PDF, and the
+  // 3D-only "create capture link" otherwise. Keeps the toolbar identical.
+  const splitItems: SplitButtonItem[] = [
+    {
+      id: 'file',
+      label: t('attachFile'),
+      icon: <FileText className="h-4 w-4" />,
+      onSelect: () => { if (fileInputRef.current !== null) fileInputRef.current.click(); },
+    },
+    {
+      id: 'note',
+      label: t('addNote'),
+      icon: <StickyNote className="h-4 w-4" />,
+      onSelect: () => { setShowNoteInput(true); },
+    },
+  ];
+  if (scope.kind === 'pdf-page') {
+    const { onPinModeChange } = scope;
+    splitItems.push({
+      id: 'pin',
+      label: t('placePin'),
+      icon: <MapPin className="h-4 w-4" />,
+      onSelect: () => { onPinModeChange(true); },
+    });
+  } else {
+    splitItems.push({
+      id: 'capture-link',
+      label: t('createCaptureLink'),
+      icon: <LinkIcon className="h-4 w-4" />,
+      onSelect: () => { setCaptureLinkDialogOpen(true); },
+    });
+  }
+
+  const emptyMessage =
+    query.trim() !== ''
+      ? t('emptyNoMatches', { query })
+      : scope.kind === 'pdf-page'
+        ? t('emptyNoPage')
+        : scope.kind === 'project'
+          ? t('emptyProjectEmpty')
+          : t('emptyNoItems');
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -178,26 +348,7 @@ export function EntityAttachmentsBody({
           disabled={uploadMutation.isPending}
           onClick={() => { if (fileInputRef.current !== null) fileInputRef.current.click(); }}
           menuLabel={t('moreAttachOptions')}
-          items={[
-            {
-              id: 'file',
-              label: t('attachFile'),
-              icon: <FileText className="h-4 w-4" />,
-              onSelect: () => { if (fileInputRef.current !== null) fileInputRef.current.click(); },
-            },
-            {
-              id: 'note',
-              label: t('addNote'),
-              icon: <StickyNote className="h-4 w-4" />,
-              onSelect: () => { setShowNoteInput(true); },
-            },
-            {
-              id: 'capture-link',
-              label: t('createCaptureLink'),
-              icon: <LinkIcon className="h-4 w-4" />,
-              onSelect: () => { setCaptureLinkDialogOpen(true); },
-            },
-          ]}
+          items={splitItems}
         />
         <input
           ref={fileInputRef}
@@ -207,6 +358,24 @@ export function EntityAttachmentsBody({
           onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
         />
       </div>
+
+      {/* Pin-mode status strip (PDF only) */}
+      {scope.kind === 'pdf-page' && scope.pinMode ? (
+        <PanelStatusStrip
+          tone="active"
+          right={
+            <button
+              type="button"
+              onClick={() => { scope.onPinModeChange(false); }}
+              className="font-sans text-caption font-medium text-primary transition-colors hover:text-primary-hover"
+            >
+              {t('pinModeOff')}
+            </button>
+          }
+        >
+          {t('pinPlacing')}
+        </PanelStatusStrip>
+      ) : null}
 
       {/* Upload progress */}
       {uploadPhase !== null && (
@@ -232,7 +401,7 @@ export function EntityAttachmentsBody({
               size="sm"
               onClick={() => { setShowNoteInput(false); setNoteText(''); }}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="primary"
@@ -252,12 +421,8 @@ export function EntityAttachmentsBody({
           <PanelEmptyState icon={Loader2} message={t('loading')} />
         ) : filteredItems.length === 0 ? (
           <PanelEmptyState
-            icon={Paperclip}
-            message={
-              query.trim() !== ''
-                ? t('emptyNoMatches', { query })
-                : isProject ? t('emptyProjectEmpty') : t('emptyNoItems')
-            }
+            icon={scope.kind === 'pdf-page' ? MapPin : Paperclip}
+            message={emptyMessage}
           />
         ) : (
           <div className="flex flex-col">
@@ -279,7 +444,8 @@ export function EntityAttachmentsBody({
         )}
       </div>
 
-      {/* Capture link dialog */}
+      {/* Capture link dialog (3D scopes only mount the menu item, but keeping the
+          dialog mounted is harmless and avoids a conditional hook boundary). */}
       <CreateCaptureLinkDialog
         projectId={projectId}
         open={captureLinkDialogOpen}

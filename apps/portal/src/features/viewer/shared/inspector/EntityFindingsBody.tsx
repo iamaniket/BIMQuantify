@@ -15,7 +15,7 @@ import {
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useElementFindings } from '@/features/findings/useElementFindings';
-import { useProjectFindings } from '@/features/findings/useFindings';
+import { useFileFindings, useProjectFindings } from '@/features/findings/useFindings';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { FindingFormDialog } from '@/features/projects/detail/FindingFormDialog';
 import {
@@ -32,14 +32,20 @@ function formatDate(value: string | null | undefined): string {
   });
 }
 
+/**
+ * How the findings shown here are scoped. The 3D viewer scopes by IFC element
+ * (`globalId`, with `modelId`/`fileId` provenance) or by the whole project
+ * (unlinked); the PDF viewer scopes by the open file. The body renders
+ * identically for all three — only the query and the create link-vars differ.
+ */
+export type FindingsScope =
+  | { kind: 'element'; modelId: string; fileId: string; globalId: string }
+  | { kind: 'project' }
+  | { kind: 'file'; fileId: string };
+
 type EntityFindingsBodyProps = {
   projectId: string;
-  /** Version-independent identity anchor — findings query/create by this. */
-  modelId: string;
-  /** The open file version — recorded as "raised on this version" provenance. */
-  fileId: string;
-  /** A single element's GlobalId, or `null` for the project-level (unlinked) view. */
-  globalId: string | null;
+  scope: FindingsScope;
   /** When this nonce changes, auto-open the new-finding dialog. */
   autoOpenNonce?: number | undefined;
   /** Called once the nonce has been consumed so the parent can clear it. */
@@ -48,9 +54,7 @@ type EntityFindingsBodyProps = {
 
 export function EntityFindingsBody({
   projectId,
-  modelId,
-  fileId,
-  globalId,
+  scope,
   autoOpenNonce,
   onAutoOpenConsumed,
 }: EntityFindingsBodyProps): JSX.Element {
@@ -59,10 +63,21 @@ export function EntityFindingsBody({
   const tStatus = useTranslations('findings.status');
   const tExpanded = useTranslations('findings.expanded');
 
-  const isProject = globalId === null;
-  const elementQuery = useElementFindings(projectId, modelId, globalId);
-  const projectQuery = useProjectFindings(projectId, isProject);
-  const query = isProject ? projectQuery : elementQuery;
+  // Resolve the active query unconditionally (Hooks rules) — inapplicable
+  // queries are disabled via their `enabled`/null args.
+  const elementScope = scope.kind === 'element' ? scope : null;
+  const fileScope = scope.kind === 'file' ? scope : null;
+  const elementQuery = useElementFindings(
+    projectId,
+    elementScope?.modelId ?? '',
+    elementScope?.globalId ?? null,
+  );
+  const projectQuery = useProjectFindings(projectId, scope.kind === 'project');
+  const fileQuery = useFileFindings(projectId, fileScope?.fileId ?? null);
+  const query =
+    scope.kind === 'project' ? projectQuery
+    : scope.kind === 'file' ? fileQuery
+    : elementQuery;
   const deleteMutation = useDeleteFinding(projectId);
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
@@ -132,7 +147,13 @@ export function EntityFindingsBody({
         ) : filteredFindings.length === 0 ? (
           <PanelEmptyState
             icon={AlertTriangle}
-            message={isProject ? t('emptyProjectEmpty') : t('emptyNoItems')}
+            message={
+              scope.kind === 'project'
+                ? t('emptyProjectEmpty')
+                : scope.kind === 'file'
+                  ? t('emptyFileEmpty')
+                  : t('emptyNoItems')
+            }
           />
         ) : (
           <div className="flex flex-col">
@@ -235,9 +256,9 @@ export function EntityFindingsBody({
         projectId={projectId}
         open={createOpen}
         onOpenChange={setCreateOpen}
-        linkedModelId={globalId !== null ? modelId : null}
-        linkedFileId={globalId !== null ? fileId : null}
-        linkedElementGlobalId={globalId}
+        linkedModelId={scope.kind === 'element' ? scope.modelId : null}
+        linkedFileId={scope.kind === 'project' ? null : scope.fileId}
+        linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
       />
       <FindingDetailModal
         projectId={projectId}

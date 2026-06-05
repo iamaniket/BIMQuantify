@@ -2706,7 +2706,8 @@
     "createButton": "New finding",
     "loading": "Loading findings…",
     "emptyNoItems": "No findings linked to this element yet.",
-    "emptyProjectEmpty": "No project-level findings."
+    "emptyProjectEmpty": "No project-level findings.",
+    "emptyFileEmpty": "No findings linked to this file yet."
   },
   "viewerCertificates": {
     "filterPlaceholder": "Search certificates…",
@@ -2714,6 +2715,7 @@
     "loading": "Loading certificates…",
     "emptyNoItems": "No certificates linked to this element yet.",
     "emptyProjectEmpty": "No project-level certificates.",
+    "emptyFileEmpty": "No certificates linked to this file yet.",
     "viewerTitle": "Certificate",
     "viewerSubtitle": "Proof of conformity and validity",
     "viewerClose": "Close",
@@ -2805,6 +2807,9 @@
     "pinModeOff": "Cancel pin",
     "pinUploading": "Uploading pin attachment…",
     "pinSuccess": "Pin attachment uploaded.",
+    "placePin": "Place pin on page",
+    "pinPlacing": "Click on the page to place a pin",
+    "cancel": "Cancel",
     "filterPlaceholder": "Filter attachments…",
     "emptyNoMatches": "No matches for \"{query}\".",
     "rowExpand": "Expand",

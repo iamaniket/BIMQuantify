@@ -21,7 +21,7 @@ import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptySta
 import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
 import { useDeleteCertificate } from '@/features/certificates/useDeleteCertificate';
 import { useElementCertificates } from '@/features/certificates/useElementCertificates';
-import { useProjectCertificates } from '@/features/certificates/useCertificates';
+import { useFileCertificates, useProjectCertificates } from '@/features/certificates/useCertificates';
 import {
   getCertificateExpiryState,
   type CertificateExpiryState,
@@ -29,13 +29,18 @@ import {
 import { CertificateUploadDialog } from '@/features/projects/detail/CertificateUploadDialog';
 import type { Certificate } from '@/lib/api/schemas';
 
+/**
+ * How the certificates shown here are scoped — mirrors FindingsScope: by IFC
+ * element (3D), by the whole project (unlinked), or by the open file (PDF).
+ */
+export type CertificatesScope =
+  | { kind: 'element'; modelId: string; fileId: string; globalId: string }
+  | { kind: 'project' }
+  | { kind: 'file'; fileId: string };
+
 type EntityCertificatesBodyProps = {
   projectId: string;
-  /** Version-independent identity anchor — certificates query/create by this. */
-  modelId: string;
-  /** The open file version — recorded as "raised on this version" provenance. */
-  fileId: string;
-  globalId: string | null;
+  scope: CertificatesScope;
   autoOpenNonce?: number | undefined;
   /** Called once the nonce has been consumed so the parent can clear it. */
   onAutoOpenConsumed?: () => void;
@@ -59,9 +64,7 @@ function formatDate(value: string | null | undefined): string {
 
 export function EntityCertificatesBody({
   projectId,
-  modelId,
-  fileId,
-  globalId,
+  scope,
   autoOpenNonce,
   onAutoOpenConsumed,
 }: EntityCertificatesBodyProps): JSX.Element {
@@ -69,10 +72,21 @@ export function EntityCertificatesBody({
   const tTypes = useTranslations('projectDetail.tabs.certificates.type');
   const tExpiry = useTranslations('projectDetail.tabs.certificates.expiry');
 
-  const isProject = globalId === null;
-  const elementQuery = useElementCertificates(projectId, modelId, globalId);
-  const projectQuery = useProjectCertificates(projectId, isProject);
-  const query = isProject ? projectQuery : elementQuery;
+  // Resolve the active query unconditionally (Hooks rules) — inapplicable
+  // queries are disabled via their `enabled`/null args.
+  const elementScope = scope.kind === 'element' ? scope : null;
+  const fileScope = scope.kind === 'file' ? scope : null;
+  const elementQuery = useElementCertificates(
+    projectId,
+    elementScope?.modelId ?? '',
+    elementScope?.globalId ?? null,
+  );
+  const projectQuery = useProjectCertificates(projectId, scope.kind === 'project');
+  const fileQuery = useFileCertificates(projectId, fileScope?.fileId ?? null);
+  const query =
+    scope.kind === 'project' ? projectQuery
+    : scope.kind === 'file' ? fileQuery
+    : elementQuery;
   const deleteMutation = useDeleteCertificate(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
@@ -143,7 +157,13 @@ export function EntityCertificatesBody({
         ) : filteredCertificates.length === 0 ? (
           <PanelEmptyState
             icon={FileBadge}
-            message={isProject ? t('emptyProjectEmpty') : t('emptyNoItems')}
+            message={
+              scope.kind === 'project'
+                ? t('emptyProjectEmpty')
+                : scope.kind === 'file'
+                  ? t('emptyFileEmpty')
+                  : t('emptyNoItems')
+            }
           />
         ) : (
           <div className="flex flex-col">
@@ -240,9 +260,9 @@ export function EntityCertificatesBody({
         projectId={projectId}
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        linkedElementGlobalId={globalId}
-        linkedModelId={globalId !== null ? modelId : null}
-        linkedFileId={globalId !== null ? fileId : null}
+        linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
+        linkedModelId={scope.kind === 'element' ? scope.modelId : null}
+        linkedFileId={scope.kind === 'project' ? null : scope.fileId}
       />
 
       <CertificateViewerDialog

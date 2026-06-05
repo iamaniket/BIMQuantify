@@ -1,17 +1,16 @@
 'use client';
 
-import { Eyebrow } from '@bimstitch/ui';
 import { Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 
+import { ContextLine } from '@/components/shared/viewer/shared/ContextLine';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { PanelTabs, type TabDef } from '@/components/shared/viewer/shared/PanelTabs';
-import { useProjectAttachmentCount } from '@/features/attachments/useAttachments';
-import { useProjectCertificateCount } from '@/features/certificates/useCertificates';
-import { useProjectFindingCount } from '@/features/findings/useFindings';
+import { usePdfPageAttachmentCount, useProjectAttachmentCount } from '@/features/attachments/useAttachments';
+import { useFileCertificateCount, useProjectCertificateCount } from '@/features/certificates/useCertificates';
+import { useFileFindingCount, useProjectFindingCount } from '@/features/findings/useFindings';
 import { ElementHeader } from '@/features/viewer/3d/properties/ElementHeader';
-import { PdfAttachmentsBody } from '@/features/viewer/pdf/PdfAttachmentsBody';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
@@ -38,20 +37,25 @@ type EntityInspectorPanelProps = {
   onPdfPinModeChange?: (enabled: boolean) => void;
 };
 
-export function EntityInspectorPanel(props: EntityInspectorPanelProps): JSX.Element {
-  if (props.isPdf === true) {
-    return <PdfInspector {...props} />;
-  }
-  return <IfcInspector {...props} />;
-}
-
-function IfcInspector({
+/**
+ * The viewer inspector — a single shared panel for both the 3D IFC viewer and
+ * the 2D PDF viewer. The header (ContextLine), tab bar (Attachments / Findings
+ * / Certificates) and bodies are identical across modes; only how each tab is
+ * *scoped* differs: 3D scopes by selected element (or project when nothing is
+ * selected); PDF scopes attachments by page (pin-linked) and findings /
+ * certificates by the open file.
+ */
+export function EntityInspectorPanel({
   metadata,
   projectId,
   modelId,
   fileId,
   requestedView,
   requestNonce,
+  isPdf,
+  pdfCurrentPage,
+  pdfPinMode,
+  onPdfPinModeChange,
 }: EntityInspectorPanelProps): JSX.Element {
   const t = useTranslations('viewerInspector');
   const tAttachments = useTranslations('viewerAttachments');
@@ -66,6 +70,16 @@ function IfcInspector({
     }
   }, [requestedView, requestNonce]);
 
+  // Force the Attachments tab when PDF pin mode turns on, so the attachments
+  // body is the mounted tab that consumes the dropped-pin handoff.
+  const prevPinMode = useRef(false);
+  useEffect(() => {
+    if (isPdf === true && pdfPinMode === true && !prevPinMode.current) {
+      setTab('attachments');
+    }
+    prevPinMode.current = pdfPinMode === true;
+  }, [isPdf, pdfPinMode]);
+
   const autoOpenNonce =
     requestedView !== undefined &&
     requestNonce !== undefined &&
@@ -73,7 +87,7 @@ function IfcInspector({
       ? requestNonce
       : undefined;
 
-  const handleAutoOpenConsumed = () => setConsumedNonce(requestNonce);
+  const handleAutoOpenConsumed = (): void => { setConsumedNonce(requestNonce); };
 
   const {
     element,
@@ -82,68 +96,92 @@ function IfcInspector({
     isMultiSelection,
   } = useSelectedElement(metadata);
 
-  const isProjectMode = !hasSelection;
+  const isProjectMode = isPdf !== true && !hasSelection;
+  const elementGlobalId = element?.globalId ?? null;
+  const pdfFileId = isPdf === true ? fileId : null;
+  const pdfPage = isPdf === true && pdfCurrentPage !== undefined ? pdfCurrentPage : null;
 
-  const attachmentCount = useEntityAttachmentCount(
-    projectId,
-    modelId,
-    element?.globalId ?? null,
-  );
-  const findingCount = useEntityFindingCount(
-    projectId,
-    modelId,
-    element?.globalId ?? null,
-  );
-  const certificateCount = useEntityCertificateCount(
-    projectId,
-    modelId,
-    element?.globalId ?? null,
-  );
+  // All count hooks are called unconditionally (Hooks rules); inapplicable ones
+  // are disabled via their `enabled`/null args, so only the active scope fetches.
+  const attachmentCount = useEntityAttachmentCount(projectId, modelId, elementGlobalId);
+  const findingCount = useEntityFindingCount(projectId, modelId, elementGlobalId);
+  const certificateCount = useEntityCertificateCount(projectId, modelId, elementGlobalId);
   const projectAttachmentCount = useProjectAttachmentCount(projectId, isProjectMode);
   const projectFindingCount = useProjectFindingCount(projectId, isProjectMode);
   const projectCertificateCount = useProjectCertificateCount(projectId, isProjectMode);
+  const pdfAttachmentCount = usePdfPageAttachmentCount(projectId, fileId, pdfPage);
+  const fileFindingCount = useFileFindingCount(projectId, pdfFileId);
+  const fileCertificateCount = useFileCertificateCount(projectId, pdfFileId);
 
-  if (selectedAll) {
+  // --- Early states (after all hooks) ---
+  if (isPdf === true) {
+    if (pdfCurrentPage === undefined || pdfPinMode === undefined || onPdfPinModeChange === undefined) {
+      return <PanelEmptyState icon={Info} message={t('messages.pdfNotInitialized')} />;
+    }
+  } else if (selectedAll) {
     const storeTotalElements = useViewerEntityStore.getState().totalElements;
     const count = storeTotalElements > 0 ? storeTotalElements : (metadata?.totalElements ?? 0);
-    return (
-      <PanelEmptyState
-        icon={Info}
-        message={t('messages.allSelected', { count })}
-      />
-    );
+    return <PanelEmptyState icon={Info} message={t('messages.allSelected', { count })} />;
+  } else if (isMultiSelection) {
+    return <PanelEmptyState icon={Info} message={tAttachments('emptyMultiSelection')} />;
+  } else if (!isProjectMode && element === null) {
+    return <PanelEmptyState icon={Info} message={t('messages.noElementData')} />;
   }
 
-  if (isMultiSelection) {
-    return (
-      <PanelEmptyState
-        icon={Info}
-        message={tAttachments('emptyMultiSelection')}
-      />
-    );
-  }
+  // --- Per-tab counts for the active scope ---
+  const attachTabCount = isPdf === true
+    ? pdfAttachmentCount
+    : isProjectMode ? projectAttachmentCount : attachmentCount;
+  const findingTabCount = isPdf === true
+    ? fileFindingCount
+    : isProjectMode ? projectFindingCount : findingCount;
+  const certTabCount = isPdf === true
+    ? fileCertificateCount
+    : isProjectMode ? projectCertificateCount : certificateCount;
 
   const tabs: TabDef<Tab>[] = [
-    {
-      id: 'attachments',
-      label: t('tabAttachments'),
-      count: isProjectMode ? projectAttachmentCount : attachmentCount,
-    },
-    {
-      id: 'findings',
-      label: t('tabFindings'),
-      count: isProjectMode ? projectFindingCount : findingCount,
-    },
-    {
-      id: 'certificates',
-      label: t('tabCertificates'),
-      count: isProjectMode ? projectCertificateCount : certificateCount,
-    },
+    { id: 'attachments', label: t('tabAttachments'), count: attachTabCount },
+    { id: 'findings', label: t('tabFindings'), count: findingTabCount },
+    { id: 'certificates', label: t('tabCertificates'), count: certTabCount },
   ];
 
+  // --- Header + body for the active scope ---
   let header: JSX.Element;
   let body: JSX.Element;
-  if (isProjectMode) {
+
+  if (isPdf === true && pdfCurrentPage !== undefined && pdfPinMode !== undefined && onPdfPinModeChange !== undefined) {
+    header = <ContextLine tag="PDF" name={t('pdfPageHeader', { page: pdfCurrentPage })} />;
+    body =
+      tab === 'attachments' ? (
+        <EntityAttachmentsBody
+          projectId={projectId}
+          scope={{
+            kind: 'pdf-page',
+            fileId,
+            modelId,
+            page: pdfCurrentPage,
+            pinMode: pdfPinMode,
+            onPinModeChange: onPdfPinModeChange,
+          }}
+          autoOpenNonce={requestedView === 'attachments' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
+        />
+      ) : tab === 'findings' ? (
+        <EntityFindingsBody
+          projectId={projectId}
+          scope={{ kind: 'file', fileId }}
+          autoOpenNonce={requestedView === 'findings' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
+        />
+      ) : (
+        <EntityCertificatesBody
+          projectId={projectId}
+          scope={{ kind: 'file', fileId }}
+          autoOpenNonce={requestedView === 'certificates' ? autoOpenNonce : undefined}
+          onAutoOpenConsumed={handleAutoOpenConsumed}
+        />
+      );
+  } else if (isProjectMode) {
     header = (
       <ElementHeader
         type={metadata?.schema ?? 'IFC'}
@@ -154,68 +192,57 @@ function IfcInspector({
       tab === 'attachments' ? (
         <EntityAttachmentsBody
           projectId={projectId}
-          modelId={modelId}
-          fileId={fileId}
-          globalId={null}
+          scope={{ kind: 'project' }}
           autoOpenNonce={requestedView === 'attachments' ? autoOpenNonce : undefined}
           onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       ) : tab === 'findings' ? (
         <EntityFindingsBody
           projectId={projectId}
-          modelId={modelId}
-          fileId={fileId}
-          globalId={null}
+          scope={{ kind: 'project' }}
           autoOpenNonce={requestedView === 'findings' ? autoOpenNonce : undefined}
           onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       ) : (
         <EntityCertificatesBody
           projectId={projectId}
-          modelId={modelId}
-          fileId={fileId}
-          globalId={null}
+          scope={{ kind: 'project' }}
           autoOpenNonce={requestedView === 'certificates' ? autoOpenNonce : undefined}
           onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       );
   } else if (element !== null) {
     header = <ElementHeader name={element.name} type={element.type} />;
+    const { globalId } = element;
     body =
-      element.globalId === null ? (
+      globalId === null ? (
         <PanelEmptyState icon={Info} message={t('messages.noGlobalId')} />
       ) : tab === 'attachments' ? (
         <EntityAttachmentsBody
           projectId={projectId}
-          modelId={modelId}
-          fileId={fileId}
-          globalId={element.globalId}
+          scope={{ kind: 'element', modelId, fileId, globalId }}
           autoOpenNonce={requestedView === 'attachments' ? autoOpenNonce : undefined}
           onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       ) : tab === 'findings' ? (
         <EntityFindingsBody
           projectId={projectId}
-          modelId={modelId}
-          fileId={fileId}
-          globalId={element.globalId}
+          scope={{ kind: 'element', modelId, fileId, globalId }}
           autoOpenNonce={requestedView === 'findings' ? autoOpenNonce : undefined}
           onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       ) : (
         <EntityCertificatesBody
           projectId={projectId}
-          modelId={modelId}
-          fileId={fileId}
-          globalId={element.globalId}
+          scope={{ kind: 'element', modelId, fileId, globalId }}
           autoOpenNonce={requestedView === 'certificates' ? autoOpenNonce : undefined}
           onAutoOpenConsumed={handleAutoOpenConsumed}
         />
       );
   } else {
-    return (
-      <PanelEmptyState icon={Info} message={t('messages.noElementData')} />
-    );
+    // Unreachable — the early states above cover this — but satisfies the type
+    // checker's definite-assignment analysis for header/body.
+    return <PanelEmptyState icon={Info} message={t('messages.noElementData')} />;
   }
 
   return (
@@ -226,53 +253,6 @@ function IfcInspector({
       ) : null}
       <PanelTabs tabs={tabs} active={tab} onChange={setTab} />
       <div className="min-h-0 flex-1 overflow-hidden">{body}</div>
-    </div>
-  );
-}
-
-function PdfInspector({
-  projectId,
-  modelId,
-  fileId,
-  pdfCurrentPage,
-  pdfPinMode,
-  onPdfPinModeChange,
-}: EntityInspectorPanelProps): JSX.Element {
-  const t = useTranslations('viewerInspector');
-
-  if (
-    pdfCurrentPage === undefined
-    || pdfPinMode === undefined
-    || onPdfPinModeChange === undefined
-  ) {
-    return (
-      <PanelEmptyState
-        icon={Info}
-        message={t('messages.pdfNotInitialized')}
-      />
-    );
-  }
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-border bg-surface-main px-3.5 pb-2.5 pt-3">
-        <div className="flex items-center gap-2 font-sans text-caption uppercase tracking-[0.12em] text-foreground-tertiary">
-          <Eyebrow className="tracking-[0.12em]">PDF</Eyebrow>
-          <span className="rounded-xs bg-primary-light px-1.5 py-px font-bold tracking-[0.08em] text-primary">
-            {t('pdfPageHeader', { page: pdfCurrentPage })}
-          </span>
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <PdfAttachmentsBody
-          projectId={projectId}
-          modelId={modelId}
-          fileId={fileId}
-          pdfCurrentPage={pdfCurrentPage}
-          pdfPinMode={pdfPinMode}
-          onPdfPinModeChange={onPdfPinModeChange}
-        />
-      </div>
     </div>
   );
 }

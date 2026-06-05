@@ -107,3 +107,13 @@ export function usePdfPageAttachments(
     staleTime: 30_000,
   });
 }
+
+/** Page-scoped attachment count — drives the PDF inspector's Attachments tab
+ * pill. Delegates to usePdfPageAttachments, sharing its cache entry. */
+export function usePdfPageAttachmentCount(
+  projectId: string,
+  fileId: string,
+  page: number | null,
+): number {
+  return usePdfPageAttachments(projectId, fileId, page).data?.length ?? 0;
+}
