@@ -155,6 +155,8 @@ export default function ViewerPage(): JSX.Element {
   } | null>(null);
   const [propertiesExpanded, setPropertiesExpanded] = useState(true);
   const [modelTreeExpanded, setModelTreeExpanded] = useState(true);
+  // Track whether initial fit-to-page has been applied for the current file
+  const pdfInitializedRef = useRef<string | null>(null);
 
   const togglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -254,6 +256,16 @@ export default function ViewerPage(): JSX.Element {
   const mode: Mode = fileType === 'pdf' ? 'pdf' : isDrawing ? 'drawing' : 'ifc';
   const isPdf = mode === 'pdf';
   const isIfc = mode === 'ifc';
+
+  // Apply fit-to-page only once when a PDF is first loaded.
+  useEffect(() => {
+    if (!isPdf || documentHandle === null || pdfNumPages === null) return;
+    // Only apply fit-to-page if we haven't already done so for this file
+    if (pdfInitializedRef.current !== fileId) {
+      documentHandle.fitPage();
+      pdfInitializedRef.current = fileId;
+    }
+  }, [isPdf, documentHandle, pdfNumPages, fileId]);
 
   // Vector geometry artifact. PDFs use it as an invisible snap layer; DXF/DWG
   // drawings render it directly (there is no raster page).

@@ -3,11 +3,14 @@
 import {
   ChevronLeft,
   ChevronRight,
+  House,
   Maximize,
+  Minus,
   Monitor,
   MousePointer2,
   Move,
   PenLine,
+  Plus,
   RotateCcw,
   RotateCw,
   Search as SearchIcon,
@@ -172,6 +175,12 @@ export function DocumentToolbar({
     {
       tools: [
         {
+          type: 'button', id: 'home-fit-page', icon: House, label: tb('fitPage'),
+          tooltip: tb('fitPage'),
+          disabled: documentHandle === null,
+          onClick: () => { documentHandle?.fitPage(); },
+        },
+        {
           type: 'button', id: 'select', icon: MousePointer2, label: tb('select'),
           isActive: activeTool === 'select',
           onClick: () => { onActiveToolChange('select'); },
@@ -230,6 +239,25 @@ export function DocumentToolbar({
           type: 'button', id: 'rotate-right', icon: RotateCw, label: tb('rotateRight'),
           disabled: documentHandle === null,
           onClick: () => { documentHandle?.rotateBy(90); },
+        },
+      ],
+    },
+    {
+      tools: [
+        {
+          type: 'button', id: 'zoom-out', icon: Minus, label: tb('zoomOut'),
+          disabled: scale <= MIN_SCALE,
+          onClick: () => { onScaleChange(Math.max(MIN_SCALE, scale - SCALE_STEP)); },
+        },
+        {
+          type: 'node',
+          id: 'zoom-readout',
+          node: <ToolbarReadout>{Math.round(scale * 100)}%</ToolbarReadout>,
+        },
+        {
+          type: 'button', id: 'zoom-in', icon: Plus, label: tb('zoomIn'),
+          disabled: scale >= MAX_SCALE,
+          onClick: () => { onScaleChange(Math.min(MAX_SCALE, scale + SCALE_STEP)); },
         },
       ],
     },
