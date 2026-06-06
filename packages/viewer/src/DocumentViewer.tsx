@@ -103,6 +103,7 @@ export type DocumentViewerProps = {
   navCompass?: { enabled?: boolean; locale?: 'en' | 'nl' };
   /** Camera mouse-button → action mapping. Driven by the portal settings. */
   controls?: CameraControlsConfig;
+  onProgress?: (loaded: number, total: number) => void;
   onLoaded?: (info: DocumentLoadedInfo) => void;
   onError?: (err: Error) => void;
   onScaleChange?: (scale: number) => void;
@@ -122,6 +123,7 @@ function DocumentViewerInner(
     renderOverlay,
     navCompass,
     controls,
+    onProgress,
     onLoaded,
     onError,
     onScaleChange,
@@ -149,6 +151,7 @@ function DocumentViewerInner(
   const searchHighlightRef = useRef<SearchHighlight | null>(searchHighlight ?? null);
   const navCompassRef = useRef(navCompass);
   const controlsRef = useRef(controls);
+  const onProgressRef = useRef(onProgress);
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
   const onScaleChangeRef = useRef(onScaleChange);
@@ -162,6 +165,7 @@ function DocumentViewerInner(
     searchHighlightRef.current = searchHighlight ?? null;
     navCompassRef.current = navCompass;
     controlsRef.current = controls;
+    onProgressRef.current = onProgress;
     onLoadedRef.current = onLoaded;
     onErrorRef.current = onError;
     onScaleChangeRef.current = onScaleChange;
@@ -209,6 +213,9 @@ function DocumentViewerInner(
       });
       if (cancelled) return;
 
+      engine.events.on('doc:progress', ({ loaded, total }) => {
+        onProgressRef.current?.(loaded, total);
+      });
       engine.events.on('doc:loaded', ({ numPages }) => {
         onLoadedRef.current?.({ numPages });
       });

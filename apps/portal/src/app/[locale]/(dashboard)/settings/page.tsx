@@ -177,7 +177,7 @@ export default function SettingsPage(): JSX.Element {
               </p>
             </div>
 
-            <div className="rounded-xl border border-border bg-background-secondary/60 p-4">
+            <div className="rounded-lg border border-border bg-background-secondary/60 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-body2 font-semibold text-foreground">{t('languageTitle')}</div>
@@ -231,7 +231,7 @@ export default function SettingsPage(): JSX.Element {
             </CardHeader>
             <CardBody className="gap-3 py-5">
               {accountSettings.map(({ title, description }) => (
-                <div key={title} className="rounded-xl border border-border bg-background-secondary/60 p-4">
+                <div key={title} className="rounded-lg border border-border bg-background-secondary/60 p-4">
                   <div className="text-body2 font-semibold text-foreground">{title}</div>
                   <p className="mt-1 text-body2 text-foreground-secondary">{description}</p>
                 </div>
@@ -251,7 +251,7 @@ export default function SettingsPage(): JSX.Element {
             </CardHeader>
             <CardBody className="gap-3 py-5">
               {userSettings.map(({ title, description }) => (
-                <div key={title} className="rounded-xl border border-border bg-background p-4">
+                <div key={title} className="rounded-lg border border-border bg-background p-4">
                   <div className="text-body2 font-semibold text-foreground">{title}</div>
                   <p className="mt-1 text-body2 text-foreground-secondary">{description}</p>
                 </div>

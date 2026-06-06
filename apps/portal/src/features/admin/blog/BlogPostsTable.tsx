@@ -75,9 +75,9 @@ export function BlogPostsTable({
             title={post.status === 'published' ? t('unpublish') : t('publish')}
           >
             {post.status === 'published' ? (
-              <EyeOff className="h-[18px] w-[18px]" />
+              <EyeOff className="h-4 w-4" />
             ) : (
-              <Eye className="h-[18px] w-[18px]" />
+              <Eye className="h-4 w-4" />
             )}
           </Button>
           <Button
@@ -87,7 +87,7 @@ export function BlogPostsTable({
             disabled={deletingId === post.id}
             aria-label={t('deleteAria', { title: post.title })}
           >
-            <Trash2 className="h-[18px] w-[18px]" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ),

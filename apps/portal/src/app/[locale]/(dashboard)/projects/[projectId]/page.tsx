@@ -131,7 +131,7 @@ export default function ProjectDetailPage(): JSX.Element {
         />
       }
     >
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 xl:grid-cols-[2fr_3fr]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-cols-[2fr_3fr] xl:grid-cols-[2fr_4fr_2fr]">
         <ProjectChartsPanel
           dossier={dossier}
           template={dossierTemplate}
@@ -141,14 +141,12 @@ export default function ProjectDetailPage(): JSX.Element {
           activityEntries={activityEntries}
         />
 
-        <div className="grid min-h-0 grid-rows-[3fr_2fr] gap-3.5">
-          <RightColumnTabs
-            projectId={projectId}
-            projectCountry={project.country}
-            models={models}
-          />
-          <ActivityPanel projectId={projectId} />
-        </div>
+        <RightColumnTabs
+          projectId={projectId}
+          projectCountry={project.country}
+          models={models}
+        />
+        <ActivityPanel projectId={projectId} />
       </div>
     </PageShell>
   );

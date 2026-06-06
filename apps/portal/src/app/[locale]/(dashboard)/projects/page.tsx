@@ -37,8 +37,8 @@ export default function ProjectsPage(): JSX.Element {
         )}
 
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <div className="relative w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-tertiary" />
+          <div className="relative min-w-[260px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" />
             <Input
               type="search"
               placeholder={t('searchPlaceholder')}

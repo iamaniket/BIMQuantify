@@ -7,6 +7,7 @@ import {
 
 import { cn } from '@bimstitch/ui';
 
+import { Eyebrow } from '@/components/shared/Eyebrow';
 import type { PanelId } from '@/components/shared/viewer/shared/SideRail';
 
 export type { PanelId } from '@/components/shared/viewer/shared/SideRail';
@@ -134,9 +135,9 @@ export function SidePanel({
                     <polyline points="2.5,1.5 5.5,4 2.5,6.5" />
                   </svg>
                 </span>
-                <span className="flex-1 text-xs font-bold uppercase tracking-wider text-white">
+                <Eyebrow as="span" className="flex-1 text-white">
                   {t(PANEL_TITLE_KEYS[activePanel])}
-                </span>
+                </Eyebrow>
                 {headerActions?.[activePanel] && (
                   <div className="flex items-center gap-0.5">
                     {headerActions[activePanel]}
@@ -150,9 +151,9 @@ export function SidePanel({
                   background: 'linear-gradient(135deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
                 }}
               >
-                <span className="text-xs font-bold uppercase tracking-wider text-white">
+                <Eyebrow as="span" className="text-white">
                   {t(PANEL_TITLE_KEYS[activePanel])}
-                </span>
+                </Eyebrow>
                 {headerActions?.[activePanel] && (
                   <div className="flex items-center gap-0.5">
                     {headerActions[activePanel]}

@@ -6,6 +6,7 @@ import { useMemo, type JSX } from 'react';
 
 import { Badge } from '@bimstitch/ui';
 
+import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell, type KpiItem } from '@/components/shared/layout/HeroShell';
 import type { Finding } from '@/lib/api/schemas';
 
@@ -72,9 +73,9 @@ export function FindingsBoardHero({ projectName, findings }: Props): JSX.Element
   return (
     <HeroShell
       image={
-        <div className="flex h-[140px] w-[200px] items-center justify-center rounded-[10px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
-          <ClipboardCheck className="h-12 w-12" />
-        </div>
+        <HeroImage>
+          <ClipboardCheck className="h-12 w-12 text-primary-foreground" />
+        </HeroImage>
       }
       title={projectName}
       badge={

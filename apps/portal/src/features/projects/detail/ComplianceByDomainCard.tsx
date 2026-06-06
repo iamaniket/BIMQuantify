@@ -6,6 +6,7 @@ import { useState, type JSX } from 'react';
 import { Tabs, TabsList, TabsTrigger, Progress } from '@bimstitch/ui';
 
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
+import { Eyebrow } from '@/components/shared/Eyebrow';
 import { ComplianceDonut } from '@/components/shared/charts/ComplianceDonut';
 import { ComplianceBar } from '@/components/shared/charts/ComplianceBar';
 import { TrendSparkline } from '@/components/shared/charts/TrendSparkline';
@@ -65,9 +66,9 @@ export function ComplianceByDomainCard({
       {/* Header */}
       <div className="relative mb-3 flex items-end justify-between">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+          <Eyebrow>
             {t('eyebrow')}
-          </div>
+          </Eyebrow>
           <div className="mt-0.5 text-title3 font-medium tracking-tight text-foreground">
             {t('articlesTitle', { checks: totalChecks.toLocaleString() })}
           </div>
@@ -191,9 +192,9 @@ export function ComplianceByDomainCard({
       {/* Trend strip */}
       <div className="relative mt-3 flex shrink-0 items-center gap-3 border-t border-border pt-3">
         <div>
-          <div className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+          <Eyebrow>
             {t('trendEyebrow')}
-          </div>
+          </Eyebrow>
           <div className="mt-0.5 flex items-baseline gap-1.5">
             <span className="text-title2 font-semibold text-primary">{overallScore}%</span>
             <span className="text-caption font-bold text-success">↑ 4.2</span>

@@ -248,7 +248,7 @@ function CaptureOverlay({ action, combo, cat, onCancel }: {
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ background: 'rgba(15,23,42,0.55)' }}>
-      <div className="w-full max-w-md rounded-xl border border-border bg-surface-main p-6 text-center shadow-lg">
+      <div className="w-full max-w-md rounded-lg border border-border bg-surface-main p-6 text-center shadow-lg">
         <div className="text-caption font-bold uppercase tracking-widest text-primary">
           {t('listeningTitle')}
         </div>

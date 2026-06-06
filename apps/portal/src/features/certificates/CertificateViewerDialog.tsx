@@ -19,6 +19,7 @@ import {
   type BadgeVariant,
 } from '@bimstitch/ui';
 
+import { Eyebrow } from '@/components/shared/Eyebrow';
 import { formatDateFull, formatSize } from '@/features/attachments/attachmentMeta';
 import {
   getCertificateExpiryState,
@@ -141,9 +142,9 @@ type MetaValue = { label: string; value: ReactNode; mono: boolean };
 function MetaGroup({ title, rows }: { title: string; rows: MetaValue[] }): JSX.Element {
   return (
     <div>
-      <div className="mb-2.5 font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-foreground-tertiary">
+      <Eyebrow className="mb-2.5">
         {title}
-      </div>
+      </Eyebrow>
       <div className="flex flex-col">
         {rows.map(({ label, value, mono }) => (
           <div

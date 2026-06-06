@@ -12,9 +12,11 @@ import {
 } from '@bimstitch/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
+import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { PanelHeading } from '@/components/shared/PanelHeading';
 import { AccessRequestApproveDialog } from '@/features/admin/access-requests/AccessRequestApproveDialog';
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
@@ -83,9 +85,9 @@ export default function AdminAccessRequestsPage(): JSX.Element {
       hero={
         <HeroShell
           image={
-            <div className="flex h-[140px] w-[200px] items-center justify-center overflow-hidden rounded-[10px] bg-gradient-to-br from-primary to-primary-light shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
+            <HeroImage>
               <Inbox className="h-12 w-12 text-primary-foreground" />
-            </div>
+            </HeroImage>
           }
           title={t('hero.title')}
           badge={<Badge variant="info">{t('hero.badge')}</Badge>}
@@ -140,17 +142,7 @@ export default function AdminAccessRequestsPage(): JSX.Element {
         </Select>
       </TableToolbar>
 
-      {/* Panel header */}
-      <div className="flex shrink-0 items-center gap-4 border-b border-border px-5 py-2.5">
-        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-3">
-          <div className="text-caption font-bold uppercase tracking-widest text-foreground-tertiary after:ml-2 after:opacity-50 after:content-['·']">
-            {t('panel.eyebrow')}
-          </div>
-          <div className="flex flex-wrap items-baseline gap-2.5">
-            <h2 className="text-body2 font-bold">{t('panel.title', { count: allRequests.length })}</h2>
-          </div>
-        </div>
-      </div>
+      <PanelHeading eyebrow={t('panel.eyebrow')} title={t('panel.title', { count: allRequests.length })} />
 
       {/* Content */}
       <div className="min-h-0 flex-1 overflow-y-auto p-5">

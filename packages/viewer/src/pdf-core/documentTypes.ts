@@ -54,6 +54,7 @@ export function clampScale(s: number): number {
  * the same bus by augmenting this map.
  */
 export interface DocumentEvents extends PluginLifecycleEvents {
+  'doc:progress': { loaded: number; total: number };
   'doc:loaded': { numPages: number };
   'doc:unloaded': undefined;
   'doc:error': { error: Error };

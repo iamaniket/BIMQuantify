@@ -139,7 +139,7 @@ export default function ReportDetailPage(): JSX.Element {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
         {summary !== undefined ? (
           <>
             <ComplianceHealthCard summary={summary} holdbackAmount="—" embedded />
@@ -162,7 +162,7 @@ export default function ReportDetailPage(): JSX.Element {
         )}
       </div>
 
-      <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-background p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
             {t('ruleBreakdownTitle')}
@@ -203,7 +203,7 @@ export default function ReportDetailPage(): JSX.Element {
         )}
       </div>
 
-      <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-background p-4 shadow-sm">
         <div className="mb-3 text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
           {t('issuesTitle', { count: issues.length })}
         </div>

@@ -1,16 +1,30 @@
 'use client';
 
-import { useState, type JSX } from 'react';
+import { useCallback, useMemo, useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
+import { Select } from '@bimstitch/ui';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import type { ActivityCategory, ProjectActivityEntry } from '@/lib/api/schemas/activity';
 
 import { useProjectActivity } from './useProjectActivity';
 
-type Filter = 'all' | ActivityCategory;
+const PAGE_SIZE = 25;
 
-const FILTERS: readonly Filter[] = ['all', 'upload', 'scan', 'change'] as const;
+type TimeWindow = 'all' | '1h' | '24h' | '7d' | '30d';
+type TypeFilter = 'all' | ActivityCategory;
+
+const TIME_DURATIONS: Record<Exclude<TimeWindow, 'all'>, number> = {
+  '1h': 3_600_000,
+  '24h': 86_400_000,
+  '7d': 604_800_000,
+  '30d': 2_592_000_000,
+};
+
+function computeSince(window: TimeWindow): string | undefined {
+  if (window === 'all') return undefined;
+  return new Date(Date.now() - TIME_DURATIONS[window]).toISOString();
+}
 
 function categoryStyle(category: string): { bg: string; fg: string; glyph: string } {
   switch (category) {
@@ -80,53 +94,66 @@ type ActivityPanelProps = {
 };
 
 export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
-  const [filter, setFilter] = useState<Filter>('all');
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const t = useTranslations('activity');
 
-  const category = filter === 'all' ? undefined : filter;
-  const { data: entries, isLoading } = useProjectActivity(projectId, category);
+  const category = typeFilter === 'all' ? undefined : typeFilter;
+  const since = useMemo(() => computeSince(timeWindow), [timeWindow]);
+  const { data: entries, isLoading } = useProjectActivity(projectId, category, limit, since);
   const count = entries?.length ?? 0;
+  const hasMore = count >= limit;
 
-  const filterLabels: Record<Filter, string> = {
-    all: t('filterAll'),
-    upload: t('filterUploads'),
-    scan: t('filterScans'),
-    change: t('filterChanges'),
-  };
+  const handleLoadMore = useCallback(() => {
+    setLimit((prev) => prev + PAGE_SIZE);
+  }, []);
 
   return (
-    <div className="relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+    <div className="relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
       <BlueprintTexture />
 
-      {/* Header — filter pill bar left, eyebrow/title right */}
-      <div className="relative flex shrink-0 items-center gap-4 px-5 pb-2.5 pt-4">
-        <div className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-surface-high p-0.5">
-          {FILTERS.map((key) => {
-            const active = filter === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => { setFilter(key); }}
-                className={`rounded-md px-2.5 py-1 text-body3 font-medium transition-colors ${
-                  active
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-foreground-tertiary hover:text-foreground-secondary'
-                }`}
-              >
-                {filterLabels[key]}
-              </button>
-            );
-          })}
-        </div>
-        <div className="ml-auto min-w-0 text-right">
+      {/* Header — eyebrow/title left, two dropdowns right */}
+      <div className="relative flex shrink-0 items-center gap-2.5 px-4 pb-2.5 pt-4">
+        <div className="min-w-0">
           <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
             {t('title')}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-baseline justify-end gap-2">
+          <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
             <span className="font-sans text-[17px] font-bold leading-tight tracking-tight text-foreground">
               {t('events', { count })}
             </span>
+          </div>
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="relative">
+            <Select
+              selectSize="sm"
+              value={timeWindow}
+              onChange={(e) => { setTimeWindow(e.target.value as TimeWindow); setLimit(PAGE_SIZE); }}
+              className="w-auto min-w-0 pr-7"
+            >
+              <option value="all">{t('timeAll')}</option>
+              <option value="1h">{t('timeLastHour')}</option>
+              <option value="24h">{t('timeLast24h')}</option>
+              <option value="7d">{t('timeLast7d')}</option>
+              <option value="30d">{t('timeLast30d')}</option>
+            </Select>
+            <svg className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 8 10 12 14 8" /></svg>
+          </div>
+          <div className="relative">
+            <Select
+              selectSize="sm"
+              value={typeFilter}
+              onChange={(e) => { setTypeFilter(e.target.value as TypeFilter); setLimit(PAGE_SIZE); }}
+              className="w-auto min-w-0 pr-7"
+            >
+              <option value="all">{t('typeAll')}</option>
+              <option value="upload">{t('typeUploads')}</option>
+              <option value="scan">{t('typeScans')}</option>
+              <option value="change">{t('typeChanges')}</option>
+            </Select>
+            <svg className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 8 10 12 14 8" /></svg>
           </div>
         </div>
       </div>
@@ -150,40 +177,51 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
             {t('noActivity')}
           </div>
         ) : (
-          entries?.map((entry) => {
-            const s = categoryStyle(entry.category);
-            const i18nKey = ACTION_I18N_KEY[entry.action];
-            const description = i18nKey !== undefined
-              ? t(i18nKey, descriptionParams(entry))
-              : entry.action;
-            const detail = detailText(entry);
+          <>
+            {entries?.map((entry) => {
+              const s = categoryStyle(entry.category);
+              const i18nKey = ACTION_I18N_KEY[entry.action];
+              const description = i18nKey !== undefined
+                ? t(i18nKey, descriptionParams(entry))
+                : entry.action;
+              const detail = detailText(entry);
 
-            return (
-              <div
-                key={entry.id}
-                className="flex gap-3 border-b border-dashed border-border py-2.5 last:border-b-0"
-              >
+              return (
                 <div
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px] text-[12px] font-bold"
-                  style={{ background: s.bg, color: s.fg }}
+                  key={entry.id}
+                  className="flex gap-3 border-b border-dashed border-border py-2.5 last:border-b-0"
                 >
-                  {s.glyph}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[12.5px] leading-tight text-foreground">
-                    <span className="font-semibold">{entry.actor_name ?? 'System'}</span>{' '}
-                    <span className="text-foreground-tertiary">· {description}</span>
+                  <div
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px] text-[12px] font-bold"
+                    style={{ background: s.bg, color: s.fg }}
+                  >
+                    {s.glyph}
                   </div>
-                  {detail.length > 0 && (
-                    <div className="mt-0.5 text-[11px] text-foreground-tertiary">{detail}</div>
-                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[12.5px] leading-tight text-foreground">
+                      <span className="font-semibold">{entry.actor_name ?? 'System'}</span>{' '}
+                      <span className="text-foreground-tertiary">· {description}</span>
+                    </div>
+                    {detail.length > 0 && (
+                      <div className="mt-0.5 text-[11px] text-foreground-tertiary">{detail}</div>
+                    )}
+                  </div>
+                  <div className="whitespace-nowrap text-[10.5px] text-foreground-tertiary">
+                    {formatRelativeTime(entry.created_at)}
+                  </div>
                 </div>
-                <div className="whitespace-nowrap text-[10.5px] text-foreground-tertiary">
-                  {formatRelativeTime(entry.created_at)}
-                </div>
-              </div>
-            );
-          })
+              );
+            })}
+            {hasMore && (
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                className="mt-2 w-full rounded-md bg-surface-high py-1.5 text-body3 font-medium text-foreground-secondary transition-colors hover:bg-surface-main hover:text-foreground"
+              >
+                {t('loadMore')}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

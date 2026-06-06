@@ -24,8 +24,11 @@ import {
   TabsTrigger,
 } from '@bimstitch/ui';
 
+import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
+import { PanelHeading } from '@/components/shared/PanelHeading';
+import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
 import {
@@ -52,8 +55,6 @@ function toInitials(nameOrEmail: string): string {
     .join('');
 }
 
-const tabTriggerClass =
-  'relative gap-2 rounded-none bg-transparent px-4 py-3 text-body3 font-medium text-foreground-tertiary shadow-none transition-colors hover:text-foreground-secondary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary';
 
 // ---------------------------------------------------------------------------
 // Hero
@@ -86,9 +87,11 @@ function AccountHero({
             className="h-[140px] w-[200px] rounded-[10px] object-cover shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]"
           />
         ) : (
-          <div className="flex h-[140px] w-[200px] items-center justify-center rounded-[10px] bg-gradient-to-br from-primary to-primary-light text-[28px] font-extrabold text-primary-foreground shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
-            {toInitials(userName)}
-          </div>
+          <HeroImage>
+            <span className="text-[28px] font-extrabold text-primary-foreground">
+              {toInitials(userName)}
+            </span>
+          </HeroImage>
         )
       }
       title={userName}
@@ -679,12 +682,12 @@ export default function AccountPage(): JSX.Element {
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
         <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
-          <TabsTrigger value="profile" className={tabTriggerClass}>
-            <UserRound className="h-[18px] w-[18px]" />
+          <TabsTrigger value="profile" className={TAB_TRIGGER_CLASS}>
+            <UserRound className="h-4 w-4" />
             {t('tabs.profile')}
           </TabsTrigger>
-          <TabsTrigger value="invitations" className={tabTriggerClass}>
-            <Mail className="h-[18px] w-[18px]" />
+          <TabsTrigger value="invitations" className={TAB_TRIGGER_CLASS}>
+            <Mail className="h-4 w-4" />
             {t('tabs.invitations')}
             {invitations.length > 0 && (
               <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
@@ -694,16 +697,7 @@ export default function AccountPage(): JSX.Element {
           </TabsTrigger>
         </TabsList>
 
-        <div className="flex shrink-0 items-center gap-4 border-b border-border px-5 py-2.5">
-          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-3">
-            <div className="text-caption font-bold uppercase tracking-widest text-foreground-tertiary after:ml-2 after:opacity-50 after:content-['·']">
-              {panelHeading.eyebrow}
-            </div>
-            <div className="flex flex-wrap items-baseline gap-2.5">
-              <h2 className="text-body2 font-bold">{panelHeading.title}</h2>
-            </div>
-          </div>
-        </div>
+        <PanelHeading eyebrow={panelHeading.eyebrow} title={panelHeading.title} />
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           <TabsContent value="profile" className="mt-0">

@@ -17,6 +17,8 @@ import {
 } from '@bimstitch/ui';
 
 import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { PanelHeading } from '@/components/shared/PanelHeading';
+import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { getOrgCertificateDownloadUrl } from '@/lib/api/orgCertificates';
@@ -30,8 +32,6 @@ import { useOrgCertificates } from '@/features/orgCertificates/useOrgCertificate
 import { useDeleteOrgCertificate } from '@/features/orgCertificates/useDeleteOrgCertificate';
 import { useAuth } from '@/providers/AuthProvider';
 
-const TAB_CLASS =
-  'relative gap-2 rounded-none bg-transparent px-4 py-3 text-body3 font-medium text-foreground-tertiary shadow-none transition-colors hover:text-foreground-secondary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary';
 
 const TYPE_OPTIONS: Array<{ value: CertificateTypeValue | 'all'; key: string }> = [
   { value: 'all', key: 'filterAll' },
@@ -100,12 +100,12 @@ export default function CertificatesPage(): JSX.Element {
       >
         {/* Underline tabs */}
         <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
-          <TabsTrigger value="overview" className={TAB_CLASS}>
-            <LayoutGrid className="h-[18px] w-[18px]" />
+          <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
+            <LayoutGrid className="h-4 w-4" />
             {t('tabs.overview')}
           </TabsTrigger>
-          <TabsTrigger value="certificates" className={TAB_CLASS}>
-            <Table2 className="h-[18px] w-[18px]" />
+          <TabsTrigger value="certificates" className={TAB_TRIGGER_CLASS}>
+            <Table2 className="h-4 w-4" />
             {t('tabs.certificates')}
             <Badge variant="primary" size="sm" bordered={false}>
               {certificates.length}
@@ -113,17 +113,7 @@ export default function CertificatesPage(): JSX.Element {
           </TabsTrigger>
         </TabsList>
 
-        {/* Panel heading */}
-        <div className="flex shrink-0 items-center gap-4 border-b border-border px-5 py-2.5">
-          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-3">
-            <div className="text-caption font-bold uppercase tracking-widest text-foreground-tertiary after:ml-2 after:opacity-50 after:content-['·']">
-              {panelHeading.eyebrow}
-            </div>
-            <div className="flex flex-wrap items-baseline gap-2.5">
-              <h2 className="text-body2 font-bold">{panelHeading.title}</h2>
-            </div>
-          </div>
-        </div>
+        <PanelHeading eyebrow={panelHeading.eyebrow} title={panelHeading.title} />
 
         {/* Toolbar for certificates tab */}
         {tab === 'certificates' && (

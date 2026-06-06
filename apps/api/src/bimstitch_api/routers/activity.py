@@ -8,6 +8,7 @@ project member can read; org admins and superusers bypass the membership check.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -54,6 +55,7 @@ for _action, _cat in _CATEGORY_MAP.items():
 async def list_project_activity(
     project_id: UUID,
     category: str | None = Query(default=None, pattern="^(upload|scan|change)$"),
+    since: datetime | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
@@ -88,6 +90,11 @@ async def list_project_activity(
     if category is not None:
         actions = _CATEGORY_ACTIONS.get(category, [])
         stmt = stmt.where(AuditLog.action.in_(actions))
+
+    if since is not None:
+        # Ensure timezone-aware (treat naive as UTC)
+        since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)
+        stmt = stmt.where(AuditLog.created_at >= since_aware)
 
     rows = (await session.execute(stmt)).all()
 

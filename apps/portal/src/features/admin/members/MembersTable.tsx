@@ -221,7 +221,7 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
                 aria-label={t('actions')}
                 disabled={busyUserId === m.user_id}
               >
-                <MoreHorizontal className="h-[18px] w-[18px]" />
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>

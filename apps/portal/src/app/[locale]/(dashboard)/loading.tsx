@@ -14,7 +14,7 @@ export default function DashboardLoading(): JSX.Element {
       {/* Card grid placeholder */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="flex flex-col overflow-hidden rounded-xl border border-border">
+          <div key={i} className="flex flex-col overflow-hidden rounded-lg border border-border">
             <Skeleton className="h-36 w-full" />
             <div className="flex flex-col gap-3 p-4">
               <Skeleton className="h-5 w-3/4" />

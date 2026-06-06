@@ -208,7 +208,7 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
                 title={t('viewFile')}
                 className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
               >
-                <Eye className="h-[18px] w-[18px]" />
+                <Eye className="h-4 w-4" />
               </Link>
             ) : (
               <button
@@ -219,7 +219,7 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
                 title={t('noViewableFile')}
                 className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Eye className="h-[18px] w-[18px]" />
+                <Eye className="h-4 w-4" />
               </button>
             )}
             <button
@@ -228,7 +228,7 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
               title={t('uploadFile')}
               className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
             >
-              <Upload className="h-[18px] w-[18px]" />
+              <Upload className="h-4 w-4" />
             </button>
             <input
               ref={inputRef}
@@ -317,13 +317,13 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
               onFocus={prewarmViewer}
             >
               <Button variant="ghost" size="sm">
-                <Eye className="h-[18px] w-[18px]" />
+                <Eye className="h-4 w-4" />
                 {t('view')}
               </Button>
             </Link>
           ) : latestFile !== undefined ? (
             <Button variant="ghost" size="sm" disabled>
-              <Eye className="h-[18px] w-[18px]" />
+              <Eye className="h-4 w-4" />
               {t('view')}
             </Button>
           ) : null}
@@ -332,7 +332,7 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
             size="sm"
             onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
           >
-            <Upload className="h-[18px] w-[18px]" />
+            <Upload className="h-4 w-4" />
             {t('upload')}
           </Button>
           {canCheckBbl && latestFile !== undefined ? (
@@ -348,14 +348,14 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
               {complianceMutation.isPending ? (
                 <Spinner size="sm" className="text-current" />
               ) : (
-                <ShieldCheck className="h-[18px] w-[18px]" />
+                <ShieldCheck className="h-4 w-4" />
               )}
               {t('checkBbl')}
             </Button>
           ) : null}
         </div>
         <Button variant="ghost" size="sm" className="text-error hover:text-error">
-          <Trash2 className="h-[18px] w-[18px]" />
+          <Trash2 className="h-4 w-4" />
           {t('remove')}
         </Button>
       </DetailCardFooter>

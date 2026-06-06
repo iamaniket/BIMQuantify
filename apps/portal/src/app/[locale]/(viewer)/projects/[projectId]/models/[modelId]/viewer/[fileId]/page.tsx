@@ -44,6 +44,7 @@ import { DrawingInfoBody } from '@/features/viewer/2d/drawing/DrawingInfoBody';
 import { useDrawingMetadata } from '@/features/viewer/2d/drawing/useDrawingMetadata';
 import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
+import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoadingOverlay';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
 import { StatusBar } from '@/features/viewer/shared/StatusBar';
 import { useDocumentShortcuts } from '@/features/viewer/2d/useDocumentShortcuts';
@@ -87,10 +88,6 @@ function buildBundle(response: ViewerBundleResponse): ViewerBundle {
   if (response.properties_url !== null) out.propertiesUrl = response.properties_url;
   if (response.fragments_key !== null) out.cacheKey = response.fragments_key;
   return out;
-}
-
-function formatMB(bytes: number): string {
-  return (bytes / (1024 * 1024)).toFixed(1);
 }
 
 function bundleErrorMessage(err: Error | null): string | null {
@@ -258,6 +255,7 @@ export default function ViewerPage(): JSX.Element {
 
   const handlePdfLoaded = useCallback(({ numPages }: { numPages: number }) => {
     setPdfNumPages(numPages);
+    setProgress(null);
   }, []);
 
   const handlePdfError = useCallback((err: Error) => {
@@ -432,6 +430,7 @@ export default function ViewerPage(): JSX.Element {
         className="absolute inset-0"
         navCompass={{ enabled: true, locale: locale as 'en' | 'nl' }}
         controls={pdfSettings.controlsLinked ? controlsFrom3D(settings.controls) : pdfSettings.controls}
+        onProgress={onProgress}
         onLoaded={handlePdfLoaded}
         onError={handlePdfError}
         onScaleChange={setPdfScale}
@@ -488,20 +487,13 @@ export default function ViewerPage(): JSX.Element {
       <div className="relative min-h-0 flex-1">
         {canvas}
 
-        {isIfc && sceneReady && !viewerReady && progress !== null ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-12">
-            <div className="flex w-72 flex-col items-center gap-2 rounded-lg bg-background/80 px-4 py-3 shadow-md backdrop-blur-sm">
-              <span className="text-caption text-foreground-secondary">
-                Loading model… {formatMB(progress.loaded)} / {formatMB(progress.total)} MB
-              </span>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
-                <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-150"
-                  style={{ width: `${progress.total > 0 ? (progress.loaded / progress.total) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
+        {(
+          (isIfc && sceneReady && !viewerReady && progress !== null) ||
+          (isPdf && progress !== null && pdfNumPages === null)
+        ) ? (
+          <ModelLoadingOverlay
+            progress={progress.total > 0 ? (progress.loaded / progress.total) * 100 : 0}
+          />
         ) : null}
 
         {isIfc ? <ContextMenu handle={viewerHandleRef.current} /> : null}

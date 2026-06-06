@@ -62,7 +62,7 @@ export function OrgCertificatesOverview({ certificates }: Props): JSX.Element {
 
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-      <div className="rounded-xl border border-border bg-surface-low p-5">
+      <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-4 text-body2 font-bold">{t('overview.byTypeTitle')}</h3>
         <div className="space-y-3">
           {TYPE_KEYS.map((key) => (
@@ -78,7 +78,7 @@ export function OrgCertificatesOverview({ certificates }: Props): JSX.Element {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface-low p-5">
+      <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-4 text-body2 font-bold">{t('overview.byExpiryTitle')}</h3>
         <div className="space-y-3">
           {(['valid', 'expiring', 'expired', 'none'] as const).map((state) => (
@@ -95,7 +95,7 @@ export function OrgCertificatesOverview({ certificates }: Props): JSX.Element {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface-low p-5 xl:col-span-2">
+      <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
         <h3 className="mb-4 text-body2 font-bold">{t('overview.recentTitle')}</h3>
         {recent.length === 0 ? (
           <p className="text-body3 text-foreground-tertiary">{t('list.emptyTitle')}</p>

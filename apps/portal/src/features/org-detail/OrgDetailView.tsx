@@ -22,6 +22,8 @@ import {
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { PageTableContent } from '@/components/shared/PageTable';
+import { PanelHeading } from '@/components/shared/PanelHeading';
+import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
 import { MembersTable } from '@/features/admin/members/MembersTable';
@@ -379,7 +381,7 @@ function OverviewPane({
           </CardHeader>
           <CardBody className="space-y-0 p-0">
             {recentEvents.length === 0 ? (
-              <div className="flex h-20 items-center justify-center text-body3 text-foreground-tertiary">
+              <div className="flex h-32 items-center justify-center text-body3 text-foreground-tertiary">
                 No recent activity
               </div>
             ) : (
@@ -703,8 +705,6 @@ export function OrgDetailView({
     },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
 
-  const tabTriggerClass =
-    'relative gap-2 rounded-none bg-transparent px-4 py-3 text-body3 font-medium text-foreground-tertiary shadow-none transition-colors hover:text-foreground-secondary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary';
 
   const storageOverLimit = org.activeStorageLimitGb !== null && org.activeStorageUsedGb >= org.activeStorageLimitGb;
 
@@ -739,26 +739,26 @@ export function OrgDetailView({
       >
         <div className="flex shrink-0 items-center border-b border-border bg-surface-main px-5">
           <TabsList className="min-w-0 flex-1 gap-1 rounded-none border-b-0 bg-transparent p-0">
-            <TabsTrigger value="overview" className={tabTriggerClass}>
-              <LayoutGrid className="h-[18px] w-[18px]" />
+            <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
+              <LayoutGrid className="h-4 w-4" />
               {t('tabs.overview')}
             </TabsTrigger>
-            <TabsTrigger value="members" className={tabTriggerClass}>
-              <Users className="h-[18px] w-[18px]" />
+            <TabsTrigger value="members" className={TAB_TRIGGER_CLASS}>
+              <Users className="h-4 w-4" />
               {t('tabs.members')}
               <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
                 {members.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="audit" className={tabTriggerClass}>
-              <Activity className="h-[18px] w-[18px]" />
+            <TabsTrigger value="audit" className={TAB_TRIGGER_CLASS}>
+              <Activity className="h-4 w-4" />
               {t('tabs.audit')}
               <span className="rounded-full bg-background-hover px-1.5 py-px text-caption font-bold text-foreground-tertiary">
                 {auditEntries.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className={tabTriggerClass}>
-              <Bell className="h-[18px] w-[18px]" />
+            <TabsTrigger value="notifications" className={TAB_TRIGGER_CLASS}>
+              <Bell className="h-4 w-4" />
               {t('tabs.notifications')}
             </TabsTrigger>
           </TabsList>
@@ -769,21 +769,7 @@ export function OrgDetailView({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-4 border-b border-border px-5 py-2.5">
-          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-3">
-            <div className="text-caption font-bold uppercase tracking-widest text-foreground-tertiary after:ml-2 after:opacity-50 after:content-['·']">
-              {panelHeading.eyebrow}
-            </div>
-            <div className="flex flex-wrap items-baseline gap-2.5">
-              <h2 className="text-body2 font-bold">{panelHeading.title}</h2>
-              {panelHeading.sub !== '' && (
-                <span className="text-body3 text-foreground-tertiary before:mr-1.5 before:opacity-60 before:content-['·']">
-                  {panelHeading.sub}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <PanelHeading eyebrow={panelHeading.eyebrow} title={panelHeading.title} sub={panelHeading.sub} />
 
         {tab === 'members' && (
           <MembersToolbar

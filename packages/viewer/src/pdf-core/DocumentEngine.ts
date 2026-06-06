@@ -142,6 +142,10 @@ export class DocumentEngine {
         disableStream: false,
         verbosity: pdfjsLib.VerbosityLevel.ERRORS,
       });
+      task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+        if (token !== this.loadToken) return;
+        this.events.emit('doc:progress', { loaded, total });
+      };
       const newDoc = await task.promise;
       if (token !== this.loadToken) {
         await newDoc.destroy();

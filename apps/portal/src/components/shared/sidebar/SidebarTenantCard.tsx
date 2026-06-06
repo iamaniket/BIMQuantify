@@ -7,6 +7,7 @@ import { useState, type JSX } from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';
 
+import { Eyebrow } from '@/components/shared/Eyebrow';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { useSidebar } from './SidebarContext';
@@ -98,9 +99,9 @@ export function SidebarTenantCard(): JSX.Element | null {
 
   return (
     <div className="px-3 pb-2 pt-3">
-      <div className="mb-1.5 px-2.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-sidebar-fg-muted">
+      <Eyebrow className="mb-1.5 px-2.5 text-sidebar-fg-muted">
         {t('label')}
-      </div>
+      </Eyebrow>
       <div className="relative">
         <button
           type="button"
@@ -118,10 +119,10 @@ export function SidebarTenantCard(): JSX.Element | null {
             <img
               src={imageUrl}
               alt={name}
-              className="h-[18px] w-[18px] shrink-0 rounded object-cover"
+              className="h-4 w-4 shrink-0 rounded object-cover"
             />
           ) : (
-            <div className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded bg-gradient-to-br from-sidebar-accent to-sidebar-accent-strong text-[8px] font-extrabold text-sidebar-fg">
+            <div className="grid h-4 w-4 shrink-0 place-items-center rounded bg-gradient-to-br from-sidebar-accent to-sidebar-accent-strong text-[8px] font-extrabold text-sidebar-fg">
               {acronym}
             </div>
           )}

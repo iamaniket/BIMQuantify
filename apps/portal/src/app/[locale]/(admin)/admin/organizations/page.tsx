@@ -17,9 +17,12 @@ import {
 } from '@bimstitch/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
+import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { PanelHeading } from '@/components/shared/PanelHeading';
+import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import { AccessRequestApproveDialog } from '@/features/admin/access-requests/AccessRequestApproveDialog';
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
@@ -40,8 +43,6 @@ import type {
 } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
-const TAB_CLASS =
-  'relative gap-2 rounded-none bg-transparent px-4 py-3 text-body3 font-medium text-foreground-tertiary shadow-none transition-colors hover:text-foreground-secondary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary';
 
 // ---------------------------------------------------------------------------
 // Hero
@@ -63,9 +64,9 @@ function AdminOrgsHero({
   return (
     <HeroShell
       image={
-        <div className="flex h-[140px] w-[200px] items-center justify-center overflow-hidden rounded-[10px] bg-gradient-to-br from-primary to-primary-light shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
+        <HeroImage>
           <Building2 className="h-12 w-12 text-primary-foreground" />
-        </div>
+        </HeroImage>
       }
       title={t('title')}
       badge={
@@ -130,7 +131,7 @@ function OverviewPane({
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
       {/* Tenants by status */}
-      <div className="rounded-xl border border-border bg-surface-low p-5">
+      <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-4 text-body2 font-bold">{t('byStatusTitle')}</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -158,7 +159,7 @@ function OverviewPane({
       </div>
 
       {/* Seat allocation */}
-      <div className="rounded-xl border border-border bg-surface-low p-5">
+      <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-4 text-body2 font-bold">{t('seatAllocationTitle')}</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -175,7 +176,7 @@ function OverviewPane({
       </div>
 
       {/* Recently created */}
-      <div className="rounded-xl border border-border bg-surface-low p-5 xl:col-span-2">
+      <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
         <h3 className="mb-4 text-body2 font-bold">{t('recentTitle')}</h3>
         {recentOrgs.length === 0 ? (
           <p className="text-body3 text-foreground-tertiary">{t('noTenants')}</p>
@@ -378,19 +379,19 @@ export default function AdminOrganizationsPage(): JSX.Element {
       >
         {/* Underline tabs */}
         <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
-          <TabsTrigger value="overview" className={TAB_CLASS}>
-            <LayoutGrid className="h-[18px] w-[18px]" />
+          <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
+            <LayoutGrid className="h-4 w-4" />
             {t('tabs.overview')}
           </TabsTrigger>
-          <TabsTrigger value="organizations" className={TAB_CLASS}>
-            <Table2 className="h-[18px] w-[18px]" />
+          <TabsTrigger value="organizations" className={TAB_TRIGGER_CLASS}>
+            <Table2 className="h-4 w-4" />
             {t('tabs.organizations')}
             <Badge variant="primary" size="sm" bordered={false}>
               {allOrgs.length}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="requests" className={TAB_CLASS}>
-            <Inbox className="h-[18px] w-[18px]" />
+          <TabsTrigger value="requests" className={TAB_TRIGGER_CLASS}>
+            <Inbox className="h-4 w-4" />
             {t('tabs.requests')}
             {pendingRequestCount > 0 && (
               <Badge variant="primary" size="sm" bordered={false}>
@@ -398,8 +399,8 @@ export default function AdminOrganizationsPage(): JSX.Element {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="blog" className={TAB_CLASS}>
-            <BookOpen className="h-[18px] w-[18px]" />
+          <TabsTrigger value="blog" className={TAB_TRIGGER_CLASS}>
+            <BookOpen className="h-4 w-4" />
             {tBlog('tab')}
             <Badge variant="default" size="sm" bordered={false}>
               {blogPosts.length}
@@ -407,22 +408,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
           </TabsTrigger>
         </TabsList>
 
-        {/* Panel header */}
-        <div className="flex shrink-0 items-center gap-4 border-b border-border px-5 py-2.5">
-          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-3">
-            <div className="text-caption font-bold uppercase tracking-widest text-foreground-tertiary after:ml-2 after:opacity-50 after:content-['·']">
-              {panelHeading.eyebrow}
-            </div>
-            <div className="flex flex-wrap items-baseline gap-2.5">
-              <h2 className="text-body2 font-bold">{panelHeading.title}</h2>
-              {panelHeading.sub !== '' && (
-                <span className="text-body3 text-foreground-tertiary before:mr-1.5 before:opacity-60 before:content-['·']">
-                  {panelHeading.sub}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <PanelHeading eyebrow={panelHeading.eyebrow} title={panelHeading.title} sub={panelHeading.sub} />
 
         {/* Toolbar for organizations tab */}
         {tab === 'organizations' && (

@@ -104,7 +104,7 @@ export function PwaInstallPrompt(): JSX.Element | null {
       data-testid="pwa-install-prompt"
       role="dialog"
       aria-labelledby="pwa-install-title"
-      className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-border bg-background p-4 shadow-lg"
+      className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
     >
       <h2 id="pwa-install-title" className="text-body1 font-semibold text-foreground">
         {t('promptTitle')}

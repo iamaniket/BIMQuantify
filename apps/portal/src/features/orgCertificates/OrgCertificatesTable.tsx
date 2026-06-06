@@ -114,7 +114,7 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
             onClick={() => { onView(cert); }}
             className="inline-grid h-7 w-7 place-items-center rounded text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground"
           >
-            <Eye className="h-[18px] w-[18px]" />
+            <Eye className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -122,7 +122,7 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
             onClick={() => { onDownload(cert); }}
             className="inline-grid h-7 w-7 place-items-center rounded text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground"
           >
-            <Download className="h-[18px] w-[18px]" />
+            <Download className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -130,7 +130,7 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
             onClick={() => { onDelete(cert); }}
             className="inline-grid h-7 w-7 place-items-center rounded text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-error"
           >
-            <Trash2 className="h-[18px] w-[18px]" />
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       ),

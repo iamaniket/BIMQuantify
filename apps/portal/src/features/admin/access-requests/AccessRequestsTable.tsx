@@ -39,8 +39,8 @@ export function AccessRequestsTable({ requests, onApprove, onReject }: Props): J
             aria-label={isExpanded ? t('collapse') : t('expand')}
           >
             {isExpanded
-              ? <ChevronUp className="h-[18px] w-[18px]" />
-              : <ChevronDown className="h-[18px] w-[18px]" />}
+              ? <ChevronUp className="h-4 w-4" />
+              : <ChevronDown className="h-4 w-4" />}
           </button>
         );
       },
@@ -66,10 +66,10 @@ export function AccessRequestsTable({ requests, onApprove, onReject }: Props): J
         req.status === 'new' ? (
           <div className="flex gap-1">
             <Button size="sm" variant="ghost" onClick={() => { onApprove(req); }} aria-label={t('approve')}>
-              <Check className="h-[18px] w-[18px] text-success" />
+              <Check className="h-4 w-4 text-success" />
             </Button>
             <Button size="sm" variant="ghost" onClick={() => { onReject(req); }} aria-label={t('reject')}>
-              <X className="h-[18px] w-[18px] text-error" />
+              <X className="h-4 w-4 text-error" />
             </Button>
           </div>
         ) : null,

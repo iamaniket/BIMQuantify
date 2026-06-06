@@ -6,6 +6,7 @@ import type { JSX } from 'react';
 
 import { useTranslations } from 'next-intl';
 
+import { Eyebrow } from '@/components/shared/Eyebrow';
 import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
 import { SidebarNavItem } from '@/components/shared/sidebar/SidebarNavItem';
 
@@ -31,9 +32,9 @@ export function SidebarWorkspaceNav(): JSX.Element {
   return (
     <div className={collapsed ? 'flex flex-col gap-0.5 px-0 py-2' : 'flex flex-col gap-0.5 px-3 py-2'}>
       {!collapsed && (
-        <div className="mb-1.5 px-2.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-white/55">
+        <Eyebrow className="mb-1.5 px-2.5 text-white/55">
           {t('workspace')}
-        </div>
+        </Eyebrow>
       )}
       {itemDefinitions.map(({ key, icon: Icon, href }) => {
         const isActive = pathname === href || pathname.startsWith(`${href}/`);

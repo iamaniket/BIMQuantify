@@ -7,6 +7,7 @@ import {
   useCallback, useRef, useState, type JSX,
 } from 'react';
 
+import { Eyebrow } from '@/components/shared/Eyebrow';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { ModelInfoBody } from '@/features/viewer/shared/inspector/ModelInfoBody';
 import { MultiPropertiesBody } from '@/features/viewer/shared/inspector/MultiPropertiesBody';
@@ -169,9 +170,9 @@ export function PropertiesSubPanel({
           </svg>
         </span>
 
-        <span className="flex-1 truncate font-sans text-xs font-bold uppercase tracking-wider text-white">
+        <Eyebrow as="span" className="flex-1 truncate text-white">
           {t('propertiesTitle')}
-        </span>
+        </Eyebrow>
 
         {count !== undefined && <CountChip>{count}</CountChip>}
       </button>

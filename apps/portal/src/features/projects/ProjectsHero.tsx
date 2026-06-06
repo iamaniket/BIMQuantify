@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import { Badge } from '@bimstitch/ui';
 
+import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import type { ExpiringCertificatesSummary } from '@/features/certificates/useExpiringCertificates';
 import type { Project } from '@/lib/api/schemas';
@@ -76,9 +77,9 @@ export function ProjectsHero({ projects, certWarning }: Props): JSX.Element {
   return (
     <HeroShell
       image={
-        <div className="flex h-[140px] w-[200px] items-center justify-center rounded-[10px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
-          <FolderKanban className="h-12 w-12" />
-        </div>
+        <HeroImage>
+          <FolderKanban className="h-12 w-12 text-primary-foreground" />
+        </HeroImage>
       }
       title={t('title')}
       badge={<Badge variant="info">{t('badge')}</Badge>}
