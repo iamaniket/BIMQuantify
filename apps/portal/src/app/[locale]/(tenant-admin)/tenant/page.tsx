@@ -75,6 +75,8 @@ export default function TenantAdminPage(): JSX.Element {
     status: activeMembership.organization_status,
     seatLimit: activeMembership.seat_limit,
     seatCountUsed: activeMembership.seat_count_used,
+    activeStorageLimitGb: activeMembership.active_storage_limit_gb,
+    activeStorageUsedGb: activeMembership.active_storage_used_gb,
     imageUrl: activeMembership.organization_image_url ?? null,
     schemaName: null,
     createdAt: null,

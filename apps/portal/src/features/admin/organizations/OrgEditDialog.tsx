@@ -19,6 +19,7 @@ const FormSchema = z.object({
   name: z.string().min(1).max(255),
   status: z.enum(['active', 'suspended']),
   seat_limit: z.string(),
+  active_storage_limit_gb: z.string(),
 });
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -34,6 +35,7 @@ function toFormValues(org: OrganizationRead): FormValues {
     name: org.name,
     status: (org.status === 'suspended' ? 'suspended' : 'active'),
     seat_limit: org.seat_limit === null ? '' : String(org.seat_limit),
+    active_storage_limit_gb: org.active_storage_limit_gb === null ? '' : String(org.active_storage_limit_gb),
   };
 }
 
@@ -69,6 +71,18 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
       parsedLimit = n;
     }
 
+    let parsedStorageLimit: number | null;
+    if (values.active_storage_limit_gb === '') {
+      parsedStorageLimit = null;
+    } else {
+      const n = Number(values.active_storage_limit_gb);
+      if (Number.isNaN(n) || n < 1) {
+        form.setError('active_storage_limit_gb', { message: t('errors.storageLimitInvalid') });
+        return;
+      }
+      parsedStorageLimit = n;
+    }
+
     mutation.mutate(
       {
         id: organization.id,
@@ -76,6 +90,7 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
           name: values.name.trim(),
           status: values.status,
           seat_limit: parsedLimit,
+          active_storage_limit_gb: parsedStorageLimit,
         },
       },
       {
@@ -88,6 +103,12 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
               form.setError('seat_limit', {
                 message: t('errors.seatLimitBelowUsage', {
                   used: organization.seat_count_used,
+                }),
+              });
+            } else if (error.detail === 'STORAGE_LIMIT_BELOW_USAGE') {
+              form.setError('active_storage_limit_gb', {
+                message: t('errors.storageLimitBelowUsage', {
+                  used: organization.active_storage_used_gb,
                 }),
               });
             }
@@ -133,6 +154,22 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
               min={1}
               inputMode="numeric"
               {...useRegisterField(form, 'seat_limit')}
+            />
+          )}
+        </Field>
+        <Field
+          form={form}
+          name="active_storage_limit_gb"
+          label={t('fields.storageLimit')}
+          hint={t('hints.storageLimit', { used: organization.active_storage_used_gb })}
+        >
+          {({ id }) => (
+            <Input
+              id={id}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              {...useRegisterField(form, 'active_storage_limit_gb')}
             />
           )}
         </Field>

@@ -19,6 +19,8 @@ class OrganizationCreate(BaseModel):
     admin_full_name: str | None = Field(default=None, max_length=255)
     # null/omitted = unlimited seats
     seat_limit: int | None = Field(default=None, ge=1, le=100_000)
+    # null/omitted = unlimited active storage
+    active_storage_limit_gb: int | None = Field(default=None, ge=1)
 
 
 class OrganizationUpdate(BaseModel):
@@ -27,6 +29,7 @@ class OrganizationUpdate(BaseModel):
     # explicit `null` clears the cap; an omitted field leaves it untouched
     # (handled in the router via `model_fields_set`).
     seat_limit: int | None = Field(default=None, ge=1, le=100_000)
+    active_storage_limit_gb: int | None = Field(default=None, ge=1)
 
 
 class OrgNameUpdate(BaseModel):
@@ -46,6 +49,8 @@ class OrganizationRead(BaseModel):
     status: str
     seat_limit: int | None
     seat_count_used: int
+    active_storage_limit_gb: int | None
+    active_storage_used_gb: float
     image_url: str | None = None
     created_at: datetime
     provisioned_at: datetime | None
@@ -214,6 +219,7 @@ class AccessRequestAdminRead(BaseModel):
 class AccessRequestApproveInput(BaseModel):
     org_name: str | None = Field(default=None, min_length=1, max_length=255)
     seat_limit: int | None = Field(default=None, ge=1, le=100_000)
+    active_storage_limit_gb: int | None = Field(default=None, ge=1)
 
 
 class AccessRequestApproveResponse(BaseModel):

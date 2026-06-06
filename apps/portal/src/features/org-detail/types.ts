@@ -8,6 +8,8 @@ export type OrgDetailData = {
   status: string;
   seatLimit: number | null;
   seatCountUsed: number;
+  activeStorageLimitGb: number | null;
+  activeStorageUsedGb: number;
   imageUrl: string | null;
   schemaName: string | null;
   createdAt: string | null;

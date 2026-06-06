@@ -10,7 +10,8 @@
     "signOut": "Sign out",
     "features": "Features",
     "blog": "Blog",
-    "requestAccess": "Request access"
+    "requestAccess": "Request access",
+    "contactSales": "Contact sales"
   },
   "hero": {
     "badge": "Early access — now open",
@@ -94,6 +95,17 @@
   },
   "legalBrand": {
     "backToSite": "Back to site"
+  },
+  "contactPage": {
+    "eyebrow": "Pricing & plans",
+    "headline": "Let's find the right plan for your team",
+    "subtitle": "We'll walk you through BimDossier, answer your questions, and help you choose the plan that fits your projects.",
+    "bookCall": "Book a call",
+    "bookCallDescription": "Schedule a 30-minute demo with our team. We'll show you the platform and discuss pricing tailored to your situation.",
+    "orEmail": "Or send us an email",
+    "emailDescription": "Prefer email? Reach out and we'll get back to you within one business day.",
+    "emailButton": "Email us",
+    "noBookingUrl": "Booking link coming soon — please reach out via email in the meantime."
   },
   "requestAccessPage": {
     "backToHome": "Back to home",

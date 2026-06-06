@@ -25,6 +25,7 @@ const FormSchema = z.object({
   admin_email: z.string().email(),
   admin_full_name: z.string().max(255).optional().or(z.literal('')),
   seat_limit: z.string().optional().or(z.literal('')),
+  active_storage_limit_gb: z.string().optional().or(z.literal('')),
 });
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -34,6 +35,7 @@ const EMPTY: FormValues = {
   admin_email: '',
   admin_full_name: '',
   seat_limit: '',
+  active_storage_limit_gb: '',
 };
 
 export type OrgCreatePrefill = {
@@ -138,6 +140,13 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
       form.setError('seat_limit', { message: t('errors.seatLimitInvalid') });
       return;
     }
+    const parsedStorageLimit = values.active_storage_limit_gb === '' || values.active_storage_limit_gb === undefined
+      ? null
+      : Number(values.active_storage_limit_gb);
+    if (parsedStorageLimit !== null && (Number.isNaN(parsedStorageLimit) || parsedStorageLimit < 1)) {
+      form.setError('active_storage_limit_gb', { message: t('errors.storageLimitInvalid') });
+      return;
+    }
     mutation.mutate(
       {
         name: values.name.trim(),
@@ -147,6 +156,7 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
             ? undefined
             : values.admin_full_name.trim(),
         seat_limit: parsedLimit,
+        active_storage_limit_gb: parsedStorageLimit,
       },
       {
         onSuccess: () => {
@@ -251,6 +261,23 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
               inputMode="numeric"
               placeholder={t('placeholders.seatLimit')}
               {...useRegisterField(form, 'seat_limit')}
+            />
+          )}
+        </Field>
+        <Field
+          form={form}
+          name="active_storage_limit_gb"
+          label={t('fields.storageLimit')}
+          hint={t('hints.storageLimit')}
+        >
+          {({ id }) => (
+            <Input
+              id={id}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              placeholder={t('placeholders.storageLimit')}
+              {...useRegisterField(form, 'active_storage_limit_gb')}
             />
           )}
         </Field>

@@ -1559,6 +1559,8 @@
       "status": "Status",
       "allNominal": "All systems nominal",
       "seats": "Seats",
+      "storage": "Storage",
+      "storageWarning": "Storage usage ({used} GB) exceeds the tenant limit ({limit} GB).",
       "unlimitedPlan": "Unlimited plan",
       "members": "Members",
       "total": "total",
@@ -1846,6 +1848,7 @@
         "name": "Tenant",
         "status": "Status",
         "seats": "Seats",
+        "storage": "Storage",
         "created": "Created",
         "empty": "No tenants match your filters."
       },
@@ -1857,16 +1860,19 @@
           "name": "Tenant name",
           "adminEmail": "First admin email",
           "adminFullName": "First admin full name",
-          "seatLimit": "Seat limit"
+          "seatLimit": "Seat limit",
+          "storageLimit": "Storage limit (GB)"
         },
         "placeholders": {
           "name": "Acme Construction",
           "adminEmail": "owner@acme.example",
           "adminFullName": "Jane Doe",
-          "seatLimit": "e.g. 25"
+          "seatLimit": "e.g. 25",
+          "storageLimit": "e.g. 10"
         },
         "hints": {
-          "seatLimit": "Leave empty for unlimited seats. The first admin counts as one seat."
+          "seatLimit": "Leave empty for unlimited seats. The first admin counts as one seat.",
+          "storageLimit": "Leave empty for unlimited storage."
         },
         "existingUser": {
           "checking": "Checking if this email is already in use…",
@@ -1875,7 +1881,8 @@
         },
         "errors": {
           "nameTaken": "A tenant with this name already exists.",
-          "seatLimitInvalid": "Seat limit must be a positive integer."
+          "seatLimitInvalid": "Seat limit must be a positive integer.",
+          "storageLimitInvalid": "Storage limit must be a positive integer."
         }
       },
       "edit": {
@@ -1885,18 +1892,22 @@
         "fields": {
           "name": "Tenant name",
           "status": "Status",
-          "seatLimit": "Seat limit"
+          "seatLimit": "Seat limit",
+          "storageLimit": "Storage limit (GB)"
         },
         "statuses": {
           "active": "Active",
           "suspended": "Suspended"
         },
         "hints": {
-          "seatLimit": "Current usage: {used}. Leave empty for unlimited seats."
+          "seatLimit": "Current usage: {used}. Leave empty for unlimited seats.",
+          "storageLimit": "Current usage: {used} GB. Leave empty for unlimited storage."
         },
         "errors": {
           "seatLimitInvalid": "Seat limit must be a positive integer.",
-          "seatLimitBelowUsage": "Seat limit cannot be lower than the current usage of {used}."
+          "seatLimitBelowUsage": "Seat limit cannot be lower than the current usage of {used}.",
+          "storageLimitInvalid": "Storage limit must be a positive integer.",
+          "storageLimitBelowUsage": "Storage limit cannot be lower than the current usage of {used} GB."
         }
       },
       "detail": {
@@ -1930,6 +1941,8 @@
           "provisioned": "Provisioned",
           "seatLimit": "Seat limit",
           "seatUsed": "Seats in use",
+          "storageLimit": "Storage limit",
+          "storageUsed": "Storage used",
           "unlimited": "Unlimited"
         },
         "members": {

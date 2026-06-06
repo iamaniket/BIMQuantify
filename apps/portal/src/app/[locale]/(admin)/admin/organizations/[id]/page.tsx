@@ -115,6 +115,8 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
     status: raw.status,
     seatLimit: raw.seat_limit,
     seatCountUsed: raw.seat_count_used,
+    activeStorageLimitGb: raw.active_storage_limit_gb,
+    activeStorageUsedGb: raw.active_storage_used_gb,
     imageUrl: raw.image_url ?? null,
     schemaName: raw.schema_name,
     createdAt: raw.created_at,

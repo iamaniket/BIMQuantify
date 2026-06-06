@@ -1559,6 +1559,8 @@
       "status": "Status",
       "allNominal": "Alle systemen operationeel",
       "seats": "Licenties",
+      "storage": "Opslag",
+      "storageWarning": "Opslaggebruik ({used} GB) overschrijdt de tenantlimiet ({limit} GB).",
       "unlimitedPlan": "Onbeperkt abonnement",
       "members": "Leden",
       "total": "totaal",
@@ -1846,6 +1848,7 @@
         "name": "Tenant",
         "status": "Status",
         "seats": "Zetels",
+        "storage": "Opslag",
         "created": "Aangemaakt",
         "empty": "Geen tenants gevonden voor deze filters."
       },
@@ -1857,16 +1860,19 @@
           "name": "Tenantnaam",
           "adminEmail": "E-mail eerste beheerder",
           "adminFullName": "Volledige naam eerste beheerder",
-          "seatLimit": "Zetellimiet"
+          "seatLimit": "Zetellimiet",
+          "storageLimit": "Opslaglimiet (GB)"
         },
         "placeholders": {
           "name": "Acme Bouw",
           "adminEmail": "owner@acme.example",
           "adminFullName": "Jan Jansen",
-          "seatLimit": "bv. 25"
+          "seatLimit": "bv. 25",
+          "storageLimit": "bv. 10"
         },
         "hints": {
-          "seatLimit": "Laat leeg voor onbeperkt aantal zetels. De eerste beheerder telt als één zetel."
+          "seatLimit": "Laat leeg voor onbeperkt aantal zetels. De eerste beheerder telt als één zetel.",
+          "storageLimit": "Laat leeg voor onbeperkte opslag."
         },
         "existingUser": {
           "checking": "Controleren of dit e-mailadres al bestaat…",
@@ -1875,7 +1881,8 @@
         },
         "errors": {
           "nameTaken": "Er bestaat al een tenant met deze naam.",
-          "seatLimitInvalid": "Zetellimiet moet een positief geheel getal zijn."
+          "seatLimitInvalid": "Zetellimiet moet een positief geheel getal zijn.",
+          "storageLimitInvalid": "Opslaglimiet moet een positief geheel getal zijn."
         }
       },
       "edit": {
@@ -1885,18 +1892,22 @@
         "fields": {
           "name": "Tenantnaam",
           "status": "Status",
-          "seatLimit": "Zetellimiet"
+          "seatLimit": "Zetellimiet",
+          "storageLimit": "Opslaglimiet (GB)"
         },
         "statuses": {
           "active": "Actief",
           "suspended": "Geschorst"
         },
         "hints": {
-          "seatLimit": "Huidig gebruik: {used}. Laat leeg voor onbeperkt aantal zetels."
+          "seatLimit": "Huidig gebruik: {used}. Laat leeg voor onbeperkt aantal zetels.",
+          "storageLimit": "Huidig gebruik: {used} GB. Laat leeg voor onbeperkte opslag."
         },
         "errors": {
           "seatLimitInvalid": "Zetellimiet moet een positief geheel getal zijn.",
-          "seatLimitBelowUsage": "Zetellimiet kan niet lager zijn dan het huidige gebruik van {used}."
+          "seatLimitBelowUsage": "Zetellimiet kan niet lager zijn dan het huidige gebruik van {used}.",
+          "storageLimitInvalid": "Opslaglimiet moet een positief geheel getal zijn.",
+          "storageLimitBelowUsage": "Opslaglimiet kan niet lager zijn dan het huidige gebruik van {used} GB."
         }
       },
       "detail": {
@@ -1930,6 +1941,8 @@
           "provisioned": "Opgeleverd",
           "seatLimit": "Zetellimiet",
           "seatUsed": "Zetels in gebruik",
+          "storageLimit": "Opslaglimiet",
+          "storageUsed": "Opslag in gebruik",
           "unlimited": "Onbeperkt"
         },
         "members": {

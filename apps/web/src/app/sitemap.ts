@@ -33,6 +33,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     ...localizedEntry('', now, 'weekly', 1),
     ...localizedEntry('/blog', now, 'weekly', 0.8),
+    ...localizedEntry('/contact', now, 'monthly', 0.7),
     ...localizedEntry('/request-access', now, 'monthly', 0.7),
   ];
 

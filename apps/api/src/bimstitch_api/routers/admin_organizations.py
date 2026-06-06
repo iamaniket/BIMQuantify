@@ -28,9 +28,14 @@ from bimstitch_api.admin.provisioning import (
     provision_organization,
 )
 from bimstitch_api.admin.seats import count_consumed_seats
+from bimstitch_api.admin.storage import (
+    assert_storage_limit_not_below_usage,
+    compute_active_storage_gb,
+    compute_storage_gb_bulk,
+)
 from bimstitch_api.auth.dependencies import require_superuser
 from bimstitch_api.auth.manager import UserManager, get_user_manager
-from bimstitch_api.db import get_async_session
+from bimstitch_api.db import get_async_session, get_session_maker
 from bimstitch_api.email.invites import send_invite_notification
 from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
 from bimstitch_api.models.audit_log import AuditLog
@@ -116,6 +121,7 @@ async def _seat_counts_for(
 async def _serialize_org(
     org: Organization,
     seat_count_used: int,
+    storage_used_gb: float,
     storage: StorageBackend,
 ) -> OrganizationRead:
     image_url: str | None = None
@@ -131,6 +137,8 @@ async def _serialize_org(
         status=org.status.value,
         seat_limit=org.seat_limit,
         seat_count_used=seat_count_used,
+        active_storage_limit_gb=org.active_storage_limit_gb,
+        active_storage_used_gb=storage_used_gb,
         image_url=image_url,
         created_at=org.created_at,
         provisioned_at=org.provisioned_at,
@@ -164,6 +172,7 @@ async def create_organization(
             admin_email=payload.admin_email,
             admin_full_name=payload.admin_full_name,
             seat_limit=payload.seat_limit,
+            active_storage_limit_gb=payload.active_storage_limit_gb,
             requester=requester,
             request=request,
         )
@@ -184,8 +193,13 @@ async def create_organization(
     )
 
     seat_count = await count_consumed_seats(session, result.organization.id)
+    storage_gb = await compute_active_storage_gb(
+        get_session_maker(), result.organization.schema_name,
+    )
     return OrganizationCreateResponse(
-        organization=await _serialize_org(result.organization, seat_count, storage),
+        organization=await _serialize_org(
+            result.organization, seat_count, storage_gb, storage,
+        ),
         admin_user_id=result.admin.id,
         admin_email=result.admin.email,
         activation_required=result.activation_required,
@@ -214,8 +228,12 @@ async def list_organizations(
     result = await session.execute(stmt)
     orgs = list(result.scalars())
     seats = await _seat_counts_for(session, [o.id for o in orgs])
+    storage_usage = await compute_storage_gb_bulk(get_session_maker(), orgs)
     return await asyncio.gather(
-        *[_serialize_org(o, seats.get(o.id, 0), storage) for o in orgs]
+        *[
+            _serialize_org(o, seats.get(o.id, 0), storage_usage.get(o.id, 0.0), storage)
+            for o in orgs
+        ]
     )
 
 
@@ -230,7 +248,8 @@ async def get_organization(
     if org is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND")
     seat_count = await count_consumed_seats(session, organization_id)
-    return await _serialize_org(org, seat_count, storage)
+    storage_gb = await compute_active_storage_gb(get_session_maker(), org.schema_name)
+    return await _serialize_org(org, seat_count, storage_gb, storage)
 
 
 @router.patch("/organizations/{organization_id}", response_model=OrganizationRead)
@@ -254,6 +273,7 @@ async def update_organization(
         "name": org.name,
         "status": org.status.value,
         "seat_limit": org.seat_limit,
+        "active_storage_limit_gb": org.active_storage_limit_gb,
     }
     updates: dict = {}
     action = "organization.updated"
@@ -289,6 +309,15 @@ async def update_organization(
         updates["seat_limit"] = payload.seat_limit
         seat_limit_changed = True
 
+    storage_limit_changed = False
+    if "active_storage_limit_gb" in fields_set and payload.active_storage_limit_gb != org.active_storage_limit_gb:
+        if payload.active_storage_limit_gb is not None:
+            await assert_storage_limit_not_below_usage(
+                get_session_maker(), org, payload.active_storage_limit_gb,
+            )
+        updates["active_storage_limit_gb"] = payload.active_storage_limit_gb
+        storage_limit_changed = True
+
     if updates:
         await session.execute(
             update(Organization)
@@ -301,7 +330,20 @@ async def update_organization(
             "name": refreshed.name,
             "status": refreshed.status.value,
             "seat_limit": refreshed.seat_limit,
+            "active_storage_limit_gb": refreshed.active_storage_limit_gb,
         }
+        if storage_limit_changed:
+            await audit.record_for_org(
+                session,
+                organization_id,
+                action="organization.storage_limit_changed",
+                resource_type="organization",
+                resource_id=organization_id,
+                before={"active_storage_limit_gb": before["active_storage_limit_gb"]},
+                after={"active_storage_limit_gb": after["active_storage_limit_gb"]},
+                actor_user_id=requester.id,
+                request=request,
+            )
         # If both status and seat_limit changed, prefer the more specific action.
         if seat_limit_changed and "status" not in updates and "name" not in updates:
             action = "organization.seat_limit_changed"
@@ -334,7 +376,8 @@ async def update_organization(
         org = refreshed
 
     seat_count = await count_consumed_seats(session, organization_id)
-    return await _serialize_org(org, seat_count, storage)
+    storage_gb = await compute_active_storage_gb(get_session_maker(), org.schema_name)
+    return await _serialize_org(org, seat_count, storage_gb, storage)
 
 
 @router.delete("/organizations/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -619,6 +662,7 @@ async def approve_access_request(
     # back to the requester's company name when org_name is omitted.
     org_name = (payload.org_name if payload and payload.org_name else ar.company).strip()
     seat_limit = payload.seat_limit if payload else None
+    storage_limit = payload.active_storage_limit_gb if payload else None
 
     # Pre-check for `Organization.name` uniqueness (case-insensitive). Catching
     # this here gives the admin a clean inline error on the dialog's org_name
@@ -646,6 +690,7 @@ async def approve_access_request(
             admin_email=ar.work_email,
             admin_full_name=ar.name,
             seat_limit=seat_limit,
+            active_storage_limit_gb=storage_limit,
             requester=requester,
             request=request,
         )
@@ -694,9 +739,14 @@ async def approve_access_request(
     )
 
     seat_count = await count_consumed_seats(session, result.organization.id)
+    storage_gb = await compute_active_storage_gb(
+        get_session_maker(), result.organization.schema_name,
+    )
     return AccessRequestApproveResponse(
         access_request=AccessRequestAdminRead.model_validate(ar, from_attributes=True),
-        organization=await _serialize_org(result.organization, seat_count, storage),
+        organization=await _serialize_org(
+            result.organization, seat_count, storage_gb, storage,
+        ),
         admin_email=result.admin.email,
         activation_required=result.activation_required,
     )

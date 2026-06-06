@@ -12,6 +12,7 @@ import type { OrganizationRead } from '@/lib/api/schemas';
 
 import { OrgStatusBadge } from './OrgStatusBadge';
 import { SeatUsage } from './SeatUsage';
+import { StorageUsage } from './StorageUsage';
 
 type Props = {
   organizations: OrganizationRead[];
@@ -35,6 +36,7 @@ export function OrgTable({ organizations }: Props): JSX.Element {
           <TableHead>{t('name')}</TableHead>
           <TableHead>{t('status')}</TableHead>
           <TableHead>{t('seats')}</TableHead>
+          <TableHead>{t('storage')}</TableHead>
           <TableHead>{t('created')}</TableHead>
         </TableRow>
       </TableHeader>
@@ -59,6 +61,12 @@ export function OrgTable({ organizations }: Props): JSX.Element {
               <SeatUsage
                 seatCountUsed={org.seat_count_used}
                 seatLimit={org.seat_limit}
+              />
+            </TableCell>
+            <TableCell>
+              <StorageUsage
+                usedGb={org.active_storage_used_gb}
+                limitGb={org.active_storage_limit_gb}
               />
             </TableCell>
             <TableCell className="text-foreground-tertiary">

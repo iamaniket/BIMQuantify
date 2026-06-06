@@ -40,6 +40,8 @@ export const OrgMembershipBriefSchema = z.object({
   member_status: z.string(),
   seat_limit: z.union([z.number().int(), z.null()]),
   seat_count_used: z.number().int(),
+  active_storage_limit_gb: z.union([z.number().int(), z.null()]),
+  active_storage_used_gb: z.number(),
   organization_image_url: z.union([z.string(), z.null()]).optional(),
 });
 

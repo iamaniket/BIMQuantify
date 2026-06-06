@@ -11,6 +11,8 @@ export const OrganizationReadSchema = z.object({
   status: z.string(),
   seat_limit: z.union([z.number().int(), z.null()]),
   seat_count_used: z.number().int(),
+  active_storage_limit_gb: z.union([z.number().int(), z.null()]),
+  active_storage_used_gb: z.number(),
   image_url: z.union([z.string(), z.null()]).optional(),
   created_at: z.string(),
   provisioned_at: z.union([z.string(), z.null()]),
@@ -37,6 +39,9 @@ export const OrganizationCreateInputSchema = z.object({
   seat_limit: z.number().int().min(1).max(100_000)
     .nullable()
     .optional(),
+  active_storage_limit_gb: z.number().int().min(1)
+    .nullable()
+    .optional(),
 });
 
 export type OrganizationCreateInput = z.infer<typeof OrganizationCreateInputSchema>;
@@ -45,6 +50,7 @@ export const OrganizationUpdateInputSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   status: z.enum(['active', 'suspended']).optional(),
   seat_limit: z.union([z.number().int().min(1).max(100_000), z.null()]).optional(),
+  active_storage_limit_gb: z.union([z.number().int().min(1), z.null()]).optional(),
 });
 
 export type OrganizationUpdateInput = z.infer<typeof OrganizationUpdateInputSchema>;
@@ -162,6 +168,7 @@ export type AccessRequestApproveResponse = z.infer<typeof AccessRequestApproveRe
 export type AccessRequestApproveInput = {
   org_name?: string;
   seat_limit?: number | null;
+  active_storage_limit_gb?: number | null;
 };
 
 // ----------------------------------------------------------------------------

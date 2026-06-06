@@ -22,7 +22,8 @@ from bimstitch_api.auth.tokens import create_token, decode_token_full
 from bimstitch_api.cache import get_redis_dep
 from bimstitch_api.cache.blocklist import revoke_jti
 from bimstitch_api.config import get_settings
-from bimstitch_api.db import get_async_session
+from bimstitch_api.admin.storage import compute_storage_gb_bulk
+from bimstitch_api.db import get_async_session, get_session_maker
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -53,6 +54,8 @@ class OrgMembershipBrief(BaseModel):
     member_status: str
     seat_limit: int | None
     seat_count_used: int
+    active_storage_limit_gb: int | None
+    active_storage_used_gb: float
     organization_image_url: str | None = None
 
 
@@ -342,6 +345,12 @@ def build_auth_router() -> APIRouter:
             seat_result = await session.execute(seat_stmt)
             seat_counts = {row[0]: int(row[1]) for row in seat_result.all()}
 
+        # Bulk active-storage lookup per org.
+        storage_usage: dict[UUID, float] = {}
+        active_orgs = [org for _m, org in rows if org.status == OrganizationStatus.active]
+        if active_orgs:
+            storage_usage = await compute_storage_gb_bulk(get_session_maker(), active_orgs)
+
         # Resolve org image presigned URLs
         storage = get_storage()
         att_bucket = get_attachments_bucket()
@@ -363,6 +372,8 @@ def build_auth_router() -> APIRouter:
                     member_status=m.status.value,
                     seat_limit=org.seat_limit,
                     seat_count_used=seat_counts.get(org.id, 0),
+                    active_storage_limit_gb=org.active_storage_limit_gb,
+                    active_storage_used_gb=storage_usage.get(org.id, 0.0),
                     organization_image_url=image_urls.get(org.id),
                 )
             )

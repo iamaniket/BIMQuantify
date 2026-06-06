@@ -10,7 +10,8 @@
     "signOut": "Uitloggen",
     "features": "Functies",
     "blog": "Blog",
-    "requestAccess": "Toegang aanvragen"
+    "requestAccess": "Toegang aanvragen",
+    "contactSales": "Neem contact op"
   },
   "hero": {
     "badge": "Early access — nu beschikbaar",
@@ -94,6 +95,17 @@
   },
   "legalBrand": {
     "backToSite": "Terug naar site"
+  },
+  "contactPage": {
+    "eyebrow": "Prijzen & abonnementen",
+    "headline": "Laten we het juiste abonnement vinden voor uw team",
+    "subtitle": "We laten u BimDossier zien, beantwoorden uw vragen en helpen u het abonnement te kiezen dat bij uw projecten past.",
+    "bookCall": "Plan een gesprek",
+    "bookCallDescription": "Plan een demo van 30 minuten met ons team. We laten u het platform zien en bespreken prijzen op maat.",
+    "orEmail": "Of stuur ons een e-mail",
+    "emailDescription": "Liever e-mailen? Neem contact op en we reageren binnen één werkdag.",
+    "emailButton": "Mail ons",
+    "noBookingUrl": "Boekingslink volgt binnenkort — neem in de tussentijd contact op via e-mail."
   },
   "requestAccessPage": {
     "backToHome": "Terug naar home",

@@ -19,6 +19,7 @@ export function Header(): JSX.Element {
   const navLinks = [
     { label: t('features'), href: '/#features' },
     { label: t('blog'), href: '/blog' },
+    { label: t('contactSales'), href: '/contact' },
     { label: t('requestAccess'), href: '/request-access' },
   ] as const;
 

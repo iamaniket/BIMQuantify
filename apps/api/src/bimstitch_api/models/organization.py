@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import BigInteger, DateTime, Integer, String, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -48,6 +48,9 @@ class Organization(MasterBase):
 
     # Max consumed seats (pending + active + suspended members). NULL = unlimited.
     seat_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Active storage cap in GB. NULL = unlimited.
+    active_storage_limit_gb: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # S3 object key for the org logo/image (e.g. "org-images/{id}.png").
     image_key: Mapped[str | None] = mapped_column(String(512), nullable=True)

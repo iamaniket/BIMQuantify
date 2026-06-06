@@ -136,6 +136,17 @@ function OrgDetailHero({
   const unlimited = org.seatLimit === null;
   const seatPct = org.seatLimit === null ? (org.seatCountUsed > 0 ? 8 : 0) : Math.round((org.seatCountUsed / org.seatLimit) * 100);
 
+  const storageUnlimited = org.activeStorageLimitGb === null;
+  const storagePct = org.activeStorageLimitGb === null
+    ? (org.activeStorageUsedGb > 0 ? 8 : 0)
+    : Math.round((org.activeStorageUsedGb / org.activeStorageLimitGb) * 100);
+  const storageOverLimit = org.activeStorageLimitGb !== null && org.activeStorageUsedGb >= org.activeStorageLimitGb;
+  const storageBarColor = storagePct >= 95
+    ? 'bg-error'
+    : storagePct >= 80
+      ? 'bg-warning'
+      : 'bg-gradient-to-r from-primary to-primary-light';
+
   const lastEvent: AuditEntry | null = auditEntries.length > 0 ? auditEntries[0] ?? null : null;
   const todayCount = auditEntries.filter((e) => {
     const d = new Date(e.created_at);
@@ -226,6 +237,21 @@ function OrgDetailHero({
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light"
                   style={{ width: `${Math.min(seatPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          ),
+        },
+        {
+          label: t('storage'),
+          value: `${org.activeStorageUsedGb} GB`,
+          sub: (
+            <div className="flex flex-col gap-1">
+              <span>/ {storageUnlimited ? '∞' : `${org.activeStorageLimitGb} GB`}</span>
+              <div className="h-1 w-16 overflow-hidden rounded-full bg-background-hover">
+                <div
+                  className={`h-full rounded-full ${storageBarColor}`}
+                  style={{ width: `${Math.min(storagePct, 100)}%` }}
                 />
               </div>
             </div>
@@ -679,6 +705,8 @@ export function OrgDetailView({
   const tabTriggerClass =
     'relative gap-2 rounded-none bg-transparent px-4 py-3 text-body3 font-medium text-foreground-tertiary shadow-none transition-colors hover:text-foreground-secondary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary';
 
+  const storageOverLimit = org.activeStorageLimitGb !== null && org.activeStorageUsedGb >= org.activeStorageLimitGb;
+
   return (
     <PageShell
       hero={
@@ -692,6 +720,17 @@ export function OrgDetailView({
         />
       }
     >
+      {storageOverLimit && (
+        <div className="flex items-center gap-2 border-b border-warning/30 bg-warning/10 px-5 py-2.5 text-body3 text-warning-dark dark:text-warning">
+          <Shield className="h-4 w-4 shrink-0" />
+          <span>
+            {t('hero.storageWarning', {
+              used: org.activeStorageUsedGb,
+              limit: org.activeStorageLimitGb!,
+            })}
+          </span>
+        </div>
+      )}
       <Tabs
         value={tab}
         onValueChange={setTab}

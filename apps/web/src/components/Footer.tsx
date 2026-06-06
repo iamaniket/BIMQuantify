@@ -53,6 +53,7 @@ export function Footer(): JSX.Element {
       title: tFooter('product'),
       links: [
         { label: tHeader('features'), href: '/#features', external: undefined },
+        { label: tHeader('contactSales'), href: '/contact', external: undefined },
         { label: tHeader('requestAccess'), href: '/request-access', external: undefined },
       ],
     },
