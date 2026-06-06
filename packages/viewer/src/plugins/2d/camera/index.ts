@@ -1,10 +1,14 @@
 /**
  * 2D camera plugin — attaches `camera-controls` to the shared ortho camera
  * from `DocumentContext`. Handles mouse-button → action mapping,
- * zoom-at-cursor, fit commands, and keyboard shortcuts.
+ * zoom-at-cursor, fit commands, and tool-mode integration (pan/zoom tools).
  *
  * Rotation is locked (this is a 2D plan viewer). Pan = truck,
  * zoom = camera.zoom on the orthographic camera.
+ *
+ * This is the sole navigation controller — no separate pan/zoom plugins.
+ * The same camera-controls library drives both 2D and 3D viewers, so the
+ * mouse-button settings from the settings dialog apply uniformly.
  */
 
 import * as THREE from 'three';
@@ -13,6 +17,7 @@ import CameraControls from 'camera-controls';
 import type {
   DocumentContext,
   DocumentPlugin,
+  DocumentTool,
 } from '../../../pdf-core/documentTypes.js';
 import type { SceneAPI } from '../scene/index.js';
 
@@ -68,13 +73,39 @@ export function cameraPlugin(
   let controls: CameraControls | null = null;
   let rafId = 0;
   let lastTime = 0;
+
+  /** The user-configured left-button action (from settings). */
+  let configuredLeft: CameraAction2D = 'none';
+
   const cleanups: Array<() => void> = [];
 
   function applyConfig(cc: CameraControls, cfg: CameraControlsConfig): void {
-    cc.mouseButtons.left = actionFor(cfg.left) as typeof cc.mouseButtons.left;
+    configuredLeft = cfg.left ?? 'none';
+    cc.mouseButtons.left = actionFor(configuredLeft) as typeof cc.mouseButtons.left;
     cc.mouseButtons.middle = actionFor(cfg.middle ?? 'truck') as typeof cc.mouseButtons.middle;
     cc.mouseButtons.right = actionFor(cfg.right ?? 'truck') as typeof cc.mouseButtons.right;
     cc.mouseButtons.wheel = actionFor(cfg.wheel ?? 'zoom') as typeof cc.mouseButtons.wheel;
+  }
+
+  /**
+   * Sync camera-controls' left button with the active tool.
+   *
+   * - Pan tool  → force TRUCK so left-drag pans, regardless of settings.
+   * - Zoom tool → force NONE (zoom-tool clicks are handled separately).
+   * - Select    → restore the user's configured left-button action.
+   */
+  function syncLeftButtonForTool(cc: CameraControls, tool: DocumentTool): void {
+    switch (tool) {
+      case 'pan':
+        cc.mouseButtons.left = ACTION.TRUCK as typeof cc.mouseButtons.left;
+        break;
+      case 'zoom':
+        cc.mouseButtons.left = ACTION.NONE as typeof cc.mouseButtons.left;
+        break;
+      default:
+        cc.mouseButtons.left = actionFor(configuredLeft) as typeof cc.mouseButtons.left;
+        break;
+    }
   }
 
   function tick(now: number): void {
@@ -129,7 +160,10 @@ export function cameraPlugin(
     },
 
     setButtonConfig(config: CameraControlsConfig): void {
-      if (controls) applyConfig(controls, config);
+      if (!controls) return;
+      applyConfig(controls, config);
+      // Re-apply tool override after a config change.
+      if (ctx) syncLeftButtonForTool(controls, ctx.getTool());
     },
 
     fitToPage(pageW: number, pageH: number, animate = true): void {
@@ -157,6 +191,7 @@ export function cameraPlugin(
 
       const cc = new CameraControls(sceneApi.camera, context.container);
 
+      // Lock rotation — this is a 2D plan viewer.
       cc.azimuthRotateSpeed = 0;
       cc.polarRotateSpeed = 0;
       cc.minPolarAngle = Math.PI / 2;
@@ -164,8 +199,9 @@ export function cameraPlugin(
       cc.minAzimuthAngle = 0;
       cc.maxAzimuthAngle = 0;
 
+      // Dolly is unused in 2D — zoom goes through camera.zoom instead.
       cc.dollyToCursor = true;
-      cc.dollySpeed = 0;
+      cc.dollySpeed = 1;
       cc.infinityDolly = false;
 
       cc.minZoom = 0.05;
@@ -189,13 +225,37 @@ export function cameraPlugin(
       controls = cc;
       lastTime = 0;
 
+      // ── Tool-mode integration ──────────────────────────────────────
+      // Override left button based on the active tool, and handle
+      // zoom-tool click gestures.
+
+      syncLeftButtonForTool(cc, context.getTool());
+      cleanups.push(context.events.on('tool:change', ({ tool }) => {
+        syncLeftButtonForTool(cc, tool);
+      }));
+
+      // Zoom-tool: left-click zooms in at cursor, Alt+left zooms out.
+      const onZoomToolClick = (ev: MouseEvent): void => {
+        if (!controls || context.getTool() !== 'zoom' || ev.button !== 0) return;
+        const factor = ev.altKey ? 1 / 1.3 : 1.3;
+        void controls.zoom(controls.camera.zoom * (factor - 1), true);
+      };
+      context.container.addEventListener('click', onZoomToolClick);
+      cleanups.push(() => context.container.removeEventListener('click', onZoomToolClick));
+
+      // ── Context menu suppression ───────────────────────────────────
+
       const onContextMenu = (e: Event): void => {
         if (cc.mouseButtons.right !== ACTION.NONE) e.preventDefault();
       };
       context.container.addEventListener('contextmenu', onContextMenu);
       cleanups.push(() => context.container.removeEventListener('contextmenu', onContextMenu));
 
+      // ── Render loop ────────────────────────────────────────────────
+
       rafId = requestAnimationFrame(tick);
+
+      // ── Commands ───────────────────────────────────────────────────
 
       context.commands.register('camera.fitPage', (args?: unknown) => {
         const a = args as { pageW?: number; pageH?: number; animate?: boolean } | undefined;

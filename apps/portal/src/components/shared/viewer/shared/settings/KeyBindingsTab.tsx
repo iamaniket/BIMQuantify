@@ -11,10 +11,12 @@ import {
 import type { ViewerHandle } from '@bimstitch/viewer';
 
 import {
+  controlsFrom3D,
   type DocumentAction,
+  type DocumentCameraAction,
   type DocumentSettings,
 } from '@/lib/documentSettings';
-import type { CameraAction, ViewerSettings } from '@/lib/viewerSettings';
+import type { CameraAction, ControlsSettings, ViewerSettings } from '@/lib/viewerSettings';
 
 import { prettyKey } from './prettyKey';
 import {
@@ -24,6 +26,7 @@ import {
 } from './shortcutCategories';
 import { KEYBOARD_ROWS, codeToComboKey } from './keyboardLayout';
 import { MouseDiagram } from './MouseDiagram';
+import { Toggle } from './primitives';
 import { ShortcutList } from './ShortcutList';
 import { VisualKeyboard } from './VisualKeyboard';
 import type { NormalizedBinding, ShortcutCategory } from './types';
@@ -41,6 +44,7 @@ type Props2D = {
   mode: '2d';
   handle: undefined;
   settings: DocumentSettings;
+  controls3D: ControlsSettings;
   onSettingsChange: (next: DocumentSettings) => void;
 };
 
@@ -52,6 +56,12 @@ const CAMERA_ACTIONS: { value: CameraAction; labelKey: string }[] = [
   { value: 'dolly', labelKey: 'cameraDolly' },
   { value: 'zoom', labelKey: 'cameraZoom' },
   { value: 'offset', labelKey: 'cameraOffset' },
+  { value: 'none', labelKey: 'cameraNone' },
+];
+
+const CAMERA_ACTIONS_2D: { value: DocumentCameraAction; labelKey: string }[] = [
+  { value: 'truck', labelKey: 'cameraTruck' },
+  { value: 'zoom', labelKey: 'cameraZoom' },
   { value: 'none', labelKey: 'cameraNone' },
 ];
 
@@ -362,22 +372,64 @@ function Mouse3DSettings({
   );
 }
 
-function Mouse2DDiagram(): JSX.Element {
+function Mouse2DDiagram({
+  settings, controls3D, selected, onPick,
+}: {
+  settings: DocumentSettings;
+  controls3D: ControlsSettings;
+  selected: string | null;
+  onPick: (id: string) => void;
+}): JSX.Element {
   const t = useTranslations('viewer.shortcuts');
+  const ts = useTranslations('viewer.settings');
+  const effective = settings.controlsLinked
+    ? controlsFrom3D(controls3D)
+    : settings.controls;
+  const actionLabel = (action: DocumentCameraAction): string => {
+    const found = CAMERA_ACTIONS_2D.find((a) => a.value === action);
+    return found !== undefined ? ts(found.labelKey) : action;
+  };
+  const interactiveProps = settings.controlsLinked
+    ? {}
+    : { selected, onPick };
   return (
     <MouseDiagram
-      leftButton={{ label: t('selectLabel'), sublabel: undefined }}
-      middleButton={{ label: t('zoomLabel'), sublabel: t('zoomInOutShort') }}
-      rightButton={{ label: t('panLabel'), sublabel: undefined }}
-      scrollWheel={t('zoomInOutAlways')}
+      leftButton={{ label: t('selectLabel'), sublabel: t('dragSublabel', { action: actionLabel(effective.left) }) }}
+      middleButton={{ label: t('zoomLabel'), sublabel: t('dragSublabel', { action: actionLabel(effective.middle) }) }}
+      rightButton={{ label: t('panLabel'), sublabel: t('dragSublabel', { action: actionLabel(effective.right) }) }}
+      scrollWheel={t('zoomInOut', { action: actionLabel(effective.wheel) })}
+      {...interactiveProps}
     />
   );
 }
 
-function Mouse2DSettings(): JSX.Element {
+function Mouse2DSettings({
+  settings, controls3D, onSettingsChange,
+}: {
+  settings: DocumentSettings;
+  controls3D: ControlsSettings;
+  onSettingsChange: (next: DocumentSettings) => void;
+}): JSX.Element {
   const t = useTranslations('viewer.shortcuts');
+  const ts = useTranslations('viewer.settings');
   const td = useTranslations('viewer.documentSettings');
-  const rows: { gesture: string; action: string }[] = [
+
+  const linked = settings.controlsLinked;
+  const effective = linked ? controlsFrom3D(controls3D) : settings.controls;
+
+  const toggleLinked = (v: boolean): void => {
+    if (v) {
+      onSettingsChange({ ...settings, controlsLinked: true });
+    } else {
+      onSettingsChange({
+        ...settings,
+        controlsLinked: false,
+        controls: controlsFrom3D(controls3D),
+      });
+    }
+  };
+
+  const gestures: { gesture: string; action: string }[] = [
     { gesture: td('gesture.ctrlWheel'), action: td('gesture.actionZoomCursor') },
     { gesture: td('gesture.middleDrag'), action: td('gesture.actionPan') },
     { gesture: td('gesture.leftDragPan'), action: td('gesture.actionPan') },
@@ -387,18 +439,60 @@ function Mouse2DSettings(): JSX.Element {
   ];
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
-        {t('mouseGestures')}
-      </h4>
-      <ul className="space-y-0.5">
-        {rows.map((r) => (
-          <li key={r.gesture} className="flex items-center justify-between gap-2 rounded px-2 py-1 text-body3">
-            <span className="font-sans text-foreground-secondary">{r.gesture}</span>
-            <span className="text-foreground">{r.action}</span>
-          </li>
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <Toggle
+          label={td('controlsLinkedToggle')}
+          checked={linked}
+          onChange={toggleLinked}
+        />
+        {linked && (
+          <p className="text-caption text-foreground-tertiary">
+            {td('controlsLinkedNote')}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <h4 className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+          {t('dragActions')}
+        </h4>
+        {DRAG_BUTTONS.map((btn) => (
+          <label key={btn.key} className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
+            <span>{ts(btn.labelKey)}</span>
+            <Select
+              selectSize="sm"
+              className="w-40"
+              disabled={linked}
+              value={effective[btn.key]}
+              onChange={(e) => {
+                onSettingsChange({
+                  ...settings,
+                  controls: { ...settings.controls, [btn.key]: e.target.value as DocumentCameraAction },
+                });
+              }}
+            >
+              {CAMERA_ACTIONS_2D.map((a) => (
+                <option key={a.value} value={a.value}>{ts(a.labelKey)}</option>
+              ))}
+            </Select>
+          </label>
         ))}
-      </ul>
+      </div>
+
+      <div className="space-y-2">
+        <h4 className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+          {t('mouseGestures')}
+        </h4>
+        <ul className="space-y-0.5">
+          {gestures.map((r) => (
+            <li key={r.gesture} className="flex items-center justify-between gap-2 rounded px-2 py-1 text-body3">
+              <span className="font-sans text-foreground-secondary">{r.gesture}</span>
+              <span className="text-foreground">{r.action}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -595,7 +689,12 @@ export function KeyBindingsTab(props: Props): JSX.Element {
                 onPick={setSelectedCode}
               />
             ) : (
-              <Mouse2DDiagram />
+              <Mouse2DDiagram
+                settings={settings as DocumentSettings}
+                controls3D={(props as Props2D).controls3D}
+                selected={selectedCode}
+                onPick={setSelectedCode}
+              />
             )}
           </div>
 
@@ -607,7 +706,11 @@ export function KeyBindingsTab(props: Props): JSX.Element {
                 onSettingsChange={onSettingsChange}
               />
             ) : (
-              <Mouse2DSettings />
+              <Mouse2DSettings
+                settings={settings as DocumentSettings}
+                controls3D={(props as Props2D).controls3D}
+                onSettingsChange={onSettingsChange as (next: DocumentSettings) => void}
+              />
             )}
           </div>
         </div>

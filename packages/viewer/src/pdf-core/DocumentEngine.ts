@@ -136,6 +136,7 @@ export class DocumentEngine {
         url: fileUrl,
         disableAutoFetch: true,
         disableStream: false,
+        verbosity: pdfjsLib.VerbosityLevel.ERRORS,
       });
       const newDoc = await task.promise;
       if (token !== this.loadToken) {

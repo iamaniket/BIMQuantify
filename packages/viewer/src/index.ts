@@ -113,8 +113,6 @@ export type {
   SearchHighlightState,
 } from './pdf-core/documentTypes.js';
 export { MIN_SCALE, MAX_SCALE, clampScale } from './pdf-core/documentTypes.js';
-export { zoomPlugin } from './plugins/2d/zoom/index.js';
-export { panPlugin } from './plugins/2d/pan/index.js';
 export { toolsPlugin } from './plugins/2d/tools/index.js';
 export type { ToolsPluginAPI } from './plugins/2d/tools/index.js';
 export { rotatePlugin } from './plugins/2d/rotate/index.js';

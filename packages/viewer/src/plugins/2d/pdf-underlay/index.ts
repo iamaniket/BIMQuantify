@@ -72,8 +72,6 @@ export function pdfUnderlayPlugin(): DocumentPlugin & PdfUnderlayAPI {
     ctx.canvas.style.transformOrigin = '0 0';
     ctx.textLayer.style.transform = transform;
     ctx.textLayer.style.transformOrigin = '0 0';
-    ctx.overlayHost.style.transform = transform;
-    ctx.overlayHost.style.transformOrigin = '0 0';
 
     if (Math.abs(zoom - lastCameraZoom) > 0.001) {
       lastCameraZoom = zoom;

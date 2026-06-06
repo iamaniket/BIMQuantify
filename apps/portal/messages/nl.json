@@ -2662,6 +2662,8 @@
         "toolPan": "Verschuifgereedschap",
         "toolZoom": "Zoomgereedschap"
       },
+      "controlsLinkedToggle": "3D-muisbediening spiegelen",
+      "controlsLinkedNote": "Sleepacties worden afgeleid van de 3D-viewerinstellingen. Ontkoppel om onafhankelijk aan te passen.",
       "gesture": {
         "ctrlWheel": "Ctrl + Wiel",
         "middleDrag": "Middelste slepen",

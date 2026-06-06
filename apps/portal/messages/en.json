@@ -2662,6 +2662,8 @@
         "toolPan": "Pan tool",
         "toolZoom": "Zoom tool"
       },
+      "controlsLinkedToggle": "Mirror 3D mouse controls",
+      "controlsLinkedNote": "Drag actions derive from 3D settings. Unlink to customise independently.",
       "gesture": {
         "ctrlWheel": "Ctrl + Wheel",
         "middleDrag": "Middle drag",

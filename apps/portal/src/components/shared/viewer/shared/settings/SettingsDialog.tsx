@@ -547,6 +547,7 @@ export function SettingsDialog(props: Props): JSX.Element {
               mode="2d"
               handle={undefined}
               settings={doc2D}
+              controls3D={viewer3D.controls}
               onSettingsChange={updateDoc2D}
             />
           )}
