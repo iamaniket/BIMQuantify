@@ -100,11 +100,11 @@ export default function CertificatesPage(): JSX.Element {
         {/* Underline tabs */}
         <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
           <TabsTrigger value="overview" className={TAB_CLASS}>
-            <LayoutGrid className="h-3.5 w-3.5" />
+            <LayoutGrid className="h-[18px] w-[18px]" />
             {t('tabs.overview')}
           </TabsTrigger>
           <TabsTrigger value="certificates" className={TAB_CLASS}>
-            <Table2 className="h-3.5 w-3.5" />
+            <Table2 className="h-[18px] w-[18px]" />
             {t('tabs.certificates')}
             <Badge variant="primary" size="sm" bordered={false}>
               {certificates.length}

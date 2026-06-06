@@ -218,7 +218,7 @@ class S3Storage:
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
             if code == "NotImplemented":
-                logger.warning(
+                logger.debug(
                     "put_bucket_cors is not supported by this storage backend; "
                     "configure CORS on the storage server directly"
                 )

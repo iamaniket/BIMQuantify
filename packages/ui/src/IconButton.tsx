@@ -25,9 +25,9 @@ const sizeStyles: Record<IconButtonSize, string> = {
 };
 
 const iconSizeByButton: Record<IconButtonSize, string> = {
-  sm: 'h-3.5 w-3.5',
-  md: 'h-4 w-4',
-  lg: 'h-[18px] w-[18px]',
+  sm: 'h-4 w-4',
+  md: 'h-[18px] w-[18px]',
+  lg: 'h-[26px] w-[26px]',
 };
 
 const baseStyles =

@@ -153,9 +153,9 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
             />
           ) : (
             <div className={emptyStateClassName}>
-              <Building2 className="h-10 w-10 text-foreground-tertiary" />
-              <Layers className="h-7 w-7 text-border" />
-              <Ruler className="h-6 w-6 text-border" />
+              <Building2 className="h-10 w-10 text-foreground-tertiary" weight="regular" />
+              <Layers className="h-7 w-7 text-border" weight="regular" />
+              <Ruler className="h-6 w-6 text-border" weight="regular" />
             </div>
           )}
         </div>
@@ -183,12 +183,12 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
 
               <div className="grid grid-cols-1 gap-1.5 pt-1 text-body3 text-primary-foreground/85">
                 <p className="inline-flex items-center gap-1.5">
-                  <Icon icon={Layers} size="sm" className="text-white/80" />
+                  <Icon icon={Layers} size="sm" weight="regular" className="text-white/80" />
                   {tPhases(project.phase)}
                 </p>
                 {project.permit_number !== null && (
                   <p className="inline-flex min-w-0 items-center gap-1.5 line-clamp-1 break-all">
-                    <Icon icon={FileText} size="sm" className="text-white/80" />
+                    <Icon icon={FileText} size="sm" weight="regular" className="text-white/80" />
                     {project.permit_number}
                   </p>
                 )}
@@ -200,7 +200,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                 <div className="flex flex-col gap-0.5">
                   {cityLine !== null && (
                     <span className="inline-flex min-w-0 items-center gap-1">
-                      <Icon icon={MapPin} size="xs" className="text-white/80" />
+                      <Icon icon={MapPin} size="xs" weight="regular" className="text-white/80" />
                       <span className="line-clamp-1 break-all">{cityLine}</span>
                     </span>
                   )}
@@ -225,15 +225,15 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
           <div className="relative flex w-full items-center gap-3 text-caption text-primary-foreground/85">
             <div className="flex min-w-0 flex-1 gap-3">
               <span className="inline-flex min-w-0 items-center gap-1.5">
-                <Icon icon={CalendarDays} size="sm" className="text-white/80" />
+                <Icon icon={CalendarDays} size="sm" weight="regular" className="text-white/80" />
                 <span className="min-w-0 truncate font-semibold text-white">{createdLabel === '' ? '-' : createdLabel}</span>
               </span>
               <span className="inline-flex min-w-0 items-center gap-1.5">
-                <Icon icon={RefreshCw} size="sm" className="text-white/80" />
+                <Icon icon={RefreshCw} size="sm" weight="regular" className="text-white/80" />
                 <span className="min-w-0 truncate font-semibold text-white">{updatedLabel === '' ? '-' : updatedLabel}</span>
               </span>
               <span className="inline-flex min-w-0 items-center gap-1.5">
-                <Icon icon={Truck} size="sm" className="text-white/80" />
+                <Icon icon={Truck} size="sm" weight="regular" className="text-white/80" />
                 <span className="min-w-0 truncate font-semibold text-white">{deliveryLabel === '' ? '-' : deliveryLabel}</span>
               </span>
             </div>

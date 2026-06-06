@@ -680,11 +680,11 @@ export default function AccountPage(): JSX.Element {
       >
         <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
           <TabsTrigger value="profile" className={tabTriggerClass}>
-            <UserRound className="h-3.5 w-3.5" />
+            <UserRound className="h-[18px] w-[18px]" />
             {t('tabs.profile')}
           </TabsTrigger>
           <TabsTrigger value="invitations" className={tabTriggerClass}>
-            <Mail className="h-3.5 w-3.5" />
+            <Mail className="h-[18px] w-[18px]" />
             {t('tabs.invitations')}
             {invitations.length > 0 && (
               <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">

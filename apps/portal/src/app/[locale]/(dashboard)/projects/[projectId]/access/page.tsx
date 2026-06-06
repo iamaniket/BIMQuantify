@@ -449,11 +449,11 @@ export default function ProjectAccessPage(): JSX.Element {
         >
           <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
             <TabsTrigger value="overview" className={tabTriggerClass}>
-              <LayoutGrid className="h-3.5 w-3.5" />
+              <LayoutGrid className="h-[18px] w-[18px]" />
               {t('tabs.overview')}
             </TabsTrigger>
             <TabsTrigger value="members" className={tabTriggerClass}>
-              <Users className="h-3.5 w-3.5" />
+              <Users className="h-[18px] w-[18px]" />
               {t('tabs.members')}
               <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
                 {members.length}

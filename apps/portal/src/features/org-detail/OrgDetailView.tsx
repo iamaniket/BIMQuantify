@@ -700,25 +700,25 @@ export function OrgDetailView({
         <div className="flex shrink-0 items-center border-b border-border bg-surface-main px-5">
           <TabsList className="min-w-0 flex-1 gap-1 rounded-none border-b-0 bg-transparent p-0">
             <TabsTrigger value="overview" className={tabTriggerClass}>
-              <LayoutGrid className="h-3.5 w-3.5" />
+              <LayoutGrid className="h-[18px] w-[18px]" />
               {t('tabs.overview')}
             </TabsTrigger>
             <TabsTrigger value="members" className={tabTriggerClass}>
-              <Users className="h-3.5 w-3.5" />
+              <Users className="h-[18px] w-[18px]" />
               {t('tabs.members')}
               <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
                 {members.length}
               </span>
             </TabsTrigger>
             <TabsTrigger value="audit" className={tabTriggerClass}>
-              <Activity className="h-3.5 w-3.5" />
+              <Activity className="h-[18px] w-[18px]" />
               {t('tabs.audit')}
               <span className="rounded-full bg-background-hover px-1.5 py-px text-caption font-bold text-foreground-tertiary">
                 {auditEntries.length}
               </span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className={tabTriggerClass}>
-              <Bell className="h-3.5 w-3.5" />
+              <Bell className="h-[18px] w-[18px]" />
               {t('tabs.notifications')}
             </TabsTrigger>
           </TabsList>

@@ -36,8 +36,8 @@ export function ThemeToggle({ className }: Props): JSX.Element {
       )}
     >
       {/* Render both icons to avoid hydration flicker; the data-theme attribute hides one. */}
-      <Sun weight="fill" className="h-[22px] w-[22px] dark:hidden" aria-hidden />
-      <Moon weight="fill" className="hidden h-[22px] w-[22px] dark:block" aria-hidden />
+      <Sun weight="fill" className="h-5 w-5 dark:hidden" aria-hidden />
+      <Moon weight="fill" className="hidden h-5 w-5 dark:block" aria-hidden />
     </button>
   );
 }

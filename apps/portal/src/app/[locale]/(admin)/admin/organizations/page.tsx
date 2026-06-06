@@ -431,18 +431,18 @@ export default function AdminOrganizationsPage(): JSX.Element {
         {/* Underline tabs */}
         <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
           <TabsTrigger value="overview" className={TAB_CLASS}>
-            <LayoutGrid className="h-3.5 w-3.5" />
+            <LayoutGrid className="h-[18px] w-[18px]" />
             {t('tabs.overview')}
           </TabsTrigger>
           <TabsTrigger value="organizations" className={TAB_CLASS}>
-            <Table2 className="h-3.5 w-3.5" />
+            <Table2 className="h-[18px] w-[18px]" />
             {t('tabs.organizations')}
             <Badge variant="primary" size="sm" bordered={false}>
               {allOrgs.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="requests" className={TAB_CLASS}>
-            <Inbox className="h-3.5 w-3.5" />
+            <Inbox className="h-[18px] w-[18px]" />
             {t('tabs.requests')}
             {pendingRequestCount > 0 && (
               <Badge variant="primary" size="sm" bordered={false}>
@@ -451,7 +451,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
             )}
           </TabsTrigger>
           <TabsTrigger value="blog" className={TAB_CLASS}>
-            <BookOpen className="h-3.5 w-3.5" />
+            <BookOpen className="h-[18px] w-[18px]" />
             {tBlog('tab')}
             <Badge variant="default" size="sm" bordered={false}>
               {blogPosts.length}

@@ -41,7 +41,7 @@ export function SidebarNavItem({
 
   const content = (
     <>
-      <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-sidebar-fg' : 'text-sidebar-fg-muted'}`} />
+      <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-sidebar-fg' : 'text-sidebar-fg-muted'}`} />
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
       {!collapsed && badge !== undefined && (
         <span className="rounded-full bg-sidebar-hover px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.04em] text-sidebar-fg-muted">
