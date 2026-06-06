@@ -2663,7 +2663,10 @@
         "lastPage": "Laatste pagina",
         "toolSelect": "Selectiegereedschap",
         "toolPan": "Verschuifgereedschap",
-        "toolZoom": "Zoomgereedschap"
+        "toolZoom": "Zoomgereedschap",
+        "addFinding": "Bevinding toevoegen",
+        "addAttachment": "Bijlage toevoegen",
+        "viewCertificates": "Certificaten"
       },
       "controlsLinkedToggle": "3D-muisbediening spiegelen",
       "controlsLinkedNote": "Sleepacties worden afgeleid van de 3D-viewerinstellingen. Ontkoppel om onafhankelijk aan te passen.",

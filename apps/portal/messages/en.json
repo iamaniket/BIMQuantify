@@ -2663,7 +2663,10 @@
         "lastPage": "Last page",
         "toolSelect": "Select tool",
         "toolPan": "Pan tool",
-        "toolZoom": "Zoom tool"
+        "toolZoom": "Zoom tool",
+        "addFinding": "Add finding",
+        "addAttachment": "Add attachment",
+        "viewCertificates": "Certificates"
       },
       "controlsLinkedToggle": "Mirror 3D mouse controls",
       "controlsLinkedNote": "Drag actions derive from 3D settings. Unlink to customise independently.",

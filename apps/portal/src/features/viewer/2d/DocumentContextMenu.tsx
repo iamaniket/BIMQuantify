@@ -1,6 +1,6 @@
 'use client';
 
-import { FileBadge, Flag, MagnifyingGlassMinus, MagnifyingGlassPlus, Paperclip, FrameCorners } from '@bimstitch/ui/icons';
+import { FileBadge, Flag, Paperclip, FrameCorners } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   forwardRef,
@@ -15,6 +15,9 @@ import {
 
 import type { DocumentEvents, DocumentViewerHandle } from '@bimstitch/viewer';
 
+import { prettyKey } from '@/components/shared/viewer/shared/settings/prettyKey';
+import type { DocumentShortcutMap } from '@/lib/documentSettings';
+
 type ContextMenuData = DocumentEvents['contextmenu:open'];
 
 type MenuItem = {
@@ -22,11 +25,13 @@ type MenuItem = {
   icon?: JSX.Element;
   action: () => void;
   separator?: boolean;
+  shortcut?: string | undefined;
 };
 
 type Props = {
   handle: DocumentViewerHandle | null;
   onRequestInspector: (view: 'attachments' | 'findings' | 'certificates') => void;
+  shortcuts?: DocumentShortcutMap;
 };
 
 const ICON_CLASS = 'h-4 w-4 shrink-0 text-foreground-secondary';
@@ -55,6 +60,11 @@ function MenuItemRow({
     >
       {item.icon ?? <span className="h-4 w-4 shrink-0" />}
       <span className="flex-1">{item.label}</span>
+      {item.shortcut ? (
+        <kbd className="ml-auto shrink-0 font-sans text-[11px] text-foreground-tertiary">
+          {item.shortcut}
+        </kbd>
+      ) : null}
     </button>
   );
 }
@@ -111,7 +121,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
         else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={
-        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background p-1 shadow-xl '
+        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background p-1 shadow-2xl '
         + (ready ? 'opacity-100' : 'opacity-0')
       }
       style={{ left: pos.left, top: pos.top }}
@@ -130,11 +140,19 @@ const PositionedMenu = forwardRef(function PositionedMenu(
 // Root component
 // ---------------------------------------------------------------------------
 
-export function DocumentContextMenu({ handle, onRequestInspector }: Props): JSX.Element | null {
+export function DocumentContextMenu({ handle, onRequestInspector, shortcuts }: Props): JSX.Element | null {
   const t = useTranslations('viewer.docContextMenu');
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const sc = useCallback(
+    (action: keyof DocumentShortcutMap): string | undefined => {
+      const combo = shortcuts?.[action];
+      return combo ? prettyKey(combo) : undefined;
+    },
+    [shortcuts],
+  );
 
   useEffect(() => {
     if (!handle) return undefined;
@@ -179,6 +197,7 @@ export function DocumentContextMenu({ handle, onRequestInspector }: Props): JSX.
       {
         label: t('addFindings'),
         icon: <Flag className={ICON_CLASS} />,
+        shortcut: sc('addFinding'),
         action: () => {
           onRequestInspector('findings');
           closeMenu();
@@ -187,6 +206,7 @@ export function DocumentContextMenu({ handle, onRequestInspector }: Props): JSX.
       {
         label: t('attach'),
         icon: <Paperclip className={ICON_CLASS} />,
+        shortcut: sc('addAttachment'),
         action: () => {
           onRequestInspector('attachments');
           closeMenu();
@@ -195,6 +215,7 @@ export function DocumentContextMenu({ handle, onRequestInspector }: Props): JSX.
       {
         label: t('viewCertificates'),
         icon: <FileBadge className={ICON_CLASS} />,
+        shortcut: sc('viewCertificates'),
         action: () => {
           onRequestInspector('certificates');
           closeMenu();
@@ -202,31 +223,16 @@ export function DocumentContextMenu({ handle, onRequestInspector }: Props): JSX.
       },
       { label: '', separator: true, action: () => undefined },
       {
-        label: t('zoomIn'),
-        icon: <MagnifyingGlassPlus className={ICON_CLASS} />,
-        action: () => {
-          handle?.zoomIn();
-          closeMenu();
-        },
-      },
-      {
-        label: t('zoomOut'),
-        icon: <MagnifyingGlassMinus className={ICON_CLASS} />,
-        action: () => {
-          handle?.zoomOut();
-          closeMenu();
-        },
-      },
-      {
         label: t('fitPage'),
         icon: <FrameCorners className={ICON_CLASS} />,
+        shortcut: sc('fitPage'),
         action: () => {
           handle?.fitPage();
           closeMenu();
         },
       },
     ];
-  }, [t, menu, handle, closeMenu, onRequestInspector]);
+  }, [t, menu, handle, closeMenu, onRequestInspector, sc]);
 
   if (!menu) return null;
 

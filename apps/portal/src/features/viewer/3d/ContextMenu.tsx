@@ -282,7 +282,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
         else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={
-        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background p-1 shadow-xl '
+        'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background p-1 shadow-2xl '
         + (ready ? 'opacity-100' : 'opacity-0')
       }
       style={{ left: pos.left, top: pos.top }}

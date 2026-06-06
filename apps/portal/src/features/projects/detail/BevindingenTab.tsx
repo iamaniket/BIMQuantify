@@ -4,7 +4,7 @@ import { AlertTriangle, Columns3, Plus } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 
-import { Button, EmptyState } from '@bimstitch/ui';
+import { Button, EmptyState, SplitButton } from '@bimstitch/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
@@ -12,7 +12,7 @@ import { useFindings } from '@/features/findings/useFindings';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import type { Finding } from '@/lib/api/schemas';
 
-import { Link } from '@/i18n/navigation';
+import { useRouter } from '@/i18n/navigation';
 
 import { FindingDetailModal } from './FindingDetailModal';
 import { FindingFormDialog } from './FindingFormDialog';
@@ -66,6 +66,8 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
     [deleteMutation, expandedId],
   );
 
+  const router = useRouter();
+
   return (
     <div className="flex flex-col gap-3">
       <TabToolbar
@@ -74,18 +76,29 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         searchPlaceholder={t('searchPlaceholder')}
         actions={(
           <>
-            {allFindings.length > 0 && (
-              <Link href={`/projects/${projectId}/findings`}>
-                <Button variant="border" size="sm">
-                  <Columns3 className="mr-1.5 h-3.5 w-3.5" />
-                  {t('boardLabel')}
-                </Button>
-              </Link>
+            {allFindings.length > 0 ? (
+              <SplitButton
+                label={t('boardLabel')}
+                icon={<Columns3 className="mr-1.5 h-3.5 w-3.5" />}
+                onClick={() => { router.push(`/projects/${projectId}/findings`); }}
+                variant="primary"
+                size="sm"
+                menuLabel={t('ctaLabel')}
+                items={[
+                  {
+                    id: 'log-finding',
+                    label: t('ctaLabel'),
+                    icon: <Plus className="h-3.5 w-3.5" />,
+                    onSelect: () => { setCreateOpen(true); },
+                  },
+                ]}
+              />
+            ) : (
+              <Button variant="primary" size="sm" onClick={() => { setCreateOpen(true); }}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                {t('ctaLabel')}
+              </Button>
             )}
-            <Button variant="primary" size="sm" onClick={() => { setCreateOpen(true); }}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              {t('ctaLabel')}
-            </Button>
           </>
         )}
       />

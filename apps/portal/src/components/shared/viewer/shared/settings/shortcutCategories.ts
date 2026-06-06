@@ -20,6 +20,7 @@ const EDITING_PREFIXES = [
   'section.',
   'measurement.',
   'eraser.',
+  'addFinding', 'addAttachment', 'viewCertificates',
 ];
 
 const GLOBAL_PREFIXES = [

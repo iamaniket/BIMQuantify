@@ -403,6 +403,9 @@ export default function ViewerPage(): JSX.Element {
       toolSelect: () => { setPdfActiveTool('select'); },
       toolPan: () => { setPdfActiveTool('pan'); },
       toolZoom: () => { setPdfActiveTool('zoom'); },
+      addFinding: () => { handleDocContextMenuInspector('findings'); },
+      addAttachment: () => { handleDocContextMenuInspector('attachments'); },
+      viewCertificates: () => { handleDocContextMenuInspector('certificates'); },
     },
   });
 
@@ -489,15 +492,15 @@ export default function ViewerPage(): JSX.Element {
 
         {(
           (isIfc && sceneReady && !viewerReady && progress !== null) ||
-          (isPdf && progress !== null && pdfNumPages === null)
+          (isPdf && bundle !== null && pdfNumPages === null)
         ) ? (
           <ModelLoadingOverlay
-            progress={progress.total > 0 ? (progress.loaded / progress.total) * 100 : 0}
+            progress={progress !== null && progress.total > 0 ? (progress.loaded / progress.total) * 100 : 0}
           />
         ) : null}
 
         {isIfc ? <ContextMenu handle={viewerHandleRef.current} /> : null}
-        {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestInspector={handleDocContextMenuInspector} /> : null}
+        {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestInspector={handleDocContextMenuInspector} shortcuts={pdfSettings.shortcuts} /> : null}
 
         {showChrome ? (
             <SidePanel

@@ -18,7 +18,10 @@ export type DocumentAction =
   | 'lastPage'
   | 'toolSelect'
   | 'toolPan'
-  | 'toolZoom';
+  | 'toolZoom'
+  | 'addFinding'
+  | 'addAttachment'
+  | 'viewCertificates';
 
 /** Pre-defined mouse gestures we surface in the settings UI. */
 export type DocumentMouseGesture =
@@ -69,6 +72,9 @@ export const DEFAULT_DOCUMENT_SHORTCUTS: DocumentShortcutMap = {
   toolSelect: 'V',
   toolPan: 'H',
   toolZoom: 'Z',
+  addFinding: 'B',
+  addAttachment: 'A',
+  viewCertificates: 'C',
 };
 
 export const DEFAULT_DOCUMENT_MOUSE_BINDINGS: DocumentMouseBindingMap = {
@@ -192,4 +198,7 @@ export const DOCUMENT_ACTION_LABEL_KEYS: Record<DocumentAction, string> = {
   toolSelect: 'action.toolSelect',
   toolPan: 'action.toolPan',
   toolZoom: 'action.toolZoom',
+  addFinding: 'action.addFinding',
+  addAttachment: 'action.addAttachment',
+  viewCertificates: 'action.viewCertificates',
 };
