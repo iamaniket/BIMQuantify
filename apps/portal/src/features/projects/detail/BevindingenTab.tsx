@@ -4,13 +4,13 @@ import { AlertTriangle, Columns3, Plus } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 
-import { Button, EmptyState, SplitButton } from '@bimstitch/ui';
+import { Button, EmptyState, Select, SplitButton } from '@bimstitch/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useFindings } from '@/features/findings/useFindings';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
-import type { Finding } from '@/lib/api/schemas';
+import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 
 import { useRouter } from '@/i18n/navigation';
 
@@ -22,6 +22,15 @@ type Props = {
   projectId: string;
 };
 
+const STATUS_FILTERS: Array<{ value: FindingStatusValue | 'all'; labelKey: string }> = [
+  { value: 'all', labelKey: 'filterAll' },
+  { value: 'draft', labelKey: 'filterDraft' },
+  { value: 'open', labelKey: 'filterOpen' },
+  { value: 'in_progress', labelKey: 'filterInProgress' },
+  { value: 'resolved', labelKey: 'filterResolved' },
+  { value: 'verified', labelKey: 'filterVerified' },
+];
+
 export function BevindingenTab({ projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.bevindingen');
   const findingsQuery = useFindings(projectId);
@@ -30,6 +39,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<FindingStatusValue | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const members = membersQuery.data ?? [];
@@ -44,16 +54,18 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
   );
 
   const allFindings = findingsQuery.data ?? [];
-  const findings = searchQuery === ''
-    ? allFindings
-    : allFindings.filter((f) => {
-        const q = searchQuery.toLowerCase();
-        return (
-          f.title.toLowerCase().includes(q) ||
-          f.description.toLowerCase().includes(q) ||
-          (f.bbl_article_ref?.toLowerCase().includes(q) ?? false)
-        );
-      });
+  const findings = allFindings.filter((f) => {
+    if (statusFilter && f.status !== statusFilter) return false;
+    if (searchQuery !== '') {
+      const q = searchQuery.toLowerCase();
+      return (
+        f.title.toLowerCase().includes(q) ||
+        f.description.toLowerCase().includes(q) ||
+        (f.bbl_article_ref?.toLowerCase().includes(q) ?? false)
+      );
+    }
+    return true;
+  });
 
   const handleDelete = useCallback(
     (finding: Finding) => {
@@ -74,6 +86,18 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder={t('searchPlaceholder')}
+        filter={(
+          <Select
+            selectSize="sm"
+            value={statusFilter ?? 'all'}
+            onChange={(e) => { setStatusFilter(e.target.value === 'all' ? undefined : e.target.value as FindingStatusValue); }}
+            className="w-auto shrink-0"
+          >
+            {STATUS_FILTERS.map(({ value, labelKey }) => (
+              <option key={value} value={value}>{t(labelKey)}</option>
+            ))}
+          </Select>
+        )}
         actions={(
           <>
             {allFindings.length > 0 ? (
@@ -107,7 +131,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         isLoading={findingsQuery.isLoading}
         total={allFindings.length}
         filteredCount={findings.length}
-        searchActive={searchQuery !== ''}
+        searchActive={searchQuery !== '' || statusFilter !== undefined}
         noResultsLabel={t('noResults')}
         empty={(
           <EmptyState

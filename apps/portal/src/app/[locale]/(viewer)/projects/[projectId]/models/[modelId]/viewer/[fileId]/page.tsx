@@ -223,6 +223,8 @@ export default function ViewerPage(): JSX.Element {
 
   const [sceneReady, setSceneReady] = useState(false);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const [overlayFading, setOverlayFading] = useState(false);
+  const prevLoadingRef = useRef(false);
 
   const onProgress = useCallback((loaded: number, total: number) => {
     setProgress({ loaded, total });
@@ -241,6 +243,8 @@ export default function ViewerPage(): JSX.Element {
     setViewerError(null);
     setProgress(null);
     setInspectorRequest(null);
+    setOverlayFading(false);
+    prevLoadingRef.current = false;
   }, [modelId, fileId]);
 
   // Reset PDF state when switching to a different file.
@@ -289,6 +293,23 @@ export default function ViewerPage(): JSX.Element {
   const shellReady = bundle !== null && error === null;
   const ifcShellReady = shellReady && isIfc && viewerReady;
   const pdfShellReady = shellReady && isPdf;
+
+  const loadingActive =
+    (isIfc && sceneReady && !viewerReady && progress !== null) ||
+    (isPdf && bundle !== null && pdfNumPages === null);
+
+  useEffect(() => {
+    const wasLoading = prevLoadingRef.current;
+    prevLoadingRef.current = loadingActive;
+    if (wasLoading && !loadingActive) {
+      setOverlayFading(true);
+      const timer = setTimeout(() => setOverlayFading(false), 700);
+      return () => clearTimeout(timer);
+    }
+    if (loadingActive) {
+      setOverlayFading(false);
+    }
+  }, [loadingActive]);
   // Render the chrome (side rail, side panel, toolbar placeholder) as soon
   // as the page mounts — the only thing we wait for is the bundle URL, and
   // even that is usually prefetched on hover. The canvas area shows its own
@@ -490,12 +511,10 @@ export default function ViewerPage(): JSX.Element {
       <div className="relative min-h-0 flex-1">
         {canvas}
 
-        {(
-          (isIfc && sceneReady && !viewerReady && progress !== null) ||
-          (isPdf && bundle !== null && pdfNumPages === null)
-        ) ? (
+        {(loadingActive || overlayFading) ? (
           <ModelLoadingOverlay
-            progress={progress !== null && progress.total > 0 ? (progress.loaded / progress.total) * 100 : 0}
+            progress={progress !== null && progress.total > 0 ? (progress.loaded / progress.total) * 100 : (overlayFading ? 100 : 0)}
+            fading={overlayFading}
           />
         ) : null}
 

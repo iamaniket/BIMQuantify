@@ -795,6 +795,12 @@
         "columnName": "Naam",
         "searchPlaceholder": "Modellen zoeken…",
         "noResults": "Geen modellen komen overeen met uw zoekopdracht.",
+        "filterAll": "Alle disciplines",
+        "filterArchitectural": "Architectuur",
+        "filterStructural": "Constructie",
+        "filterMep": "Installaties",
+        "filterCoordination": "Coördinatie",
+        "filterOther": "Overig",
         "newModel": "Nieuw model",
         "emptyState": "Nog geen modellen",
         "emptyDescription": "Upload IFC-bestanden om uw BIM-modellen te bekijken en beheren.",
@@ -979,7 +985,13 @@
         "boardLabel": "Bordweergave",
         "count": "{count, plural, one {# bevinding} other {# bevindingen}}",
         "searchPlaceholder": "Zoek bevindingen…",
-        "noResults": "Geen bevindingen komen overeen met uw zoekopdracht."
+        "noResults": "Geen bevindingen komen overeen met uw zoekopdracht.",
+        "filterAll": "Alle statussen",
+        "filterDraft": "Concept",
+        "filterOpen": "Open",
+        "filterInProgress": "In behandeling",
+        "filterResolved": "Opgelost",
+        "filterVerified": "Geverifieerd"
       },
       "attachments": {
         "label": "Bijlagen",

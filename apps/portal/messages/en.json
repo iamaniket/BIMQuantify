@@ -795,6 +795,12 @@
         "columnName": "Name",
         "searchPlaceholder": "Search models…",
         "noResults": "No models match your search.",
+        "filterAll": "All disciplines",
+        "filterArchitectural": "Architectural",
+        "filterStructural": "Structural",
+        "filterMep": "MEP",
+        "filterCoordination": "Coordination",
+        "filterOther": "Other",
         "newModel": "New model",
         "emptyState": "No models yet",
         "emptyDescription": "Upload IFC files to view and manage your BIM models.",
@@ -979,7 +985,13 @@
         "boardLabel": "Board view",
         "count": "{count, plural, one {# finding} other {# findings}}",
         "searchPlaceholder": "Search findings…",
-        "noResults": "No findings match your search."
+        "noResults": "No findings match your search.",
+        "filterAll": "All statuses",
+        "filterDraft": "Draft",
+        "filterOpen": "Open",
+        "filterInProgress": "In progress",
+        "filterResolved": "Resolved",
+        "filterVerified": "Verified"
       },
       "attachments": {
         "label": "Attachments",

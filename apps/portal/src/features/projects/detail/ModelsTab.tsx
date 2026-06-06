@@ -4,10 +4,10 @@ import { Box, Plus } from '@bimstitch/ui/icons';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Button, EmptyState } from '@bimstitch/ui';
+import { Button, EmptyState, Select } from '@bimstitch/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
-import type { Model } from '@/lib/api/schemas';
+import type { Model, ModelDisciplineValue } from '@/lib/api/schemas';
 import { NewModelDialog } from '@/features/models/NewModelDialog';
 
 import { ModelsTableRow } from './ModelsTableRow';
@@ -17,15 +17,27 @@ type Props = {
   models: Model[];
 };
 
+const DISCIPLINE_FILTERS: Array<{ value: ModelDisciplineValue | 'all'; labelKey: string }> = [
+  { value: 'all', labelKey: 'filterAll' },
+  { value: 'architectural', labelKey: 'filterArchitectural' },
+  { value: 'structural', labelKey: 'filterStructural' },
+  { value: 'mep', labelKey: 'filterMep' },
+  { value: 'coordination', labelKey: 'filterCoordination' },
+  { value: 'other', labelKey: 'filterOther' },
+];
+
 export function ModelsTab({ projectId, models }: Props): JSX.Element {
   const [newModelOpen, setNewModelOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [disciplineFilter, setDisciplineFilter] = useState<ModelDisciplineValue | undefined>(undefined);
   const t = useTranslations('projectDetail.tabs.models');
 
-  const filtered = searchQuery === ''
-    ? models
-    : models.filter((m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filtered = models.filter((m) => {
+    if (disciplineFilter && m.discipline !== disciplineFilter) return false;
+    if (searchQuery !== '' && !m.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div className="flex flex-col gap-3">
@@ -33,6 +45,18 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder={t('searchPlaceholder')}
+        filter={(
+          <Select
+            selectSize="sm"
+            value={disciplineFilter ?? 'all'}
+            onChange={(e) => { setDisciplineFilter(e.target.value === 'all' ? undefined : e.target.value as ModelDisciplineValue); }}
+            className="w-auto shrink-0"
+          >
+            {DISCIPLINE_FILTERS.map(({ value, labelKey }) => (
+              <option key={value} value={value}>{t(labelKey)}</option>
+            ))}
+          </Select>
+        )}
         actions={
           <Button
             variant="primary"
@@ -49,7 +73,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
         isLoading={false}
         total={models.length}
         filteredCount={filtered.length}
-        searchActive={searchQuery !== ''}
+        searchActive={searchQuery !== '' || disciplineFilter !== undefined}
         noResultsLabel={t('noResults')}
         empty={(
           <EmptyState

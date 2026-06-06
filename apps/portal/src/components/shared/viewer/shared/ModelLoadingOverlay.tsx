@@ -103,13 +103,20 @@ function HouseBuildAnimation(): JSX.Element {
 
 type ModelLoadingOverlayProps = {
   progress: number;
+  fading?: boolean;
 };
 
-export function ModelLoadingOverlay({ progress }: ModelLoadingOverlayProps): JSX.Element {
+export function ModelLoadingOverlay({ progress, fading = false }: ModelLoadingOverlayProps): JSX.Element {
   const clamped = Math.max(0, Math.min(100, Math.round(progress)));
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center animate-viewer-fade-in">
+    <div
+      className={
+        fading
+          ? 'pointer-events-none absolute inset-0 z-30 flex items-center justify-center transition-opacity duration-700 ease-out opacity-0'
+          : 'pointer-events-none absolute inset-0 z-30 flex items-center justify-center animate-viewer-fade-in'
+      }
+    >
       <div className="flex w-56 flex-col items-center gap-3 rounded-xl bg-surface-main/90 px-5 py-5 shadow-lg backdrop-blur-sm">
         <HouseBuildAnimation />
         <div className="flex w-full flex-col gap-1.5">
