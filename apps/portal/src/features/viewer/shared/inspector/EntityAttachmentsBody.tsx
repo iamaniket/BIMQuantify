@@ -362,6 +362,7 @@ export function EntityAttachmentsBody({
           items={splitItems}
         />
         <input
+          id="entity-attachment-file-input"
           ref={fileInputRef}
           type="file"
           className="hidden"
@@ -400,6 +401,7 @@ export function EntityAttachmentsBody({
       {showNoteInput && (
         <div className="flex flex-col gap-2 border-b border-border bg-background px-3 py-2.5">
           <textarea
+            id="entity-attachment-note"
             value={noteText}
             onChange={(e) => { setNoteText(e.target.value); }}
             placeholder={t('notePlaceholder')}

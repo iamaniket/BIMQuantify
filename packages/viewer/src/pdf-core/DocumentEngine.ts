@@ -11,6 +11,7 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 
+
 import { CommandRegistry } from '../core/CommandRegistry.js';
 import { EventBus } from '../core/EventBus.js';
 import { PluginManager } from '../core/plugin.js';
@@ -31,6 +32,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
 ).toString();
+
+
 
 type PdfTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy['getTextContent']>>;
 

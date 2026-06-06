@@ -11,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument, setVerbosityLevel, VerbosityLevel } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import { postCallback } from '../api/callback.js';
 import { logger } from '../log.js';
@@ -43,6 +43,10 @@ function parsePdfPayload(raw: Record<string, unknown>): PdfExtractionPayload {
   }
   return { file_id, project_id, storage_key };
 }
+
+// Suppress harmless "getOperatorList - ignoring beginMarkedContentProps"
+// warnings from tagged PDFs whose Properties dictionary is absent.
+setVerbosityLevel(VerbosityLevel.ERRORS);
 
 // Worker setup is left to pdfjs-dist: its legacy build's PDFWorker static block
 // detects Node.js, disables the real worker thread, and defaults

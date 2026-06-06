@@ -124,6 +124,24 @@ export type { MeasurePluginAPI } from './plugins/2d/measure/index.js';
 export type { PdfMeasureMode, PdfMeasurement } from './plugins/2d/measure/types.js';
 export { navCompassPlugin } from './plugins/2d/nav-compass/index.js';
 export type { NavCompassLocale } from './plugins/2d/nav-compass/NavCompassWidget.js';
+export { scenePlugin as scenePlugin2D } from './plugins/2d/scene/index.js';
+export type { SceneAPI } from './plugins/2d/scene/index.js';
+export { cameraPlugin as cameraPlugin2D } from './plugins/2d/camera/index.js';
+export type {
+  CameraPluginAPI,
+  CameraPluginOptions,
+  CameraControlsConfig,
+  CameraAction2D,
+} from './plugins/2d/camera/index.js';
+export { pdfUnderlayPlugin } from './plugins/2d/pdf-underlay/index.js';
+export type { PdfUnderlayAPI } from './plugins/2d/pdf-underlay/index.js';
+export { mouseBindings2DPlugin } from './plugins/2d/mouse-bindings/index.js';
+export type {
+  MouseBindings2DAPI,
+  MouseBindings2DPluginOptions,
+  MouseBindingMap2D,
+} from './plugins/2d/mouse-bindings/index.js';
+export { contextMenuPlugin as contextMenuPlugin2D } from './plugins/2d/context-menu/index.js';
 
 // Built-in plugin factories — re-exported so consumers can disable a
 // built-in (by passing `viewCube: { enabled: false }`) and re-add it

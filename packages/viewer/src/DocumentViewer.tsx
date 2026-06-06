@@ -22,14 +22,17 @@ import type {
   DocumentTool,
   SearchHighlightState,
 } from './pdf-core/documentTypes.js';
+import type { CameraControlsConfig } from './plugins/2d/camera/index.js';
+import { cameraPlugin } from './plugins/2d/camera/index.js';
+import { contextMenuPlugin } from './plugins/2d/context-menu/index.js';
 import { measurePlugin } from './plugins/2d/measure/index.js';
+import { mouseBindings2DPlugin } from './plugins/2d/mouse-bindings/index.js';
 import { navCompassPlugin } from './plugins/2d/nav-compass/index.js';
-import { panPlugin } from './plugins/2d/pan/index.js';
+import { pdfUnderlayPlugin } from './plugins/2d/pdf-underlay/index.js';
 import { rotatePlugin } from './plugins/2d/rotate/index.js';
+import { scenePlugin } from './plugins/2d/scene/index.js';
 import { searchPlugin } from './plugins/2d/search/index.js';
 import { toolsPlugin } from './plugins/2d/tools/index.js';
-import { zoomPlugin } from './plugins/2d/zoom/index.js';
-import { contextMenuPlugin } from './plugins/2d/context-menu/index.js';
 
 export type DocumentLoadedInfo = {
   numPages: number;
@@ -98,6 +101,8 @@ export type DocumentViewerProps = {
    * default; `enabled: false` omits the plugin. `locale` defaults to 'nl'.
    */
   navCompass?: { enabled?: boolean; locale?: 'en' | 'nl' };
+  /** Camera mouse-button → action mapping. Driven by the portal settings. */
+  controls?: CameraControlsConfig;
   onLoaded?: (info: DocumentLoadedInfo) => void;
   onError?: (err: Error) => void;
   onScaleChange?: (scale: number) => void;
@@ -116,6 +121,7 @@ function DocumentViewerInner(
     searchHighlight,
     renderOverlay,
     navCompass,
+    controls,
     onLoaded,
     onError,
     onScaleChange,
@@ -141,6 +147,7 @@ function DocumentViewerInner(
   const activeToolRef = useRef<DocumentActiveTool>(activeTool);
   const searchHighlightRef = useRef<SearchHighlight | null>(searchHighlight ?? null);
   const navCompassRef = useRef(navCompass);
+  const controlsRef = useRef(controls);
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
   const onScaleChangeRef = useRef(onScaleChange);
@@ -153,6 +160,7 @@ function DocumentViewerInner(
     activeToolRef.current = activeTool;
     searchHighlightRef.current = searchHighlight ?? null;
     navCompassRef.current = navCompass;
+    controlsRef.current = controls;
     onLoadedRef.current = onLoaded;
     onErrorRef.current = onError;
     onScaleChangeRef.current = onScaleChange;
@@ -171,15 +179,15 @@ function DocumentViewerInner(
 
     const plugins: DocumentPlugin[] = [
       toolsPlugin(),
-      zoomPlugin(),
-      panPlugin(),
+      scenePlugin(),
+      cameraPlugin(controlsRef.current ? { controls: controlsRef.current } : {}),
+      pdfUnderlayPlugin(),
+      mouseBindings2DPlugin(),
       rotatePlugin(),
       searchPlugin(),
       measurePlugin(),
       contextMenuPlugin(),
     ];
-    // nav-compass is read at mount only (like scale/rotation/tool) — kept out of
-    // the effect deps so a fresh `navCompass` object literal can't force a remount.
     if (navCompassRef.current?.enabled !== false) {
       plugins.push(navCompassPlugin({ locale: navCompassRef.current?.locale ?? 'nl' }));
     }
@@ -245,18 +253,27 @@ function DocumentViewerInner(
     engineRef.current?.setSearchHighlight(searchHighlight ?? null);
   }, [searchHighlight]);
 
+  // Push controls changes to the camera plugin at runtime.
+  useEffect(() => {
+    if (!controls || !engineRef.current) return;
+    if (engineRef.current.commands.has('camera.setControls')) {
+      void engineRef.current.commands.execute('camera.setControls', controls);
+    }
+  }, [controls]);
+
   // ---- Imperative handle: façade over engine commands ----
   useImperativeHandle(
     ref,
     (): DocumentViewerHandle => ({
-      zoomIn: () => { void engineRef.current?.commands.execute('zoom.in'); },
-      zoomOut: () => { void engineRef.current?.commands.execute('zoom.out'); },
-      zoomTo: (s, origin) => {
-        void engineRef.current?.commands.execute('zoom.to', { scale: s, origin });
+      zoomIn: () => { void engineRef.current?.commands.execute('camera.zoomIn'); },
+      zoomOut: () => { void engineRef.current?.commands.execute('camera.zoomOut'); },
+      zoomTo: (s, _origin) => {
+        void engineRef.current?.commands.execute('camera.zoomIn');
+        // TODO: implement zoomTo with origin via camera controls
       },
-      fitPage: () => { void engineRef.current?.commands.execute('zoom.fitPage'); },
-      fitWidth: () => { void engineRef.current?.commands.execute('zoom.fitWidth'); },
-      actualSize: () => { void engineRef.current?.commands.execute('zoom.actualSize'); },
+      fitPage: () => { void engineRef.current?.commands.execute('camera.fitPage'); },
+      fitWidth: () => { void engineRef.current?.commands.execute('camera.fitWidth'); },
+      actualSize: () => { void engineRef.current?.commands.execute('camera.actualSize'); },
       rotateBy: (deg) => { void engineRef.current?.commands.execute('rotate.by', { deg }); },
       searchText: (query) =>
         engineRef.current?.commands.execute<string, DocumentSearchHit[]>(
@@ -289,9 +306,6 @@ function DocumentViewerInner(
   const dims = pageDims ?? { width: 0, height: 0 };
 
   return (
-    // Outer shell carries the consumer's className (which must position it, e.g.
-    // `absolute inset-0`) so it becomes the containing block for the
-    // viewport-anchored overlay. The scroll container fills it.
     <div
       className={className}
       data-testid="document-viewer-shell"
@@ -306,40 +320,34 @@ function DocumentViewerInner(
           left: 0,
           right: 0,
           bottom: 0,
-          overflow: 'auto',
+          overflow: 'hidden',
           background: '#f3f4f6',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'flex-start',
-          padding: '16px',
-          touchAction: 'pan-x pan-y',
+          touchAction: 'none',
         }}
       >
-        <div style={{ position: 'relative', display: 'inline-block' }}>
-          <canvas
-            ref={canvasRef}
-            style={{ display: 'block', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}
-          />
-          <div
-            ref={textLayerRef}
-            className="bq-text-layer"
-            style={{ width: dims.width, height: dims.height }}
-          />
-          <div
-            ref={overlayRef}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: dims.width,
-              height: dims.height,
-              pointerEvents: 'none',
-            }}
-          >
-            {renderOverlay !== undefined && pageDims !== null
-              ? renderOverlay(pageDims)
-              : null}
-          </div>
+        <canvas
+          ref={canvasRef}
+          style={{ position: 'absolute', display: 'block', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}
+        />
+        <div
+          ref={textLayerRef}
+          className="bq-text-layer"
+          style={{ position: 'absolute', width: dims.width, height: dims.height }}
+        />
+        <div
+          ref={overlayRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: dims.width,
+            height: dims.height,
+            pointerEvents: 'none',
+          }}
+        >
+          {renderOverlay !== undefined && pageDims !== null
+            ? renderOverlay(pageDims)
+            : null}
         </div>
       </div>
       {/* Viewport-anchored overlay: NOT inside the scroll container, so plugins

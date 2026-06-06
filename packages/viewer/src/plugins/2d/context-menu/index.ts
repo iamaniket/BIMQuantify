@@ -20,22 +20,6 @@ export function contextMenuPlugin(): DocumentPlugin {
     ctx.events.emit('contextmenu:close', undefined);
   }
 
-  function open(ev: MouseEvent): void {
-    // Skip if another plugin (e.g. measure) already handled the right-click.
-    if (!ctx || ev.defaultPrevented) return;
-    ev.preventDefault();
-
-    const containerRect = ctx.container.getBoundingClientRect();
-    const x = ev.clientX - containerRect.left;
-    const y = ev.clientY - containerRect.top;
-
-    isOpen = true;
-    ctx.events.emit('contextmenu:open', {
-      position: { x, y },
-      page: ctx.getCurrentPage(),
-    });
-  }
-
   function onMouseDown(ev: MouseEvent): void {
     if (ev.button === 0 && isOpen) close();
   }
@@ -54,16 +38,23 @@ export function contextMenuPlugin(): DocumentPlugin {
       ctx = context;
       const { container } = context;
 
-      container.addEventListener('contextmenu', open);
       container.addEventListener('mousedown', onMouseDown);
       container.addEventListener('keydown', onKeyDown, true);
 
+      context.commands.register('contextMenu.open', (args: unknown) => {
+        if (!ctx) return;
+        const a = args as { containerX?: number; containerY?: number; page?: number } | undefined;
+        isOpen = true;
+        ctx.events.emit('contextmenu:open', {
+          position: { x: a?.containerX ?? 0, y: a?.containerY ?? 0 },
+          page: a?.page ?? ctx.getCurrentPage(),
+        });
+      }, { title: 'Open context menu' });
       context.commands.register('contextMenu.close', () => close(), {
         title: 'Close context menu',
       });
 
       cleanups.push(() => {
-        container.removeEventListener('contextmenu', open);
         container.removeEventListener('mousedown', onMouseDown);
         container.removeEventListener('keydown', onKeyDown, true);
       });

@@ -186,6 +186,7 @@ export function DocumentToolbar({
           node: (
             <form onSubmit={handlePageSubmit} className="flex items-center gap-1 px-1">
               <input
+                id="document-page-input"
                 type="text"
                 inputMode="numeric"
                 value={pageInput}
@@ -230,6 +231,7 @@ export function DocumentToolbar({
                   role="search"
                 >
                   <input
+                    id="document-search-input"
                     type="search"
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); }}
