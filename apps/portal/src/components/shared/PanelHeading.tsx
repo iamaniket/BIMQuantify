@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 type Props = {
   eyebrow: string;
   title: string;
-  sub?: string;
+  sub?: string | undefined;
 };
 
 export function PanelHeading({ eyebrow, title, sub }: Props): ReactNode {

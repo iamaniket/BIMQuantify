@@ -18,17 +18,13 @@ import {
   CardBody,
   CardHeader,
   Skeleton,
-  Tabs,
   TabsContent,
-  TabsList,
-  TabsTrigger,
 } from '@bimstitch/ui';
 
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
-import { PanelHeading } from '@/components/shared/PanelHeading';
-import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
+import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
 import {
@@ -664,7 +660,7 @@ export default function AccountPage(): JSX.Element {
   }[tab] ?? { eyebrow: '', title: '' };
 
   return (
-    <PageShell
+    <TabbedPageShell
       hero={
         <AccountHero
           userName={userName}
@@ -675,32 +671,22 @@ export default function AccountPage(): JSX.Element {
           invitationCount={me.pending_invitations_count}
         />
       }
+      tabs={[
+        { value: 'profile', label: t('tabs.profile'), icon: <UserRound className="h-4 w-4" /> },
+        {
+          value: 'invitations',
+          label: t('tabs.invitations'),
+          icon: <Mail className="h-4 w-4" />,
+          badge: invitations.length > 0 ? (
+            <Badge variant="primary" size="sm" bordered={false}>{invitations.length}</Badge>
+          ) : undefined,
+        },
+      ]}
+      activeTab={tab}
+      onTabChange={setTab}
+      panelHeading={panelHeading}
     >
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden"
-      >
-        <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
-          <TabsTrigger value="profile" className={TAB_TRIGGER_CLASS}>
-            <UserRound className="h-4 w-4" />
-            {t('tabs.profile')}
-          </TabsTrigger>
-          <TabsTrigger value="invitations" className={TAB_TRIGGER_CLASS}>
-            <Mail className="h-4 w-4" />
-            {t('tabs.invitations')}
-            {invitations.length > 0 && (
-              <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
-                {invitations.length}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        <PanelHeading eyebrow={panelHeading.eyebrow} title={panelHeading.title} />
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <TabsContent value="profile" className="mt-0">
+      <TabsContent value="profile" className="mt-0">
             <ProfilePane
               userName={userName}
               email={email}
@@ -738,8 +724,6 @@ export default function AccountPage(): JSX.Element {
               onDecline={(orgId) => { void onDecline(orgId); }}
             />
           </TabsContent>
-        </div>
-      </Tabs>
-    </PageShell>
+    </TabbedPageShell>
   );
 }

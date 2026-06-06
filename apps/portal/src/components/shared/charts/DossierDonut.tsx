@@ -1,11 +1,10 @@
 'use client';
 
-import { AlertTriangle, Check, FileText, ShieldCheck, SlidersHorizontal, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
-import { CountChip, Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimstitch/ui';
 
 export type DossierDonutRequirement = {
   code: string;
@@ -27,18 +26,11 @@ function centerColor(pct: number): string {
   return 'var(--error)';
 }
 
-const SOURCE_ICONS: Record<DossierDonutRequirement['sourceKind'], typeof Check> = {
-  attachment_slot: FileText,
-  certificate_type: ShieldCheck,
-  derived: SlidersHorizontal,
-};
-
 type SliceDatum = { name: string; value: number; index: number };
 
 export function DossierDonut({ pct, requirements }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.chartsPanel');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [expanded, setExpanded] = useState(false);
 
   const data: SliceDatum[] = requirements.map((r, index) => ({
     name: r.label,
@@ -53,11 +45,8 @@ export function DossierDonut({ pct, requirements }: Props): JSX.Element {
 
   return (
     <div className="flex h-full w-full flex-col items-center gap-3">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="relative aspect-square w-full max-h-full outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
-        aria-expanded={expanded}
+      <div
+        className="relative aspect-square w-full max-h-full rounded-full"
         aria-label={t('dossierTitle')}
       >
         <ResponsiveContainer width="100%" height="100%">
@@ -112,38 +101,7 @@ export function DossierDonut({ pct, requirements }: Props): JSX.Element {
             </>
           )}
         </div>
-      </button>
-
-      {expanded && (
-        <ul className="flex w-full max-w-[280px] flex-col gap-1.5">
-          {requirements.map((r, index) => {
-            const Icon = SOURCE_ICONS[r.sourceKind] ?? FileText;
-            return (
-              <li
-                key={r.code}
-                className="flex items-center gap-2 rounded-md border border-border bg-surface-low px-2.5 py-1.5 transition-colors hover:bg-surface-main dark:bg-black/20 dark:hover:bg-black/30"
-                onMouseEnter={() => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
-              >
-                <Icon className={`h-3.5 w-3.5 shrink-0 ${r.fulfilled ? 'text-success' : 'text-foreground-tertiary'}`} />
-                <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">
-                  {r.label}
-                </span>
-                <CountChip className="text-body3">
-                  {r.count}
-                </CountChip>
-                {r.fulfilled ? (
-                  <Check className="h-3.5 w-3.5 shrink-0 text-success" />
-                ) : r.required ? (
-                  <X className="h-3.5 w-3.5 shrink-0 text-error" />
-                ) : (
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      </div>
     </div>
   );
 }

@@ -15,18 +15,14 @@ import {
   Input,
   Select,
   Skeleton,
-  Tabs,
   TabsContent,
-  TabsList,
-  TabsTrigger,
 } from '@bimstitch/ui';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
-import { PanelHeading } from '@/components/shared/PanelHeading';
-import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
+import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { ApiError } from '@/lib/api/client';
 import type { ProjectMember } from '@/lib/api/schemas';
@@ -436,74 +432,62 @@ export default function ProjectAccessPage(): JSX.Element {
   }
 
   return (
-    <>
-      <PageShell
-        hero={
-          <ProjectAccessHero
-            projectName={project.name}
-            members={members}
-          />
-        }
-      >
-        <Tabs
-          value={tab}
-          onValueChange={setTab}
-          className="flex min-h-0 flex-1 flex-col overflow-hidden"
-        >
-          <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
-            <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
-              <LayoutGrid className="h-4 w-4" />
-              {t('tabs.overview')}
-            </TabsTrigger>
-            <TabsTrigger value="members" className={TAB_TRIGGER_CLASS}>
-              <Users className="h-4 w-4" />
-              {t('tabs.members')}
-              <span className="rounded-full bg-primary-lighter px-1.5 py-px text-caption font-bold text-primary">
-                {members.length}
-              </span>
-            </TabsTrigger>
-          </TabsList>
-
-          <PanelHeading eyebrow={panelHeading.eyebrow} title={panelHeading.title} sub={panelHeading.sub} />
-
-          {tab === 'members' && (
-            <MembersToolbar
-              query={query}
-              onQueryChange={setQuery}
-              roleFilter={roleFilter}
-              onRoleFilterChange={setRoleFilter}
-              canManage={canManage}
-              addLabel={t('addMember')}
-              onAddMember={() => { setAddOpen(true); }}
-            />
-          )}
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <TabsContent value="overview" className="mt-0">
-              <OverviewPane
-                members={members}
-                canManage={canManage}
-                onAddMember={() => { setAddOpen(true); }}
-                onSwitchTab={setTab}
-              />
-            </TabsContent>
-
-            <TabsContent value="members" className="mt-0">
-              {membersContent}
-            </TabsContent>
-          </div>
-        </Tabs>
-      </PageShell>
-
-      {canManage && activeOrgId !== null && (
-        <AddProjectMemberDialog
-          projectId={projectId}
-          organizationId={activeOrgId}
-          existingMembers={members}
-          open={addOpen}
-          onOpenChange={setAddOpen}
+    <TabbedPageShell
+      hero={
+        <ProjectAccessHero
+          projectName={project.name}
+          members={members}
         />
-      )}
-    </>
+      }
+      tabs={[
+        { value: 'overview', label: t('tabs.overview'), icon: <LayoutGrid className="h-4 w-4" /> },
+        {
+          value: 'members',
+          label: t('tabs.members'),
+          icon: <Users className="h-4 w-4" />,
+          badge: <Badge variant="primary" size="sm" bordered={false}>{members.length}</Badge>,
+        },
+      ]}
+      activeTab={tab}
+      onTabChange={setTab}
+      panelHeading={panelHeading}
+      toolbar={
+        tab === 'members' ? (
+          <MembersToolbar
+            query={query}
+            onQueryChange={setQuery}
+            roleFilter={roleFilter}
+            onRoleFilterChange={setRoleFilter}
+            canManage={canManage}
+            addLabel={t('addMember')}
+            onAddMember={() => { setAddOpen(true); }}
+          />
+        ) : undefined
+      }
+      afterTabs={
+        canManage && activeOrgId !== null ? (
+          <AddProjectMemberDialog
+            projectId={projectId}
+            organizationId={activeOrgId}
+            existingMembers={members}
+            open={addOpen}
+            onOpenChange={setAddOpen}
+          />
+        ) : undefined
+      }
+    >
+      <TabsContent value="overview" className="mt-0">
+        <OverviewPane
+          members={members}
+          canManage={canManage}
+          onAddMember={() => { setAddOpen(true); }}
+          onSwitchTab={setTab}
+        />
+      </TabsContent>
+
+      <TabsContent value="members" className="mt-0">
+        {membersContent}
+      </TabsContent>
+    </TabbedPageShell>
   );
 }

@@ -10,19 +10,14 @@ import {
   Button,
   Select,
   Skeleton,
-  Tabs,
   TabsContent,
-  TabsList,
-  TabsTrigger,
 } from '@bimstitch/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
-import { PageShell } from '@/components/shared/layout/PageShell';
+import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
-import { PanelHeading } from '@/components/shared/PanelHeading';
-import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import { AccessRequestApproveDialog } from '@/features/admin/access-requests/AccessRequestApproveDialog';
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
@@ -366,186 +361,118 @@ export default function AdminOrganizationsPage(): JSX.Element {
     },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
 
-  return (
-    <PageShell
-      hero={
-        <AdminOrgsHero organizations={allOrgs} pendingRequests={pendingRequestCount} />
+  const toolbar = tab === 'organizations' ? (
+    <TableToolbar
+      actions={
+        <Button size="sm" className="whitespace-nowrap" onClick={() => { setCreateOpen(true); }}>
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          {t('createButton')}
+        </Button>
       }
     >
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden"
-      >
-        {/* Underline tabs */}
-        <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
-          <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
-            <LayoutGrid className="h-4 w-4" />
-            {t('tabs.overview')}
-          </TabsTrigger>
-          <TabsTrigger value="organizations" className={TAB_TRIGGER_CLASS}>
-            <Table2 className="h-4 w-4" />
-            {t('tabs.organizations')}
-            <Badge variant="primary" size="sm" bordered={false}>
-              {allOrgs.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="requests" className={TAB_TRIGGER_CLASS}>
-            <Inbox className="h-4 w-4" />
-            {t('tabs.requests')}
-            {pendingRequestCount > 0 && (
-              <Badge variant="primary" size="sm" bordered={false}>
-                {pendingRequestCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="blog" className={TAB_TRIGGER_CLASS}>
-            <BookOpen className="h-4 w-4" />
-            {tBlog('tab')}
-            <Badge variant="default" size="sm" bordered={false}>
-              {blogPosts.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+      <SearchInput placeholder={t('searchPlaceholder')} value={search} onChange={setSearch} aria-label={t('searchAria')} />
+      <Select selectSize="sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); }} aria-label={t('statusFilterAria')}>
+        <option value="all">{t('statusFilters.all')}</option>
+        <option value="active">{t('statusFilters.active')}</option>
+        <option value="suspended">{t('statusFilters.suspended')}</option>
+        <option value="provisioning">{t('statusFilters.provisioning')}</option>
+      </Select>
+    </TableToolbar>
+  ) : tab === 'blog' ? (
+    <TableToolbar
+      actions={
+        <Button size="sm" className="whitespace-nowrap" onClick={() => { setBlogCreateOpen(true); }}>
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          {tBlog('createButton')}
+        </Button>
+      }
+    >
+      <Select selectSize="sm" value={blogLocale} onChange={(e) => { setBlogLocale(e.target.value); }} aria-label={tBlog('localeFilterAria')}>
+        <option value="all">{tBlog('localeFilters.all')}</option>
+        <option value="en">EN</option>
+        <option value="nl">NL</option>
+      </Select>
+      <Select selectSize="sm" value={blogStatus} onChange={(e) => { setBlogStatus(e.target.value); }} aria-label={tBlog('statusFilterAria')}>
+        <option value="all">{tBlog('statusFilters.all')}</option>
+        <option value="published">{tBlog('statusFilters.published')}</option>
+        <option value="draft">{tBlog('statusFilters.draft')}</option>
+      </Select>
+    </TableToolbar>
+  ) : tab === 'requests' ? (
+    <TableToolbar
+      actions={
+        <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
+          <Download className="mr-1 h-3.5 w-3.5" />
+          {tReq('exportButton')}
+        </Button>
+      }
+    >
+      <SearchInput placeholder={tReq('searchPlaceholder')} value={reqSearch} onChange={setReqSearch} aria-label={tReq('searchAria')} />
+      <Select selectSize="sm" value={reqStatusFilter} onChange={(e) => { setReqStatusFilter(e.target.value); }} aria-label={tReq('statusFilterAria')}>
+        <option value="all">{tReq('statusFilters.all')}</option>
+        <option value="new">{tReq('statusFilters.new')}</option>
+        <option value="approved">{tReq('statusFilters.approved')}</option>
+        <option value="rejected">{tReq('statusFilters.rejected')}</option>
+      </Select>
+    </TableToolbar>
+  ) : undefined;
 
-        <PanelHeading eyebrow={panelHeading.eyebrow} title={panelHeading.title} sub={panelHeading.sub} />
+  return (
+    <TabbedPageShell
+      hero={<AdminOrgsHero organizations={allOrgs} pendingRequests={pendingRequestCount} />}
+      tabs={[
+        { value: 'overview', label: t('tabs.overview'), icon: <LayoutGrid className="h-4 w-4" /> },
+        { value: 'organizations', label: t('tabs.organizations'), icon: <Table2 className="h-4 w-4" />, badge: <Badge variant="primary" size="sm" bordered={false}>{allOrgs.length}</Badge> },
+        { value: 'requests', label: t('tabs.requests'), icon: <Inbox className="h-4 w-4" />, badge: pendingRequestCount > 0 ? <Badge variant="primary" size="sm" bordered={false}>{pendingRequestCount}</Badge> : undefined },
+        { value: 'blog', label: tBlog('tab'), icon: <BookOpen className="h-4 w-4" />, badge: <Badge variant="default" size="sm" bordered={false}>{blogPosts.length}</Badge> },
+      ]}
+      activeTab={tab}
+      onTabChange={setTab}
+      panelHeading={panelHeading}
+      toolbar={toolbar}
+      afterTabs={
+        <>
+          <OrgCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+          <AccessRequestApproveDialog request={approveTarget} open={approveOpen} onOpenChange={setApproveOpen} />
+          <BlogPostCreateDialog open={blogCreateOpen} onOpenChange={setBlogCreateOpen} />
+        </>
+      }
+    >
+      <TabsContent value="organizations" className="mt-0">
+        <PageTableContent isLoading={query.isLoading} isError={query.isError} errorMessage={t('loadError')} countLabel={t('showing', { count: allOrgs.length })}>
+          <OrgTable organizations={allOrgs} />
+        </PageTableContent>
+      </TabsContent>
 
-        {/* Toolbar for organizations tab */}
-        {tab === 'organizations' && (
-          <TableToolbar
-            actions={
-              <Button size="sm" className="whitespace-nowrap" onClick={() => { setCreateOpen(true); }}>
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                {t('createButton')}
-              </Button>
-            }
-          >
-            <SearchInput placeholder={t('searchPlaceholder')} value={search} onChange={setSearch} aria-label={t('searchAria')} />
-            <Select
-              selectSize="sm"
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); }}
-              aria-label={t('statusFilterAria')}
-            >
-              <option value="all">{t('statusFilters.all')}</option>
-              <option value="active">{t('statusFilters.active')}</option>
-              <option value="suspended">{t('statusFilters.suspended')}</option>
-              <option value="provisioning">{t('statusFilters.provisioning')}</option>
-            </Select>
-          </TableToolbar>
+      <TabsContent value="overview" className="mt-0">
+        {query.isLoading ? (
+          <Skeleton className="h-64 w-full" />
+        ) : (
+          <OverviewPane organizations={allOrgs} />
         )}
+      </TabsContent>
 
-        {/* Toolbar for blog tab */}
-        {tab === 'blog' && (
-          <TableToolbar
-            actions={
-              <Button size="sm" className="whitespace-nowrap" onClick={() => { setBlogCreateOpen(true); }}>
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                {tBlog('createButton')}
-              </Button>
-            }
-          >
-            <Select
-              selectSize="sm"
-              value={blogLocale}
-              onChange={(e) => { setBlogLocale(e.target.value); }}
-              aria-label={tBlog('localeFilterAria')}
-            >
-              <option value="all">{tBlog('localeFilters.all')}</option>
-              <option value="en">EN</option>
-              <option value="nl">NL</option>
-            </Select>
-            <Select
-              selectSize="sm"
-              value={blogStatus}
-              onChange={(e) => { setBlogStatus(e.target.value); }}
-              aria-label={tBlog('statusFilterAria')}
-            >
-              <option value="all">{tBlog('statusFilters.all')}</option>
-              <option value="published">{tBlog('statusFilters.published')}</option>
-              <option value="draft">{tBlog('statusFilters.draft')}</option>
-            </Select>
-          </TableToolbar>
-        )}
+      <TabsContent value="blog" className="mt-0">
+        <PageTableContent isLoading={blogQuery.isLoading} isError={blogQuery.isError} errorMessage={tBlog('loadError')}>
+          <BlogPostsTable
+            posts={blogPosts}
+            onDelete={handleBlogDelete}
+            onToggleStatus={handleBlogToggleStatus}
+            deletingId={blogDeletingId}
+            togglingId={blogTogglingId}
+          />
+        </PageTableContent>
+      </TabsContent>
 
-        {/* Toolbar for requests tab */}
-        {tab === 'requests' && (
-          <TableToolbar
-            actions={
-              <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
-                <Download className="mr-1 h-3.5 w-3.5" />
-                {tReq('exportButton')}
-              </Button>
-            }
-          >
-            <SearchInput placeholder={tReq('searchPlaceholder')} value={reqSearch} onChange={setReqSearch} aria-label={tReq('searchAria')} />
-            <Select
-              selectSize="sm"
-              value={reqStatusFilter}
-              onChange={(e) => { setReqStatusFilter(e.target.value); }}
-              aria-label={tReq('statusFilterAria')}
-            >
-              <option value="all">{tReq('statusFilters.all')}</option>
-              <option value="new">{tReq('statusFilters.new')}</option>
-              <option value="approved">{tReq('statusFilters.approved')}</option>
-              <option value="rejected">{tReq('statusFilters.rejected')}</option>
-            </Select>
-          </TableToolbar>
-        )}
-
-        {/* Scrollable tab content */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <TabsContent value="organizations" className="mt-0">
-            <PageTableContent isLoading={query.isLoading} isError={query.isError} errorMessage={t('loadError')} countLabel={t('showing', { count: allOrgs.length })}>
-              <OrgTable organizations={allOrgs} />
-            </PageTableContent>
-          </TabsContent>
-
-          <TabsContent value="overview" className="mt-0">
-            {query.isLoading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : (
-              <OverviewPane organizations={allOrgs} />
-            )}
-          </TabsContent>
-
-          <TabsContent value="blog" className="mt-0">
-            <PageTableContent isLoading={blogQuery.isLoading} isError={blogQuery.isError} errorMessage={tBlog('loadError')}>
-              <BlogPostsTable
-                posts={blogPosts}
-                onDelete={handleBlogDelete}
-                onToggleStatus={handleBlogToggleStatus}
-                deletingId={blogDeletingId}
-                togglingId={blogTogglingId}
-              />
-            </PageTableContent>
-          </TabsContent>
-
-          <TabsContent value="requests" className="mt-0">
-            <PageTableContent isLoading={reqQuery.isLoading} isError={reqQuery.isError} errorMessage={tReq('loadError')} countLabel={tReq('showing', { count: allRequests.length })}>
-              <AccessRequestsTable
-                requests={allRequests}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
-            </PageTableContent>
-          </TabsContent>
-        </div>
-      </Tabs>
-
-      <OrgCreateDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
-      <AccessRequestApproveDialog
-        request={approveTarget}
-        open={approveOpen}
-        onOpenChange={setApproveOpen}
-      />
-      <BlogPostCreateDialog
-        open={blogCreateOpen}
-        onOpenChange={setBlogCreateOpen}
-      />
-    </PageShell>
+      <TabsContent value="requests" className="mt-0">
+        <PageTableContent isLoading={reqQuery.isLoading} isError={reqQuery.isError} errorMessage={tReq('loadError')} countLabel={tReq('showing', { count: allRequests.length })}>
+          <AccessRequestsTable
+            requests={allRequests}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
+        </PageTableContent>
+      </TabsContent>
+    </TabbedPageShell>
   );
 }

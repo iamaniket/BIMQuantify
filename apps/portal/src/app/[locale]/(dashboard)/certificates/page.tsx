@@ -10,17 +10,12 @@ import {
   Button,
   Select,
   Skeleton,
-  Tabs,
   TabsContent,
-  TabsList,
-  TabsTrigger,
 } from '@bimstitch/ui';
 
 import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
-import { PanelHeading } from '@/components/shared/PanelHeading';
-import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
+import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 
-import { PageShell } from '@/components/shared/layout/PageShell';
 import { getOrgCertificateDownloadUrl } from '@/lib/api/orgCertificates';
 import type { CertificateTypeValue, OrgCertificate } from '@/lib/api/schemas';
 import { OrgCertificatesHero } from '@/features/orgCertificates/OrgCertificatesHero';
@@ -31,7 +26,6 @@ import { OrgCertificateViewerDialog } from '@/features/certificates/CertificateV
 import { useOrgCertificates } from '@/features/orgCertificates/useOrgCertificates';
 import { useDeleteOrgCertificate } from '@/features/orgCertificates/useDeleteOrgCertificate';
 import { useAuth } from '@/providers/AuthProvider';
-
 
 const TYPE_OPTIONS: Array<{ value: CertificateTypeValue | 'all'; key: string }> = [
   { value: 'all', key: 'filterAll' },
@@ -92,31 +86,22 @@ export default function CertificatesPage(): JSX.Element {
   }[tab] ?? { eyebrow: '', title: '' };
 
   return (
-    <PageShell hero={<OrgCertificatesHero />}>
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden"
-      >
-        {/* Underline tabs */}
-        <TabsList className="shrink-0 gap-1 rounded-none border-b border-border bg-surface-main p-0 px-5">
-          <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
-            <LayoutGrid className="h-4 w-4" />
-            {t('tabs.overview')}
-          </TabsTrigger>
-          <TabsTrigger value="certificates" className={TAB_TRIGGER_CLASS}>
-            <Table2 className="h-4 w-4" />
-            {t('tabs.certificates')}
-            <Badge variant="primary" size="sm" bordered={false}>
-              {certificates.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
-
-        <PanelHeading eyebrow={panelHeading.eyebrow} title={panelHeading.title} />
-
-        {/* Toolbar for certificates tab */}
-        {tab === 'certificates' && (
+    <TabbedPageShell
+      hero={<OrgCertificatesHero />}
+      tabs={[
+        { value: 'overview', label: t('tabs.overview'), icon: <LayoutGrid className="h-4 w-4" /> },
+        {
+          value: 'certificates',
+          label: t('tabs.certificates'),
+          icon: <Table2 className="h-4 w-4" />,
+          badge: <Badge variant="primary" size="sm" bordered={false}>{certificates.length}</Badge>,
+        },
+      ]}
+      activeTab={tab}
+      onTabChange={setTab}
+      panelHeading={panelHeading}
+      toolbar={
+        tab === 'certificates' ? (
           <TableToolbar
             actions={
               <Button size="sm" className="whitespace-nowrap" onClick={() => { setUploadOpen(true); }}>
@@ -136,41 +121,37 @@ export default function CertificatesPage(): JSX.Element {
               ))}
             </Select>
           </TableToolbar>
+        ) : undefined
+      }
+      afterTabs={
+        <>
+          <OrgCertificateUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
+          <OrgCertificateViewerDialog
+            certificate={viewingCert}
+            open={viewingCert !== null}
+            onOpenChange={(o) => { if (!o) setViewingCert(null); }}
+          />
+        </>
+      }
+    >
+      <TabsContent value="overview" className="mt-0">
+        {certsQuery.isLoading ? (
+          <Skeleton className="h-64 w-full" />
+        ) : (
+          <OrgCertificatesOverview certificates={certificates} />
         )}
+      </TabsContent>
 
-        {/* Scrollable tab content */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <TabsContent value="overview" className="mt-0">
-            {certsQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : (
-              <OrgCertificatesOverview certificates={certificates} />
-            )}
-          </TabsContent>
-
-          <TabsContent value="certificates" className="mt-0">
-            <PageTableContent isLoading={certsQuery.isLoading} isError={false} errorMessage="" countLabel={t('panel.showing', { count: certificates.length })}>
-              <OrgCertificatesTable
-                certificates={certificates}
-                onDownload={(cert) => { void handleDownload(cert); }}
-                onDelete={handleDelete}
-                onView={setViewingCert}
-              />
-            </PageTableContent>
-          </TabsContent>
-        </div>
-      </Tabs>
-
-      <OrgCertificateUploadDialog
-        open={uploadOpen}
-        onOpenChange={setUploadOpen}
-      />
-
-      <OrgCertificateViewerDialog
-        certificate={viewingCert}
-        open={viewingCert !== null}
-        onOpenChange={(o) => { if (!o) setViewingCert(null); }}
-      />
-    </PageShell>
+      <TabsContent value="certificates" className="mt-0">
+        <PageTableContent isLoading={certsQuery.isLoading} isError={false} errorMessage="" countLabel={t('panel.showing', { count: certificates.length })}>
+          <OrgCertificatesTable
+            certificates={certificates}
+            onDownload={(cert) => { void handleDownload(cert); }}
+            onDelete={handleDelete}
+            onView={setViewingCert}
+          />
+        </PageTableContent>
+      </TabsContent>
+    </TabbedPageShell>
   );
 }

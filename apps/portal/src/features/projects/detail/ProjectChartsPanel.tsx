@@ -36,7 +36,7 @@ function PanelSection({
       <Eyebrow as="span">
         {title}
       </Eyebrow>
-      <div className="flex w-full min-h-0 flex-1 items-center justify-center overflow-auto">
+      <div className="flex w-full min-h-0 flex-1 items-center justify-center overflow-hidden">
         {children}
       </div>
     </div>
