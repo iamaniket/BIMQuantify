@@ -422,7 +422,7 @@ export function KeyBindingsTab(props: Props): JSX.Element {
     draftShortcuts3D,
   );
   const bindings2D = use2DBindings(
-    mode === '2d' ? (settings) : { shortcuts: {}, mouseBindings: {}, pageBackground: '' },
+    mode === '2d' ? (settings) : { shortcuts: {}, mouseBindings: {}, pageBackground: '', controls: { left: 'none' as const, middle: 'truck' as const, right: 'truck' as const, wheel: 'zoom' as const }, controlsLinked: true },
     documentActionLabel,
   );
 

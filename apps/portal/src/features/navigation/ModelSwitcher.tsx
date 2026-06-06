@@ -6,7 +6,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Spinner,
 } from '@bimstitch/ui';
@@ -27,6 +26,7 @@ type ModelSwitcherItem = {
   name: string;
   viewerKind: ViewerKind | null;
   latestViewableFileId: string | null;
+  versionNumber: number | null;
   isCurrent: boolean;
 };
 
@@ -52,6 +52,7 @@ function buildItems(
       name: m.name,
       viewerKind: fileType !== null ? kindForFormat(fileType as ViewerFormat) : null,
       latestViewableFileId: viewable?.id ?? null,
+      versionNumber: viewable?.version_number ?? null,
       isCurrent: m.id === currentModelId,
     };
   });
@@ -128,9 +129,7 @@ export function ModelSwitcher({ projectId, currentModelId, currentModelName }: P
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" sideOffset={6} className="max-h-80 w-64 overflow-y-auto">
-        <DropdownMenuLabel>{t('switchModel')}</DropdownMenuLabel>
-
+      <DropdownMenuContent align="end" sideOffset={6} className="max-h-80 min-w-0 w-[140px] overflow-y-auto">
         {!allLoaded && open ? (
           <div className="flex items-center justify-center py-3">
             <Spinner size="sm" className="text-foreground-tertiary" />
@@ -149,7 +148,11 @@ export function ModelSwitcher({ projectId, currentModelId, currentModelName }: P
                 <span className="inline-flex h-[18px] w-5" />
               )}
               <span className="min-w-0 flex-1 truncate text-body3">{item.name}</span>
-              {item.latestViewableFileId === null ? (
+              {item.versionNumber !== null ? (
+                <span className="shrink-0 text-micro text-foreground-tertiary">
+                  v{item.versionNumber}
+                </span>
+              ) : item.latestViewableFileId === null ? (
                 <span className="shrink-0 text-micro text-foreground-disabled">
                   {t('noViewableFile')}
                 </span>

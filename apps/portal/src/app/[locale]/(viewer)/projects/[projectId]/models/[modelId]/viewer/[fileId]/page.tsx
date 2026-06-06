@@ -59,6 +59,7 @@ import { getViewerBundle } from '@/lib/api/projectFiles';
 import type { ViewerBundleResponse } from '@/lib/api/schemas';
 import {
   DEFAULT_DOCUMENT_SETTINGS,
+  controlsFrom3D,
   loadDocumentSettings,
   type DocumentSettings,
 } from '@/lib/documentSettings';
@@ -430,6 +431,7 @@ export default function ViewerPage(): JSX.Element {
         searchHighlight={pdfSearchHighlight}
         className="absolute inset-0"
         navCompass={{ enabled: true, locale: locale as 'en' | 'nl' }}
+        controls={pdfSettings.controlsLinked ? controlsFrom3D(settings.controls) : pdfSettings.controls}
         onLoaded={handlePdfLoaded}
         onError={handlePdfError}
         onScaleChange={setPdfScale}

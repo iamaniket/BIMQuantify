@@ -30,10 +30,28 @@ export type DocumentMouseGesture =
 export type DocumentShortcutMap = Partial<Record<DocumentAction, string>>;
 export type DocumentMouseBindingMap = Partial<Record<DocumentMouseGesture, DocumentAction | 'pan' | 'zoomIn' | 'zoomOut' | 'none'>>;
 
+/**
+ * Camera-controls button → action mapping for the 2D viewer.
+ * Uses the same vocabulary as the 3D viewer's CameraAction (truck/dolly/zoom)
+ * so settings can be shared between 2D and 3D.
+ */
+export type DocumentCameraAction = 'truck' | 'zoom' | 'none';
+
+export type DocumentControlsSettings = {
+  left: DocumentCameraAction;
+  middle: DocumentCameraAction;
+  right: DocumentCameraAction;
+  wheel: DocumentCameraAction;
+};
+
 export type DocumentSettings = {
   pageBackground: string; // CSS colour applied behind the page canvas
   shortcuts: DocumentShortcutMap;
   mouseBindings: DocumentMouseBindingMap;
+  /** Camera-controls button assignments. */
+  controls: DocumentControlsSettings;
+  /** When true, 2D controls mirror the 3D controls from viewerSettings. */
+  controlsLinked: boolean;
 };
 
 export const DEFAULT_DOCUMENT_SHORTCUTS: DocumentShortcutMap = {
@@ -60,10 +78,19 @@ export const DEFAULT_DOCUMENT_MOUSE_BINDINGS: DocumentMouseBindingMap = {
   'click:Alt+left': 'zoomOut',
 };
 
+export const DEFAULT_DOCUMENT_CONTROLS: DocumentControlsSettings = {
+  left: 'none', // clicks pass through (select/measure)
+  middle: 'truck', // pan
+  right: 'truck', // pan
+  wheel: 'zoom', // zoom at cursor
+};
+
 export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   pageBackground: '#f3f4f6',
   shortcuts: DEFAULT_DOCUMENT_SHORTCUTS,
   mouseBindings: DEFAULT_DOCUMENT_MOUSE_BINDINGS,
+  controls: DEFAULT_DOCUMENT_CONTROLS,
+  controlsLinked: true,
 };
 
 function mergeWithDefaults(p: Partial<DocumentSettings>): DocumentSettings {
@@ -72,6 +99,39 @@ function mergeWithDefaults(p: Partial<DocumentSettings>): DocumentSettings {
     pageBackground: p.pageBackground ?? d.pageBackground,
     shortcuts: { ...d.shortcuts, ...(p.shortcuts ?? {}) },
     mouseBindings: { ...d.mouseBindings, ...(p.mouseBindings ?? {}) },
+    controls: { ...d.controls, ...(p.controls ?? {}) },
+    controlsLinked: p.controlsLinked ?? d.controlsLinked,
+  };
+}
+
+/**
+ * Derive 2D controls from 3D CameraAction settings.
+ * rotate/offset → none (no rotation in 2D, offset falls to none)
+ * truck → truck (pan)
+ * dolly/zoom → zoom
+ */
+export function controlsFrom3D(controls3D: {
+  left: string;
+  middle: string;
+  right: string;
+  wheel: string;
+}): DocumentControlsSettings {
+  function map(action: string): DocumentCameraAction {
+    switch (action) {
+      case 'truck':
+        return 'truck';
+      case 'dolly':
+      case 'zoom':
+        return 'zoom';
+      default:
+        return 'none';
+    }
+  }
+  return {
+    left: map(controls3D.left),
+    middle: map(controls3D.middle),
+    right: map(controls3D.right),
+    wheel: map(controls3D.wheel),
   };
 }
 

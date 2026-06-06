@@ -82,6 +82,8 @@ export interface DocumentEvents extends PluginLifecycleEvents {
   'contextmenu:open': { position: { x: number; y: number }; page: number };
   /** Context menu dismissed. */
   'contextmenu:close': undefined;
+  /** Camera position/zoom changed (emitted by the 2D camera plugin). */
+  'camera:change': undefined;
 }
 
 /**
