@@ -1153,9 +1153,6 @@
           "sourceProject": "Projectoverschrijving",
           "revertToDefaults": "Terug naar standaard"
         }
-      },
-      "rapporten": {
-        "label": "Rapporten"
       }
     }
   },
