@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Inbox, Search } from '@bimstitch/ui/icons';
+import { Download, Inbox } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -8,14 +8,13 @@ import { toast } from 'sonner';
 import {
   Badge,
   Button,
-  Input,
   Select,
-  Skeleton,
 } from '@bimstitch/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
+import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
 import { AccessRequestApproveDialog } from '@/features/admin/access-requests/AccessRequestApproveDialog';
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
@@ -119,18 +118,15 @@ export default function AdminAccessRequestsPage(): JSX.Element {
       }
     >
       {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
-        <div className="relative min-w-[260px]">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-placeholder" />
-          <Input
-            inputSize="sm"
-            className="pl-9"
-            placeholder={t('searchPlaceholder')}
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); }}
-            aria-label={t('searchAria')}
-          />
-        </div>
+      <TableToolbar
+        actions={
+          <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
+            <Download className="mr-1 h-3.5 w-3.5" />
+            {t('exportButton')}
+          </Button>
+        }
+      >
+        <SearchInput placeholder={t('searchPlaceholder')} value={search} onChange={setSearch} aria-label={t('searchAria')} />
         <Select
           selectSize="sm"
           value={statusFilter}
@@ -142,12 +138,7 @@ export default function AdminAccessRequestsPage(): JSX.Element {
           <option value="approved">{t('statusFilters.approved')}</option>
           <option value="rejected">{t('statusFilters.rejected')}</option>
         </Select>
-        <div className="flex-1" />
-        <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
-          <Download className="mr-1 h-3.5 w-3.5" />
-          {t('exportButton')}
-        </Button>
-      </div>
+      </TableToolbar>
 
       {/* Panel header */}
       <div className="flex shrink-0 items-center gap-4 border-b border-border px-5 py-2.5">
@@ -163,26 +154,13 @@ export default function AdminAccessRequestsPage(): JSX.Element {
 
       {/* Content */}
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
-        {query.isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : query.isError ? (
-          <p className="text-body3 text-error">{t('loadError')}</p>
-        ) : (
-          <>
-            <AccessRequestsTable
-              requests={allRequests}
-              onApprove={handleApprove}
-              onReject={handleReject}
-            />
-            <div className="mt-3 flex items-center justify-between text-body3 text-foreground-tertiary">
-              <span>{t('showing', { count: allRequests.length })}</span>
-            </div>
-          </>
-        )}
+        <PageTableContent isLoading={query.isLoading} isError={query.isError} errorMessage={t('loadError')} countLabel={t('showing', { count: allRequests.length })}>
+          <AccessRequestsTable
+            requests={allRequests}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
+        </PageTableContent>
       </div>
 
       <AccessRequestApproveDialog

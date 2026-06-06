@@ -1,11 +1,11 @@
 'use client';
 
-import { Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Input, PageHeader, Skeleton } from '@bimstitch/ui';
+import { PageHeader } from '@bimstitch/ui';
 
+import { PageTableContent, SearchInput } from '@/components/shared/PageTable';
 import { useAdminUsers } from '@/features/admin/users/useAdminUsers';
 import { UsersTable } from '@/features/admin/users/UsersTable';
 import { useAuth } from '@/providers/AuthProvider';
@@ -26,26 +26,12 @@ export default function AdminUsersPage(): JSX.Element {
       />
 
       <div className="mb-6 flex items-center gap-3">
-        <div className="relative w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-tertiary" />
-          <Input
-            type="search"
-            placeholder={t('searchPlaceholder')}
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); }}
-            className="w-full pl-9"
-            aria-label={t('searchAria')}
-          />
-        </div>
+        <SearchInput placeholder={t('searchPlaceholder')} value={search} onChange={setSearch} aria-label={t('searchAria')} />
       </div>
 
-      {query.isLoading ? (
-        <Skeleton className="h-32 w-full" />
-      ) : query.isError ? (
-        <p className="text-body3 text-error">{t('loadError')}</p>
-      ) : (
+      <PageTableContent isLoading={query.isLoading} isError={query.isError} errorMessage={t('loadError')} skeletonRows={1}>
         <UsersTable users={query.data ?? []} currentUserId={me?.user.id} />
-      )}
+      </PageTableContent>
     </main>
   );
 }

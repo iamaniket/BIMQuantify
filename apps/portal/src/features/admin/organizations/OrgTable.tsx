@@ -4,77 +4,62 @@ import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@bimstitch/ui';
-
+import { PageTable, type Column } from '@/components/shared/PageTable';
 import type { OrganizationRead } from '@/lib/api/schemas';
 
 import { OrgStatusBadge } from './OrgStatusBadge';
 import { SeatUsage } from './SeatUsage';
 import { StorageUsage } from './StorageUsage';
 
-type Props = {
-  organizations: OrganizationRead[];
-};
-
-export function OrgTable({ organizations }: Props): JSX.Element {
+export function OrgTable({ organizations }: { organizations: OrganizationRead[] }): JSX.Element {
   const t = useTranslations('admin.organizations.table');
 
-  if (organizations.length === 0) {
-    return (
-      <div className="flex h-32 items-center justify-center text-body3 text-foreground-tertiary">
-        {t('empty')}
-      </div>
-    );
-  }
+  const columns: Column<OrganizationRead>[] = [
+    {
+      header: t('name'),
+      cell: (org) => (
+        <>
+          <Link
+            href={`/admin/organizations/${org.id}`}
+            className="font-medium text-foreground hover:underline"
+          >
+            {org.name}
+          </Link>
+          <div className="font-sans text-caption text-foreground-tertiary">
+            {org.schema_name}
+          </div>
+        </>
+      ),
+    },
+    {
+      header: t('status'),
+      cell: (org) => <OrgStatusBadge status={org.status} />,
+    },
+    {
+      header: t('seats'),
+      cell: (org) => (
+        <SeatUsage seatCountUsed={org.seat_count_used} seatLimit={org.seat_limit} />
+      ),
+    },
+    {
+      header: t('storage'),
+      cell: (org) => (
+        <StorageUsage usedGb={org.active_storage_used_gb} limitGb={org.active_storage_limit_gb} />
+      ),
+    },
+    {
+      header: t('created'),
+      className: 'text-foreground-tertiary',
+      cell: (org) => new Date(org.created_at).toLocaleDateString(),
+    },
+  ];
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t('name')}</TableHead>
-          <TableHead>{t('status')}</TableHead>
-          <TableHead>{t('seats')}</TableHead>
-          <TableHead>{t('storage')}</TableHead>
-          <TableHead>{t('created')}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {organizations.map((org) => (
-          <TableRow key={org.id} className="hover:bg-background-hover">
-            <TableCell>
-              <Link
-                href={`/admin/organizations/${org.id}`}
-                className="font-medium text-foreground hover:underline"
-              >
-                {org.name}
-              </Link>
-              <div className="font-sans text-caption text-foreground-tertiary">
-                {org.schema_name}
-              </div>
-            </TableCell>
-            <TableCell>
-              <OrgStatusBadge status={org.status} />
-            </TableCell>
-            <TableCell>
-              <SeatUsage
-                seatCountUsed={org.seat_count_used}
-                seatLimit={org.seat_limit}
-              />
-            </TableCell>
-            <TableCell>
-              <StorageUsage
-                usedGb={org.active_storage_used_gb}
-                limitGb={org.active_storage_limit_gb}
-              />
-            </TableCell>
-            <TableCell className="text-foreground-tertiary">
-              {new Date(org.created_at).toLocaleDateString()}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <PageTable
+      columns={columns}
+      data={organizations}
+      rowKey={(o) => o.id}
+      emptyMessage={t('empty')}
+    />
   );
 }

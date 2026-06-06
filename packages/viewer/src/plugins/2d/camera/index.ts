@@ -133,6 +133,16 @@ export function cameraPlugin(
     const aspect = containerW / containerH;
     const pageAspect = pageW / pageH;
 
+    // Ensure the frustum matches the actual page dimensions so the zoom
+    // target is correct even if this runs before onPageRendered.
+    const halfH = pageH / 2;
+    const halfW = halfH * aspect;
+    camera.left = -halfW;
+    camera.right = halfW;
+    camera.top = halfH;
+    camera.bottom = -halfH;
+    camera.updateProjectionMatrix();
+
     let visibleH: number;
 
     if (mode === 'width' || pageAspect > aspect) {
@@ -149,6 +159,9 @@ export function cameraPlugin(
 
     void cc.setLookAt(centerX, centerY, 10, centerX, centerY, 0, animate);
     void cc.zoomTo(targetZoom, animate);
+    if (!animate) {
+      cc.update(10);
+    }
   }
 
   const api: DocumentPlugin & CameraPluginAPI = {
@@ -199,7 +212,6 @@ export function cameraPlugin(
       cc.minAzimuthAngle = 0;
       cc.maxAzimuthAngle = 0;
 
-      // Dolly is unused in 2D — zoom goes through camera.zoom instead.
       cc.dollyToCursor = true;
       cc.dollySpeed = 1;
       cc.infinityDolly = false;

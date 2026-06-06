@@ -134,6 +134,7 @@ function DocumentViewerInner(
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const webglHostRef = useRef<HTMLDivElement>(null);
   const viewportOverlayRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<DocumentEngine | null>(null);
 
@@ -174,8 +175,9 @@ function DocumentViewerInner(
     const canvas = canvasRef.current;
     const textLayer = textLayerRef.current;
     const overlay = overlayRef.current;
+    const webglHost = webglHostRef.current;
     const viewportOverlay = viewportOverlayRef.current;
-    if (!container || !canvas || !textLayer || !overlay || !viewportOverlay) return undefined;
+    if (!container || !canvas || !textLayer || !overlay || !webglHost || !viewportOverlay) return undefined;
 
     const plugins: DocumentPlugin[] = [
       toolsPlugin(),
@@ -202,6 +204,7 @@ function DocumentViewerInner(
         canvas,
         textLayer,
         overlayHost: overlay,
+        webglHost,
         viewportOverlay,
       });
       if (cancelled) return;
@@ -333,6 +336,17 @@ function DocumentViewerInner(
           ref={textLayerRef}
           className="bq-text-layer"
           style={{ position: 'absolute', width: dims.width, height: dims.height }}
+        />
+        <div
+          ref={webglHostRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pointerEvents: 'none',
+          }}
         />
         <div
           ref={overlayRef}

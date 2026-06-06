@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutGrid, Plus, Search, Table2 } from '@bimstitch/ui/icons';
+import { LayoutGrid, Plus, Table2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import {
   Badge,
   Button,
-  Input,
   Select,
   Skeleton,
   Tabs,
@@ -16,6 +15,8 @@ import {
   TabsList,
   TabsTrigger,
 } from '@bimstitch/ui';
+
+import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
 
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { getOrgCertificateDownloadUrl } from '@/lib/api/orgCertificates';
@@ -126,17 +127,15 @@ export default function CertificatesPage(): JSX.Element {
 
         {/* Toolbar for certificates tab */}
         {tab === 'certificates' && (
-          <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
-            <div className="relative min-w-[260px]">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-placeholder" />
-              <Input
-                inputSize="sm"
-                className="pl-9"
-                placeholder={t('list.searchPlaceholder')}
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); }}
-              />
-            </div>
+          <TableToolbar
+            actions={
+              <Button size="sm" className="whitespace-nowrap" onClick={() => { setUploadOpen(true); }}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {t('list.uploadButton')}
+              </Button>
+            }
+          >
+            <SearchInput placeholder={t('list.searchPlaceholder')} value={search} onChange={setSearch} />
             <Select
               selectSize="sm"
               value={typeFilter ?? 'all'}
@@ -146,12 +145,7 @@ export default function CertificatesPage(): JSX.Element {
                 <option key={value} value={value}>{(key)}</option>
               ))}
             </Select>
-            <div className="flex-1" />
-            <Button size="sm" className="whitespace-nowrap" onClick={() => { setUploadOpen(true); }}>
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              {t('list.uploadButton')}
-            </Button>
-          </div>
+          </TableToolbar>
         )}
 
         {/* Scrollable tab content */}
@@ -165,25 +159,14 @@ export default function CertificatesPage(): JSX.Element {
           </TabsContent>
 
           <TabsContent value="certificates" className="mt-0">
-            {certsQuery.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : (
-              <>
-                <OrgCertificatesTable
-                  certificates={certificates}
-                  onDownload={(cert) => { void handleDownload(cert); }}
-                  onDelete={handleDelete}
-                  onView={setViewingCert}
-                />
-                <div className="mt-3 flex items-center justify-between text-body3 text-foreground-tertiary">
-                  <span>{t('panel.showing', { count: certificates.length })}</span>
-                </div>
-              </>
-            )}
+            <PageTableContent isLoading={certsQuery.isLoading} isError={false} errorMessage="" countLabel={t('panel.showing', { count: certificates.length })}>
+              <OrgCertificatesTable
+                certificates={certificates}
+                onDownload={(cert) => { void handleDownload(cert); }}
+                onDelete={handleDelete}
+                onView={setViewingCert}
+              />
+            </PageTableContent>
           </TabsContent>
         </div>
       </Tabs>

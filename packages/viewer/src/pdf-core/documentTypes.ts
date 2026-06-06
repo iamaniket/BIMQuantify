@@ -43,6 +43,7 @@ export interface SearchHighlightState {
 /** Scale clamp shared by the engine (safety net) and the zoom plugin. */
 export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 8;
+export const MAX_CANVAS_DIM = 16384;
 
 export function clampScale(s: number): number {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
@@ -98,8 +99,10 @@ export interface DocumentContext {
   canvas: HTMLCanvasElement;
   /** pdf.js TextLayer host (sits over the canvas). */
   textLayer: HTMLElement;
-  /** Page-anchored overlay slot (sized to the page; scrolls/zooms with it). */
+  /** Page-anchored overlay slot (sized to the page; CSS-transformed with it). */
   overlayHost: HTMLElement;
+  /** Camera-projected overlay slot (full container; NOT CSS-transformed). */
+  webglHost: HTMLElement;
   /**
    * Viewport-anchored overlay slot: pinned to the scroll container's box, does
    * NOT scroll or zoom with the page. For fixed-corner widgets (e.g. the

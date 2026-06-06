@@ -17,6 +17,7 @@ import { EventBus } from '../core/EventBus.js';
 import { PluginManager } from '../core/plugin.js';
 import {
   clampScale,
+  MAX_CANVAS_DIM,
   type DocumentContext,
   type DocumentEvents,
   type DocumentPlugin,
@@ -47,6 +48,7 @@ interface MountElements {
   canvas: HTMLCanvasElement;
   textLayer: HTMLElement;
   overlayHost: HTMLElement;
+  webglHost: HTMLElement;
   viewportOverlay: HTMLElement;
 }
 
@@ -96,6 +98,7 @@ export class DocumentEngine {
       canvas: elements.canvas,
       textLayer: elements.textLayer,
       overlayHost: elements.overlayHost,
+      webglHost: elements.webglHost,
       viewportOverlay: elements.viewportOverlay,
       getDocument: () => this.doc,
       getPage: () => this.page,
@@ -122,6 +125,7 @@ export class DocumentEngine {
 
     this.pluginManager = new PluginManager(ctx, this.commands, this.events);
     for (const plugin of this.options.plugins ?? []) {
+      if (!this.pluginManager) return; // unmount() raced — bail out
       await this.pluginManager.register(plugin);
     }
   }
@@ -253,7 +257,13 @@ export class DocumentEngine {
       this.unscaledViewport = { width: base.width, height: base.height };
 
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-      const viewport = page.getViewport({ scale: this.scale, rotation: this.rotation });
+      const maxDim = Math.max(base.width, base.height);
+      const maxSafeScale = maxDim > 0
+        ? MAX_CANVAS_DIM / (maxDim * dpr)
+        : this.scale;
+      const effectiveScale = Math.min(this.scale, maxSafeScale);
+
+      const viewport = page.getViewport({ scale: effectiveScale, rotation: this.rotation });
       canvas.width = Math.floor(viewport.width * dpr);
       canvas.height = Math.floor(viewport.height * dpr);
       const cssW = Math.floor(viewport.width);
@@ -263,7 +273,12 @@ export class DocumentEngine {
       this.pageDims = { width: cssW, height: cssH };
 
       const ctx2d = canvas.getContext('2d');
-      if (ctx2d === null) return;
+      if (ctx2d === null) {
+        this.events.emit('doc:error', {
+          error: new Error(`Canvas context unavailable (${canvas.width}×${canvas.height}px)`),
+        });
+        return;
+      }
 
       const task = page.render({
         canvasContext: ctx2d,
@@ -280,7 +295,7 @@ export class DocumentEngine {
       // ---- Render TextLayer over the canvas ----
       if (textLayerDiv !== null && !cancelled()) {
         textLayerDiv.innerHTML = '';
-        textLayerDiv.style.setProperty('--scale-factor', String(this.scale));
+        textLayerDiv.style.setProperty('--scale-factor', String(effectiveScale));
 
         let textContent = this.textContentCache.get(safePage);
         if (textContent === undefined) {
@@ -302,7 +317,7 @@ export class DocumentEngine {
         this.events.emit('page:rendered', {
           pageNumber: safePage,
           dims: this.pageDims,
-          scale: this.scale,
+          scale: effectiveScale,
           rotation: this.rotation,
         });
       }

@@ -11,15 +11,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@bimstitch/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
+import { PageTable, type Column } from '@/components/shared/PageTable';
 import { ApiError } from '@/lib/api/client';
 import type { MemberRead } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -35,9 +30,6 @@ type Props = {
   members: MemberRead[];
 };
 
-// Maps API error codes to portal i18n keys under `admin.members.table.errors`.
-// Falls back to the raw code for unmapped values so the user still sees
-// something rather than a silent failure.
 const ERROR_CODE_TO_KEY: Record<string, string> = {
   LAST_ADMIN_REQUIRED: 'lastAdminRequired',
   LAST_SUPERUSER_REQUIRED: 'lastSuperuserRequired',
@@ -72,8 +64,6 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
         const projectIds = Array.isArray(error.detailObject['project_ids'])
           ? (error.detailObject['project_ids'] as string[])
           : [];
-        // The dialog re-issues the mutation with reassign_to; this branch
-        // is only reached if the caller hasn't already routed through it.
         setReassignFor({ userId: busyUserId ?? '', projectIds, leave: false });
         return;
       }
@@ -90,7 +80,7 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
 
   const settleBusy = (): void => { setBusyUserId(null); };
 
-  const onRemove = (userId: string, m: MemberRead): void => {
+  const onRemove = (userId: string): void => {
     setErrorMessage(null);
     setBusyUserId(userId);
     removeMutation.mutate(
@@ -159,229 +149,230 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
     }
   };
 
-  if (members.length === 0) {
-    return (
-      <div className="flex h-32 items-center justify-center text-body3 text-foreground-tertiary">
-        {t('empty')}
-      </div>
-    );
-  }
-
-  // Reassign-target candidates: active members other than the one being
-  // removed. Pending/suspended would inherit a project they can't open.
   const reassignCandidates = reassignFor === null
     ? []
     : members.filter(
       (m) => m.user_id !== reassignFor.userId && m.status === 'active',
     );
 
+  const columns: Column<MemberRead>[] = [
+    {
+      header: t('user'),
+      cell: (m) => (
+        <>
+          <div className="font-medium">{m.full_name ?? m.email}</div>
+          {m.full_name !== null && (
+            <div className="text-caption text-foreground-tertiary">{m.email}</div>
+          )}
+        </>
+      ),
+    },
+    {
+      header: t('role'),
+      cell: (m) => (
+        <div className="flex items-center gap-1.5">
+          <Badge variant={m.is_org_admin ? 'info' : 'default'}>
+            {m.is_org_admin ? t('roleAdmin') : t('roleMember')}
+          </Badge>
+          {m.is_last_admin && (
+            <Badge variant="warning">{t('lastAdminBadge')}</Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: t('status'),
+      cell: (m) => (
+        <Badge
+          variant={
+            m.status === 'active'
+              ? 'success'
+              : m.status === 'pending'
+                ? 'info'
+                : m.status === 'suspended'
+                  ? 'warning'
+                  : 'default'
+          }
+        >
+          {t(`statuses.${m.status}` as 'statuses.active')}
+        </Badge>
+      ),
+    },
+    {
+      header: t('invited'),
+      className: 'text-foreground-tertiary',
+      cell: (m) => new Date(m.invited_at).toLocaleDateString(),
+    },
+    {
+      header: '',
+      headerClassName: 'sr-only',
+      className: 'text-right',
+      cell: (m) => {
+        const isSelf = currentUserId !== null && m.user_id === currentUserId;
+        const canDemote = m.can_demote && !isSelf;
+        const canSuspend = m.can_suspend && !isSelf;
+        const canRemove = m.can_remove && !isSelf;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t('actions')}
+                disabled={busyUserId === m.user_id}
+              >
+                <MoreHorizontal className="h-[18px] w-[18px]" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {m.status === 'pending' && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setBusyUserId(m.user_id);
+                    resendMutation.mutate(
+                      { organizationId, userId: m.user_id },
+                      { onError: handleError, onSettled: settleBusy },
+                    );
+                  }}
+                >
+                  {t('resendInvite')}
+                </DropdownMenuItem>
+              )}
+              {m.is_org_admin ? (
+                <DropdownMenuItem
+                  disabled={!canDemote}
+                  title={
+                    isSelf
+                      ? t('tooltips.selfAction')
+                      : m.is_last_admin
+                        ? t('tooltips.lastAdmin')
+                        : undefined
+                  }
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setBusyUserId(m.user_id);
+                    updateMutation.mutate(
+                      {
+                        organizationId,
+                        userId: m.user_id,
+                        input: { is_org_admin: false },
+                      },
+                      { onError: handleError, onSettled: settleBusy },
+                    );
+                  }}
+                >
+                  {t('demote')}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setBusyUserId(m.user_id);
+                    updateMutation.mutate(
+                      {
+                        organizationId,
+                        userId: m.user_id,
+                        input: { is_org_admin: true },
+                      },
+                      { onError: handleError, onSettled: settleBusy },
+                    );
+                  }}
+                >
+                  {t('promote')}
+                </DropdownMenuItem>
+              )}
+              {m.status === 'active' && (
+                <DropdownMenuItem
+                  disabled={!canSuspend}
+                  title={
+                    isSelf
+                      ? t('tooltips.selfAction')
+                      : !m.can_suspend
+                        ? t('tooltips.lastAdmin')
+                        : undefined
+                  }
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setBusyUserId(m.user_id);
+                    updateMutation.mutate(
+                      {
+                        organizationId,
+                        userId: m.user_id,
+                        input: { status: 'suspended' },
+                      },
+                      { onError: handleError, onSettled: settleBusy },
+                    );
+                  }}
+                >
+                  {t('suspend')}
+                </DropdownMenuItem>
+              )}
+              {m.status === 'suspended' && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setBusyUserId(m.user_id);
+                    updateMutation.mutate(
+                      {
+                        organizationId,
+                        userId: m.user_id,
+                        input: { status: 'active' },
+                      },
+                      { onError: handleError, onSettled: settleBusy },
+                    );
+                  }}
+                >
+                  {t('reactivate')}
+                </DropdownMenuItem>
+              )}
+              {isSelf ? (
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={m.is_last_admin}
+                  title={m.is_last_admin ? t('tooltips.lastAdmin') : undefined}
+                  onClick={onLeave}
+                >
+                  {t('leaveOrg')}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={!canRemove}
+                  title={
+                    m.is_last_admin ? t('tooltips.lastAdmin') : undefined
+                  }
+                  onClick={() => { onRemove(m.user_id); }}
+                >
+                  {t('remove')}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
   return (
-    <>
-      <ErrorBanner message={errorMessage} className="mb-3" />
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t('user')}</TableHead>
-            <TableHead>{t('role')}</TableHead>
-            <TableHead>{t('status')}</TableHead>
-            <TableHead>{t('invited')}</TableHead>
-            <TableHead aria-label={t('actions')} />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {members.map((m) => {
-            const isSelf = currentUserId !== null && m.user_id === currentUserId;
-            const canDemote = m.can_demote && !isSelf;
-            const canSuspend = m.can_suspend && !isSelf;
-            const canRemove = m.can_remove && !isSelf;
-            return (
-              <TableRow key={m.user_id}>
-                <TableCell>
-                  <div className="font-medium">{m.full_name ?? m.email}</div>
-                  {m.full_name !== null && (
-                    <div className="text-caption text-foreground-tertiary">{m.email}</div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant={m.is_org_admin ? 'info' : 'default'}>
-                      {m.is_org_admin ? t('roleAdmin') : t('roleMember')}
-                    </Badge>
-                    {m.is_last_admin && (
-                      <Badge variant="warning">{t('lastAdminBadge')}</Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      m.status === 'active'
-                        ? 'success'
-                        : m.status === 'pending'
-                          ? 'info'
-                          : m.status === 'suspended'
-                            ? 'warning'
-                            : 'default'
-                    }
-                  >
-                    {t(`statuses.${m.status}` as 'statuses.active')}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-foreground-tertiary">
-                  {new Date(m.invited_at).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={t('actions')}
-                        disabled={busyUserId === m.user_id}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {m.status === 'pending' && (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setErrorMessage(null);
-                            setBusyUserId(m.user_id);
-                            resendMutation.mutate(
-                              { organizationId, userId: m.user_id },
-                              { onError: handleError, onSettled: settleBusy },
-                            );
-                          }}
-                        >
-                          {t('resendInvite')}
-                        </DropdownMenuItem>
-                      )}
-                      {m.is_org_admin ? (
-                        <DropdownMenuItem
-                          disabled={!canDemote}
-                          title={
-                            isSelf
-                              ? t('tooltips.selfAction')
-                              : m.is_last_admin
-                                ? t('tooltips.lastAdmin')
-                                : undefined
-                          }
-                          onClick={() => {
-                            setErrorMessage(null);
-                            setBusyUserId(m.user_id);
-                            updateMutation.mutate(
-                              {
-                                organizationId,
-                                userId: m.user_id,
-                                input: { is_org_admin: false },
-                              },
-                              { onError: handleError, onSettled: settleBusy },
-                            );
-                          }}
-                        >
-                          {t('demote')}
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setErrorMessage(null);
-                            setBusyUserId(m.user_id);
-                            updateMutation.mutate(
-                              {
-                                organizationId,
-                                userId: m.user_id,
-                                input: { is_org_admin: true },
-                              },
-                              { onError: handleError, onSettled: settleBusy },
-                            );
-                          }}
-                        >
-                          {t('promote')}
-                        </DropdownMenuItem>
-                      )}
-                      {m.status === 'active' && (
-                        <DropdownMenuItem
-                          disabled={!canSuspend}
-                          title={
-                            isSelf
-                              ? t('tooltips.selfAction')
-                              : !m.can_suspend
-                                ? t('tooltips.lastAdmin')
-                                : undefined
-                          }
-                          onClick={() => {
-                            setErrorMessage(null);
-                            setBusyUserId(m.user_id);
-                            updateMutation.mutate(
-                              {
-                                organizationId,
-                                userId: m.user_id,
-                                input: { status: 'suspended' },
-                              },
-                              { onError: handleError, onSettled: settleBusy },
-                            );
-                          }}
-                        >
-                          {t('suspend')}
-                        </DropdownMenuItem>
-                      )}
-                      {m.status === 'suspended' && (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setErrorMessage(null);
-                            setBusyUserId(m.user_id);
-                            updateMutation.mutate(
-                              {
-                                organizationId,
-                                userId: m.user_id,
-                                input: { status: 'active' },
-                              },
-                              { onError: handleError, onSettled: settleBusy },
-                            );
-                          }}
-                        >
-                          {t('reactivate')}
-                        </DropdownMenuItem>
-                      )}
-                      {isSelf ? (
-                        <DropdownMenuItem
-                          variant="destructive"
-                          disabled={m.is_last_admin}
-                          title={m.is_last_admin ? t('tooltips.lastAdmin') : undefined}
-                          onClick={onLeave}
-                        >
-                          {t('leaveOrg')}
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem
-                          variant="destructive"
-                          disabled={!canRemove}
-                          title={
-                            m.is_last_admin ? t('tooltips.lastAdmin') : undefined
-                          }
-                          onClick={() => { onRemove(m.user_id, m); }}
-                        >
-                          {t('remove')}
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-      {reassignFor !== null && (
-        <ReassignOwnerDialog
-          open
-          projectIds={reassignFor.projectIds}
-          candidates={reassignCandidates}
-          onConfirm={onReassignConfirm}
-          onCancel={() => { setReassignFor(null); }}
-        />
-      )}
-    </>
+    <PageTable
+      columns={columns}
+      data={members}
+      rowKey={(m) => m.user_id}
+      emptyMessage={t('empty')}
+      rowClassName=""
+      renderBefore={<ErrorBanner message={errorMessage} className="mb-3" />}
+      renderAfter={
+        reassignFor !== null ? (
+          <ReassignOwnerDialog
+            open
+            projectIds={reassignFor.projectIds}
+            candidates={reassignCandidates}
+            onConfirm={onReassignConfirm}
+            onCancel={() => { setReassignFor(null); }}
+          />
+        ) : undefined
+      }
+    />
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, Building2, Download, Inbox, LayoutGrid, Plus, Search, Table2 } from '@bimstitch/ui/icons';
+import { BookOpen, Building2, Download, Inbox, LayoutGrid, Plus, Table2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import {
   Badge,
   Button,
-  Input,
   Select,
   Skeleton,
   Tabs,
@@ -20,6 +19,7 @@ import {
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
+import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
 import { AccessRequestApproveDialog } from '@/features/admin/access-requests/AccessRequestApproveDialog';
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
@@ -99,58 +99,6 @@ function AdminOrgsHero({
         },
       ]}
     />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Toolbar
-// ---------------------------------------------------------------------------
-
-function OrgsToolbar({
-  search,
-  onSearchChange,
-  statusFilter,
-  onStatusFilterChange,
-  onCreate,
-}: {
-  search: string;
-  onSearchChange: (v: string) => void;
-  statusFilter: string;
-  onStatusFilterChange: (v: string) => void;
-  onCreate: () => void;
-}): JSX.Element {
-  const t = useTranslations('admin.organizations');
-
-  return (
-    <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
-      <div className="relative min-w-[260px]">
-        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-placeholder" />
-        <Input
-          inputSize="sm"
-          className="pl-9"
-          placeholder={t('searchPlaceholder')}
-          value={search}
-          onChange={(e) => { onSearchChange(e.target.value); }}
-          aria-label={t('searchAria')}
-        />
-      </div>
-      <Select
-        selectSize="sm"
-        value={statusFilter}
-        onChange={(e) => { onStatusFilterChange(e.target.value); }}
-        aria-label={t('statusFilterAria')}
-      >
-        <option value="all">{t('statusFilters.all')}</option>
-        <option value="active">{t('statusFilters.active')}</option>
-        <option value="suspended">{t('statusFilters.suspended')}</option>
-        <option value="provisioning">{t('statusFilters.provisioning')}</option>
-      </Select>
-      <div className="flex-1" />
-      <Button size="sm" className="whitespace-nowrap" onClick={onCreate}>
-        <Plus className="mr-1 h-3.5 w-3.5" />
-        {t('createButton')}
-      </Button>
-    </div>
   );
 }
 
@@ -478,18 +426,39 @@ export default function AdminOrganizationsPage(): JSX.Element {
 
         {/* Toolbar for organizations tab */}
         {tab === 'organizations' && (
-          <OrgsToolbar
-            search={search}
-            onSearchChange={setSearch}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            onCreate={() => { setCreateOpen(true); }}
-          />
+          <TableToolbar
+            actions={
+              <Button size="sm" className="whitespace-nowrap" onClick={() => { setCreateOpen(true); }}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {t('createButton')}
+              </Button>
+            }
+          >
+            <SearchInput placeholder={t('searchPlaceholder')} value={search} onChange={setSearch} aria-label={t('searchAria')} />
+            <Select
+              selectSize="sm"
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); }}
+              aria-label={t('statusFilterAria')}
+            >
+              <option value="all">{t('statusFilters.all')}</option>
+              <option value="active">{t('statusFilters.active')}</option>
+              <option value="suspended">{t('statusFilters.suspended')}</option>
+              <option value="provisioning">{t('statusFilters.provisioning')}</option>
+            </Select>
+          </TableToolbar>
         )}
 
         {/* Toolbar for blog tab */}
         {tab === 'blog' && (
-          <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
+          <TableToolbar
+            actions={
+              <Button size="sm" className="whitespace-nowrap" onClick={() => { setBlogCreateOpen(true); }}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {tBlog('createButton')}
+              </Button>
+            }
+          >
             <Select
               selectSize="sm"
               value={blogLocale}
@@ -510,32 +479,20 @@ export default function AdminOrganizationsPage(): JSX.Element {
               <option value="published">{tBlog('statusFilters.published')}</option>
               <option value="draft">{tBlog('statusFilters.draft')}</option>
             </Select>
-            <div className="flex-1" />
-            <Button
-              size="sm"
-              className="whitespace-nowrap"
-              onClick={() => { setBlogCreateOpen(true); }}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              {tBlog('createButton')}
-            </Button>
-          </div>
+          </TableToolbar>
         )}
 
         {/* Toolbar for requests tab */}
         {tab === 'requests' && (
-          <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
-            <div className="relative min-w-[260px]">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-placeholder" />
-              <Input
-                inputSize="sm"
-                className="pl-9"
-                placeholder={tReq('searchPlaceholder')}
-                value={reqSearch}
-                onChange={(e) => { setReqSearch(e.target.value); }}
-                aria-label={tReq('searchAria')}
-              />
-            </div>
+          <TableToolbar
+            actions={
+              <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
+                <Download className="mr-1 h-3.5 w-3.5" />
+                {tReq('exportButton')}
+              </Button>
+            }
+          >
+            <SearchInput placeholder={tReq('searchPlaceholder')} value={reqSearch} onChange={setReqSearch} aria-label={tReq('searchAria')} />
             <Select
               selectSize="sm"
               value={reqStatusFilter}
@@ -547,33 +504,15 @@ export default function AdminOrganizationsPage(): JSX.Element {
               <option value="approved">{tReq('statusFilters.approved')}</option>
               <option value="rejected">{tReq('statusFilters.rejected')}</option>
             </Select>
-            <div className="flex-1" />
-            <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
-              <Download className="mr-1 h-3.5 w-3.5" />
-              {tReq('exportButton')}
-            </Button>
-          </div>
+          </TableToolbar>
         )}
 
         {/* Scrollable tab content */}
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           <TabsContent value="organizations" className="mt-0">
-            {query.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : query.isError ? (
-              <p className="text-body3 text-error">{t('loadError')}</p>
-            ) : (
-              <>
-                <OrgTable organizations={allOrgs} />
-                <div className="mt-3 flex items-center justify-between text-body3 text-foreground-tertiary">
-                  <span>{t('showing', { count: allOrgs.length })}</span>
-                </div>
-              </>
-            )}
+            <PageTableContent isLoading={query.isLoading} isError={query.isError} errorMessage={t('loadError')} countLabel={t('showing', { count: allOrgs.length })}>
+              <OrgTable organizations={allOrgs} />
+            </PageTableContent>
           </TabsContent>
 
           <TabsContent value="overview" className="mt-0">
@@ -585,15 +524,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
           </TabsContent>
 
           <TabsContent value="blog" className="mt-0">
-            {blogQuery.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : blogQuery.isError ? (
-              <p className="text-body3 text-error">{tBlog('loadError')}</p>
-            ) : (
+            <PageTableContent isLoading={blogQuery.isLoading} isError={blogQuery.isError} errorMessage={tBlog('loadError')}>
               <BlogPostsTable
                 posts={blogPosts}
                 onDelete={handleBlogDelete}
@@ -601,30 +532,17 @@ export default function AdminOrganizationsPage(): JSX.Element {
                 deletingId={blogDeletingId}
                 togglingId={blogTogglingId}
               />
-            )}
+            </PageTableContent>
           </TabsContent>
 
           <TabsContent value="requests" className="mt-0">
-            {reqQuery.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : reqQuery.isError ? (
-              <p className="text-body3 text-error">{tReq('loadError')}</p>
-            ) : (
-              <>
-                <AccessRequestsTable
-                  requests={allRequests}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                />
-                <div className="mt-3 flex items-center justify-between text-body3 text-foreground-tertiary">
-                  <span>{tReq('showing', { count: allRequests.length })}</span>
-                </div>
-              </>
-            )}
+            <PageTableContent isLoading={reqQuery.isLoading} isError={reqQuery.isError} errorMessage={tReq('loadError')} countLabel={tReq('showing', { count: allRequests.length })}>
+              <AccessRequestsTable
+                requests={allRequests}
+                onApprove={handleApprove}
+                onReject={handleReject}
+              />
+            </PageTableContent>
           </TabsContent>
         </div>
       </Tabs>

@@ -21,6 +21,7 @@ import {
 
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
+import { PageTableContent } from '@/components/shared/PageTable';
 import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
 import { MembersTable } from '@/features/admin/members/MembersTable';
@@ -823,23 +824,12 @@ export function OrgDetailView({
           </TabsContent>
 
           <TabsContent value="members" className="mt-0">
-            {membersLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : membersError ? (
-              <p className="text-body3 text-error">{t('members.loadError')}</p>
-            ) : (
-              <>
-                <MembersTable
-                  organizationId={org.id}
-                  members={filteredMembers}
-                />
-                <div className="mt-3 flex items-center justify-between text-body3 text-foreground-tertiary">
-                  <span>
-                    {t('members.showing', { filtered: filteredMembers.length, total: members.length })}
-                  </span>
-                </div>
-              </>
-            )}
+            <PageTableContent isLoading={membersLoading} isError={membersError} errorMessage={t('members.loadError')} countLabel={t('members.showing', { filtered: filteredMembers.length, total: members.length })}>
+              <MembersTable
+                organizationId={org.id}
+                members={filteredMembers}
+              />
+            </PageTableContent>
           </TabsContent>
 
           <TabsContent value="audit" className="mt-0">

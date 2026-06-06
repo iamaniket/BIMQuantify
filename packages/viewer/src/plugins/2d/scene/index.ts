@@ -143,7 +143,7 @@ export function scenePlugin(
       renderer.setClearColor(0x000000, 0);
       renderer.domElement.style.cssText =
         'position:absolute;inset:0;pointer-events:none;';
-      context.overlayHost.appendChild(renderer.domElement);
+      context.webglHost.appendChild(renderer.domElement);
 
       resizeRenderer();
 
