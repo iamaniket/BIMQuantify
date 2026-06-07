@@ -109,6 +109,7 @@ export type DocumentViewerProps = {
   onScaleChange?: (scale: number) => void;
   onRotationChange?: (rotation: DocumentRotation) => void;
   onPageMatchCount?: (count: number) => void;
+  onPageRendered?: (info: { pageNumber: number; dims: PageDimensions }) => void;
 };
 
 function DocumentViewerInner(
@@ -129,6 +130,7 @@ function DocumentViewerInner(
     onScaleChange,
     onRotationChange,
     onPageMatchCount,
+    onPageRendered,
   }: DocumentViewerProps,
   ref: ForwardedRef<DocumentViewerHandle>,
 ): JSX.Element {
@@ -156,6 +158,7 @@ function DocumentViewerInner(
   const onErrorRef = useRef(onError);
   const onScaleChangeRef = useRef(onScaleChange);
   const onRotationChangeRef = useRef(onRotationChange);
+  const onPageRenderedRef = useRef(onPageRendered);
   const onPageMatchCountRef = useRef(onPageMatchCount);
   useEffect(() => {
     currentPageRef.current = currentPage;
@@ -170,6 +173,7 @@ function DocumentViewerInner(
     onErrorRef.current = onError;
     onScaleChangeRef.current = onScaleChange;
     onRotationChangeRef.current = onRotationChange;
+    onPageRenderedRef.current = onPageRendered;
     onPageMatchCountRef.current = onPageMatchCount;
   });
 
@@ -231,8 +235,9 @@ function DocumentViewerInner(
       engine.events.on('search:matchCount', ({ count }) => {
         onPageMatchCountRef.current?.(count);
       });
-      engine.events.on('page:rendered', ({ dims }) => {
+      engine.events.on('page:rendered', ({ pageNumber, dims }) => {
         setPageDims(dims);
+        onPageRenderedRef.current?.({ pageNumber, dims });
       });
 
       // Seed the engine with the current controlled-prop values before load

@@ -44,10 +44,6 @@ export function pdfUnderlayPlugin(): DocumentPlugin & PdfUnderlayAPI {
   const cleanups: Array<() => void> = [];
 
   let revealed = false;
-  let prevScreenX = 0;
-  let prevScreenY = 0;
-  let prevCssScale = 1;
-
   function syncTransform(): void {
     if (!ctx || !renderState || !sceneApi) return;
     const camera = sceneApi.camera;
@@ -74,23 +70,6 @@ export function pdfUnderlayPlugin(): DocumentPlugin & PdfUnderlayAPI {
 
     const cssScale = pxPerUnit / renderScale;
     const transform = `translate(${screenX}px, ${screenY}px) scale(${cssScale})`;
-
-    const dX = Math.abs(screenX - prevScreenX);
-    const dY = Math.abs(screenY - prevScreenY);
-    const dS = Math.abs(cssScale - prevCssScale);
-    if (dX > 20 || dY > 20 || dS > 0.1) {
-      console.log('[syncTransform] JUMP', {
-        screenX: screenX.toFixed(1), screenY: screenY.toFixed(1), cssScale: cssScale.toFixed(4),
-        prev: { x: prevScreenX.toFixed(1), y: prevScreenY.toFixed(1), s: prevCssScale.toFixed(4) },
-        delta: { x: dX.toFixed(1), y: dY.toFixed(1), s: dS.toFixed(4) },
-        zoom: zoom.toFixed(4), renderScale: renderScale.toFixed(4), pxPerUnit: pxPerUnit.toFixed(4),
-        camPos: { x: cx.toFixed(2), y: cy.toFixed(2) },
-        frustum: { l: camera.left.toFixed(1), r: camera.right.toFixed(1), t: camera.top.toFixed(1), b: camera.bottom.toFixed(1) },
-      });
-    }
-    prevScreenX = screenX;
-    prevScreenY = screenY;
-    prevCssScale = cssScale;
 
     ctx.canvas.style.transform = transform;
     ctx.canvas.style.transformOrigin = '0 0';
@@ -137,16 +116,10 @@ export function pdfUnderlayPlugin(): DocumentPlugin & PdfUnderlayAPI {
     const maxDim = Math.max(uv?.width ?? 0, uv?.height ?? 0);
     const maxSafeScale = maxDim > 0 ? MAX_CANVAS_DIM / (maxDim * dpr) : clamped;
     const effectiveScale = Math.min(clamped, maxSafeScale);
-    console.log('[pdf-underlay] rerenderAtCurrentZoom', {
-      pxPerUnit: pxPerUnit.toFixed(4), effectiveScale: effectiveScale.toFixed(4),
-      currentScale: ctx.getScale().toFixed(4), zoom: zoom.toFixed(4),
-    });
-    // Update renderScale immediately so syncTransform doesn't use a stale
-    // value during the async re-render window (canvas resizes synchronously
-    // but page:rendered fires after the render completes).
-    if (renderState) {
-      renderState.renderScale = effectiveScale;
-    }
+    // renderScale is NOT pre-updated here — the double-buffered renderer
+    // keeps old canvas content visible until the swap, and syncTransform
+    // needs the old renderScale to CSS-scale it correctly. page:rendered
+    // fires synchronously after the swap and updates renderState then.
     ctx.setScale(pxPerUnit);
   }
 
@@ -159,11 +132,6 @@ export function pdfUnderlayPlugin(): DocumentPlugin & PdfUnderlayAPI {
     if (!ctx) return;
     const uv = ctx.getUnscaledViewport();
     if (!uv) return;
-
-    console.log('[pdf-underlay] onPageRendered', {
-      evScale: ev.scale.toFixed(4), evDims: ev.dims,
-      uvW: uv.width.toFixed(1), uvH: uv.height.toFixed(1), firstRender,
-    });
 
     renderState = {
       renderScale: ev.scale,

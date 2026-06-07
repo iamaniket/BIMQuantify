@@ -268,25 +268,28 @@ export class DocumentEngine {
       const effectiveScale = Math.min(this.scale, maxSafeScale);
 
       const viewport = page.getViewport({ scale: effectiveScale, rotation: this.rotation });
-      canvas.width = Math.floor(viewport.width * dpr);
-      canvas.height = Math.floor(viewport.height * dpr);
+      const bufW = Math.floor(viewport.width * dpr);
+      const bufH = Math.floor(viewport.height * dpr);
       const cssW = Math.floor(viewport.width);
       const cssH = Math.floor(viewport.height);
-      canvas.style.width = `${cssW}px`;
-      canvas.style.height = `${cssH}px`;
       this.pageDims = { width: cssW, height: cssH };
 
-      const ctx2d = canvas.getContext('2d');
-      if (ctx2d === null) {
+      // Render to an offscreen buffer so the visible canvas keeps its old
+      // content until the new frame is ready (avoids blank-canvas flash).
+      const offscreen = document.createElement('canvas');
+      offscreen.width = bufW;
+      offscreen.height = bufH;
+      const offCtx = offscreen.getContext('2d');
+      if (offCtx === null) {
         this.events.emit('doc:error', {
-          error: new Error(`Canvas context unavailable (${canvas.width}×${canvas.height}px)`),
+          error: new Error(`Canvas context unavailable (${bufW}×${bufH}px)`),
         });
         return;
       }
 
       const task = page.render({
-        canvasContext: ctx2d,
-        canvas,
+        canvasContext: offCtx,
+        canvas: offscreen,
         viewport,
         transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined,
       });
@@ -294,6 +297,26 @@ export class DocumentEngine {
       await task.promise;
       if (this.renderTask === task) {
         this.renderTask = null;
+      }
+
+      // Swap: resize visible canvas and blit the finished frame in one
+      // synchronous step — no blank-canvas flash.
+      if (!cancelled()) {
+        canvas.width = bufW;
+        canvas.height = bufH;
+        canvas.style.width = `${cssW}px`;
+        canvas.style.height = `${cssH}px`;
+        const ctx2d = canvas.getContext('2d');
+        ctx2d?.drawImage(offscreen, 0, 0);
+
+        // Emit immediately after the swap so plugins (pdf-underlay) update
+        // renderState in sync with the new canvas dimensions.
+        this.events.emit('page:rendered', {
+          pageNumber: safePage,
+          dims: this.pageDims!,
+          scale: effectiveScale,
+          rotation: this.rotation,
+        });
       }
 
       // ---- Render TextLayer over the canvas ----
@@ -315,15 +338,6 @@ export class DocumentEngine {
         });
         this.textLayerInstance = tl;
         await tl.render();
-      }
-
-      if (!cancelled()) {
-        this.events.emit('page:rendered', {
-          pageNumber: safePage,
-          dims: this.pageDims,
-          scale: effectiveScale,
-          rotation: this.rotation,
-        });
       }
     } catch (err) {
       if (cancelled()) return;

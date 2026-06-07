@@ -224,6 +224,8 @@ export default function ViewerPage(): JSX.Element {
   const [sceneReady, setSceneReady] = useState(false);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [overlayFading, setOverlayFading] = useState(false);
+  const [pdfFirstPageRendered, setPdfFirstPageRendered] = useState(false);
+  const pdfRenderedRef = useRef(false);
   const prevLoadingRef = useRef(false);
 
   const onProgress = useCallback((loaded: number, total: number) => {
@@ -244,6 +246,8 @@ export default function ViewerPage(): JSX.Element {
     setProgress(null);
     setInspectorRequest(null);
     setOverlayFading(false);
+    setPdfFirstPageRendered(false);
+    pdfRenderedRef.current = false;
     prevLoadingRef.current = false;
   }, [modelId, fileId]);
 
@@ -262,8 +266,15 @@ export default function ViewerPage(): JSX.Element {
     setProgress(null);
   }, []);
 
+  const handlePdfPageRendered = useCallback(() => {
+    if (pdfRenderedRef.current) return;
+    pdfRenderedRef.current = true;
+    setPdfFirstPageRendered(true);
+  }, []);
+
   const handlePdfError = useCallback((err: Error) => {
     setViewerError(err.message);
+    setPdfFirstPageRendered(true);
   }, []);
 
   const fileType = bundle?.file_type;
@@ -296,14 +307,16 @@ export default function ViewerPage(): JSX.Element {
 
   const loadingActive =
     (isIfc && sceneReady && !viewerReady && progress !== null) ||
-    (isPdf && bundle !== null && pdfNumPages === null);
+    (isPdf && bundle !== null && !pdfFirstPageRendered);
 
   useEffect(() => {
     const wasLoading = prevLoadingRef.current;
     prevLoadingRef.current = loadingActive;
     if (wasLoading && !loadingActive) {
       setOverlayFading(true);
-      const timer = setTimeout(() => setOverlayFading(false), 700);
+      const timer = setTimeout(() => {
+        setOverlayFading(false);
+      }, 700);
       return () => clearTimeout(timer);
     }
     if (loadingActive) {
@@ -457,6 +470,7 @@ export default function ViewerPage(): JSX.Element {
         onProgress={onProgress}
         onLoaded={handlePdfLoaded}
         onError={handlePdfError}
+        onPageRendered={handlePdfPageRendered}
         onScaleChange={setPdfScale}
         onRotationChange={setPdfRotation}
         renderOverlay={renderPdfOverlay}
