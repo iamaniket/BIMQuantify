@@ -6,6 +6,15 @@ export const modelsKey = (
   'models',
 ] as const;
 
+export const modelsWithVersionsKey = (
+  projectId: string,
+): readonly ['projects', string, 'models', 'with-versions'] => [
+  'projects',
+  projectId,
+  'models',
+  'with-versions',
+] as const;
+
 export const modelKey = (
   projectId: string,
   modelId: string,

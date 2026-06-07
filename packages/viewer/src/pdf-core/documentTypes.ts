@@ -81,7 +81,7 @@ export interface DocumentEvents extends PluginLifecycleEvents {
   /** Measurement mode exited (Escape / deactivate). */
   'measure:modeExit': undefined;
   /** Right-click context menu opened at the given viewport position + page info. */
-  'contextmenu:open': { position: { x: number; y: number }; page: number };
+  'contextmenu:open': { position: { x: number; y: number }; page: number; pagePoint: { x: number; y: number } | null };
   /** Context menu dismissed. */
   'contextmenu:close': undefined;
   /** Camera position/zoom changed (emitted by the 2D camera plugin). */

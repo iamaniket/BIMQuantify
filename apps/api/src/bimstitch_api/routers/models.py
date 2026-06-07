@@ -105,7 +105,7 @@ async def create_model(
     return model
 
 
-@router.get("", response_model=list[ModelRead])
+@router.get("")
 async def list_models(
     project_id: UUID,
     response: Response,
@@ -116,7 +116,8 @@ async def list_models(
     discipline: ModelDiscipline | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-) -> list[Model]:
+    include: str | None = Query(default=None),
+) -> list[dict[str, object]]:
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
 
@@ -129,10 +130,33 @@ async def list_models(
     total = (await session.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
     response.headers["X-Total-Count"] = str(total)
 
+    if include == "versions":
+        stmt = stmt.options(selectinload(Model.files))
+
     stmt = stmt.order_by(Model.created_at).limit(limit).offset(offset)
     result = await session.execute(stmt)
+    models = list(result.scalars().all())
     cache_response(response, CACHE_TTL_MODELS_LIST)
-    return list(result.scalars().all())
+
+    if include == "versions":
+        return [
+            ModelWithVersions.model_validate(
+                {
+                    "id": m.id,
+                    "project_id": m.project_id,
+                    "name": m.name,
+                    "discipline": m.discipline,
+                    "status": m.status,
+                    "primary_file_type": m.primary_file_type,
+                    "created_at": m.created_at,
+                    "updated_at": m.updated_at,
+                    "versions": list(m.files),
+                }
+            ).model_dump()
+            for m in models
+        ]
+
+    return [ModelRead.model_validate(m).model_dump() for m in models]
 
 
 @router.get("/{model_id}", response_model=ModelWithVersions)

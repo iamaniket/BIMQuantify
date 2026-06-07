@@ -19,7 +19,7 @@ import {
 import { FileDropZone } from '@/components/shared/FileDropZone';
 import { VersionBadge, VersionHistoryList } from '@/components/shared/resource';
 import { ApiError } from '@/lib/api/client';
-import type { FileTypeValue, Model } from '@/lib/api/schemas';
+import type { FileTypeValue, Model, ProjectFile } from '@/lib/api/schemas';
 import { useCheckCompliance } from '@/features/compliance/hooks';
 import { acceptedExtensions, isAllowedFile } from '@/features/models/fileValidation';
 import { useModelFiles } from '@/features/models/useModelFiles';
@@ -68,11 +68,12 @@ type PendingUpload = {
 type Props = {
   projectId: string;
   model: Model;
+  prefetchedFiles: ProjectFile[] | undefined;
   isOpen: boolean;
   onToggle: () => void;
 };
 
-export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): JSX.Element {
+export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onToggle }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.models.row');
   const tFiles = useTranslations('projectDetail.tabs.models.files');
   const filesQuery = useModelFiles(projectId, model.id);
@@ -82,7 +83,7 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
   const { tokens } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [pending, setPending] = useState<PendingUpload[]>([]);
-  const files = filesQuery.data ?? [];
+  const files = prefetchedFiles ?? filesQuery.data ?? [];
   const colors = disciplineChipColors(model.discipline);
   const latestFile = files.length > 0 ? files[0] : undefined;
   const isViewable = latestFile !== undefined && (
@@ -303,7 +304,7 @@ export function ModelsTableRow({ projectId, model, isOpen, onToggle }: Props): J
             sizeBytes: f.size_bytes,
             createdAt: f.created_at,
           }))}
-          isLoading={filesQuery.isLoading}
+          isLoading={prefetchedFiles === undefined && filesQuery.isLoading}
         />
       </DetailCardBody>
 

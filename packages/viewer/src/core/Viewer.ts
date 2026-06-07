@@ -124,16 +124,25 @@ export class Viewer {
     world.camera.controls.getTarget(target);
     const distance = cam.position.distanceTo(target);
 
-    // Keep the far/near ratio under ~2 000:1 to preserve depth-buffer
+    // Keep the far/near ratio under MAX_DEPTH_RATIO to preserve depth-buffer
     // precision and avoid z-fighting on coplanar BIM surfaces.
-    const dynamicNear = Math.min(
-      Math.max(distance * 0.02, 0.01),
+    // Near: 0.1% of distance, minimum 0.0001 (allows extreme close-up zoom).
+    // Far: distance-proportional; no large model-size floor when zoomed in.
+    const MAX_DEPTH_RATIO = 3000;
+
+    let dynamicNear = Math.min(
+      Math.max(distance * 0.001, 0.0001),
       this.baseNear,
     );
-    const dynamicFar = Math.min(
-      Math.max(distance * 10, this.modelMaxDim * 3),
+    let dynamicFar = Math.min(
+      Math.max(distance * 20, this.modelMaxDim * 0.5),
       this.baseFar,
     );
+
+    // Hard-cap ratio: tighten far plane to stay within depth budget.
+    if (dynamicFar / dynamicNear > MAX_DEPTH_RATIO) {
+      dynamicFar = dynamicNear * MAX_DEPTH_RATIO;
+    }
 
     const nearChanged = Math.abs(dynamicNear - this.lastAppliedNear) > 1e-6;
     const farChanged = Math.abs(dynamicFar - this.lastAppliedFar) > 1e-4;
@@ -389,12 +398,12 @@ export class Viewer {
       false,
     );
 
-    // Tighten depth range to the model's scale. Keep the far/near ratio
-    // under ~2 000:1 so the 24-bit depth buffer has enough precision for
-    // coplanar BIM surfaces (slab-on-wall, glazing-on-frame).
+    // Tighten depth range to the model's scale. The dynamic near/far
+    // updater enforces a max ratio of 3000:1 for z-fighting prevention;
+    // these base values are the generous defaults at resting distance.
     const cam = world.camera.three;
     if (cam instanceof THREE.PerspectiveCamera) {
-      cam.near = Math.max(maxDim / 200, 0.05);
+      cam.near = Math.max(maxDim / 500, 0.01);
       cam.far = maxDim * 10;
       this.baseNear = cam.near;
       this.baseFar = cam.far;

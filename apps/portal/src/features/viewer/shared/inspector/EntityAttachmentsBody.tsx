@@ -26,6 +26,7 @@ import { AttachmentRow } from '@/features/viewer/shared/attachments/AttachmentRo
 import { anchor3d, anchorPdf, type Attachment, type AnchorPayloadFields } from '@/lib/api/schemas';
 
 import { consumePendingElementPoint } from './pendingElementPoint';
+import { consumePendingPdfContextPoint } from './pendingPdfContextPoint';
 
 const PENDING_PIN_KEY = 'bimstitch.pendingPdfPin';
 
@@ -74,12 +75,18 @@ function buildLinkVars(scope: AttachmentScope): LinkVars {
       }
       return vars;
     }
-    case 'pdf-page':
-      return {
+    case 'pdf-page': {
+      const vars: LinkVars = {
         linked_file_id: scope.fileId,
         linked_model_id: scope.modelId,
         linked_file_type: 'pdf',
       };
+      const pdfPoint = consumePendingPdfContextPoint();
+      if (pdfPoint !== null) {
+        Object.assign(vars, anchorPdf(pdfPoint.page, pdfPoint.x, pdfPoint.y));
+      }
+      return vars;
+    }
     case 'project':
     default:
       return {};

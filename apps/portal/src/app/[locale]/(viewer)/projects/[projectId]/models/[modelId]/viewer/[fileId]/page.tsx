@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation';
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type JSX,
@@ -20,7 +21,6 @@ import type {
   DocumentRotation,
   DocumentViewerHandle,
   PageDimensions,
-  SearchHighlight,
   ViewerBundle,
   ViewerHandle,
 } from '@bimstitch/viewer';
@@ -38,12 +38,20 @@ import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
 import { AnnotationPinLayer, type PdfPin } from '@/features/viewer/2d/AnnotationPinLayer';
+import { EntityPinLayer } from '@/features/viewer/2d/EntityPinLayer';
 import { DocumentContextMenu } from '@/features/viewer/2d/DocumentContextMenu';
 import { DrawingCanvas } from '@/features/viewer/2d/drawing/DrawingCanvas';
 import { DrawingInfoBody } from '@/features/viewer/2d/drawing/DrawingInfoBody';
 import { useDrawingMetadata } from '@/features/viewer/2d/drawing/useDrawingMetadata';
 import { usePdfPageAttachments } from '@/features/attachments/useAttachments';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
+import { useEntityMarkers3D } from '@/features/viewer/3d/useEntityMarkers3D';
+import { usePageFindingMarkers, usePageCertificateMarkers } from '@/features/viewer/shared/useEntityMarkers';
+import type { EntityMarkerType } from '@/features/viewer/shared/entityMarkerTypes';
+import { useFileFindings } from '@/features/findings/useFindings';
+import { useFileCertificates } from '@/features/certificates/useCertificates';
+import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
+import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
 import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoadingOverlay';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
 import { StatusBar } from '@/features/viewer/shared/StatusBar';
@@ -145,9 +153,10 @@ export default function ViewerPage(): JSX.Element {
   const [pdfRotation, setPdfRotation] = useState<DocumentRotation>(0);
   const [pdfSettings, setPdfSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
-  const [pdfSearchHighlight, setPdfSearchHighlight] = useState<SearchHighlight | null>(null);
   const [pdfPinMode, setPdfPinMode] = useState(false);
   const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
+  const [markerFinding, setMarkerFinding] = useState<import('@/lib/api/schemas').Finding | null>(null);
+  const [markerCertificate, setMarkerCertificate] = useState<import('@/lib/api/schemas').Certificate | null>(null);
 
   const [inspectorRequest, setInspectorRequest] = useState<{
     view: 'attachments' | 'findings' | 'certificates';
@@ -258,7 +267,6 @@ export default function ViewerPage(): JSX.Element {
     setPdfScale(1);
     setPdfRotation(0);
     setPdfActiveTool('select');
-    setPdfSearchHighlight(null);
   }, [fileId]);
 
   const handlePdfLoaded = useCallback(({ numPages }: { numPages: number }) => {
@@ -330,6 +338,31 @@ export default function ViewerPage(): JSX.Element {
   const showChrome = error === null;
   const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady && !isDrawing;
 
+  // Entity markers (findings + certificates with anchors)
+  const { data: allFileFindings } = useFileFindings(projectId, fileId);
+  const { data: allFileCertificates } = useFileCertificates(projectId, fileId);
+  const findingMarkers2D = usePageFindingMarkers(projectId, fileId, isPdf ? pdfCurrentPage : null);
+  const certMarkers2D = usePageCertificateMarkers(projectId, fileId, isPdf ? pdfCurrentPage : null);
+  const entityMarkers2D = useMemo(
+    () => [...findingMarkers2D, ...certMarkers2D],
+    [findingMarkers2D, certMarkers2D],
+  );
+
+  const { clickedFinding, clickedCertificate, clearClicked } = useEntityMarkers3D(
+    viewerHandleRef.current,
+    projectId,
+    isIfc ? fileId : null,
+    viewerReady,
+  );
+
+  useEffect(() => {
+    if (clickedFinding) setMarkerFinding(clickedFinding);
+  }, [clickedFinding]);
+
+  useEffect(() => {
+    if (clickedCertificate) setMarkerCertificate(clickedCertificate);
+  }, [clickedCertificate]);
+
   // PDF pin annotations
   const pdfPinsQuery = usePdfPageAttachments(
     projectId,
@@ -367,6 +400,19 @@ export default function ViewerPage(): JSX.Element {
     [pdfPins],
   );
 
+  const handleEntityMarkerClick = useCallback(
+    (type: EntityMarkerType, entityId: string) => {
+      if (type === 'finding') {
+        const f = allFileFindings?.find((x) => x.id === entityId) ?? null;
+        if (f) setMarkerFinding(f);
+      } else {
+        const c = allFileCertificates?.find((x) => x.id === entityId) ?? null;
+        if (c) setMarkerCertificate(c);
+      }
+    },
+    [allFileFindings, allFileCertificates],
+  );
+
   // Per-page vector geometry (artifact `i` is 0-based; pdfCurrentPage is 1-based).
   const currentPageGeometry = pdfGeometry?.p.find((pg) => pg.i === pdfCurrentPage - 1) ?? null;
 
@@ -380,15 +426,22 @@ export default function ViewerPage(): JSX.Element {
 
   const renderPdfOverlay = useCallback(
     (dims: PageDimensions) => (
-      <AnnotationPinLayer
-        pins={pdfPins}
-        dims={dims}
-        pinMode={pdfPinMode}
-        onPinClick={handlePdfPinClick}
-        onPinPlace={handlePdfPinPlace}
-      />
+      <>
+        <AnnotationPinLayer
+          pins={pdfPins}
+          dims={dims}
+          pinMode={pdfPinMode}
+          onPinClick={handlePdfPinClick}
+          onPinPlace={handlePdfPinPlace}
+        />
+        <EntityPinLayer
+          markers={entityMarkers2D}
+          dims={dims}
+          onMarkerClick={handleEntityMarkerClick}
+        />
+      </>
     ),
-    [pdfPins, pdfPinMode, handlePdfPinClick, handlePdfPinPlace],
+    [pdfPins, pdfPinMode, handlePdfPinClick, handlePdfPinPlace, entityMarkers2D, handleEntityMarkerClick],
   );
 
   const handlePdfActiveToolChange = useCallback((tool: DocumentActiveTool) => {
@@ -463,7 +516,6 @@ export default function ViewerPage(): JSX.Element {
         scale={pdfScale}
         rotation={pdfRotation}
         activeTool={pdfActiveTool}
-        searchHighlight={pdfSearchHighlight}
         className="absolute inset-0"
         navCompass={{ enabled: true, locale: locale as 'en' | 'nl' }}
         controls={pdfSettings.controlsLinked ? controlsFrom3D(settings.controls) : pdfSettings.controls}
@@ -624,7 +676,6 @@ export default function ViewerPage(): JSX.Element {
             onScaleChange={setPdfScale}
             onActiveToolChange={handlePdfActiveToolChange}
             onSettingsChange={setPdfSettings}
-            onSearchHighlightChange={setPdfSearchHighlight}
           />
         ) : null}
 
@@ -658,6 +709,20 @@ export default function ViewerPage(): JSX.Element {
         projectId={projectId}
         open={pdfPinViewAttachment !== null}
         onOpenChange={(open) => { if (!open) setPdfPinViewAttachment(null); }}
+      />
+
+      {/* Entity marker detail modals */}
+      <FindingDetailModal
+        projectId={projectId}
+        finding={markerFinding}
+        open={markerFinding !== null}
+        onOpenChange={(open) => { if (!open) { setMarkerFinding(null); clearClicked(); } }}
+      />
+      <CertificateViewerDialog
+        projectId={projectId}
+        certificate={markerCertificate}
+        open={markerCertificate !== null}
+        onOpenChange={(open) => { if (!open) { setMarkerCertificate(null); clearClicked(); } }}
       />
       </div>
       {showChrome && bundle !== null ? (

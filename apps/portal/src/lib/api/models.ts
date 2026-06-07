@@ -2,12 +2,14 @@ import { apiClient } from './client';
 import {
   ModelListSchema,
   ModelSchema,
+  ModelWithVersionsListSchema,
   ModelWithVersionsSchema,
   type Model,
   type ModelCreateInput,
   type ModelList,
   type ModelUpdateInput,
   type ModelWithVersions,
+  type ModelWithVersionsList,
 } from './schemas';
 
 export async function listModels(
@@ -17,6 +19,17 @@ export async function listModels(
   return apiClient.get<ModelList>(
     `/projects/${projectId}/models`,
     ModelListSchema,
+    accessToken,
+  );
+}
+
+export async function listModelsWithVersions(
+  accessToken: string,
+  projectId: string,
+): Promise<ModelWithVersionsList> {
+  return apiClient.get<ModelWithVersionsList>(
+    `/projects/${projectId}/models?include=versions`,
+    ModelWithVersionsListSchema,
     accessToken,
   );
 }

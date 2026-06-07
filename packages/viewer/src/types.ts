@@ -174,6 +174,8 @@ export type { ViewpointsPluginAPI, Viewpoint } from './plugins/3d/viewpoints/ind
 
 export type { MarkerPluginAPI, MarkerPluginOptions, MarkerData } from './plugins/3d/marker/index.js';
 
+export type { EntityMarkerPluginAPI, EntityMarkerData } from './plugins/3d/entity-marker/index.js';
+
 export type { GridPluginAPI, GridPluginOptions } from './plugins/3d/grid/index.js';
 
 export type { EraserPluginAPI } from './plugins/3d/eraser/index.js';

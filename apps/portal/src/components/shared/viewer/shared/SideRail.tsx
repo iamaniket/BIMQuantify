@@ -29,8 +29,8 @@ type RailButton = {
 };
 
 const IFC_BUTTONS: RailButton[] = [
-  { id: 'explorer', labelKey: 'titleExplorer', icon: ListTree },
   { id: 'inspector', labelKey: 'titleInspector', icon: Info },
+  { id: 'explorer', labelKey: 'titleExplorer', icon: ListTree },
   { id: 'measure', labelKey: 'titleMeasure', icon: Ruler },
   { id: 'section', labelKey: 'titleSection', icon: Scan },
 ];

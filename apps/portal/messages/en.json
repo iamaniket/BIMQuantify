@@ -1537,16 +1537,6 @@
     "backHome": "Back to portal",
     "backToSignIn": "Back to sign in"
   },
-  "documentToolbar": {
-    "searchPlaceholder": "Search in document…",
-    "searchLabel": "Search in document",
-    "searchEmpty": "No matches",
-    "searchRunning": "Searching…",
-    "searchMatchCount": "{current} / {total}",
-    "searchPrev": "Previous match",
-    "searchNext": "Next match",
-    "searchClose": "Clear search"
-  },
   "dashboardFooter": {
     "copyright": "© {year} {brand}"
   },

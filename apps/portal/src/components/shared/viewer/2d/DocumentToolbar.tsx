@@ -1,9 +1,8 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, House, MousePointer2, Move, Search as SearchIcon, Settings, X as XIcon } from '@bimstitch/ui/icons';
+import { ChevronLeft, ChevronRight, House, MousePointer2, Move, Settings } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
-  useCallback,
   useEffect,
   useState,
   type FormEvent,
@@ -12,14 +11,11 @@ import {
 
 import type {
   DocumentActiveTool,
-  DocumentSearchHit,
   DocumentViewerHandle,
-  SearchHighlight,
 } from '@bimstitch/viewer';
 
 import type { DocumentSettings } from '@/lib/documentSettings';
 
-import { ToolButton, ToolbarReadout } from '@/components/shared/viewer/shared/_toolbarPrimitives';
 import { type ToolGroup, UnifiedToolbar } from '@/components/shared/viewer/shared/UnifiedToolbar';
 import { SettingsDialog } from '@/components/shared/viewer/shared/settings/SettingsDialog';
 
@@ -34,22 +30,7 @@ type Props = {
   onScaleChange: (scale: number) => void;
   onActiveToolChange: (tool: DocumentActiveTool) => void;
   onSettingsChange: (next: DocumentSettings) => void;
-  onSearchHighlightChange: (highlight: SearchHighlight | null) => void;
 };
-
-function globalToLocal(
-  globalIdx: number,
-  hits: DocumentSearchHit[],
-): { pageIndex: number; localIndex: number } | null {
-  let cumulative = 0;
-  for (const hit of hits) {
-    if (cumulative + hit.matchesOnPage > globalIdx) {
-      return { pageIndex: hit.pageIndex, localIndex: globalIdx - cumulative };
-    }
-    cumulative += hit.matchesOnPage;
-  }
-  return null;
-}
 
 function clampPage(value: number, max: number | null): number {
   if (max === null) return Math.max(1, value);
@@ -67,76 +48,14 @@ export function DocumentToolbar({
   onScaleChange,
   onActiveToolChange,
   onSettingsChange,
-  onSearchHighlightChange,
 }: Props): JSX.Element {
-  const t = useTranslations('documentToolbar');
   const tb = useTranslations('viewer.toolbar');
   const [pageInput, setPageInput] = useState(String(currentPage));
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchHits, setSearchHits] = useState<DocumentSearchHit[]>([]);
-  const [globalMatchIndex, setGlobalMatchIndex] = useState(0);
-  const [searchPending, setSearchPending] = useState(false);
-  const [searchPerformed, setSearchPerformed] = useState(false);
 
   useEffect(() => {
     setPageInput(String(currentPage));
   }, [currentPage]);
-
-  useEffect(() => {
-    setSearchHits([]);
-    setGlobalMatchIndex(0);
-    setSearchPerformed(false);
-    onSearchHighlightChange(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentHandle]);
-
-  const runSearch = useCallback(
-    async (query: string): Promise<void> => {
-      if (documentHandle === null) return;
-      if (query.trim().length === 0) {
-        setSearchHits([]);
-        setGlobalMatchIndex(0);
-        setSearchPerformed(false);
-        onSearchHighlightChange(null);
-        return;
-      }
-      setSearchPending(true);
-      try {
-        const hits = await documentHandle.searchText(query);
-        setSearchHits(hits);
-        setGlobalMatchIndex(0);
-        setSearchPerformed(true);
-        const first = hits[0];
-        if (first !== undefined) {
-          onPageChange(first.pageIndex);
-          onSearchHighlightChange({ query, activeMatchIndex: 0 });
-        } else {
-          onSearchHighlightChange(null);
-        }
-      } finally {
-        setSearchPending(false);
-      }
-    },
-    [documentHandle, onPageChange, onSearchHighlightChange],
-  );
-
-  const totalMatches = searchHits.reduce((sum, h) => sum + h.matchesOnPage, 0);
-
-  const stepSearch = useCallback(
-    (delta: 1 | -1): void => {
-      if (totalMatches === 0) return;
-      const nextGlobal = (globalMatchIndex + delta + totalMatches) % totalMatches;
-      setGlobalMatchIndex(nextGlobal);
-      const loc = globalToLocal(nextGlobal, searchHits);
-      if (loc !== null) {
-        onPageChange(loc.pageIndex);
-        onSearchHighlightChange({ query: searchQuery, activeMatchIndex: loc.localIndex });
-      }
-    },
-    [totalMatches, globalMatchIndex, searchHits, searchQuery, onPageChange, onSearchHighlightChange],
-  );
 
   const handlePageSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -213,90 +132,6 @@ export function DocumentToolbar({
           disabled: !canNext,
           onClick: () => { onPageChange(clampPage(currentPage + 1, numPages)); },
         },
-      ],
-    },
-    {
-      tools: [
-        searchOpen
-          ? {
-              type: 'node',
-              id: 'search',
-              node: (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void runSearch(searchQuery);
-                  }}
-                  className="flex items-center gap-1 px-1"
-                  role="search"
-                >
-                  <input
-                    id="document-search-input"
-                    type="search"
-                    value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); }}
-                    placeholder={t('searchPlaceholder')}
-                    aria-label={t('searchLabel')}
-                    autoFocus
-                    data-testid="document-search-input"
-                    className="h-9 w-40 rounded-md border border-border bg-background px-2 text-xs text-foreground/90 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  />
-                  <ToolbarReadout className="min-w-[64px]">
-                    {searchPending
-                      ? t('searchRunning')
-                      : searchPerformed
-                        ? totalMatches === 0
-                          ? t('searchEmpty')
-                          : t('searchMatchCount', { current: globalMatchIndex + 1, total: totalMatches })
-                        : ''}
-                  </ToolbarReadout>
-                  <ToolButton
-                    type="button"
-                    onClick={() => { stepSearch(-1); }}
-                    disabled={totalMatches === 0}
-                    title={t('searchPrev')}
-                    aria-label={t('searchPrev')}
-                    data-testid="document-search-prev"
-                  >
-                    <ChevronLeft className="h-5 w-5" weight="bold" />
-                  </ToolButton>
-                  <ToolButton
-                    type="button"
-                    onClick={() => { stepSearch(1); }}
-                    disabled={totalMatches === 0}
-                    title={t('searchNext')}
-                    aria-label={t('searchNext')}
-                    data-testid="document-search-next"
-                  >
-                    <ChevronRight className="h-5 w-5" weight="bold" />
-                  </ToolButton>
-                  <ToolButton
-                    type="button"
-                    onClick={() => {
-                      setSearchOpen(false);
-                      setSearchQuery('');
-                      setSearchHits([]);
-                      setGlobalMatchIndex(0);
-                      setSearchPerformed(false);
-                      onSearchHighlightChange(null);
-                    }}
-                    title={t('searchClose')}
-                    aria-label={t('searchClose')}
-                    data-testid="document-search-close"
-                  >
-                    <XIcon className="h-5 w-5" weight="bold" />
-                  </ToolButton>
-                </form>
-              ),
-            }
-          : {
-              type: 'button',
-              id: 'search',
-              icon: SearchIcon,
-              label: t('searchLabel'),
-              disabled: documentHandle === null,
-              onClick: () => { setSearchOpen(true); },
-            },
       ],
     },
     {

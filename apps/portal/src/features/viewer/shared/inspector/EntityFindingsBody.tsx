@@ -24,7 +24,8 @@ import {
 } from '@/features/projects/detail/findingBadges';
 import type { Finding } from '@/lib/api/schemas';
 
-import { consumePendingElementPoint, type PendingElementPoint } from './pendingElementPoint';
+import { consumePendingElementPoint } from './pendingElementPoint';
+import { consumePendingPdfContextPoint } from './pendingPdfContextPoint';
 
 function formatDate(value: string | null | undefined): string {
   if (value === null || value === undefined || value === '') return '—';
@@ -89,15 +90,23 @@ export function EntityFindingsBody({
   const deleteMutation = useDeleteFinding(projectId);
   const [createOpen, setCreateOpen] = useState(false);
   // 3D pick point handed off by the context menu, anchored onto the new finding.
-  const [pendingPoint, setPendingPoint] = useState<PendingElementPoint | null>(null);
+  const [pendingPoint, setPendingPoint] = useState<Record<string, number> | null>(null);
   const [selected, setSelected] = useState<Finding | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const lastConsumedNonce = useRef<number | undefined>(undefined);
 
   // Open the create dialog, consuming a pending 3D pick point for element scope
-  // so the new finding anchors to that {x,y,z}. Manual opens (no pick) carry none.
+  // or a pending 2D PDF context point for file scope, so the new finding
+  // anchors to the clicked location. Manual opens (no pick) carry none.
   const openCreate = useCallback(() => {
-    setPendingPoint(scope.kind === 'element' ? consumePendingElementPoint() : null);
+    if (scope.kind === 'element') {
+      setPendingPoint(consumePendingElementPoint());
+    } else if (scope.kind === 'file') {
+      const pdfPt = consumePendingPdfContextPoint();
+      setPendingPoint(pdfPt ? { x: pdfPt.x, y: pdfPt.y, page: pdfPt.page } : null);
+    } else {
+      setPendingPoint(null);
+    }
     setCreateOpen(true);
   }, [scope]);
 

@@ -1537,16 +1537,6 @@
     "backHome": "Terug naar portaal",
     "backToSignIn": "Terug naar aanmelden"
   },
-  "documentToolbar": {
-    "searchPlaceholder": "Zoeken in document…",
-    "searchLabel": "Zoeken in document",
-    "searchEmpty": "Geen resultaten",
-    "searchRunning": "Zoeken…",
-    "searchMatchCount": "{current} / {total}",
-    "searchPrev": "Vorige match",
-    "searchNext": "Volgende match",
-    "searchClose": "Zoekopdracht wissen"
-  },
   "dashboardFooter": {
     "copyright": "© {year} {brand}"
   },

@@ -7,8 +7,9 @@ import { useTranslations } from 'next-intl';
 import { Button, EmptyState, Select } from '@bimstitch/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
-import type { Model, ModelDisciplineValue } from '@/lib/api/schemas';
+import type { Model, ModelDisciplineValue, ProjectFile } from '@/lib/api/schemas';
 import { NewModelDialog } from '@/features/models/NewModelDialog';
+import { useModelsWithVersions } from '@/features/models/useModelsWithVersions';
 
 import { ModelsTableRow } from './ModelsTableRow';
 
@@ -32,6 +33,13 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
   const [searchQuery, setSearchQuery] = useState('');
   const [disciplineFilter, setDisciplineFilter] = useState<ModelDisciplineValue | undefined>(undefined);
   const t = useTranslations('projectDetail.tabs.models');
+
+  // Fetch all models with their file versions in a single API call.
+  const modelsWithVersionsQuery = useModelsWithVersions(projectId, true);
+  const filesMap = new Map<string, ProjectFile[]>();
+  for (const m of modelsWithVersionsQuery.data ?? []) {
+    filesMap.set(m.id, m.versions);
+  }
 
   const filtered = models.filter((m) => {
     if (disciplineFilter && m.discipline !== disciplineFilter) return false;
@@ -99,6 +107,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
             key={m.id}
             projectId={projectId}
             model={m}
+            prefetchedFiles={filesMap.get(m.id)}
             isOpen={expandedId === m.id}
             onToggle={() => { setExpandedId(expandedId === m.id ? null : m.id); }}
           />

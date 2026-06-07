@@ -398,3 +398,111 @@ async def test_list_models_pagination_and_total_count(
         headers=_auth(token),
     )
     assert too_big.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# ?include=versions
+# ---------------------------------------------------------------------------
+
+
+async def test_list_models_include_versions_returns_versions(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """When include=versions, each model carries a 'versions' array."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="IncVerP")
+    model = await _create_model(client, token, project["id"], name="IncVer")
+
+    # Upload one file.
+    init = (
+        await client.post(
+            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            json={
+                "filename": "v.ifc",
+                "size_bytes": len(VALID_IFC_HEADER),
+                "content_type": "application/octet-stream",
+                "content_sha256": _new_hash(),
+            },
+            headers=_auth(token),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_IFC_HEADER
+    await client.post(
+        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        headers=_auth(token),
+    )
+
+    resp = await client.get(
+        f"/projects/{project['id']}/models?include=versions",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert len(body) == 1
+    m = body[0]
+    assert m["id"] == model["id"]
+    assert "versions" in m
+    assert len(m["versions"]) == 1
+    v = m["versions"][0]
+    assert v["version_number"] == 1
+    assert v["file_type"] == "ifc"
+    assert "extraction_status" in v
+
+
+async def test_list_models_include_versions_empty_files(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Model with no files returns versions: []."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"], name="NoFiles")
+
+    resp = await client.get(
+        f"/projects/{project['id']}/models?include=versions",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    assert body[0]["versions"] == []
+
+
+async def test_list_models_without_include_has_no_versions_key(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Without ?include=versions, response does not contain 'versions'."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"], name="Plain")
+
+    resp = await client.get(
+        f"/projects/{project['id']}/models",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    assert "versions" not in body[0]
+
+
+async def test_list_models_include_versions_with_filters(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Filters still work with ?include=versions."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"], name="Arch", discipline="architectural")
+    await _create_model(client, token, project["id"], name="Str", discipline="structural")
+
+    resp = await client.get(
+        f"/projects/{project['id']}/models?include=versions&discipline=structural",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    assert body[0]["name"] == "Str"
+    assert "versions" in body[0]

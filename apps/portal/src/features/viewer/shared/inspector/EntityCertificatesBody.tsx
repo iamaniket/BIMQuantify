@@ -29,7 +29,8 @@ import {
 import { CertificateUploadDialog } from '@/features/projects/detail/CertificateUploadDialog';
 import type { Certificate } from '@/lib/api/schemas';
 
-import { consumePendingElementPoint, type PendingElementPoint } from './pendingElementPoint';
+import { consumePendingElementPoint } from './pendingElementPoint';
+import { consumePendingPdfContextPoint } from './pendingPdfContextPoint';
 
 /**
  * How the certificates shown here are scoped — mirrors FindingsScope: by IFC
@@ -97,16 +98,24 @@ export function EntityCertificatesBody({
     : elementQuery;
   const deleteMutation = useDeleteCertificate(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
-  // 3D pick point handed off by the context menu, anchored onto the new cert.
-  const [pendingPoint, setPendingPoint] = useState<PendingElementPoint | null>(null);
+  // Pick point handed off by the context menu, anchored onto the new cert.
+  const [pendingPoint, setPendingPoint] = useState<Record<string, number> | null>(null);
   const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const lastConsumedNonce = useRef<number | undefined>(undefined);
 
   // Open the upload dialog, consuming a pending 3D pick point for element scope
-  // so the new certificate anchors to that {x,y,z}. Manual opens carry none.
+  // or a pending 2D PDF context point for file scope, so the new certificate
+  // anchors to the clicked location. Manual opens carry none.
   const openUpload = useCallback(() => {
-    setPendingPoint(scope.kind === 'element' ? consumePendingElementPoint() : null);
+    if (scope.kind === 'element') {
+      setPendingPoint(consumePendingElementPoint());
+    } else if (scope.kind === 'file') {
+      const pdfPt = consumePendingPdfContextPoint();
+      setPendingPoint(pdfPt ? { x: pdfPt.x, y: pdfPt.y, page: pdfPt.page } : null);
+    } else {
+      setPendingPoint(null);
+    }
     setUploadOpen(true);
   }, [scope]);
 

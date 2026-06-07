@@ -39,6 +39,7 @@ import { itemsFinderPlugin } from './plugins/3d/items-finder/index.js';
 import { boundingBoxerPlugin } from './plugins/3d/bounding-boxer/index.js';
 import { viewpointsPlugin } from './plugins/3d/viewpoints/index.js';
 import { markerPlugin } from './plugins/3d/marker/index.js';
+import { entityMarkerPlugin } from './plugins/3d/entity-marker/index.js';
 import { gridPlugin } from './plugins/3d/grid/index.js';
 import { screenshotPlugin } from './plugins/3d/screenshot/index.js';
 import { colorCodingPlugin } from './plugins/3d/color-coding/index.js';
@@ -144,6 +145,7 @@ function IfcViewerImpl(
       boundingBoxerPlugin(),
       viewpointsPlugin(),
       markerPlugin(),
+      entityMarkerPlugin(),
       gridPlugin(),
       screenshotPlugin(),
       colorCodingPlugin(),

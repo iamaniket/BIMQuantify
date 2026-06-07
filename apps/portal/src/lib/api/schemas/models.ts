@@ -54,3 +54,7 @@ export const ModelWithVersionsSchema = ModelSchema.extend({
 });
 
 export type ModelWithVersions = z.infer<typeof ModelWithVersionsSchema>;
+
+export const ModelWithVersionsListSchema = z.array(ModelWithVersionsSchema);
+
+export type ModelWithVersionsList = z.infer<typeof ModelWithVersionsListSchema>;

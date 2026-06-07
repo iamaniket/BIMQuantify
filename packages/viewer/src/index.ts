@@ -178,6 +178,8 @@ export { itemsFinderPlugin } from './plugins/3d/items-finder/index.js';
 export { boundingBoxerPlugin } from './plugins/3d/bounding-boxer/index.js';
 export { viewpointsPlugin } from './plugins/3d/viewpoints/index.js';
 export { markerPlugin } from './plugins/3d/marker/index.js';
+export { entityMarkerPlugin } from './plugins/3d/entity-marker/index.js';
+export type { EntityMarkerData, EntityMarkerPluginAPI } from './plugins/3d/entity-marker/index.js';
 export { gridPlugin } from './plugins/3d/grid/index.js';
 export { screenshotPlugin } from './plugins/3d/screenshot/index.js';
 export { colorCodingPlugin } from './plugins/3d/color-coding/index.js';

@@ -17,6 +17,7 @@ import type { DocumentEvents, DocumentViewerHandle } from '@bimstitch/viewer';
 
 import { prettyKey } from '@/components/shared/viewer/shared/settings/prettyKey';
 import type { DocumentShortcutMap } from '@/lib/documentSettings';
+import { stashPendingPdfContextPoint } from '@/features/viewer/shared/inspector/pendingPdfContextPoint';
 
 type ContextMenuData = DocumentEvents['contextmenu:open'];
 
@@ -190,6 +191,12 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts }: P
     handle?.commands.execute('contextMenu.close').catch(() => undefined);
   }, [handle]);
 
+  const stashPoint = useCallback(() => {
+    if (menu?.pagePoint) {
+      stashPendingPdfContextPoint({ page: menu.page, x: menu.pagePoint.x, y: menu.pagePoint.y });
+    }
+  }, [menu]);
+
   const items = useMemo((): MenuItem[] => {
     if (!menu) return [];
 
@@ -199,6 +206,7 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts }: P
         icon: <Flag className={ICON_CLASS} />,
         shortcut: sc('addFinding'),
         action: () => {
+          stashPoint();
           onRequestInspector('findings');
           closeMenu();
         },
@@ -208,6 +216,7 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts }: P
         icon: <Paperclip className={ICON_CLASS} />,
         shortcut: sc('addAttachment'),
         action: () => {
+          stashPoint();
           onRequestInspector('attachments');
           closeMenu();
         },
@@ -217,6 +226,7 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts }: P
         icon: <FileBadge className={ICON_CLASS} />,
         shortcut: sc('viewCertificates'),
         action: () => {
+          stashPoint();
           onRequestInspector('certificates');
           closeMenu();
         },
@@ -232,7 +242,7 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts }: P
         },
       },
     ];
-  }, [t, menu, handle, closeMenu, onRequestInspector, sc]);
+  }, [t, menu, handle, closeMenu, onRequestInspector, sc, stashPoint]);
 
   if (!menu) return null;
 
