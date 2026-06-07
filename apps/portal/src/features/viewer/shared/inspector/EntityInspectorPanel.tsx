@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type JSX } from 'react';
 import { ContextLine } from '@/components/shared/viewer/shared/ContextLine';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { PanelTabs, type TabDef } from '@/components/shared/viewer/shared/PanelTabs';
-import { usePdfPageAttachmentCount, useProjectAttachmentCount } from '@/features/attachments/useAttachments';
+import { usePdfFileAttachmentCount, useProjectAttachmentCount } from '@/features/attachments/useAttachments';
 import { useFileCertificateCount, useProjectCertificateCount } from '@/features/certificates/useCertificates';
 import { useFileFindingCount, useProjectFindingCount } from '@/features/findings/useFindings';
 import { ElementHeader } from '@/features/viewer/3d/properties/ElementHeader';
@@ -99,7 +99,6 @@ export function EntityInspectorPanel({
   const isProjectMode = isPdf !== true && !hasSelection;
   const elementGlobalId = element?.globalId ?? null;
   const pdfFileId = isPdf === true ? fileId : null;
-  const pdfPage = isPdf === true && pdfCurrentPage !== undefined ? pdfCurrentPage : null;
 
   // All count hooks are called unconditionally (Hooks rules); inapplicable ones
   // are disabled via their `enabled`/null args, so only the active scope fetches.
@@ -109,7 +108,7 @@ export function EntityInspectorPanel({
   const projectAttachmentCount = useProjectAttachmentCount(projectId, isProjectMode);
   const projectFindingCount = useProjectFindingCount(projectId, isProjectMode);
   const projectCertificateCount = useProjectCertificateCount(projectId, isProjectMode);
-  const pdfAttachmentCount = usePdfPageAttachmentCount(projectId, fileId, pdfPage);
+  const pdfAttachmentCount = usePdfFileAttachmentCount(projectId, pdfFileId);
   const fileFindingCount = useFileFindingCount(projectId, pdfFileId);
   const fileCertificateCount = useFileCertificateCount(projectId, pdfFileId);
 

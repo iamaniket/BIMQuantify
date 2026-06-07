@@ -88,6 +88,11 @@ export function useFileAttachmentCount(
   return query.data?.length ?? 0;
 }
 
+/**
+ * Page-scoped attachments — ONLY for the in-canvas pin overlay
+ * (`AnnotationPinLayer`), which renders pins for the visible page. Don't
+ * reuse this for inspector listings; use `usePdfFileAttachments` instead.
+ */
 export function usePdfPageAttachments(
   projectId: string,
   fileId: string,
@@ -108,12 +113,34 @@ export function usePdfPageAttachments(
   });
 }
 
-/** Page-scoped attachment count — drives the PDF inspector's Attachments tab
- * pill. Delegates to usePdfPageAttachments, sharing its cache entry. */
-export function usePdfPageAttachmentCount(
+/**
+ * File-scoped attachments for the PDF inspector — every attachment linked to
+ * this PDF, regardless of whether it's pinned to a specific page. Mirrors
+ * `useFileFindings` / `useFileCertificates`.
+ */
+export function usePdfFileAttachments(
   projectId: string,
-  fileId: string,
-  page: number | null,
+  fileId: string | null,
+): UseQueryResult<AttachmentList> {
+  return useAuthQuery({
+    queryKey: [...attachmentsKey(projectId), 'pdf-file', fileId ?? ''] as const,
+    queryFn: (accessToken) => {
+      if (fileId === null) throw new Error('Missing fileId');
+      return listAttachments(accessToken, projectId, {
+        linkedFileId: fileId,
+        linkedFileType: 'pdf',
+      });
+    },
+    enabled: fileId !== null,
+    staleTime: 30_000,
+  });
+}
+
+/** File-scoped attachment count — drives the PDF inspector's Attachments tab
+ * pill. Shares the cache entry with usePdfFileAttachments. */
+export function usePdfFileAttachmentCount(
+  projectId: string,
+  fileId: string | null,
 ): number {
-  return usePdfPageAttachments(projectId, fileId, page).data?.length ?? 0;
+  return usePdfFileAttachments(projectId, fileId).data?.length ?? 0;
 }

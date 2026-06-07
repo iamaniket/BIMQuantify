@@ -40,6 +40,12 @@ export type CertificatesScope =
   | { kind: 'project' }
   | { kind: 'file'; fileId: string };
 
+const LINKED_FILE_TYPE_BY_SCOPE = {
+  element: 'ifc',
+  file: 'pdf',
+  project: null,
+} as const;
+
 type EntityCertificatesBodyProps = {
   projectId: string;
   scope: CertificatesScope;
@@ -275,7 +281,7 @@ export function EntityCertificatesBody({
         linkedModelId={scope.kind === 'element' ? scope.modelId : null}
         linkedFileId={scope.kind === 'project' ? null : scope.fileId}
         linkedPoint={pendingPoint}
-        linkedFileType={pendingPoint !== null ? 'ifc' : null}
+        linkedFileType={LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
       />
 
       <CertificateViewerDialog

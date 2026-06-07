@@ -18,7 +18,7 @@ import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLin
 import {
   useElementAttachments,
   useProjectAttachments,
-  usePdfPageAttachments,
+  usePdfFileAttachments,
 } from '@/features/attachments/useAttachments';
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
@@ -66,6 +66,7 @@ function buildLinkVars(scope: AttachmentScope): LinkVars {
         linked_element_global_id: scope.globalId,
         linked_file_id: scope.fileId,
         linked_model_id: scope.modelId,
+        linked_file_type: 'ifc',
       };
       const point = consumePendingElementPoint();
       if (point !== null) {
@@ -74,7 +75,11 @@ function buildLinkVars(scope: AttachmentScope): LinkVars {
       return vars;
     }
     case 'pdf-page':
-      return { linked_file_id: scope.fileId, linked_model_id: scope.modelId };
+      return {
+        linked_file_id: scope.fileId,
+        linked_model_id: scope.modelId,
+        linked_file_type: 'pdf',
+      };
     case 'project':
     default:
       return {};
@@ -130,14 +135,13 @@ export function EntityAttachmentsBody({
     elementScope?.globalId ?? null,
   );
   const projectQuery = useProjectAttachments(projectId, scope.kind === 'project');
-  const pdfPageQuery = usePdfPageAttachments(
+  const pdfFileQuery = usePdfFileAttachments(
     projectId,
-    pdfScope?.fileId ?? '',
-    pdfScope?.page ?? null,
+    pdfScope?.fileId ?? null,
   );
   const activeQuery =
     scope.kind === 'project' ? projectQuery
-    : scope.kind === 'pdf-page' ? pdfPageQuery
+    : scope.kind === 'pdf-page' ? pdfFileQuery
     : elementQuery;
 
   const uploadMutation = useUploadAttachment(projectId);
@@ -333,7 +337,7 @@ export function EntityAttachmentsBody({
     query.trim() !== ''
       ? t('emptyNoMatches', { query })
       : scope.kind === 'pdf-page'
-        ? t('emptyNoPage')
+        ? t('emptyNoFile')
         : scope.kind === 'project'
           ? t('emptyProjectEmpty')
           : t('emptyNoItems');

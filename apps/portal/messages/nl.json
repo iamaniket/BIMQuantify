@@ -2870,6 +2870,7 @@
     "viaCapture": "via opnamelink",
     "tabOnPage": "Op pagina",
     "emptyNoPage": "Geen bijlagen op deze pagina.",
+    "emptyNoFile": "Nog geen bijlagen op deze PDF.",
     "pinModeOn": "Pin plaatsen",
     "pinModeOff": "Pin annuleren",
     "pinUploading": "Pinbijlage uploaden…",

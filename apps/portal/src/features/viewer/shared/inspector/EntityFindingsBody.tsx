@@ -45,6 +45,12 @@ export type FindingsScope =
   | { kind: 'project' }
   | { kind: 'file'; fileId: string };
 
+const LINKED_FILE_TYPE_BY_SCOPE = {
+  element: 'ifc',
+  file: 'pdf',
+  project: null,
+} as const;
+
 type EntityFindingsBodyProps = {
   projectId: string;
   scope: FindingsScope;
@@ -271,7 +277,7 @@ export function EntityFindingsBody({
         linkedFileId={scope.kind === 'project' ? null : scope.fileId}
         linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
         linkedPoint={pendingPoint}
-        linkedFileType={pendingPoint !== null ? 'ifc' : null}
+        linkedFileType={LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
       />
       <FindingDetailModal
         projectId={projectId}

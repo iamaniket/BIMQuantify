@@ -2870,6 +2870,7 @@
     "viaCapture": "via capture link",
     "tabOnPage": "On page",
     "emptyNoPage": "No attachments pinned on this page.",
+    "emptyNoFile": "No attachments on this PDF yet.",
     "pinModeOn": "Place pin",
     "pinModeOff": "Cancel pin",
     "pinUploading": "Uploading pin attachment…",
