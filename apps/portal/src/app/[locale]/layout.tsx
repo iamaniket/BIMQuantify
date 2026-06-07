@@ -53,7 +53,7 @@ export default async function LocaleLayout({ children, params }: Props): Promise
                   <PostHogProvider>
                     {children}
                     <PwaInstallPrompt />
-                    <Toaster richColors closeButton position="top-right" />
+                    <Toaster richColors closeButton position="bottom-left" />
                   </PostHogProvider>
                 </AuthProvider>
               </QueryProvider>
