@@ -220,8 +220,6 @@ export class Viewer {
     fragmentsModels.models.materials.list.onItemSet.add(({ value: material }) => {
       if ('isLodMaterial' in material && material.isLodMaterial) return;
       material.polygonOffset = true;
-      material.polygonOffsetUnits = 4;
-      material.polygonOffsetFactor = 1 + Math.random();
       // BIM authoring tools export geometry with inconsistent face winding.
       // Without DoubleSide, back-facing triangles are culled and entire
       // elements disappear even though their geometry is present.
@@ -236,15 +234,29 @@ export class Viewer {
         material.transparent = false;
         material.alphaToCoverage = true;
         material.depthWrite = true;
+        material.polygonOffsetFactor = 4 + Math.random();
+        material.polygonOffsetUnits = 4;
+        material.needsUpdate = true;
+      } else if (material.transparent && material.opacity < 0.65) {
+        // IFC Space-like geometry: very translucent, sits perfectly coplanar
+        // on slabs. Disable depth writing entirely so it never wins depth
+        // against the slab beneath — renders as a pure see-through overlay.
+        material.depthWrite = false;
+        material.depthTest = true;
+        material.polygonOffset = false;
         material.needsUpdate = true;
       } else if (material.transparent) {
-        // Genuinely translucent BIM materials (glass, curtain walls).
-        // Three.js defaults depthWrite=false for transparent materials,
-        // which causes z-fighting between overlapping transparent surfaces
-        // and flickering against opaque geometry behind them. Enable depth
-        // writing so these surfaces participate in depth testing normally.
+        // Semi-transparent BIM materials (glass, curtain walls) at higher
+        // opacity. Keep depth writing but push behind opaque surfaces.
         material.depthWrite = true;
+        material.polygonOffsetFactor = 3 + Math.random();
+        material.polygonOffsetUnits = 16;
         material.needsUpdate = true;
+      } else {
+        // Opaque BIM surfaces: small random offset so coplanar faces
+        // (slab-on-wall, glazing-on-frame) resolve deterministically.
+        material.polygonOffsetFactor = 1 + Math.random();
+        material.polygonOffsetUnits = 4;
       }
     });
 
