@@ -660,7 +660,7 @@ export default function ViewerPage(): JSX.Element {
         onOpenChange={(open) => { if (!open) setPdfPinViewAttachment(null); }}
       />
       </div>
-      {showChrome ? (
+      {showChrome && bundle !== null ? (
         <SideRail
           format={format}
           activePanel={activePanel}
