@@ -124,18 +124,24 @@ export class Viewer {
     world.camera.controls.getTarget(target);
     const distance = cam.position.distanceTo(target);
 
-    // Keep the far/near ratio under MAX_DEPTH_RATIO to preserve depth-buffer
-    // precision and avoid z-fighting on coplanar BIM surfaces.
-    // Near: 0.1% of distance, minimum 0.0001 (allows extreme close-up zoom).
-    // Far: distance-proportional; no large model-size floor when zoomed in.
-    const MAX_DEPTH_RATIO = 3000;
+    // Dynamic near/far to prevent z-fighting on coplanar BIM surfaces.
+    //
+    // Strategy: keep far/near ratio ≤ 5000:1 at all times. When zoomed in
+    // close, the far plane shrinks proportionally — distant geometry clips
+    // but nearby surfaces get full depth precision. At normal orbit
+    // distance the entire model stays visible.
+    //
+    // Near: 1% of camera-to-target distance (floor 1 mm).
+    // Far: 100× distance, capped by baseFar, with model-size floor for
+    //      the zoomed-out case.
+    const MAX_DEPTH_RATIO = 5000;
 
-    let dynamicNear = Math.min(
-      Math.max(distance * 0.001, 0.0001),
+    const dynamicNear = Math.min(
+      Math.max(distance * 0.01, 0.001),
       this.baseNear,
     );
     let dynamicFar = Math.min(
-      Math.max(distance * 20, this.modelMaxDim * 0.5),
+      Math.max(distance * 100, this.modelMaxDim * 2),
       this.baseFar,
     );
 
@@ -209,7 +215,7 @@ export class Viewer {
     fragmentsModels.settings.maxUpdateRate = 0;
 
     // Give every non-LOD material a unique polygon offset so coplanar BIM
-    // surfaces (slab-on-wall, glazing-on-frame) resolve deterministically
+    // surfaces (slab-on-wall, glazing/frame) resolve deterministically
     // instead of z-fighting.
     fragmentsModels.models.materials.list.onItemSet.add(({ value: material }) => {
       if ('isLodMaterial' in material && material.isLodMaterial) return;
@@ -229,6 +235,14 @@ export class Viewer {
       if (material.transparent && material.opacity <= XRAY_DITHER_MAX_OPACITY) {
         material.transparent = false;
         material.alphaToCoverage = true;
+        material.depthWrite = true;
+        material.needsUpdate = true;
+      } else if (material.transparent) {
+        // Genuinely translucent BIM materials (glass, curtain walls).
+        // Three.js defaults depthWrite=false for transparent materials,
+        // which causes z-fighting between overlapping transparent surfaces
+        // and flickering against opaque geometry behind them. Enable depth
+        // writing so these surfaces participate in depth testing normally.
         material.depthWrite = true;
         material.needsUpdate = true;
       }
@@ -399,11 +413,11 @@ export class Viewer {
     );
 
     // Tighten depth range to the model's scale. The dynamic near/far
-    // updater enforces a max ratio of 3000:1 for z-fighting prevention;
+    // updater enforces a max ratio of 5000:1 for z-fighting prevention;
     // these base values are the generous defaults at resting distance.
     const cam = world.camera.three;
     if (cam instanceof THREE.PerspectiveCamera) {
-      cam.near = Math.max(maxDim / 500, 0.01);
+      cam.near = Math.max(maxDim / 200, 0.05);
       cam.far = maxDim * 10;
       this.baseNear = cam.near;
       this.baseFar = cam.far;
