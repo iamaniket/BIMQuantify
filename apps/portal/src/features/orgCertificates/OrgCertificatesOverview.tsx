@@ -1,5 +1,6 @@
 'use client';
 
+import { CheckCircle, FileBadge, Clock } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
@@ -61,6 +62,44 @@ export function OrgCertificatesOverview({ certificates }: Props): JSX.Element {
   );
 
   return (
+    <div className="flex flex-col gap-5">
+      {/* Stats strip */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-lg border border-border bg-surface-low p-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-lighter text-primary">
+              <FileBadge className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-h4 font-extrabold tabular-nums">{certificates.length}</div>
+              <div className="text-caption text-foreground-tertiary">{t('overview.totalCerts')}</div>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-surface-low p-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success-lighter text-success">
+              <CheckCircle className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-h4 font-extrabold tabular-nums">{byExpiry.valid}</div>
+              <div className="text-caption text-foreground-tertiary">{t('overview.validCerts')}</div>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-surface-low p-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning-lighter text-warning">
+              <Clock className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-h4 font-extrabold tabular-nums">{byExpiry.expiring}</div>
+              <div className="text-caption text-foreground-tertiary">{t('overview.expiringSoonCerts')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
       <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-4 text-body2 font-bold">{t('overview.byTypeTitle')}</h3>
@@ -131,6 +170,7 @@ export function OrgCertificatesOverview({ certificates }: Props): JSX.Element {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

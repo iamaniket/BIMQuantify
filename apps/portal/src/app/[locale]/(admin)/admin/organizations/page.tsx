@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, Building2, Download, Inbox, LayoutGrid, Plus, Table2 } from '@bimstitch/ui/icons';
+import { BookOpen, Building2, ChevronRight, Download, Inbox, LayoutGrid, Plus, Table2, Users } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -104,8 +104,10 @@ function AdminOrgsHero({
 
 function OverviewPane({
   organizations,
+  onCreateTenant,
 }: {
   organizations: OrganizationRead[];
+  onCreateTenant: () => void;
 }): JSX.Element {
   const t = useTranslations('admin.organizations.overview');
 
@@ -118,6 +120,14 @@ function OverviewPane({
   const totalSeats = organizations.reduce((sum, o) => sum + o.seat_count_used, 0);
   const totalCapacity = organizations.reduce((sum, o) => sum + (o.seat_limit ?? 0), 0);
   const unlimitedCount = organizations.filter((o) => o.seat_limit === null).length;
+
+  const totalStorageUsed = organizations.reduce((sum, o) => sum + o.active_storage_used_gb, 0);
+  const totalStorageCap = organizations.reduce((sum, o) => sum + (o.active_storage_limit_gb ?? 0), 0);
+  const unlimitedStorageCount = organizations.filter((o) => o.active_storage_limit_gb === null).length;
+
+  const avgMembers = organizations.length > 0
+    ? (totalSeats / organizations.length).toFixed(1)
+    : '0';
 
   const recentOrgs = [...organizations]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -170,6 +180,38 @@ function OverviewPane({
         </div>
       </div>
 
+      {/* Members across tenants */}
+      <div className="rounded-lg border border-border bg-surface-low p-5">
+        <h3 className="mb-4 text-body2 font-bold">{t('memberStatsTitle')}</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-body3 text-foreground-secondary">{t('totalMembers')}</span>
+            <span className="font-sans text-body3 font-semibold">{totalSeats}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-body3 text-foreground-secondary">{t('averagePerTenant')}</span>
+            <span className="font-sans text-body3 text-foreground-tertiary">{avgMembers}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Storage usage */}
+      <div className="rounded-lg border border-border bg-surface-low p-5">
+        <h3 className="mb-4 text-body2 font-bold">{t('storageStatsTitle')}</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-body3 text-foreground-secondary">{t('totalStorageUsed')}</span>
+            <span className="font-sans text-body3 font-semibold">{t('storageGb', { value: totalStorageUsed.toFixed(1) })}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-body3 text-foreground-secondary">{t('totalStorageCapacity')}</span>
+            <span className="font-sans text-body3 text-foreground-tertiary">
+              {t('storageGb', { value: String(totalStorageCap) })}{unlimitedStorageCount > 0 ? ` + ${t('unlimitedStorage', { count: unlimitedStorageCount })}` : ''}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Recently created */}
       <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
         <h3 className="mb-4 text-body2 font-bold">{t('recentTitle')}</h3>
@@ -195,6 +237,40 @@ function OverviewPane({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Quick actions */}
+      <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
+        <h3 className="mb-3 text-body2 font-bold">{t('quickActionsTitle')}</h3>
+        <div className="space-y-0.5">
+          <button
+            type="button"
+            className="grid w-full grid-cols-[32px_1fr_auto] items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:border-primary-light hover:bg-primary-lighter"
+            onClick={onCreateTenant}
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-lighter text-primary">
+              <Plus className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-body3 font-semibold">{t('createTenant')}</div>
+              <div className="text-caption text-foreground-tertiary">{t('createTenantDesc')}</div>
+            </div>
+            <ChevronRight className="h-3.5 w-3.5 text-foreground-tertiary" />
+          </button>
+          <button
+            type="button"
+            className="grid w-full grid-cols-[32px_1fr_auto] items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:border-primary-light hover:bg-primary-lighter"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-lighter text-primary">
+              <Download className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-body3 font-semibold">{t('exportPlatformData')}</div>
+              <div className="text-caption text-foreground-tertiary">{t('exportPlatformDataDesc')}</div>
+            </div>
+            <ChevronRight className="h-3.5 w-3.5 text-foreground-tertiary" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -448,7 +524,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
         {query.isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : (
-          <OverviewPane organizations={allOrgs} />
+          <OverviewPane organizations={allOrgs} onCreateTenant={() => { setCreateOpen(true); }} />
         )}
       </TabsContent>
 

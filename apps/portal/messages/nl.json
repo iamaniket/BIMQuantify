@@ -527,7 +527,26 @@
       "introTitle": "Maak aangepaste formulieren voor bevindingen",
       "introBody": "Beheerders kunnen sjablonen ontwerpen die aangepaste velden aan het bevindingsformulier toevoegen en bepalen welke standaardvelden verschijnen. Markeer er één als standaard om deze te openen via de knop Bevinding loggen; iedereen kan een sjabloon kiezen bij het loggen.",
       "defaultBadge": "Standaard",
-      "fieldCount": "{count, plural, =0 {Geen aangepaste velden} one {# aangepast veld} other {# aangepaste velden}}"
+      "fieldCount": "{count, plural, =0 {Geen aangepaste velden} one {# aangepast veld} other {# aangepaste velden}}",
+      "statsTitle": "In één oogopslag",
+      "totalTemplates": "Sjablonen",
+      "totalFields": "Aangepaste velden",
+      "defaultTemplate": "Standaardsjabloon",
+      "noDefaultSet": "Niet ingesteld",
+      "fieldTypesTitle": "Gebruikte veldtypen",
+      "tipsTitle": "Wat je kunt doen",
+      "tipToggleBuiltins": "Standaardvelden in-/uitschakelen",
+      "tipToggleBuiltinsDesc": "Toon of verberg ernst, artikelref, foto’s en referenties per sjabloon.",
+      "tipCustomFields": "Aangepaste velden toevoegen",
+      "tipCustomFieldsDesc": "Tekst, nummer, datum, dropdown, checkbox — tot 30 per sjabloon.",
+      "tipSetDefault": "Standaard instellen",
+      "tipSetDefaultDesc": "Het standaardsjabloon opent automatisch via de knop Bevinding loggen.",
+      "fieldType_text": "Tekst",
+      "fieldType_textarea": "Tekstvak",
+      "fieldType_number": "Nummer",
+      "fieldType_date": "Datum",
+      "fieldType_select": "Dropdown",
+      "fieldType_checkbox": "Selectievakje"
     },
     "list": {
       "newButton": "Nieuw sjabloon",
@@ -710,7 +729,10 @@
     "overview": {
       "byTypeTitle": "Certificaten per type",
       "byExpiryTitle": "Geldigheidsstatus",
-      "recentTitle": "Recent toegevoegd"
+      "recentTitle": "Recent toegevoegd",
+      "totalCerts": "Totaal",
+      "validCerts": "Geldig",
+      "expiringSoonCerts": "Verloopt binnenkort"
     }
   },
   "projectAccess": {
@@ -1949,7 +1971,20 @@
         "seatsInUse": "Zetels in gebruik",
         "totalCapacity": "Totale capaciteit",
         "recentTitle": "Recent aangemaakt",
-        "noTenants": "Nog geen tenants."
+        "noTenants": "Nog geen tenants.",
+        "memberStatsTitle": "Leden over alle tenants",
+        "totalMembers": "Totaal leden",
+        "averagePerTenant": "Gemiddeld per tenant",
+        "storageStatsTitle": "Opslaggebruik",
+        "totalStorageUsed": "Totaal gebruikt",
+        "totalStorageCapacity": "Totaal toegewezen",
+        "storageGb": "{value} GB",
+        "unlimitedStorage": "{count} onbeperkt",
+        "quickActionsTitle": "Snelle acties",
+        "createTenant": "Tenant aanmaken",
+        "createTenantDesc": "Richt een nieuw org-schema in",
+        "exportPlatformData": "Platformgegevens exporteren",
+        "exportPlatformDataDesc": "Tenants, zetels, opslag — CSV"
       },
       "statusFilters": {
         "all": "Alle statussen",

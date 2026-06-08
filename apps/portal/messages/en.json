@@ -527,7 +527,26 @@
       "introTitle": "Build custom forms for findings",
       "introBody": "Admins can design templates that add custom fields to the finding form and toggle which built-in fields appear. Mark one as default to open it from the Log finding button; everyone can pick a template when logging a finding.",
       "defaultBadge": "Default",
-      "fieldCount": "{count, plural, =0 {No custom fields} one {# custom field} other {# custom fields}}"
+      "fieldCount": "{count, plural, =0 {No custom fields} one {# custom field} other {# custom fields}}",
+      "statsTitle": "At a glance",
+      "totalTemplates": "Templates",
+      "totalFields": "Custom fields",
+      "defaultTemplate": "Default template",
+      "noDefaultSet": "None set",
+      "fieldTypesTitle": "Field types in use",
+      "tipsTitle": "What you can do",
+      "tipToggleBuiltins": "Toggle built-in fields",
+      "tipToggleBuiltinsDesc": "Show or hide severity, article ref, photos, and references per template.",
+      "tipCustomFields": "Add custom fields",
+      "tipCustomFieldsDesc": "Text, number, date, dropdown, checkbox — up to 30 per template.",
+      "tipSetDefault": "Set a default",
+      "tipSetDefaultDesc": "The default template opens automatically from the Log finding button.",
+      "fieldType_text": "Text",
+      "fieldType_textarea": "Textarea",
+      "fieldType_number": "Number",
+      "fieldType_date": "Date",
+      "fieldType_select": "Dropdown",
+      "fieldType_checkbox": "Checkbox"
     },
     "list": {
       "newButton": "New template",
@@ -710,7 +729,10 @@
     "overview": {
       "byTypeTitle": "Certificates by type",
       "byExpiryTitle": "Expiry status",
-      "recentTitle": "Recently added"
+      "recentTitle": "Recently added",
+      "totalCerts": "Total",
+      "validCerts": "Valid",
+      "expiringSoonCerts": "Expiring soon"
     }
   },
   "projectAccess": {
@@ -1949,7 +1971,20 @@
         "seatsInUse": "Seats in use",
         "totalCapacity": "Total capacity",
         "recentTitle": "Recently created",
-        "noTenants": "No tenants yet."
+        "noTenants": "No tenants yet.",
+        "memberStatsTitle": "Members across tenants",
+        "totalMembers": "Total members",
+        "averagePerTenant": "Average per tenant",
+        "storageStatsTitle": "Storage usage",
+        "totalStorageUsed": "Total used",
+        "totalStorageCapacity": "Total allocated",
+        "storageGb": "{value} GB",
+        "unlimitedStorage": "{count} unlimited",
+        "quickActionsTitle": "Quick actions",
+        "createTenant": "Create tenant",
+        "createTenantDesc": "Provision a new org schema",
+        "exportPlatformData": "Export platform data",
+        "exportPlatformDataDesc": "Tenants, seats, storage — CSV"
       },
       "statusFilters": {
         "all": "All statuses",
