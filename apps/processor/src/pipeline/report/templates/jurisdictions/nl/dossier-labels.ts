@@ -95,4 +95,8 @@ export const NL_DOSSIER_LABELS = {
   } as Record<string, string>,
 } as const;
 
-export type DossierLabels = typeof NL_DOSSIER_LABELS;
+export type DossierLabels = {
+  [K in keyof typeof NL_DOSSIER_LABELS]: (typeof NL_DOSSIER_LABELS)[K] extends Record<string, string>
+    ? Record<string, string>
+    : string;
+};

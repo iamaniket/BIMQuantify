@@ -80,4 +80,8 @@ export const NL_ASSURANCE_PLAN_LABELS = {
   } as Record<string, string>,
 } as const;
 
-export type AssurancePlanLabels = typeof NL_ASSURANCE_PLAN_LABELS;
+export type AssurancePlanLabels = {
+  [K in keyof typeof NL_ASSURANCE_PLAN_LABELS]: (typeof NL_ASSURANCE_PLAN_LABELS)[K] extends Record<string, string>
+    ? Record<string, string>
+    : string;
+};

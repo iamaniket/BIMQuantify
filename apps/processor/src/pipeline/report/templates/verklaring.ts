@@ -20,6 +20,7 @@ import {
   NL_VERKLARING_LABELS,
   type VerklaringLabels,
 } from './jurisdictions/nl/verklaring-labels.js';
+import { EN_VERKLARING_LABELS } from './jurisdictions/en/verklaring-labels.js';
 
 export type VerklaringData = {
   report_id: string;
@@ -37,13 +38,14 @@ export type VerklaringData = {
   };
 };
 
-const LABELS_BY_JURISDICTION: Record<string, VerklaringLabels> = {
-  NL: NL_VERKLARING_LABELS,
+const LABELS_BY_LOCALE: Record<string, VerklaringLabels> = {
+  nl: NL_VERKLARING_LABELS,
+  en: EN_VERKLARING_LABELS,
 };
 
-function resolveLabels(jurisdiction: string | undefined | null): VerklaringLabels {
-  if (jurisdiction) {
-    const found = LABELS_BY_JURISDICTION[jurisdiction.toUpperCase()];
+function resolveLabels(locale: string | undefined | null): VerklaringLabels {
+  if (locale) {
+    const found = LABELS_BY_LOCALE[locale.toLowerCase()];
     if (found) return found;
   }
   return NL_VERKLARING_LABELS;
@@ -81,7 +83,7 @@ function signatureSection(data: VerklaringData, labels: VerklaringLabels): strin
 }
 
 export function renderHtml(data: VerklaringData): string {
-  const labels = resolveLabels(data.jurisdiction ?? data.project.country ?? 'NL');
+  const labels = resolveLabels(data.locale);
   const instrumentText = data.instrument
     ? `${escapeHtml(data.instrument.name)}${
         data.instrument.provider ? ` · ${escapeHtml(data.instrument.provider)}` : ''
@@ -119,5 +121,6 @@ export function renderHtml(data: VerklaringData): string {
     title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
+    locale: data.locale,
   });
 }

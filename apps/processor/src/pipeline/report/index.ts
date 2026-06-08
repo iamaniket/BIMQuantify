@@ -81,12 +81,22 @@ export async function runReportJob<T extends BaseReportPayload>(
   const payload = parsed.data;
   const startedAt = new Date().toISOString();
 
+  // The "running" callback is a progress indicator, not a gate. It may 404
+  // when the API transaction that created the report row has not committed yet
+  // (the dispatch happens inside the tenant transaction). Non-fatal: log and
+  // continue — the terminal ready/failed callback will succeed once the row is
+  // visible.
   await postReportCallback({
     report_id: payload.report_id,
     organization_id: job.organization_id,
     job_id: job.job_id,
     status: 'running',
     started_at: startedAt,
+  }).catch((err) => {
+    logger.warn(
+      { reportId: payload.report_id, err: (err as Error).message },
+      'running callback failed (non-fatal, likely transaction race)',
+    );
   });
 
   try {

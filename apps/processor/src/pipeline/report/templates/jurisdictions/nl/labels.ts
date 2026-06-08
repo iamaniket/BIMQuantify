@@ -34,4 +34,4 @@ export const NL_COMPLIANCE_LABELS = {
   sectionByRule: 'Per regel',
 } as const;
 
-export type ComplianceReportLabels = typeof NL_COMPLIANCE_LABELS;
+export type ComplianceReportLabels = { [K in keyof typeof NL_COMPLIANCE_LABELS]: string };

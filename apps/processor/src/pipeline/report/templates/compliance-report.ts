@@ -14,14 +14,16 @@
 
 import { layout } from './_layout.js';
 import { NL_COMPLIANCE_LABELS, type ComplianceReportLabels } from './jurisdictions/nl/labels.js';
+import { EN_COMPLIANCE_LABELS } from './jurisdictions/en/labels.js';
 
-const LABELS_BY_JURISDICTION: Record<string, ComplianceReportLabels> = {
-  NL: NL_COMPLIANCE_LABELS,
+const LABELS_BY_LOCALE: Record<string, ComplianceReportLabels> = {
+  nl: NL_COMPLIANCE_LABELS,
+  en: EN_COMPLIANCE_LABELS,
 };
 
-function resolveLabels(jurisdiction: string | undefined | null): ComplianceReportLabels {
-  if (jurisdiction) {
-    const found = LABELS_BY_JURISDICTION[jurisdiction.toUpperCase()];
+function resolveLabels(locale: string | undefined | null): ComplianceReportLabels {
+  if (locale) {
+    const found = LABELS_BY_LOCALE[locale.toLowerCase()];
     if (found) return found;
   }
   return NL_COMPLIANCE_LABELS;
@@ -227,7 +229,7 @@ function renderRulesTable(data: ComplianceReportData, labels: ComplianceReportLa
 
 export function renderHtml(data: ComplianceReportData): string {
   const score = overallScore(data);
-  const labels = resolveLabels(data.jurisdiction ?? data.project.country ?? 'NL');
+  const labels = resolveLabels(data.locale);
   const cover = `
     <header class="cover">
       <p class="kicker">${labels.reportTitle}</p>
@@ -272,5 +274,6 @@ export function renderHtml(data: ComplianceReportData): string {
     title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
+    locale: data.locale,
   });
 }

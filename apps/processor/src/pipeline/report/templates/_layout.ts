@@ -24,11 +24,14 @@ export type LayoutInput = {
   title: string;
   generatedAt: string;
   body: string;
+  /** ISO locale code (e.g. 'nl', 'en') — sets <html lang>. Defaults to 'nl'. */
+  locale?: string;
 };
 
-export function layout({ title, generatedAt, body }: LayoutInput): string {
+export function layout({ title, generatedAt, body, locale }: LayoutInput): string {
+  const lang = locale || 'nl';
   return `<!doctype html>
-<html lang="nl">
+<html lang="${lang}">
 <head>
   <meta charset="utf-8" />
   <title>${title}</title>

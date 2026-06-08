@@ -37,4 +37,8 @@ export const NL_VERKLARING_LABELS = {
   auditHash: 'Audit-ID (SHA-256)',
 } as const;
 
-export type VerklaringLabels = typeof NL_VERKLARING_LABELS;
+export type VerklaringLabels = {
+  [K in keyof typeof NL_VERKLARING_LABELS]: (typeof NL_VERKLARING_LABELS)[K] extends Record<string, string>
+    ? Record<string, string>
+    : string;
+};

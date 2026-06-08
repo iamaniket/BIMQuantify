@@ -21,6 +21,7 @@ import {
   NL_ASSURANCE_PLAN_LABELS,
   type AssurancePlanLabels,
 } from './jurisdictions/nl/assurance-plan-labels.js';
+import { EN_ASSURANCE_PLAN_LABELS } from './jurisdictions/en/assurance-plan-labels.js';
 
 export type AssuranceChecklistItem = {
   description: string;
@@ -66,13 +67,14 @@ export type AssurancePlanData = {
   risks: AssuranceRisk[];
 };
 
-const LABELS_BY_JURISDICTION: Record<string, AssurancePlanLabels> = {
-  NL: NL_ASSURANCE_PLAN_LABELS,
+const LABELS_BY_LOCALE: Record<string, AssurancePlanLabels> = {
+  nl: NL_ASSURANCE_PLAN_LABELS,
+  en: EN_ASSURANCE_PLAN_LABELS,
 };
 
-function resolveLabels(jurisdiction: string | undefined | null): AssurancePlanLabels {
-  if (jurisdiction) {
-    const found = LABELS_BY_JURISDICTION[jurisdiction.toUpperCase()];
+function resolveLabels(locale: string | undefined | null): AssurancePlanLabels {
+  if (locale) {
+    const found = LABELS_BY_LOCALE[locale.toLowerCase()];
     if (found) return found;
   }
   return NL_ASSURANCE_PLAN_LABELS;
@@ -176,7 +178,7 @@ function signatureBlock(labels: AssurancePlanLabels): string {
 }
 
 export function renderHtml(data: AssurancePlanData): string {
-  const labels = resolveLabels(data.jurisdiction ?? data.project.country ?? 'NL');
+  const labels = resolveLabels(data.locale);
   const plan = data.assurance_plan;
   const instrumentText = data.instrument
     ? `${escapeHtml(data.instrument.name)}${
@@ -217,5 +219,6 @@ export function renderHtml(data: AssurancePlanData): string {
     title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
+    locale: data.locale,
   });
 }

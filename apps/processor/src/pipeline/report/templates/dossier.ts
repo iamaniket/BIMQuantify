@@ -21,6 +21,7 @@ import {
 } from './_helpers.js';
 import type { AssuranceMoment, AssuranceRisk } from './assurance-plan.js';
 import { NL_DOSSIER_LABELS, type DossierLabels } from './jurisdictions/nl/dossier-labels.js';
+import { EN_DOSSIER_LABELS } from './jurisdictions/en/dossier-labels.js';
 
 export type DossierPhoto = { storage_key: string; content_type: string; data_url?: string };
 
@@ -66,13 +67,14 @@ export type DossierData = {
   verklaring: { storage_key: string; content_type: string; signature_hash?: string | null } | null;
 };
 
-const LABELS_BY_JURISDICTION: Record<string, DossierLabels> = {
-  NL: NL_DOSSIER_LABELS,
+const LABELS_BY_LOCALE: Record<string, DossierLabels> = {
+  nl: NL_DOSSIER_LABELS,
+  en: EN_DOSSIER_LABELS,
 };
 
-function resolveLabels(jurisdiction: string | undefined | null): DossierLabels {
-  if (jurisdiction) {
-    const found = LABELS_BY_JURISDICTION[jurisdiction.toUpperCase()];
+function resolveLabels(locale: string | undefined | null): DossierLabels {
+  if (locale) {
+    const found = LABELS_BY_LOCALE[locale.toLowerCase()];
     if (found) return found;
   }
   return NL_DOSSIER_LABELS;
@@ -191,7 +193,7 @@ function renderDeclaration(data: DossierData, labels: DossierLabels): string {
 }
 
 export function renderHtml(data: DossierData): string {
-  const labels = resolveLabels(data.jurisdiction ?? data.project.country ?? 'NL');
+  const labels = resolveLabels(data.locale);
   const instrumentText = data.instrument
     ? `${escapeHtml(data.instrument.name)}${
         data.instrument.provider ? ` · ${escapeHtml(data.instrument.provider)}` : ''
@@ -235,5 +237,6 @@ export function renderHtml(data: DossierData): string {
     title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
+    locale: data.locale,
   });
 }
