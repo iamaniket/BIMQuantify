@@ -12,29 +12,35 @@ import type {
   ChecklistItemResult,
   InspectionVerdictValue,
 } from '@/lib/api/schemas';
+import type { QueueEntryStatus } from '@/lib/offline/types.js';
 
 import { ReferenceDocumentPicker } from '@/features/projects/detail/ReferenceDocumentPicker';
 
 import { NoteField } from './NoteField';
 import { PhotoCapture } from './PhotoCapture';
+import { SyncStatusDot } from './SyncStatusDot';
 import { VerdictButtons } from './VerdictButtons';
 
 type Props = {
   projectId: string;
+  momentId: string;
   item: ChecklistItem;
   existingResult: ChecklistItemResult | null;
   onSubmit: (verdict: InspectionVerdictValue, note: string | null, photoIds: string[] | null, referenceAttachmentIds: string[] | null) => void;
   isPending: boolean;
   isCompleted: boolean;
+  syncStatus?: QueueEntryStatus | undefined;
 };
 
 export function ItemCard({
   projectId,
+  momentId,
   item,
   existingResult,
   onSubmit,
   isPending,
   isCompleted,
+  syncStatus,
 }: Props): JSX.Element {
   const t = useTranslations('inspection');
   const tEv = useTranslations('projectDetail.tabs.borgingsplan.plan.evidenceTypes');
@@ -104,7 +110,10 @@ export function ItemCard({
         )}
       </div>
 
-      <p className="text-body1 font-medium text-foreground">{item.description}</p>
+      <div className="flex items-center gap-2">
+        <p className="text-body1 font-medium text-foreground">{item.description}</p>
+        <SyncStatusDot status={syncStatus} />
+      </div>
 
       {item.pass_fail_criteria !== null && item.pass_fail_criteria.length > 0 && (
         <div className="rounded-md border border-border bg-background-secondary px-3 py-2">
@@ -142,6 +151,7 @@ export function ItemCard({
 
       <PhotoCapture
         projectId={projectId}
+        momentId={momentId}
         photoIds={photoIds}
         onChange={handlePhotosChange}
         disabled={isCompleted}

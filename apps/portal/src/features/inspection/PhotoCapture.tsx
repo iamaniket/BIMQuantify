@@ -8,18 +8,21 @@ import { toast } from 'sonner';
 import { Button } from '@bimstitch/ui';
 
 import { useAttachmentViewUrl } from '@/features/attachments/useAttachmentViewUrl';
-import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
+
+import { useOfflinePhotoUpload } from './useOfflinePhotoCapture';
 
 type ThumbnailProps = {
   projectId: string;
   attachmentId: string;
+  localUrl?: string | undefined;
   onRemove: () => void;
   disabled: boolean;
 };
 
-function Thumbnail({ projectId, attachmentId, onRemove, disabled }: ThumbnailProps): JSX.Element {
-  const viewUrlQuery = useAttachmentViewUrl(projectId, attachmentId);
-  const url = viewUrlQuery.data?.download_url;
+function Thumbnail({ projectId, attachmentId, localUrl, onRemove, disabled }: ThumbnailProps): JSX.Element {
+  const isLocal = localUrl !== undefined;
+  const viewUrlQuery = useAttachmentViewUrl(projectId, isLocal ? null : attachmentId);
+  const url = isLocal ? localUrl : viewUrlQuery.data?.download_url;
 
   return (
     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-surface-low">
@@ -46,6 +49,7 @@ function Thumbnail({ projectId, attachmentId, onRemove, disabled }: ThumbnailPro
 
 type Props = {
   projectId: string;
+  momentId: string;
   photoIds: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
@@ -54,15 +58,17 @@ type Props = {
 
 export function PhotoCapture({
   projectId,
+  momentId,
   photoIds,
   onChange,
   disabled = false,
   maxPhotos = 5,
 }: Props): JSX.Element {
   const t = useTranslations('inspection.photo');
-  const uploadMutation = useUploadAttachment(projectId);
+  const { upload, isPending: isUploading } = useOfflinePhotoUpload(projectId, momentId);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [localThumbnails, setLocalThumbnails] = useState<Map<string, string>>(new Map());
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,8 +82,11 @@ export function PhotoCapture({
       const added: string[] = [];
       for (const file of picked) {
         try {
-          const attachment = await uploadMutation.mutateAsync({ file });
-          added.push(attachment.id);
+          const result = await upload({ file });
+          added.push(result.id);
+          if (result.isLocal && result.thumbnailUrl !== undefined) {
+            setLocalThumbnails((prev) => new Map(prev).set(result.id, result.thumbnailUrl!));
+          }
         } catch {
           toast.error(t('uploadFailed'));
         } finally {
@@ -88,7 +97,7 @@ export function PhotoCapture({
         onChange([...photoIds, ...added]);
       }
     },
-    [uploadMutation, onChange, photoIds, t],
+    [upload, onChange, photoIds, t],
   );
 
   const atMax = photoIds.length >= maxPhotos;
@@ -100,7 +109,7 @@ export function PhotoCapture({
         size="lg"
         className="min-h-12 w-full justify-start gap-2"
         onClick={() => inputRef.current?.click()}
-        disabled={disabled || atMax}
+        disabled={disabled || atMax || isUploading}
       >
         <Camera className="h-5 w-5" />
         {t('capture')}
@@ -118,6 +127,7 @@ export function PhotoCapture({
               key={id}
               projectId={projectId}
               attachmentId={id}
+              localUrl={localThumbnails.get(id)}
               disabled={disabled}
               onRemove={() => onChange(photoIds.filter((x) => x !== id))}
             />

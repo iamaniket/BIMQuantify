@@ -2,35 +2,41 @@
 
 import { ChevronLeft, ChevronRight } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useCallback, useMemo, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 
 import { Button, Skeleton } from '@bimstitch/ui';
 
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { useRouter } from '@/i18n/navigation';
 import type {
   Borgingsmoment,
+  Borgingsplan,
   ChecklistItem,
   InspectionVerdictValue,
 } from '@/lib/api/schemas';
+import { getEntriesForMoment } from '@/lib/offline/queue.js';
+import type { QueueEntryStatus, SubmitResultEntry } from '@/lib/offline/types.js';
 
-import {
-  useCompleteInspection,
-  useInspectionResults,
-  useInspectionSummary,
-  useStartInspection,
-  useSubmitResult,
-} from './useInspection';
 import { CompletionDialog } from './CompletionDialog';
 import { InspectionHeader } from './InspectionHeader';
 import { ItemCard } from './ItemCard';
 import { ProgressBar } from './ProgressBar';
+import { useInspectionCacheSync } from './useInspectionCacheSync';
+import {
+  useOfflineCompleteInspection,
+  useOfflineInspectionResults,
+  useOfflineInspectionSummary,
+  useOfflineStartInspection,
+  useOfflineSubmitResult,
+} from './useOfflineInspection';
 
 type Props = {
   projectId: string;
   moment: Borgingsmoment;
+  plan?: Borgingsplan | undefined;
 };
 
-export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
+export function InspectionScreen({ projectId, moment, plan }: Props): JSX.Element {
   const t = useTranslations('inspection');
   const router = useRouter();
 
@@ -42,14 +48,34 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
 
-  const resultsQuery = useInspectionResults(moment.id);
-  const summaryQuery = useInspectionSummary(moment.id);
-  const startMutation = useStartInspection(projectId, moment.id);
-  const submitMutation = useSubmitResult(moment.id);
-  const completeMutation = useCompleteInspection(projectId, moment.id);
-
+  const resultsQuery = useOfflineInspectionResults(moment.id);
   const results = resultsQuery.data ?? [];
+  const summaryQuery = useOfflineInspectionSummary(moment.id, items.length, results);
+  const startMutation = useOfflineStartInspection(projectId, moment.id);
+  const submitMutation = useOfflineSubmitResult(projectId, moment.id);
+  const completeMutation = useOfflineCompleteInspection(projectId, moment.id);
+
   const summary = summaryQuery.data ?? null;
+
+  useInspectionCacheSync(projectId, moment.id, plan ?? null, resultsQuery.data);
+
+  const [syncStatuses, setSyncStatuses] = useState<Map<string, QueueEntryStatus>>(new Map());
+  useEffect(() => {
+    const load = (): void => {
+      void getEntriesForMoment(moment.id).then((entries) => {
+        const map = new Map<string, QueueEntryStatus>();
+        for (const e of entries) {
+          if (e.type === 'submit_result' && e.status !== 'succeeded') {
+            map.set((e as SubmitResultEntry).payload.itemId, e.status);
+          }
+        }
+        setSyncStatuses(map);
+      });
+    };
+    load();
+    const interval = setInterval(load, 3000);
+    return () => { clearInterval(interval); };
+  }, [moment.id, results]);
 
   const resultByItemId = useMemo(() => {
     const map = new Map<string, (typeof results)[number]>();
@@ -137,6 +163,7 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      <OfflineBanner />
       <InspectionHeader
         projectId={projectId}
         momentName={moment.name}
@@ -163,11 +190,13 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
         <ItemCard
           key={currentItem.id}
           projectId={projectId}
+          momentId={moment.id}
           item={currentItem}
           existingResult={resultByItemId.get(currentItem.id) ?? null}
           onSubmit={handleSubmit}
           isPending={submitMutation.isPending}
           isCompleted={isTerminal}
+          syncStatus={syncStatuses.get(currentItem.id)}
         />
       </div>
 

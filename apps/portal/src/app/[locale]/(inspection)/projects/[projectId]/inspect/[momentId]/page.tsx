@@ -43,5 +43,5 @@ export default function InspectionPage(): JSX.Element {
     );
   }
 
-  return <InspectionScreen projectId={projectId} moment={moment} />;
+  return <InspectionScreen projectId={projectId} moment={moment} plan={planQuery.data ?? undefined} />;
 }

@@ -2464,6 +2464,26 @@
       "startInspection": "Start inspection"
     }
   },
+  "offline": {
+    "banner": {
+      "offline": "You're offline. Changes are saved locally.",
+      "syncing": "Syncing {count} items…",
+      "syncComplete": "All changes synced.",
+      "failed": "{count} items couldn't sync. Tap to retry."
+    },
+    "syncStatus": {
+      "pending": "Pending sync",
+      "syncing": "Syncing…",
+      "failed": "Sync failed — tap to retry"
+    },
+    "conflict": {
+      "title": "Sync conflict",
+      "message": "The server version was kept for this item."
+    },
+    "photo": {
+      "savedLocally": "Photo saved locally"
+    }
+  },
   "capturePage": {
     "loading": "Validating link…",
     "invalidTitle": "Link unavailable",
