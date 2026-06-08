@@ -171,6 +171,7 @@
     "workspace": "Werkruimte",
     "projects": "Projecten",
     "certificates": "Certificaten",
+    "templates": "Sjablonen",
     "bblLibrary": "BBL-bibliotheek",
     "wkbLibrary": "Wet kwaliteitsborging voor het bouwen (Wkb)-bibliotheek",
     "tenant": {
@@ -193,6 +194,7 @@
     "auditLog": "Auditlog",
     "tenant": "Tenant",
     "certificates": "Certificaten",
+    "templates": "Sjablonen",
     "appName": "BimDossier"
   },
   "modelSwitcher": {
@@ -498,6 +500,124 @@
           "cancel": "Annuleren"
         }
       }
+    }
+  },
+  "findingTemplates": {
+    "hero": {
+      "title": "Sjablonen",
+      "badge": "Bevindingen",
+      "totalLabel": "Sjablonen",
+      "totalSub": "in deze werkruimte",
+      "defaultLabel": "Standaard",
+      "defaultSub": "opent bij Bevinding loggen",
+      "noDefault": "Standaardformulier"
+    },
+    "tabs": {
+      "overview": "Overzicht",
+      "templates": "Sjablonen"
+    },
+    "panel": {
+      "overviewEyebrow": "Sjablonen",
+      "overviewTitle": "Aangepaste bevindingsformulieren",
+      "templatesEyebrow": "Bibliotheek",
+      "templatesTitle": "{count} sjablonen",
+      "showing": "{count} weergegeven"
+    },
+    "overview": {
+      "introTitle": "Maak aangepaste formulieren voor bevindingen",
+      "introBody": "Beheerders kunnen sjablonen ontwerpen die aangepaste velden aan het bevindingsformulier toevoegen en bepalen welke standaardvelden verschijnen. Markeer er één als standaard om deze te openen via de knop Bevinding loggen; iedereen kan een sjabloon kiezen bij het loggen.",
+      "defaultBadge": "Standaard",
+      "fieldCount": "{count, plural, =0 {Geen aangepaste velden} one {# aangepast veld} other {# aangepaste velden}}"
+    },
+    "list": {
+      "newButton": "Nieuw sjabloon",
+      "emptyTitle": "Nog geen sjablonen",
+      "edit": "Bewerken",
+      "setDefault": "Als standaard instellen",
+      "remove": "Verwijderen",
+      "defaultBadge": "Standaard",
+      "removeSuccess": "\"{name}\" verwijderd",
+      "setDefaultSuccess": "\"{name}\" is nu de standaard"
+    },
+    "table": {
+      "name": "Naam",
+      "default": "Standaard",
+      "fields": "Velden",
+      "updated": "Bijgewerkt"
+    },
+    "builder": {
+      "createTitle": "Nieuw sjabloon",
+      "editTitle": "Sjabloon bewerken",
+      "subtitle": "Ontwerp het formulier dat verschijnt bij het loggen van een bevinding.",
+      "nameLabel": "Sjabloonnaam",
+      "namePlaceholder": "bv. Dagelijkse inspectie",
+      "descriptionLabel": "Omschrijving",
+      "descriptionPlaceholder": "Optioneel — waarvoor dit sjabloon dient",
+      "defaultLabel": "Als standaard instellen",
+      "defaultHint": "Opent automatisch via de knop Bevinding loggen.",
+      "builtinsTitle": "Standaardvelden",
+      "lockedFieldsNote": "Titel en omschrijving zijn altijd opgenomen.",
+      "show": "Tonen",
+      "required": "Verplicht",
+      "customFieldsTitle": "Aangepaste velden",
+      "fieldCount": "{count} / {max} velden",
+      "addField": "Veld toevoegen",
+      "fieldLabelPlaceholder": "Veldlabel",
+      "optionsLabel": "Opties",
+      "optionsHint": "Eén optie per regel.",
+      "optionsPlaceholder": "Optie een\nOptie twee",
+      "minLabel": "Min",
+      "maxLabel": "Max",
+      "helpTextPlaceholder": "Hulptekst (optioneel)",
+      "moveUp": "Omhoog",
+      "moveDown": "Omlaag",
+      "removeField": "Veld verwijderen",
+      "steps": {
+        "setup": {
+          "title": "Instellingen",
+          "description": "Naam en standaardvelden"
+        },
+        "fields": {
+          "title": "Aangepaste velden",
+          "description": "Voeg eigen velden toe"
+        }
+      },
+      "next": "Volgende",
+      "back": "Terug",
+      "cancel": "Annuleren",
+      "save": "Sjabloon opslaan",
+      "saving": "Opslaan…",
+      "checkFields": "Controleer de gemarkeerde velden.",
+      "createSuccess": "Sjabloon aangemaakt",
+      "updateSuccess": "Sjabloon bijgewerkt"
+    },
+    "fieldTypes": {
+      "text": "Tekst",
+      "textarea": "Lange tekst",
+      "number": "Getal",
+      "date": "Datum",
+      "select": "Keuzelijst",
+      "checkbox": "Selectievakje"
+    },
+    "builtins": {
+      "severity": "Ernst",
+      "bbl_article_ref": "Bouwbesluit-referentie",
+      "photos": "Foto's",
+      "references": "Referentiedocumenten"
+    },
+    "picker": {
+      "logFinding": "Bevinding loggen",
+      "standardForm": "Standaardformulier",
+      "menuLabel": "Kies een sjabloon",
+      "defaultSuffix": "standaard"
+    },
+    "errors": {
+      "SELECT_FIELD_NEEDS_OPTIONS": "Keuzelijstvelden hebben minstens één optie nodig.",
+      "SELECT_OPTION_EMPTY": "Keuzelijstopties mogen niet leeg zijn.",
+      "SELECT_OPTIONS_NOT_UNIQUE": "Keuzelijstopties moeten uniek zijn.",
+      "OPTIONS_ONLY_FOR_SELECT": "Alleen keuzelijstvelden kunnen opties hebben.",
+      "MINMAX_ONLY_FOR_NUMBER": "Min en max gelden alleen voor getalvelden.",
+      "MIN_GREATER_THAN_MAX": "Min mag niet groter zijn dan max."
     }
   },
   "orgCertificates": {
@@ -1186,6 +1306,7 @@
       "createTitle": "Bevinding vastleggen",
       "createSubtitle": "Leg een inspectiebevinding vast zodat deze tot oplossing kan worden gevolgd.",
       "submit": "Bevinding aanmaken",
+      "requiredError": "Vul alle verplichte velden in.",
       "fields": {
         "title": "Titel",
         "description": "Omschrijving",

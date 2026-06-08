@@ -171,6 +171,7 @@
     "workspace": "Workspace",
     "projects": "Projects",
     "certificates": "Certificates",
+    "templates": "Templates",
     "bblLibrary": "BBL library",
     "wkbLibrary": "Quality Assurance in Construction Act  (Wkb) library",
     "tenant": {
@@ -193,6 +194,7 @@
     "auditLog": "Audit log",
     "tenant": "Tenant",
     "certificates": "Certificates",
+    "templates": "Templates",
     "appName": "BimDossier"
   },
   "modelSwitcher": {
@@ -498,6 +500,124 @@
           "cancel": "Cancel"
         }
       }
+    }
+  },
+  "findingTemplates": {
+    "hero": {
+      "title": "Templates",
+      "badge": "Findings",
+      "totalLabel": "Templates",
+      "totalSub": "in this workspace",
+      "defaultLabel": "Default",
+      "defaultSub": "opens on Log finding",
+      "noDefault": "Standard form"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "templates": "Templates"
+    },
+    "panel": {
+      "overviewEyebrow": "Templates",
+      "overviewTitle": "Custom finding forms",
+      "templatesEyebrow": "Library",
+      "templatesTitle": "{count} templates",
+      "showing": "Showing {count}"
+    },
+    "overview": {
+      "introTitle": "Build custom forms for findings",
+      "introBody": "Admins can design templates that add custom fields to the finding form and toggle which built-in fields appear. Mark one as default to open it from the Log finding button; everyone can pick a template when logging a finding.",
+      "defaultBadge": "Default",
+      "fieldCount": "{count, plural, =0 {No custom fields} one {# custom field} other {# custom fields}}"
+    },
+    "list": {
+      "newButton": "New template",
+      "emptyTitle": "No templates yet",
+      "edit": "Edit",
+      "setDefault": "Set as default",
+      "remove": "Delete",
+      "defaultBadge": "Default",
+      "removeSuccess": "Deleted \"{name}\"",
+      "setDefaultSuccess": "\"{name}\" is now the default"
+    },
+    "table": {
+      "name": "Name",
+      "default": "Default",
+      "fields": "Fields",
+      "updated": "Updated"
+    },
+    "builder": {
+      "createTitle": "New template",
+      "editTitle": "Edit template",
+      "subtitle": "Design the form shown when logging a finding.",
+      "nameLabel": "Template name",
+      "namePlaceholder": "e.g. Daily site inspection",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional — what this template is for",
+      "defaultLabel": "Set as default",
+      "defaultHint": "Opens automatically from the Log finding button.",
+      "builtinsTitle": "Standard fields",
+      "lockedFieldsNote": "Title and description are always included.",
+      "show": "Show",
+      "required": "Required",
+      "customFieldsTitle": "Custom fields",
+      "fieldCount": "{count} / {max} fields",
+      "addField": "Add field",
+      "fieldLabelPlaceholder": "Field label",
+      "optionsLabel": "Options",
+      "optionsHint": "One option per line.",
+      "optionsPlaceholder": "Option one\nOption two",
+      "minLabel": "Min",
+      "maxLabel": "Max",
+      "helpTextPlaceholder": "Help text (optional)",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeField": "Remove field",
+      "steps": {
+        "setup": {
+          "title": "Setup",
+          "description": "Name and standard fields"
+        },
+        "fields": {
+          "title": "Custom fields",
+          "description": "Add your own fields"
+        }
+      },
+      "next": "Next",
+      "back": "Back",
+      "cancel": "Cancel",
+      "save": "Save template",
+      "saving": "Saving…",
+      "checkFields": "Please check the highlighted fields.",
+      "createSuccess": "Template created",
+      "updateSuccess": "Template updated"
+    },
+    "fieldTypes": {
+      "text": "Text",
+      "textarea": "Long text",
+      "number": "Number",
+      "date": "Date",
+      "select": "Dropdown",
+      "checkbox": "Checkbox"
+    },
+    "builtins": {
+      "severity": "Severity",
+      "bbl_article_ref": "Building-code reference",
+      "photos": "Photos",
+      "references": "Reference documents"
+    },
+    "picker": {
+      "logFinding": "Log finding",
+      "standardForm": "Standard form",
+      "menuLabel": "Choose a template",
+      "defaultSuffix": "default"
+    },
+    "errors": {
+      "SELECT_FIELD_NEEDS_OPTIONS": "Dropdown fields need at least one option.",
+      "SELECT_OPTION_EMPTY": "Dropdown options can't be empty.",
+      "SELECT_OPTIONS_NOT_UNIQUE": "Dropdown options must be unique.",
+      "OPTIONS_ONLY_FOR_SELECT": "Only dropdown fields can have options.",
+      "MINMAX_ONLY_FOR_NUMBER": "Min and max only apply to number fields.",
+      "MIN_GREATER_THAN_MAX": "Min can't be greater than max."
     }
   },
   "orgCertificates": {
@@ -1186,6 +1306,7 @@
       "createTitle": "Log finding",
       "createSubtitle": "Record an inspection finding so it can be tracked to resolution.",
       "submit": "Create finding",
+      "requiredError": "Please fill in all required fields.",
       "fields": {
         "title": "Title",
         "description": "Description",

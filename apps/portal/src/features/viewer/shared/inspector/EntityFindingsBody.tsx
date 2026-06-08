@@ -4,7 +4,7 @@ import { AlertTriangle, Eye, Loader2, Plus, Search, Trash2 } from '@bimstitch/ui
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 
-import { Badge, Button, Input, MetaGrid } from '@bimstitch/ui';
+import { Badge, Button, Input, MetaGrid, SplitButton, type SplitButtonItem } from '@bimstitch/ui';
 import {
   DetailCard,
   DetailCardBody,
@@ -14,6 +14,7 @@ import {
 
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
+import { useFindingTemplates } from '@/features/findingTemplates/useFindingTemplates';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useElementFindings } from '@/features/findings/useElementFindings';
 import { useFileFindings, useProjectFindings } from '@/features/findings/useFindings';
@@ -24,7 +25,7 @@ import {
   severityBadgeVariant,
   statusBadgeVariant,
 } from '@/features/projects/detail/findingBadges';
-import type { Finding } from '@/lib/api/schemas';
+import type { Finding, FindingTemplate } from '@/lib/api/schemas';
 
 import { consumePendingElementPoint } from './pendingElementPoint';
 import { consumePendingPdfContextPoint } from './pendingPdfContextPoint';
@@ -73,6 +74,7 @@ export function EntityFindingsBody({
   const tSeverity = useTranslations('findings.severity');
   const tStatus = useTranslations('findings.status');
   const tExpanded = useTranslations('findings.expanded');
+  const tPicker = useTranslations('findingTemplates.picker');
 
   // Resolve the active query unconditionally (Hooks rules) — inapplicable
   // queries are disabled via their `enabled`/null args.
@@ -90,7 +92,11 @@ export function EntityFindingsBody({
     : scope.kind === 'file' ? fileQuery
     : elementQuery;
   const deleteMutation = useDeleteFinding(projectId);
+  const { data: templatesData } = useFindingTemplates();
+  const templates = templatesData ?? [];
+  const defaultTemplate = templates.find((tpl) => tpl.is_default) ?? null;
   const [createOpen, setCreateOpen] = useState(false);
+  const [chosenTemplate, setChosenTemplate] = useState<FindingTemplate | null>(null);
   // 3D pick point handed off by the context menu, anchored onto the new finding.
   const [pendingPoint, setPendingPoint] = useState<Record<string, number> | null>(null);
   const [selected, setSelected] = useState<Finding | null>(null);
@@ -100,7 +106,7 @@ export function EntityFindingsBody({
   // Open the create dialog, consuming a pending 3D pick point for element scope
   // or a pending 2D PDF context point for file scope, so the new finding
   // anchors to the clicked location. Manual opens (no pick) carry none.
-  const openCreate = useCallback(() => {
+  const openCreate = useCallback((tpl: FindingTemplate | null) => {
     if (scope.kind === 'element') {
       setPendingPoint(consumePendingElementPoint());
     } else if (scope.kind === 'file') {
@@ -109,17 +115,27 @@ export function EntityFindingsBody({
     } else {
       setPendingPoint(null);
     }
+    setChosenTemplate(tpl);
     setCreateOpen(true);
   }, [scope]);
+
+  const pickerItems: SplitButtonItem[] = [
+    ...templates.map((tpl) => ({
+      id: tpl.id,
+      label: tpl.is_default ? `${tpl.name} (${tPicker('defaultSuffix')})` : tpl.name,
+      onSelect: () => { openCreate(tpl); },
+    })),
+    { id: '__standard__', label: tPicker('standardForm'), onSelect: () => { openCreate(null); } },
+  ];
 
   // Auto-open the new-finding dialog when triggered from a context-menu command.
   useEffect(() => {
     if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
       lastConsumedNonce.current = autoOpenNonce;
-      openCreate();
+      openCreate(defaultTemplate);
       onAutoOpenConsumed?.();
     }
-  }, [autoOpenNonce, onAutoOpenConsumed, openCreate]);
+  }, [autoOpenNonce, onAutoOpenConsumed, openCreate, defaultTemplate]);
 
   const findings = flattenPages(query.data);
 
@@ -158,15 +174,27 @@ export function EntityFindingsBody({
             className="pl-7"
           />
         </div>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={openCreate}
-          title={t('createButton')}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t('createButton')}
-        </Button>
+        {templates.length > 0 ? (
+          <SplitButton
+            label={t('createButton')}
+            icon={<Plus className="mr-1 h-3.5 w-3.5" />}
+            onClick={() => { openCreate(defaultTemplate); }}
+            items={pickerItems}
+            menuLabel={tPicker('menuLabel')}
+            variant="primary"
+            size="sm"
+          />
+        ) : (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => { openCreate(null); }}
+            title={t('createButton')}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t('createButton')}
+          </Button>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -292,6 +320,7 @@ export function EntityFindingsBody({
         projectId={projectId}
         open={createOpen}
         onOpenChange={(o) => { setCreateOpen(o); if (!o) setPendingPoint(null); }}
+        template={chosenTemplate}
         linkedModelId={scope.kind === 'element' ? scope.modelId : null}
         linkedFileId={scope.kind === 'project' ? null : scope.fileId}
         linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}

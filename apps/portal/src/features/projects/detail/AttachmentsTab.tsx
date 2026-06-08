@@ -98,7 +98,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <TabToolbar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
@@ -108,7 +108,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
             selectSize="sm"
             value={categoryFilter ?? 'all'}
             onChange={(e) => { setCategoryFilter(e.target.value === 'all' ? undefined : e.target.value as AttachmentCategoryValue); }}
-            className="w-auto shrink-0"
+            className="w-auto min-w-[7.5rem]"
           >
             {CATEGORY_FILTERS.map(({ value, labelKey }) => (
               <option key={value} value={value}>{t(labelKey)}</option>
@@ -157,6 +157,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
         onChange={(e) => { void handleFileChange(e); }}
       />
 
+      <div className="min-h-0 flex-1 space-y-3 overflow-auto">
       {/* Upload progress */}
       {uploadMutation.isPending && (
         <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 px-4 py-3">
@@ -223,6 +224,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
           <CaptureLinksList projectId={projectId} />
         </div>
       )}
+      </div>
 
       <CreateCaptureLinkDialog
         projectId={projectId}

@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: 'BimDossier',
   description: 'BimDossier portal — sign in to manage your projects.',
   applicationName: 'BimDossier',
+  icons: {
+    icon: '/icon.svg',
+  },
   appleWebApp: {
     capable: true,
     title: 'BimDossier',

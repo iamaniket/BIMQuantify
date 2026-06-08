@@ -42,6 +42,11 @@ class FindingCreate(FindingBase):
     # rows server-side.
     photo_ids: list[str] | None = None
     reference_attachment_ids: list[str] | None = None
+    # Custom form template (#templates): the template this finding is created
+    # from (null = built-in standard form). `custom_values` are raw answers
+    # validated + snapshotted server-side against the template's field defs.
+    template_id: UUID | None = None
+    custom_values: dict[str, object] | None = None
 
     @model_validator(mode="after")
     def _validate_anchor(self) -> FindingCreate:
@@ -118,6 +123,8 @@ class FindingRead(FindingBase):
     resolution_note: str | None
     resolution_evidence_ids: list[str] | None
     reference_attachment_ids: list[str] | None
+    template_id: UUID | None
+    custom_values: dict[str, object] | None
     created_at: datetime
     updated_at: datetime
 

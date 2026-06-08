@@ -58,7 +58,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
             selectSize="sm"
             value={disciplineFilter ?? 'all'}
             onChange={(e) => { setDisciplineFilter(e.target.value === 'all' ? undefined : e.target.value as ModelDisciplineValue); }}
-            className="w-auto shrink-0"
+            className="w-auto min-w-[7.5rem]"
           >
             {DISCIPLINE_FILTERS.map(({ value, labelKey }) => (
               <option key={value} value={value}>{t(labelKey)}</option>

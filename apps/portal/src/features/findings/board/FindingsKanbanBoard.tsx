@@ -1,15 +1,14 @@
 'use client';
 
-import { Plus } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 
-import { Button, type KanbanColumnDef } from '@bimstitch/ui';
+import { type KanbanColumnDef } from '@bimstitch/ui';
 import { KanbanBoard } from '@bimstitch/ui';
 
+import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
-import { FindingFormDialog } from '@/features/projects/detail/FindingFormDialog';
 import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 import type { ProjectMember } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -39,7 +38,6 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
   const updateMutation = useUpdateFinding(projectId);
   const { me } = useAuth();
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
 
   const currentUserId = me === null ? null : me.user.id;
   const isInspector = useMemo(
@@ -112,10 +110,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-end px-3.5 pb-2">
-        <Button variant="border" size="sm" onClick={() => { setCreateOpen(true); }}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
-          {t('logFinding')}
-        </Button>
+        <LogFindingButton projectId={projectId} variant="border" />
       </div>
 
       <div className="min-h-0 flex-1 overflow-x-auto px-3.5 pb-3.5">
@@ -140,11 +135,6 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
         finding={selectedFinding}
         open={selectedFinding !== null}
         onOpenChange={(o) => { if (!o) setSelectedFinding(null); }}
-      />
-      <FindingFormDialog
-        projectId={projectId}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
       />
     </div>
   );

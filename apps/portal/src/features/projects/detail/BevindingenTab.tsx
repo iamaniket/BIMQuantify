@@ -1,12 +1,13 @@
 'use client';
 
-import { AlertTriangle, Columns3, Plus } from '@bimstitch/ui/icons';
+import { AlertTriangle, Columns3 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 
-import { Button, EmptyState, Select, SplitButton } from '@bimstitch/ui';
+import { Button, EmptyState, Select } from '@bimstitch/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
+import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useFindings } from '@/features/findings/useFindings';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
@@ -16,7 +17,6 @@ import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 import { useRouter } from '@/i18n/navigation';
 
 import { FindingDetailModal } from './FindingDetailModal';
-import { FindingFormDialog } from './FindingFormDialog';
 import { FindingRow } from './FindingRow';
 
 type Props = {
@@ -37,7 +37,6 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
   const findingsQuery = useFindings(projectId);
   const membersQuery = useProjectMembers(projectId);
   const deleteMutation = useDeleteFinding(projectId);
-  const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FindingStatusValue | undefined>(undefined);
@@ -82,7 +81,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
   const router = useRouter();
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <TabToolbar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
@@ -92,7 +91,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
             selectSize="sm"
             value={statusFilter ?? 'all'}
             onChange={(e) => { setStatusFilter(e.target.value === 'all' ? undefined : e.target.value as FindingStatusValue); }}
-            className="w-auto shrink-0"
+            className="w-auto min-w-[7.5rem]"
           >
             {STATUS_FILTERS.map(({ value, labelKey }) => (
               <option key={value} value={value}>{t(labelKey)}</option>
@@ -100,34 +99,23 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
           </Select>
         )}
         actions={(
-          <>
-            {allFindings.length > 0 ? (
-              <SplitButton
-                label={t('boardLabel')}
-                icon={<Columns3 className="mr-1.5 h-3.5 w-3.5" />}
-                onClick={() => { router.push(`/projects/${projectId}/findings`); }}
-                variant="primary"
+          <div className="flex items-center gap-2">
+            {allFindings.length > 0 && (
+              <Button
+                variant="border"
                 size="sm"
-                menuLabel={t('ctaLabel')}
-                items={[
-                  {
-                    id: 'log-finding',
-                    label: t('ctaLabel'),
-                    icon: <Plus className="h-3.5 w-3.5" />,
-                    onSelect: () => { setCreateOpen(true); },
-                  },
-                ]}
-              />
-            ) : (
-              <Button variant="primary" size="sm" onClick={() => { setCreateOpen(true); }}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                {t('ctaLabel')}
+                onClick={() => { router.push(`/projects/${projectId}/findings`); }}
+              >
+                <Columns3 className="mr-1.5 h-3.5 w-3.5" />
+                {t('boardLabel')}
               </Button>
             )}
-          </>
+            <LogFindingButton projectId={projectId} />
+          </div>
         )}
       />
 
+      <div className="min-h-0 flex-1 overflow-auto">
       <ResourceList
         isLoading={findingsQuery.isLoading}
         total={allFindings.length}
@@ -142,12 +130,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
             icon={AlertTriangle}
             title={t('title')}
             description={t('description')}
-            action={(
-              <Button variant="primary" size="sm" onClick={() => { setCreateOpen(true); }}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                {t('ctaLabel')}
-              </Button>
-            )}
+            action={<LogFindingButton projectId={projectId} />}
             className={undefined}
           />
         )}
@@ -165,12 +148,8 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
           />
         ))}
       </ResourceList>
+      </div>
 
-      <FindingFormDialog
-        projectId={projectId}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
       <FindingDetailModal
         projectId={projectId}
         finding={selected}

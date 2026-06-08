@@ -113,6 +113,10 @@ class Settings(BaseSettings):
 
     max_concurrent_jobs_per_org: int = Field(default=10, alias="MAX_CONCURRENT_JOBS_PER_ORG")
 
+    # Ceiling on custom fields per finding template (env-authoritative; the
+    # Pydantic MAX_TEMPLATE_FIELDS constant is the UX guardrail mirrored in Zod).
+    max_template_fields: int = Field(default=30, alias="MAX_TEMPLATE_FIELDS")
+
     arbiter_url: str = Field(default="http://localhost:8090", alias="ARBITER_URL")
     arbiter_timeout_seconds: float = Field(default=30.0, alias="ARBITER_TIMEOUT_SECONDS")
 

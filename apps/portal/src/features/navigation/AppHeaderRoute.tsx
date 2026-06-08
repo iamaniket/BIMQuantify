@@ -64,6 +64,9 @@ function resolveCrumbs(
   if (pathname.startsWith('/certificates')) {
     return [{ label: t('certificates'), href: undefined }];
   }
+  if (pathname.startsWith('/templates')) {
+    return [{ label: t('templates'), href: undefined }];
+  }
   if (pathname.startsWith('/settings')) {
     return [{ label: t('settings'), href: undefined }];
   }

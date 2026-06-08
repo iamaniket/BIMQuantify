@@ -1,10 +1,11 @@
 from datetime import date
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, Date, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -132,6 +133,20 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
     # Resolution evidence (#26/#27): a transition into `resolved` requires both
     # a written note and >=1 evidence attachment.
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Custom form template (#templates): the FindingTemplate this finding was
+    # created from. Null = the built-in "standard form". SET NULL so a template
+    # can be soft-deleted without blocking; `custom_values` snapshots the labels
+    # so the finding stays renderable even when the template row is gone.
+    template_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("finding_templates.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Answers to the template's custom fields, snapshotted as
+    #   {field_id: {"label": str, "type": str, "value": Any}}
+    # Genuinely dynamic, schema-less form answers → JSONB (cf. Job.payload).
+    custom_values: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     project: Mapped["Project"] = relationship()
     assignee: Mapped[User | None] = relationship(User, foreign_keys=[assignee_user_id])

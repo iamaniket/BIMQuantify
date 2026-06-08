@@ -21,4 +21,5 @@ export * from './schemas/orgCertificates';
 export * from './schemas/activity';
 export * from './schemas/elementInspections';
 export * from './schemas/findings';
+export * from './schemas/findingTemplates';
 export * from './schemas/blog';

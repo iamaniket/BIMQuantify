@@ -19,6 +19,7 @@ const overlayStyles =
 
 const contentStyles =
   'fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 '
+  + 'flex flex-col max-h-[85vh] '
   + 'rounded-lg border border-border bg-background shadow-lg '
   + 'focus:outline-none';
 
@@ -64,7 +65,7 @@ export const DialogBody = forwardRef<HTMLDivElement, DialogSectionProps>(
   ({ className, ...rest }, ref) => (
     <div
       ref={ref}
-      className={cn('flex flex-col gap-4 px-5 py-4', className)}
+      className={cn('flex min-h-0 flex-1 flex-col gap-4 px-5 py-4', className)}
       {...rest}
     />
   ),

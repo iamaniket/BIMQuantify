@@ -22,10 +22,12 @@ from bimstitch_api import audit
 from bimstitch_api.attachment_links import replace_attachment_links
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
+from bimstitch_api.finding_custom_values import build_custom_values
 from bimstitch_api.i18n import resolve_org_locale, t
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimstitch_api.models.finding_attachment import FindingAttachment
+from bimstitch_api.models.finding_template import FindingTemplate
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.user import User
@@ -87,7 +89,40 @@ def _finding_snapshot(finding: Finding) -> dict[str, object]:
         "anchor_page": finding.anchor_page,
         "resolution_note": finding.resolution_note,
         "has_references": bool(finding.reference_attachment_ids),
+        "template_id": str(finding.template_id) if finding.template_id else None,
+        "has_custom_values": bool(finding.custom_values),
     }
+
+
+def _enforce_builtin_required(
+    template: FindingTemplate | None,
+    data: dict[str, object],
+    photo_ids: list[str] | None,
+    reference_attachment_ids: list[str] | None,
+) -> None:
+    """Server-side backstop for built-in finding fields a template marked
+    required (the portal also enforces these in the dynamic form)."""
+    if template is None:
+        return
+    cfg = template.builtin_fields or {}
+
+    def _required(key: str) -> bool:
+        entry = cfg.get(key)
+        return bool(isinstance(entry, dict) and entry.get("required"))
+
+    def _missing(detail: str) -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"FINDING_TEMPLATE_REQUIRED_FIELD:{detail}",
+        )
+
+    bbl = data.get("bbl_article_ref")
+    if _required("bbl_article_ref") and not (isinstance(bbl, str) and bbl.strip()):
+        raise _missing("bbl_article_ref")
+    if _required("photos") and not photo_ids:
+        raise _missing("photos")
+    if _required("references") and not reference_attachment_ids:
+        raise _missing("references")
 
 
 async def _load_finding_or_404(
@@ -136,10 +171,33 @@ async def create_finding(
     data = payload.model_dump()
     photo_ids = data.pop("photo_ids", None)
     reference_attachment_ids = data.pop("reference_attachment_ids", None)
+    template_id = data.pop("template_id", None)
+    raw_custom_values = data.pop("custom_values", None)
+
+    template: FindingTemplate | None = None
+    if template_id is not None:
+        template = (
+            await session.execute(
+                select(FindingTemplate).where(
+                    FindingTemplate.id == template_id,
+                    FindingTemplate.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if template is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="FINDING_TEMPLATE_NOT_FOUND",
+            )
+    custom_values = build_custom_values(template, raw_custom_values)
+    _enforce_builtin_required(template, data, photo_ids, reference_attachment_ids)
+
     finding = Finding(
         project_id=project.id,
         created_by_user_id=user.id,
         status=FindingStatus.draft,
+        template_id=template_id,
+        custom_values=custom_values,
         **data,
     )
     replace_attachment_links(

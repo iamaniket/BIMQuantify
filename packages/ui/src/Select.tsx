@@ -12,14 +12,14 @@ export type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> 
 };
 
 const sizeStyles: Record<SelectSize, string> = {
-  sm: `${controlSizeStyles.sm} px-2`,
-  md: `${controlSizeStyles.md} px-3`,
-  lg: `${controlSizeStyles.lg} px-4`,
+  sm: `${controlSizeStyles.sm} pl-2`,
+  md: `${controlSizeStyles.md} pl-3`,
+  lg: `${controlSizeStyles.lg} pl-4`,
 };
 
 const baseStyles =
   'w-full rounded-md border bg-background text-foreground transition-colors '
-  + 'appearance-none bg-no-repeat bg-[right_0.5rem_center] pr-9 '
+  + 'appearance-none bg-no-repeat bg-[length:1.25rem_1.25rem] bg-[right_0.5rem_center] pr-9 '
   + 'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 '
   + 'disabled:cursor-not-allowed disabled:bg-background-tertiary disabled:text-foreground-disabled';
 

@@ -50,8 +50,8 @@ export function RightColumnTabs({
     <div className="flex min-h-0 flex-col gap-3.5 overflow-hidden">
       {/* Upper panel — Overview, Dossier, Models, Reports */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-        <div className="shrink-0 p-4 pb-0">
-          <div className="mb-3 flex items-end justify-between">
+        <div className="shrink-0 px-3 pt-2">
+          <div className="mb-2 flex items-end justify-between">
             <Tabs value={topTab} onValueChange={setTopTab}>
               <TabsList className="inline-flex w-auto">
                 <TabsTrigger value="overzicht">{t('overzicht.label')}</TabsTrigger>
@@ -69,14 +69,14 @@ export function RightColumnTabs({
               <Eyebrow>
                 {t(`${topTab}.eyebrow`)}
               </Eyebrow>
-              <div className="mt-0.5 text-title3 font-medium tracking-tight text-foreground">
+              <div className="text-body2 font-medium tracking-tight text-foreground">
                 {t(`${topTab}.subtitle`, { count: topSubtitleCount })}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto p-3">
+        <div className="min-h-0 flex-1 overflow-auto px-3 pb-3 pt-2">
           {topTab === 'overzicht' && (
             <OverzichtTab projectId={projectId} country={projectCountry} />
           )}
@@ -92,8 +92,8 @@ export function RightColumnTabs({
 
       {/* Lower panel — Attachments, Findings, Certificates */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-        <div className="shrink-0 p-4 pb-0">
-          <div className="mb-3 flex items-end justify-between">
+        <div className="shrink-0 px-3 pt-2">
+          <div className="mb-2 flex items-end justify-between">
             <Tabs value={bottomTab} onValueChange={setBottomTab}>
               <TabsList className="inline-flex w-auto">
                 <TabsTrigger value="attachments">
@@ -120,14 +120,14 @@ export function RightColumnTabs({
               <Eyebrow>
                 {t(`${bottomTab}.eyebrow`)}
               </Eyebrow>
-              <div className="mt-0.5 text-title3 font-medium tracking-tight text-foreground">
+              <div className="text-body2 font-medium tracking-tight text-foreground">
                 {t(`${bottomTab}.subtitle`, { count: bottomSubtitleCount })}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto p-3">
+        <div className="min-h-0 flex-1 overflow-hidden px-3 pb-3 pt-2">
           {bottomTab === 'attachments' && <AttachmentsTab projectId={projectId} />}
           {bottomTab === 'bevindingen' && <BevindingenTab projectId={projectId} />}
           {bottomTab === 'certificates' && <CertificatesTab projectId={projectId} />}

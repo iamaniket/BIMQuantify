@@ -40,6 +40,7 @@ from bimstitch_api.models.finding_attachment import (
     FINDING_ATTACHMENT_KINDS,
     FindingAttachment,
 )
+from bimstitch_api.models.finding_template import FindingTemplate
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.notification import (
@@ -119,6 +120,7 @@ __all__ = [
     "FindingAttachment",
     "FindingSeverity",
     "FindingStatus",
+    "FindingTemplate",
     "IfcSchema",
     "InspectionVerdict",
     "Job",

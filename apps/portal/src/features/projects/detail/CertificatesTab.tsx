@@ -79,7 +79,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <TabToolbar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
@@ -89,7 +89,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
             selectSize="sm"
             value={typeFilter ?? 'all'}
             onChange={(e) => { setTypeFilter(e.target.value === 'all' ? undefined : e.target.value as CertificateTypeValue); }}
-            className="w-auto shrink-0"
+            className="w-auto min-w-[7.5rem]"
           >
             {TYPE_FILTERS.map(({ value, labelKey }) => (
               <option key={value} value={value}>{t(labelKey)}</option>
@@ -120,6 +120,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
         ) : undefined}
       />
 
+      <div className="min-h-0 flex-1 overflow-auto">
       <ResourceList
         isLoading={certificatesQuery.isLoading}
         total={all.length}
@@ -158,6 +159,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
           />
         ))}
       </ResourceList>
+      </div>
 
       <CertificateUploadDialog
         projectId={projectId}

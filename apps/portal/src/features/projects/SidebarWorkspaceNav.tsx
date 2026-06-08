@@ -1,6 +1,6 @@
 'use client';
 
-import { FileBadge, LayoutGrid } from '@bimstitch/ui/icons';
+import { FileBadge, Layers, LayoutGrid } from '@bimstitch/ui/icons';
 import { usePathname } from '@/i18n/navigation';
 import type { JSX } from 'react';
 
@@ -15,6 +15,7 @@ import { useProjects } from './useProjects';
 const itemDefinitions = [
   { key: 'projects', icon: LayoutGrid, href: '/projects' },
   { key: 'certificates', icon: FileBadge, href: '/certificates' },
+  { key: 'templates', icon: Layers, href: '/templates' },
 ] as const;
 
 export function SidebarWorkspaceNav(): JSX.Element {
@@ -27,6 +28,7 @@ export function SidebarWorkspaceNav(): JSX.Element {
   const labels = {
     projects: t('projects'),
     certificates: t('certificates'),
+    templates: t('templates'),
   } as const;
 
   return (

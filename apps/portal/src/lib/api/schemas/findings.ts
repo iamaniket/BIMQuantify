@@ -37,6 +37,13 @@ export const FindingSchema = z.object({
   resolution_note: z.union([z.string(), z.null()]),
   resolution_evidence_ids: z.union([z.array(z.string()), z.null()]),
   reference_attachment_ids: z.union([z.array(z.string()), z.null()]),
+  // Custom form template (#templates): the template a finding was created from
+  // (null = standard form) and the answer snapshot {fieldId: {label,type,value}}.
+  template_id: z.union([z.string().uuid(), z.null()]),
+  custom_values: z.union([
+    z.record(z.string(), z.object({ label: z.string(), type: z.string(), value: z.unknown() })),
+    z.null(),
+  ]),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -66,6 +73,10 @@ export const FindingCreateSchema = z.object({
   ...anchorWriteFields,
   photo_ids: z.array(z.string().uuid()).optional(),
   reference_attachment_ids: z.array(z.string().uuid()).optional(),
+  // Custom form template (#templates): the chosen template + raw answers
+  // (validated + snapshotted server-side against the template's field defs).
+  template_id: z.union([z.string().uuid(), z.null()]).optional(),
+  custom_values: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type FindingCreateInput = z.infer<typeof FindingCreateSchema>;

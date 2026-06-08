@@ -11,6 +11,9 @@ const KNOWN_DETAILS: Record<string, string> = {
   ORG_SUSPENDED: 'This workspace is suspended. Contact a super-admin to restore access.',
   ORG_MEMBER_ALREADY_EXISTS: 'That user is already a member of this workspace.',
   CANNOT_DEACTIVATE_SELF: 'You cannot deactivate your own account.',
+  CANNOT_DELETE_DEFAULT_TEMPLATE: 'You can’t delete the default template. Set another as default first.',
+  DEFAULT_TEMPLATE_CONFLICT: 'Another template was just set as default. Please try again.',
+  FINDING_TEMPLATE_NOT_FOUND: 'That template no longer exists.',
 };
 
 const STATUS_MESSAGES: Record<number, string> = {

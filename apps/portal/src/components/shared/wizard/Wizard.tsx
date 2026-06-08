@@ -188,7 +188,7 @@ export function Wizard({
         highestVisited={highestVisited}
         onStepClick={onStepChange}
       />
-      <div className="flex flex-1 flex-col gap-4">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">{children}</div>
       {errorSlot !== undefined && errorSlot !== null && (
         <div className="-mb-2">{errorSlot}</div>
       )}
