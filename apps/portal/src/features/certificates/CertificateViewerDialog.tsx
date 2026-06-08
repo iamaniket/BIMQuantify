@@ -125,7 +125,7 @@ function CertificatePreview({
   if (isPdf(certificate)) {
     return (
       <iframe
-        src={viewUrl}
+        src={`${viewUrl}#toolbar=0`}
         title={certificate.original_filename}
         className="h-full w-full border-0"
       />

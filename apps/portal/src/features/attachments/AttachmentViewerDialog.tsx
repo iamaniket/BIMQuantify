@@ -171,7 +171,7 @@ function ContentPreview({
   if (attachment.content_type === 'application/pdf') {
     return (
       <iframe
-        src={viewUrl}
+        src={`${viewUrl}#toolbar=0`}
         title={attachment.original_filename}
         className="h-full w-full border-0"
       />

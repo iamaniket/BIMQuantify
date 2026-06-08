@@ -19,7 +19,7 @@ test.describe('forgot password screen', () => {
     await page.getByRole('button', { name: /send reset link/i }).click();
 
     await expect(page.getByRole('heading', { name: /check your inbox/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /back to sign in/i })).toBeVisible();
+    await expect(page.locator('a[href="/login"]', { hasText: /back to sign in/i })).toBeVisible();
   });
 
   test('shows confirmation even when the API errors — never leaks email existence', async ({
@@ -68,7 +68,7 @@ test.describe('reset password screen', () => {
     await page.getByLabel(/confirm password/i).fill('wrong-horse-staple-99');
     await page.getByRole('button', { name: /update password/i }).click();
 
-    await expect(page.getByRole('alert')).toContainText(/passwords do not match/i);
+    await expect(page.getByRole('alert').filter({ hasText: /passwords do not match/i })).toBeVisible();
     expect(apiCalls).toHaveLength(0);
     await expect(page).not.toHaveURL(/\/login/);
   });
@@ -87,7 +87,7 @@ test.describe('reset password screen', () => {
     await page.getByLabel(/confirm password/i).fill('correct-horse-battery-1');
     await page.getByRole('button', { name: /update password/i }).click();
 
-    await expect(page.getByRole('alert')).toContainText(/password reset failed/i);
+    await expect(page.getByRole('alert').filter({ hasText: /password reset failed/i })).toBeVisible();
     await expect(page).not.toHaveURL(/\/login/);
   });
 
