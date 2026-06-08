@@ -156,6 +156,10 @@ export default function ViewerPage(): JSX.Element {
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
   const [pdfPinMode, setPdfPinMode] = useState(false);
   const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
+  const [mobileBannerDismissed, setMobileBannerDismissed] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return sessionStorage.getItem('bimstitch.viewerMobileBanner') === 'dismissed';
+  });
   const [markerFinding, setMarkerFinding] = useState<import('@/lib/api/schemas').Finding | null>(null);
   const [markerCertificate, setMarkerCertificate] = useState<import('@/lib/api/schemas').Certificate | null>(null);
   const [markerAttachment, setMarkerAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
@@ -578,7 +582,24 @@ export default function ViewerPage(): JSX.Element {
   }
 
   return (
-    <main className="flex min-h-0 w-full flex-1">
+    <main className="flex min-h-0 w-full flex-1 flex-col">
+      {!mobileBannerDismissed && (
+        <div className="flex items-center justify-between gap-2 border-b border-warning/30 bg-warning/10 px-4 py-2 text-body3 text-foreground md:hidden">
+          <span>3D viewer works best on a larger screen.</span>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => {
+              sessionStorage.setItem('bimstitch.viewerMobileBanner', 'dismissed');
+              setMobileBannerDismissed(true);
+            }}
+            className="shrink-0 rounded px-2 py-0.5 text-caption font-semibold hover:bg-warning/20"
+          >
+            OK
+          </button>
+        </div>
+      )}
+      <div className="flex min-h-0 min-w-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="relative min-h-0 flex-1">
         {canvas}
@@ -744,6 +765,7 @@ export default function ViewerPage(): JSX.Element {
           onTogglePanel={togglePanel}
         />
       ) : null}
+      </div>
     </main>
   );
 }

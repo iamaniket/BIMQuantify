@@ -7,6 +7,7 @@ import { type JSX } from 'react';
 import { AppHeader, type Crumb } from '@/components/shared/header/AppHeader';
 import { useAppHeaderOverrides } from '@/components/shared/header/AppHeaderContext';
 import { NotificationsBell } from '@/components/shared/header/NotificationsBell';
+import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
 import { useModels } from '@/features/models/useModels';
 import { ModelSwitcher } from '@/features/navigation/ModelSwitcher';
 import { useProject } from '@/features/projects/useProject';
@@ -88,6 +89,7 @@ export function AppHeaderRoute(): JSX.Element {
   const t = useTranslations('breadcrumbs');
   const pathname = usePathname();
   const params = useParams<RouteParams>();
+  const { setMobileOpen } = useSidebar();
   const projectId = params.projectId ?? '';
   const modelId = params.modelId ?? '';
 
@@ -114,6 +116,7 @@ export function AppHeaderRoute(): JSX.Element {
       crumbs={crumbs}
       status={status}
       action={null}
+      onMenuOpen={() => { setMobileOpen(true); }}
       rightSlot={
         <>
           {isViewerRoute && modelId.length > 0 ? (

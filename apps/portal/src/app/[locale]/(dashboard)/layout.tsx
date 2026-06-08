@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }: Props): JSX.Element {
   return (
     <AppHeaderProvider>
       <SidebarProvider>
-        <div className="flex h-screen">
+        <div className="flex h-screen overflow-hidden">
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <AppHeaderRoute />

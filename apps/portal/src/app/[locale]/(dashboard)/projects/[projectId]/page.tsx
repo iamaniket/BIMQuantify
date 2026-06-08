@@ -147,7 +147,9 @@ export default function ProjectDetailPage(): JSX.Element {
           projectCountry={project.country}
           models={models}
         />
-        <ActivityPanel projectId={projectId} />
+        <div className="hidden lg:block">
+          <ActivityPanel projectId={projectId} />
+        </div>
       </div>
     </PageShell>
   );

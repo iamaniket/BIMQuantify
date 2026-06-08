@@ -11,6 +11,8 @@ import {
   type ReactNode,
 } from 'react';
 
+import { usePathname } from '@/i18n/navigation';
+
 type SidebarState = {
   collapsed: boolean;
   toggle: () => void;
@@ -18,6 +20,8 @@ type SidebarState = {
   forceCollapsed: boolean;
   hydrated: boolean;
   transitionsReady: boolean;
+  mobileOpen: boolean;
+  setMobileOpen: (v: boolean) => void;
 };
 
 const SidebarContext = createContext<SidebarState | null>(null);
@@ -33,6 +37,9 @@ export function SidebarProvider({ children, forceCollapsed = false }: ProviderPr
   const [collapsed, setCollapsedRaw] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [transitionsReady, setTransitionsReady] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const pathname = usePathname();
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -54,6 +61,11 @@ export function SidebarProvider({ children, forceCollapsed = false }: ProviderPr
       cancelAnimationFrame(frame);
     };
   }, [hydrated]);
+
+  // Auto-close the mobile drawer on route change.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const setCollapsed = useCallback((v: boolean) => {
     setCollapsedRaw(v);
@@ -77,6 +89,8 @@ export function SidebarProvider({ children, forceCollapsed = false }: ProviderPr
         forceCollapsed,
         hydrated: false,
         transitionsReady: false,
+        mobileOpen: false,
+        setMobileOpen: () => {},
       };
     }
     if (forceCollapsed) {
@@ -87,17 +101,22 @@ export function SidebarProvider({ children, forceCollapsed = false }: ProviderPr
         forceCollapsed: true,
         hydrated: true,
         transitionsReady: false,
+        mobileOpen,
+        setMobileOpen,
       };
     }
     return {
-      collapsed,
+      // Force expanded when the mobile drawer is open so labels are visible.
+      collapsed: mobileOpen ? false : collapsed,
       toggle,
       setCollapsed,
       forceCollapsed: false,
       hydrated: true,
       transitionsReady,
+      mobileOpen,
+      setMobileOpen,
     };
-  }, [collapsed, forceCollapsed, hydrated, setCollapsed, toggle, transitionsReady]);
+  }, [collapsed, forceCollapsed, hydrated, setCollapsed, toggle, transitionsReady, mobileOpen, setMobileOpen]);
 
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }

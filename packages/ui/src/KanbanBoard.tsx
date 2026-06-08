@@ -101,7 +101,7 @@ export function KanbanBoard<T>({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className={cn('flex gap-4 overflow-x-auto', className)}>
+      <div className={cn('flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2', className)}>
         {columns.map((col) => {
           const columnItems = items.filter((item) => getItemColumn(item) === col.id);
           const isDropAllowed = activeId !== null && activeColumn !== col.id && (

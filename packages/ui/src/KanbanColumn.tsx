@@ -27,7 +27,7 @@ export const KanbanColumn = forwardRef<HTMLDivElement, KanbanColumnProps>(
       <div
         ref={ref}
         className={cn(
-          'flex min-w-0 flex-1 flex-col rounded-lg border border-border bg-surface-low',
+          'flex min-w-[280px] flex-1 flex-col rounded-lg border border-border bg-surface-low snap-start',
           className,
         )}
         {...rest}

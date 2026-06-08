@@ -134,10 +134,9 @@ export function AuthHeroBrand(): JSX.Element {
           />
         </div>
 
-        {/* Map column — same layout strategy as login: height-driven via
-            `min(70vh, 45vw)` + aspect-ratio, wrapped in a same-width
-            container so the stats strip right-aligns against the map. */}
-        <div className="flex shrink-0 flex-col items-center justify-center">
+        {/* Map column — hidden on mobile/tablet so the brand pane stays
+            within the viewport and the form is immediately reachable. */}
+        <div className="hidden lg:flex shrink-0 flex-col items-center justify-center">
           <div
             className="flex flex-col"
             style={{

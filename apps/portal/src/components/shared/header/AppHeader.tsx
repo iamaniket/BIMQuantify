@@ -3,6 +3,7 @@
 import { type JSX, type ReactNode } from 'react';
 
 import { ThemeToggle } from '@bimstitch/ui';
+import { Menu } from '@bimstitch/ui/icons';
 
 import { Link } from '@/i18n/navigation';
 
@@ -32,6 +33,7 @@ type Props = {
   status: AppHeaderStatus | null;
   action: AppHeaderAction | null;
   rightSlot: ReactNode;
+  onMenuOpen?: () => void;
 };
 
 const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
@@ -108,23 +110,44 @@ function Breadcrumbs({ crumbs, lastCrumbSlot }: { crumbs: Crumb[]; lastCrumbSlot
 }
 
 export function AppHeader({
-  crumbs, lastCrumbSlot, status, action, rightSlot,
+  crumbs, lastCrumbSlot, status, action, rightSlot, onMenuOpen,
 }: Props): JSX.Element {
+  const lastCrumb = crumbs[crumbs.length - 1];
+
   return (
     <header
-      className="relative flex h-[52px] shrink-0 items-center gap-3.5 border-b border-white/10 bg-[var(--brand-gradient-start)] px-4 text-white"
+      className="relative flex h-[52px] shrink-0 items-center gap-2 border-b border-white/10 bg-[var(--brand-gradient-start)] px-4 text-white"
     >
       <GridTexture />
 
+      {/* Hamburger — mobile only */}
+      <button
+        type="button"
+        onClick={onMenuOpen}
+        aria-label="Open navigation"
+        className="relative mr-0.5 grid h-[38px] w-[38px] shrink-0 place-items-center rounded-md text-white/80 hover:bg-white/10 hover:text-white md:hidden"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       <div className="relative flex min-w-0 flex-1 items-center gap-2.5">
-        <Breadcrumbs crumbs={crumbs} lastCrumbSlot={lastCrumbSlot} />
+        {/* Full breadcrumbs — desktop */}
+        <span className="hidden md:flex md:items-center">
+          <Breadcrumbs crumbs={crumbs} lastCrumbSlot={lastCrumbSlot} />
+        </span>
+        {/* Mobile: just the current page title */}
+        {lastCrumb !== undefined && (
+          <span className="truncate text-body3 font-semibold text-white md:hidden">
+            {lastCrumb.label}
+          </span>
+        )}
         {status === null ? null : <StatusPill status={status} />}
       </div>
 
       <div className="relative flex shrink-0 items-center gap-1">
         {rightSlot}
-        <LocaleToggle className="h-[40px] w-[40px] text-white/80 hover:bg-white/10 hover:text-white" />
-        <ThemeToggle className="h-[40px] w-[40px] rounded-md text-white/80 hover:bg-white/10 hover:text-white" />
+        <LocaleToggle className="hidden h-[40px] w-[40px] text-white/80 hover:bg-white/10 hover:text-white md:inline-flex" />
+        <ThemeToggle className="hidden h-[40px] w-[40px] rounded-md text-white/80 hover:bg-white/10 hover:text-white md:flex" />
         {action === null ? null : (
           <button
             type="button"

@@ -65,7 +65,7 @@ export function AuthShell({
     >
       <div
         className={cn(
-          'relative flex flex-col overflow-hidden px-9 py-9 text-white',
+          'relative hidden flex-col overflow-hidden px-9 py-9 text-white lg:flex',
           brandSticky ? 'lg:sticky lg:top-0 lg:h-screen' : '',
         )}
         style={{
