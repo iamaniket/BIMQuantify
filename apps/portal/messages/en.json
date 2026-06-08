@@ -32,7 +32,8 @@
       "latest": "Latest",
       "empty": "No versions uploaded yet.",
       "download": "Download"
-    }
+    },
+    "loadMore": "Load more"
   },
   "requestAccess": {
     "intro": {

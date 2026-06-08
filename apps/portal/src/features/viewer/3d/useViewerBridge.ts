@@ -38,7 +38,7 @@ const PLUGIN_TO_FEATURE: Record<string, ViewerFeature> = {
   visibility: 'visibility',
 };
 
-export function useViewerBridge(handle: ViewerHandle | null): void {
+export function useViewerBridge(handle: ViewerHandle | null, ready?: boolean): void {
   useEffect(() => {
     if (!handle) return undefined;
 
@@ -208,5 +208,6 @@ export function useViewerBridge(handle: ViewerHandle | null): void {
       unsub();
       store.getState()._reset();
     };
-  }, [handle]);
+    // `ready` triggers re-subscription after viewer rebuild (events.clear)
+  }, [handle, ready]);
 }

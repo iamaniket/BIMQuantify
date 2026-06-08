@@ -18,7 +18,7 @@ const INITIAL: ViewerState = {
   isIsolated: false,
 };
 
-export function useViewerState(handle: ViewerHandle | null): ViewerState {
+export function useViewerState(handle: ViewerHandle | null, ready?: boolean): ViewerState {
   const [state, setState] = useState<ViewerState>(INITIAL);
 
   useEffect(() => {
@@ -54,7 +54,8 @@ export function useViewerState(handle: ViewerHandle | null): ViewerState {
       offXray();
       setState(INITIAL);
     };
-  }, [handle]);
+    // `ready` triggers re-subscription after viewer rebuild (events.clear)
+  }, [handle, ready]);
 
   return state;
 }

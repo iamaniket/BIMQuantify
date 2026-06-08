@@ -1,20 +1,23 @@
 'use client';
 
-import type { UseQueryResult } from '@tanstack/react-query';
+import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 
 import { listAttachments } from '@/lib/api/attachments';
-import type { AttachmentCategoryValue, AttachmentList } from '@/lib/api/schemas';
+import type { PaginatedResponse } from '@/lib/api/client';
+import type { Attachment, AttachmentCategoryValue, AttachmentList } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
+import { useAuthInfiniteQuery, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { attachmentsKey, elementAttachmentsKey } from './queryKeys';
 
 export function useAttachments(
   projectId: string,
   category?: AttachmentCategoryValue,
-): UseQueryResult<AttachmentList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Attachment[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: [...attachmentsKey(projectId), category ?? 'all'] as const,
-    queryFn: (accessToken) => listAttachments(accessToken, projectId, category !== undefined ? { category } : undefined),
+    queryFn: (accessToken, offset, limit) =>
+      listAttachments(accessToken, projectId, category !== undefined ? { category, limit, offset } : { limit, offset }),
   });
 }
 
@@ -22,147 +25,134 @@ export function useElementAttachments(
   projectId: string,
   modelId: string,
   globalId: string | null,
-): UseQueryResult<AttachmentList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Attachment[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: elementAttachmentsKey(projectId, modelId, globalId ?? ''),
-    queryFn: (accessToken) => {
+    queryFn: (accessToken, offset, limit) => {
       if (globalId === null) throw new Error('Missing globalId');
-      // Version-independent identity: (model, GlobalId), so an attachment
-      // follows the element across re-uploaded file versions.
       return listAttachments(accessToken, projectId, {
         linkedModelId: modelId,
         linkedElementGlobalId: globalId,
+        limit,
+        offset,
       });
     },
     enabled: globalId !== null,
-    staleTime: 30_000,
   });
 }
 
-/**
- * Office documents not yet tagged to a dossier slot — powers the dossier
- * checklist "Link existing" picker.
- */
 export function useUnslottedDocuments(
   projectId: string,
   enabled = true,
-): UseQueryResult<AttachmentList> {
-  return useAuthQuery({
+): { data: AttachmentList | undefined; isLoading: boolean } {
+  const query = useAuthQuery({
     queryKey: [...attachmentsKey(projectId), 'unslotted', 'office'] as const,
-    queryFn: (accessToken) =>
-      listAttachments(accessToken, projectId, { unslotted: true, category: 'office' }),
+    queryFn: async (accessToken) => {
+      const resp = await listAttachments(accessToken, projectId, { unslotted: true, category: 'office' });
+      return resp.data;
+    },
     enabled,
     staleTime: 15_000,
   });
+  return { data: query.data, isLoading: query.isLoading };
 }
 
 export function useProjectAttachments(
   projectId: string,
   enabled = true,
-): UseQueryResult<AttachmentList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Attachment[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: [...attachmentsKey(projectId), 'unlinked'] as const,
-    queryFn: (accessToken) => listAttachments(accessToken, projectId, { unlinked: true }),
+    queryFn: (accessToken, offset, limit) =>
+      listAttachments(accessToken, projectId, { unlinked: true, limit, offset }),
     enabled,
-    staleTime: 30_000,
   });
 }
 
 export function useProjectAttachmentCount(projectId: string, enabled = true): number {
-  return useProjectAttachments(projectId, enabled).data?.length ?? 0;
+  const query = useProjectAttachments(projectId, enabled);
+  return totalFromPages(query.data);
 }
 
 export function useFileAttachmentCount(
   projectId: string,
   fileId: string | null,
 ): number {
-  const query = useAuthQuery({
+  const query = useAuthInfiniteQuery({
     queryKey: [...attachmentsKey(projectId), 'file', fileId ?? ''] as const,
-    queryFn: (accessToken) => {
+    queryFn: (accessToken, offset, limit) => {
       if (fileId === null) throw new Error('Missing fileId');
-      return listAttachments(accessToken, projectId, { linkedFileId: fileId });
+      return listAttachments(accessToken, projectId, { linkedFileId: fileId, limit, offset });
     },
     enabled: fileId !== null,
-    staleTime: 30_000,
   });
-  return query.data?.length ?? 0;
+  return totalFromPages(query.data);
 }
 
-/**
- * IFC-file-scoped attachments — powers the 3D entity marker overlay.
- * Returns all attachments linked to this IFC file regardless of element.
- */
 export function useIfcFileAttachments(
   projectId: string,
   fileId: string | null,
-): UseQueryResult<AttachmentList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Attachment[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: [...attachmentsKey(projectId), 'ifc-file', fileId ?? ''] as const,
-    queryFn: (accessToken) => {
+    queryFn: (accessToken, offset, limit) => {
       if (fileId === null) throw new Error('Missing fileId');
       return listAttachments(accessToken, projectId, {
         linkedFileId: fileId,
         linkedFileType: 'ifc',
+        limit,
+        offset,
       });
     },
     enabled: fileId !== null,
-    staleTime: 30_000,
   });
 }
 
-/**
- * Page-scoped attachments — ONLY for the in-canvas pin overlay
- * (`AnnotationPinLayer`), which renders pins for the visible page. Don't
- * reuse this for inspector listings; use `usePdfFileAttachments` instead.
- */
 export function usePdfPageAttachments(
   projectId: string,
   fileId: string,
   page: number | null,
-): UseQueryResult<AttachmentList> {
-  return useAuthQuery({
+): { data: AttachmentList | undefined; isLoading: boolean } {
+  const query = useAuthQuery({
     queryKey: [...attachmentsKey(projectId), 'pdf-page', fileId, page ?? 0] as const,
-    queryFn: (accessToken) => {
+    queryFn: async (accessToken) => {
       if (page === null) throw new Error('Missing page');
-      return listAttachments(accessToken, projectId, {
+      const resp = await listAttachments(accessToken, projectId, {
         linkedFileId: fileId,
         linkedFileType: 'pdf',
         anchorPage: page,
       });
+      return resp.data;
     },
     enabled: page !== null,
     staleTime: 30_000,
   });
+  return { data: query.data, isLoading: query.isLoading };
 }
 
-/**
- * File-scoped attachments for the PDF inspector — every attachment linked to
- * this PDF, regardless of whether it's pinned to a specific page. Mirrors
- * `useFileFindings` / `useFileCertificates`.
- */
 export function usePdfFileAttachments(
   projectId: string,
   fileId: string | null,
-): UseQueryResult<AttachmentList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Attachment[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: [...attachmentsKey(projectId), 'pdf-file', fileId ?? ''] as const,
-    queryFn: (accessToken) => {
+    queryFn: (accessToken, offset, limit) => {
       if (fileId === null) throw new Error('Missing fileId');
       return listAttachments(accessToken, projectId, {
         linkedFileId: fileId,
         linkedFileType: 'pdf',
+        limit,
+        offset,
       });
     },
     enabled: fileId !== null,
-    staleTime: 30_000,
   });
 }
 
-/** File-scoped attachment count — drives the PDF inspector's Attachments tab
- * pill. Shares the cache entry with usePdfFileAttachments. */
 export function usePdfFileAttachmentCount(
   projectId: string,
   fileId: string | null,
 ): number {
-  return usePdfFileAttachments(projectId, fileId).data?.length ?? 0;
+  const query = usePdfFileAttachments(projectId, fileId);
+  return totalFromPages(query.data);
 }

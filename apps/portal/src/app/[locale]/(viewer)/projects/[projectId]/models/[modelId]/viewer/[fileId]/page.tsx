@@ -50,6 +50,7 @@ import { usePageFindingMarkers, usePageCertificateMarkers } from '@/features/vie
 import type { EntityMarkerType } from '@/features/viewer/shared/entityMarkerTypes';
 import { useFileFindings } from '@/features/findings/useFindings';
 import { useFileCertificates } from '@/features/certificates/useCertificates';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
 import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoadingOverlay';
@@ -197,7 +198,7 @@ export default function ViewerPage(): JSX.Element {
     });
   }, [viewerReady]);
 
-  useViewerBridge(viewerHandleRef.current);
+  useViewerBridge(viewerHandleRef.current, viewerReady);
 
   // Apply persisted behavior toggles once the viewer is ready.
 
@@ -214,7 +215,7 @@ export default function ViewerPage(): JSX.Element {
     }
   }, [viewerReady]);
 
-  const modeState = useViewerMode(viewerHandleRef.current);
+  const modeState = useViewerMode(viewerHandleRef.current, viewerReady);
   const isEditMode = modeState.mode === 'edit';
 
   // IFC metadata blob is schema-specific — only fetch it for IFC bundles (the
@@ -340,8 +341,8 @@ export default function ViewerPage(): JSX.Element {
   const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady && !isDrawing;
 
   // Entity markers (findings + certificates with anchors)
-  const { data: allFileFindings } = useFileFindings(projectId, fileId);
-  const { data: allFileCertificates } = useFileCertificates(projectId, fileId);
+  const allFileFindings = flattenPages(useFileFindings(projectId, fileId).data);
+  const allFileCertificates = flattenPages(useFileCertificates(projectId, fileId).data);
   const findingMarkers2D = usePageFindingMarkers(projectId, fileId, isPdf ? pdfCurrentPage : null);
   const certMarkers2D = usePageCertificateMarkers(projectId, fileId, isPdf ? pdfCurrentPage : null);
   const entityMarkers2D = useMemo(
@@ -589,8 +590,8 @@ export default function ViewerPage(): JSX.Element {
           />
         ) : null}
 
-        {isIfc ? <ContextMenu handle={viewerHandleRef.current} /> : null}
-        {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestInspector={handleDocContextMenuInspector} shortcuts={pdfSettings.shortcuts} /> : null}
+        {isIfc ? <ContextMenu handle={viewerHandleRef.current} viewerReady={viewerReady} /> : null}
+        {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestInspector={handleDocContextMenuInspector} shortcuts={pdfSettings.shortcuts} ready={pdfFirstPageRendered} /> : null}
 
         {showChrome ? (
             <SidePanel

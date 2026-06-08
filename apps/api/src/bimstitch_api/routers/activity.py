@@ -11,8 +11,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query, Response
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
@@ -54,6 +54,7 @@ for _action, _cat in _CATEGORY_MAP.items():
 @router.get("", response_model=list[ProjectActivityEntry])
 async def list_project_activity(
     project_id: UUID,
+    response: Response,
     category: str | None = Query(default=None, pattern="^(upload|scan|change)$"),
     since: datetime | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
@@ -64,6 +65,25 @@ async def list_project_activity(
 ) -> list[ProjectActivityEntry]:
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
+
+    base = (
+        select(AuditLog.id)
+        .where(
+            AuditLog.project_id == project.id,
+            AuditLog.action.in_(_KNOWN_ACTIONS),
+        )
+    )
+
+    if category is not None:
+        actions = _CATEGORY_ACTIONS.get(category, [])
+        base = base.where(AuditLog.action.in_(actions))
+
+    if since is not None:
+        since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)
+        base = base.where(AuditLog.created_at >= since_aware)
+
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    response.headers["X-Total-Count"] = str(total)
 
     stmt = (
         select(
@@ -92,7 +112,6 @@ async def list_project_activity(
         stmt = stmt.where(AuditLog.action.in_(actions))
 
     if since is not None:
-        # Ensure timezone-aware (treat naive as UTC)
         since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)
         stmt = stmt.where(AuditLog.created_at >= since_aware)
 

@@ -13,9 +13,11 @@ import {
 } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
+import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useElementFindings } from '@/features/findings/useElementFindings';
 import { useFileFindings, useProjectFindings } from '@/features/findings/useFindings';
+import { flattenPages, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { FindingFormDialog } from '@/features/projects/detail/FindingFormDialog';
 import {
@@ -119,7 +121,7 @@ export function EntityFindingsBody({
     }
   }, [autoOpenNonce, onAutoOpenConsumed, openCreate]);
 
-  const findings = query.data ?? [];
+  const findings = flattenPages(query.data);
 
   const [search, setSearch] = useState('');
   const filteredFindings = useMemo(() => {
@@ -184,6 +186,7 @@ export function EntityFindingsBody({
         ) : (
           <div className="flex flex-col">
             {filteredFindings.map((finding) => {
+
               const isExpanded = expandedId === finding.id;
 
               const entries: Array<{ label: string; value: string }> = [
@@ -274,6 +277,13 @@ export function EntityFindingsBody({
                 </DetailCard>
               );
             })}
+            <div className="px-2.5 pb-2">
+              <LoadMoreButton
+                hasNextPage={query.hasNextPage}
+                isFetchingNextPage={query.isFetchingNextPage}
+                fetchNextPage={() => { void query.fetchNextPage(); }}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -305,5 +315,5 @@ export function useEntityFindingCount(
   globalId: string | null,
 ): number {
   const query = useElementFindings(projectId, modelId, globalId);
-  return query.data?.length ?? 0;
+  return totalFromPages(query.data);
 }

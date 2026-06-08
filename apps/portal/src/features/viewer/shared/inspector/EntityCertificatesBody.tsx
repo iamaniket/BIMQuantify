@@ -18,10 +18,12 @@ import {
 } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
+import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
 import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
 import { useDeleteCertificate } from '@/features/certificates/useDeleteCertificate';
 import { useElementCertificates } from '@/features/certificates/useElementCertificates';
 import { useFileCertificates, useProjectCertificates } from '@/features/certificates/useCertificates';
+import { flattenPages, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 import {
   getCertificateExpiryState,
   type CertificateExpiryState,
@@ -127,7 +129,7 @@ export function EntityCertificatesBody({
     }
   }, [autoOpenNonce, onAutoOpenConsumed, openUpload]);
 
-  const certificates = query.data ?? [];
+  const certificates = flattenPages(query.data);
 
   const [search, setSearch] = useState('');
   const filteredCertificates = useMemo(() => {
@@ -278,6 +280,13 @@ export function EntityCertificatesBody({
                 </DetailCard>
               );
             })}
+            <div className="px-2.5 pb-2">
+              <LoadMoreButton
+                hasNextPage={query.hasNextPage}
+                isFetchingNextPage={query.isFetchingNextPage}
+                fetchNextPage={() => { void query.fetchNextPage(); }}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -309,5 +318,5 @@ export function useEntityCertificateCount(
   globalId: string | null,
 ): number {
   const query = useElementCertificates(projectId, modelId, globalId);
-  return query.data?.length ?? 0;
+  return totalFromPages(query.data);
 }

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, type PaginatedResponse } from './client';
 import {
   FindingHistoryListSchema,
   FindingListSchema,
@@ -20,8 +20,10 @@ export async function listFindings(
     linkedFileId?: string;
     linkedElementGlobalId?: string;
     unlinked?: boolean;
+    limit?: number;
+    offset?: number;
   },
-): Promise<FindingList> {
+): Promise<PaginatedResponse<FindingList>> {
   const params = new URLSearchParams();
   if (filters?.status !== undefined) params.set('status_filter', filters.status);
   if (filters?.severity !== undefined) params.set('severity', filters.severity);
@@ -31,8 +33,10 @@ export async function listFindings(
     params.set('linked_element_global_id', filters.linkedElementGlobalId);
   }
   if (filters?.unlinked === true) params.set('unlinked', 'true');
+  if (filters?.limit !== undefined) params.set('limit', String(filters.limit));
+  if (filters?.offset !== undefined) params.set('offset', String(filters.offset));
   const query = params.size === 0 ? '' : `?${params.toString()}`;
-  return apiClient.get<FindingList>(
+  return apiClient.getWithMeta<FindingList>(
     `/projects/${projectId}/findings${query}`,
     FindingListSchema,
     accessToken,

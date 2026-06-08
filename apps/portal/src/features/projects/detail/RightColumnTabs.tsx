@@ -10,6 +10,7 @@ import type { Model } from '@/lib/api/schemas';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useCertificates } from '@/features/certificates/useCertificates';
 import { useFindings } from '@/features/findings/useFindings';
+import { totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { AttachmentsTab } from './AttachmentsTab';
 import { BevindingenTab } from './BevindingenTab';
@@ -33,9 +34,9 @@ export function RightColumnTabs({
   const t = useTranslations('projectDetail.tabs');
   const [topTab, setTopTab] = useState('overzicht');
   const [bottomTab, setBottomTab] = useState('attachments');
-  const attachmentCount = useAttachments(projectId).data?.length ?? 0;
-  const certificateCount = useCertificates(projectId).data?.length ?? 0;
-  const findingsCount = useFindings(projectId).data?.length ?? 0;
+  const attachmentCount = totalFromPages(useAttachments(projectId).data);
+  const certificateCount = totalFromPages(useCertificates(projectId).data);
+  const findingsCount = totalFromPages(useFindings(projectId).data);
 
   const topSubtitleCount = topTab === 'dossier' ? 0
     : topTab === 'rapporten' ? 0

@@ -24,6 +24,8 @@ import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment'
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 import { AttachmentRow } from '@/features/viewer/shared/attachments/AttachmentRow';
 import { anchor3d, anchorPdf, type Attachment, type AnchorPayloadFields } from '@/lib/api/schemas';
+import { flattenPages, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
+import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
 
 import { consumePendingElementPoint } from './pendingElementPoint';
 import { consumePendingPdfContextPoint } from './pendingPdfContextPoint';
@@ -154,7 +156,7 @@ export function EntityAttachmentsBody({
   const uploadMutation = useUploadAttachment(projectId);
   const deleteMutation = useDeleteAttachment(projectId);
 
-  const items = activeQuery.data ?? [];
+  const items = flattenPages(activeQuery.data);
   const filteredItems = useMemo(() => {
     if (query.trim() === '') return items;
     const q = query.toLowerCase();
@@ -464,6 +466,13 @@ export function EntityAttachmentsBody({
               />
             ))}
             <div className="border-t border-border" />
+            <div className="px-2.5 pb-2">
+              <LoadMoreButton
+                hasNextPage={activeQuery.hasNextPage}
+                isFetchingNextPage={activeQuery.isFetchingNextPage}
+                fetchNextPage={() => { void activeQuery.fetchNextPage(); }}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -494,5 +503,5 @@ export function useEntityAttachmentCount(
   globalId: string | null,
 ): number {
   const query = useElementAttachments(projectId, modelId, globalId);
-  return query.data?.length ?? 0;
+  return totalFromPages(query.data);
 }

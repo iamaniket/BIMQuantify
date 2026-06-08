@@ -33,6 +33,7 @@ type Props = {
   handle: DocumentViewerHandle | null;
   onRequestInspector: (view: 'attachments' | 'findings' | 'certificates') => void;
   shortcuts?: DocumentShortcutMap;
+  ready: boolean | undefined;
 };
 
 const ICON_CLASS = 'h-4 w-4 shrink-0 text-foreground-secondary';
@@ -141,7 +142,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
 // Root component
 // ---------------------------------------------------------------------------
 
-export function DocumentContextMenu({ handle, onRequestInspector, shortcuts }: Props): JSX.Element | null {
+export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, ready }: Props): JSX.Element | null {
   const t = useTranslations('viewer.docContextMenu');
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -170,7 +171,8 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts }: P
       offOpen();
       offClose();
     };
-  }, [handle]);
+    // `ready` triggers re-subscription after engine rebuild (events.clear)
+  }, [handle, ready]);
 
   // Close menu when clicking outside of it
   useEffect(() => {

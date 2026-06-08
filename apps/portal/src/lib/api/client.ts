@@ -157,6 +157,49 @@ async function requestNoContent(
   }
 }
 
+export type PaginatedResponse<T> = {
+  data: T;
+  totalCount: number | null;
+};
+
+async function requestWithMeta<TResponse, TBody>(
+  options: RequestOptions<TBody>,
+): Promise<PaginatedResponse<TResponse>> {
+  const headers = buildHeaders(options.accessToken);
+
+  const init: RequestInit = {
+    method: options.method,
+    headers,
+    cache: 'no-store',
+  };
+  if (options.body !== undefined) {
+    if (options.formEncoded) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      init.body = encodeFormBody(options.body as Record<string, string>);
+    } else {
+      headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(options.body);
+    }
+  }
+
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${options.path}`, init);
+
+  if (!response.ok) {
+    const detail = await parseErrorDetail(response);
+    throw new ApiError(response.status, detail.text, detail.object);
+  }
+
+  const rawCount = response.headers.get('X-Total-Count');
+  const totalCount = rawCount !== null ? Number(rawCount) : null;
+
+  const raw: unknown = await response.json();
+  const parsed = options.responseSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new ApiError(500, `Response validation failed: ${parsed.error.message}`);
+  }
+  return { data: parsed.data as TResponse, totalCount };
+}
+
 export const apiClient = {
   postForm: async <TResponse>(
     path: string,
@@ -175,6 +218,18 @@ export const apiClient = {
     responseSchema: ZodType<TResponse>,
     accessToken: string | undefined,
   ): Promise<TResponse> => request<TResponse, undefined>({
+    method: 'GET',
+    path,
+    body: undefined,
+    formEncoded: false,
+    responseSchema,
+    accessToken,
+  }),
+  getWithMeta: async <TResponse>(
+    path: string,
+    responseSchema: ZodType<TResponse>,
+    accessToken: string | undefined,
+  ): Promise<PaginatedResponse<TResponse>> => requestWithMeta<TResponse, undefined>({
     method: 'GET',
     path,
     body: undefined,

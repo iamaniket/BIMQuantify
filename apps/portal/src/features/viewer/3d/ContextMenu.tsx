@@ -37,6 +37,7 @@ type MenuItem = {
 
 type Props = {
   handle: ViewerHandle | null;
+  viewerReady: boolean | undefined;
 };
 
 const ICON_CLASS = 'h-4 w-4 shrink-0 text-foreground-secondary';
@@ -68,7 +69,7 @@ function IsolateIcon(): JSX.Element {
 
 type ShortcutMap = Map<string, string>;
 
-function useShortcutMap(handle: ViewerHandle | null): ShortcutMap {
+function useShortcutMap(handle: ViewerHandle | null, ready?: boolean): ShortcutMap {
   const [map, setMap] = useState<ShortcutMap>(new Map());
 
   useEffect(() => {
@@ -81,7 +82,8 @@ function useShortcutMap(handle: ViewerHandle | null): ShortcutMap {
         setMap(m);
       })
       .catch(() => undefined);
-  }, [handle]);
+    // `ready` triggers re-query after viewer rebuild
+  }, [handle, ready]);
 
   return map;
 }
@@ -302,13 +304,13 @@ const PositionedMenu = forwardRef(function PositionedMenu(
 // Root component
 // ---------------------------------------------------------------------------
 
-export function ContextMenu({ handle }: Props): JSX.Element | null {
+export function ContextMenu({ handle, viewerReady }: Props): JSX.Element | null {
   const t = useTranslations('viewer.contextMenu');
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const viewerState = useViewerState(handle);
-  const shortcuts = useShortcutMap(handle);
+  const viewerState = useViewerState(handle, viewerReady);
+  const shortcuts = useShortcutMap(handle, viewerReady);
 
   useEffect(() => {
     if (!handle) return undefined;
@@ -325,7 +327,8 @@ export function ContextMenu({ handle }: Props): JSX.Element | null {
       offOpen();
       offClose();
     };
-  }, [handle]);
+    // `viewerReady` triggers re-subscription after viewer rebuild (events.clear)
+  }, [handle, viewerReady]);
 
   // Close menu when clicking outside of it
   useEffect(() => {

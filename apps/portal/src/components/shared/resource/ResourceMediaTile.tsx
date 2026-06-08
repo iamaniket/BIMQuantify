@@ -4,20 +4,18 @@ import { cn } from '@bimstitch/ui';
 import type { ComponentType, JSX } from 'react';
 
 /**
- * The uniform 40px rounded media tile for a resource row's left slot — a tinted
- * square centring a ~20px type glyph. Findings and Certificates use this so they
- * stop rendering a bare 20px icon floating in the 40px `DetailCardRow` media
- * column. Tones map to the existing badge token palette.
+ * Bare icon tile for a resource row's left slot — a 28px glyph centred in the
+ * 40px `DetailCardRow` media column. No background box — just the icon.
  */
 export type MediaTileTone = 'neutral' | 'info' | 'warning' | 'success' | 'error' | 'primary';
 
 const TONE_STYLES: Record<MediaTileTone, string> = {
-  neutral: 'bg-background-tertiary text-foreground-secondary',
-  info: 'bg-info-lighter text-info',
-  warning: 'bg-warning-lighter text-warning',
-  success: 'bg-success-lighter text-success',
-  error: 'bg-error-lighter text-error',
-  primary: 'bg-primary-lighter text-primary',
+  neutral: 'text-foreground-secondary',
+  info: 'text-info',
+  warning: 'text-warning',
+  success: 'text-success',
+  error: 'text-error',
+  primary: 'text-primary',
 };
 
 type Props = {
@@ -30,12 +28,12 @@ export function ResourceMediaTile({ icon: Icon, tone = 'neutral', className }: P
   return (
     <span
       className={cn(
-        'flex h-10 w-10 shrink-0 items-center justify-center rounded-md',
+        'flex h-10 w-10 shrink-0 items-center justify-center',
         TONE_STYLES[tone],
         className,
       )}
     >
-      <Icon className="h-5 w-5" aria-hidden />
+      <Icon className="h-7 w-7" aria-hidden />
     </span>
   );
 }

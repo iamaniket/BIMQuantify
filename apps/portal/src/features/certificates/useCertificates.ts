@@ -1,24 +1,25 @@
 'use client';
 
-import type { UseQueryResult } from '@tanstack/react-query';
+import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 
 import { listCertificates } from '@/lib/api/certificates';
-import type { CertificateList, CertificateTypeValue } from '@/lib/api/schemas';
-import { useAuthQuery } from '@/lib/query/useAuthQuery';
+import type { PaginatedResponse } from '@/lib/api/client';
+import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
+import { useAuthInfiniteQuery, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { certificatesKey, projectCertificatesKey } from './queryKeys';
 
 export function useCertificates(
   projectId: string,
   certificateType?: CertificateTypeValue,
-): UseQueryResult<CertificateList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Certificate[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: [...certificatesKey(projectId), certificateType ?? 'all'] as const,
-    queryFn: (accessToken) =>
+    queryFn: (accessToken, offset, limit) =>
       listCertificates(
         accessToken,
         projectId,
-        certificateType !== undefined ? { certificateType } : undefined,
+        certificateType !== undefined ? { certificateType, limit, offset } : { limit, offset },
       ),
   });
 }
@@ -26,17 +27,18 @@ export function useCertificates(
 export function useProjectCertificates(
   projectId: string,
   enabled = true,
-): UseQueryResult<CertificateList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Certificate[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: projectCertificatesKey(projectId),
-    queryFn: (accessToken) => listCertificates(accessToken, projectId, { unlinked: true }),
+    queryFn: (accessToken, offset, limit) =>
+      listCertificates(accessToken, projectId, { unlinked: true, limit, offset }),
     enabled,
-    staleTime: 30_000,
   });
 }
 
 export function useProjectCertificateCount(projectId: string, enabled = true): number {
-  return useProjectCertificates(projectId, enabled).data?.length ?? 0;
+  const query = useProjectCertificates(projectId, enabled);
+  return totalFromPages(query.data);
 }
 
 /** File-scoped certificates — those linked to a given file (e.g. a PDF
@@ -45,15 +47,14 @@ export function useProjectCertificateCount(projectId: string, enabled = true): n
 export function useFileCertificates(
   projectId: string,
   fileId: string | null,
-): UseQueryResult<CertificateList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Certificate[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: [...certificatesKey(projectId), 'file', fileId ?? ''] as const,
-    queryFn: (accessToken) => {
+    queryFn: (accessToken, offset, limit) => {
       if (fileId === null) throw new Error('Missing fileId');
-      return listCertificates(accessToken, projectId, { linkedFileId: fileId });
+      return listCertificates(accessToken, projectId, { linkedFileId: fileId, limit, offset });
     },
     enabled: fileId !== null,
-    staleTime: 30_000,
   });
 }
 
@@ -61,5 +62,6 @@ export function useFileCertificateCount(
   projectId: string,
   fileId: string | null,
 ): number {
-  return useFileCertificates(projectId, fileId).data?.length ?? 0;
+  const query = useFileCertificates(projectId, fileId);
+  return totalFromPages(query.data);
 }

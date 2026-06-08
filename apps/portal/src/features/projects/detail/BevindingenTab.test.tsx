@@ -50,6 +50,7 @@ vi.mock('@/i18n/navigation', () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
     <a href={href}>{children}</a>
   ),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
 }));
 
 vi.mock('./FindingFormDialog', () => ({ FindingFormDialog: () => null }));
@@ -69,6 +70,10 @@ vi.mock('@/features/findings/useDeleteFinding', () => ({
 }));
 
 import { BevindingenTab } from './BevindingenTab';
+
+function infiniteData<T>(items: T[]) {
+  return { pages: [{ data: items, totalCount: items.length }], pageParams: [0] };
+}
 
 function makeFinding(overrides: Partial<Finding> = {}): Finding {
   return {
@@ -104,7 +109,7 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
 
 describe('BevindingenTab', () => {
   it('renders the empty state with a create CTA (English)', () => {
-    mockUseFindings.mockReturnValue({ data: [], isLoading: false });
+    mockUseFindings.mockReturnValue({ data: infiniteData([]), isLoading: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn() });
 
     render(
       <IntlWrapper locale="en">
@@ -119,13 +124,16 @@ describe('BevindingenTab', () => {
 
   it('renders a list of findings with severity and status labels (English)', () => {
     mockUseFindings.mockReturnValue({
-      data: [makeFinding(), makeFinding({
+      data: infiniteData([makeFinding(), makeFinding({
         id: '44444444-4444-4444-4444-444444444444',
         title: 'Ventilatiekanaal te krap',
         severity: 'medium',
         status: 'in_progress',
-      })],
+      })]),
       isLoading: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     });
 
     render(
@@ -143,8 +151,11 @@ describe('BevindingenTab', () => {
 
   it('renders Dutch severity/status labels when locale is nl', () => {
     mockUseFindings.mockReturnValue({
-      data: [makeFinding({ severity: 'high', status: 'in_progress' })],
+      data: infiniteData([makeFinding({ severity: 'high', status: 'in_progress' })]),
       isLoading: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     });
 
     render(
@@ -158,7 +169,7 @@ describe('BevindingenTab', () => {
   });
 
   it('shows skeletons while loading', () => {
-    mockUseFindings.mockReturnValue({ data: undefined, isLoading: true });
+    mockUseFindings.mockReturnValue({ data: undefined, isLoading: true, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn() });
 
     render(
       <IntlWrapper locale="en">

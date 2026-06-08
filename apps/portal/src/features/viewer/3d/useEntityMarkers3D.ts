@@ -8,6 +8,7 @@ import { useIfcFileAttachments } from '@/features/attachments/useAttachments';
 import { useFileCertificates } from '@/features/certificates/useCertificates';
 import { useFileFindings } from '@/features/findings/useFindings';
 import type { Attachment, Certificate, Finding } from '@/lib/api/schemas';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import {
   useModelAttachmentMarkers,
@@ -48,25 +49,29 @@ export function useEntityMarkers3D(
   const [clickedCertificate, setClickedCertificate] = useState<Certificate | null>(null);
   const [clickedAttachment, setClickedAttachment] = useState<Attachment | null>(null);
 
-  const { data: findings } = useFileFindings(projectId, fileId);
-  const { data: certificates } = useFileCertificates(projectId, fileId);
-  const { data: attachments } = useIfcFileAttachments(projectId, fileId);
+  const findingsQuery = useFileFindings(projectId, fileId);
+  const certificatesQuery = useFileCertificates(projectId, fileId);
+  const attachmentsQuery = useIfcFileAttachments(projectId, fileId);
+  const findings = flattenPages(findingsQuery.data);
+  const certificates = flattenPages(certificatesQuery.data);
+  const attachments = flattenPages(attachmentsQuery.data);
 
   useEffect(() => {
     if (!handle) return undefined;
     return handle.events.on('entity-marker:click', (ev) => {
       if (ev.type === 'finding') {
-        const f = findings?.find((x) => x.id === ev.entityId) ?? null;
+        const f = findings.find((x) => x.id === ev.entityId) ?? null;
         if (f) setClickedFinding(f);
       } else if (ev.type === 'certificate') {
-        const c = certificates?.find((x) => x.id === ev.entityId) ?? null;
+        const c = certificates.find((x) => x.id === ev.entityId) ?? null;
         if (c) setClickedCertificate(c);
       } else if (ev.type === 'attachment') {
-        const a = attachments?.find((x) => x.id === ev.entityId) ?? null;
+        const a = attachments.find((x) => x.id === ev.entityId) ?? null;
         if (a) setClickedAttachment(a);
       }
     });
-  }, [handle, findings, certificates, attachments]);
+    // `viewerReady` triggers re-subscription after viewer rebuild (events.clear)
+  }, [handle, viewerReady, findings, certificates, attachments]);
 
   const clearClicked = (): void => {
     setClickedFinding(null);

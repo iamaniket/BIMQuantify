@@ -9,6 +9,7 @@ import { Button, EmptyState, Select, SplitButton } from '@bimstitch/ui';
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useFindings } from '@/features/findings/useFindings';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 
@@ -53,7 +54,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
     [members],
   );
 
-  const allFindings = findingsQuery.data ?? [];
+  const allFindings = flattenPages(findingsQuery.data);
   const findings = allFindings.filter((f) => {
     if (statusFilter && f.status !== statusFilter) return false;
     if (searchQuery !== '') {
@@ -133,6 +134,9 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         filteredCount={findings.length}
         searchActive={searchQuery !== '' || statusFilter !== undefined}
         noResultsLabel={t('noResults')}
+        hasNextPage={findingsQuery.hasNextPage}
+        isFetchingNextPage={findingsQuery.isFetchingNextPage}
+        onLoadMore={() => { void findingsQuery.fetchNextPage(); }}
         empty={(
           <EmptyState
             icon={AlertTriangle}

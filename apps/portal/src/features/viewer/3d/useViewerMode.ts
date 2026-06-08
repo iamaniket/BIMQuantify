@@ -10,7 +10,7 @@ export interface ViewerModeState {
 
 const NORMAL_STATE: ViewerModeState = { mode: 'normal', toolName: null, toolLabel: null };
 
-export function useViewerMode(handle: ViewerHandle | null): ViewerModeState {
+export function useViewerMode(handle: ViewerHandle | null, ready?: boolean): ViewerModeState {
   const [state, setState] = useState<ViewerModeState>(NORMAL_STATE);
 
   useEffect(() => {
@@ -27,7 +27,8 @@ export function useViewerMode(handle: ViewerHandle | null): ViewerModeState {
       offEnter();
       offExit();
     };
-  }, [handle]);
+    // `ready` triggers re-subscription after viewer rebuild (events.clear)
+  }, [handle, ready]);
 
   return state;
 }

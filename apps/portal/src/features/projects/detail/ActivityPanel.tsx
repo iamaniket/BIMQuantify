@@ -1,15 +1,15 @@
 'use client';
 
-import { useCallback, useMemo, useState, type JSX } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
 import { Select } from '@bimstitch/ui';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
+import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
 import type { ActivityCategory, ProjectActivityEntry } from '@/lib/api/schemas/activity';
+import { flattenPages, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { useProjectActivity } from './useProjectActivity';
-
-const PAGE_SIZE = 25;
 
 type TimeWindow = 'all' | '1h' | '24h' | '7d' | '30d';
 type TypeFilter = 'all' | ActivityCategory;
@@ -96,18 +96,13 @@ type ActivityPanelProps = {
 export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [limit, setLimit] = useState(PAGE_SIZE);
   const t = useTranslations('activity');
 
   const category = typeFilter === 'all' ? undefined : typeFilter;
   const since = useMemo(() => computeSince(timeWindow), [timeWindow]);
-  const { data: entries, isLoading } = useProjectActivity(projectId, category, limit, since);
-  const count = entries?.length ?? 0;
-  const hasMore = count >= limit;
-
-  const handleLoadMore = useCallback(() => {
-    setLimit((prev) => prev + PAGE_SIZE);
-  }, []);
+  const query = useProjectActivity(projectId, category, since);
+  const entries = flattenPages(query.data);
+  const count = totalFromPages(query.data);
 
   return (
     <div className="relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
@@ -130,7 +125,7 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
             <Select
               selectSize="sm"
               value={timeWindow}
-              onChange={(e) => { setTimeWindow(e.target.value as TimeWindow); setLimit(PAGE_SIZE); }}
+              onChange={(e) => { setTimeWindow(e.target.value as TimeWindow); }}
               className="w-auto min-w-0 pr-7"
             >
               <option value="all">{t('timeAll')}</option>
@@ -145,7 +140,7 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
             <Select
               selectSize="sm"
               value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value as TypeFilter); setLimit(PAGE_SIZE); }}
+              onChange={(e) => { setTypeFilter(e.target.value as TypeFilter); }}
               className="w-auto min-w-0 pr-7"
             >
               <option value="all">{t('typeAll')}</option>
@@ -160,7 +155,7 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
 
       {/* Feed */}
       <div className="relative flex-1 overflow-auto px-4 pb-3">
-        {isLoading ? (
+        {query.isLoading ? (
           <div className="space-y-3 py-2">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex gap-3 animate-pulse">
@@ -172,13 +167,13 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
               </div>
             ))}
           </div>
-        ) : count === 0 ? (
+        ) : entries.length === 0 ? (
           <div className="px-2 py-6 text-center text-body3 text-foreground-tertiary">
             {t('noActivity')}
           </div>
         ) : (
           <>
-            {entries?.map((entry) => {
+            {entries.map((entry) => {
               const s = categoryStyle(entry.category);
               const i18nKey = ACTION_I18N_KEY[entry.action];
               const description = i18nKey !== undefined
@@ -212,15 +207,11 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
                 </div>
               );
             })}
-            {hasMore && (
-              <button
-                type="button"
-                onClick={handleLoadMore}
-                className="mt-2 w-full rounded-md bg-surface-high py-1.5 text-body3 font-medium text-foreground-secondary transition-colors hover:bg-surface-main hover:text-foreground"
-              >
-                {t('loadMore')}
-              </button>
-            )}
+            <LoadMoreButton
+              hasNextPage={query.hasNextPage}
+              isFetchingNextPage={query.isFetchingNextPage}
+              fetchNextPage={() => { void query.fetchNextPage(); }}
+            />
           </>
         )}
       </div>

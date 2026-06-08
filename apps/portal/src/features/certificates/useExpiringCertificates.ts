@@ -64,7 +64,7 @@ export function useExpiringCertificates(
       if (query === undefined) return;
       if (query.isLoading) loading = true;
 
-      const certs = query.data ?? [];
+      const certs = query.data?.data ?? [];
       let projExpiring = 0;
       let projExpired = 0;
 

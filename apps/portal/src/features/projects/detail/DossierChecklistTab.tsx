@@ -20,6 +20,7 @@ import type { CertificateTypeValue, DossierSlotValue } from '@/lib/api/schemas';
 import { useAttachments, useUnslottedDocuments } from '@/features/attachments/useAttachments';
 import { useUpdateAttachment } from '@/features/attachments/useUpdateAttachment';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { useCertificates } from '@/features/certificates/useCertificates';
 import { useFindings } from '@/features/findings/useFindings';
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
@@ -68,20 +69,21 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const buildingType = projectQuery.data?.building_type ?? null;
-  const attachments = attachmentsQuery.data ?? [];
-  const certificates = certificatesQuery.data ?? [];
+  const attachments = flattenPages(attachmentsQuery.data);
+  const certificates = flattenPages(certificatesQuery.data);
 
   const template = useMemo(
     () => selectDossierTemplate(jurisdiction?.dossier_requirement_templates, buildingType),
     [jurisdiction, buildingType],
   );
 
+  const allFindings = flattenPages(findingsQuery.data);
   const findingsOpen = useMemo(
     () =>
-      (findingsQuery.data ?? []).filter(
+      allFindings.filter(
         (f) => f.status !== 'resolved' && f.status !== 'verified',
       ).length,
-    [findingsQuery.data],
+    [allFindings],
   );
   const deadlinesOverdue = useMemo(
     () => (deadlinesQuery.data ?? []).filter((d) => d.is_overdue).length,

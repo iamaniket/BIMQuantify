@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Eye } from '@bimstitch/ui/icons';
+import { Download, Eye, FileAudio, FileText, FileVideo, Image } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -10,10 +10,16 @@ import { DetailCard, DetailCardRow } from '@bimstitch/ui';
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
-
-import { AttachmentThumbnail } from './AttachmentThumbnail';
 import { ExpandedBody } from './ExpandedBody';
 import { LinkChip } from './LinkChip';
+
+const CATEGORY_ICONS: Record<string, typeof FileText> = {
+  image: Image,
+  video: FileVideo,
+  audio: FileAudio,
+  office: FileText,
+  other: FileText,
+};
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${String(bytes)} B`;
@@ -64,16 +70,13 @@ export function AttachmentRow({
     }
   }, [tokens, projectId, attachment.id, t]);
 
+  const CategoryIcon = CATEGORY_ICONS[attachment.attachment_category ?? 'other'] ?? FileText;
+
   return (
     <DetailCard expanded={expanded} onToggle={onToggle}>
       <DetailCardRow
         media={
-          <AttachmentThumbnail
-            attachment={attachment}
-            projectId={projectId}
-            size={undefined}
-            className={undefined}
-          />
+          <CategoryIcon className="h-7 w-7 shrink-0 text-foreground-secondary" aria-hidden />
         }
         actions={
           <>
@@ -83,7 +86,7 @@ export function AttachmentRow({
               onClick={(e) => { e.stopPropagation(); onView(); }}
               className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-4 w-4" />
             </button>
             <button
               type="button"
@@ -92,7 +95,7 @@ export function AttachmentRow({
               onClick={(e) => { e.stopPropagation(); void handleDownload(); }}
               className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-4 w-4" />
             </button>
           </>
         }

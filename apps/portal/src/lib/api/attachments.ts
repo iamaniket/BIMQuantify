@@ -1,5 +1,5 @@
 import { computeFileSha256 } from '../upload/sha256';
-import { apiClient } from './client';
+import { apiClient, type PaginatedResponse } from './client';
 import {
   CaptureLinkListSchema,
   CreateCaptureLinkResponseSchema,
@@ -86,8 +86,10 @@ export async function listAttachments(
     unlinked?: boolean;
     linkedFileType?: string;
     anchorPage?: number;
+    limit?: number;
+    offset?: number;
   },
-): Promise<AttachmentList> {
+): Promise<PaginatedResponse<AttachmentList>> {
   const params = new URLSearchParams();
   if (filters?.category !== undefined) params.set('category', filters.category);
   if (filters?.dossierSlot !== undefined) params.set('dossier_slot', filters.dossierSlot);
@@ -98,8 +100,10 @@ export async function listAttachments(
   if (filters?.unlinked === true) params.set('unlinked', 'true');
   if (filters?.linkedFileType !== undefined) params.set('linked_file_type', filters.linkedFileType);
   if (filters?.anchorPage !== undefined) params.set('anchor_page', String(filters.anchorPage));
+  if (filters?.limit !== undefined) params.set('limit', String(filters.limit));
+  if (filters?.offset !== undefined) params.set('offset', String(filters.offset));
   const query = params.size === 0 ? '' : `?${params.toString()}`;
-  return apiClient.get<AttachmentList>(
+  return apiClient.getWithMeta<AttachmentList>(
     `/projects/${projectId}/attachments${query}`,
     AttachmentListSchema,
     accessToken,

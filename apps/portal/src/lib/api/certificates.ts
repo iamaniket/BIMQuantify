@@ -1,5 +1,5 @@
 import { computeFileSha256 } from '../upload/sha256';
-import { apiClient } from './client';
+import { apiClient, type PaginatedResponse } from './client';
 import {
   CertificateDownloadResponseSchema,
   CertificateInitiateResponseSchema,
@@ -81,8 +81,10 @@ export async function listCertificates(
     unlinked?: boolean;
     expiringBefore?: string;
     expired?: boolean;
+    limit?: number;
+    offset?: number;
   },
-): Promise<CertificateList> {
+): Promise<PaginatedResponse<CertificateList>> {
   const params = new URLSearchParams();
   if (filters?.certificateType !== undefined) params.set('certificate_type', filters.certificateType);
   if (filters?.linkedElementGlobalId !== undefined) params.set('linked_element_global_id', filters.linkedElementGlobalId);
@@ -91,8 +93,10 @@ export async function listCertificates(
   if (filters?.unlinked === true) params.set('unlinked', 'true');
   if (filters?.expiringBefore !== undefined) params.set('expiring_before', filters.expiringBefore);
   if (filters?.expired === true) params.set('expired', 'true');
+  if (filters?.limit !== undefined) params.set('limit', String(filters.limit));
+  if (filters?.offset !== undefined) params.set('offset', String(filters.offset));
   const query = params.size === 0 ? '' : `?${params.toString()}`;
-  return apiClient.get<CertificateList>(
+  return apiClient.getWithMeta<CertificateList>(
     `/projects/${projectId}/certificates${query}`,
     CertificateListSchema,
     accessToken,

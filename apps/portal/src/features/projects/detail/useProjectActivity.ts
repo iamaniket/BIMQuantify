@@ -1,20 +1,24 @@
 'use client';
 
-import type { UseQueryResult } from '@tanstack/react-query';
+import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 
 import { getProjectActivity } from '@/lib/api/activity';
-import type { ActivityCategory, ProjectActivityList } from '@/lib/api/schemas/activity';
-import { useAuthQuery } from '@/lib/query/useAuthQuery';
+import type { PaginatedResponse } from '@/lib/api/client';
+import type { ActivityCategory, ProjectActivityEntry } from '@/lib/api/schemas/activity';
+import { useAuthInfiniteQuery } from '@/lib/query/useAuthInfiniteQuery';
+
+const PAGE_SIZE = 25;
 
 export function useProjectActivity(
   projectId: string,
   category?: ActivityCategory,
-  limit = 50,
   since?: string,
-): UseQueryResult<ProjectActivityList> {
-  return useAuthQuery({
-    queryKey: ['projects', projectId, 'activity', category ?? 'all', limit, since ?? 'all'] as const,
-    queryFn: (accessToken) => getProjectActivity(accessToken, projectId, category, limit, since),
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<ProjectActivityEntry[]>>> {
+  return useAuthInfiniteQuery({
+    queryKey: ['projects', projectId, 'activity', category ?? 'all', since ?? 'all'] as const,
+    queryFn: (accessToken, offset, limit) =>
+      getProjectActivity(accessToken, projectId, category, limit, offset, since),
     enabled: projectId.length > 0,
+    pageSize: PAGE_SIZE,
   });
 }

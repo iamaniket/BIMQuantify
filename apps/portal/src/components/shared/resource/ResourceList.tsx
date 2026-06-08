@@ -3,14 +3,8 @@
 import { Skeleton } from '@bimstitch/ui';
 import type { JSX, ReactNode } from 'react';
 
-/**
- * Owns the three list states the resource tabs used to diverge on:
- *  - loading   → three skeleton rows
- *  - empty     → the caller-supplied `empty` node (an `EmptyState`)
- *  - no-results→ a centered message when a search filtered everything out
- * Otherwise wraps the rows in the shared bordered list container. Keeping all of
- * this in one place is what makes the four tabs behave identically.
- */
+import { LoadMoreButton } from './LoadMoreButton';
+
 type Props = {
   isLoading: boolean;
   /** Unfiltered item count — drives the empty state. */
@@ -23,6 +17,9 @@ type Props = {
   empty: ReactNode;
   noResultsLabel: string;
   children: ReactNode;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadMore?: () => void;
 };
 
 export function ResourceList({
@@ -33,6 +30,9 @@ export function ResourceList({
   empty,
   noResultsLabel,
   children,
+  hasNextPage = false,
+  isFetchingNextPage = false,
+  onLoadMore,
 }: Props): JSX.Element {
   if (isLoading) {
     return (
@@ -57,8 +57,17 @@ export function ResourceList({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-background">
-      {children}
+    <div>
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
+        {children}
+      </div>
+      {onLoadMore !== undefined && (
+        <LoadMoreButton
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          fetchNextPage={onLoadMore}
+        />
+      )}
     </div>
   );
 }

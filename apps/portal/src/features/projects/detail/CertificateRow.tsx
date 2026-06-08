@@ -1,8 +1,8 @@
 'use client';
 
-import { Download, Eye, FileBadge, Trash2, Upload } from '@bimstitch/ui/icons';
+import { Box, ClipboardCheck, Download, Eye, FileBadge, Glasses, ShieldCheck, Trash2, Upload } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useCallback, type JSX } from 'react';
+import { useCallback, type ComponentType, type JSX } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -16,9 +16,9 @@ import {
   type BadgeVariant,
 } from '@bimstitch/ui';
 
-import { ResourceMediaTile, VersionBadge, VersionHistoryList } from '@/components/shared/resource';
+import { ResourceMediaTile, VersionBadge, VersionHistoryList, type MediaTileTone } from '@/components/shared/resource';
 import { getCertificateDownloadUrl } from '@/lib/api/certificates';
-import type { Certificate } from '@/lib/api/schemas';
+import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
 import {
   getCertificateExpiryState,
   type CertificateExpiryState,
@@ -31,6 +31,14 @@ const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
   valid: 'success',
   expiring: 'warning',
   expired: 'error',
+};
+
+const TYPE_ICON: Record<CertificateTypeValue, { icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>; tone: MediaTileTone }> = {
+  product: { icon: Box, tone: 'neutral' },
+  installation_test: { icon: ClipboardCheck, tone: 'info' },
+  inspection: { icon: Glasses, tone: 'warning' },
+  warranty: { icon: ShieldCheck, tone: 'success' },
+  other: { icon: FileBadge, tone: 'neutral' },
 };
 
 function formatDate(value: string | null): string {
@@ -112,7 +120,7 @@ export function CertificateRow({
   return (
     <DetailCard expanded={expanded} onToggle={onToggle}>
       <DetailCardRow
-        media={<ResourceMediaTile icon={FileBadge} tone="neutral" />}
+        media={<ResourceMediaTile icon={TYPE_ICON[certificate.certificate_type].icon} tone={TYPE_ICON[certificate.certificate_type].tone} />}
         actions={
           <>
             <button
@@ -121,7 +129,7 @@ export function CertificateRow({
               onClick={(e) => { e.stopPropagation(); onView(certificate); }}
               className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-4 w-4" />
             </button>
             <button
               type="button"
@@ -129,7 +137,7 @@ export function CertificateRow({
               onClick={(e) => { e.stopPropagation(); void handleDownload(certificate.id); }}
               className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-4 w-4" />
             </button>
           </>
         }

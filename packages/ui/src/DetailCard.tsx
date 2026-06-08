@@ -106,10 +106,10 @@ export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
           {children}
         </div>
 
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           {actions !== undefined && (
             <div className={cn(
-              'flex items-center gap-0.5 transition-all',
+              'flex items-center gap-1.5 transition-all',
               showActions ? 'opacity-100' : 'opacity-0',
             )}>
               {actions}
@@ -122,7 +122,7 @@ export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
               className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground"
             >
               <CaretDown weight={DEFAULT_ICON_WEIGHT} className={cn(
-                'h-3.5 w-3.5 transition-transform duration-150',
+                'h-4 w-4 transition-transform duration-150',
                 expanded && 'rotate-180',
               )} />
             </button>

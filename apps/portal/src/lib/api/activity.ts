@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, type PaginatedResponse } from './client';
 import {
   ProjectActivityListSchema,
   type ActivityCategory,
@@ -10,14 +10,16 @@ export async function getProjectActivity(
   projectId: string,
   category?: ActivityCategory,
   limit = 50,
+  offset = 0,
   since?: string,
-): Promise<ProjectActivityList> {
+): Promise<PaginatedResponse<ProjectActivityList>> {
   const params = new URLSearchParams();
   if (category !== undefined) params.set('category', category);
   if (since !== undefined) params.set('since', since);
   params.set('limit', String(limit));
+  params.set('offset', String(offset));
   const qs = params.toString();
-  return apiClient.get<ProjectActivityList>(
+  return apiClient.getWithMeta<ProjectActivityList>(
     `/projects/${projectId}/activity?${qs}`,
     ProjectActivityListSchema,
     accessToken,

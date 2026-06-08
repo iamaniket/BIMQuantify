@@ -32,7 +32,8 @@
       "latest": "Laatste",
       "empty": "Nog geen versies geüpload.",
       "download": "Downloaden"
-    }
+    },
+    "loadMore": "Meer laden"
   },
   "requestAccess": {
     "intro": {

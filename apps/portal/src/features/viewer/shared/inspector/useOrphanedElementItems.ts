@@ -90,9 +90,9 @@ export function useOrphanedElementItems(
 
     const isOrphan = (g: string | null): g is string => g !== null && !presentGlobalIds.has(g);
 
-    const fItems = findingsData ?? [];
-    const cItems = certificatesData ?? [];
-    const aItems = attachmentsData ?? [];
+    const fItems = findingsData?.data ?? [];
+    const cItems = certificatesData?.data ?? [];
+    const aItems = attachmentsData?.data ?? [];
     const findings = fItems.filter((f) => isOrphan(f.linked_element_global_id));
     const certificates = cItems.filter((c) => isOrphan(c.linked_element_global_id));
     const attachments = aItems.filter((a) => isOrphan(a.linked_element_global_id));

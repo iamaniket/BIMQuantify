@@ -69,6 +69,10 @@ vi.mock('./deadlines/useDeadlines', () => ({ useDeadlines: () => mockUseDeadline
 
 import { DossierChecklistTab } from './DossierChecklistTab';
 
+function infiniteData<T>(items: T[]) {
+  return { pages: [{ data: items, totalCount: items.length }], pageParams: [0] };
+}
+
 const TEMPLATE: JurisdictionDossierRequirement[] = [
   {
     code: 'drawings',
@@ -105,11 +109,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUseProject.mockReturnValue({ data: { building_type: 'dwelling', country: 'NL' }, isLoading: false });
   mockUseJurisdiction.mockReturnValue(JURISDICTION);
-  mockUseAttachments.mockReturnValue({ data: [], isLoading: false });
+  mockUseAttachments.mockReturnValue({ data: infiniteData([]), isLoading: false });
   mockUseUnslotted.mockReturnValue({ data: [], isLoading: false });
-  mockUseCertificates.mockReturnValue({ data: [], isLoading: false });
+  mockUseCertificates.mockReturnValue({ data: infiniteData([]), isLoading: false });
   mockUseModels.mockReturnValue({ data: [] });
-  mockUseFindings.mockReturnValue({ data: [] });
+  mockUseFindings.mockReturnValue({ data: infiniteData([]) });
   mockUseDeadlines.mockReturnValue({ data: [] });
 });
 
@@ -127,7 +131,7 @@ describe('DossierChecklistTab', () => {
 
   it('reflects a fulfilled requirement once a matching document exists', () => {
     mockUseAttachments.mockReturnValue({
-      data: [{ status: 'ready', dossier_slot: 'drawings' }],
+      data: infiniteData([{ status: 'ready', dossier_slot: 'drawings' }]),
       isLoading: false,
     });
     renderTab();

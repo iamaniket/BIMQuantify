@@ -1,17 +1,21 @@
 'use client';
 
-import type { UseQueryResult } from '@tanstack/react-query';
+import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 
 import { listFindings } from '@/lib/api/findings';
-import type { FindingList } from '@/lib/api/schemas';
-import { useAuthQuery } from '@/lib/query/useAuthQuery';
+import type { PaginatedResponse } from '@/lib/api/client';
+import type { Finding } from '@/lib/api/schemas';
+import { useAuthInfiniteQuery, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { findingsKey, projectFindingsKey } from './queryKeys';
 
-export function useFindings(projectId: string): UseQueryResult<FindingList> {
-  return useAuthQuery({
+export function useFindings(
+  projectId: string,
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: findingsKey(projectId),
-    queryFn: (accessToken) => listFindings(accessToken, projectId),
+    queryFn: (accessToken, offset, limit) =>
+      listFindings(accessToken, projectId, { limit, offset }),
   });
 }
 
@@ -20,17 +24,18 @@ export function useFindings(projectId: string): UseQueryResult<FindingList> {
 export function useProjectFindings(
   projectId: string,
   enabled = true,
-): UseQueryResult<FindingList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: projectFindingsKey(projectId),
-    queryFn: (accessToken) => listFindings(accessToken, projectId, { unlinked: true }),
+    queryFn: (accessToken, offset, limit) =>
+      listFindings(accessToken, projectId, { unlinked: true, limit, offset }),
     enabled,
-    staleTime: 30_000,
   });
 }
 
 export function useProjectFindingCount(projectId: string, enabled = true): number {
-  return useProjectFindings(projectId, enabled).data?.length ?? 0;
+  const query = useProjectFindings(projectId, enabled);
+  return totalFromPages(query.data);
 }
 
 /** File-scoped findings — those linked to a given file (e.g. a PDF document).
@@ -38,15 +43,14 @@ export function useProjectFindingCount(projectId: string, enabled = true): numbe
 export function useFileFindings(
   projectId: string,
   fileId: string | null,
-): UseQueryResult<FindingList> {
-  return useAuthQuery({
+): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
+  return useAuthInfiniteQuery({
     queryKey: [...findingsKey(projectId), 'file', fileId ?? ''] as const,
-    queryFn: (accessToken) => {
+    queryFn: (accessToken, offset, limit) => {
       if (fileId === null) throw new Error('Missing fileId');
-      return listFindings(accessToken, projectId, { linkedFileId: fileId });
+      return listFindings(accessToken, projectId, { linkedFileId: fileId, limit, offset });
     },
     enabled: fileId !== null,
-    staleTime: 30_000,
   });
 }
 
@@ -54,7 +58,6 @@ export function useFileFindingCount(
   projectId: string,
   fileId: string | null,
 ): number {
-  // Delegates to useFileFindings — same query key, so StatusBar's count and the
-  // inspector tab pill share one cache entry (no double fetch).
-  return useFileFindings(projectId, fileId).data?.length ?? 0;
+  const query = useFileFindings(projectId, fileId);
+  return totalFromPages(query.data);
 }

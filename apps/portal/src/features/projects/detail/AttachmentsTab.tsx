@@ -26,6 +26,7 @@ import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLin
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 type Props = {
   projectId: string;
@@ -58,7 +59,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
   const uploadMutation = useUploadAttachment(projectId);
   const deleteMutation = useDeleteAttachment(projectId);
 
-  const allAttachments = attachmentsQuery.data ?? [];
+  const allAttachments = flattenPages(attachmentsQuery.data);
   const attachments = searchQuery === ''
     ? allAttachments
     : allAttachments.filter((a) => a.original_filename.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -172,6 +173,9 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
         filteredCount={attachments.length}
         searchActive={searchQuery !== ''}
         noResultsLabel={t('noResults')}
+        hasNextPage={attachmentsQuery.hasNextPage}
+        isFetchingNextPage={attachmentsQuery.isFetchingNextPage}
+        onLoadMore={() => { void attachmentsQuery.fetchNextPage(); }}
         empty={uploadMutation.isPending ? null : (
           <EmptyState
             icon={FileText}

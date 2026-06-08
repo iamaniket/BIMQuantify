@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { useIfcFileAttachments } from '@/features/attachments/useAttachments';
 import { useFileCertificates } from '@/features/certificates/useCertificates';
 import { useFileFindings } from '@/features/findings/useFindings';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import type { EntityMarker2D, EntityMarker3D } from './entityMarkerTypes';
 
@@ -13,9 +14,9 @@ export function usePageFindingMarkers(
   fileId: string | null,
   page: number | null,
 ): EntityMarker2D[] {
-  const { data } = useFileFindings(projectId, fileId);
+  const data = flattenPages(useFileFindings(projectId, fileId).data);
   return useMemo(() => {
-    if (!data || page === null) return [];
+    if (data.length === 0 || page === null) return [];
     if (process.env.NODE_ENV === 'development' && data.length > 0) {
       console.log('[EntityMarkers] PDF findings for file:', fileId, 'page:', page, 'total:', data.length,
         'with anchors:', data.filter((f) => f.linked_file_type === 'pdf' && f.anchor_x != null).length,
@@ -45,9 +46,9 @@ export function usePageCertificateMarkers(
   fileId: string | null,
   page: number | null,
 ): EntityMarker2D[] {
-  const { data } = useFileCertificates(projectId, fileId);
+  const data = flattenPages(useFileCertificates(projectId, fileId).data);
   return useMemo(() => {
-    if (!data || page === null) return [];
+    if (data.length === 0 || page === null) return [];
     if (process.env.NODE_ENV === 'development' && data.length > 0) {
       console.log('[EntityMarkers] PDF certificates for file:', fileId, 'page:', page, 'total:', data.length,
         'with anchors:', data.filter((c) => c.linked_file_type === 'pdf' && c.anchor_x != null).length,
@@ -76,9 +77,9 @@ export function useModelFindingMarkers(
   projectId: string,
   fileId: string | null,
 ): EntityMarker3D[] {
-  const { data } = useFileFindings(projectId, fileId);
+  const data = flattenPages(useFileFindings(projectId, fileId).data);
   return useMemo(() => {
-    if (!data) return [];
+    if (data.length === 0) return [];
     if (process.env.NODE_ENV === 'development' && data.length > 0) {
       console.log('[EntityMarkers] IFC findings for file:', fileId, 'total:', data.length, 'with 3D anchors:', data.filter((f) => f.linked_file_type === 'ifc' && f.anchor_x != null && f.anchor_z != null).length);
     }
@@ -104,9 +105,9 @@ export function useModelCertificateMarkers(
   projectId: string,
   fileId: string | null,
 ): EntityMarker3D[] {
-  const { data } = useFileCertificates(projectId, fileId);
+  const data = flattenPages(useFileCertificates(projectId, fileId).data);
   return useMemo(() => {
-    if (!data) return [];
+    if (data.length === 0) return [];
     if (process.env.NODE_ENV === 'development' && data.length > 0) {
       console.log('[EntityMarkers] IFC certificates for file:', fileId, 'total:', data.length, 'with 3D anchors:', data.filter((c) => c.linked_file_type === 'ifc' && c.anchor_x != null && c.anchor_z != null).length);
     }
@@ -132,9 +133,10 @@ export function useModelAttachmentMarkers(
   projectId: string,
   fileId: string | null,
 ): EntityMarker3D[] {
-  const { data } = useIfcFileAttachments(projectId, fileId);
+  const query = useIfcFileAttachments(projectId, fileId);
+  const data = flattenPages(query.data);
   return useMemo(() => {
-    if (!data) return [];
+    if (data.length === 0) return [];
     if (process.env.NODE_ENV === 'development' && data.length > 0) {
       console.log('[EntityMarkers] IFC attachments for file:', fileId, 'total:', data.length, 'with 3D anchors:', data.filter((a) => a.anchor_x != null && a.anchor_z != null).length);
     }

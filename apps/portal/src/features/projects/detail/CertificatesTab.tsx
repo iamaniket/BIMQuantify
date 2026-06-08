@@ -17,6 +17,7 @@ import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
 import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
 import { useCertificates } from '@/features/certificates/useCertificates';
 import { useDeleteCertificate } from '@/features/certificates/useDeleteCertificate';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -60,7 +61,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
     (m) => m.user_id === currentUserId && WRITE_ROLES.has(m.role),
   );
 
-  const all = certificatesQuery.data ?? [];
+  const all = flattenPages(certificatesQuery.data);
   const certificates = searchQuery === ''
     ? all
     : all.filter((c) =>
@@ -125,6 +126,9 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
         filteredCount={certificates.length}
         searchActive={searchQuery !== ''}
         noResultsLabel={t('noResults')}
+        hasNextPage={certificatesQuery.hasNextPage}
+        isFetchingNextPage={certificatesQuery.isFetchingNextPage}
+        onLoadMore={() => { void certificatesQuery.fetchNextPage(); }}
         empty={(
           <EmptyState
             icon={FileBadge}

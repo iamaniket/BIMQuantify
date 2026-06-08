@@ -13,6 +13,7 @@ import { useProject } from '@/features/projects/useProject';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useFindings } from '@/features/findings/useFindings';
 import { useCertificates } from '@/features/certificates/useCertificates';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
@@ -43,10 +44,10 @@ export default function ProjectDetailPage(): JSX.Element {
   const certificatesQuery = useCertificates(projectId);
 
   const deadlines = deadlinesQuery.data ?? [];
-  const attachments = attachmentsQuery.data ?? [];
-  const activityEntries = activityQuery.data ?? [];
-  const findings = findingsQuery.data ?? [];
-  const certificates = certificatesQuery.data ?? [];
+  const attachments = flattenPages(attachmentsQuery.data);
+  const activityEntries = flattenPages(activityQuery.data);
+  const findings = flattenPages(findingsQuery.data);
+  const certificates = flattenPages(certificatesQuery.data);
 
   const deadlinesSummary = useMemo(() => {
     let met = 0;

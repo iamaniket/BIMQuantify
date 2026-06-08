@@ -16,6 +16,7 @@ import {
 } from '@bimstitch/ui';
 
 import { useAttachments } from '@/features/attachments/useAttachments';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 type Props = {
   projectId: string;
@@ -35,7 +36,7 @@ export function ReferenceDocumentPicker({
   const t = useTranslations('findings.referenceDocuments');
   const [pickerOpen, setPickerOpen] = useState(false);
   const attachmentsQuery = useAttachments(projectId);
-  const allAttachments = attachmentsQuery.data ?? [];
+  const allAttachments = flattenPages(attachmentsQuery.data);
 
   const referenced = allAttachments.filter(
     (a) => a.status === 'ready' && referenceIds.includes(a.id),
@@ -114,7 +115,7 @@ function PickerDialog({
 }): JSX.Element {
   const t = useTranslations('findings.referenceDocuments');
   const attachmentsQuery = useAttachments(projectId);
-  const candidates = (attachmentsQuery.data ?? []).filter(
+  const candidates = flattenPages(attachmentsQuery.data).filter(
     (a) => a.status === 'ready' && !excludeIds.includes(a.id),
   );
 

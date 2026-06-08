@@ -1,8 +1,8 @@
 'use client';
 
-import { AlertTriangle, Eye, Trash2 } from '@bimstitch/ui/icons';
+import { AlertCircle, CheckCircle, Clock, Eye, Pencil, Trash2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import type { JSX } from 'react';
+import type { ComponentType, JSX } from 'react';
 
 import {
   Badge,
@@ -14,10 +14,18 @@ import {
   MetaGrid,
 } from '@bimstitch/ui';
 
-import { ResourceMediaTile } from '@/components/shared/resource';
-import type { Finding } from '@/lib/api/schemas';
+import { ResourceMediaTile, type MediaTileTone } from '@/components/shared/resource';
+import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 
 import { severityBadgeVariant, statusBadgeVariant } from './findingBadges';
+
+const STATUS_ICON: Record<FindingStatusValue, { icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>; tone: MediaTileTone }> = {
+  draft: { icon: Pencil, tone: 'neutral' },
+  open: { icon: AlertCircle, tone: 'info' },
+  in_progress: { icon: Clock, tone: 'primary' },
+  resolved: { icon: CheckCircle, tone: 'success' },
+  verified: { icon: CheckCircle, tone: 'success' },
+};
 
 function formatDate(value: string | null | undefined): string {
   if (value === null || value === undefined || value === '') return '—';
@@ -76,7 +84,7 @@ export function FindingRow({
   return (
     <DetailCard expanded={expanded} onToggle={onToggle}>
       <DetailCardRow
-        media={<ResourceMediaTile icon={AlertTriangle} tone="neutral" />}
+        media={<ResourceMediaTile icon={STATUS_ICON[finding.status].icon} tone={STATUS_ICON[finding.status].tone} />}
         actions={
           <button
             type="button"
@@ -84,7 +92,7 @@ export function FindingRow({
             onClick={(e) => { e.stopPropagation(); onView(); }}
             className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-4 w-4" />
           </button>
         }
       >

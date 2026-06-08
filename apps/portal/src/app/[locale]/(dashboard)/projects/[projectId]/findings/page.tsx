@@ -15,6 +15,7 @@ import { useFindings } from '@/features/findings/useFindings';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useProject } from '@/features/projects/useProject';
 import { ApiError } from '@/lib/api/client';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 export default function FindingsBoardPage(): JSX.Element {
   const t = useTranslations('findingsBoard');
@@ -79,7 +80,7 @@ export default function FindingsBoardPage(): JSX.Element {
     return <main className="flex flex-1 items-center justify-center" />;
   }
 
-  const findings = findingsQuery.data ?? [];
+  const findings = flattenPages(findingsQuery.data);
   const members = membersQuery.data ?? [];
 
   return (
