@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 
+import { useIfcFileAttachments } from '@/features/attachments/useAttachments';
 import { useFileCertificates } from '@/features/certificates/useCertificates';
 import { useFileFindings } from '@/features/findings/useFindings';
 
@@ -47,6 +48,11 @@ export function usePageCertificateMarkers(
   const { data } = useFileCertificates(projectId, fileId);
   return useMemo(() => {
     if (!data || page === null) return [];
+    if (process.env.NODE_ENV === 'development' && data.length > 0) {
+      console.log('[EntityMarkers] PDF certificates for file:', fileId, 'page:', page, 'total:', data.length,
+        'with anchors:', data.filter((c) => c.linked_file_type === 'pdf' && c.anchor_x != null).length,
+        'sample linked_file_type values:', [...new Set(data.map((c) => c.linked_file_type))]);
+    }
     return data
       .filter(
         (c) =>
@@ -63,7 +69,7 @@ export function usePageCertificateMarkers(
         label: c.original_filename,
         entityId: c.id,
       }));
-  }, [data, page]);
+  }, [data, page, fileId]);
 }
 
 export function useModelFindingMarkers(
@@ -101,6 +107,9 @@ export function useModelCertificateMarkers(
   const { data } = useFileCertificates(projectId, fileId);
   return useMemo(() => {
     if (!data) return [];
+    if (process.env.NODE_ENV === 'development' && data.length > 0) {
+      console.log('[EntityMarkers] IFC certificates for file:', fileId, 'total:', data.length, 'with 3D anchors:', data.filter((c) => c.linked_file_type === 'ifc' && c.anchor_x != null && c.anchor_z != null).length);
+    }
     return data
       .filter(
         (c) =>
@@ -116,5 +125,33 @@ export function useModelCertificateMarkers(
         label: c.original_filename,
         entityId: c.id,
       }));
-  }, [data]);
+  }, [data, fileId]);
+}
+
+export function useModelAttachmentMarkers(
+  projectId: string,
+  fileId: string | null,
+): EntityMarker3D[] {
+  const { data } = useIfcFileAttachments(projectId, fileId);
+  return useMemo(() => {
+    if (!data) return [];
+    if (process.env.NODE_ENV === 'development' && data.length > 0) {
+      console.log('[EntityMarkers] IFC attachments for file:', fileId, 'total:', data.length, 'with 3D anchors:', data.filter((a) => a.anchor_x != null && a.anchor_z != null).length);
+    }
+    return data
+      .filter(
+        (a) =>
+          a.linked_file_type === 'ifc' &&
+          a.anchor_x != null &&
+          a.anchor_y != null &&
+          a.anchor_z != null,
+      )
+      .map((a) => ({
+        id: a.id,
+        type: 'attachment' as const,
+        position: { x: a.anchor_x!, y: a.anchor_y!, z: a.anchor_z! },
+        label: a.original_filename,
+        entityId: a.id,
+      }));
+  }, [data, fileId]);
 }

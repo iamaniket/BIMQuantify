@@ -89,6 +89,28 @@ export function useFileAttachmentCount(
 }
 
 /**
+ * IFC-file-scoped attachments — powers the 3D entity marker overlay.
+ * Returns all attachments linked to this IFC file regardless of element.
+ */
+export function useIfcFileAttachments(
+  projectId: string,
+  fileId: string | null,
+): UseQueryResult<AttachmentList> {
+  return useAuthQuery({
+    queryKey: [...attachmentsKey(projectId), 'ifc-file', fileId ?? ''] as const,
+    queryFn: (accessToken) => {
+      if (fileId === null) throw new Error('Missing fileId');
+      return listAttachments(accessToken, projectId, {
+        linkedFileId: fileId,
+        linkedFileType: 'ifc',
+      });
+    },
+    enabled: fileId !== null,
+    staleTime: 30_000,
+  });
+}
+
+/**
  * Page-scoped attachments — ONLY for the in-canvas pin overlay
  * (`AnnotationPinLayer`), which renders pins for the visible page. Don't
  * reuse this for inspector listings; use `usePdfFileAttachments` instead.

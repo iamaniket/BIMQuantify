@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { ViewerHandle } from '@bimstitch/viewer';
 
+import { useIfcFileAttachments } from '@/features/attachments/useAttachments';
 import { useFileCertificates } from '@/features/certificates/useCertificates';
 import { useFileFindings } from '@/features/findings/useFindings';
-import type { Certificate, Finding } from '@/lib/api/schemas';
+import type { Attachment, Certificate, Finding } from '@/lib/api/schemas';
 
 import {
+  useModelAttachmentMarkers,
   useModelCertificateMarkers,
   useModelFindingMarkers,
 } from '../shared/useEntityMarkers';
@@ -21,26 +23,34 @@ export function useEntityMarkers3D(
 ): {
   clickedFinding: Finding | null;
   clickedCertificate: Certificate | null;
+  clickedAttachment: Attachment | null;
   clearClicked: () => void;
 } {
   const findingMarkers = useModelFindingMarkers(projectId, fileId);
   const certMarkers = useModelCertificateMarkers(projectId, fileId);
+  const attachmentMarkers = useModelAttachmentMarkers(projectId, fileId);
 
   const allMarkers = useMemo(
-    () => [...findingMarkers, ...certMarkers],
-    [findingMarkers, certMarkers],
+    () => [...findingMarkers, ...certMarkers, ...attachmentMarkers],
+    [findingMarkers, certMarkers, attachmentMarkers],
   );
 
   useEffect(() => {
     if (!handle || !viewerReady) return;
-    handle.commands.execute('entity-marker.sync', allMarkers).catch(() => undefined);
+    handle.commands.execute('entity-marker.sync', allMarkers).catch((err: unknown) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[EntityMarkers3D] sync failed:', err);
+      }
+    });
   }, [handle, viewerReady, allMarkers]);
 
   const [clickedFinding, setClickedFinding] = useState<Finding | null>(null);
   const [clickedCertificate, setClickedCertificate] = useState<Certificate | null>(null);
+  const [clickedAttachment, setClickedAttachment] = useState<Attachment | null>(null);
 
   const { data: findings } = useFileFindings(projectId, fileId);
   const { data: certificates } = useFileCertificates(projectId, fileId);
+  const { data: attachments } = useIfcFileAttachments(projectId, fileId);
 
   useEffect(() => {
     if (!handle) return undefined;
@@ -48,17 +58,21 @@ export function useEntityMarkers3D(
       if (ev.type === 'finding') {
         const f = findings?.find((x) => x.id === ev.entityId) ?? null;
         if (f) setClickedFinding(f);
-      } else {
+      } else if (ev.type === 'certificate') {
         const c = certificates?.find((x) => x.id === ev.entityId) ?? null;
         if (c) setClickedCertificate(c);
+      } else if (ev.type === 'attachment') {
+        const a = attachments?.find((x) => x.id === ev.entityId) ?? null;
+        if (a) setClickedAttachment(a);
       }
     });
-  }, [handle, findings, certificates]);
+  }, [handle, findings, certificates, attachments]);
 
   const clearClicked = (): void => {
     setClickedFinding(null);
     setClickedCertificate(null);
+    setClickedAttachment(null);
   };
 
-  return { clickedFinding, clickedCertificate, clearClicked };
+  return { clickedFinding, clickedCertificate, clickedAttachment, clearClicked };
 }

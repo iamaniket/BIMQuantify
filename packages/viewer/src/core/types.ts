@@ -78,7 +78,7 @@ export interface ViewerEvents {
   'viewpoint:change': { viewpoints: Array<{ id: string; name: string }> };
   'marker:change': { markers: Array<{ id: string; label: string; position: Vec3 }> };
   'marker:click': { id: string; position: Vec3 };
-  'entity-marker:click': { id: string; type: 'finding' | 'certificate'; entityId: string; position: Vec3 };
+  'entity-marker:click': { id: string; type: 'finding' | 'certificate' | 'attachment'; entityId: string; position: Vec3 };
   'grid:change': { visible: boolean };
   'eraser:change': { active: boolean };
   'navigate:change': { active: boolean };

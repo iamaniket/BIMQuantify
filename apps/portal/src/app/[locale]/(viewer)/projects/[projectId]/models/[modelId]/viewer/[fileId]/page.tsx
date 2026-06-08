@@ -157,6 +157,7 @@ export default function ViewerPage(): JSX.Element {
   const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
   const [markerFinding, setMarkerFinding] = useState<import('@/lib/api/schemas').Finding | null>(null);
   const [markerCertificate, setMarkerCertificate] = useState<import('@/lib/api/schemas').Certificate | null>(null);
+  const [markerAttachment, setMarkerAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
 
   const [inspectorRequest, setInspectorRequest] = useState<{
     view: 'attachments' | 'findings' | 'certificates';
@@ -348,7 +349,7 @@ export default function ViewerPage(): JSX.Element {
     [findingMarkers2D, certMarkers2D],
   );
 
-  const { clickedFinding, clickedCertificate, clearClicked } = useEntityMarkers3D(
+  const { clickedFinding, clickedCertificate, clickedAttachment, clearClicked } = useEntityMarkers3D(
     viewerHandleRef.current,
     projectId,
     isIfc ? fileId : null,
@@ -362,6 +363,10 @@ export default function ViewerPage(): JSX.Element {
   useEffect(() => {
     if (clickedCertificate) setMarkerCertificate(clickedCertificate);
   }, [clickedCertificate]);
+
+  useEffect(() => {
+    if (clickedAttachment) setMarkerAttachment(clickedAttachment);
+  }, [clickedAttachment]);
 
   // PDF pin annotations
   const pdfPinsQuery = usePdfPageAttachments(
@@ -405,7 +410,7 @@ export default function ViewerPage(): JSX.Element {
       if (type === 'finding') {
         const f = allFileFindings?.find((x) => x.id === entityId) ?? null;
         if (f) setMarkerFinding(f);
-      } else {
+      } else if (type === 'certificate') {
         const c = allFileCertificates?.find((x) => x.id === entityId) ?? null;
         if (c) setMarkerCertificate(c);
       }
@@ -723,6 +728,12 @@ export default function ViewerPage(): JSX.Element {
         certificate={markerCertificate}
         open={markerCertificate !== null}
         onOpenChange={(open) => { if (!open) { setMarkerCertificate(null); clearClicked(); } }}
+      />
+      <AttachmentViewerDialog
+        attachment={markerAttachment}
+        projectId={projectId}
+        open={markerAttachment !== null}
+        onOpenChange={(open) => { if (!open) { setMarkerAttachment(null); clearClicked(); } }}
       />
       </div>
       {showChrome && bundle !== null ? (

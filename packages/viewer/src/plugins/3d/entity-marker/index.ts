@@ -13,7 +13,7 @@ const NAME = 'entity-marker' as const;
 
 export interface EntityMarkerData {
   id: string;
-  type: 'finding' | 'certificate';
+  type: 'finding' | 'certificate' | 'attachment';
   position: Vec3;
   label: string;
   entityId: string;
@@ -29,9 +29,18 @@ const FLAG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
 
 const BADGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"/></svg>`;
 
+const PAPERCLIP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M209.66,82.34l-80,80a48,48,0,0,1-67.88-67.88l80-80A32,32,0,1,1,187.06,59.7l-80,80a16,16,0,0,1-22.62-22.62l80-80a8,8,0,0,0-11.32-11.32l-80,80a32,32,0,0,0,45.26,45.26l80-80a48,48,0,0,0-67.88-67.88l-80,80A64,64,0,0,0,140.7,174.06l80-80a8,8,0,0,0-11.32-11.32Z"/></svg>`;
+
 const MARKER_COLORS: Record<string, string> = {
   finding: '#EF4444',
   certificate: '#3B82F6',
+  attachment: '#10B981',
+};
+
+const MARKER_ICONS: Record<string, string> = {
+  finding: FLAG_SVG,
+  certificate: BADGE_SVG,
+  attachment: PAPERCLIP_SVG,
 };
 
 export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
@@ -60,7 +69,7 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
 
   const createMarkerElement = (data: EntityMarkerData): HTMLDivElement => {
     const color = MARKER_COLORS[data.type] ?? '#888';
-    const svg = data.type === 'finding' ? FLAG_SVG : BADGE_SVG;
+    const svg = MARKER_ICONS[data.type] ?? PAPERCLIP_SVG;
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = `
@@ -166,7 +175,7 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
     name: NAME,
 
     sync(markers: EntityMarkerData[]) {
-      const incoming = new Set(markers.map((m) => m.id));
+      const incoming = new Map(markers.map((m) => [m.id, m]));
 
       // Remove stale markers
       for (const id of activeMarkers.keys()) {
@@ -175,9 +184,17 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
         }
       }
 
-      // Add new markers
       for (const m of markers) {
-        if (!activeMarkers.has(m.id)) {
+        const existing = activeMarkers.get(m.id);
+        if (!existing) {
+          addMarker(m);
+        } else if (
+          existing.data.label !== m.label ||
+          existing.data.position.x !== m.position.x ||
+          existing.data.position.y !== m.position.y ||
+          existing.data.position.z !== m.position.z
+        ) {
+          removeMarker(m.id);
           addMarker(m);
         }
       }
@@ -193,6 +210,11 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
       globalVisible = visible;
       for (const entry of activeMarkers.values()) {
         entry.group.visible = visible;
+      }
+      if (visible && activeMarkers.size > 0) {
+        startCss2dLoop();
+      } else if (!visible) {
+        stopCss2dLoop();
       }
     },
 

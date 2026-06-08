@@ -1,4 +1,4 @@
-export type EntityMarkerType = 'finding' | 'certificate';
+export type EntityMarkerType = 'finding' | 'certificate' | 'attachment';
 
 export interface EntityMarker2D {
   id: string;
