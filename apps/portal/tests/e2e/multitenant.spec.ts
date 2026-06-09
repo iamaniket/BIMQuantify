@@ -555,7 +555,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.goto('/en/projects');
 
     await expect(page).toHaveURL(/\/projects/);
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projects', level: 1 })).toBeVisible();
   });
 
   // =========================================================================
@@ -1420,7 +1420,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     // deleted on removal (M1). An empty project list (no 403) proves the
     // membership is restored — the member just isn't on any project yet.
     await expect(page).toHaveURL(/\/projects/);
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projects', level: 1 })).toBeVisible();
   });
 
   // =========================================================================
