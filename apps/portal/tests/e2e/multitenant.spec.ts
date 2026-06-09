@@ -1928,13 +1928,18 @@ test.describe.serial('Multitenant E2E Journey', () => {
     const actionsBtn = cards.first().locator('..').getByRole('button', { name: 'Project actions' });
     await actionsBtn.click();
 
+    await page.getByRole('menuitem', { name: /archive/i }).click();
+
+    const archiveDialog = page.getByRole('dialog');
+    await expect(archiveDialog).toBeVisible({ timeout: 5_000 });
+
     const [archiveResp] = await Promise.all([
       page.waitForResponse(
         (r) => r.url().includes(`/projects/${state.lifecycleProjectId}/archive`)
           && r.request().method() === 'POST',
         { timeout: 20_000 },
       ),
-      page.getByRole('menuitem', { name: /archive/i }).click(),
+      archiveDialog.getByRole('button', { name: 'Archive' }).click(),
     ]);
     if (!archiveResp.ok()) {
       const body = await archiveResp.text();
@@ -2309,7 +2314,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Search for the admin by email.
-    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    const searchInput = page.getByRole('textbox', { name: /search users/i });
     await expect(searchInput).toBeVisible({ timeout: 10_000 });
     await searchInput.fill(state.adminEmail);
 
@@ -2326,7 +2331,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, email);
 
     await page.goto('/en/admin/users');
-    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    const searchInput = page.getByRole('textbox', { name: /search users/i });
     await searchInput.fill(state.adminEmail);
 
     const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
@@ -2370,7 +2375,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, email);
 
     await page.goto('/en/admin/users');
-    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    const searchInput = page.getByRole('textbox', { name: /search users/i });
     await searchInput.fill(state.adminEmail);
 
     const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
@@ -2399,7 +2404,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, email);
 
     await page.goto('/en/admin/users');
-    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    const searchInput = page.getByRole('textbox', { name: /search users/i });
     await searchInput.fill(state.adminEmail);
 
     const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
@@ -2456,7 +2461,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, email);
 
     await page.goto('/en/admin/users');
-    const searchInput = page.getByRole('searchbox').or(page.locator('input[type="search"]'));
+    const searchInput = page.getByRole('textbox', { name: /search users/i });
     await searchInput.fill(state.adminEmail);
 
     const adminRow = page.getByRole('row').filter({ hasText: state.adminEmail });
