@@ -58,6 +58,7 @@ import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoad
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
 import { StatusBar } from '@/features/viewer/shared/StatusBar';
 import { useDocumentShortcuts } from '@/features/viewer/2d/useDocumentShortcuts';
+import { useBcfGlobalIdMap } from '@/features/viewer/3d/useBcfGlobalIdMap';
 import { useModelMetadata } from '@/features/viewer/3d/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/3d/useModelProperties';
 import { usePdfGeometry } from '@/features/viewer/2d/usePdfGeometry';
@@ -228,6 +229,9 @@ export default function ViewerPage(): JSX.Element {
   const metadataUrl = bundle?.file_type === 'ifc' ? (bundle.metadata_url ?? null) : null;
   const propertiesUrl = bundle?.properties_url ?? null;
   const { data: metadata, isLoading: isLoadingMetadata } = useModelMetadata(metadataUrl);
+  // Feed the BCF plugin GlobalId -> ItemId so viewpoint selection/visibility
+  // round-trips (the map is otherwise never populated).
+  useBcfGlobalIdMap(viewerHandleRef.current, metadata);
   const hasSelection = isAllSelected || partialSelectionCount > 0;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,

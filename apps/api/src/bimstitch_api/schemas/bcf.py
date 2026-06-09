@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,6 +28,22 @@ class ClippingPlaneSchema(BaseModel):
     direction: Vec3Schema
 
 
+class XrayOpacityOverrideSchema(BaseModel):
+    global_id: str
+    opacity: float
+
+
+class XrayStateSchema(BaseModel):
+    items: list[str] = Field(default_factory=list)
+    opacity_overrides: list[XrayOpacityOverrideSchema] = Field(default_factory=list)
+
+
+class BcfMeasurementSchema(BaseModel):
+    type: str
+    points: list[Vec3Schema] = Field(default_factory=list)
+    height: float | None = None
+
+
 class ViewState2DSchema(BaseModel):
     center_x: float = 0.0
     center_y: float = 0.0
@@ -46,6 +63,8 @@ class BcfViewpointCreate(BaseModel):
     field_of_height: float | None = None
     components: BcfComponentsSchema | None = None
     clipping_planes: list[ClippingPlaneSchema] = Field(default_factory=list)
+    xray: XrayStateSchema | None = None
+    measurements: list[BcfMeasurementSchema] = Field(default_factory=list)
     is_2d: bool = False
     view_state_2d: ViewState2DSchema | None = None
     linked_file_id: UUID | None = None
@@ -65,6 +84,8 @@ class BcfViewpointRead(BaseModel):
     field_of_height: float | None
     components: dict | None
     clipping_planes: list | None
+    xray: dict[str, Any] | None = None
+    measurements: list[Any] | None = None
     snapshot_url: str | None = None
     is_2d: bool
     view_state_2d: dict | None

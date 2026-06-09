@@ -9,7 +9,6 @@ import type { BcfTopicSummary } from '@/lib/api/schemas/bcf';
 
 type Props = {
   topic: BcfTopicSummary;
-  onClick: () => void;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -25,27 +24,23 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: 'text-foreground-tertiary',
 };
 
-export function BcfTopicCard({ topic, onClick }: Props): JSX.Element {
+export function BcfTopicCard({ topic }: Props): JSX.Element {
   const t = useTranslations('viewer.bcf');
   const statusClass = STATUS_COLORS[topic.topic_status] ?? 'bg-surface-low text-foreground-secondary';
   const priorityClass = PRIORITY_COLORS[topic.priority ?? ''] ?? '';
   const date = new Date(topic.creation_date).toLocaleDateString();
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full gap-3 border-b border-border px-3.5 py-2.5 text-left transition-colors hover:bg-surface-low"
-    >
+    <div className="flex items-center gap-2.5">
       {/* Thumbnail */}
       {topic.snapshot_url !== undefined && topic.snapshot_url !== null ? (
         <img
           src={topic.snapshot_url}
           alt=""
-          className="h-12 w-16 shrink-0 rounded border border-border object-cover"
+          className="h-10 w-14 shrink-0 rounded border border-border object-cover"
         />
       ) : (
-        <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded border border-border bg-surface-low">
+        <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded border border-border bg-surface-low">
           <span className="text-[10px] text-foreground-tertiary">BCF</span>
         </div>
       )}
@@ -74,6 +69,6 @@ export function BcfTopicCard({ topic, onClick }: Props): JSX.Element {
           {topic.creation_author} &middot; {date}
         </p>
       </div>
-    </button>
+    </div>
   );
 }

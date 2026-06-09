@@ -42,6 +42,12 @@ class BcfViewpoint(TimestampMixin, TenantBase):
     components: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     clipping_planes: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
 
+    # Non-standard BCF extensions (ignored by standard BCF ZIP export):
+    # x-ray state (xrayed element GlobalIds + opacity overrides) and
+    # measurements (world-space points).
+    xray: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    measurements: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
+
     snapshot_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     is_2d: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

@@ -199,6 +199,8 @@ async def _topic_to_read(
             "field_of_height": vp.field_of_height,
             "components": vp.components,
             "clipping_planes": vp.clipping_planes,
+            "xray": vp.xray,
+            "measurements": vp.measurements,
             "snapshot_url": snapshot_url,
             "is_2d": vp.is_2d,
             "view_state_2d": vp.view_state_2d,
@@ -238,6 +240,12 @@ def _build_viewpoint(payload: BcfViewpointCreate, topic_id: UUID) -> BcfViewpoin
         field_of_height=payload.field_of_height,
         components=payload.components.model_dump() if payload.components else None,
         clipping_planes=[cp.model_dump() for cp in payload.clipping_planes] if payload.clipping_planes else None,
+        xray=payload.xray.model_dump() if payload.xray else None,
+        measurements=(
+            [m.model_dump() for m in payload.measurements]
+            if payload.measurements
+            else None
+        ),
         is_2d=payload.is_2d,
         view_state_2d=payload.view_state_2d.model_dump() if payload.view_state_2d else None,
         linked_file_id=payload.linked_file_id,

@@ -21,6 +21,19 @@ export const BcfClippingPlaneSchema = z.object({
   direction: BcfVec3Schema,
 });
 
+export const BcfXrayStateSchema = z.object({
+  items: z.array(z.string()),
+  opacity_overrides: z
+    .array(z.object({ global_id: z.string(), opacity: z.number() }))
+    .default([]),
+});
+
+export const BcfMeasurementSchema = z.object({
+  type: z.string(),
+  points: z.array(BcfVec3Schema),
+  height: z.union([z.number(), z.null()]).optional(),
+});
+
 export const BcfViewpointReadSchema = z.object({
   id: z.string().uuid(),
   guid: z.string(),
@@ -33,6 +46,8 @@ export const BcfViewpointReadSchema = z.object({
   field_of_height: z.union([z.number(), z.null()]),
   components: z.union([z.record(z.string(), z.unknown()), z.null()]),
   clipping_planes: z.union([z.array(z.unknown()), z.null()]),
+  xray: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
+  measurements: z.union([z.array(z.unknown()), z.null()]).optional(),
   snapshot_url: z.union([z.string(), z.null()]).optional(),
   is_2d: z.boolean(),
   view_state_2d: z.union([z.record(z.string(), z.unknown()), z.null()]),
@@ -131,6 +146,8 @@ export const BcfViewpointCreateSchema = z.object({
   field_of_height: z.union([z.number(), z.null()]).optional(),
   components: BcfComponentsSchema.optional(),
   clipping_planes: z.array(BcfClippingPlaneSchema).default([]),
+  xray: BcfXrayStateSchema.optional(),
+  measurements: z.array(BcfMeasurementSchema).default([]),
   is_2d: z.boolean().optional().default(false),
   view_state_2d: z
     .object({

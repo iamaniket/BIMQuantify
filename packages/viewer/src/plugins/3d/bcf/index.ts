@@ -1,10 +1,33 @@
 import * as THREE from 'three';
 
-import type { Plugin, ViewerContext, ItemId, Vec3 } from '../../../core/types.js';
+import type { Plugin, ViewerContext, ItemId, Vec3, CameraControls } from '../../../core/types.js';
 import type { ScreenshotCaptureOptions, ScreenshotResult } from '../screenshot/index.js';
 import type { SectionPlane } from '../section/index.js';
 
 const NAME = 'bcf' as const;
+
+/** Fallback orbit-target distance when no geometry is loaded to anchor against. */
+const FALLBACK_TARGET_DISTANCE = 10;
+
+/**
+ * Union bounding-box centre of every loaded model, or null if none have
+ * geometry. Mirrors the box resolution in `Viewer.frameModel`.
+ */
+function loadedModelsCenter(ctx: ViewerContext): THREE.Vector3 | null {
+  const union = new THREE.Box3();
+  let has = false;
+  for (const model of ctx.models().values()) {
+    let box = model.box;
+    if (!box || box.isEmpty()) {
+      box = new THREE.Box3().setFromObject(model.object);
+    }
+    if (!box.isEmpty()) {
+      union.union(box);
+      has = true;
+    }
+  }
+  return has ? union.getCenter(new THREE.Vector3()) : null;
+}
 
 export interface BcfViewpointData {
   camera: {
@@ -23,6 +46,23 @@ export interface BcfViewpointData {
     selection?: string[];
   };
   clippingPlanes?: Array<{ location: Vec3; direction: Vec3 }>;
+  /**
+   * X-ray state (non-standard BCF extension). Element refs are IFC GlobalIds,
+   * resolved against the GlobalId map like selection/visibility.
+   */
+  xray?: {
+    items: string[];
+    opacityOverrides?: Array<{ globalId: string; opacity: number }>;
+  };
+  /**
+   * Measurements (non-standard BCF extension). World-space points only — no
+   * element refs, so they need no GlobalId map.
+   */
+  measurements?: Array<{
+    type: string;
+    points: Vec3[];
+    height?: number;
+  }>;
 }
 
 export interface BcfPluginOptions {
@@ -102,7 +142,10 @@ export function bcfPlugin(options: BcfPluginOptions = {}): Plugin & BcfPluginAPI
 
     if (isOrtho) {
       const orthoCam = cam as THREE.OrthographicCamera;
-      data.camera.fieldOfHeight = orthoCam.top - orthoCam.bottom;
+      // Visible world height = raw frustum height divided by zoom, so the
+      // value survives a round-trip independent of the current zoom level.
+      const zoom = orthoCam.zoom || 1;
+      data.camera.fieldOfHeight = (orthoCam.top - orthoCam.bottom) / zoom;
     } else {
       const perspCam = cam as THREE.PerspectiveCamera;
       data.camera.fieldOfView = perspCam.fov;
@@ -140,6 +183,36 @@ export function bcfPlugin(options: BcfPluginOptions = {}): Plugin & BcfPluginAPI
         }));
     }
 
+    // X-ray (non-standard extension — element refs as GlobalIds)
+    const xrayed = (await ctxRef.commands.execute('xray.get')) as ItemId[] | undefined;
+    if (xrayed && xrayed.length > 0) {
+      const gids = itemsToGlobalIds(xrayed);
+      if (gids.length > 0) {
+        const overrides = (await ctxRef.commands.execute('xray.getOpacityOverrides')) as
+          | Array<{ item: ItemId; opacity: number }>
+          | undefined;
+        const opacityOverrides = (overrides ?? [])
+          .map((o) => ({ globalId: itemToGlobalId.get(itemKey(o.item)), opacity: o.opacity }))
+          .filter((o): o is { globalId: string; opacity: number } => o.globalId !== undefined);
+        data.xray = {
+          items: gids,
+          ...(opacityOverrides.length > 0 ? { opacityOverrides } : {}),
+        };
+      }
+    }
+
+    // Measurements (non-standard extension — world-space points only)
+    const measurements = (await ctxRef.commands.execute('measure.list')) as
+      | Array<{ type: string; points: Vec3[]; height?: number }>
+      | undefined;
+    if (measurements && measurements.length > 0) {
+      data.measurements = measurements.map((m) => ({
+        type: m.type,
+        points: m.points.map((p) => ({ x: p.x, y: p.y, z: p.z })),
+        ...(m.height !== undefined ? { height: m.height } : {}),
+      }));
+    }
+
     return data;
   };
 
@@ -149,16 +222,62 @@ export function bcfPlugin(options: BcfPluginOptions = {}): Plugin & BcfPluginAPI
     // 1. Camera
     const vp = data.camera.viewPoint;
     const d = data.camera.direction;
-    const dist = ctxRef.cameraControls.distance || 10;
-    const tx = vp.x + d.x * dist;
-    const ty = vp.y + d.y * dist;
-    const tz = vp.z + d.z * dist;
+    const up = data.camera.upVector;
+    const controls = ctxRef.cameraControls as CameraControls & {
+      updateCameraUp?: () => void;
+    };
+
+    // Apply the stored up vector before framing — camera-controls reads
+    // camera.up at setLookAt time to compute roll. Captured but previously
+    // discarded on restore.
+    ctxRef.camera.up.set(up.x, up.y, up.z);
+    controls.updateCameraUp?.();
+
+    // BCF stores only a normalised direction (no target/distance). Place the
+    // orbit target at the model's depth along the view ray: the rendered view
+    // is identical for any target on the ray (eye + direction unchanged), and
+    // anchoring at the model keeps `updateDynamicNearFar` (which keys off the
+    // camera-to-target distance) from clipping the model away.
+    const eye = new THREE.Vector3(vp.x, vp.y, vp.z);
+    const dir = new THREE.Vector3(d.x, d.y, d.z).normalize();
+    const center = loadedModelsCenter(ctxRef);
+    let dist = FALLBACK_TARGET_DISTANCE;
+    if (center) {
+      const along = center.clone().sub(eye).dot(dir);
+      if (along > 1e-3) dist = along;
+    }
+    const target = eye.clone().addScaledVector(dir, dist);
+
+    // Clear the residual focalOffset accumulated by truck (pan) and
+    // pivot-rotate orbit drags. setLookAt does NOT clear it, so without this
+    // the camera lands at the desired position + the stale offset — the
+    // distorted view seen after panning/orbiting. Mirrors core/framing.ts.
+    void controls.setFocalOffset(0, 0, 0, true);
 
     await ctxRef.cameraControls.setLookAt(
-      vp.x, vp.y, vp.z,
-      tx, ty, tz,
+      eye.x, eye.y, eye.z,
+      target.x, target.y, target.z,
       true,
     );
+
+    // Orthographic zoom: match the captured visible world height. (The viewer
+    // has no runtime perspective<->ortho switch, so this only takes effect
+    // when the active camera is already orthographic.)
+    if (
+      ctxRef.camera instanceof THREE.OrthographicCamera &&
+      data.camera.type === 'orthographic' &&
+      data.camera.fieldOfHeight !== undefined &&
+      data.camera.fieldOfHeight > 0
+    ) {
+      const orthoCam = ctxRef.camera;
+      const frustumHeight = orthoCam.top - orthoCam.bottom;
+      if (frustumHeight > 0) {
+        void ctxRef.cameraControls.zoomTo(
+          frustumHeight / data.camera.fieldOfHeight,
+          true,
+        );
+      }
+    }
 
     // 2. Selection
     if (data.components?.selection) {
@@ -197,6 +316,31 @@ export function bcfPlugin(options: BcfPluginOptions = {}): Plugin & BcfPluginAPI
       }
     }
 
+    // 5. X-ray — reset to the stored state (clear, then re-apply).
+    await ctxRef.commands.execute('xray.clear');
+    if (data.xray && data.xray.items.length > 0) {
+      const items = globalIdsToItems(data.xray.items);
+      if (items.length > 0) {
+        await ctxRef.commands.execute('xray.setEnabled', true);
+        await ctxRef.commands.execute('xray.set', items);
+        for (const ov of data.xray.opacityOverrides ?? []) {
+          const it = globalIdsToItems([ov.globalId]);
+          if (it.length > 0) {
+            await ctxRef.commands.execute('xray.setItemOpacity', {
+              items: it,
+              opacity: ov.opacity,
+            });
+          }
+        }
+      }
+    }
+
+    // 6. Measurements — reset to the stored state (clear, then recreate).
+    await ctxRef.commands.execute('measure.clear');
+    if (data.measurements && data.measurements.length > 0) {
+      await ctxRef.commands.execute('measure.restore', data.measurements);
+    }
+
     ctxRef.events.emit('viewpoint:change', {
       viewpoints: [],
     });
@@ -222,7 +366,7 @@ export function bcfPlugin(options: BcfPluginOptions = {}): Plugin & BcfPluginAPI
 
   const api: Plugin & BcfPluginAPI = {
     name: NAME,
-    dependencies: ['camera', 'selection', 'visibility', 'section', 'screenshot'],
+    dependencies: ['camera', 'selection', 'visibility', 'section', 'screenshot', 'xray', 'measurement'],
 
     captureViewpoint,
     applyViewpoint,

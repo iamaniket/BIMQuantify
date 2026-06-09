@@ -90,6 +90,28 @@ export function useBcfCapture(handle: ViewerHandle | null): {
           direction: cp.direction,
         }),
       ),
+      xray: vp.xray
+        ? {
+            items: (vp.xray.items ?? []) as string[],
+            opacity_overrides: (vp.xray.opacityOverrides ?? []).map(
+              (o: { globalId: string; opacity: number }) => ({
+                global_id: o.globalId,
+                opacity: o.opacity,
+              }),
+            ),
+          }
+        : undefined,
+      measurements: (vp.measurements ?? []).map(
+        (m: {
+          type: string;
+          points: Array<{ x: number; y: number; z: number }>;
+          height?: number;
+        }) => ({
+          type: m.type,
+          points: m.points,
+          height: m.height ?? null,
+        }),
+      ),
       is_2d: false,
     };
 

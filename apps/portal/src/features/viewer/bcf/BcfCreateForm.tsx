@@ -1,6 +1,5 @@
 'use client';
 
-import { ArrowLeft } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useState, type JSX,
@@ -14,23 +13,18 @@ import { uploadSnapshot } from '@/lib/api/bcf';
 import { tokenManager } from '@/lib/auth/tokenManager';
 import { useAuth } from '@/providers/AuthProvider';
 
-import { PanelButton } from '@/components/shared/viewer/shared/PanelButton';
-import { PanelButtonRow, PanelToolbar } from '@/components/shared/viewer/shared/PanelToolbar';
-
 import { useBcfCapture } from './useBcfCapture';
 import { useCreateBcfTopic } from './useCreateBcfTopic';
 
 type Props = {
   projectId: string;
   handle: ViewerHandle | null;
-  onCancel: () => void;
   onCreated: (topicId: string) => void;
 };
 
 export function BcfCreateForm({
   projectId,
   handle,
-  onCancel,
   onCreated,
 }: Props): JSX.Element {
   const t = useTranslations('viewer.bcf');
@@ -122,23 +116,7 @@ export function BcfCreateForm({
   );
 
   return (
-    <div className="flex h-full flex-col">
-      <PanelToolbar>
-        <PanelButtonRow>
-          <PanelButton
-            icon={<ArrowLeft className="h-3.5 w-3.5" />}
-            onClick={onCancel}
-          >
-            {t('cancel')}
-          </PanelButton>
-        </PanelButtonRow>
-      </PanelToolbar>
-
-      <form
-        onSubmit={handleSubmit}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-      >
-        <div className="flex flex-col gap-3 px-3.5 py-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 py-1">
           {/* Title */}
           <div>
             <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
@@ -232,22 +210,18 @@ export function BcfCreateForm({
               {t('captureCurrentView')}
             </span>
           </label>
-        </div>
 
         {/* Submit */}
-        <div className="mt-auto border-t border-border px-3.5 py-2.5">
-          <button
-            type="submit"
-            disabled={title.trim() === '' || isSubmitting}
-            className={cn(
-              'h-9 w-full rounded bg-primary font-sans text-body3 font-medium text-primary-foreground transition-colors',
-              'hover:bg-primary-hover disabled:opacity-50',
-            )}
-          >
-            {isSubmitting ? t('creating') : t('createIssue')}
-          </button>
-        </div>
-      </form>
-    </div>
+        <button
+          type="submit"
+          disabled={title.trim() === '' || isSubmitting}
+          className={cn(
+            'h-9 w-full rounded bg-primary font-sans text-body3 font-medium text-primary-foreground transition-colors',
+            'hover:bg-primary-hover disabled:opacity-50',
+          )}
+        >
+          {isSubmitting ? t('creating') : t('createIssue')}
+        </button>
+    </form>
   );
 }

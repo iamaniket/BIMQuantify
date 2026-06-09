@@ -753,6 +753,78 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     ctxRef.events.emit('measurement:complete', { id, type: 'volume', value: volume });
   };
 
+  // ---- restore (recreate a persisted measurement, no user interaction) ----
+
+  const polygonNormal = (pts: THREE.Vector3[]): THREE.Vector3 => {
+    // Newell's method — robust for arbitrary (possibly non-planar) polygons.
+    const n = new THREE.Vector3();
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i]!;
+      const b = pts[(i + 1) % pts.length]!;
+      n.x += (a.y - b.y) * (a.z + b.z);
+      n.y += (a.z - b.z) * (a.x + b.x);
+      n.z += (a.x - b.x) * (a.y + b.y);
+    }
+    return n.lengthSq() < 1e-12 ? new THREE.Vector3(0, 1, 0) : n.normalize();
+  };
+
+  const restoreMeasurement = (m: {
+    type: MeasurementMode;
+    points: Array<{ x: number; y: number; z: number }>;
+    height?: number | null;
+  }): void => {
+    if (!ctxRef) return;
+    const pts = m.points.map((p) => new THREE.Vector3(p.x, p.y, p.z));
+
+    let group: THREE.Group | null = null;
+    let value = 0;
+    let unit = '';
+    let height: number | undefined;
+
+    if (m.type === 'distance' && pts.length >= 2) {
+      group = buildDistanceGroup(pts[0]!, pts[1]!);
+      value = pts[0]!.distanceTo(pts[1]!);
+      unit = 'm';
+    } else if (m.type === 'angle' && pts.length >= 3) {
+      const res = buildAngleGroup(pts[0]!, pts[1]!, pts[2]!);
+      if (res) {
+        group = res.group;
+        value = res.degrees;
+        unit = 'deg';
+      }
+    } else if (m.type === 'area' && pts.length >= 3) {
+      group = buildAreaGroup(pts);
+      value = computePolygonArea(pts);
+      unit = 'm²';
+    } else if (m.type === 'volume' && pts.length >= 3) {
+      // The base-plane normal isn't persisted; derive it. The extrusion
+      // direction may flip vs the original, but the value and base are exact.
+      const h = m.height ?? 0;
+      group = buildVolumeGroup(pts, h, polygonNormal(pts));
+      value = Math.abs(computePolygonArea(pts) * h);
+      unit = 'm³';
+      height = h;
+    }
+
+    if (!group) return;
+    const id = `measure-${String(++nextId)}`;
+    group.name = `measurement-${id}`;
+    ctxRef.scene.add(group);
+    sceneGroups.set(id, group);
+    startCss2dLoop();
+
+    completed.set(id, {
+      id,
+      type: m.type,
+      value,
+      unit,
+      visible: true,
+      ...(height !== undefined ? { height } : {}),
+      points: m.points.map((p) => ({ x: p.x, y: p.y, z: p.z })),
+    });
+    emitChange();
+  };
+
   // ---- rubber-band preview helpers ----
 
   const clearRubberBand = (): void => {
@@ -1599,6 +1671,20 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       ctx.commands.register('measure.list', () => [...completed.values()], {
         title: 'List measurements',
       });
+      ctx.commands.register('measure.restore', (args: unknown) => {
+        const list = Array.isArray(args) ? args : args ? [args] : [];
+        for (const m of list) {
+          if (m && typeof m === 'object') {
+            restoreMeasurement(
+              m as {
+                type: MeasurementMode;
+                points: Array<{ x: number; y: number; z: number }>;
+                height?: number | null;
+              },
+            );
+          }
+        }
+      }, { title: 'Restore persisted measurements' });
       ctx.commands.register('measure.isActive', () => currentMode !== null, {
         title: 'Check measurement mode',
       });

@@ -126,6 +126,66 @@ async def test_create_topic_with_clipping_planes(client: AsyncClient, org_user: 
     assert planes[0]["location"]["z"] == 5
 
 
+async def test_create_topic_with_xray_and_measurements(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    vp = _viewpoint(
+        xray={
+            "items": ["2O2Fr$t4X7Zf8NOew3FNr2"],
+            "opacity_overrides": [
+                {"global_id": "2O2Fr$t4X7Zf8NOew3FNr2", "opacity": 0.3},
+            ],
+        },
+        measurements=[
+            {
+                "type": "distance",
+                "points": [
+                    {"x": 0.0, "y": 0.0, "z": 0.0},
+                    {"x": 3.0, "y": 0.0, "z": 0.0},
+                ],
+            },
+            {
+                "type": "volume",
+                "points": [
+                    {"x": 0.0, "y": 0.0, "z": 0.0},
+                    {"x": 2.0, "y": 0.0, "z": 0.0},
+                    {"x": 2.0, "y": 0.0, "z": 2.0},
+                ],
+                "height": 3.0,
+            },
+        ],
+    )
+    resp = await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(viewpoint=vp),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    vp_read = resp.json()["viewpoints"][0]
+
+    assert vp_read["xray"]["items"] == ["2O2Fr$t4X7Zf8NOew3FNr2"]
+    assert vp_read["xray"]["opacity_overrides"][0]["opacity"] == 0.3
+    assert len(vp_read["measurements"]) == 2
+    assert vp_read["measurements"][0]["type"] == "distance"
+    assert vp_read["measurements"][1]["height"] == 3.0
+
+
+async def test_create_topic_without_extensions_reads_null(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    resp = await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(viewpoint=_viewpoint()),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    vp_read = resp.json()["viewpoints"][0]
+    assert vp_read["xray"] is None
+    assert vp_read["measurements"] is None
+
+
 # ---------------------------------------------------------------------------
 # List / Get
 # ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Download, Flag, Plus, Search, Upload,
+  Download, Eye, Flag, Plus, Search, Trash2, Upload,
 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
@@ -9,31 +9,46 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { Select, SplitButton, type SplitButtonItem } from '@bimstitch/ui';
+import {
+  Button,
+  ConfirmDialog,
+  DetailCard, DetailCardBody, DetailCardFooter, DetailCardRow,
+  Select, SplitButton, type SplitButtonItem,
+} from '@bimstitch/ui';
+import type { ViewerHandle } from '@bimstitch/viewer';
 
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { PanelToolbar } from '@/components/shared/viewer/shared/PanelToolbar';
+import { getBcfTopic } from '@/lib/api/bcf';
+import { useAuth } from '@/providers/AuthProvider';
 
+import { BcfCreateForm } from './BcfCreateForm';
 import { BcfTopicCard } from './BcfTopicCard';
+import { BcfTopicDetail } from './BcfTopicDetail';
+import { buildBcfViewpointPayload } from './buildBcfViewpointPayload';
 import { useBcfTopics } from './useBcfTopics';
+import { useDeleteBcfTopic } from './useDeleteBcfTopic';
 import { useExportBcf } from './useExportBcf';
 import { useImportBcf } from './useImportBcf';
 
 type Props = {
   projectId: string;
-  onSelect: (topicId: string) => void;
-  onCreateNew: () => void;
+  handle: ViewerHandle | null;
 };
 
 export function BcfTopicList({
   projectId,
-  onSelect,
-  onCreateNew,
+  handle,
 }: Props): JSX.Element {
   const t = useTranslations('viewer.bcf');
+  const { tokens } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null);
+  const [createExpanded, setCreateExpanded] = useState(false);
+  const [deleteTopicId, setDeleteTopicId] = useState<string | null>(null);
 
   const { data: topics, isLoading } = useBcfTopics(projectId, {
     search: search || undefined,
@@ -42,6 +57,38 @@ export function BcfTopicList({
 
   const importMutation = useImportBcf(projectId);
   const exportMutation = useExportBcf(projectId);
+  const deleteMutation = useDeleteBcfTopic(projectId);
+
+  const toggleTopic = useCallback((id: string) => {
+    setCreateExpanded(false);
+    setExpandedTopicId((prev) => (prev === id ? null : id));
+  }, []);
+
+  const toggleCreate = useCallback(() => {
+    setExpandedTopicId(null);
+    setCreateExpanded((prev) => !prev);
+  }, []);
+
+  const handleRestoreView = useCallback(async (topicId: string) => {
+    if (handle === null || tokens === null) return;
+    const topic = await getBcfTopic(tokens.access_token, projectId, topicId);
+    const vp = topic.viewpoints[0];
+    if (vp === undefined) return;
+    const vpData = buildBcfViewpointPayload(vp);
+    await handle.commands.execute('bcf.applyViewpoint', vpData);
+  }, [handle, tokens, projectId]);
+
+  const handleDelete = useCallback(async () => {
+    if (deleteTopicId === null) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTopicId);
+      toast.success(t('deleteSuccess'));
+      setExpandedTopicId(null);
+      setDeleteTopicId(null);
+    } catch {
+      // useAuthMutation already toasts
+    }
+  }, [deleteMutation, deleteTopicId, t]);
 
   const handleImport = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,7 +102,6 @@ export function BcfTopicList({
       } catch {
         // useAuthMutation already toasts the error
       }
-      // Reset input so the same file can be re-imported
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -123,7 +169,7 @@ export function BcfTopicList({
           <SplitButton
             label={t('createIssue')}
             icon={<Plus className="h-3.5 w-3.5" />}
-            onClick={onCreateNew}
+            onClick={toggleCreate}
             items={splitItems}
             menuLabel={t('moreActions')}
             variant="primary"
@@ -142,8 +188,23 @@ export function BcfTopicList({
         onChange={handleImport}
       />
 
-      {/* Topic list */}
+      {/* Scrollable list */}
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* Inline create form — toggled by the toolbar button */}
+        {createExpanded && (
+          <div className="border-b border-border px-3 py-3">
+            <BcfCreateForm
+              projectId={projectId}
+              handle={handle}
+              onCreated={(topicId) => {
+                setCreateExpanded(false);
+                setExpandedTopicId(topicId);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Topic rows */}
         {isLoading && (
           <div className="flex items-center justify-center py-8">
             <p className="text-caption text-foreground-tertiary">
@@ -160,13 +221,68 @@ export function BcfTopicList({
         {!isLoading &&
           topics !== undefined &&
           topics.map((topic) => (
-            <BcfTopicCard
+            <DetailCard
               key={topic.id}
-              topic={topic}
-              onClick={() => { onSelect(topic.id); }}
-            />
+              expanded={expandedTopicId === topic.id}
+              onToggle={() => { toggleTopic(topic.id); }}
+            >
+              <DetailCardRow
+                actions={
+                  topic.snapshot_url != null ? (
+                    <button
+                      type="button"
+                      title={t('restoreView')}
+                      onClick={(e) => { e.stopPropagation(); void handleRestoreView(topic.id); }}
+                      className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  ) : undefined
+                }
+              >
+                <BcfTopicCard topic={topic} />
+              </DetailCardRow>
+              <DetailCardBody style={{ paddingLeft: 14 }}>
+                <BcfTopicDetail
+                  projectId={projectId}
+                  topicId={topic.id}
+                />
+              </DetailCardBody>
+              <DetailCardFooter className="justify-between">
+                {topic.snapshot_url != null ? (
+                  <Button variant="ghost" size="sm" onClick={() => { void handleRestoreView(topic.id); }}>
+                    <Eye className="h-3.5 w-3.5" />
+                    {t('restoreView')}
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setDeleteTopicId(topic.id); }}
+                  className="text-error hover:text-error"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {t('deleteIssue')}
+                </Button>
+              </DetailCardFooter>
+            </DetailCard>
           ))}
       </div>
+
+      <ConfirmDialog
+        open={deleteTopicId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTopicId(null); }}
+        title={t('deleteConfirmTitle')}
+        description={t('deleteConfirmDescription')}
+        confirmLabel={t('deleteConfirmAction')}
+        cancelLabel={t('cancel')}
+        variant="destructive"
+        isPending={deleteMutation.isPending}
+        errorMessage={null}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
