@@ -184,17 +184,6 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
   });
 
-  // Quiesce the page before per-test fixture teardown. Under `next dev` the page
-  // holds a permanent HMR/Fast-Refresh connection and never goes network-idle;
-  // in Playwright --ui (which REUSES the browser context across tests) the
-  // reuse-disconnect waits on that busy page and stalls, surfacing as a
-  // "Test timeout" AFTER the body has already passed. Navigating to about:blank
-  // unloads the dev page (closing the HMR connection) so teardown completes.
-  // Harmless headless/CI: every test starts with its own navigation/login.
-  test.afterEach(async ({ page }) => {
-    await page.goto('about:blank').catch(() => undefined);
-  });
-
   // =========================================================================
   // SUITE A — Super admin
   // =========================================================================
