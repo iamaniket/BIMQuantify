@@ -80,6 +80,12 @@ export default defineConfig({
       url: 'http://localhost:3002',
       env: {
         NEXT_PUBLIC_API_URL: e2eApiUrl,
+        /* Disable the post-login notifications WebSocket under E2E. Its
+         * unbounded reconnect loop keeps the dashboard page from ever going
+         * idle, which stalls Playwright --ui screencast/trace finalization and
+         * surfaces as a 120s test timeout (multitenant A1+). No e2e test
+         * asserts on live notifications. See src/hooks/useNotificationSocket.ts. */
+        NEXT_PUBLIC_E2E: '1',
       },
       reuseExistingServer: true,
       timeout: 120_000,

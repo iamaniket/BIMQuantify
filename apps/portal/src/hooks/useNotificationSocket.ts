@@ -24,6 +24,15 @@ export function useNotificationSocket(accessToken: string | null): void {
   }, [qc]);
 
   useEffect(() => {
+    // E2E: keep the notifications WebSocket closed. Its unbounded reconnect
+    // loop keeps the post-login dashboard page perpetually active, which stalls
+    // Playwright --ui screencast/trace finalization and surfaces as a spurious
+    // 120s test timeout (e.g. multitenant A1+). No e2e test asserts on live
+    // notifications; the HTTP /notifications endpoints still work. Opt back in
+    // per-case by not setting NEXT_PUBLIC_E2E for that run.
+    if (env.NEXT_PUBLIC_E2E === '1') {
+      return undefined;
+    }
     if (accessToken === null) {
       shouldReconnect.current = false;
       reconnectAttempt.current = 0;
