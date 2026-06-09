@@ -1,3 +1,5 @@
+'use client';
+
 import type { JSX } from 'react';
 
 import { Skeleton, Spinner } from '@bimstitch/ui';

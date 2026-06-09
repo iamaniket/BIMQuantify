@@ -42,6 +42,7 @@ import { markerPlugin } from './plugins/3d/marker/index.js';
 import { entityMarkerPlugin } from './plugins/3d/entity-marker/index.js';
 import { gridPlugin } from './plugins/3d/grid/index.js';
 import { screenshotPlugin } from './plugins/3d/screenshot/index.js';
+import { bcfPlugin } from './plugins/3d/bcf/index.js';
 import { colorCodingPlugin } from './plugins/3d/color-coding/index.js';
 import { exploderPlugin } from './plugins/3d/exploder/index.js';
 import type { IfcViewerProps, ViewerHandle } from './types.js';
@@ -148,6 +149,7 @@ function IfcViewerImpl(
       entityMarkerPlugin(),
       gridPlugin(),
       screenshotPlugin(),
+      bcfPlugin(),
       colorCodingPlugin(),
       exploderPlugin(),
       // Keyboard-shortcuts must install LAST among built-ins so it can

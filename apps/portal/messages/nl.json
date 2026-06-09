@@ -2618,7 +2618,65 @@
       "titleSection": "Doorsneden",
       "titlePages": "Pagina's",
       "titleDrawingInfo": "Tekeninginfo",
+      "titleBcf": "Issues",
       "comingSoon": "Binnenkort beschikbaar"
+    },
+    "bcf": {
+      "loading": "Issues laden…",
+      "emptyState": "Nog geen BCF-issues. Maak er een aan om te beginnen.",
+      "noSearchResults": "Geen issues gevonden voor je zoekopdracht.",
+      "searchPlaceholder": "Zoek issues…",
+      "createIssue": "Nieuw issue",
+      "moreActions": "Meer acties",
+      "import": "Importeren",
+      "export": "Exporteren",
+      "importSuccess": "{count} issue(s) succesvol geïmporteerd.",
+      "createSuccess": "Issue aangemaakt.",
+      "deleteSuccess": "Issue verwijderd.",
+      "snapshotUploadFailed": "Issue aangemaakt, maar de schermafbeelding kon niet worden geüpload.",
+      "backToList": "Terug",
+      "cancel": "Annuleren",
+      "creating": "Aanmaken…",
+      "send": "Verstuur",
+      "titleLabel": "Titel",
+      "titlePlaceholder": "bijv. Ontbrekende brandwering bij vloerdoorvoering",
+      "descriptionLabel": "Omschrijving",
+      "descriptionPlaceholder": "Beschrijf het issue…",
+      "typeLabel": "Type",
+      "statusLabel": "Status",
+      "priorityLabel": "Prioriteit",
+      "assignedTo": "Toegewezen aan",
+      "captureCurrentView": "Huidig beeld vastleggen",
+      "restoreView": "Weergave herstellen",
+      "snapshotAlt": "Schermafbeelding van issue-weergave",
+      "comments": "Opmerkingen",
+      "noComments": "Nog geen opmerkingen.",
+      "addCommentPlaceholder": "Voeg een opmerking toe…",
+      "deleteConfirmTitle": "Issue verwijderen",
+      "deleteConfirmDescription": "Weet je zeker dat je dit issue wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "deleteConfirmAction": "Verwijderen",
+      "type": {
+        "issue": "Issue",
+        "warning": "Waarschuwing",
+        "request": "Verzoek",
+        "fault": "Fout",
+        "inquiry": "Vraag",
+        "remark": "Opmerking"
+      },
+      "filter": {
+        "allStatuses": "Alle statussen"
+      },
+      "status": {
+        "open": "Open",
+        "in_progress": "In uitvoering",
+        "closed": "Gesloten"
+      },
+      "priority": {
+        "none": "Geen prioriteit",
+        "high": "Hoog",
+        "medium": "Gemiddeld",
+        "low": "Laag"
+      }
     },
     "drawingInfo": {
       "loading": "Tekeninginfo laden…",

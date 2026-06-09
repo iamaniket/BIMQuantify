@@ -26,7 +26,7 @@ export default function ProjectsPage(): JSX.Element {
     <PageShell
       hero={<ProjectsHero projects={projects} certWarning={certWarning} />}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-5">
         {certWarning.total > 0 && (
           <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-warning bg-warning/10 px-4 py-3 xl:hidden">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />

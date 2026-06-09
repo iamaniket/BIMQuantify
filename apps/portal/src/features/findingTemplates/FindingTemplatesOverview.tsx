@@ -5,7 +5,6 @@ import {
   CalendarClock,
   CheckCircle,
   FileText,
-  Info,
   LayoutGrid,
   ListFilter,
   Pencil,
@@ -101,109 +100,55 @@ export function FindingTemplatesOverview({ templates }: Props): JSX.Element {
         </div>
       </div>
 
-      {/* Info card */}
-      <Card>
-        <CardBody>
-          <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 shrink-0 text-primary" />
-            <div className="flex flex-col gap-1">
-              <p className="font-sans text-body2 font-medium text-foreground">{t('introTitle')}</p>
-              <p className="font-sans text-body3 text-foreground-secondary">{t('introBody')}</p>
-            </div>
+      <div className="flex flex-col gap-3">
+        {templates.length > 0 && (
+          <div className="grid gap-3">
+            {templates.map((tpl) => (
+              <Card key={tpl.id}>
+                <CardBody>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-medium text-foreground">{tpl.name}</span>
+                    {tpl.is_default && (
+                      <Badge variant="success" size="sm">
+                        {t('defaultBadge')}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-1 font-sans text-caption text-foreground-tertiary">
+                    {t('fieldCount', { count: tpl.fields.length })}
+                  </p>
+                </CardBody>
+              </Card>
+            ))}
           </div>
-        </CardBody>
-      </Card>
+        )}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        {/* Template cards + field types */}
-        <div className="flex flex-col gap-3">
-          {templates.length > 0 && (
-            <div className="grid gap-3">
-              {templates.map((tpl) => (
-                <Card key={tpl.id}>
-                  <CardBody>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-medium text-foreground">{tpl.name}</span>
-                      {tpl.is_default && (
-                        <Badge variant="success" size="sm">
-                          {t('defaultBadge')}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="mt-1 font-sans text-caption text-foreground-tertiary">
-                      {t('fieldCount', { count: tpl.fields.length })}
-                    </p>
-                  </CardBody>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Field types in use */}
-          {usedTypes.length > 0 && (
-            <Card>
-              <CardHeader>
-                <h3 className="text-body2 font-bold">{t('fieldTypesTitle')}</h3>
-              </CardHeader>
-              <CardBody className="space-y-0 p-0">
-                <div className="divide-y divide-border">
-                  {usedTypes.map((type) => {
-                    const Icon = FIELD_TYPE_ICON[type];
-                    return (
-                      <div key={type} className="flex items-center justify-between px-5 py-2.5">
-                        <div className="flex items-center gap-2.5 text-body3 font-medium text-foreground-secondary">
-                          <Icon className="h-3.5 w-3.5 text-foreground-tertiary" />
-                          {t(`fieldType_${type}`)}
-                        </div>
-                        <span className="font-sans text-body3 tabular-nums text-foreground-tertiary">
-                          {fieldTypeCounts[type]}
-                        </span>
+        {/* Field types in use */}
+        {usedTypes.length > 0 && (
+          <Card>
+            <CardHeader>
+              <h3 className="text-body2 font-bold">{t('fieldTypesTitle')}</h3>
+            </CardHeader>
+            <CardBody className="space-y-0 p-0">
+              <div className="divide-y divide-border">
+                {usedTypes.map((type) => {
+                  const Icon = FIELD_TYPE_ICON[type];
+                  return (
+                    <div key={type} className="flex items-center justify-between px-5 py-2.5">
+                      <div className="flex items-center gap-2.5 text-body3 font-medium text-foreground-secondary">
+                        <Icon className="h-3.5 w-3.5 text-foreground-tertiary" />
+                        {t(`fieldType_${type}`)}
                       </div>
-                    );
-                  })}
-                </div>
-              </CardBody>
-            </Card>
-          )}
-        </div>
-
-        {/* Feature tips */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-body2 font-bold">{t('tipsTitle')}</h3>
-          </CardHeader>
-          <CardBody className="space-y-0 p-0">
-            <div className="divide-y divide-border">
-              <div className="px-5 py-3.5">
-                <div className="flex items-center gap-2 text-body3 font-semibold text-foreground">
-                  <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
-                  {t('tipToggleBuiltins')}
-                </div>
-                <p className="mt-0.5 text-caption leading-relaxed text-foreground-tertiary">
-                  {t('tipToggleBuiltinsDesc')}
-                </p>
+                      <span className="font-sans text-body3 tabular-nums text-foreground-tertiary">
+                        {fieldTypeCounts[type]}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="px-5 py-3.5">
-                <div className="flex items-center gap-2 text-body3 font-semibold text-foreground">
-                  <Pencil className="h-3.5 w-3.5 text-primary" />
-                  {t('tipCustomFields')}
-                </div>
-                <p className="mt-0.5 text-caption leading-relaxed text-foreground-tertiary">
-                  {t('tipCustomFieldsDesc')}
-                </p>
-              </div>
-              <div className="px-5 py-3.5">
-                <div className="flex items-center gap-2 text-body3 font-semibold text-foreground">
-                  <Award className="h-3.5 w-3.5 text-primary" />
-                  {t('tipSetDefault')}
-                </div>
-                <p className="mt-0.5 text-caption leading-relaxed text-foreground-tertiary">
-                  {t('tipSetDefaultDesc')}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+            </CardBody>
+          </Card>
+        )}
       </div>
     </div>
   );

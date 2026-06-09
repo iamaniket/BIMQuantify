@@ -34,6 +34,7 @@ import { Toolbar } from '@/components/shared/viewer/3d/Toolbar';
 import { MeasurementPanel, MeasurementHeaderActions } from '@/components/shared/viewer/3d/measurement/MeasurementPanel';
 import { PdfMeasurementPanel } from '@/components/shared/viewer/2d/measurement/MeasurementPanel';
 import { SectionPanel } from '@/components/shared/viewer/3d/section/SectionPanel';
+import { BcfPanel } from '@/features/viewer/bcf/BcfPanel';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
@@ -657,6 +658,12 @@ export default function ViewerPage(): JSX.Element {
                 <DrawingInfoBody
                   metadata={drawingMetadata}
                   isLoading={isLoadingDrawingMetadata}
+                />
+              ) : undefined}
+              bcfContent={isIfc ? (
+                <BcfPanel
+                  projectId={projectId}
+                  handle={viewerHandleRef.current}
                 />
               ) : undefined}
               headerActions={isIfc ? {

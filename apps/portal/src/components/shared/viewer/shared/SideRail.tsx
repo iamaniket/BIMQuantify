@@ -1,6 +1,6 @@
 'use client';
 
-import { Info, ListTree, Ruler, Scan } from '@bimstitch/ui/icons';
+import { Flag, Info, ListTree, Ruler, Scan } from '@bimstitch/ui/icons';
 import { type AppIcon as LucideIcon } from '@bimstitch/ui';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
@@ -14,7 +14,8 @@ export type PanelId =
   | 'inspector'
   | 'measure'
   | 'section'
-  | 'drawingInfo';
+  | 'drawingInfo'
+  | 'bcf';
 
 type SideRailProps = {
   format: ViewerFormat;
@@ -33,6 +34,7 @@ const IFC_BUTTONS: RailButton[] = [
   { id: 'explorer', labelKey: 'titleExplorer', icon: ListTree },
   { id: 'measure', labelKey: 'titleMeasure', icon: Ruler },
   { id: 'section', labelKey: 'titleSection', icon: Scan },
+  { id: 'bcf', labelKey: 'titleBcf', icon: Flag },
 ];
 
 const PDF_BUTTONS: RailButton[] = [

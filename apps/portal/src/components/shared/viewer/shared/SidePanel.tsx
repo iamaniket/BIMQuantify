@@ -18,6 +18,7 @@ const PANEL_TITLE_KEYS: Record<PanelId, string> = {
   measure: 'titleMeasure',
   section: 'titleSection',
   drawingInfo: 'titleDrawingInfo',
+  bcf: 'titleBcf',
 };
 
 type SidePanelProps = {
@@ -27,6 +28,7 @@ type SidePanelProps = {
   measureContent?: ReactNode | undefined;
   sectionContent?: ReactNode | undefined;
   drawingInfoContent?: ReactNode | undefined;
+  bcfContent?: ReactNode | undefined;
   headerActions?: Partial<Record<PanelId, ReactNode>> | undefined;
   headerExpanded?: boolean | undefined;
   onHeaderToggle?: (() => void) | undefined;
@@ -57,6 +59,7 @@ export function SidePanel({
   measureContent,
   sectionContent,
   drawingInfoContent,
+  bcfContent,
   headerActions,
   headerExpanded,
   onHeaderToggle,
@@ -109,41 +112,45 @@ export function SidePanel({
         {activePanel !== null && (
           <>
             {onHeaderToggle ? (
-              <button
-                type="button"
-                onClick={onHeaderToggle}
-                className="flex h-10 w-full shrink-0 cursor-pointer select-none items-center gap-2 border-b border-border px-3.5 text-left transition-colors hover:brightness-110"
+              <div
+                className="flex h-10 w-full shrink-0 select-none items-center gap-2 border-b border-border px-3.5"
                 style={{
                   background: 'linear-gradient(135deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
                 }}
               >
-                <span
-                  aria-hidden="true"
-                  className="inline-grid h-3.5 w-3.5 shrink-0 place-items-center text-white/70 transition-transform duration-[120ms]"
-                  style={{ transform: headerExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                <button
+                  type="button"
+                  onClick={onHeaderToggle}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left transition-colors hover:brightness-110"
                 >
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 8 8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <span
+                    aria-hidden="true"
+                    className="inline-grid h-3.5 w-3.5 shrink-0 place-items-center text-white/70 transition-transform duration-[120ms]"
+                    style={{ transform: headerExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
                   >
-                    <polyline points="2.5,1.5 5.5,4 2.5,6.5" />
-                  </svg>
-                </span>
-                <Eyebrow as="span" className="flex-1 text-white">
-                  {t(PANEL_TITLE_KEYS[activePanel])}
-                </Eyebrow>
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 8 8"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="2.5,1.5 5.5,4 2.5,6.5" />
+                    </svg>
+                  </span>
+                  <Eyebrow as="span" className="flex-1 text-white">
+                    {t(PANEL_TITLE_KEYS[activePanel])}
+                  </Eyebrow>
+                </button>
                 {headerActions?.[activePanel] && (
                   <div className="flex items-center gap-0.5">
                     {headerActions[activePanel]}
                   </div>
                 )}
-              </button>
+              </div>
             ) : (
               <div
                 className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3.5"
@@ -167,6 +174,7 @@ export function SidePanel({
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
               {activePanel === 'drawingInfo' && drawingInfoContent}
+              {activePanel === 'bcf' && bcfContent}
             </div>
           </>
         )}
