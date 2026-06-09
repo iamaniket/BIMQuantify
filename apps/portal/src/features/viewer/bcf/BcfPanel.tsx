@@ -2,13 +2,16 @@
 
 import { Component, type ErrorInfo, type ReactNode, type JSX } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
-
 import { BcfTopicList } from './BcfTopicList';
+import type { BcfController } from './useBcfController';
 
 type Props = {
   projectId: string;
-  handle: ViewerHandle | null;
+  controller: BcfController;
+  createNonce?: number | undefined;
+  onCreateClose?: ((saved: boolean) => void) | undefined;
+  openTopicId?: string | undefined;
+  openTopicNonce?: number | undefined;
 };
 
 class BcfErrorBoundary extends Component<
@@ -50,10 +53,24 @@ class BcfErrorBoundary extends Component<
   }
 }
 
-export function BcfPanel({ projectId, handle }: Props): JSX.Element {
+export function BcfPanel({
+  projectId,
+  controller,
+  createNonce,
+  onCreateClose,
+  openTopicId,
+  openTopicNonce,
+}: Props): JSX.Element {
   return (
     <BcfErrorBoundary onReset={() => {}}>
-      <BcfTopicList projectId={projectId} handle={handle} />
+      <BcfTopicList
+        projectId={projectId}
+        controller={controller}
+        createNonce={createNonce}
+        onCreateClose={onCreateClose}
+        openTopicId={openTopicId}
+        openTopicNonce={openTopicNonce}
+      />
     </BcfErrorBoundary>
   );
 }

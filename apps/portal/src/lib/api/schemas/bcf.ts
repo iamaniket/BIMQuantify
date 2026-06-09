@@ -34,6 +34,19 @@ export const BcfMeasurementSchema = z.object({
   height: z.union([z.number(), z.null()]).optional(),
 });
 
+// 2D PDF markup annotation — mirrors the viewer's `Annotation2D` type. Stored
+// inside a 2D viewpoint's `view_state_2d.annotations`.
+export const Annotation2DSchema = z.object({
+  id: z.string(),
+  tool: z.enum(['rect', 'arrow', 'cloud', 'freehand', 'text']),
+  points: z.array(z.tuple([z.number(), z.number()])),
+  text: z.string().optional(),
+  color: z.string(),
+  strokeWidth: z.number(),
+});
+
+export type Annotation2D = z.infer<typeof Annotation2DSchema>;
+
 export const BcfViewpointReadSchema = z.object({
   id: z.string().uuid(),
   guid: z.string(),
@@ -156,6 +169,8 @@ export const BcfViewpointCreateSchema = z.object({
       zoom: z.number().default(1),
       visible_layers: z.array(z.string()).default([]),
       file_type: z.string().default('dxf'),
+      page: z.number().int().optional(),
+      annotations: z.array(Annotation2DSchema).default([]),
     })
     .optional(),
   linked_file_id: z.union([z.string().uuid(), z.null()]).optional(),
@@ -225,3 +240,19 @@ export const BcfSnapshotUploadResponseSchema = z.object({
 });
 
 export type BcfSnapshotUploadResponse = z.infer<typeof BcfSnapshotUploadResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// 2D markup projection (GET /bcf-topics/markup-2d?file_id=)
+// ---------------------------------------------------------------------------
+
+export const BcfMarkup2DItemSchema = z.object({
+  topic_id: z.string().uuid(),
+  title: z.string(),
+  topic_status: z.string(),
+  page: z.union([z.number(), z.null()]),
+  annotations: z.array(Annotation2DSchema),
+});
+
+export type BcfMarkup2DItem = z.infer<typeof BcfMarkup2DItemSchema>;
+
+export const BcfMarkup2DListSchema = z.array(BcfMarkup2DItemSchema);

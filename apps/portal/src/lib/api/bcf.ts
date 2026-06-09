@@ -2,12 +2,14 @@ import { apiClient, triggerBrowserDownload } from './client';
 import {
   BcfCommentReadSchema,
   BcfImportResponseSchema,
+  BcfMarkup2DListSchema,
   BcfSnapshotUploadResponseSchema,
   BcfTopicListSchema,
   BcfTopicReadSchema,
   type BcfCommentCreateInput,
   type BcfCommentRead,
   type BcfImportResponse,
+  type BcfMarkup2DItem,
   type BcfSnapshotUploadResponse,
   type BcfTopicCreateInput,
   type BcfTopicList,
@@ -149,6 +151,23 @@ export async function addBcfViewpoint(
     `${basePath(projectId)}/${topicId}/viewpoints`,
     input,
     BcfTopicReadSchema,
+    accessToken,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 2D markup (PDF annotations)
+// ---------------------------------------------------------------------------
+
+/** All 2D markup topics linked to a given PDF file, for rendering on the page. */
+export async function listBcfMarkup2d(
+  accessToken: string,
+  projectId: string,
+  fileId: string,
+): Promise<BcfMarkup2DItem[]> {
+  return apiClient.get<BcfMarkup2DItem[]>(
+    `${basePath(projectId)}/markup-2d?file_id=${fileId}`,
+    BcfMarkup2DListSchema,
     accessToken,
   );
 }

@@ -105,7 +105,7 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
   const count = totalFromPages(query.data);
 
   return (
-    <div className="relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
       <BlueprintTexture />
 
       {/* Header — eyebrow/title left, two dropdowns right */}

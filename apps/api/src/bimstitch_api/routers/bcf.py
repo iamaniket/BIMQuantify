@@ -50,6 +50,7 @@ from bimstitch_api.schemas.bcf import (
     BcfCommentCreate,
     BcfCommentRead,
     BcfImportResponse,
+    BcfMarkup2DItem,
     BcfTopicCreate,
     BcfTopicRead,
     BcfTopicSummary,
@@ -670,6 +671,49 @@ async def export_bcf(
             "Content-Length": str(len(archive_bytes)),
         },
     )
+
+
+@router.get("/markup-2d", response_model=list[BcfMarkup2DItem])
+async def list_markup_2d(
+    project_id: UUID,
+    file_id: UUID = Query(...),
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> Any:
+    """Return 2D markup for a PDF file, one entry per linked 2D-viewpoint topic.
+
+    Placed before ``/{topic_id}`` so "markup-2d" is not parsed as a UUID.
+    """
+    project = await _load_project_or_404(session, project_id)
+    await _require_project_read_access(session, project.id, user, active_org_id)
+
+    stmt = (
+        select(BcfTopic, BcfViewpoint)
+        .join(BcfViewpoint, BcfViewpoint.topic_id == BcfTopic.id)
+        .where(
+            BcfTopic.project_id == project.id,
+            BcfTopic.deleted_at.is_(None),
+            BcfViewpoint.is_2d.is_(True),
+            BcfViewpoint.linked_file_id == file_id,
+        )
+        .order_by(BcfTopic.creation_date)
+    )
+    rows = (await session.execute(stmt)).all()
+
+    items: list[BcfMarkup2DItem] = []
+    for topic, vp in rows:
+        view_state = vp.view_state_2d or {}
+        items.append(
+            BcfMarkup2DItem(
+                topic_id=topic.id,
+                title=topic.title,
+                topic_status=topic.topic_status,
+                page=view_state.get("page"),
+                annotations=view_state.get("annotations") or [],
+            )
+        )
+    return items
 
 
 @router.get("/{topic_id}", response_model=BcfTopicRead)

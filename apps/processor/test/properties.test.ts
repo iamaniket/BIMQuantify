@@ -123,4 +123,38 @@ describe('buildProperties', () => {
     expect(extra).toBeDefined();
     expect(extra?.['fire_safety']).toEqual({ fire_rating: 'REI30' });
   });
+
+  it('seeds Attributes from ElementEntry.attributes without re-fetching the line', async () => {
+    const { buildProperties } = await import('../src/pipeline/properties.js');
+    const getLine = vi.fn().mockReturnValue({});
+    const mockApi = {
+      GetLineIDsWithType: vi.fn().mockReturnValue(idList([])),
+      GetLine: getLine,
+      GetLineType: vi.fn().mockReturnValue(0),
+      GetNameFromTypeCode: vi.fn().mockReturnValue(undefined),
+    } as never;
+
+    const els: ElementEntry[] = [
+      {
+        expressID: 100,
+        globalId: 'gid-door',
+        type: 'IfcDoor',
+        name: 'Door 1',
+        containedIn: 1,
+        // Precomputed by the metadata walk — buildProperties should reuse these
+        // and not call GetLine to re-fetch the element line.
+        attributes: { GlobalId: 'gid-door', Name: 'Door 1', Tag: 'D-1' },
+      },
+    ];
+
+    const props = await buildProperties(mockApi, 0, els);
+    expect(props['gid-door']?.['Attributes']).toEqual({
+      GlobalId: 'gid-door',
+      Name: 'Door 1',
+      Tag: 'D-1',
+    });
+    // No relationships in the model and attributes precomputed → GetLine is
+    // never called (the redundant per-element fetch is gone).
+    expect(getLine).not.toHaveBeenCalled();
+  });
 });

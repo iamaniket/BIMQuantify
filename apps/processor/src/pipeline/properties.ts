@@ -21,73 +21,29 @@ import {
   type IfcAPI,
 } from 'web-ifc';
 
+import type { Logger } from '../log.js';
+import {
+  attributesFromLine,
+  numberValue,
+  type PropertySet,
+  type PropertyValue,
+  primitiveValue,
+  stringValue,
+} from './attributes.js';
 import {
   type CanonicalElementType,
   ifcEntityToCanonical,
   ifcPsetPropToCanonical,
 } from './canonical.js';
 import type { ElementEntry } from './metadata.js';
+import { readGetLine, Stopwatch } from './timing.js';
 
-export type PropertyValue = string | number | boolean | null;
-export type PropertySet = Record<string, PropertyValue>;
+// Re-exported so existing importers of these types from this module keep working.
+export type { PropertyValue, PropertySet };
 export type ElementCanonicalData = {
   _element_type?: CanonicalElementType;
 } & Record<string, PropertySet | CanonicalElementType | undefined>;
 export type Properties = Record<string, ElementCanonicalData>;
-
-const SKIP_KEYS = new Set([
-  'expressID',
-  'type',
-  'ObjectPlacement',
-  'Representation',
-  'OwnerHistory',
-  'IsDecomposedBy',
-  'Decomposes',
-  'IsDefinedBy',
-  'HasAssociations',
-  'HasAssignments',
-  'ContainedInStructure',
-  'ContainsElements',
-  'IsTypedBy',
-  'HasContext',
-  'HasOpenings',
-  'HasFillings',
-  'FillsVoids',
-  'VoidsElements',
-  'ConnectedTo',
-  'ConnectedFrom',
-  'HasCoverings',
-  'HasProjections',
-  'ReferencedBy',
-  'ReferencedInStructures',
-  'HasPorts',
-  'IsConnectionRealization',
-  'ProvidesBoundaries',
-  'BoundedBy',
-  'HasPropertySets',
-  'Types',
-  'RepresentationMaps',
-  'RepresentationsInContext',
-]);
-
-// Filter a line's primitive attributes, dropping the handle-valued ones
-// (ObjectPlacement, Representation, ...) listed in SKIP_KEYS. Operates on an
-// already-fetched line so callers control whether it was flattened.
-function attributesFromLine(line: Record<string, unknown>): PropertySet {
-  const attrs: PropertySet = {};
-  for (const [key, raw] of Object.entries(line)) {
-    if (SKIP_KEYS.has(key)) continue;
-    if (key === 'GlobalId') {
-      const gid = stringValue(raw);
-      if (gid !== null) attrs['GlobalId'] = gid;
-      continue;
-    }
-    const v = primitiveValue(raw);
-    if (v === null || v === '') continue;
-    attrs[key] = v;
-  }
-  return attrs;
-}
 
 // `flatten: false` — we keep only inline scalar attributes (Name, Tag, ...);
 // the handle-valued attrs we'd flatten (ObjectPlacement/Representation) are all
@@ -125,7 +81,10 @@ export async function buildProperties(
   api: IfcAPI,
   modelID: number,
   elements: ElementEntry[],
+  logger?: Logger,
 ): Promise<Properties> {
+  const sw = new Stopwatch();
+  const glStart = readGetLine();
   const out: Properties = {};
 
   // expressID → globalId, reused to resolve a relationship's RelatedObjects
@@ -144,13 +103,23 @@ export async function buildProperties(
     const entry: ElementCanonicalData = {
       ...(canonical !== null ? { _element_type: canonical } : {}),
     };
-    const attrs = extractAttributes(api, modelID, elem.expressID);
+    // Reuse the scalar attributes the metadata walk already pulled off this
+    // element's line (ElementEntry.attributes); only re-fetch via GetLine for
+    // callers that didn't precompute them. This drops one GetLine-per-element
+    // pass that exactly duplicated metadata's collectElements work.
+    const attrs =
+      elem.attributes ?? extractAttributes(api, modelID, elem.expressID);
     if (Object.keys(attrs).length > 0) {
       entry['Attributes'] = attrs;
     }
     out[elem.globalId] = entry;
   }
+  const glAfterSeed = readGetLine();
+  sw.mark('seed');
 
+  // A property set shared across multiple IfcRelDefinesByProperties lines is
+  // flattened (the expensive GetLine(..., true)) only once.
+  const psetCache = new Map<number, { name: string; props: PropertySet }>();
   const relIDs = api.GetLineIDsWithType(modelID, IFCRELDEFINESBYPROPERTIES);
   for (let i = 0; i < relIDs.size(); i += 1) {
     // `flatten: false` keeps RelatedObjects as bare handles instead of
@@ -163,13 +132,18 @@ export async function buildProperties(
     >;
     const psetID = numberValue(rel['RelatingPropertyDefinition']);
     if (psetID === null) continue;
-    const propSet = api.GetLine(modelID, psetID, true) as Record<
-      string,
-      unknown
-    >;
-
-    const psetName = stringValue(propSet['Name']) ?? 'Unnamed';
-    const properties = collectProperties(propSet);
+    let cached = psetCache.get(psetID);
+    if (cached === undefined) {
+      const propSet = api.GetLine(modelID, psetID, true) as Record<
+        string,
+        unknown
+      >;
+      cached = {
+        name: stringValue(propSet['Name']) ?? 'Unnamed',
+        props: collectProperties(propSet),
+      };
+      psetCache.set(psetID, cached);
+    }
 
     const relatedObjects = rel['RelatedObjects'];
     if (!Array.isArray(relatedObjects)) continue;
@@ -177,9 +151,11 @@ export async function buildProperties(
       const gid = relatedGlobalId(api, modelID, obj, idToGid);
       if (gid === null) continue;
       out[gid] ??= {};
-      mergeCanonical(out[gid], psetName, properties);
+      mergeCanonical(out[gid], cached.name, cached.props);
     }
   }
+  const glAfterRelProps = readGetLine();
+  sw.mark('relDefinesByProperties');
 
   // ── Type properties (IfcRelDefinesByType) ──────────────────────────
   // Each element may reference an IfcTypeObject (e.g. IfcDoorType) that
@@ -249,17 +225,26 @@ export async function buildProperties(
       }
     }
   }
+  const glEnd = readGetLine();
+  sw.mark('relDefinesByType');
+
+  logger?.info(
+    {
+      stage: 'properties',
+      timings: sw.timings(),
+      getLineCalls: {
+        seed: glAfterSeed - glStart,
+        relDefinesByProperties: glAfterRelProps - glAfterSeed,
+        relDefinesByType: glEnd - glAfterRelProps,
+        total: glEnd - glStart,
+      },
+      elements: elements.length,
+      psetsFlattened: psetCache.size,
+    },
+    'properties breakdown',
+  );
 
   return out;
-}
-
-function numberValue(v: unknown): number | null {
-  if (typeof v === 'number') return v;
-  if (typeof v === 'object' && v !== null && 'value' in v) {
-    const inner = (v as Record<string, unknown>)['value'];
-    return typeof inner === 'number' ? inner : null;
-  }
-  return null;
 }
 
 function mergeCanonical(
@@ -334,28 +319,4 @@ function collectProperties(
     }
   }
   return result;
-}
-
-function primitiveValue(v: unknown): PropertyValue {
-  if (v === null || v === undefined) return null;
-  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
-    return v;
-  }
-  if (typeof v === 'object' && 'value' in v) {
-    const inner = (v as Record<string, unknown>)['value'];
-    if (typeof inner === 'string' || typeof inner === 'number' || typeof inner === 'boolean') {
-      return inner;
-    }
-  }
-  return null;
-}
-
-function stringValue(v: unknown): string | null {
-  if (v === null || v === undefined) return null;
-  if (typeof v === 'string') return v;
-  if (typeof v === 'object' && 'value' in v) {
-    const inner = (v as Record<string, unknown>)['value'];
-    return typeof inner === 'string' ? inner : null;
-  }
-  return null;
 }

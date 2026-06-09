@@ -26,6 +26,7 @@ import type { CameraControlsConfig } from './plugins/2d/camera/index.js';
 import { cameraPlugin } from './plugins/2d/camera/index.js';
 import { contextMenuPlugin } from './plugins/2d/context-menu/index.js';
 import { measurePlugin } from './plugins/2d/measure/index.js';
+import { markupPlugins } from './plugins/2d/markup/index.js';
 import { mouseBindings2DPlugin } from './plugins/2d/mouse-bindings/index.js';
 import { navCompassPlugin } from './plugins/2d/nav-compass/index.js';
 import { pdfUnderlayPlugin } from './plugins/2d/pdf-underlay/index.js';
@@ -196,6 +197,7 @@ function DocumentViewerInner(
       rotatePlugin(),
       searchPlugin(),
       measurePlugin(),
+      ...markupPlugins(),
       contextMenuPlugin(),
     ];
     if (navCompassRef.current?.enabled !== false) {

@@ -50,6 +50,11 @@ class ViewState2DSchema(BaseModel):
     zoom: float = 1.0
     visible_layers: list[str] = Field(default_factory=list)
     file_type: str = "dxf"
+    # PDF markup extension. `page` is the 1-based page; `annotations` holds the
+    # markup shapes (kept as free dicts — they are app-private and ignored by the
+    # standard .bcf export). See the viewer's `Annotation2D` type.
+    page: int | None = None
+    annotations: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class BcfViewpointCreate(BaseModel):
@@ -199,6 +204,21 @@ class BcfTopicSummary(BaseModel):
     linked_finding_id: UUID | None
     snapshot_url: str | None = None
     created_at: datetime
+
+
+class BcfMarkup2DItem(BaseModel):
+    """A 2D markup topic projected for rendering on a PDF page.
+
+    Returned by ``GET /bcf-topics/markup-2d?file_id=`` — one entry per topic
+    whose viewpoint is 2D and linked to the given file. ``annotations`` is the
+    raw markup-shape list stored in the viewpoint's ``view_state_2d``.
+    """
+
+    topic_id: UUID
+    title: str
+    topic_status: str
+    page: int | None
+    annotations: list[dict[str, Any]] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

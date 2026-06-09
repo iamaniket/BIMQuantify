@@ -7,30 +7,30 @@ import {
 import { toast } from 'sonner';
 
 import { cn } from '@bimstitch/ui';
-import type { ViewerHandle } from '@bimstitch/viewer';
 
 import { uploadSnapshot } from '@/lib/api/bcf';
 import { tokenManager } from '@/lib/auth/tokenManager';
 import { useAuth } from '@/providers/AuthProvider';
 
-import { useBcfCapture } from './useBcfCapture';
+import type { BcfController } from './useBcfController';
 import { useCreateBcfTopic } from './useCreateBcfTopic';
 
 type Props = {
   projectId: string;
-  handle: ViewerHandle | null;
+  controller: BcfController;
   onCreated: (topicId: string) => void;
+  onCancel?: () => void;
 };
 
 export function BcfCreateForm({
   projectId,
-  handle,
+  controller,
   onCreated,
+  onCancel,
 }: Props): JSX.Element {
   const t = useTranslations('viewer.bcf');
   const { tokens } = useAuth();
   const createMutation = useCreateBcfTopic(projectId);
-  const { capture } = useBcfCapture(handle);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -39,6 +39,10 @@ export function BcfCreateForm({
   const [priority, setPriority] = useState('');
   const [captureView, setCaptureView] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // In 2D markup mode the drawn shape IS the viewpoint — always capture it and
+  // hide the toggle. In 3D the toggle controls whether the camera is captured.
+  const is2d = controller.captureMode === '2d';
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -50,9 +54,9 @@ export function BcfCreateForm({
         let viewpointPayload = undefined;
         let snapshotDataUrl: string | null = null;
 
-        // Capture current view if toggled on
-        if (captureView && handle !== null) {
-          const result = await capture();
+        // Capture the current view (3D camera) or markup draft (2D).
+        if ((is2d || captureView) && controller.canCapture) {
+          const result = await controller.capture();
           if (result !== null) {
             viewpointPayload = result.viewpoint;
             snapshotDataUrl = result.snapshotDataUrl;
@@ -105,8 +109,8 @@ export function BcfCreateForm({
       topicStatus,
       priority,
       captureView,
-      handle,
-      capture,
+      is2d,
+      controller,
       createMutation,
       tokens,
       projectId,
@@ -198,30 +202,43 @@ export function BcfCreateForm({
             </select>
           </div>
 
-          {/* Capture toggle */}
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={captureView}
-              onChange={(e) => { setCaptureView(e.target.checked); }}
-              className="h-4 w-4 rounded border-border"
-            />
-            <span className="font-sans text-body3 text-foreground-secondary">
-              {t('captureCurrentView')}
-            </span>
-          </label>
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={title.trim() === '' || isSubmitting}
-          className={cn(
-            'h-9 w-full rounded bg-primary font-sans text-body3 font-medium text-primary-foreground transition-colors',
-            'hover:bg-primary-hover disabled:opacity-50',
+          {/* Capture toggle — 3D only; in 2D the markup is always captured. */}
+          {!is2d && (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={captureView}
+                onChange={(e) => { setCaptureView(e.target.checked); }}
+                className="h-4 w-4 rounded border-border"
+              />
+              <span className="font-sans text-body3 text-foreground-secondary">
+                {t('captureCurrentView')}
+              </span>
+            </label>
           )}
-        >
-          {isSubmitting ? t('creating') : t('createIssue')}
-        </button>
+
+        {/* Submit (+ Cancel for the 2D draw-first flow) */}
+        <div className="flex items-center gap-2">
+          {onCancel !== undefined && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="h-9 shrink-0 rounded border border-border bg-background px-3 font-sans text-body3 font-medium text-foreground-secondary transition-colors hover:bg-background-hover"
+            >
+              {t('cancel')}
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={title.trim() === '' || isSubmitting}
+            className={cn(
+              'h-9 flex-1 rounded bg-primary font-sans text-body3 font-medium text-primary-foreground transition-colors',
+              'hover:bg-primary-hover disabled:opacity-50',
+            )}
+          >
+            {isSubmitting ? t('creating') : t('createIssue')}
+          </button>
+        </div>
     </form>
   );
 }

@@ -5,6 +5,13 @@ import {
   IFC_UPPERCASE_TO_PASCAL,
 } from '../src/pipeline/canonical.js';
 
+const idList = (
+  ids: number[],
+): { size: () => number; get: (i: number) => number } => ({
+  size: () => ids.length,
+  get: (i: number) => ids[i] as number,
+});
+
 describe('IFC_UPPERCASE_TO_PASCAL', () => {
   it('maps every canonical key', () => {
     for (const key of Object.keys(IFC_ENTITY_TO_CANONICAL)) {
@@ -42,21 +49,24 @@ describe('IFC_UPPERCASE_TO_PASCAL', () => {
 });
 
 describe('buildMetadata countElements integration', () => {
+  // countElements now asks web-ifc how many instances of each known type exist
+  // (GetTypeCodeFromName → GetLineIDsWithType().size()) instead of walking every
+  // line. The mocks model that: a per-name code map and a per-code count.
   it('counts IfcWallStandardCase entities', async () => {
     const { buildMetadata } = await import('../src/pipeline/metadata.js');
 
-    const mockLines = [1, 2, 3];
+    const WALLSTD_CODE = 3512223829;
     const mockApi = {
-      GetAllLines: vi.fn().mockReturnValue({
-        size: () => mockLines.length,
-        get: (i: number) => mockLines[i],
-      }),
-      GetLineType: vi.fn().mockReturnValue(3512223829),
-      GetNameFromTypeCode: vi.fn().mockReturnValue('IFCWALLSTANDARDCASE'),
-      GetLineIDsWithType: vi.fn().mockReturnValue({
-        size: () => 0,
-        get: () => 0,
-      }),
+      GetTypeCodeFromName: vi
+        .fn()
+        .mockImplementation((name: string) =>
+          name === 'IFCWALLSTANDARDCASE' ? WALLSTD_CODE : 0,
+        ),
+      GetLineIDsWithType: vi
+        .fn()
+        .mockImplementation((_m: number, code: number) =>
+          code === WALLSTD_CODE ? idList([1, 2, 3]) : idList([]),
+        ),
       GetLine: vi.fn().mockReturnValue({}),
       StreamAllMeshes: vi.fn(),
     } as never;
@@ -96,11 +106,6 @@ describe('buildMetadata countElements integration', () => {
       101: { parent: 2, children: [3] },
       102: { parent: 3, children: [4] },
     };
-
-    const idList = (ids: number[]): { size: () => number; get: (i: number) => number } => ({
-      size: () => ids.length,
-      get: (i: number) => ids[i] as number,
-    });
 
     const mockApi = {
       GetAllLines: vi.fn().mockReturnValue(idList([])),
@@ -165,11 +170,6 @@ describe('buildMetadata countElements integration', () => {
       102: { group: 20, members: [11] },
     };
 
-    const idList = (ids: number[]): { size: () => number; get: (i: number) => number } => ({
-      size: () => ids.length,
-      get: (i: number) => ids[i] as number,
-    });
-
     const mockApi = {
       GetAllLines: vi.fn().mockReturnValue(idList([])),
       GetLineType: vi.fn().mockImplementation((_: number, id: number) => typeByID[id] ?? 0),
@@ -218,18 +218,20 @@ describe('buildMetadata countElements integration', () => {
   it('counts mixed IfcWall and IfcWallStandardCase', async () => {
     const { buildMetadata } = await import('../src/pipeline/metadata.js');
 
-    const typeNames = ['IFCWALL', 'IFCWALLSTANDARDCASE', 'IFCWALLSTANDARDCASE', 'IFCWALL'];
+    const codeByName: Record<string, number> = {
+      IFCWALL: 1001,
+      IFCWALLSTANDARDCASE: 1002,
+    };
+    const countByCode: Record<number, number> = { 1001: 2, 1002: 2 };
     const mockApi = {
-      GetAllLines: vi.fn().mockReturnValue({
-        size: () => typeNames.length,
-        get: (i: number) => i,
-      }),
-      GetLineType: vi.fn().mockImplementation((_, id: number) => id),
-      GetNameFromTypeCode: vi.fn().mockImplementation((code: number) => typeNames[code]),
-      GetLineIDsWithType: vi.fn().mockReturnValue({
-        size: () => 0,
-        get: () => 0,
-      }),
+      GetTypeCodeFromName: vi
+        .fn()
+        .mockImplementation((name: string) => codeByName[name] ?? 0),
+      GetLineIDsWithType: vi
+        .fn()
+        .mockImplementation((_m: number, code: number) =>
+          idList(Array.from({ length: countByCode[code] ?? 0 }, (_v, i) => i + 1)),
+        ),
       GetLine: vi.fn().mockReturnValue({}),
       StreamAllMeshes: vi.fn(),
     } as never;
@@ -239,5 +241,18 @@ describe('buildMetadata countElements integration', () => {
     expect(metadata.elementCounts['IfcWallStandardCase']).toBe(2);
     expect(metadata.canonicalElementCounts['wall']).toBe(4);
     expect(metadata.totalElements).toBe(4);
+  });
+
+  it('falls back to empty counts when GetTypeCodeFromName is unavailable', async () => {
+    const { buildMetadata } = await import('../src/pipeline/metadata.js');
+    const mockApi = {
+      GetLineIDsWithType: vi.fn().mockReturnValue(idList([])),
+      GetLine: vi.fn().mockReturnValue({}),
+      StreamAllMeshes: vi.fn(),
+    } as never;
+
+    const metadata = await buildMetadata(mockApi, 0, 'IFC2X3');
+    expect(metadata.elementCounts).toEqual({});
+    expect(metadata.totalElements).toBe(0);
   });
 });

@@ -50,8 +50,8 @@ export function RightColumnTabs({
     <div className="flex min-h-0 flex-col gap-3.5 overflow-hidden">
       {/* Upper panel — Overview, Dossier, Models, Reports */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-        <div className="shrink-0 px-3 pt-2">
-          <div className="mb-2 flex items-end justify-between">
+        <div className="shrink-0 overflow-x-auto px-3 pt-2">
+          <div className="mb-2 flex min-w-max items-end justify-between gap-x-3">
             <Tabs value={topTab} onValueChange={setTopTab}>
               <TabsList className="inline-flex w-auto">
                 <TabsTrigger value="overzicht">{t('overzicht.label')}</TabsTrigger>
@@ -92,8 +92,8 @@ export function RightColumnTabs({
 
       {/* Lower panel — Attachments, Findings, Certificates */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-        <div className="shrink-0 px-3 pt-2">
-          <div className="mb-2 flex items-end justify-between">
+        <div className="shrink-0 overflow-x-auto px-3 pt-2">
+          <div className="mb-2 flex min-w-max items-end justify-between gap-x-3">
             <Tabs value={bottomTab} onValueChange={setBottomTab}>
               <TabsList className="inline-flex w-auto">
                 <TabsTrigger value="attachments">

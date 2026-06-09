@@ -40,6 +40,7 @@ const IFC_BUTTONS: RailButton[] = [
 const PDF_BUTTONS: RailButton[] = [
   { id: 'inspector', labelKey: 'titleInspector', icon: Info },
   { id: 'measure', labelKey: 'titleMeasure', icon: Ruler },
+  { id: 'bcf', labelKey: 'titleBcf', icon: Flag },
 ];
 
 const DRAWING_BUTTONS: RailButton[] = [

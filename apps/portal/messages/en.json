@@ -2642,6 +2642,13 @@
       "titleBcf": "Issues",
       "comingSoon": "Coming soon"
     },
+    "markup": {
+      "rectangle": "Rectangle",
+      "arrow": "Arrow",
+      "cloud": "Cloud",
+      "freehand": "Freehand",
+      "text": "Text"
+    },
     "bcf": {
       "loading": "Loading issues…",
       "emptyState": "No BCF issues yet. Create one to get started.",

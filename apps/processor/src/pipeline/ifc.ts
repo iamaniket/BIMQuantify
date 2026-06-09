@@ -18,6 +18,7 @@ import path from 'node:path';
 import { IfcAPI } from 'web-ifc';
 
 import { type SupportedSchema, SUPPORTED_SCHEMAS } from '../config.js';
+import { bumpGetLine } from './timing.js';
 
 const require = createRequire(import.meta.url);
 
@@ -39,7 +40,22 @@ async function buildApi(): Promise<IfcAPI> {
   // "absolute path" (don't prepend the script directory).
   ifcApi.SetWasmPath(`${dir}${path.sep}`, true);
   await ifcApi.Init();
+  instrumentGetLine(ifcApi);
   return ifcApi;
+}
+
+// Count every GetLine WASM↔JS crossing. GetLine is the dominant cost of the
+// metadata/properties walk, so this turns "the walk is slow" into a concrete
+// call count in the stage logs. Wrapped once here, on the single cached api;
+// the per-job/per-stage counts are read as deltas (see timing.ts).
+function instrumentGetLine(ifcApi: IfcAPI): void {
+  const original = ifcApi.GetLine.bind(ifcApi);
+  ifcApi.GetLine = function GetLine(
+    ...args: Parameters<IfcAPI['GetLine']>
+  ): ReturnType<IfcAPI['GetLine']> {
+    bumpGetLine();
+    return original(...args);
+  };
 }
 
 export async function getIfcApi(): Promise<IfcAPI> {

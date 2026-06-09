@@ -2642,6 +2642,13 @@
       "titleBcf": "Issues",
       "comingSoon": "Binnenkort beschikbaar"
     },
+    "markup": {
+      "rectangle": "Rechthoek",
+      "arrow": "Pijl",
+      "cloud": "Wolk",
+      "freehand": "Vrije hand",
+      "text": "Tekst"
+    },
     "bcf": {
       "loading": "Issues laden…",
       "emptyState": "Nog geen BCF-issues. Maak er een aan om te beginnen.",

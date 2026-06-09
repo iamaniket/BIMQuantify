@@ -21,11 +21,19 @@ import {
 } from 'web-ifc';
 
 import type { SupportedSchema } from '../config.js';
+import type { Logger } from '../log.js';
+import {
+  attributesFromLine,
+  numberValue,
+  type PropertySet,
+  stringValue,
+} from './attributes.js';
 import {
   type CanonicalElementType,
   IFC_ENTITY_TO_CANONICAL,
   IFC_UPPERCASE_TO_PASCAL,
 } from './canonical.js';
+import { readGetLine, Stopwatch } from './timing.js';
 
 export type SpatialNode = {
   expressID: number;
@@ -41,6 +49,9 @@ export type ElementEntry = {
   type: string;
   name: string | null;
   containedIn: number | null;
+  // Scalar attributes read off this element's line during the metadata walk,
+  // carried forward so buildProperties can seed without re-fetching the line.
+  attributes?: PropertySet;
 };
 
 export type ZoneNode = {
@@ -76,14 +87,42 @@ export async function buildMetadata(
   api: IfcAPI,
   modelID: number,
   schema: SupportedSchema,
+  logger?: Logger,
 ): Promise<Metadata> {
+  // Per-sub-step timing + GetLine-crossing deltas. The walk is synchronous (no
+  // awaits below), so reading the global counter before/after each call yields
+  // that step's crossings even under JOB_CONCURRENCY > 1 — see timing.ts.
+  const sw = new Stopwatch();
+  const counts: number[] = [readGetLine()];
+  const tick = (label: string): void => {
+    sw.mark(label);
+    counts.push(readGetLine());
+  };
+
   const project = readProject(api, modelID);
+  tick('project');
   const spatialTree = buildSpatialTree(api, modelID);
+  tick('spatialTree');
   const zones = buildZones(api, modelID);
+  tick('zones');
   const elements = collectElements(api, modelID);
+  tick('collectElements');
   const elementCounts = countElements(api, modelID);
+  tick('countElements');
   const canonicalElementCounts = buildCanonicalCounts(elementCounts);
   const bbox = computeBoundingBox(api, modelID);
+  tick('bbox');
+
+  const labels = ['project', 'spatialTree', 'zones', 'collectElements', 'countElements', 'bbox'];
+  const getLineCalls: Record<string, number> = {};
+  for (let i = 0; i < labels.length; i += 1) {
+    getLineCalls[labels[i] as string] = (counts[i + 1] ?? 0) - (counts[i] ?? 0);
+  }
+  getLineCalls['total'] = (counts[counts.length - 1] ?? 0) - (counts[0] ?? 0);
+  logger?.info(
+    { stage: 'metadata', timings: sw.timings(), getLineCalls, elements: elements.length },
+    'metadata breakdown',
+  );
 
   return {
     source_format: 'ifc',
@@ -300,6 +339,9 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
         type,
         name: stringValue(line['Name']),
         containedIn,
+        // Captured from the line we already hold so buildProperties' seed loop
+        // doesn't re-fetch every element (one GetLine-per-element pass saved).
+        attributes: attributesFromLine(line),
       });
     }
   }
@@ -347,6 +389,7 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
         type,
         name: stringValue(line['Name']),
         containedIn,
+        attributes: attributesFromLine(line),
       });
     }
   }
@@ -354,19 +397,34 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
   return elements;
 }
 
+// Count elements per known IFC type. The old approach walked *every line* in
+// the model (GetAllLines → GetLineType + GetNameFromTypeCode per line — order
+// of a million calls on a large model) just to bucket the ~bounded set of
+// types we care about. Instead, ask web-ifc directly how many instances exist
+// of each known type: one GetLineIDsWithType per entry in
+// IFC_UPPERCASE_TO_PASCAL. `includeInherited` defaults to false, so this counts
+// exact-type instances — identical buckets to the old per-line GetLineType
+// counting.
 function countElements(api: IfcAPI, modelID: number): Record<string, number> {
   const counts: Record<string, number> = {};
-  const allIDs = api.GetAllLines(modelID);
-  for (let i = 0; i < allIDs.size(); i += 1) {
-    const id = allIDs.get(i);
-    const code = api.GetLineType(modelID, id);
-    const name = (api as unknown as {
-      GetNameFromTypeCode?: (c: number) => string;
-    }).GetNameFromTypeCode?.(code);
-    if (typeof name !== 'string') continue;
-    const pascal = IFC_UPPERCASE_TO_PASCAL.get(name);
-    if (pascal === undefined) continue;
-    counts[pascal] = (counts[pascal] ?? 0) + 1;
+  // GetTypeCodeFromName is accessed defensively (mirrors the existing cautious
+  // GetNameFromTypeCode access); if a build lacks it we return empty counts
+  // rather than crash.
+  const getTypeCode = (
+    api as unknown as { GetTypeCodeFromName?: (name: string) => number }
+  ).GetTypeCodeFromName?.bind(api);
+  if (getTypeCode === undefined) return counts;
+
+  for (const [upper, pascal] of IFC_UPPERCASE_TO_PASCAL) {
+    let code: number;
+    try {
+      code = getTypeCode(upper);
+    } catch {
+      continue; // name not recognised by this web-ifc build/schema
+    }
+    if (!Number.isInteger(code) || code <= 0) continue;
+    const n = api.GetLineIDsWithType(modelID, code).size();
+    if (n > 0) counts[pascal] = (counts[pascal] ?? 0) + n;
   }
   return counts;
 }
@@ -460,25 +518,6 @@ function extractLengthUnit(project: Record<string, unknown>): string | null {
       if (nameStr === null) return null;
       return prefixStr === null ? nameStr : `${prefixStr}${nameStr}`;
     }
-  }
-  return null;
-}
-
-function stringValue(v: unknown): string | null {
-  if (v === null || v === undefined) return null;
-  if (typeof v === 'string') return v;
-  if (typeof v === 'object' && v !== null && 'value' in v) {
-    const inner = (v as Record<string, unknown>)['value'];
-    return typeof inner === 'string' ? inner : null;
-  }
-  return null;
-}
-
-function numberValue(v: unknown): number | null {
-  if (typeof v === 'number') return v;
-  if (typeof v === 'object' && v !== null && 'value' in v) {
-    const inner = (v as Record<string, unknown>)['value'];
-    return typeof inner === 'number' ? inner : null;
   }
   return null;
 }

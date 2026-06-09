@@ -1,8 +1,8 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 import {
   useCallback,
@@ -17,9 +17,11 @@ import { Skeleton } from '@bimstitch/ui';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import type {
+  CommittedMarkupItem,
   DocumentActiveTool,
   DocumentRotation,
   DocumentViewerHandle,
+  MarkupTool,
   PageDimensions,
   ViewerBundle,
   ViewerHandle,
@@ -35,6 +37,10 @@ import { MeasurementPanel, MeasurementHeaderActions } from '@/components/shared/
 import { PdfMeasurementPanel } from '@/components/shared/viewer/2d/measurement/MeasurementPanel';
 import { SectionPanel } from '@/components/shared/viewer/3d/section/SectionPanel';
 import { BcfPanel } from '@/features/viewer/bcf/BcfPanel';
+import { use2dBcfController, use3dBcfController } from '@/features/viewer/bcf/useBcfController';
+import { useBcfMarkup2d } from '@/features/viewer/bcf/useBcfMarkup2d';
+import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
+import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
@@ -165,6 +171,12 @@ export default function ViewerPage(): JSX.Element {
   const [markerFinding, setMarkerFinding] = useState<import('@/lib/api/schemas').Finding | null>(null);
   const [markerCertificate, setMarkerCertificate] = useState<import('@/lib/api/schemas').Certificate | null>(null);
   const [markerAttachment, setMarkerAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
+
+  // 2D BCF markup (PDF annotations): draft-create + click-to-open flow.
+  const [markupCreateNonce, setMarkupCreateNonce] = useState(0);
+  const [markupOpenTopic, setMarkupOpenTopic] = useState<{ id: string; nonce: number } | null>(null);
+  const queryClient = useQueryClient();
+  const tMarkup = useTranslations('viewer.markup');
 
   const [inspectorRequest, setInspectorRequest] = useState<{
     view: 'attachments' | 'findings' | 'certificates';
@@ -439,6 +451,73 @@ export default function ViewerPage(): JSX.Element {
       .catch(() => undefined);
   }, [isPdf, documentHandle, currentPageGeometry]);
 
+  // --- 2D BCF markup (PDF annotations) ---
+  const bcf3dController = use3dBcfController(viewerHandleRef.current);
+  const bcf2dController = use2dBcfController(documentHandle, {
+    fileId,
+    onRestorePage: setPdfCurrentPage,
+  });
+
+  // Same per-page box as measure, so markup normalization lines up exactly.
+  useEffect(() => {
+    if (!isPdf || documentHandle === null) return;
+    documentHandle.commands
+      .execute('markup.setPageGeometry', { pageGeometry: currentPageGeometry })
+      .catch(() => undefined);
+  }, [isPdf, documentHandle, currentPageGeometry]);
+
+  const markup2dQuery = useBcfMarkup2d(projectId, isPdf ? fileId : null, isPdf);
+  const markupItems = useMemo<CommittedMarkupItem[]>(
+    () =>
+      (markup2dQuery.data ?? []).map((m) => ({
+        topicId: m.topic_id,
+        page: m.page ?? 1,
+        annotations: m.annotations.map((a) => ({
+          id: a.id,
+          tool: a.tool,
+          points: a.points,
+          color: a.color,
+          strokeWidth: a.strokeWidth,
+          ...(a.text !== undefined ? { text: a.text } : {}),
+        })),
+      })),
+    [markup2dQuery.data],
+  );
+  useEffect(() => {
+    if (!isPdf || documentHandle === null) return;
+    documentHandle.commands
+      .execute('markup.setCommitted', { items: markupItems })
+      .catch(() => undefined);
+  }, [isPdf, documentHandle, markupItems]);
+
+  // Draw a shape → open the pre-filled create form; click committed → open topic.
+  useEffect(() => {
+    if (!isPdf || documentHandle === null) return undefined;
+    const offDraft = documentHandle.events.on('markup:draftComplete', () => {
+      setActivePanel('bcf');
+      setMarkupCreateNonce((n) => n + 1);
+    });
+    const offSelect = documentHandle.events.on('markup:select', ({ topicId }) => {
+      setActivePanel('bcf');
+      setMarkupOpenTopic((prev) => ({ id: topicId, nonce: (prev?.nonce ?? 0) + 1 }));
+    });
+    return () => { offDraft(); offSelect(); };
+  }, [isPdf, documentHandle]);
+
+  const handleMarkupCreateClose = useCallback(
+    (saved: boolean) => {
+      documentHandle?.commands.execute('markup.clearDraft').catch(() => undefined);
+      if (saved) {
+        void queryClient.invalidateQueries({ queryKey: bcfKeys.markup2d(projectId, fileId) });
+      }
+    },
+    [documentHandle, queryClient, projectId, fileId],
+  );
+
+  const handleMarkupToolChange = useCallback((tool: MarkupTool | null) => {
+    if (tool !== null) setPdfPinMode(false);
+  }, []);
+
   const renderPdfOverlay = useCallback(
     (dims: PageDimensions) => (
       <>
@@ -665,9 +744,15 @@ export default function ViewerPage(): JSX.Element {
                 />
               ) : undefined}
               bcfContent={isIfc ? (
+                <BcfPanel projectId={projectId} controller={bcf3dController} />
+              ) : isPdf ? (
                 <BcfPanel
                   projectId={projectId}
-                  handle={viewerHandleRef.current}
+                  controller={bcf2dController}
+                  createNonce={markupCreateNonce}
+                  onCreateClose={handleMarkupCreateClose}
+                  openTopicId={markupOpenTopic?.id}
+                  openTopicNonce={markupOpenTopic?.nonce}
                 />
               ) : undefined}
               headerActions={isIfc ? {
@@ -714,6 +799,20 @@ export default function ViewerPage(): JSX.Element {
             onScaleChange={setPdfScale}
             onActiveToolChange={handlePdfActiveToolChange}
             onSettingsChange={setPdfSettings}
+          />
+        ) : null}
+
+        {pdfShellReady ? (
+          <MarkupToolbar
+            documentHandle={documentHandle}
+            labels={{
+              rectangle: tMarkup('rectangle'),
+              arrow: tMarkup('arrow'),
+              cloud: tMarkup('cloud'),
+              freehand: tMarkup('freehand'),
+              text: tMarkup('text'),
+            }}
+            onActiveToolChange={handleMarkupToolChange}
           />
         ) : null}
 

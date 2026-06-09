@@ -5,7 +5,7 @@ import {
 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
-  useCallback, useMemo, useRef, useState, type JSX,
+  useCallback, useEffect, useMemo, useRef, useState, type JSX,
 } from 'react';
 import { toast } from 'sonner';
 
@@ -15,7 +15,6 @@ import {
   DetailCard, DetailCardBody, DetailCardFooter, DetailCardRow,
   Select, SplitButton, type SplitButtonItem,
 } from '@bimstitch/ui';
-import type { ViewerHandle } from '@bimstitch/viewer';
 
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { PanelToolbar } from '@/components/shared/viewer/shared/PanelToolbar';
@@ -25,7 +24,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { BcfCreateForm } from './BcfCreateForm';
 import { BcfTopicCard } from './BcfTopicCard';
 import { BcfTopicDetail } from './BcfTopicDetail';
-import { buildBcfViewpointPayload } from './buildBcfViewpointPayload';
+import type { BcfController } from './useBcfController';
 import { useBcfTopics } from './useBcfTopics';
 import { useDeleteBcfTopic } from './useDeleteBcfTopic';
 import { useExportBcf } from './useExportBcf';
@@ -33,12 +32,23 @@ import { useImportBcf } from './useImportBcf';
 
 type Props = {
   projectId: string;
-  handle: ViewerHandle | null;
+  controller: BcfController;
+  /** Bump to open the create form pre-filled (the 2D draw-first flow). */
+  createNonce?: number | undefined;
+  /** Called when the create form closes; `saved` true if a topic was created. */
+  onCreateClose?: ((saved: boolean) => void) | undefined;
+  /** Topic to expand when `openTopicNonce` changes (e.g. a markup was clicked). */
+  openTopicId?: string | undefined;
+  openTopicNonce?: number | undefined;
 };
 
 export function BcfTopicList({
   projectId,
-  handle,
+  controller,
+  createNonce,
+  onCreateClose,
+  openTopicId,
+  openTopicNonce,
 }: Props): JSX.Element {
   const t = useTranslations('viewer.bcf');
   const { tokens } = useAuth();
@@ -69,14 +79,27 @@ export function BcfTopicList({
     setCreateExpanded((prev) => !prev);
   }, []);
 
+  // Open the create form pre-filled when a markup draft completes (2D flow).
+  useEffect(() => {
+    if (createNonce === undefined || createNonce === 0) return;
+    setExpandedTopicId(null);
+    setCreateExpanded(true);
+  }, [createNonce]);
+
+  // Expand a specific topic when a committed markup is clicked.
+  useEffect(() => {
+    if (openTopicNonce === undefined || openTopicNonce === 0 || openTopicId === undefined) return;
+    setCreateExpanded(false);
+    setExpandedTopicId(openTopicId);
+  }, [openTopicNonce, openTopicId]);
+
   const handleRestoreView = useCallback(async (topicId: string) => {
-    if (handle === null || tokens === null) return;
+    if (tokens === null) return;
     const topic = await getBcfTopic(tokens.access_token, projectId, topicId);
     const vp = topic.viewpoints[0];
     if (vp === undefined) return;
-    const vpData = buildBcfViewpointPayload(vp);
-    await handle.commands.execute('bcf.applyViewpoint', vpData);
-  }, [handle, tokens, projectId]);
+    await controller.applyViewpoint(vp);
+  }, [controller, tokens, projectId]);
 
   const handleDelete = useCallback(async () => {
     if (deleteTopicId === null) return;
@@ -195,10 +218,15 @@ export function BcfTopicList({
           <div className="border-b border-border px-3 py-3">
             <BcfCreateForm
               projectId={projectId}
-              handle={handle}
+              controller={controller}
               onCreated={(topicId) => {
                 setCreateExpanded(false);
                 setExpandedTopicId(topicId);
+                onCreateClose?.(true);
+              }}
+              onCancel={() => {
+                setCreateExpanded(false);
+                onCreateClose?.(false);
               }}
             />
           </div>

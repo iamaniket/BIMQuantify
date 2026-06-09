@@ -28,6 +28,7 @@ import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel, UnsupportedSchemaError } from './ifc.js';
 import { buildMetadata } from './metadata.js';
 import { buildProperties } from './properties.js';
+import { time } from './timing.js';
 import { extractIfcFromZip } from './unzip.js';
 
 /** Payload shape for `ifc_extraction` jobs. The API populates this when
@@ -103,10 +104,19 @@ export async function runExtraction(
     extractor_version: version,
   });
 
+  // Per-stage wall-clock, logged as one `stage complete` line each, so the real
+  // breakdown is in the logs instead of inferred from start-of-stage gaps. The
+  // metadata/properties walks additionally log their own sub-step breakdowns.
+  const logStage = (stage: string, ms: number): void => {
+    logger.info({ stage, ms, file_id: payload.file_id, job_id: job.job_id }, 'stage complete');
+  };
+
   let modelID: number | null = null;
   try {
     logger.info({ payload }, 'downloading source');
-    const { bytes, sha256 } = await downloadObjectWithHash(payload.storage_key);
+    const download = await time(() => downloadObjectWithHash(payload.storage_key));
+    const { bytes, sha256 } = download.result;
+    logStage('download', download.ms);
     await reportProgress(10);
 
     // For an ifcZIP the stored object is the zip; unwrap to the inner IFC
@@ -115,39 +125,57 @@ export async function runExtraction(
     const ifcBytes = payload.compressed ? extractIfcFromZip(bytes) : bytes;
 
     logger.info({ size: ifcBytes.length, sha256: sha256.slice(0, 16) }, 'parsing IFC');
-    const opened = await openModel(ifcBytes);
+    const parse = await time(() => openModel(ifcBytes));
+    const opened = parse.result;
     modelID = opened.modelID;
+    const modelIDForWalk = modelID;
+    logStage('parse', parse.ms);
     await reportProgress(40);
 
-    logger.info('generating fragments');
-    const fragmentBytes = await generateFragments(ifcBytes);
-    await reportProgress(80);
-
-    logger.info('extracting metadata');
+    // Fragment generation runs on its OWN web-ifc instance (inside IfcImporter)
+    // over the raw bytes, fully independent of the metadata/properties walk on
+    // the shared cached api. Run them concurrently so fragment work overlaps
+    // the walk wherever the event loop allows. (No extra peak memory: the
+    // shared model stays open until `finally` regardless, so the second parsed
+    // copy that IfcImporter holds already coexisted with it in the serial path.)
+    logger.info('generating fragments + walking model');
     const ifcApi = await getIfcApi();
-    const metadata = await buildMetadata(ifcApi, modelID, opened.schema);
-
-    logger.info('extracting properties');
-    const properties = await buildProperties(ifcApi, modelID, metadata.elements);
+    const both = await time(() =>
+      Promise.all([
+        time(() => generateFragments(ifcBytes)),
+        time(async () => {
+          const metadata = await buildMetadata(ifcApi, modelIDForWalk, opened.schema, logger);
+          const properties = await buildProperties(
+            ifcApi,
+            modelIDForWalk,
+            metadata.elements,
+            logger,
+          );
+          return { metadata, properties };
+        }),
+      ]),
+    );
+    const [frag, walk] = both.result;
+    const fragmentBytes = frag.result;
+    const { metadata, properties } = walk.result;
+    logStage('fragments', frag.ms);
+    logStage('walk', walk.ms);
+    logStage('fragments+walk', both.ms);
+    await reportProgress(80);
 
     const fragmentsKey = fragmentsKeyFor(payload.storage_key);
     const metadataKey = metadataKeyFor(payload.storage_key);
     const propertiesKey = propertiesKeyFor(payload.storage_key);
 
     logger.info({ fragmentsKey, metadataKey, propertiesKey }, 'uploading outputs');
-    await Promise.all([
-      uploadObject(fragmentsKey, fragmentBytes, 'application/octet-stream'),
-      uploadObject(
-        metadataKey,
-        JSON.stringify(metadata),
-        'application/json',
-      ),
-      uploadObject(
-        propertiesKey,
-        JSON.stringify(properties),
-        'application/json',
-      ),
-    ]);
+    const upload = await time(() =>
+      Promise.all([
+        uploadObject(fragmentsKey, fragmentBytes, 'application/octet-stream'),
+        uploadObject(metadataKey, JSON.stringify(metadata), 'application/json'),
+        uploadObject(propertiesKey, JSON.stringify(properties), 'application/json'),
+      ]),
+    );
+    logStage('upload', upload.ms);
 
     const elapsedMs = Math.round(performance.now() - startedAtMs);
     logger.info(

@@ -120,6 +120,26 @@ export { searchPlugin } from './plugins/2d/search/index.js';
 export { measurePlugin } from './plugins/2d/measure/index.js';
 export type { MeasurePluginAPI } from './plugins/2d/measure/index.js';
 export type { PdfMeasureMode, PdfMeasurement } from './plugins/2d/measure/types.js';
+export {
+  markupPlugins,
+  markupCorePlugin,
+  markupRectPlugin,
+  markupArrowPlugin,
+  markupCloudPlugin,
+  markupFreehandPlugin,
+  markupTextPlugin,
+  MARKUP_CORE_NAME,
+} from './plugins/2d/markup/index.js';
+export type {
+  MarkupCoreAPI,
+  MarkupToolDefinition,
+  MarkupTool,
+  MarkupStyle,
+  Annotation2D,
+  Markup2DViewState,
+  MarkupDraft,
+  CommittedMarkupItem,
+} from './plugins/2d/markup/index.js';
 export { navCompassPlugin } from './plugins/2d/nav-compass/index.js';
 export type { NavCompassLocale } from './plugins/2d/nav-compass/NavCompassWidget.js';
 export { scenePlugin as scenePlugin2D } from './plugins/2d/scene/index.js';

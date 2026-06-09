@@ -9,10 +9,39 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from tests.conftest import _add_member, _auth, _create_project
+from tests.conftest import _add_member, _auth, _create_attachment_row, _create_project
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
+
+
+_RECT_ANNOTATION: dict[str, object] = {
+    "id": "a1",
+    "tool": "rect",
+    "points": [[0.1, 0.1], [0.5, 0.5]],
+    "color": "#ef4444",
+    "strokeWidth": 2,
+}
+
+
+def _viewpoint_2d(
+    *,
+    file_id: str | None = None,
+    page: int = 1,
+    annotations: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    vs: dict[str, object] = {
+        "center_x": 0.5,
+        "center_y": 0.5,
+        "zoom": 1.0,
+        "file_type": "pdf",
+        "page": page,
+        "annotations": annotations if annotations is not None else [_RECT_ANNOTATION],
+    }
+    overrides: dict[str, object] = {"is_2d": True, "view_state_2d": vs}
+    if file_id is not None:
+        overrides["linked_file_id"] = file_id
+    return _viewpoint(**overrides)
 
 
 def _viewpoint(**overrides: object) -> dict[str, object]:
@@ -682,6 +711,108 @@ async def test_export_with_topics(client: AsyncClient, org_user: dict[str, str])
 # ---------------------------------------------------------------------------
 # Import
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# 2D markup (PDF annotations stored in view_state_2d)
+# ---------------------------------------------------------------------------
+
+
+async def test_create_topic_2d_viewpoint_round_trips_annotations(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    resp = await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(viewpoint=_viewpoint_2d(page=3)),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    vp = resp.json()["viewpoints"][0]
+    assert vp["is_2d"] is True
+    vs = vp["view_state_2d"]
+    assert vs["page"] == 3
+    assert vs["file_type"] == "pdf"
+    assert len(vs["annotations"]) == 1
+    ann = vs["annotations"][0]
+    assert ann["tool"] == "rect"
+    assert ann["points"] == [[0.1, 0.1], [0.5, 0.5]]
+    assert ann["strokeWidth"] == 2
+
+
+async def test_markup_2d_endpoint_returns_linked_topics(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    file_id = await _create_attachment_row(project["id"])
+
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/bcf-topics",
+            json=_topic(title="Crack on plan", viewpoint=_viewpoint_2d(file_id=file_id, page=2)),
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+
+    resp = await client.get(
+        f"/projects/{project['id']}/bcf-topics/markup-2d?file_id={file_id}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    items = resp.json()
+    assert len(items) == 1
+    item = items[0]
+    assert item["topic_id"] == created["id"]
+    assert item["title"] == "Crack on plan"
+    assert item["page"] == 2
+    assert item["annotations"][0]["tool"] == "rect"
+
+
+async def test_markup_2d_endpoint_filters_by_file(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    file_a = await _create_attachment_row(project["id"])
+    file_b = await _create_attachment_row(project["id"])
+
+    await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(title="On file A", viewpoint=_viewpoint_2d(file_id=file_a)),
+        headers=_auth(org_user["access_token"]),
+    )
+
+    # Querying file B returns nothing; querying file A returns the topic.
+    resp_b = await client.get(
+        f"/projects/{project['id']}/bcf-topics/markup-2d?file_id={file_b}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp_b.status_code == 200
+    assert resp_b.json() == []
+
+    resp_a = await client.get(
+        f"/projects/{project['id']}/bcf-topics/markup-2d?file_id={file_a}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert len(resp_a.json()) == 1
+
+
+async def test_markup_2d_excludes_3d_viewpoints(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    file_id = await _create_attachment_row(project["id"])
+    # A normal 3D viewpoint linked to the same file must not show up as markup.
+    await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(viewpoint=_viewpoint(linked_file_id=file_id)),
+        headers=_auth(org_user["access_token"]),
+    )
+    resp = await client.get(
+        f"/projects/{project['id']}/bcf-topics/markup-2d?file_id={file_id}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
+    assert resp.json() == []
 
 
 async def test_import_and_roundtrip(client: AsyncClient, org_user: dict[str, str]) -> None:

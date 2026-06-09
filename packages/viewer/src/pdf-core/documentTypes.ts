@@ -13,6 +13,7 @@ import type {
   PluginLifecycleEvents,
   PluginRegistryView,
 } from '../core/plugin.js';
+import type { MarkupDraft } from '../plugins/2d/markup/types.js';
 
 /** Pointer/tool mode the document viewer is in. */
 export type DocumentTool = 'select' | 'pan' | 'zoom';
@@ -86,6 +87,12 @@ export interface DocumentEvents extends PluginLifecycleEvents {
   'contextmenu:close': undefined;
   /** Camera position/zoom changed (emitted by the 2D camera plugin). */
   'camera:change': undefined;
+  /** A markup shape was drawn and is held as the unsaved draft. */
+  'markup:draftComplete': MarkupDraft;
+  /** A committed markup shape was clicked. */
+  'markup:select': { topicId: string };
+  /** Markup committed/draft set changed (panel re-pulls state). */
+  'markup:change': { committedCount: number; hasDraft: boolean };
 }
 
 /**
