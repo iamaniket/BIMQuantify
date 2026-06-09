@@ -1294,6 +1294,27 @@
           "notApplicable": "N/A",
           "overdue": "Overdue"
         },
+        "filing": {
+          "dialogTitle": "File {label}",
+          "readinessHeading": "Document readiness",
+          "readyCount": "{ready} of {total} required items ready",
+          "warningIncomplete": "Some required documents are missing. You can still proceed.",
+          "allReady": "All required documents are present.",
+          "referenceLabel": "OLO reference number",
+          "referencePlaceholder": "e.g. OLO-2026-12345",
+          "notesLabel": "Filing notes",
+          "notesPlaceholder": "Optional notes about this filing",
+          "confirmButton": "Confirm filing",
+          "confirmHint": "After confirming, this deadline will be marked as filed.",
+          "next": "Next",
+          "back": "Back",
+          "cancel": "Cancel",
+          "optional": "Optional",
+          "fileButton": "File melding",
+          "filedOn": "Filed on {date}",
+          "filedBy": "Filed by {name}",
+          "referenceShort": "Ref: {number}"
+        },
         "notificationSettingsToggle": "Notification settings",
         "notifications": {
           "title": "Notification settings",

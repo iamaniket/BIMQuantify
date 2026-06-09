@@ -74,6 +74,7 @@ class DeadlineRuleResponse(BaseModel):
     legal_reference: str | None
     default_reminder_days: list[int]
     default_recipient_roles: list[str]
+    required_dossier_codes: list[str]
 
 
 class JurisdictionResponse(BaseModel):
@@ -206,6 +207,7 @@ async def list_jurisdictions(
                         legal_reference=r.legal_reference,
                         default_reminder_days=list(r.default_reminder_days),
                         default_recipient_roles=list(r.default_recipient_roles),
+                        required_dossier_codes=list(r.required_dossier_codes),
                     )
                     for r in j.deadline_rules
                 ],

@@ -19,6 +19,9 @@ export const DeadlineSchema = z.object({
   status: DeadlineStatusEnum,
   met_at: z.string().nullable(),
   met_by_user_id: z.string().uuid().nullable(),
+  reference_number: z.string().nullable(),
+  filing_notes: z.string().nullable(),
+  filed_at: z.string().nullable(),
   is_overdue: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -27,6 +30,40 @@ export type Deadline = z.infer<typeof DeadlineSchema>;
 
 export const DeadlineListSchema = z.array(DeadlineSchema);
 export type DeadlineList = z.infer<typeof DeadlineListSchema>;
+
+// ---------------------------------------------------------------------------
+// Filing
+// ---------------------------------------------------------------------------
+
+export const FileDeadlineBodySchema = z.object({
+  reference_number: z.string().optional(),
+  filing_notes: z.string().optional(),
+});
+export type FileDeadlineBody = z.infer<typeof FileDeadlineBodySchema>;
+
+// ---------------------------------------------------------------------------
+// Readiness check
+// ---------------------------------------------------------------------------
+
+export const ReadinessItemSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  category: z.string(),
+  required: z.boolean(),
+  fulfilled: z.boolean(),
+  count: z.number(),
+});
+export type ReadinessItem = z.infer<typeof ReadinessItemSchema>;
+
+export const DeadlineReadinessSchema = z.object({
+  deadline_id: z.string().uuid(),
+  deadline_type: z.string(),
+  items: z.array(ReadinessItemSchema),
+  ready_count: z.number(),
+  total_required: z.number(),
+  is_ready: z.boolean(),
+});
+export type DeadlineReadiness = z.infer<typeof DeadlineReadinessSchema>;
 
 // ---------------------------------------------------------------------------
 // Deadline notification settings (effective = merged view)

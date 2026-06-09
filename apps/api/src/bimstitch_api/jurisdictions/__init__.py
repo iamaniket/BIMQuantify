@@ -75,6 +75,7 @@ class DeadlineRule:
     legal_reference: str | None = None
     default_reminder_days: tuple[int, ...] = (14, 7, 3, 1)
     default_recipient_roles: tuple[str, ...] = ("owner", "editor", "contractor")
+    required_dossier_codes: tuple[str, ...] = ()  # dossier requirement codes needed to file
 
 
 def get_deadline_rules(country: str) -> tuple[DeadlineRule, ...]:

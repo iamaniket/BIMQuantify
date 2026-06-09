@@ -1294,6 +1294,27 @@
           "notApplicable": "N.v.t.",
           "overdue": "Verlopen"
         },
+        "filing": {
+          "dialogTitle": "Indienen {label}",
+          "readinessHeading": "Documentgereedheid",
+          "readyCount": "{ready} van {total} vereiste items gereed",
+          "warningIncomplete": "Sommige vereiste documenten ontbreken. U kunt toch doorgaan.",
+          "allReady": "Alle vereiste documenten zijn aanwezig.",
+          "referenceLabel": "OLO-referentienummer",
+          "referencePlaceholder": "bijv. OLO-2026-12345",
+          "notesLabel": "Opmerkingen bij indiening",
+          "notesPlaceholder": "Optionele opmerkingen bij deze indiening",
+          "confirmButton": "Bevestig indiening",
+          "confirmHint": "Na bevestiging wordt deze deadline als ingediend gemarkeerd.",
+          "next": "Volgende",
+          "back": "Terug",
+          "cancel": "Annuleren",
+          "optional": "Optioneel",
+          "fileButton": "Melding indienen",
+          "filedOn": "Ingediend op {date}",
+          "filedBy": "Ingediend door {name}",
+          "referenceShort": "Ref: {number}"
+        },
         "notificationSettingsToggle": "Meldingsinstellingen",
         "notifications": {
           "title": "Meldingsinstellingen",

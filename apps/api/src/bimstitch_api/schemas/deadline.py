@@ -18,14 +18,20 @@ class DeadlineRead(BaseModel):
     status: DeadlineStatus
     met_at: datetime | None
     met_by_user_id: UUID | None
+    reference_number: str | None
+    filing_notes: str | None
+    filed_at: datetime | None
     is_overdue: bool
     created_at: datetime
     updated_at: datetime
 
 
-class DeadlineMarkMet(BaseModel):
-    """Body for PATCH /projects/{project_id}/deadlines/{deadline_id} (mark as met)."""
+class DeadlineFileMet(BaseModel):
+    """Body for PATCH /projects/{project_id}/deadlines/{deadline_id}.
 
-    # Intentionally empty — marking as met doesn't require extra input.
-    # The server fills met_at + met_by_user_id from the auth context.
-    pass
+    All fields optional for backward compatibility — existing callers
+    sending ``{}`` continue to work.
+    """
+
+    reference_number: str | None = None
+    filing_notes: str | None = None

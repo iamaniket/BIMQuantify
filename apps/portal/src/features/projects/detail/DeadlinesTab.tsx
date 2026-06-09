@@ -6,11 +6,12 @@ import { useState, type JSX } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
 
-import type { EffectiveDeadlineNotificationSettings } from '@/lib/api/schemas/deadlines';
+import type { Deadline, EffectiveDeadlineNotificationSettings } from '@/lib/api/schemas/deadlines';
 
 import { DeadlineCard } from './deadlines/DeadlineCard';
 import { DeadlineNotificationForm } from './deadlines/DeadlineNotificationForm';
-import { useDeadlines, useMarkDeadlineMet } from './deadlines/useDeadlines';
+import { FilingDialog } from './deadlines/FilingDialog';
+import { useDeadlines, useFileDeadline } from './deadlines/useDeadlines';
 import {
   useDeleteProjectDeadlineSetting,
   useProjectDeadlineSettings,
@@ -26,10 +27,11 @@ export function DeadlinesTab({ projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.deadlines');
   const deadlinesQuery = useDeadlines(projectId);
   const settingsQuery = useProjectDeadlineSettings(projectId);
-  const markMet = useMarkDeadlineMet(projectId);
+  const fileMutation = useFileDeadline(projectId);
   const upsertSetting = useUpsertProjectDeadlineSetting(projectId);
   const deleteSetting = useDeleteProjectDeadlineSetting(projectId);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [filingDeadline, setFilingDeadline] = useState<{ deadline: Deadline; label: string } | null>(null);
 
   const deadlines = deadlinesQuery.data ?? [];
   const settings = settingsQuery.data ?? [];
@@ -68,17 +70,18 @@ export function DeadlinesTab({ projectId }: Props): JSX.Element {
       {/* Deadline status list */}
       {deadlines.map((dl) => {
         const meta = labelMap.get(dl.deadline_type);
-        const label = meta !== undefined ? meta.label : dl.deadline_type;
+        const dlLabel = meta !== undefined ? meta.label : dl.deadline_type;
         const ref = meta !== undefined ? meta.legal_reference : null;
         return (
           <DeadlineCard
             key={dl.id}
             deadline={dl}
-            label={label}
+            label={dlLabel}
             legalReference={ref}
             canMarkMet={dl.status === 'pending'}
-            isPending={markMet.isPending}
-            onMarkMet={() => { markMet.mutate({ deadlineId: dl.id }); }}
+            isPending={fileMutation.isPending}
+            onMarkMet={() => { fileMutation.mutate({ deadlineId: dl.id }); }}
+            onFile={() => { setFilingDeadline({ deadline: dl, label: dlLabel }); }}
           />
         );
       })}
@@ -118,6 +121,18 @@ export function DeadlinesTab({ projectId }: Props): JSX.Element {
           </div>
         )}
       </div>
+
+      {filingDeadline !== null && (
+        <FilingDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setFilingDeadline(null);
+          }}
+          projectId={projectId}
+          deadline={filingDeadline.deadline}
+          label={filingDeadline.label}
+        />
+      )}
     </div>
   );
 }

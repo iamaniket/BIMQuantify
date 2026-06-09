@@ -1,12 +1,17 @@
 import { apiClient } from './client';
 import {
   DeadlineListSchema,
+  DeadlineReadinessSchema,
+  DeadlineSchema,
   EffectiveDeadlineNotificationSettingsListSchema,
   EffectiveDeadlineNotificationSettingsSchema,
+  type Deadline,
   type DeadlineList,
   type DeadlineNotificationSettingsUpdate,
+  type DeadlineReadiness,
   type EffectiveDeadlineNotificationSettings,
   type EffectiveDeadlineNotificationSettingsList,
+  type FileDeadlineBody,
 } from './schemas/deadlines';
 
 // ---------------------------------------------------------------------------
@@ -24,13 +29,28 @@ export async function listDeadlines(
   );
 }
 
-export async function markDeadlineMet(
+export async function fileDeadline(
   accessToken: string,
   projectId: string,
   deadlineId: string,
-): Promise<void> {
-  await apiClient.patchNoContent(
+  body: FileDeadlineBody = {},
+): Promise<Deadline> {
+  return apiClient.patch(
     `/projects/${projectId}/deadlines/${deadlineId}`,
+    body,
+    DeadlineSchema,
+    accessToken,
+  );
+}
+
+export async function getDeadlineReadiness(
+  accessToken: string,
+  projectId: string,
+  deadlineId: string,
+): Promise<DeadlineReadiness> {
+  return apiClient.get(
+    `/projects/${projectId}/deadlines/${deadlineId}/readiness`,
+    DeadlineReadinessSchema,
     accessToken,
   );
 }

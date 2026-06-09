@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Check, Clock, Minus } from '@bimstitch/ui/icons';
+import { AlertTriangle, Check, Clock, FileText, Minus } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -15,6 +15,7 @@ type Props = {
   canMarkMet: boolean;
   isPending: boolean;
   onMarkMet: () => void;
+  onFile?: () => void;
 };
 
 function daysUntil(dueDateStr: string): number {
@@ -75,6 +76,11 @@ function daysClassName(deadline: Deadline, daysRemaining: number): string {
   return '';
 }
 
+function isFilingType(deadlineType: string): boolean {
+  return deadlineType === 'construction_notification'
+    || deadlineType === 'completion_notification';
+}
+
 export function DeadlineCard({
   deadline,
   label,
@@ -82,6 +88,7 @@ export function DeadlineCard({
   canMarkMet,
   isPending,
   onMarkMet,
+  onFile,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.deadlines');
 
@@ -94,6 +101,7 @@ export function DeadlineCard({
   const statusLabel = resolved.label;
 
   const Icon = statusIcon(statusVariant);
+  const showFilingButton = isFilingType(deadline.deadline_type) && onFile !== undefined;
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3">
@@ -132,19 +140,49 @@ export function DeadlineCard({
               <span className="font-sans">{legalReference}</span>
             </>
           )}
+          {deadline.status === 'met' && deadline.reference_number != null && (
+            <>
+              <span>·</span>
+              <span className="font-sans">
+                {t('filing.referenceShort', { number: deadline.reference_number })}
+              </span>
+            </>
+          )}
+          {deadline.status === 'met' && deadline.filed_at != null && (
+            <>
+              <span>·</span>
+              <span>
+                {t('filing.filedOn', { date: deadline.filed_at.slice(0, 10) })}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
-      {canMarkMet && deadline.status === 'pending' && (
-        <Button
-          variant="border"
-          size="sm"
-          disabled={isPending}
-          onClick={onMarkMet}
-        >
-          <Check className="mr-1 h-3 w-3" />
-          {t('markMet')}
-        </Button>
+      {deadline.status === 'pending' && (
+        <>
+          {showFilingButton ? (
+            <Button
+              variant="border"
+              size="sm"
+              disabled={isPending}
+              onClick={onFile}
+            >
+              <FileText className="mr-1 h-3 w-3" />
+              {t('filing.fileButton')}
+            </Button>
+          ) : canMarkMet && (
+            <Button
+              variant="border"
+              size="sm"
+              disabled={isPending}
+              onClick={onMarkMet}
+            >
+              <Check className="mr-1 h-3 w-3" />
+              {t('markMet')}
+            </Button>
+          )}
+        </>
       )}
     </div>
   );

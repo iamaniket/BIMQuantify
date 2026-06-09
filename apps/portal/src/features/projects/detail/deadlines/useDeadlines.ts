@@ -1,7 +1,16 @@
 import type { UseQueryResult, UseMutationResult } from '@tanstack/react-query';
 
-import { listDeadlines, markDeadlineMet } from '@/lib/api/deadlines';
-import type { DeadlineList } from '@/lib/api/schemas/deadlines';
+import {
+  fileDeadline,
+  getDeadlineReadiness,
+  listDeadlines,
+} from '@/lib/api/deadlines';
+import type {
+  Deadline,
+  DeadlineList,
+  DeadlineReadiness,
+  FileDeadlineBody,
+} from '@/lib/api/schemas/deadlines';
 import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import { projectDeadlinesKey } from '../../queryKeys';
@@ -15,11 +24,23 @@ export function useDeadlines(
   });
 }
 
-export function useMarkDeadlineMet(
+export function useFileDeadline(
   projectId: string,
-): UseMutationResult<void, Error, { deadlineId: string }> {
+): UseMutationResult<Deadline, Error, { deadlineId: string; body?: FileDeadlineBody }> {
   return useAuthMutation({
-    mutationFn: (token, { deadlineId }) => markDeadlineMet(token, projectId, deadlineId),
+    mutationFn: (token, { deadlineId, body }) =>
+      fileDeadline(token, projectId, deadlineId, body),
     invalidateKeys: () => [projectDeadlinesKey(projectId)],
+  });
+}
+
+export function useDeadlineReadiness(
+  projectId: string,
+  deadlineId: string | null,
+): UseQueryResult<DeadlineReadiness> {
+  return useAuthQuery({
+    queryKey: [...projectDeadlinesKey(projectId), deadlineId, 'readiness'] as const,
+    queryFn: (token) => getDeadlineReadiness(token, projectId, deadlineId!),
+    enabled: deadlineId !== null,
   });
 }

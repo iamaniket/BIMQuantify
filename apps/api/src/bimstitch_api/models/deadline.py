@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -61,6 +61,11 @@ class Deadline(TimestampMixin, TenantBase):
         PG_UUID(as_uuid=True),
         ForeignKey("public.users.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    reference_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    filing_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    filed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     project: Mapped["Project"] = relationship()

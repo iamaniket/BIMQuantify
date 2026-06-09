@@ -50,6 +50,13 @@ NL_DEADLINE_RULES: tuple[DeadlineRule, ...] = (
         use_working_days=False,
         direction="before",
         legal_reference="Wkb art. 2.21",
+        required_dossier_codes=(
+            "drawings",
+            "structural-calculations",
+            "fire-safety-docs",
+            "energy-performance",
+            "assurance-docs",
+        ),
     ),
     DeadlineRule(
         deadline_type="information_obligation",
@@ -69,6 +76,19 @@ NL_DEADLINE_RULES: tuple[DeadlineRule, ...] = (
         use_working_days=True,
         direction="after",
         legal_reference="Wkb art. 2.21",
+        required_dossier_codes=(
+            "drawings",
+            "structural-calculations",
+            "fire-safety-docs",
+            "energy-performance",
+            "installation-docs",
+            "product-certificates",
+            "inspection-certificates",
+            "assurance-docs",
+            "inspection-evidence",
+            "findings-resolved",
+            "deadlines-on-track",
+        ),
     ),
 )
 

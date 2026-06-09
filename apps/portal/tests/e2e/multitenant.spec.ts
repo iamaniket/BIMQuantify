@@ -184,6 +184,17 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
   });
 
+  // Quiesce the page before per-test fixture teardown. Under `next dev` the page
+  // holds a permanent HMR/Fast-Refresh connection and never goes network-idle;
+  // in Playwright --ui (which REUSES the browser context across tests) the
+  // reuse-disconnect waits on that busy page and stalls, surfacing as a
+  // "Test timeout" AFTER the body has already passed. Navigating to about:blank
+  // unloads the dev page (closing the HMR connection) so teardown completes.
+  // Harmless headless/CI: every test starts with its own navigation/login.
+  test.afterEach(async ({ page }) => {
+    await page.goto('about:blank').catch(() => undefined);
+  });
+
   // =========================================================================
   // SUITE A — Super admin
   // =========================================================================
@@ -196,14 +207,19 @@ test.describe.serial('Multitenant E2E Journey', () => {
     log('calling loginViaUI');
     await loginViaUI(page, email, password);
     log('loginViaUI done');
-    // loginViaUI's own success contract is /(projects|account)/ — a freshly
-    // seeded super admin lands on /projects, but in a persistent --ui session
-    // the once-seeded DB accumulates state across re-runs, and a pending
-    // invitation on the bootstrap user legitimately routes login to /account.
-    // Asserting /projects-only here is stricter than the helper guarantees and
-    // flips red on that benign state ("logs look passed, test failed").  Match
-    // the helper: what A1 actually verifies is that UI login reaches the app.
-    await expect(page).toHaveURL(/\/(projects|account)/);
+    // Assert the post-login URL as a SNAPSHOT via page.url(), NOT via
+    // expect(page).toHaveURL(). toHaveURL internally calls
+    // mainFrame().waitForURL() which — once the URL already matches — then
+    // awaits waitForLoadState('load'). Under `next dev` (Turbopack) in
+    // Playwright --ui, the frame's 'load' state never settles (the persistent
+    // HMR/Fast-Refresh connection keeps a navigation load pending), so
+    // toHaveURL times out at its expect timeout EVEN THOUGH the URL is correct
+    // — surfacing as a misleading "Timed out 5000ms" with a Received URL that
+    // actually matches. loginViaUI already waited for the redirect, so a plain
+    // string match on the settled URL is both correct and immune to that trap.
+    // (A freshly seeded super admin lands on /projects; a pending bootstrap
+    // invite can instead route to /account — both are acceptable here.)
+    expect(page.url()).toMatch(/\/(projects|account)/);
     log('URL assertion passed');
   });
 
@@ -297,7 +313,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await loginViaUI(page, state.adminEmail, state.adminPassword);
     // Match loginViaUI's contract (/(projects|account)/): a just-activated admin
     // who still has a pending bootstrap invite can land on /account.  See A1.
-    await expect(page).toHaveURL(/\/(projects|account)/);
+    expect(page.url()).toMatch(/\/(projects|account)/);
   });
 
   // =========================================================================
@@ -518,7 +534,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
       // After first login with pending invitations the app redirects to /account
       expectedPathPattern: /\/(account|projects)/,
     });
-    await expect(page).toHaveURL(/\/(account|projects)/);
+    expect(page.url()).toMatch(/\/(account|projects)/);
   });
 
   test('D4: member accepts the team invitation', async ({ page }) => {
@@ -619,7 +635,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
   test('E4: member logs in with the new password', async ({ page }) => {
     await loginViaUI(page, state.memberEmail, state.memberPassword);
-    await expect(page).toHaveURL(/\/(projects|account)/);
+    expect(page.url()).toMatch(/\/(projects|account)/);
   });
 
   // =========================================================================
@@ -685,7 +701,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
   test('F4: admin logs in with the new password', async ({ page }) => {
     await loginViaUI(page, state.adminEmail, state.adminPassword);
-    await expect(page).toHaveURL(/\/(projects|account)/);
+    expect(page.url()).toMatch(/\/(projects|account)/);
   });
 
   // =========================================================================

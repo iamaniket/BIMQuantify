@@ -1,7 +1,8 @@
 """Integration tests for deadline tracker (backlog #28).
 
 Covers: auto-seed on project create, recompute on PATCH, CRUD endpoints,
-is_overdue computation, mark-as-met, permission gates, RLS isolation.
+is_overdue computation, mark-as-met/filing, readiness checks, permission
+gates, RLS isolation, audit logging.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from tests.conftest import _auth, _create_project
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 
 # ---------------------------------------------------------------------------
@@ -519,3 +520,237 @@ async def test_list_deadlines_pagination_and_total_count(
         headers=_auth(token),
     )
     assert too_big.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Filing flow (N4) — PATCH with body, readiness endpoint, audit
+# ---------------------------------------------------------------------------
+
+
+async def _file_deadline(
+    client: AsyncClient,
+    token: str,
+    project_id: str,
+    deadline_id: str,
+    *,
+    reference_number: str | None = None,
+    filing_notes: str | None = None,
+) -> dict:
+    body: dict[str, object] = {}
+    if reference_number is not None:
+        body["reference_number"] = reference_number
+    if filing_notes is not None:
+        body["filing_notes"] = filing_notes
+    resp = await client.patch(
+        f"/projects/{project_id}/deadlines/{deadline_id}",
+        json=body,
+        headers=_auth(token),
+    )
+    return resp.json() if resp.status_code == 200 else {"_status": resp.status_code, **resp.json()}
+
+
+async def _get_readiness(
+    client: AsyncClient, token: str, project_id: str, deadline_id: str
+) -> dict:
+    resp = await client.get(
+        f"/projects/{project_id}/deadlines/{deadline_id}/readiness",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+async def test_file_deadline_with_reference_number(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Filing a deadline with reference number and notes persists all fields."""
+    token = org_user["access_token"]
+    project = await _create_project_with_dates(client, token, name="File Ref")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
+
+    result = await _file_deadline(
+        client, token, project["id"], dl["id"],
+        reference_number="OLO-2026-12345",
+        filing_notes="Filed via Omgevingsloket",
+    )
+
+    assert result["status"] == "met"
+    assert result["reference_number"] == "OLO-2026-12345"
+    assert result["filing_notes"] == "Filed via Omgevingsloket"
+    assert result["filed_at"] is not None
+    assert result["met_at"] is not None
+    assert result["met_by_user_id"] == org_user["id"]
+
+
+async def test_file_deadline_empty_body_backward_compat(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Empty body still works — backward compatible with old callers."""
+    token = org_user["access_token"]
+    project = await _create_project_with_dates(client, token, name="Empty Body")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
+
+    result = await _mark_met(client, token, project["id"], dl["id"])
+    assert result["status"] == "met"
+    assert result["filed_at"] is not None
+    assert result["reference_number"] is None
+    assert result["filing_notes"] is None
+
+
+async def test_file_deadline_idempotent_preserves_filing_data(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Re-filing an already-met deadline is a no-op — original data preserved."""
+    token = org_user["access_token"]
+    project = await _create_project_with_dates(client, token, name="Idempotent File")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
+
+    first = await _file_deadline(
+        client, token, project["id"], dl["id"],
+        reference_number="OLO-FIRST",
+    )
+    second = await _file_deadline(
+        client, token, project["id"], dl["id"],
+        reference_number="OLO-SECOND",
+    )
+
+    assert second["reference_number"] == "OLO-FIRST"
+    assert second["met_at"] == first["met_at"]
+
+
+async def test_file_deadline_not_applicable_returns_409(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Cannot file a not_applicable deadline."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token, "NA File 409")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = deadlines[0]
+
+    resp = await client.patch(
+        f"/projects/{project['id']}/deadlines/{dl['id']}",
+        json={"reference_number": "OLO-X"},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 409
+
+
+async def test_file_deadline_creates_audit_record(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Filing a deadline creates an audit log entry with action 'deadline.filed'."""
+    from sqlalchemy import select, text
+
+    from bimstitch_api.models.audit_log import AuditLog
+
+    token = org_user["access_token"]
+    project = await _create_project_with_dates(client, token, name="Audit Test")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
+
+    await _file_deadline(
+        client, token, project["id"], dl["id"],
+        reference_number="OLO-AUDIT-001",
+    )
+
+    async with session_maker() as session:
+        from uuid import UUID
+
+        from bimstitch_api.tenancy import schema_name_for
+
+        org_id = UUID(org_user["organization_id"])
+        schema = schema_name_for(org_id)
+        await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
+
+        row = (
+            await session.execute(
+                select(AuditLog)
+                .where(AuditLog.action == "deadline.filed")
+                .order_by(AuditLog.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+    assert row is not None
+    assert row.resource_type == "deadline"
+    assert str(row.resource_id) == dl["id"]
+    assert row.after is not None
+    assert row.after["reference_number"] == "OLO-AUDIT-001"
+    assert row.after["status"] == "met"
+
+
+# ---------------------------------------------------------------------------
+# Readiness checks
+# ---------------------------------------------------------------------------
+
+
+async def test_readiness_informatieplicht_always_ready(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Information obligation has no required dossier codes → always ready."""
+    token = org_user["access_token"]
+    project = await _create_project_with_dates(client, token, name="Info Ready")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = next(d for d in deadlines if d["deadline_type"] == "information_obligation")
+
+    readiness = await _get_readiness(client, token, project["id"], dl["id"])
+    assert readiness["is_ready"] is True
+    assert readiness["items"] == []
+    assert readiness["total_required"] == 0
+
+
+async def test_readiness_bouwmelding_missing_docs(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Bouwmelding with no uploads → all required items unfulfilled."""
+    token = org_user["access_token"]
+    project = await _create_project_with_dates(client, token, name="Bouw Missing")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
+
+    readiness = await _get_readiness(client, token, project["id"], dl["id"])
+    assert readiness["is_ready"] is False
+    assert readiness["ready_count"] == 0
+    assert readiness["total_required"] > 0
+    assert len(readiness["items"]) == 5  # 5 required dossier codes for bouwmelding
+
+    for item in readiness["items"]:
+        assert item["fulfilled"] is False
+        assert item["count"] == 0
+
+
+async def test_readiness_gereedmelding_has_all_codes(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Gereedmelding readiness has 11 items (full dossier)."""
+    token = org_user["access_token"]
+    project = await _create_project_with_dates(client, token, name="Gereed Full")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = next(d for d in deadlines if d["deadline_type"] == "completion_notification")
+
+    readiness = await _get_readiness(client, token, project["id"], dl["id"])
+    assert len(readiness["items"]) == 11
+
+
+async def test_readiness_404_wrong_project(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    other_org_user: dict[str, str],
+) -> None:
+    """Cross-org readiness check returns 404."""
+    project = await _create_project_with_dates(
+        client, org_user["access_token"], name="Cross Org Readiness"
+    )
+    deadlines = await _list_deadlines(client, org_user["access_token"], project["id"])
+    dl = deadlines[0]
+
+    resp = await client.get(
+        f"/projects/{project['id']}/deadlines/{dl['id']}/readiness",
+        headers=_auth(other_org_user["access_token"]),
+    )
+    assert resp.status_code == 404
