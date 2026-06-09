@@ -267,19 +267,18 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
     IFCRELCONTAINEDINSPATIALSTRUCTURE,
   );
   for (let i = 0; i < relIds.size(); i += 1) {
-    const rel = api.GetLine(modelID, relIds.get(i), true) as Record<
+    // `flatten: false` — RelatedElements come back as bare handles instead of
+    // recursively expanding every element's geometry tree. We read each
+    // element's GlobalId/Name with a cheap scalar GetLine(id, false) below.
+    const rel = api.GetLine(modelID, relIds.get(i), false) as Record<
       string,
       unknown
     >;
-    const relating = rel['RelatingStructure'] as
-      | Record<string, unknown>
-      | undefined;
-    const containedIn = relating ? numberValue(relating['expressID']) : null;
+    const containedIn = numberValue(rel['RelatingStructure']);
     const related = rel['RelatedElements'];
     if (!Array.isArray(related)) continue;
     for (const obj of related) {
-      const elem = obj as Record<string, unknown>;
-      const expressID = numberValue(elem['expressID']);
+      const expressID = numberValue(obj);
       if (expressID === null) continue;
       const code = api.GetLineType(modelID, expressID);
       const rawName = (
@@ -291,11 +290,15 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
         (typeof rawName === 'string'
           ? IFC_UPPERCASE_TO_PASCAL.get(rawName)
           : undefined) ?? rawName ?? 'Unknown';
+      const line = api.GetLine(modelID, expressID, false) as Record<
+        string,
+        unknown
+      >;
       elements.push({
         expressID,
-        globalId: stringValue(elem['GlobalId']),
+        globalId: stringValue(line['GlobalId']),
         type,
-        name: stringValue(elem['Name']),
+        name: stringValue(line['Name']),
         containedIn,
       });
     }
@@ -311,19 +314,18 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
   const seen = new Set(elements.map((e) => e.expressID));
   const aggIds = api.GetLineIDsWithType(modelID, IFCRELAGGREGATES);
   for (let i = 0; i < aggIds.size(); i += 1) {
-    const rel = api.GetLine(modelID, aggIds.get(i), true) as Record<
+    // `flatten: false` — RelatedObjects are bare handles; we resolve each
+    // child's GlobalId/Name with a scalar GetLine(id, false) rather than
+    // flattening its geometry here only to read two strings.
+    const rel = api.GetLine(modelID, aggIds.get(i), false) as Record<
       string,
       unknown
     >;
-    const relating = rel['RelatingObject'] as
-      | Record<string, unknown>
-      | undefined;
-    const containedIn = relating ? numberValue(relating['expressID']) : null;
+    const containedIn = numberValue(rel['RelatingObject']);
     const related = rel['RelatedObjects'];
     if (!Array.isArray(related)) continue;
     for (const obj of related) {
-      const child = obj as Record<string, unknown>;
-      const childID = numberValue(child['expressID']);
+      const childID = numberValue(obj);
       if (childID === null || seen.has(childID)) continue;
       const code = api.GetLineType(modelID, childID);
       if (SPATIAL_CONTAINERS.has(code)) continue;
@@ -334,7 +336,7 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
       ).GetNameFromTypeCode?.(code);
       if (typeof rawName !== 'string') continue;
       const type = IFC_UPPERCASE_TO_PASCAL.get(rawName) ?? rawName;
-      const line = api.GetLine(modelID, childID, true) as Record<
+      const line = api.GetLine(modelID, childID, false) as Record<
         string,
         unknown
       >;
