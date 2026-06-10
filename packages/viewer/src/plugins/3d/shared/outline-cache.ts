@@ -1,14 +1,11 @@
 /**
  * OutlineCache — build the model's hard-edge outline once, store it.
  *
- * On demand (typically when a model finishes loading) it walks every item,
- * extracts hard edges, and stores them as one concatenated position buffer
- * plus a per-element index (which span of the buffer belongs to which
- * `localId`). The build runs in batches that yield to the event loop, so a
- * large model can stream/build slowly without freezing the UI — the whole
- * point is to pay this cost exactly once.
+ * Edges come exclusively from the backend precomputed artifact
+ * (processor's `.outline.bin`). Client-side edge extraction has been
+ * removed — if the artifact is unavailable, edges won't be shown.
  *
- * From that index it can merge edges into a small set of
+ * From the cached index it can merge edges into a small set of
  * `LineSegmentsGeometry` chunks — either the full model (memoized, reused by
  * x-ray) or filtered to an arbitrary set of visible `localId`s (owned and
  * disposed by the caller). Only CPU-side geometry is stored (no
@@ -17,19 +14,11 @@
 
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 
-import type { ViewerContext } from '../../../core/types.js';
-import { extractEdgePositions, type RawMeshGeometry } from './edges.js';
 import type { DecodedOutline } from './outline-codec.js';
 
-const BATCH_SIZE = 1000;
 // ~500k segments per chunk (6 floats/segment) — keeps each instanced buffer
 // well under GPU limits while keeping the chunk count tiny.
 const MAX_FLOATS_PER_CHUNK = 3_000_000;
-
-interface ModelWithGeometry {
-  getLocalIds(): Promise<Iterable<number>>;
-  getItemsGeometry(ids: number[]): Promise<RawMeshGeometry[][]>;
-}
 
 /**
  * Per-model edge data: one concatenated position buffer + a per-element index
@@ -140,73 +129,31 @@ export class OutlineCache {
   }
 
   /** Build once; concurrent/repeat calls share the same in-flight promise. */
-  build(ctx: ViewerContext, modelId: string): Promise<void> {
+  build(modelId: string): Promise<void> {
+    // Client-side edge extraction is removed — edges must come from the
+    // backend precomputed artifact. Return a no-op promise.
     if (this.indices.has(modelId)) return Promise.resolve();
     const existing = this.building.get(modelId);
     if (existing) return existing;
-    const p = this.run(ctx, modelId).finally(() => {
-      this.building.delete(modelId);
-    });
+    const p = Promise.resolve();
     this.building.set(modelId, p);
+    p.finally(() => this.building.delete(modelId));
     return p;
   }
 
-  private async run(ctx: ViewerContext, modelId: string): Promise<void> {
-    const model = ctx.models().get(modelId) as unknown as
-      | ModelWithGeometry
-      | undefined;
-    if (!model) return;
-
-    let localIds: number[];
-    try {
-      localIds = [...(await model.getLocalIds())];
-    } catch {
-      this.setBuilt(modelId, emptyIndex());
-      return;
-    }
-
-    // Accumulate one element's edges at a time so we can record its span.
-    const perElement: Float32Array[] = [];
-    const elementIds: number[] = [];
-    let totalFloats = 0;
-
-    for (let i = 0; i < localIds.length; i += BATCH_SIZE) {
-      const batch = localIds.slice(i, i + BATCH_SIZE);
-      let meshArrays: RawMeshGeometry[][];
-      try {
-        meshArrays = await model.getItemsGeometry(batch);
-      } catch {
-        continue;
-      }
-      for (let j = 0; j < meshArrays.length; j++) {
-        const localId = batch[j]!;
-        const meshArr = meshArrays[j] ?? [];
-        let elementFloats = 0;
-        const parts: Float32Array[] = [];
-        for (const meshData of meshArr) {
-          const positions = extractEdgePositions(meshData);
-          if (!positions) continue;
-          parts.push(positions);
-          elementFloats += positions.length;
-        }
-        if (elementFloats === 0) continue;
-        const merged =
-          parts.length === 1 ? parts[0]! : concat(parts, elementFloats);
-        perElement.push(merged);
-        elementIds.push(localId);
-        totalFloats += elementFloats;
-      }
-      // Yield so model LOD streaming and the UI keep running during the build.
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    }
-
-    this.setBuilt(modelId, buildIndex(perElement, elementIds, totalFloats));
-  }
-
-  /** A precomputed index seeded mid-build wins; don't clobber it. */
-  private setBuilt(modelId: string, index: EdgeIndex): void {
-    if (this.indices.has(modelId)) return;
-    this.indices.set(modelId, index);
+  /**
+   * Look up precomputed edge positions for a single element. Returns the
+   * Float32Array sub-view into the cached buffer, or null when the model
+   * isn't cached or the element has no hard edges.
+   */
+  getItemPositions(modelId: string, localId: number): Float32Array | null {
+    const index = this.indices.get(modelId);
+    if (!index) return null;
+    const slot = index.slotOf.get(localId);
+    if (slot === undefined) return null;
+    const len = index.lengths[slot]!;
+    if (len === 0) return null;
+    return index.positions.subarray(index.starts[slot]!, index.starts[slot]! + len);
   }
 
   dispose(): void {
@@ -252,35 +199,4 @@ function concat(parts: Float32Array[], totalFloats: number): Float32Array {
     off += arr.length;
   }
   return out;
-}
-
-function buildIndex(
-  perElement: Float32Array[],
-  elementIds: number[],
-  totalFloats: number,
-): EdgeIndex {
-  const positions = new Float32Array(totalFloats);
-  const starts = new Uint32Array(perElement.length);
-  const lengths = new Uint32Array(perElement.length);
-  const slotOf = new Map<number, number>();
-
-  let off = 0;
-  for (let slot = 0; slot < perElement.length; slot++) {
-    const arr = perElement[slot]!;
-    positions.set(arr, off);
-    starts[slot] = off;
-    lengths[slot] = arr.length;
-    slotOf.set(elementIds[slot]!, slot);
-    off += arr.length;
-  }
-  return { positions, starts, lengths, slotOf };
-}
-
-function emptyIndex(): EdgeIndex {
-  return {
-    positions: new Float32Array(0),
-    starts: new Uint32Array(0),
-    lengths: new Uint32Array(0),
-    slotOf: new Map(),
-  };
 }

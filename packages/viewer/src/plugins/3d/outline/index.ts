@@ -154,9 +154,8 @@ export function outlinePlugin(
     return hidden && hidden.size > 0 ? { hidden } : null;
   };
 
-  // Seed the cache from the processor's precomputed artifact when one was
-  // supplied with the model; on any failure (no supply, fetch resolved null,
-  // undecodable bytes) fall back to client-side edge extraction.
+  // Seed the cache from the processor's precomputed artifact. Client-side
+  // edge extraction has been removed — edges must come from the backend.
   const seedCache = async (
     ctx: ViewerContext,
     modelId: string,
@@ -167,13 +166,11 @@ export function outlinePlugin(
         const decoded = await decodeOutline(bytes);
         if (decoded) {
           cache.loadPrecomputed(modelId, decoded);
-          return;
         }
       }
     } catch {
-      // fall through to the client-side build
+      // No precomputed outline available — edges won't be shown.
     }
-    await cache.build(ctx, modelId);
   };
 
   const clearLines = (): void => {
@@ -289,6 +286,19 @@ export function outlinePlugin(
       ctx.commands.register('outline.isEnabled', () => enabled, {
         title: 'Get outline enabled state',
       });
+      ctx.commands.register(
+        'outline.getItemEdges',
+        (args: unknown) => {
+          const { modelId, localIds } = args as { modelId: string; localIds: number[] };
+          const result = new Map<number, Float32Array>();
+          for (const localId of localIds) {
+            const positions = cache.getItemPositions(modelId, localId);
+            if (positions) result.set(localId, positions);
+          }
+          return result;
+        },
+        { title: 'Get cached edge positions for specific items' },
+      );
 
       cleanup = (): void => {
         offLoaded();

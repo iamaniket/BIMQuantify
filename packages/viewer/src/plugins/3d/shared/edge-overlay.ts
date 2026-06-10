@@ -17,7 +17,6 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
 import { LAYER_OVERLAY } from '../../../core/layers.js';
 import type { ItemId, ViewerContext } from '../../../core/types.js';
-import { extractEdgePositions } from './edges.js';
 import {
   applyClippingPlanes,
   buildClippingPlanes,
@@ -103,44 +102,35 @@ export class EdgeOverlay {
     }
 
     for (const [modelId, modelItems] of grouped) {
-      const model = ctx.models().get(modelId);
-      if (!model) continue;
-
       const localIds = modelItems.map((i) => i.localId);
 
+      // Get precomputed edges from the backend via the outline cache.
+      let cachedEdges: Map<number, Float32Array> | null = null;
       try {
-        const meshDataArrays = await model.getItemsGeometry(localIds);
-
-        for (let idx = 0; idx < modelItems.length; idx++) {
-          const item = modelItems[idx]!;
-          const k = itemKey(item);
-          const meshDataArr = meshDataArrays[idx] ?? [];
-          const segments: LineSegments2[] = [];
-
-          for (const meshData of meshDataArr) {
-            // Edges are extracted with the mesh transform baked into world
-            // space, so the line object itself stays at identity.
-            const positions = extractEdgePositions(meshData);
-            if (!positions) continue;
-
-            const lineGeo = new LineSegmentsGeometry();
-            lineGeo.setPositions(positions);
-
-            const line = new LineSegments2(lineGeo, mat.clone());
-            line.renderOrder = 999;
-            line.layers.set(LAYER_OVERLAY);
-            line.name = `edge-overlay::${k}`;
-
-            ctx.scene.add(line);
-            segments.push(line);
-          }
-
-          if (segments.length) {
-            this.lines.set(k, segments);
-          }
-        }
+        cachedEdges = (await ctx.commands.execute('outline.getItemEdges', {
+          modelId,
+          localIds,
+        })) as Map<number, Float32Array> | null;
       } catch {
-        // Some items may not resolve geometry (eg spatial tree nodes).
+        // Outline plugin not registered or cache not ready.
+        continue;
+      }
+
+      if (!cachedEdges || cachedEdges.size === 0) continue;
+
+      for (const item of modelItems) {
+        const positions = cachedEdges.get(item.localId);
+        if (!positions) continue;
+
+        const k = itemKey(item);
+        const lineGeo = new LineSegmentsGeometry();
+        lineGeo.setPositions(positions);
+        const line = new LineSegments2(lineGeo, mat.clone());
+        line.renderOrder = 999;
+        line.layers.set(LAYER_OVERLAY);
+        line.name = `edge-overlay::${k}`;
+        ctx.scene.add(line);
+        this.lines.set(k, [line]);
       }
     }
   }
