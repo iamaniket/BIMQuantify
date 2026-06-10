@@ -59,7 +59,7 @@ export function HeroShell({
             <KpiStrip items={kpis} />
           </div>
           {action !== undefined && (
-            <div className="shrink-0 pl-2">{action}</div>
+            <div className="flex shrink-0 items-center gap-1.5 pl-2">{action}</div>
           )}
         </div>
       </div>

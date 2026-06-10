@@ -36,7 +36,11 @@ from bimstitch_api.models.project_file import (
     ProjectFileStatus,
 )
 from bimstitch_api.models.report import _REPORT_TERMINAL, Report, ReportStatus, ReportType
-from bimstitch_api.notifications.service import create_notification, publish_notification
+from bimstitch_api.notifications.service import (
+    create_notification,
+    publish_notification,
+    upsert_job_notification,
+)
 from bimstitch_api.schemas.attachment import AttachmentCallbackRequest, AttachmentRead
 from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
 from bimstitch_api.schemas.report import ReportCallbackRequest, ReportResponse
@@ -301,15 +305,24 @@ async def _emit_notification(
     schema = schema_name_for(payload.organization_id)
     async with session.begin():
         await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
-        notification = await create_notification(
-            session,
-            event_type=event_type,
-            title=title,
-            body=body,
-            project_id=job.project_id if job else None,
-            file_id=file.id,
-            job_id=job.id if job else None,
-        )
+        if job is not None:
+            notification = await upsert_job_notification(
+                session,
+                event_type=event_type,
+                title=title,
+                body=body,
+                project_id=job.project_id,
+                file_id=file.id,
+                job_id=job.id,
+            )
+        else:
+            notification = await create_notification(
+                session,
+                event_type=event_type,
+                title=title,
+                body=body,
+                file_id=file.id,
+            )
 
     await publish_notification(notification, organization_id=payload.organization_id)
 
@@ -436,7 +449,7 @@ async def report_callback(
             await session.execute(
                 text(f'SET LOCAL search_path TO "{schema}", public')
             )
-            notification = await create_notification(
+            notification = await upsert_job_notification(
                 session,
                 event_type=event_type,
                 title=notif_title,

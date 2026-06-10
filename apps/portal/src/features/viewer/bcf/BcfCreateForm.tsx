@@ -2,11 +2,13 @@
 
 import { useTranslations } from 'next-intl';
 import {
-  useCallback, useState, type JSX,
+  useCallback, useEffect, useState, type JSX,
 } from 'react';
 import { toast } from 'sonner';
 
-import { cn } from '@bimstitch/ui';
+import { cn, type AppIcon } from '@bimstitch/ui';
+import { ArrowRight, Check, Pencil, Square, StickyNote, UploadCloud } from '@bimstitch/ui/icons';
+import type { MarkupTool } from '@bimstitch/viewer';
 
 import { uploadSnapshot } from '@/lib/api/bcf';
 import { tokenManager } from '@/lib/auth/tokenManager';
@@ -14,6 +16,14 @@ import { useAuth } from '@/providers/AuthProvider';
 
 import type { BcfController } from './useBcfController';
 import { useCreateBcfTopic } from './useCreateBcfTopic';
+
+const SHAPE_TOOLS: { tool: MarkupTool; icon: AppIcon; labelKey: string }[] = [
+  { tool: 'rect', icon: Square, labelKey: 'rectangle' },
+  { tool: 'arrow', icon: ArrowRight, labelKey: 'arrow' },
+  { tool: 'cloud', icon: UploadCloud, labelKey: 'cloud' },
+  { tool: 'freehand', icon: Pencil, labelKey: 'freehand' },
+  { tool: 'text', icon: StickyNote, labelKey: 'text' },
+];
 
 type Props = {
   projectId: string;
@@ -39,10 +49,27 @@ export function BcfCreateForm({
   const [priority, setPriority] = useState('');
   const [captureView, setCaptureView] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [showShapePicker, setShowShapePicker] = useState(false);
 
   // In 2D markup mode the drawn shape IS the viewpoint — always capture it and
   // hide the toggle. In 3D the toggle controls whether the camera is captured.
   const is2d = controller.captureMode === '2d';
+
+  useEffect(() => {
+    if (!is2d || controller.onDraftChange === undefined) return undefined;
+    return controller.onDraftChange((has) => {
+      setHasDraft(has);
+      if (has) {
+        setIsDrawing(false);
+        setShowShapePicker(false);
+      } else if (isDrawing) {
+        setIsDrawing(false);
+        setShowShapePicker(true);
+      }
+    });
+  }, [is2d, controller, isDrawing]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -201,6 +228,68 @@ export function BcfCreateForm({
               <option value="Low">{t('priority.low')}</option>
             </select>
           </div>
+
+          {/* 2D Annotation — form-first flow */}
+          {is2d && (
+            <div>
+              <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
+                {t('annotationLabel')}
+              </label>
+              {hasDraft ? (
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 font-sans text-body3 text-success">
+                    <Check className="h-3.5 w-3.5" />
+                    {t('annotationAdded')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (controller.clearDraft !== undefined) controller.clearDraft();
+                      setHasDraft(false);
+                      setShowShapePicker(false);
+                    }}
+                    className="font-sans text-body3 text-foreground-tertiary underline hover:text-foreground-secondary"
+                  >
+                    {t('annotationRemove')}
+                  </button>
+                </div>
+              ) : isDrawing ? (
+                <div className="flex h-8 items-center gap-1.5 rounded border border-primary bg-primary/5 px-3 font-sans text-body3 text-primary">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                  {t('annotationDrawing')}
+                </div>
+              ) : showShapePicker ? (
+                <div className="flex items-center gap-1 rounded border border-border bg-surface-low px-1.5 py-1">
+                  {SHAPE_TOOLS.map(({ tool, icon: Icon, labelKey }) => (
+                    <button
+                      key={tool}
+                      type="button"
+                      title={t(`shapes.${labelKey}`)}
+                      onClick={() => {
+                        if (controller.activateMarkup !== undefined) {
+                          controller.activateMarkup(tool);
+                          setIsDrawing(true);
+                          setShowShapePicker(false);
+                        }
+                      }}
+                      className="inline-grid h-7 w-7 place-items-center rounded text-foreground-secondary transition-colors hover:bg-background-hover hover:text-foreground"
+                    >
+                      <Icon className="h-4 w-4" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setShowShapePicker(true); }}
+                  className="flex h-8 items-center gap-1.5 rounded border border-dashed border-border bg-background px-3 font-sans text-body3 text-foreground-secondary transition-colors hover:border-primary hover:text-primary"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  {t('addAnnotation')}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Capture toggle — 3D only; in 2D the markup is always captured. */}
           {!is2d && (

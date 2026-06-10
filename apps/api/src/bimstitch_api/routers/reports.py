@@ -55,7 +55,7 @@ from bimstitch_api.models.project_file import ProjectFile, ProjectFileRole
 from bimstitch_api.models.report import Report, ReportStatus, ReportType
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
-from bimstitch_api.notifications.service import create_notification, publish_notification
+from bimstitch_api.notifications.service import publish_notification, upsert_job_notification
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
     _require_membership,
@@ -678,7 +678,7 @@ async def create_report(
         # tenant transaction wouldn't be safe (RLS GUC drops on commit), so
         # we create the notification row in this same txn and publish it
         # after `get_tenant_session` commits.
-        notification = await create_notification(
+        notification = await upsert_job_notification(
             session,
             event_type=NotificationEventType.job_started,
             title=plan.title,

@@ -631,7 +631,7 @@ async def test_report_callback_emits_notification(
     after = await client.get("/notifications", headers=_auth(org_user["access_token"]))
     assert after.status_code == 200
     items = after.json()["items"]
-    assert after.json()["total"] >= started_count + 1
+    assert after.json()["total"] >= started_count
 
     # Find the job_succeeded notification for this job.
     matched = [

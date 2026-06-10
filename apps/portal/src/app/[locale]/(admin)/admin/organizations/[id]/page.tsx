@@ -5,7 +5,7 @@ import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { use, useCallback, useMemo, useState, type JSX } from 'react';
 
-import { Button, ConfirmDialog, Skeleton } from '@bimstitch/ui';
+import { ConfirmDialog, IconButton, Skeleton } from '@bimstitch/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
@@ -137,28 +137,30 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
         onDelete={handleDelete}
         onImageUpload={handleImageUpload}
         onImageRemove={handleImageRemove}
-        tabBarActions={
+        heroActions={
           <>
-            <Button variant="border" size="sm" onClick={() => { setEditOpen(true); }}>
-              <Pencil className="mr-1 h-3.5 w-3.5" />
-              {t('editButton')}
-            </Button>
-            <Button
-              variant={isSuspended ? 'primary' : 'border'}
+            <IconButton size="sm" aria-label={t('editButton')} onClick={() => { setEditOpen(true); }}>
+              <Pencil className="h-4 w-4" />
+            </IconButton>
+            <IconButton
               size="sm"
+              aria-label={isSuspended ? t('reactivateButton') : t('suspendButton')}
               onClick={() => { setStatusConfirmOpen(true); }}
             >
               {isSuspended ? (
-                <Play className="mr-1 h-3.5 w-3.5" />
+                <Play className="h-4 w-4" />
               ) : (
-                <Pause className="mr-1 h-3.5 w-3.5" />
+                <Pause className="h-4 w-4" />
               )}
-              {isSuspended ? t('reactivateButton') : t('suspendButton')}
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleDelete}>
-              <Trash2 className="mr-1 h-3.5 w-3.5" />
-              {t('deleteButton')}
-            </Button>
+            </IconButton>
+            <IconButton
+              size="sm"
+              aria-label={t('deleteButton')}
+              className="text-error hover:bg-error/10"
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+            </IconButton>
           </>
         }
       />

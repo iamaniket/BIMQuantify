@@ -4,7 +4,7 @@ import { Pencil } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 
-import { Button, Skeleton } from '@bimstitch/ui';
+import { IconButton, Skeleton } from '@bimstitch/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
@@ -96,11 +96,10 @@ export default function TenantAdminPage(): JSX.Element {
         onInvite={() => { setInviteOpen(true); }}
         onImageUpload={handleImageUpload}
         onImageRemove={handleImageRemove}
-        tabBarActions={
-          <Button variant="border" size="sm" onClick={() => { setEditOpen(true); }}>
-            <Pencil className="mr-1 h-3.5 w-3.5" />
-            {t('editOrgButton')}
-          </Button>
+        heroActions={
+          <IconButton size="sm" aria-label={t('editOrgButton')} onClick={() => { setEditOpen(true); }}>
+            <Pencil className="h-4 w-4" />
+          </IconButton>
         }
       />
       <TenantOrgEditDialog

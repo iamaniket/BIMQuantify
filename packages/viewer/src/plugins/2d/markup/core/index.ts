@@ -43,8 +43,9 @@ import type {
   MarkupToolDefinition,
 } from './api.js';
 import { normCentroid, pointsToArtifact, pointsToNorm } from './normalize.js';
+import type { SceneAPI } from '../../scene/index.js';
 import { hitTestCommitted, type HitShape } from './hitTest.js';
-import { compositeSnapshot } from './snapshot.js';
+import { compositeSnapshot, type ViewportCrop } from './snapshot.js';
 
 export const MARKUP_CORE_NAME = 'markup-core' as const;
 
@@ -293,9 +294,11 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
   }
 
   function activate(tool: MarkupTool): void {
-    if (!ctx) return;
+    console.log('[Markup] activate called, tool:', tool, 'ctx:', !!ctx);
+    if (!ctx) { console.warn('[Markup] no ctx — bailing'); return; }
     const def = tools.get(tool);
-    if (!def) return;
+    console.log('[Markup] tool def found:', !!def, 'registered tools:', [...tools.keys()]);
+    if (!def) { console.warn('[Markup] tool not registered — bailing'); return; }
     if (activeTool === null) savedTool = ctx.getTool();
     activeInteraction?.dispose?.();
     activeTool = tool;
@@ -303,7 +306,34 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
     ctx.setTool('select'); // neutralize the camera's left-drag while drawing
     activeInteraction = def.createInteraction(makeToolContext());
     setRootInteractive(true);
+    console.log('[Markup] pluginRoot pointer-events:', pluginRoot?.style.pointerEvents, 'cursor:', pluginRoot?.style.cursor);
+    console.log('[Markup] pluginRoot dimensions:', pluginRoot?.offsetWidth, 'x', pluginRoot?.offsetHeight);
+    if (pluginRoot) {
+      const rect = pluginRoot.getBoundingClientRect();
+      console.log('[Markup] pluginRoot boundingRect:', JSON.stringify({ top: Math.round(rect.top), left: Math.round(rect.left), width: Math.round(rect.width), height: Math.round(rect.height) }));
+      // DEBUG: make the overlay visible
+      pluginRoot.style.border = '3px solid red';
+      pluginRoot.style.background = 'rgba(255,0,0,0.05)';
+      // DEBUG: document-level click logger to see what receives clicks
+      const debugClick = (ev: MouseEvent) => {
+        const els = document.elementsFromPoint(ev.clientX, ev.clientY);
+        console.log('[Markup DEBUG] click at', ev.clientX, ev.clientY, 'hit:', els.slice(0, 6).map((el) => {
+          const tag = el.tagName.toLowerCase();
+          const id = el.id ? `#${el.id}` : '';
+          const cls = el.className && typeof el.className === 'string' ? '.' + el.className.split(/\s+/).slice(0, 2).join('.') : '';
+          const ds = Object.keys((el as HTMLElement).dataset || {}).join(',');
+          const pe = getComputedStyle(el).pointerEvents;
+          return `${tag}${id}${cls}${ds ? `[${ds}]` : ''} pe=${pe}`;
+        }));
+        const hitMarkup = els.includes(pluginRoot!);
+        console.log('[Markup DEBUG] pluginRoot in hit stack:', hitMarkup);
+      };
+      document.addEventListener('click', debugClick, true);
+      // Auto-remove after 30s
+      setTimeout(() => document.removeEventListener('click', debugClick, true), 30000);
+    }
     rebuildPreview();
+    console.log('[Markup] activate complete, activeTool:', activeTool);
   }
 
   function deactivate(): void {
@@ -321,6 +351,7 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
   // ----------------------------------------------------------- pointer + click
 
   function onPointerDown(e: PointerEvent): void {
+    console.log('[Markup] onPointerDown, activeTool:', activeTool, 'hasInteraction:', !!activeInteraction);
     activeInteraction?.onPointerDown?.(e);
   }
   function onPointerMove(e: PointerEvent): void {
@@ -357,21 +388,65 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
 
   // -------------------------------------------------------------- view state
 
+  function getSceneCamera(): import('three').OrthographicCamera | null {
+    if (!ctx) return null;
+    const sceneApi = ctx.plugins.get<SceneAPI>('scene');
+    return sceneApi?.camera ?? null;
+  }
+
   function getViewState(): { page: number; center_x: number; center_y: number; zoom: number } {
+    if (!ctx) return { page: 1, center_x: 0.5, center_y: 0.5, zoom: 1 };
+    const cam = getSceneCamera();
+    const uv = ctx.getUnscaledViewport();
+    let centerX = 0.5;
+    let centerY = 0.5;
+    if (cam && uv && uv.width > 0 && uv.height > 0) {
+      centerX = Math.max(0, Math.min(1, cam.position.x / uv.width));
+      centerY = Math.max(0, Math.min(1, 1 - cam.position.y / uv.height));
+    }
     return {
-      page: ctx?.getCurrentPage() ?? 1,
-      center_x: 0.5,
-      center_y: 0.5,
-      zoom: ctx?.getScale() ?? 1,
+      page: ctx.getCurrentPage(),
+      center_x: centerX,
+      center_y: centerY,
+      zoom: ctx.getScale(),
     };
+  }
+
+  function computeViewportCrop(): ViewportCrop | undefined {
+    if (!ctx) return undefined;
+    const cam = getSceneCamera();
+    if (!cam) return undefined;
+    const containerW = ctx.container.clientWidth;
+    const containerH = ctx.container.clientHeight;
+    if (containerW === 0 || containerH === 0) return undefined;
+    const uv = ctx.getUnscaledViewport();
+    if (!uv) return undefined;
+
+    const zoom = cam.zoom;
+    const frustumW = (cam.right - cam.left) / zoom;
+    const frustumH = (cam.top - cam.bottom) / zoom;
+    const cx = cam.position.x;
+    const cy = cam.position.y;
+    const visLeft = cx - frustumW / 2;
+    const visTop = cy + frustumH / 2;
+
+    const pxPerUnit = containerW / frustumW;
+    const renderScale = ctx.getScale();
+
+    const screenX = (0 - visLeft) * pxPerUnit;
+    const screenY = (visTop - uv.height) * pxPerUnit;
+    const cssScale = pxPerUnit / renderScale;
+
+    return { containerW, containerH, screenX, screenY, cssScale };
   }
 
   function captureSnapshot(maxWidth = 480): string | null {
     if (!ctx || !renderer) return null;
-    render(); // ensure the markup buffer is current before reading it
+    render();
     const dims = ctx.getPageDimensions();
     if (!dims) return null;
-    return compositeSnapshot(ctx.canvas, renderer.domElement, dims, maxWidth);
+    const viewport = computeViewportCrop();
+    return compositeSnapshot(ctx.canvas, renderer.domElement, dims, maxWidth, viewport);
   }
 
   // ------------------------------------------------------------------- resize

@@ -1,10 +1,9 @@
 'use client';
 
-import { Building2, Hammer, Layers, MapPin, Ruler, Scale, Share2 } from '@bimstitch/ui/icons';
-import { useState, type JSX } from 'react';
+import { Building2, Hammer, Layers, MapPin, Ruler, Scale } from '@bimstitch/ui/icons';
+import { useState, type JSX, type ReactNode } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
-import { Link } from '@/i18n/navigation';
 import {
   daysUntil,
   formatAddress,
@@ -31,6 +30,7 @@ type Props = {
   deadlinesSummary?: DeadlinesSummary;
   attachmentCount?: number;
   dossierPct?: number;
+  action?: ReactNode;
 };
 
 export function ProjectDetailHeader({
@@ -38,6 +38,7 @@ export function ProjectDetailHeader({
   deadlinesSummary,
   attachmentCount,
   dossierPct,
+  action,
 }: Props): JSX.Element {
   const locale = useLocale() as Locale;
   const tStatuses = useTranslations('projects.statuses');
@@ -190,16 +191,7 @@ export function ProjectDetailHeader({
         },
         { label: tHero('delivery'), value: opleveringValue, sub: opleveringSub },
       ]}
-      action={
-        <Link
-          href={`/projects/${project.id}/access`}
-          title={tHero('shareProject')}
-          aria-label={tHero('shareProject')}
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border-0 bg-transparent text-foreground-secondary transition-colors hover:bg-surface-low hover:text-primary"
-        >
-          <Share2 className="h-3.5 w-3.5" />
-        </Link>
-      }
+      action={action}
     />
   );
 }

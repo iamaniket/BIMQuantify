@@ -2,11 +2,16 @@ import json
 import logging
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.cache import get_redis
-from bimstitch_api.models.notification import Notification, NotificationEventType
+from bimstitch_api.models.notification import (
+    Notification,
+    NotificationDismissal,
+    NotificationEventType,
+    NotificationRead,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +35,63 @@ async def create_notification(
     handler). The notification lives in `org_<hex>.notifications` — there
     is no `organization_id` column because the schema name IS the org.
     """
+    notification = Notification(
+        event_type=event_type,
+        title=title,
+        body=body,
+        project_id=project_id,
+        file_id=file_id,
+        job_id=job_id,
+    )
+    session.add(notification)
+    await session.flush()
+    return notification
+
+
+async def upsert_job_notification(
+    session: AsyncSession,
+    *,
+    event_type: NotificationEventType,
+    title: str,
+    body: str,
+    project_id: UUID | None = None,
+    file_id: UUID | None = None,
+    job_id: UUID,
+) -> Notification:
+    """Create or update a notification for a given job.
+
+    When a notification for ``job_id`` already exists, update it in-place
+    and clear all per-user read/dismissal state so it resurfaces as unread.
+    """
+    stmt = (
+        select(Notification)
+        .where(Notification.job_id == job_id)
+        .with_for_update()
+    )
+    existing = (await session.execute(stmt)).scalar_one_or_none()
+
+    if existing is not None:
+        existing.event_type = event_type
+        existing.title = title
+        existing.body = body
+        existing.project_id = project_id
+        existing.file_id = file_id
+        existing.created_at = func.now()
+
+        await session.execute(
+            delete(NotificationRead).where(
+                NotificationRead.notification_id == existing.id
+            )
+        )
+        await session.execute(
+            delete(NotificationDismissal).where(
+                NotificationDismissal.notification_id == existing.id
+            )
+        )
+        await session.flush()
+        await session.refresh(existing)
+        return existing
+
     notification = Notification(
         event_type=event_type,
         title=title,

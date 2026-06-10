@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 
-import type { DocumentViewerHandle, MarkupDraft, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, MarkupDraft, MarkupTool, ViewerHandle } from '@bimstitch/viewer';
 
 import type { BcfViewpointCreateInput, BcfViewpointRead } from '@/lib/api/schemas/bcf';
 
@@ -26,6 +26,12 @@ export type BcfController = {
   captureMode: '3d' | '2d';
   capture: () => Promise<BcfCaptureResult | null>;
   applyViewpoint: (vp: BcfViewpointRead) => Promise<void>;
+  /** (2D only) Activate a markup tool so the user can draw an annotation. */
+  activateMarkup: ((tool?: MarkupTool) => void) | undefined;
+  /** (2D only) Clear the current draft annotation. */
+  clearDraft: (() => void) | undefined;
+  /** (2D only) Subscribe to draft-state changes. Returns an unsubscribe fn. */
+  onDraftChange: ((cb: (hasDraft: boolean) => void) => () => void) | undefined;
 };
 
 /** Controller backed by the 3D IFC viewer (unchanged behaviour). */
@@ -40,6 +46,9 @@ export function use3dBcfController(handle: ViewerHandle | null): BcfController {
         if (handle === null) return;
         await handle.commands.execute('bcf.applyViewpoint', buildBcfViewpointPayload(vp));
       },
+      activateMarkup: undefined,
+      clearDraft: undefined,
+      onDraftChange: undefined,
     }),
     [handle, capture],
   );
@@ -60,13 +69,27 @@ export function use2dBcfController(
 
   const capture = useCallback(async (): Promise<BcfCaptureResult | null> => {
     if (documentHandle === null) return null;
-    const draft = await documentHandle.commands.execute<MarkupDraft | null>('markup.getDraft');
-    if (draft === null) return null;
+
     const view = await documentHandle.commands.execute<View2DState>('markup.getViewState');
     const snapshotDataUrl =
       (await documentHandle.commands.execute<string | null>('markup.captureSnapshot', {
         maxWidth: 480,
       })) ?? null;
+
+    const draft = await documentHandle.commands.execute<MarkupDraft | null>('markup.getDraft');
+
+    const annotations = draft !== null
+      ? [
+          {
+            id: crypto.randomUUID(),
+            tool: draft.tool,
+            points: draft.points,
+            ...(draft.text !== undefined ? { text: draft.text } : {}),
+            color: draft.color,
+            strokeWidth: draft.strokeWidth,
+          },
+        ]
+      : [];
 
     const viewpoint: BcfViewpointCreateInput = {
       guid: crypto.randomUUID(),
@@ -86,17 +109,8 @@ export function use2dBcfController(
         zoom: view.zoom,
         visible_layers: [],
         file_type: 'pdf',
-        page: draft.page,
-        annotations: [
-          {
-            id: crypto.randomUUID(),
-            tool: draft.tool,
-            points: draft.points,
-            ...(draft.text !== undefined ? { text: draft.text } : {}),
-            color: draft.color,
-            strokeWidth: draft.strokeWidth,
-          },
-        ],
+        page: draft !== null ? draft.page : view.page,
+        annotations,
       },
       linked_file_id: fileId,
     };
@@ -111,6 +125,42 @@ export function use2dBcfController(
       applyViewpoint: async (vp) => {
         const vs = vp.view_state_2d as { page?: number } | null;
         if (vs && typeof vs.page === 'number') onRestorePage(vs.page);
+      },
+      activateMarkup: (tool: MarkupTool = 'rect') => {
+        console.log('[BCF] activateMarkup called, tool:', tool, 'documentHandle:', documentHandle !== null);
+        if (documentHandle === null) {
+          console.warn('[BCF] documentHandle is null — cannot activate markup');
+          return;
+        }
+        void documentHandle.commands.execute('measure.deactivate').catch(() => undefined);
+        void documentHandle.commands.execute('markup.setStyle', { color: '#ef4444' }).catch((err) => {
+          console.error('[BCF] markup.setStyle failed:', err);
+        });
+        documentHandle.commands.execute('markup.activate', { mode: tool })
+          .then(() => { console.log('[BCF] markup.activate succeeded'); })
+          .catch((err) => { console.error('[BCF] markup.activate FAILED:', err); });
+
+        documentHandle.commands.execute('markup.isActive')
+          .then((active) => { console.log('[BCF] markup.isActive after activate:', active); })
+          .catch(() => undefined);
+      },
+      clearDraft: () => {
+        if (documentHandle === null) return;
+        void documentHandle.commands.execute('markup.clearDraft');
+      },
+      onDraftChange: (cb: (hasDraft: boolean) => void) => {
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        if (documentHandle === null) return () => {};
+        documentHandle.commands.execute<MarkupDraft | null>('markup.getDraft')
+          .then((d) => { cb(d !== null); })
+          .catch(() => undefined);
+        const offChange = documentHandle.events.on('markup:change', ({ hasDraft }) => {
+          cb(hasDraft);
+        });
+        const offDraft = documentHandle.events.on('markup:draftComplete', () => {
+          cb(true);
+        });
+        return () => { offChange(); offDraft(); };
       },
     }),
     [documentHandle, capture, onRestorePage],

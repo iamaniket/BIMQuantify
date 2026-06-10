@@ -2,9 +2,11 @@
 
 import { useParams } from 'next/navigation';
 
-import { useEffect, useMemo, type JSX } from 'react';
+import { useEffect, useMemo, useState, type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { IconButton, Skeleton } from '@bimstitch/ui';
+import { Pencil, Share2 } from '@bimstitch/ui/icons';
+import { useTranslations } from 'next-intl';
 
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
@@ -27,11 +29,16 @@ import {
   selectDossierTemplate,
 } from '@/features/projects/detail/dossierTemplate';
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
+import { ProjectFormDialog } from '@/features/projects/ProjectFormDialog';
+import { isProjectArchived } from '@/lib/formatting/projects';
+import { Link } from '@/i18n/navigation';
 
 export default function ProjectDetailPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
+  const tHero = useTranslations('projectDetail.hero');
   const projectQuery = useProject(projectId);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     track(PORTAL_EVENTS.PROJECT_OPENED, { project_id: projectId });
@@ -121,36 +128,66 @@ export default function ProjectDetailPage(): JSX.Element {
 
   const models = modelsQuery.data ?? [];
 
-  return (
-    <PageShell
-      hero={
-        <ProjectDetailHeader
-          project={project}
-          deadlinesSummary={deadlinesSummary}
-          attachmentCount={attachmentCount}
-          dossierPct={dossier.pct}
-        />
-      }
-    >
-      <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-[2fr_3fr] xl:grid-cols-[2fr_4fr_2fr]">
-        <ProjectChartsPanel
-          dossier={dossier}
-          template={dossierTemplate}
-          deadlines={deadlines}
-          attachments={attachments}
-          certificates={certificates}
-          activityEntries={activityEntries}
-        />
+  const heroAction = (
+    <>
+      <IconButton
+        size="sm"
+        aria-label={tHero('editProject')}
+        disabled={isProjectArchived(project)}
+        onClick={() => { setEditOpen(true); }}
+      >
+        <Pencil className="h-4 w-4" />
+      </IconButton>
+      <Link
+        href={`/projects/${project.id}/access`}
+        title={tHero('shareProject')}
+        aria-label={tHero('shareProject')}
+        className="inline-grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded border border-transparent bg-transparent text-foreground-tertiary transition-colors hover:bg-background-hover"
+      >
+        <Share2 className="h-4 w-4" />
+      </Link>
+    </>
+  );
 
-        <RightColumnTabs
-          projectId={projectId}
-          projectCountry={project.country}
-          models={models}
-        />
-        <div className="hidden lg:block">
-          <ActivityPanel projectId={projectId} />
+  return (
+    <>
+      <PageShell
+        hero={
+          <ProjectDetailHeader
+            project={project}
+            deadlinesSummary={deadlinesSummary}
+            attachmentCount={attachmentCount}
+            dossierPct={dossier.pct}
+            action={heroAction}
+          />
+        }
+      >
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-[2fr_3fr] xl:grid-cols-[2fr_4fr_2fr]">
+          <ProjectChartsPanel
+            dossier={dossier}
+            template={dossierTemplate}
+            deadlines={deadlines}
+            attachments={attachments}
+            certificates={certificates}
+            activityEntries={activityEntries}
+          />
+
+          <RightColumnTabs
+            projectId={projectId}
+            projectCountry={project.country}
+            models={models}
+          />
+          <div className="hidden lg:block">
+            <ActivityPanel projectId={projectId} />
+          </div>
         </div>
-      </div>
-    </PageShell>
+      </PageShell>
+      <ProjectFormDialog
+        mode="edit"
+        project={project}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
   );
 }
