@@ -95,15 +95,15 @@ export function IssueDetailModal({ issue, open, onOpenChange }: Props): JSX.Elem
         </DialogBody>
 
         <DialogFooter>
-          <Button variant="border" size="sm">
+          <Button variant="border" size="md">
             <MapPin className="mr-1.5 h-3 w-3" />
             Pin photo
           </Button>
-          <Button variant="border" size="sm">
+          <Button variant="border" size="md">
             <UserCog className="mr-1.5 h-3 w-3" />
             Reassign
           </Button>
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="md">
             <CheckCircle2 className="mr-1.5 h-3 w-3" />
             Mark resolved
           </Button>

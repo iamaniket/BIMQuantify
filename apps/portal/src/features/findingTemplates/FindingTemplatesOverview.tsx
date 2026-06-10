@@ -109,7 +109,7 @@ export function FindingTemplatesOverview({ templates }: Props): JSX.Element {
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-medium text-foreground">{tpl.name}</span>
                     {tpl.is_default && (
-                      <Badge variant="success" size="sm">
+                      <Badge variant="success" size="md">
                         {t('defaultBadge')}
                       </Badge>
                     )}

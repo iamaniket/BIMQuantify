@@ -61,7 +61,7 @@ export function FileDropZone({
       <Button
         type="button"
         variant="primary"
-        size="sm"
+        size="md"
         onClick={() => { inputRef.current?.click(); }}
       >
         {t('chooseFile')}

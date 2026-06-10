@@ -155,7 +155,7 @@ function CategorySection({
           <div className="flex justify-end pt-1">
             <Button
               variant="ghost"
-              size="sm"
+              size="md"
               onClick={() => setShowCustomForm((v) => !v)}
               aria-expanded={showCustomForm}
             >
@@ -351,10 +351,10 @@ function RiskEditForm({ projectId, risk, onDone }: RiskEditFormProps): JSX.Eleme
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+        <Button type="button" variant="ghost" size="md" onClick={onDone}>
           {t('cancelEdit')}
         </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={updateMutation.isPending}>
+        <Button type="submit" variant="primary" size="md" disabled={updateMutation.isPending}>
           {t('saveEdit')}
         </Button>
       </div>
@@ -521,10 +521,10 @@ function CustomRiskForm({ projectId, category, onDone }: CustomRiskFormProps): J
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+        <Button type="button" variant="ghost" size="md" onClick={onDone}>
           {t('cancelCustom')}
         </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={createMutation.isPending}>
+        <Button type="submit" variant="primary" size="md" disabled={createMutation.isPending}>
           {t('saveCustom')}
         </Button>
       </div>

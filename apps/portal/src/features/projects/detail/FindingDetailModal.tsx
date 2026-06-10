@@ -219,7 +219,7 @@ export function FindingDetailModal({
       <Button
         type="button"
         variant="destructive"
-        size="sm"
+        size="md"
         disabled={isPending}
         onClick={handleDelete}
       >
@@ -228,7 +228,7 @@ export function FindingDetailModal({
       <Button
         type="button"
         variant="ghost"
-        size="sm"
+        size="md"
         onClick={() => { setConfirmDelete(false); }}
       >
         {t('delete.cancel')}
@@ -238,7 +238,7 @@ export function FindingDetailModal({
     <Button
       type="button"
       variant="ghost"
-      size="sm"
+      size="md"
       onClick={() => { setConfirmDelete(true); }}
     >
       <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -337,7 +337,7 @@ export function FindingDetailModal({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="md"
               disabled={isPending}
               onClick={handleUnlink}
             >
@@ -358,7 +358,7 @@ export function FindingDetailModal({
             <Button
               type="button"
               variant="primary"
-              size="sm"
+              size="md"
               className="mt-2"
               disabled={!canPromote || isPending}
               onClick={form.handleSubmit(onPromoteSubmit)}
@@ -400,7 +400,7 @@ export function FindingDetailModal({
             <Button
               type="button"
               variant="primary"
-              size="sm"
+              size="md"
               className="self-start"
               disabled={!canResolve || isPending}
               onClick={form.handleSubmit(onResolveSubmit)}
@@ -442,7 +442,7 @@ export function FindingDetailModal({
                 <Button
                   type="button"
                   variant="primary"
-                  size="sm"
+                  size="md"
                   className="mt-2"
                   disabled={isPending}
                   onClick={onVerify}

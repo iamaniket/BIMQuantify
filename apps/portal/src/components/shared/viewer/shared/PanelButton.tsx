@@ -44,7 +44,7 @@ export const PanelButton = forwardRef<HTMLButtonElement, PanelButtonProps>(
     <Button
       ref={ref}
       variant={variantMap[variant]!}
-      size="sm"
+      size="md"
       aria-pressed={active}
       className={cn(
         segmented && 'flex-1',

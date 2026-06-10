@@ -56,7 +56,7 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
     {
       header: t('table.type'),
       cell: (cert) => (
-        <Badge variant="default" size="sm" bordered>
+        <Badge variant="default" size="md" bordered>
           {t(`type.${cert.certificate_type}`)}
         </Badge>
       ),
@@ -77,7 +77,7 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
         const expiryState = getCertificateExpiryState(cert.valid_until);
         return (
           <>
-            <Badge variant={EXPIRY_BADGE[expiryState]} size="sm" bordered>
+            <Badge variant={EXPIRY_BADGE[expiryState]} size="md" bordered>
               {t(`expiry.${expiryState}`)}
             </Badge>
             {cert.valid_until !== null && (
@@ -95,7 +95,7 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
         cert.tags !== null && cert.tags.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {cert.tags.map((tag) => (
-              <Badge key={tag} variant="default" size="sm" bordered>
+              <Badge key={tag} variant="default" size="md" bordered>
                 {tag}
               </Badge>
             ))}

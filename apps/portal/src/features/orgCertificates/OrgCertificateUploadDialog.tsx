@@ -132,7 +132,7 @@ export function OrgCertificateUploadDialog({ open, onOpenChange }: Props): JSX.E
           <div>
             <Label>{t('fieldType')}</Label>
             <Select
-              selectSize="sm"
+              selectSize="md"
               value={certificateType}
               onChange={(e) => { setCertificateType(e.target.value as CertificateTypeValue); }}
               className="mt-1"
@@ -226,11 +226,11 @@ export function OrgCertificateUploadDialog({ open, onOpenChange }: Props): JSX.E
         </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="ghost" size="sm">{t('cancel')}</Button>
+            <Button variant="ghost" size="md">{t('cancel')}</Button>
           </DialogClose>
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={handleSubmit}
             disabled={file === null || uploadMutation.isPending || validityError}
           >

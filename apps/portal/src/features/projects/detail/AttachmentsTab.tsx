@@ -105,7 +105,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
         searchPlaceholder={t('searchPlaceholder')}
         filter={(
           <Select
-            selectSize="sm"
+            selectSize="md"
             value={categoryFilter ?? 'all'}
             onChange={(e) => { setCategoryFilter(e.target.value === 'all' ? undefined : e.target.value as AttachmentCategoryValue); }}
             className="w-auto min-w-[7.5rem]"
@@ -185,7 +185,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
             action={(
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={() => { fileInputRef.current?.click(); }}
               >
                 {t('ctaLabel')}
@@ -215,7 +215,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
             <div className="text-body3 font-semibold text-foreground">{t('captureLink')}</div>
             <Button
               variant="border"
-              size="sm"
+              size="md"
               onClick={() => { setCaptureLinkDialogOpen(true); }}
             >
               {t('captureLinkCreate')}

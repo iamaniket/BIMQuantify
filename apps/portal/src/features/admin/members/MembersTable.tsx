@@ -217,7 +217,7 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 aria-label={t('actions')}
                 disabled={busyUserId === m.user_id}
               >

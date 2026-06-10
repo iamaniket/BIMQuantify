@@ -123,7 +123,7 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <div className="relative">
             <Select
-              selectSize="sm"
+              selectSize="md"
               value={timeWindow}
               onChange={(e) => { setTimeWindow(e.target.value as TimeWindow); }}
               className="w-auto min-w-0 pr-7"
@@ -138,7 +138,7 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
           </div>
           <div className="relative">
             <Select
-              selectSize="sm"
+              selectSize="md"
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value as TypeFilter); }}
               className="w-auto min-w-0 pr-7"

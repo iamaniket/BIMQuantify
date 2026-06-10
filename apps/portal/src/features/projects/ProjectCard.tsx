@@ -183,12 +183,12 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
 
               <div className="grid grid-cols-1 gap-1.5 pt-1 text-body3 text-primary-foreground/85">
                 <p className="inline-flex items-center gap-1.5">
-                  <Icon icon={Layers} size="sm" weight="regular" className="text-white/80" />
+                  <Icon icon={Layers} size="md" weight="regular" className="text-white/80" />
                   {tPhases(project.phase)}
                 </p>
                 {project.permit_number !== null && (
                   <p className="inline-flex min-w-0 items-center gap-1.5 line-clamp-1 break-all">
-                    <Icon icon={FileText} size="sm" weight="regular" className="text-white/80" />
+                    <Icon icon={FileText} size="md" weight="regular" className="text-white/80" />
                     {project.permit_number}
                   </p>
                 )}
@@ -225,15 +225,15 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
           <div className="relative flex w-full items-center gap-3 text-caption text-primary-foreground/85">
             <div className="flex min-w-0 flex-1 gap-3">
               <span className="inline-flex min-w-0 items-center gap-1.5">
-                <Icon icon={CalendarDays} size="sm" weight="regular" className="text-white/80" />
+                <Icon icon={CalendarDays} size="md" weight="regular" className="text-white/80" />
                 <span className="min-w-0 truncate font-semibold text-white">{createdLabel === '' ? '-' : createdLabel}</span>
               </span>
               <span className="inline-flex min-w-0 items-center gap-1.5">
-                <Icon icon={RefreshCw} size="sm" weight="regular" className="text-white/80" />
+                <Icon icon={RefreshCw} size="md" weight="regular" className="text-white/80" />
                 <span className="min-w-0 truncate font-semibold text-white">{updatedLabel === '' ? '-' : updatedLabel}</span>
               </span>
               <span className="inline-flex min-w-0 items-center gap-1.5">
-                <Icon icon={Truck} size="sm" weight="regular" className="text-white/80" />
+                <Icon icon={Truck} size="md" weight="regular" className="text-white/80" />
                 <span className="min-w-0 truncate font-semibold text-white">{deliveryLabel === '' ? '-' : deliveryLabel}</span>
               </span>
             </div>

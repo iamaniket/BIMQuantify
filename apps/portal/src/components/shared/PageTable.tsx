@@ -165,7 +165,7 @@ export function SearchInput({
     <div className="relative min-w-0 w-full sm:w-auto sm:min-w-[260px]">
       <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-placeholder" />
       <Input
-        inputSize="sm"
+        inputSize="md"
         className="pl-9"
         placeholder={placeholder}
         value={value}

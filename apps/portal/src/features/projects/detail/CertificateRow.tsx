@@ -146,7 +146,7 @@ export function CertificateRow({
           <span className="truncate text-body3 font-semibold leading-tight text-foreground">
             {certificate.original_filename}
           </span>
-          <Badge variant="default" size="sm" bordered>
+          <Badge variant="default" size="md" bordered>
             {t(`type.${certificate.certificate_type}`)}
           </Badge>
           <VersionBadge version={certificate.version_number} />
@@ -160,7 +160,7 @@ export function CertificateRow({
           )}
           <span className="shrink-0">{t('validUntilShort', { date: formatDate(certificate.valid_until) })}</span>
           <span className="shrink-0">·</span>
-          <Badge variant={EXPIRY_BADGE[expiryState]} size="sm" bordered>
+          <Badge variant={EXPIRY_BADGE[expiryState]} size="md" bordered>
             {t(`expiry.${expiryState}`)}
           </Badge>
         </div>
@@ -184,16 +184,16 @@ export function CertificateRow({
 
       <DetailCardFooter className="justify-between">
         <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="sm" onClick={() => { onView(certificate); }}>
+          <Button variant="ghost" size="md" onClick={() => { onView(certificate); }}>
             <Eye className="h-3.5 w-3.5" />
             {t('rowView')}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => { void handleDownload(certificate.id); }}>
+          <Button variant="ghost" size="md" onClick={() => { void handleDownload(certificate.id); }}>
             <Download className="h-3.5 w-3.5" />
             {t('download')}
           </Button>
           {canUpload && (
-            <Button variant="ghost" size="sm" onClick={() => { onSupersede(certificate); }}>
+            <Button variant="ghost" size="md" onClick={() => { onSupersede(certificate); }}>
               <Upload className="h-3.5 w-3.5" />
               {t('uploadNewVersion')}
             </Button>
@@ -202,7 +202,7 @@ export function CertificateRow({
         {canUpload && (
           <Button
             variant="ghost"
-            size="sm"
+            size="md"
             onClick={() => { onDelete(certificate); }}
             disabled={deleteDisabled}
             className="text-error hover:text-error"

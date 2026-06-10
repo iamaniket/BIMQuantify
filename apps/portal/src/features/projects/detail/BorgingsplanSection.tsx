@@ -88,7 +88,7 @@ export function BorgingsplanSection({ projectId, country }: Props): JSX.Element 
           </div>
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={() => generateMutation.mutate({ force: false })}
             disabled={generateMutation.isPending}
           >
@@ -200,7 +200,7 @@ function PlanHeader({
             <>
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={() => setConfirmReset(true)}
                 disabled={resetMutation.isPending}
               >
@@ -209,7 +209,7 @@ function PlanHeader({
               </Button>
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={() => publishMutation.mutate()}
                 disabled={publishMutation.isPending}
               >
@@ -222,7 +222,7 @@ function PlanHeader({
           {plan.status === 'published' && (
             <Button
               variant="primary"
-              size="sm"
+              size="md"
               onClick={() => newVersionMutation.mutate()}
               disabled={newVersionMutation.isPending}
             >
@@ -241,12 +241,12 @@ function PlanHeader({
         <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-border bg-background-secondary p-3">
           <p className="text-caption text-foreground">{t('resetConfirm')}</p>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
+            <Button variant="ghost" size="md" onClick={() => setConfirmReset(false)}>
               {t('cancel')}
             </Button>
             <Button
               variant="primary"
-              size="sm"
+              size="md"
               onClick={() => {
                 resetMutation.mutate(plan.id);
                 setConfirmReset(false);
@@ -394,7 +394,7 @@ function PhaseSection({
             <div className="flex justify-end pt-1">
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={() => setShowAddMoment((v) => !v)}
                 aria-expanded={showAddMoment}
               >
@@ -552,7 +552,7 @@ function MomentRow({
             <div className="flex justify-end pt-1">
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={() => setShowAddItem((v) => !v)}
                 aria-expanded={showAddItem}
               >
@@ -710,10 +710,10 @@ function AddMomentForm({
         />
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+        <Button type="button" variant="ghost" size="md" onClick={onDone}>
           {t('cancel')}
         </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={create.isPending}>
+        <Button type="submit" variant="primary" size="md" disabled={create.isPending}>
           {t('save')}
         </Button>
       </div>
@@ -798,10 +798,10 @@ function EditMomentForm({
         />
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+        <Button type="button" variant="ghost" size="md" onClick={onDone}>
           {t('cancel')}
         </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={update.isPending}>
+        <Button type="submit" variant="primary" size="md" disabled={update.isPending}>
           {t('save')}
         </Button>
       </div>
@@ -900,10 +900,10 @@ function AddChecklistItemForm({
         </div>
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+        <Button type="button" variant="ghost" size="md" onClick={onDone}>
           {t('cancel')}
         </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={create.isPending}>
+        <Button type="submit" variant="primary" size="md" disabled={create.isPending}>
           {t('save')}
         </Button>
       </div>
@@ -986,10 +986,10 @@ function EditChecklistItemForm({
         />
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+        <Button type="button" variant="ghost" size="md" onClick={onDone}>
           {t('cancel')}
         </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={update.isPending}>
+        <Button type="submit" variant="primary" size="md" disabled={update.isPending}>
           {t('save')}
         </Button>
       </div>

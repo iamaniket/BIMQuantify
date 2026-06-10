@@ -240,7 +240,7 @@ export function DocumentSettingsPopover({
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
         <Button
           variant="ghost"
-          size="sm"
+          size="md"
           onClick={() => {
             update(DEFAULT_DOCUMENT_SETTINGS);
           }}

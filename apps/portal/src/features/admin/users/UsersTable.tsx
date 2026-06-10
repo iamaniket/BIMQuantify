@@ -68,7 +68,7 @@ export function UsersTable({ users, currentUserId }: Props): JSX.Element {
             {!isSelf && (
               <Button
                 variant={u.is_active ? 'border' : 'primary'}
-                size="sm"
+                size="md"
                 disabled={pending}
                 onClick={() => {
                   activeMutation.mutate({ userId: u.id, active: !u.is_active });
@@ -79,7 +79,7 @@ export function UsersTable({ users, currentUserId }: Props): JSX.Element {
             )}
             <Button
               variant={u.is_superuser ? 'border' : 'primary'}
-              size="sm"
+              size="md"
               disabled={pending}
               onClick={() => {
                 mutation.mutate({ userId: u.id, superuser: !u.is_superuser });

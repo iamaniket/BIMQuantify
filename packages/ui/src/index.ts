@@ -63,6 +63,7 @@ export type {
   DropdownMenuContentProps,
   DropdownMenuItemProps,
   DropdownMenuItemVariant,
+  DropdownMenuItemSize,
   DropdownMenuSeparatorProps,
   DropdownMenuLabelProps,
 } from './DropdownMenu.js';
@@ -84,7 +85,7 @@ export {
   Tabs, TabsList, TabsTrigger, TabsContent,
 } from './Tabs.js';
 export type {
-  TabsListProps, TabsTriggerProps, TabsContentProps,
+  TabsListProps, TabsTriggerProps, TabsContentProps, TabsSize,
 } from './Tabs.js';
 export {
   TooltipProvider, Tooltip, TooltipTrigger, TooltipContent,

@@ -103,7 +103,7 @@ export function CaptureLinksList({ projectId }: Props): JSX.Element {
             {active && (
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={() => { handleRevoke(link.id); }}
                 disabled={revokeMutation.isPending}
               >

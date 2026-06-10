@@ -139,7 +139,7 @@ export function AddressLookup({ onSelect, initialLabel, disabled = false }: Prop
           className="pl-8 pr-8"
         />
         {isLoading && (
-          <Spinner size="sm" className="absolute right-2.5 top-1/2 -translate-y-1/2" />
+          <Spinner size="md" className="absolute right-2.5 top-1/2 -translate-y-1/2" />
         )}
       </div>
       {open && suggestions.length > 0 && (

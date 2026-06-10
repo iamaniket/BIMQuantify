@@ -4,7 +4,7 @@ import type { AppIcon as LucideIcon } from '@bimstitch/ui';
 import { Link } from '@/i18n/navigation';
 import type { JSX, ReactNode } from 'react';
 
-import { Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';
+import { Tooltip, TooltipContent, TooltipTrigger, controlSizeStyles } from '@bimstitch/ui';
 
 type SidebarNavItemProps = {
   label: string;
@@ -27,13 +27,15 @@ export function SidebarNavItem({
   badge,
   children,
 }: SidebarNavItemProps): JSX.Element {
-  const expandedRow = `relative flex w-full items-center gap-[11px] rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${
+  // Use md size (h-8) for consistent control height
+  const expandedRow = `relative flex w-full items-center gap-[11px] rounded-lg px-2.5 ${controlSizeStyles.md} text-left ${
     active
       ? 'bg-sidebar-active font-semibold text-sidebar-fg'
       : 'font-medium text-sidebar-fg-subtle hover:bg-sidebar-hover hover:text-sidebar-fg'
   }`;
 
-  const collapsedRow = `mx-auto grid h-[34px] w-[34px] place-items-center rounded-lg transition-colors ${
+  // Collapsed mode maintains square aspect ratio (w-8 h-8)
+  const collapsedRow = `mx-auto grid ${controlSizeStyles.md} w-8 place-items-center rounded-lg transition-colors ${
     active ? 'bg-sidebar-active text-sidebar-fg' : 'text-sidebar-fg-subtle hover:bg-sidebar-hover hover:text-sidebar-fg'
   }`;
 

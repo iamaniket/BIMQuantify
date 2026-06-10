@@ -15,7 +15,7 @@ export function InspectiesTab(): JSX.Element {
       title={t('title')}
       description={t('description')}
       action={(
-        <Button variant="border" size="sm" disabled aria-disabled="true">
+        <Button variant="border" size="md" disabled aria-disabled="true">
           {t('ctaLabel')}
         </Button>
       )}

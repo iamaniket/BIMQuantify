@@ -646,7 +646,7 @@ export function SettingsPopover({
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
         <Button
           variant="ghost"
-          size="sm"
+          size="md"
           onClick={() => {
             update(DEFAULT_VIEWER_SETTINGS);
           }}
@@ -657,7 +657,7 @@ export function SettingsPopover({
         </Button>
         <Button
           variant="primary"
-          size="sm"
+          size="md"
           onClick={onReloadViewer}
           data-testid="viewer-settings-reload"
           className="text-caption"

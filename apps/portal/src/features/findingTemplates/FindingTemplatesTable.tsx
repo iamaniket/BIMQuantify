@@ -49,7 +49,7 @@ export function FindingTemplatesTable({
       header: t('table.default'),
       cell: (tpl) =>
         tpl.is_default ? (
-          <Badge variant="success" size="sm" bordered>
+          <Badge variant="success" size="md" bordered>
             <CheckCircle className="mr-1 h-3 w-3" />
             {t('list.defaultBadge')}
           </Badge>

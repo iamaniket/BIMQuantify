@@ -105,16 +105,16 @@ export function ExpandedBody({
 
       <DetailCardFooter className="justify-between">
         <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="sm" onClick={onView}>
+          <Button variant="ghost" size="md" onClick={onView}>
             <Eye className="h-3.5 w-3.5" />
             {t('expandedView')}
           </Button>
-          <Button variant="ghost" size="sm" onClick={onDownload}>
+          <Button variant="ghost" size="md" onClick={onDownload}>
             <Download className="h-3.5 w-3.5" />
             {t('expandedDownload')}
           </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={onDelete} className="text-error hover:text-error">
+        <Button variant="ghost" size="md" onClick={onDelete} className="text-error hover:text-error">
           <Trash2 className="h-3.5 w-3.5" />
           {t('expandedRemove')}
         </Button>

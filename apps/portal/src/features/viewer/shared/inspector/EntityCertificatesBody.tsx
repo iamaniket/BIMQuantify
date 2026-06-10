@@ -164,13 +164,13 @@ export function EntityCertificatesBody({
             value={search}
             onChange={(e) => { setSearch(e.target.value); }}
             placeholder={t('filterPlaceholder')}
-            inputSize="sm"
+            inputSize="md"
             className="pl-7"
           />
         </div>
         <Button
           variant="primary"
-          size="sm"
+          size="md"
           onClick={openUpload}
           title={t('uploadButton')}
         >
@@ -243,11 +243,11 @@ export function EntityCertificatesBody({
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
-                      <Badge variant="default" size="sm" className="w-fit shrink-0">
+                      <Badge variant="default" size="md" className="w-fit shrink-0">
                         {tTypes(cert.certificate_type)}
                       </Badge>
                       <span className="shrink-0">·</span>
-                      <Badge variant={EXPIRY_BADGE[expiry]} size="sm" className="w-fit shrink-0">
+                      <Badge variant={EXPIRY_BADGE[expiry]} size="md" className="w-fit shrink-0">
                         {tExpiry(expiry)}
                       </Badge>
                     </div>
@@ -260,7 +260,7 @@ export function EntityCertificatesBody({
                   <DetailCardFooter className="justify-between">
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="md"
                       onClick={() => { setViewingCertificate(cert); }}
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -268,7 +268,7 @@ export function EntityCertificatesBody({
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="md"
                       onClick={() => { handleDelete(cert); }}
                       disabled={deleteMutation.isPending}
                       className="text-error hover:text-error"

@@ -170,7 +170,7 @@ export function TenantOrgEditDialog({
             <div className="flex flex-col gap-1.5">
               <Button
                 variant="border"
-                size="sm"
+                size="md"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
               >
@@ -180,7 +180,7 @@ export function TenantOrgEditDialog({
               {imageUrl && (
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="md"
                   onClick={handleRemoveImage}
                   disabled={uploading}
                 >

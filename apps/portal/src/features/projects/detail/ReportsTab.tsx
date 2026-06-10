@@ -160,7 +160,7 @@ function ReportRow({
         <Link
           href={`/projects/${projectId}/reports/${report.file_id}?framework=${report.framework}&modelId=${report.model_id}`}
         >
-          <Button variant="border" size="sm">
+          <Button variant="border" size="md">
             <ExternalLink className="h-3 w-3" />
           </Button>
         </Link>
@@ -233,7 +233,7 @@ function RunCheckRow({
       </div>
       <Button
         variant="border"
-        size="sm"
+        size="md"
         disabled={!canCheck || mutation.isPending}
         onClick={() => {
           if (latest !== undefined) {
@@ -249,7 +249,7 @@ function RunCheckRow({
         }
       >
         {mutation.isPending ? (
-          <Spinner size="sm" className="mr-1.5 text-current" />
+          <Spinner size="md" className="mr-1.5 text-current" />
         ) : (
           <ShieldCheck className="mr-1.5 h-3 w-3" />
         )}

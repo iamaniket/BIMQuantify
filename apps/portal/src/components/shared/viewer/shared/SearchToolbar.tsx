@@ -38,14 +38,14 @@ export function SearchToolbar({
     <div className="flex shrink-0 items-center gap-1.5 border-b border-border bg-surface-low px-2 py-1.5">
       <div className="flex-1">
         <Input
-          inputSize="sm"
+          inputSize="md"
           value={query}
           onChange={(e) => { onQueryChange(e.target.value); }}
           placeholder={placeholder}
           leading={<Search className="h-3.5 w-3.5" />}
           trailing={query.length > 0 ? (
             <IconButton
-              size="sm"
+              size="md"
               aria-label={clearLabel}
               onClick={() => { onQueryChange(''); }}
             >

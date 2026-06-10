@@ -101,7 +101,7 @@ function SettingRow({
           {showRevert && setting.source === 'project_override' && onRevert !== undefined && (
             <Button
               variant="border"
-              size="sm"
+              size="md"
               disabled={isUpdating}
               onClick={() => { onRevert(setting.deadline_type); }}
             >

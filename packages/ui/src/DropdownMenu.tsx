@@ -8,6 +8,8 @@ import {
 } from 'react';
 
 import { cn } from './lib/cn.js';
+import { controlSizeStyles } from './lib/sizes.js';
+import type { ControlSize } from './lib/sizes.js';
 
 export const DropdownMenu = RadixDropdown.Root;
 export const DropdownMenuTrigger = RadixDropdown.Trigger;
@@ -34,15 +36,24 @@ export const DropdownMenuContent = forwardRef<
 
 DropdownMenuContent.displayName = 'DropdownMenuContent';
 
+export type DropdownMenuItemSize = ControlSize;
+
 export type DropdownMenuItemVariant = 'default' | 'destructive';
 
 export type DropdownMenuItemProps = ComponentPropsWithoutRef<typeof RadixDropdown.Item> & {
   variant?: DropdownMenuItemVariant;
+  size?: DropdownMenuItemSize;
 };
 
 const itemBaseStyles =
-  'flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-body2 outline-none '
+  'flex cursor-pointer select-none items-center gap-2 rounded-sm outline-none '
   + 'data-[disabled]:cursor-not-allowed data-[disabled]:text-foreground-disabled';
+
+const itemSizeStyles: Record<DropdownMenuItemSize, string> = {
+  sm: `${controlSizeStyles.sm} px-2 py-1`,
+  md: `${controlSizeStyles.md} px-2 py-1.5`,
+  lg: `${controlSizeStyles.lg} px-2 py-2`,
+};
 
 const itemVariantStyles: Record<DropdownMenuItemVariant, string> = {
   default:
@@ -54,10 +65,10 @@ const itemVariantStyles: Record<DropdownMenuItemVariant, string> = {
 export const DropdownMenuItem = forwardRef<
   ElementRef<typeof RadixDropdown.Item>,
   DropdownMenuItemProps
->(({ className, variant = 'default', ...rest }, ref) => (
+>(({ className, variant = 'default', size = 'md', ...rest }, ref) => (
   <RadixDropdown.Item
     ref={ref}
-    className={cn(itemBaseStyles, itemVariantStyles[variant], className)}
+    className={cn(itemBaseStyles, itemSizeStyles[size], itemVariantStyles[variant], className)}
     {...rest}
   />
 ));

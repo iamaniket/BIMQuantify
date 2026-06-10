@@ -170,7 +170,7 @@ export function EntityFindingsBody({
             value={search}
             onChange={(e) => { setSearch(e.target.value); }}
             placeholder={t('filterPlaceholder')}
-            inputSize="sm"
+            inputSize="md"
             className="pl-7"
           />
         </div>
@@ -182,12 +182,12 @@ export function EntityFindingsBody({
             items={pickerItems}
             menuLabel={tPicker('menuLabel')}
             variant="primary"
-            size="sm"
+            size="md"
           />
         ) : (
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={() => { openCreate(null); }}
             title={t('createButton')}
           >
@@ -256,7 +256,7 @@ export function EntityFindingsBody({
                       <span className="truncate text-body3 font-semibold leading-tight text-foreground">
                         {finding.title}
                       </span>
-                      <Badge variant={severityBadgeVariant(finding.severity)} size="sm" bordered>
+                      <Badge variant={severityBadgeVariant(finding.severity)} size="md" bordered>
                         {tSeverity(finding.severity)}
                       </Badge>
                     </div>
@@ -267,7 +267,7 @@ export function EntityFindingsBody({
                           <span className="shrink-0">·</span>
                         </>
                       )}
-                      <Badge variant={statusBadgeVariant(finding.status)} size="sm" className="w-fit shrink-0">
+                      <Badge variant={statusBadgeVariant(finding.status)} size="md" className="w-fit shrink-0">
                         {tStatus(finding.status)}
                       </Badge>
                     </div>
@@ -285,7 +285,7 @@ export function EntityFindingsBody({
                   <DetailCardFooter className="justify-between">
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="md"
                       onClick={() => { setSelected(finding); }}
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -293,7 +293,7 @@ export function EntityFindingsBody({
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="md"
                       onClick={() => { handleDelete(finding); }}
                       disabled={deleteMutation.isPending}
                       className="text-error hover:text-error"

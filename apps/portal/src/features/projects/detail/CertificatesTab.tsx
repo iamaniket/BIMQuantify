@@ -86,7 +86,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
         searchPlaceholder={t('searchPlaceholder')}
         filter={(
           <Select
-            selectSize="sm"
+            selectSize="md"
             value={typeFilter ?? 'all'}
             onChange={(e) => { setTypeFilter(e.target.value === 'all' ? undefined : e.target.value as CertificateTypeValue); }}
             className="w-auto min-w-[7.5rem]"
@@ -136,7 +136,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
             title={t('title')}
             description={t('description')}
             action={canUpload ? (
-              <Button variant="primary" size="sm" onClick={() => { setUploadOpen(true); }}>
+              <Button variant="primary" size="md" onClick={() => { setUploadOpen(true); }}>
                 {t('ctaLabel')}
               </Button>
             ) : undefined}

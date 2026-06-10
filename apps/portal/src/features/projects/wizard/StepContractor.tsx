@@ -65,7 +65,7 @@ export function StepContractor({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="md"
             className="self-start px-0 text-primary hover:bg-transparent hover:underline"
             onClick={onShowAddContractor}
           >
@@ -98,7 +98,7 @@ export function StepContractor({
             <Button
               type="button"
               variant="primary"
-              size="sm"
+              size="md"
               disabled={isAddingContractor || isReadOnly}
               onClick={onSubmitNewContractor}
             >
@@ -107,7 +107,7 @@ export function StepContractor({
             <Button
               type="button"
               variant="border"
-              size="sm"
+              size="md"
               disabled={isReadOnly}
               onClick={onCancelAddContractor}
             >

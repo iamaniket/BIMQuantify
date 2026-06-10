@@ -100,7 +100,7 @@ export function SplitButton({
   disabled = false,
   menuLabel,
   variant = 'primary',
-  size = 'sm',
+  size = 'md',
   className,
 }: SplitButtonProps): JSX.Element {
   return (

@@ -98,9 +98,9 @@ export function ReportSection({
             {t(`types.${reportType}.description`)}
           </p>
         </div>
-        <Button variant="primary" size="sm" disabled={generate.isPending} onClick={handleGenerate}>
+        <Button variant="primary" size="md" disabled={generate.isPending} onClick={handleGenerate}>
           {generate.isPending ? (
-            <Spinner size="sm" className="mr-1.5 h-3 w-3 text-current" />
+            <Spinner size="md" className="mr-1.5 h-3 w-3 text-current" />
           ) : (
             <Sparkles className="mr-1.5 h-3 w-3" />
           )}
@@ -173,7 +173,7 @@ function ReportRow({
         {extraActions}
         <Button
           variant="border"
-          size="sm"
+          size="md"
           disabled={report.status !== 'ready'}
           onClick={onView}
           title={t('shared.view')}

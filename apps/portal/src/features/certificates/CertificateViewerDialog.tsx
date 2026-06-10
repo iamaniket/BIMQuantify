@@ -255,7 +255,7 @@ export function CertificateViewerDialog({
   certRows.push({
     label: t('fieldStatus'),
     value: (
-      <Badge variant={EXPIRY_BADGE[expiry]} size="sm" bordered>
+      <Badge variant={EXPIRY_BADGE[expiry]} size="md" bordered>
         {tExpiry(expiry)}
       </Badge>
     ),
@@ -438,7 +438,7 @@ export function OrgCertificateViewerDialog({
   certRows.push({
     label: t('fieldStatus'),
     value: (
-      <Badge variant={EXPIRY_BADGE[expiry]} size="sm" bordered>
+      <Badge variant={EXPIRY_BADGE[expiry]} size="md" bordered>
         {tExpiry(expiry)}
       </Badge>
     ),
@@ -457,7 +457,7 @@ export function OrgCertificateViewerDialog({
       value: (
         <span className="flex flex-wrap justify-end gap-1">
           {certificate.tags.map((tag) => (
-            <Badge key={tag} variant="default" size="sm" bordered>{tag}</Badge>
+            <Badge key={tag} variant="default" size="md" bordered>{tag}</Badge>
           ))}
         </span>
       ),

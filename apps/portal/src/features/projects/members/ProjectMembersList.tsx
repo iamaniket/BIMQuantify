@@ -96,7 +96,7 @@ export function ProjectMembersList({ projectId, members, canManage }: Props): JS
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="md"
                           aria-label={t('actions')}
                           disabled={busyUserId === m.user_id || isOwner}
                           title={isOwner ? t('ownerLocked') : undefined}

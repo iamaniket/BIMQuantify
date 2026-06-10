@@ -184,7 +184,7 @@ export function InvitationsPanel(): JSX.Element {
               <div className="mt-3 flex gap-2">
                 <Button
                   variant="primary"
-                  size="sm"
+                  size="md"
                   disabled={isPending}
                   onClick={() => void onAccept(inv.organization_id)}
                   className="flex items-center gap-1.5"
@@ -194,7 +194,7 @@ export function InvitationsPanel(): JSX.Element {
                 </Button>
                 <Button
                   variant="border"
-                  size="sm"
+                  size="md"
                   disabled={isPending}
                   onClick={() => void onDecline(inv.organization_id)}
                   className="flex items-center gap-1.5"

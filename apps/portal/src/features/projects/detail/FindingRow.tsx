@@ -100,7 +100,7 @@ export function FindingRow({
           <span className="truncate text-body3 font-semibold leading-tight text-foreground">
             {finding.title}
           </span>
-          <Badge variant={severityBadgeVariant(finding.severity)} size="sm" bordered>
+          <Badge variant={severityBadgeVariant(finding.severity)} size="md" bordered>
             {tSeverity(finding.severity)}
           </Badge>
         </div>
@@ -123,7 +123,7 @@ export function FindingRow({
               <span className="shrink-0">·</span>
             </>
           )}
-          <Badge variant={statusBadgeVariant(finding.status)} size="sm" className="w-fit shrink-0">
+          <Badge variant={statusBadgeVariant(finding.status)} size="md" className="w-fit shrink-0">
             {tStatus(finding.status)}
           </Badge>
         </div>
@@ -139,13 +139,13 @@ export function FindingRow({
       </DetailCardBody>
 
       <DetailCardFooter className="justify-between">
-        <Button variant="ghost" size="sm" onClick={onView}>
+        <Button variant="ghost" size="md" onClick={onView}>
           <Eye className="h-3.5 w-3.5" />
           {tExpanded('view')}
         </Button>
         <Button
           variant="ghost"
-          size="sm"
+          size="md"
           onClick={onDelete}
           disabled={deleteDisabled}
           className="text-error hover:text-error"

@@ -177,7 +177,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
         <XCircle className="h-10 w-10 text-warning" />
         <h1 className="text-h3 font-semibold text-foreground">{t('duplicateTitle')}</h1>
         <p className="text-body3 text-foreground-secondary">{t('duplicateDescription')}</p>
-        <Button variant="primary" size="sm" onClick={handleRetry}>
+        <Button variant="primary" size="md" onClick={handleRetry}>
           {t('uploadAnother')}
         </Button>
       </div>
@@ -190,7 +190,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
         <XCircle className="h-10 w-10 text-destructive" />
         <h1 className="text-h3 font-semibold text-foreground">{t('errorTitle')}</h1>
         <p className="text-body3 text-foreground-secondary">{t('errorDescription')}</p>
-        <Button variant="primary" size="sm" onClick={handleRetry}>
+        <Button variant="primary" size="md" onClick={handleRetry}>
           {t('retry')}
         </Button>
       </div>
@@ -208,7 +208,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
             {t('remainingUses', { count: state.remainingUses })}
           </p>
         )}
-        <Button variant="primary" size="sm" onClick={handleUploadAnother}>
+        <Button variant="primary" size="md" onClick={handleUploadAnother}>
           {t('uploadAnother')}
         </Button>
         <input

@@ -4,8 +4,10 @@ import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 
 import { cn } from './lib/cn.js';
 import { DEFAULT_ICON_WEIGHT } from './lib/icons.js';
+import { controlSizeStyles } from './lib/sizes.js';
+import type { ControlSize } from './lib/sizes.js';
 
-export type IconButtonSize = 'sm' | 'md' | 'lg';
+export type IconButtonSize = ControlSize;
 
 export type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Icon component. Alternatively pass arbitrary `children` (e.g. an inline svg). */
@@ -18,16 +20,24 @@ export type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children?: ReactNode;
 };
 
+/**
+ * IconButton uses controlSize heights for consistency with other controls,
+ * but maintains square aspect ratio (width = height).
+ */
 const sizeStyles: Record<IconButtonSize, string> = {
-  sm: 'h-6 w-6',
-  md: 'h-[26px] w-[26px]',
-  lg: 'h-8 w-8',
+  sm: `${controlSizeStyles.sm} w-7`,
+  md: `${controlSizeStyles.md} w-8`,
+  lg: `${controlSizeStyles.lg} w-9`,
 };
 
+/**
+ * Icon sizes scaled proportionally to button size.
+ * Maintains ~57-67% of button height for balanced visual weight.
+ */
 const iconSizeByButton: Record<IconButtonSize, string> = {
-  sm: 'h-4 w-4',
-  md: 'h-[18px] w-[18px]',
-  lg: 'h-[26px] w-[26px]',
+  sm: 'h-4 w-4',      // 16px in 28px button
+  md: 'h-[18px] w-[18px]', // 18px in 32px button
+  lg: 'h-6 w-6',      // 24px in 36px button
 };
 
 const baseStyles =

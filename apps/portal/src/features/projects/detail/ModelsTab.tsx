@@ -55,7 +55,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
         searchPlaceholder={t('searchPlaceholder')}
         filter={(
           <Select
-            selectSize="sm"
+            selectSize="md"
             value={disciplineFilter ?? 'all'}
             onChange={(e) => { setDisciplineFilter(e.target.value === 'all' ? undefined : e.target.value as ModelDisciplineValue); }}
             className="w-auto min-w-[7.5rem]"
@@ -68,7 +68,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
         actions={
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={() => { setNewModelOpen(true); }}
           >
             <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -91,7 +91,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
             action={(
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={() => { setNewModelOpen(true); }}
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />

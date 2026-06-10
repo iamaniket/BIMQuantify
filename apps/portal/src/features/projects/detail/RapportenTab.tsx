@@ -47,12 +47,12 @@ export function RapportenTab({ projectId }: Props): JSX.Element {
     return (
       <Button
         variant="border"
-        size="sm"
+        size="md"
         disabled={sign.isPending}
         onClick={() => { sign.mutate(report.id); }}
       >
         {sign.isPending ? (
-          <Spinner size="sm" className="mr-1.5 h-3 w-3 text-current" />
+          <Spinner size="md" className="mr-1.5 h-3 w-3 text-current" />
         ) : (
           <PenLine className="mr-1.5 h-3 w-3" />
         )}

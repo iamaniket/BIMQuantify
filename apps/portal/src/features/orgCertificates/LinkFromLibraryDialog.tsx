@@ -78,7 +78,7 @@ export function LinkFromLibraryDialog({ projectId, open, onOpenChange }: Props):
         </DialogHeader>
         <DialogBody className="space-y-3">
           <Input
-            inputSize="sm"
+            inputSize="md"
             value={search}
             onChange={(e) => { setSearch(e.target.value); }}
             placeholder={t('searchPlaceholder')}
@@ -118,7 +118,7 @@ export function LinkFromLibraryDialog({ projectId, open, onOpenChange }: Props):
                         <span className="truncate text-body3 font-medium text-foreground">
                           {cert.product_name ?? cert.original_filename}
                         </span>
-                        <Badge variant="default" size="sm" bordered>
+                        <Badge variant="default" size="md" bordered>
                           {tType(cert.certificate_type)}
                         </Badge>
                       </div>
@@ -131,7 +131,7 @@ export function LinkFromLibraryDialog({ projectId, open, onOpenChange }: Props):
                         )}
                         <span>{formatDate(cert.valid_until)}</span>
                         <span>·</span>
-                        <Badge variant={EXPIRY_BADGE[expiryState]} size="sm" bordered>
+                        <Badge variant={EXPIRY_BADGE[expiryState]} size="md" bordered>
                           {tExpiry(expiryState)}
                         </Badge>
                       </div>
@@ -148,11 +148,11 @@ export function LinkFromLibraryDialog({ projectId, open, onOpenChange }: Props):
         </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="ghost" size="sm">{t('cancel')}</Button>
+            <Button variant="ghost" size="md">{t('cancel')}</Button>
           </DialogClose>
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={handleLink}
             disabled={selectedId === null || linkMutation.isPending}
           >

@@ -61,7 +61,7 @@ export function ProjectHeader({ project }: Props): JSX.Element {
         <Button
           type="button"
           variant="border"
-          size="sm"
+          size="md"
           disabled={archived}
           onClick={() => { setEditOpen(true); }}
         >

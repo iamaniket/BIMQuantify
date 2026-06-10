@@ -70,7 +70,7 @@ export function UploadProgressItem({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="md"
           aria-label={`Remove ${filename}`}
           className="h-8 w-8 p-0"
           onClick={onRemove}

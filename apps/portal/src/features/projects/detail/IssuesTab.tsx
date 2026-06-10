@@ -83,7 +83,7 @@ export function IssuesTab({ issues, onDownloadCsv }: Props): JSX.Element {
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" />
           <Input
-            inputSize="sm"
+            inputSize="md"
             placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => { setSearch(e.target.value); }}
@@ -93,7 +93,7 @@ export function IssuesTab({ issues, onDownloadCsv }: Props): JSX.Element {
         {onDownloadCsv !== undefined && (
           <Button
             variant="border"
-            size="sm"
+            size="md"
             onClick={() => { void handleDownload(); }}
             disabled={downloading || issues.length === 0}
           >

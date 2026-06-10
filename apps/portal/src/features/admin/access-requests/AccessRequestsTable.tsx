@@ -65,10 +65,10 @@ export function AccessRequestsTable({ requests, onApprove, onReject }: Props): J
       cell: (req) =>
         req.status === 'new' ? (
           <div className="flex gap-1">
-            <Button size="sm" variant="ghost" onClick={() => { onApprove(req); }} aria-label={t('approve')}>
+            <Button size="md" variant="ghost" onClick={() => { onApprove(req); }} aria-label={t('approve')}>
               <Check className="h-4 w-4 text-success" />
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { onReject(req); }} aria-label={t('reject')}>
+            <Button size="md" variant="ghost" onClick={() => { onReject(req); }} aria-label={t('reject')}>
               <X className="h-4 w-4 text-error" />
             </Button>
           </div>

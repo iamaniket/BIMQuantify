@@ -8,6 +8,8 @@ import {
 } from 'react';
 
 import { cn } from './lib/cn.js';
+import { controlSizeStyles } from './lib/sizes.js';
+import type { ControlSize } from './lib/sizes.js';
 
 export const Tabs = RadixTabs.Root;
 
@@ -29,22 +31,33 @@ export const TabsList = forwardRef<
 
 TabsList.displayName = 'TabsList';
 
-export type TabsTriggerProps = ComponentPropsWithoutRef<typeof RadixTabs.Trigger>;
+export type TabsSize = ControlSize;
+
+export type TabsTriggerProps = ComponentPropsWithoutRef<typeof RadixTabs.Trigger> & {
+  size?: TabsSize;
+};
+
+const triggerSizeStyles: Record<TabsSize, string> = {
+  sm: `${controlSizeStyles.sm} px-2`,
+  md: `${controlSizeStyles.md} px-2.5`,
+  lg: `${controlSizeStyles.lg} px-3`,
+};
 
 export const TabsTrigger = forwardRef<
   ElementRef<typeof RadixTabs.Trigger>,
   TabsTriggerProps
->(({ className, ...rest }, ref) => (
+>(({ className, size = 'md', ...rest }, ref) => (
   <RadixTabs.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1',
-      'text-body3 font-medium text-foreground-tertiary',
+      'inline-flex items-center gap-1.5 rounded-md',
+      'font-medium text-foreground-tertiary',
       'transition-colors duration-fast',
       'hover:text-foreground-secondary',
       'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground',
       'data-[state=active]:shadow-sm',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      triggerSizeStyles[size],
       className,
     )}
     {...rest}

@@ -108,7 +108,7 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="md"
             aria-label={t('actions')}
             className="absolute right-2 top-2 z-20 h-8 w-8 rounded-full bg-black/25 p-0 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
             onPointerDown={(event) => {

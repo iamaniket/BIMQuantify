@@ -18,7 +18,7 @@ export function VersionBadge({ version }: Props): JSX.Element | null {
   const t = useTranslations('common.versions');
   if (version <= 1) return null;
   return (
-    <Badge variant="info" size="sm" bordered>
+    <Badge variant="info" size="md" bordered>
       {t('badge', { n: version })}
     </Badge>
   );

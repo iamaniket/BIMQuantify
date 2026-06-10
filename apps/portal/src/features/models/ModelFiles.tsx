@@ -83,7 +83,7 @@ function ExtractionBadge({
         title={formatExtractionStatus(status)}
         className="inline-flex items-center gap-1 text-caption text-foreground-tertiary"
       >
-        <Spinner size="sm" className="text-foreground-tertiary" />
+        <Spinner size="md" className="text-foreground-tertiary" />
         {formatExtractionStatus(status)}
       </span>
     );
@@ -145,7 +145,7 @@ function FileRow({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="md"
           aria-label={t('retryAria', { filename: file.original_filename })}
           disabled={retryMutation.isPending}
           onClick={() => {
@@ -177,7 +177,7 @@ function FileRow({
         <Button
           type="button"
           variant="border"
-          size="sm"
+          size="md"
           aria-label={t('checkBblAria', { filename: file.original_filename })}
           disabled={complianceMutation.isPending}
           onClick={() => {
@@ -185,7 +185,7 @@ function FileRow({
           }}
         >
           {complianceMutation.isPending ? (
-            <Spinner size="sm" className="mr-1.5 text-current" />
+            <Spinner size="md" className="mr-1.5 text-current" />
           ) : (
             <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
           )}
@@ -195,7 +195,7 @@ function FileRow({
       <Button
         type="button"
         variant="ghost"
-        size="sm"
+        size="md"
         aria-label={t('downloadAria', { filename: file.original_filename })}
         onClick={() => { handleDownload().catch(() => undefined); }}
       >
@@ -206,7 +206,7 @@ function FileRow({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="md"
             aria-label={t('fileActions')}
             className="h-8 w-8 p-0"
           >
@@ -433,7 +433,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
+                  size="md"
                   aria-label={t('removeAria', { filename: file.original_filename })}
                   className="h-8 w-8 p-0"
                   onClick={() => { setDeleteTarget(file); }}

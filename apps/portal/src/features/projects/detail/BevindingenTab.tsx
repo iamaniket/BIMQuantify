@@ -88,7 +88,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         searchPlaceholder={t('searchPlaceholder')}
         filter={(
           <Select
-            selectSize="sm"
+            selectSize="md"
             value={statusFilter ?? 'all'}
             onChange={(e) => { setStatusFilter(e.target.value === 'all' ? undefined : e.target.value as FindingStatusValue); }}
             className="w-auto min-w-[7.5rem]"
@@ -103,7 +103,7 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
             {allFindings.length > 0 && (
               <Button
                 variant="border"
-                size="sm"
+                size="md"
                 onClick={() => { router.push(`/projects/${projectId}/findings`); }}
               >
                 <Columns3 className="mr-1.5 h-3.5 w-3.5" />

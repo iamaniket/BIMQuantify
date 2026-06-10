@@ -53,7 +53,7 @@ const PILL_VARIANT: Record<FileTypeValue, 'info' | 'error' | 'warning'> = {
 function FileTypePill({ fileType, schema }: FileTypePillProps): JSX.Element {
   const label = fileType === 'ifc' ? (schema ?? 'IFC') : fileType.toUpperCase();
   return (
-    <Badge variant={PILL_VARIANT[fileType]} size="sm" bordered={false} className="shrink-0 uppercase">
+    <Badge variant={PILL_VARIANT[fileType]} size="md" bordered={false} className="shrink-0 uppercase">
       {label}
     </Badge>
   );
@@ -317,20 +317,20 @@ export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onTo
               onMouseEnter={prewarmViewer}
               onFocus={prewarmViewer}
             >
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="md">
                 <Eye className="h-4 w-4" />
                 {t('view')}
               </Button>
             </Link>
           ) : latestFile !== undefined ? (
-            <Button variant="ghost" size="sm" disabled>
+            <Button variant="ghost" size="md" disabled>
               <Eye className="h-4 w-4" />
               {t('view')}
             </Button>
           ) : null}
           <Button
             variant="ghost"
-            size="sm"
+            size="md"
             onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
           >
             <Upload className="h-4 w-4" />
@@ -339,7 +339,7 @@ export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onTo
           {canCheckBbl && latestFile !== undefined ? (
             <Button
               variant="ghost"
-              size="sm"
+              size="md"
               disabled={complianceMutation.isPending}
               onClick={(e) => {
                 e.stopPropagation();
@@ -347,7 +347,7 @@ export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onTo
               }}
             >
               {complianceMutation.isPending ? (
-                <Spinner size="sm" className="text-current" />
+                <Spinner size="md" className="text-current" />
               ) : (
                 <ShieldCheck className="h-4 w-4" />
               )}
@@ -355,7 +355,7 @@ export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onTo
             </Button>
           ) : null}
         </div>
-        <Button variant="ghost" size="sm" className="text-error hover:text-error">
+        <Button variant="ghost" size="md" className="text-error hover:text-error">
           <Trash2 className="h-4 w-4" />
           {t('remove')}
         </Button>

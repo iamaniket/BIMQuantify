@@ -58,7 +58,7 @@ export function RightColumnTabs({
                 <TabsTrigger value="dossier">{t('dossier.label')}</TabsTrigger>
                 <TabsTrigger value="models">
                   {t('models.label')}
-                  <Badge variant="default" size="sm" bordered={false}>
+                  <Badge variant="default" size="md" bordered={false}>
                     {models.length}
                   </Badge>
                 </TabsTrigger>
@@ -98,19 +98,19 @@ export function RightColumnTabs({
               <TabsList className="inline-flex w-auto">
                 <TabsTrigger value="attachments">
                   {t('attachments.label')}
-                  <Badge variant="default" size="sm" bordered={false}>
+                  <Badge variant="default" size="md" bordered={false}>
                     {attachmentCount}
                   </Badge>
                 </TabsTrigger>
                 <TabsTrigger value="bevindingen">
                   {t('bevindingen.label')}
-                  <Badge variant="default" size="sm" bordered={false}>
+                  <Badge variant="default" size="md" bordered={false}>
                     {findingsCount}
                   </Badge>
                 </TabsTrigger>
                 <TabsTrigger value="certificates">
                   {t('certificates.label')}
-                  <Badge variant="default" size="sm" bordered={false}>
+                  <Badge variant="default" size="md" bordered={false}>
                     {certificateCount}
                   </Badge>
                 </TabsTrigger>

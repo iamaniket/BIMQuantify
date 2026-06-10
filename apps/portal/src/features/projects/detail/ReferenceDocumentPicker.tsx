@@ -78,7 +78,7 @@ export function ReferenceDocumentPicker({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="md"
           className="self-start"
           onClick={() => { setPickerOpen(true); }}
         >

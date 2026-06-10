@@ -319,7 +319,7 @@ function DossierRow({
         <div className="flex shrink-0 items-center gap-1.5">
           <Button
             variant="ghost"
-            size="sm"
+            size="md"
             onClick={() => { onLink(req.sourceValue as DossierSlotValue); }}
             title={t('linkExisting')}
           >
@@ -327,7 +327,7 @@ function DossierRow({
           </Button>
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={() => { onUpload(req.sourceValue as DossierSlotValue); }}
             disabled={busy}
           >
@@ -339,7 +339,7 @@ function DossierRow({
       {req.sourceKind === 'certificate_type' && (
         <Button
           variant="primary"
-          size="sm"
+          size="md"
           className="shrink-0"
           onClick={() => { onUploadCertificate(req.sourceValue as CertificateTypeValue); }}
         >

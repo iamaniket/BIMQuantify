@@ -123,7 +123,7 @@ export function ShortcutList({
                       </kbd>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="md"
                         className="!h-6 !w-6 !p-0"
                         onClick={(e) => { e.stopPropagation(); onCaptureStart(b.command); }}
                         aria-label={t('rebind')}

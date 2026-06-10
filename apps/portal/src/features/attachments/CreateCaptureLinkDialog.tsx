@@ -127,11 +127,11 @@ export function CreateCaptureLinkDialog({
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <DialogClose asChild>
-                  <Button variant="ghost" size="sm">{t('captureLinkCancel')}</Button>
+                  <Button variant="ghost" size="md">{t('captureLinkCancel')}</Button>
                 </DialogClose>
                 <Button
                   variant="primary"
-                  size="sm"
+                  size="md"
                   onClick={handleCreate}
                   disabled={createMutation.isPending}
                 >
@@ -146,13 +146,13 @@ export function CreateCaptureLinkDialog({
                 <code className="min-w-0 flex-1 truncate text-caption">
                   {createdUrl}
                 </code>
-                <Button variant="ghost" size="sm" onClick={handleCopy}>
+                <Button variant="ghost" size="md" onClick={handleCopy}>
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <div className="flex justify-end">
                 <DialogClose asChild>
-                  <Button variant="primary" size="sm">{t('captureLinkDone')}</Button>
+                  <Button variant="primary" size="md">{t('captureLinkDone')}</Button>
                 </DialogClose>
               </div>
             </div>

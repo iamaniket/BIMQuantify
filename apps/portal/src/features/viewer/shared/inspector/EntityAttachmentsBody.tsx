@@ -362,7 +362,7 @@ export function EntityAttachmentsBody({
             value={query}
             onChange={(e) => { setQuery(e.target.value); }}
             placeholder={t('filterPlaceholder')}
-            inputSize="sm"
+            inputSize="md"
             className="pl-7"
           />
         </div>
@@ -405,7 +405,7 @@ export function EntityAttachmentsBody({
       {/* Upload progress */}
       {uploadPhase !== null && (
         <div className="flex items-center gap-2 border-b border-border bg-primary/5 px-3.5 py-2">
-          <Spinner size="sm" className="text-primary" />
+          <Spinner size="md" className="text-primary" />
           <span className="text-caption text-primary">{uploadPhase}</span>
         </div>
       )}
@@ -424,14 +424,14 @@ export function EntityAttachmentsBody({
           <div className="flex justify-end gap-1.5">
             <Button
               variant="ghost"
-              size="sm"
+              size="md"
               onClick={() => { setShowNoteInput(false); setNoteText(''); }}
             >
               {t('cancel')}
             </Button>
             <Button
               variant="primary"
-              size="sm"
+              size="md"
               disabled={noteText.trim() === '' || uploadMutation.isPending}
               onClick={handleNoteSubmit}
             >

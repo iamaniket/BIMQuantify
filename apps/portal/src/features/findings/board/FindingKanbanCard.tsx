@@ -99,7 +99,7 @@ export function FindingKanbanCard({ finding, assigneeName }: Props): JSX.Element
       <div className="flex items-center justify-between gap-2 border-t border-border bg-surface-low px-4 py-[11px]">
         {assigneeName !== null ? (
           <span className="inline-flex items-center gap-[7px] text-body3 font-medium text-foreground-secondary">
-            <UserAvatar name={assigneeName} size="sm" />
+            <UserAvatar name={assigneeName} size="md" />
             <span className="truncate">{assigneeName}</span>
           </span>
         ) : (

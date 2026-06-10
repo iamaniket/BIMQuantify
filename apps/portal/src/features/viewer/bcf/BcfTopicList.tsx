@@ -178,7 +178,7 @@ export function BcfTopicList({
         {/* Row 2: Status filter dropdown + Split action button */}
         <div className="flex items-center gap-2">
           <Select
-            selectSize="sm"
+            selectSize="md"
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); }}
             className="min-w-0 flex-1"
@@ -196,7 +196,7 @@ export function BcfTopicList({
             items={splitItems}
             menuLabel={t('moreActions')}
             variant="primary"
-            size="sm"
+            size="md"
             className="shrink-0"
           />
         </div>
@@ -278,7 +278,7 @@ export function BcfTopicList({
               </DetailCardBody>
               <DetailCardFooter className="justify-between">
                 {topic.snapshot_url != null ? (
-                  <Button variant="ghost" size="sm" onClick={() => { void handleRestoreView(topic.id); }}>
+                  <Button variant="ghost" size="md" onClick={() => { void handleRestoreView(topic.id); }}>
                     <Eye className="h-3.5 w-3.5" />
                     {t('restoreView')}
                   </Button>
@@ -287,7 +287,7 @@ export function BcfTopicList({
                 )}
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="md"
                   onClick={() => { setDeleteTopicId(topic.id); }}
                   className="text-error hover:text-error"
                 >

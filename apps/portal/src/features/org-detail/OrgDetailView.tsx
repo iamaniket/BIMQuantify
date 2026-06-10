@@ -500,7 +500,7 @@ function OverviewPane({
               </p>
               <Button
                 variant="border"
-                size="sm"
+                size="md"
                 className="border-error-light text-error hover:bg-error-lighter"
                 onClick={onDelete}
               >
@@ -541,26 +541,26 @@ function MembersToolbar({
       <div className="relative min-w-[260px]">
         <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-placeholder" />
         <Input
-          inputSize="sm"
+          inputSize="md"
           className="pl-9"
           placeholder={t('searchPlaceholder')}
           value={query}
           onChange={(e) => { onQueryChange(e.target.value); }}
         />
       </div>
-      <Select selectSize="sm" value={roleFilter} onChange={(e) => { onRoleFilterChange(e.target.value); }}>
+      <Select selectSize="md" value={roleFilter} onChange={(e) => { onRoleFilterChange(e.target.value); }}>
         <option value="all">{t('roleAll')}</option>
         <option value="admin">{t('roleAdmin')}</option>
         <option value="member">{t('roleMember')}</option>
       </Select>
-      <Select selectSize="sm" value={statusFilter} onChange={(e) => { onStatusFilterChange(e.target.value); }}>
+      <Select selectSize="md" value={statusFilter} onChange={(e) => { onStatusFilterChange(e.target.value); }}>
         <option value="all">{t('statusAll')}</option>
         <option value="active">{t('statusActive')}</option>
         <option value="pending">{t('statusPending')}</option>
         <option value="suspended">{t('statusSuspended')}</option>
       </Select>
       <div className="flex-1" />
-      <Button size="sm" className="whitespace-nowrap" onClick={onInvite}>
+      <Button size="md" className="whitespace-nowrap" onClick={onInvite}>
         <Plus className="mr-1 h-3.5 w-3.5" />
         {t('inviteButton')}
       </Button>
@@ -584,20 +584,20 @@ function AuditToolbar({
   const t = useTranslations('orgDetail.toolbar');
   return (
     <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
-      <Select selectSize="sm" value={dateFilter} onChange={(e) => { onDateFilterChange(e.target.value); }}>
+      <Select selectSize="md" value={dateFilter} onChange={(e) => { onDateFilterChange(e.target.value); }}>
         <option value="today">{t('dateToday')}</option>
         <option value="7">{t('date7')}</option>
         <option value="30">{t('date30')}</option>
         <option value="all">{t('dateAll')}</option>
       </Select>
-      <Select selectSize="sm" value={actionFilter} onChange={(e) => { onActionFilterChange(e.target.value); }}>
+      <Select selectSize="md" value={actionFilter} onChange={(e) => { onActionFilterChange(e.target.value); }}>
         <option value="all">{t('actionAll')}</option>
         <option value="auth">auth.*</option>
         <option value="member">member.*</option>
         <option value="settings">settings.*</option>
       </Select>
       <div className="flex-1" />
-      <Button variant="primary" size="sm" className="whitespace-nowrap" onClick={onExportCsv}>
+      <Button variant="primary" size="md" className="whitespace-nowrap" onClick={onExportCsv}>
         <Download className="mr-1 h-3.5 w-3.5" />
         {t('exportCsv')}
       </Button>

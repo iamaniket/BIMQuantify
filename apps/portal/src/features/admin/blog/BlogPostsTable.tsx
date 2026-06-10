@@ -39,7 +39,7 @@ export function BlogPostsTable({
     {
       header: t('locale'),
       cell: (post) => (
-        <Badge variant="default" size="sm">
+        <Badge variant="default" size="md">
           {post.locale.toUpperCase()}
         </Badge>
       ),
@@ -47,7 +47,7 @@ export function BlogPostsTable({
     {
       header: t('status'),
       cell: (post) => (
-        <Badge variant={post.status === 'published' ? 'success' : 'default'} size="sm">
+        <Badge variant={post.status === 'published' ? 'success' : 'default'} size="md">
           {t(`statusLabel.${post.status as 'draft' | 'published'}`)}
         </Badge>
       ),
@@ -64,7 +64,7 @@ export function BlogPostsTable({
         <div className="flex items-center justify-end gap-1.5">
           <Button
             variant="border"
-            size="sm"
+            size="md"
             onClick={() => { onToggleStatus(post); }}
             disabled={togglingId === post.id}
             aria-label={
@@ -82,7 +82,7 @@ export function BlogPostsTable({
           </Button>
           <Button
             variant="border"
-            size="sm"
+            size="md"
             onClick={() => { onDelete(post); }}
             disabled={deletingId === post.id}
             aria-label={t('deleteAria', { title: post.title })}

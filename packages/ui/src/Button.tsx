@@ -44,9 +44,9 @@ const variantStyles: Record<ButtonVariant, string> = {
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: `${controlSizeStyles.sm} px-3 leading-[16px]`,
-  md: `${controlSizeStyles.md} px-4 leading-[16px]`,
-  lg: `${controlSizeStyles.lg} px-5 leading-[20px]`,
+  sm: `${controlSizeStyles.sm} px-2 leading-[12px]`,
+  md: `${controlSizeStyles.md} px-3 leading-[14px]`,
+  lg: `${controlSizeStyles.lg} px-4 leading-[18px]`,
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

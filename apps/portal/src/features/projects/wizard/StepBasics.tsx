@@ -129,7 +129,7 @@ export function StepBasics({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="md"
                 className="absolute right-2 top-2 h-7 w-7 bg-background/80 p-0 backdrop-blur-sm"
                 aria-label={t('actions.removeCoverImage')}
                 disabled={isSubmitting}
@@ -142,7 +142,7 @@ export function StepBasics({
             <Button
               type="button"
               variant="border"
-              size="sm"
+              size="md"
               className="self-start"
               disabled={isSubmitting || isReadOnly}
               onClick={handleOpenFilePicker}

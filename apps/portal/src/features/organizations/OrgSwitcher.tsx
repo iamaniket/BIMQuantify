@@ -74,7 +74,7 @@ export function OrgSwitcher(): JSX.Element | null {
             >
               <span className="flex-1 truncate">{m.organization_name}</span>
               {m.is_org_admin && (
-                <Badge variant="default" size="sm" bordered={false}>
+                <Badge variant="default" size="md" bordered={false}>
                   {t('adminBadge')}
                 </Badge>
               )}

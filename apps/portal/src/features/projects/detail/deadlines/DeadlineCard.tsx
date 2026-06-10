@@ -164,7 +164,7 @@ export function DeadlineCard({
           {showFilingButton ? (
             <Button
               variant="border"
-              size="sm"
+              size="md"
               disabled={isPending}
               onClick={onFile}
             >
@@ -174,7 +174,7 @@ export function DeadlineCard({
           ) : canMarkMet && (
             <Button
               variant="border"
-              size="sm"
+              size="md"
               disabled={isPending}
               onClick={onMarkMet}
             >

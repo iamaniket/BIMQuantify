@@ -77,7 +77,7 @@ function Viewer3DSection({
         />
         <Field label={t('quality')}>
           <Select
-            selectSize="sm"
+            selectSize="md"
             value={settings.effects.quality}
             onChange={(e) => {
               onChange({

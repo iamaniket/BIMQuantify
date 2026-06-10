@@ -213,7 +213,7 @@ function CategoryFilter({ filter, onFilter, counts }: {
   const cats = Object.keys(CATEGORY_LABEL_KEYS) as ShortcutCategory[];
   return (
     <Select
-      selectSize="sm"
+      selectSize="md"
       className="w-full"
       value={filter ?? ''}
       onChange={(e) => {
@@ -333,7 +333,7 @@ function Mouse3DSettings({
           <label key={btn.key} className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
             <span>{ts(btn.labelKey)}</span>
             <Select
-              selectSize="sm"
+              selectSize="md"
               className="w-40"
               value={settings.controls[btn.key]}
               onChange={(e) => {
@@ -357,7 +357,7 @@ function Mouse3DSettings({
         <label className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
           <span>{ts('doubleClickIsolate')}</span>
           <Select
-            selectSize="sm"
+            selectSize="md"
             className="w-40"
             value={doubleClickButton}
             onChange={(e) => { setDoubleClickButton(e.target.value); }}
@@ -461,7 +461,7 @@ function Mouse2DSettings({
           <label key={btn.key} className="flex items-center justify-between gap-3 text-body3 text-foreground-secondary">
             <span>{ts(btn.labelKey)}</span>
             <Select
-              selectSize="sm"
+              selectSize="md"
               className="w-40"
               disabled={linked}
               value={effective[btn.key]}
@@ -631,7 +631,7 @@ export function KeyBindingsTab(props: Props): JSX.Element {
           {/* Pinned: toolbar — search + filter */}
           <div className="flex shrink-0 items-center gap-2 px-1 pb-2 pt-2">
             <Input
-              inputSize="sm"
+              inputSize="md"
               className="w-1/4"
               leading={<SearchIcon />}
               trailing={query ? (

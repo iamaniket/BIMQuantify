@@ -157,7 +157,7 @@ export function OrgCertificatesOverview({ certificates }: Props): JSX.Element {
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={EXPIRY_BADGE[expiryState]} size="sm" bordered>
+                    <Badge variant={EXPIRY_BADGE[expiryState]} size="md" bordered>
                       {t(`expiry.${expiryState}`)}
                     </Badge>
                     <span className="text-caption text-foreground-tertiary tabular-nums">
