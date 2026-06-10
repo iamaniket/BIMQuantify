@@ -3,16 +3,15 @@
  * (rect/arrow/cloud/freehand/text) each register a {@link MarkupToolDefinition}
  * with this plugin; the core owns everything common:
  *
- *   • a transparent three.js WebGL overlay inside `ctx.overlayHost` (page-aligned,
- *     ortho camera in CSS px) — same approach as the measure plugin;
- *   • draft + committed state, stored in ARTIFACT space (PDF pts) and reprojected
- *     to CSS on every `page:rendered`, so markup stays locked through zoom/rotate;
- *   • pointer routing to the active tool's interaction while drawing;
- *   • click hit-testing of committed markup (→ `markup:select`);
+ *   • a `markup` layer (THREE.Group) in the SHARED world-space scene, so markup
+ *     pans/zooms via the camera with no per-plugin renderer or CSS reproject;
+ *   • draft + committed state, stored NORMALIZED (0..1, top-left — the
+ *     persistence space) and projected to world coords (PDF pts, Y-up) on build;
+ *   • pointer routing to the active tool's interaction while drawing, mapping
+ *     screen → world via the shared camera;
+ *   • click hit-testing of committed markup by raycasting (→ `markup:select`);
  *   • the `markup.*` command surface and `markup:*` events;
  *   • snapshot compositing (`markup.captureSnapshot`).
- *
- * Persistence uses NORMALIZED coords (0..1, top-left) — see `core/normalize.ts`.
  */
 
 import * as THREE from 'three';
@@ -22,13 +21,16 @@ import type {
   DocumentPlugin,
   DocumentTool,
 } from '../../../../pdf-core/documentTypes.js';
-import {
-  artifactToCss,
-  cssToArtifact,
-  type PdfTransformParams,
-} from '../../measure/transform.js';
 import type { Pt } from '../../measure/math.js';
 import type { PageGeometryLike } from '../../measure/geometryTypes.js';
+import type { SceneAPI } from '../../scene/index.js';
+import {
+  normPointsToWorld,
+  worldParams,
+  worldPointsToNorm,
+  type WorldParams,
+} from '../../shared/worldTransform.js';
+import { clearGroup, containerPointToWorld } from '../../shared/screenConstant.js';
 import type {
   CommittedMarkupItem,
   MarkupDraft,
@@ -42,36 +44,33 @@ import type {
   MarkupToolContext,
   MarkupToolDefinition,
 } from './api.js';
-import { normCentroid, pointsToArtifact, pointsToNorm } from './normalize.js';
-import type { SceneAPI } from '../../scene/index.js';
-import { hitTestCommitted, type HitShape } from './hitTest.js';
+import { normCentroid } from './normalize.js';
 import { compositeSnapshot, type ViewportCrop } from './snapshot.js';
 
 export const MARKUP_CORE_NAME = 'markup-core' as const;
 
+const LAYER = 'markup' as const;
+/** Layer render order — above measure (10), below entity markers (30). */
+const RENDER_ORDER = 20;
 const DEFAULT_STYLE: MarkupStyle = { color: '#ef4444', strokeWidth: 2 };
 
 interface LiveShape {
   tool: MarkupTool;
-  pts: Pt[]; // artifact space
+  pts: Pt[]; // world space (PDF pts, Y-up)
   text?: string;
 }
 
 export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
   let ctx: DocumentContext | null = null;
+  let sceneApi: SceneAPI | null = null;
   const cleanups: Array<() => void> = [];
 
-  // ---- DOM hosts (appended into ctx.overlayHost) ----
-  let pluginRoot: HTMLDivElement | null = null;
-  let canvasHost: HTMLDivElement | null = null;
-  let labelHost: HTMLDivElement | null = null;
-
-  // ---- three.js ----
-  let renderer: THREE.WebGLRenderer | null = null;
-  let scene: THREE.Scene | null = null;
-  let camera: THREE.OrthographicCamera | null = null;
+  // ---- shared-scene layer ----
+  let layerGroup: THREE.Group | null = null;
   let committedGroup: THREE.Group | null = null;
   let previewGroup: THREE.Group | null = null;
+  let labelHost: HTMLDivElement | null = null;
+  const raycaster = new THREE.Raycaster();
 
   // ---- state ----
   const tools = new Map<MarkupTool, MarkupToolDefinition>();
@@ -82,101 +81,68 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
   let live: LiveShape | null = null; // in-progress drawing
   let draft: LiveShape | null = null; // completed-but-unsaved
   let committed: CommittedMarkupItem[] = [];
-  let hitShapes: HitShape[] = [];
   let savedTool: DocumentTool | null = null;
 
   // ----------------------------------------------------------------- transforms
 
-  function boxDims(): { w: number; h: number; rot: number } | null {
-    if (pageGeometry) return { w: pageGeometry.w, h: pageGeometry.h, rot: pageGeometry.rot ?? 0 };
+  function wparams(): WorldParams | null {
     if (!ctx) return null;
-    const uv = ctx.getUnscaledViewport();
-    if (!uv) return null;
-    const rot = ctx.getRotation();
-    // getUnscaledViewport() is post-rotation; un-transpose to the unrotated box.
-    if (rot === 90 || rot === 270) return { w: uv.height, h: uv.width, rot: 0 };
-    return { w: uv.width, h: uv.height, rot: 0 };
+    if (pageGeometry) {
+      return worldParams(ctx, { w: pageGeometry.w, h: pageGeometry.h, rot: pageGeometry.rot ?? 0 });
+    }
+    return worldParams(ctx, null);
   }
 
-  function params(): PdfTransformParams | null {
-    if (!ctx) return null;
-    const dims = ctx.getPageDimensions();
-    const box = boxDims();
-    if (!dims || !box) return null;
-    const rotation = (((ctx.getRotation() + box.rot) % 360) + 360) % 360;
-    return { w: box.w, h: box.h, pageW: dims.width, pageH: dims.height, rotation };
+  function pageWorldSize(): { w: number; h: number } {
+    const uv = ctx?.getUnscaledViewport();
+    return { w: uv?.width ?? 0, h: uv?.height ?? 0 };
   }
 
-  function toCss(p: Pt, t: PdfTransformParams): Pt {
-    return artifactToCss(p[0], p[1], t);
+  function cursorToWorld(e: PointerEvent | MouseEvent): Pt {
+    if (!ctx || !sceneApi) return [0, 0];
+    const w = containerPointToWorld(e, ctx, sceneApi);
+    return [w.x, w.y];
   }
 
-  function pageCssSize(): { w: number; h: number } {
-    const dims = ctx?.getPageDimensions();
-    return { w: dims?.width ?? 0, h: dims?.height ?? 0 };
-  }
-
-  function render(): void {
-    if (renderer && scene && camera) renderer.render(scene, camera);
+  function worldToScreenPt(p: Pt): Pt {
+    if (!sceneApi) return [0, 0];
+    const s = sceneApi.worldToScreen(p[0], p[1]);
+    return [s.x, s.y];
   }
 
   // ------------------------------------------------------------------ geometry
 
-  function disposeGroup(group: THREE.Group | null): void {
-    if (!group) return;
-    for (const child of [...group.children]) {
-      child.traverse((obj) => {
-        const o = obj as THREE.Mesh & THREE.Line;
-        o.geometry?.dispose?.();
-        const mat = (o as unknown as { material?: THREE.Material | THREE.Material[] }).material;
-        if (mat) {
-          const mats = Array.isArray(mat) ? mat : [mat];
-          for (const m of mats) {
-            (m as THREE.Material & { map?: THREE.Texture | null }).map?.dispose?.();
-            m.dispose();
-          }
-        }
-      });
-    }
-    group.clear();
-  }
-
   function buildInto(
     group: THREE.Group,
     tool: MarkupTool,
-    artifactPts: Pt[],
+    worldPts: Pt[],
     text: string | undefined,
     st: MarkupStyle,
-    t: PdfTransformParams,
+    topicId?: string,
   ): void {
     const def = tools.get(tool);
     if (!def) return;
-    const css = artifactPts.map((p) => toCss(p, t));
-    const opts: MarkupBuildOpts = { pageCss: pageCssSize(), ...(text !== undefined ? { text } : {}) };
-    for (const obj of def.build(css, st, opts)) group.add(obj);
+    const opts: MarkupBuildOpts = { pageWorld: pageWorldSize(), ...(text !== undefined ? { text } : {}) };
+    for (const obj of def.build(worldPts, st, opts)) {
+      obj.traverse((o) => {
+        o.renderOrder += RENDER_ORDER;
+        if (topicId !== undefined) o.userData['topicId'] = topicId;
+      });
+      group.add(obj);
+    }
   }
-
-  // -------------------------------------------------------------- redraw paths
 
   function rebuildCommitted(): void {
     if (!committedGroup || !ctx) return;
-    disposeGroup(committedGroup);
-    hitShapes = [];
-    const t = params();
-    if (t) {
+    clearGroup(committedGroup);
+    const p = wparams();
+    if (p) {
       const page = ctx.getCurrentPage();
-      const box = boxDims();
       for (const item of committed) {
         if (item.page !== page) continue;
         for (const ann of item.annotations) {
-          const artifact = box ? pointsToArtifact(ann.points, box.w, box.h) : [];
-          buildInto(committedGroup, ann.tool, artifact, ann.text, { color: ann.color, strokeWidth: ann.strokeWidth }, t);
-          hitShapes.push({
-            topicId: item.topicId,
-            tool: ann.tool,
-            css: artifact.map((p) => toCss(p, t)),
-            ...(ann.text !== undefined ? { text: ann.text } : {}),
-          });
+          const worldPts = normPointsToWorld(ann.points, p);
+          buildInto(committedGroup, ann.tool, worldPts, ann.text, { color: ann.color, strokeWidth: ann.strokeWidth }, item.topicId);
         }
       }
     }
@@ -185,33 +151,21 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
 
   function rebuildPreview(): void {
     if (!previewGroup) return;
-    disposeGroup(previewGroup);
-    const t = params();
-    if (t) {
-      if (draft) buildInto(previewGroup, draft.tool, draft.pts, draft.text, style, t);
-      if (live && live.pts.length > 0) buildInto(previewGroup, live.tool, live.pts, live.text, style, t);
+    clearGroup(previewGroup);
+    const p = wparams();
+    if (p) {
+      if (draft) buildInto(previewGroup, draft.tool, draft.pts, draft.text, style);
+      if (live && live.pts.length > 0) buildInto(previewGroup, live.tool, live.pts, live.text, style);
     }
-    render();
+    sceneApi?.requestRender();
   }
 
   // ------------------------------------------------------------- tool context
 
-  function cursorToArtifact(e: PointerEvent | MouseEvent): Pt {
-    const t = params();
-    if (!t || !pluginRoot) return [0, 0];
-    const rect = pluginRoot.getBoundingClientRect();
-    return cssToArtifact(e.clientX - rect.left, e.clientY - rect.top, t);
-  }
-
-  function artifactToCssPt(p: Pt): Pt {
-    const t = params();
-    return t ? toCss(p, t) : [0, 0];
-  }
-
   function makeToolContext(): MarkupToolContext {
     return {
-      cursorToArtifact,
-      artifactToCss: artifactToCssPt,
+      cursorToWorld,
+      worldToScreen: worldToScreenPt,
       getStyle: () => ({ ...style }),
       preview: (points, text) => {
         if (activeTool === null) return;
@@ -228,9 +182,9 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
       cancel: () => {
         cancelLive();
       },
-      requestRender: render,
+      requestRender: () => sceneApi?.requestRender(),
       labelHost: labelHost!,
-      root: pluginRoot!,
+      root: ctx!.container,
       page: () => ctx?.getCurrentPage() ?? 1,
     };
   }
@@ -238,9 +192,9 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
   // ------------------------------------------------------------- draft lifecycle
 
   function buildDraftPayload(d: LiveShape): MarkupDraft | null {
-    const box = boxDims();
-    if (!box) return null;
-    const points = pointsToNorm(d.pts, box.w, box.h);
+    const p = wparams();
+    if (!p) return null;
+    const points = worldPointsToNorm(d.pts, p);
     const anchor = normCentroid(points);
     return {
       tool: d.tool,
@@ -288,17 +242,14 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
   // ------------------------------------------------------------------ control
 
   function setRootInteractive(on: boolean): void {
-    if (!pluginRoot) return;
-    pluginRoot.style.pointerEvents = on ? 'auto' : 'none';
-    pluginRoot.style.cursor = on ? 'crosshair' : 'default';
+    if (!ctx) return;
+    ctx.container.style.cursor = on ? 'crosshair' : '';
   }
 
   function activate(tool: MarkupTool): void {
-    console.log('[Markup] activate called, tool:', tool, 'ctx:', !!ctx);
-    if (!ctx) { console.warn('[Markup] no ctx — bailing'); return; }
+    if (!ctx) return;
     const def = tools.get(tool);
-    console.log('[Markup] tool def found:', !!def, 'registered tools:', [...tools.keys()]);
-    if (!def) { console.warn('[Markup] tool not registered — bailing'); return; }
+    if (!def) return;
     if (activeTool === null) savedTool = ctx.getTool();
     activeInteraction?.dispose?.();
     activeTool = tool;
@@ -306,34 +257,7 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
     ctx.setTool('select'); // neutralize the camera's left-drag while drawing
     activeInteraction = def.createInteraction(makeToolContext());
     setRootInteractive(true);
-    console.log('[Markup] pluginRoot pointer-events:', pluginRoot?.style.pointerEvents, 'cursor:', pluginRoot?.style.cursor);
-    console.log('[Markup] pluginRoot dimensions:', pluginRoot?.offsetWidth, 'x', pluginRoot?.offsetHeight);
-    if (pluginRoot) {
-      const rect = pluginRoot.getBoundingClientRect();
-      console.log('[Markup] pluginRoot boundingRect:', JSON.stringify({ top: Math.round(rect.top), left: Math.round(rect.left), width: Math.round(rect.width), height: Math.round(rect.height) }));
-      // DEBUG: make the overlay visible
-      pluginRoot.style.border = '3px solid red';
-      pluginRoot.style.background = 'rgba(255,0,0,0.05)';
-      // DEBUG: document-level click logger to see what receives clicks
-      const debugClick = (ev: MouseEvent) => {
-        const els = document.elementsFromPoint(ev.clientX, ev.clientY);
-        console.log('[Markup DEBUG] click at', ev.clientX, ev.clientY, 'hit:', els.slice(0, 6).map((el) => {
-          const tag = el.tagName.toLowerCase();
-          const id = el.id ? `#${el.id}` : '';
-          const cls = el.className && typeof el.className === 'string' ? '.' + el.className.split(/\s+/).slice(0, 2).join('.') : '';
-          const ds = Object.keys((el as HTMLElement).dataset || {}).join(',');
-          const pe = getComputedStyle(el).pointerEvents;
-          return `${tag}${id}${cls}${ds ? `[${ds}]` : ''} pe=${pe}`;
-        }));
-        const hitMarkup = els.includes(pluginRoot!);
-        console.log('[Markup DEBUG] pluginRoot in hit stack:', hitMarkup);
-      };
-      document.addEventListener('click', debugClick, true);
-      // Auto-remove after 30s
-      setTimeout(() => document.removeEventListener('click', debugClick, true), 30000);
-    }
     rebuildPreview();
-    console.log('[Markup] activate complete, activeTool:', activeTool);
   }
 
   function deactivate(): void {
@@ -350,17 +274,24 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
 
   // ----------------------------------------------------------- pointer + click
 
+  // Capture-phase pointer routing: while a tool is active we consume the events
+  // (stopPropagation) so camera-controls never pans during a draw. With no tool
+  // active we ignore them entirely, so navigation works normally.
   function onPointerDown(e: PointerEvent): void {
-    console.log('[Markup] onPointerDown, activeTool:', activeTool, 'hasInteraction:', !!activeInteraction);
+    if (activeTool === null) return;
+    e.stopPropagation();
     activeInteraction?.onPointerDown?.(e);
   }
   function onPointerMove(e: PointerEvent): void {
+    if (activeTool === null) return;
     activeInteraction?.onPointerMove?.(e);
   }
   function onPointerUp(e: PointerEvent): void {
+    if (activeTool === null) return;
     activeInteraction?.onPointerUp?.(e);
   }
   function onDoubleClick(e: MouseEvent): void {
+    if (activeTool === null) return;
     activeInteraction?.onDoubleClick?.(e);
   }
   function onKeyDown(e: KeyboardEvent): void {
@@ -369,17 +300,40 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
     else deactivate();
   }
 
-  // Capture-phase click on the container: select committed markup without
-  // swallowing pans (misses fall through to camera/other handlers).
-  function onContainerClick(e: MouseEvent): void {
-    if (activeTool !== null || !ctx || !pluginRoot || hitShapes.length === 0) return;
-    const rect = pluginRoot.getBoundingClientRect();
-    const topicId = hitTestCommitted(
-      e.clientX - rect.left,
-      e.clientY - rect.top,
-      hitShapes,
-      pageCssSize().h,
+  function resolveTopicId(obj: THREE.Object3D | null): string | null {
+    let o: THREE.Object3D | null = obj;
+    while (o) {
+      const id = o.userData['topicId'];
+      if (typeof id === 'string') return id;
+      o = o.parent;
+    }
+    return null;
+  }
+
+  function raycastCommitted(clientX: number, clientY: number): string | null {
+    if (!ctx || !sceneApi || !committedGroup) return null;
+    const rect = ctx.container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
+    const ndc = new THREE.Vector2(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
     );
+    raycaster.setFromCamera(ndc, sceneApi.camera);
+    const lineParams = raycaster.params.Line;
+    if (lineParams) lineParams.threshold = 6 * sceneApi.worldPerPx();
+    const hits = raycaster.intersectObjects(committedGroup.children, true);
+    for (const h of hits) {
+      const id = resolveTopicId(h.object);
+      if (id) return id;
+    }
+    return null;
+  }
+
+  // Capture-phase click selects committed markup without swallowing pans (misses
+  // fall through to camera / other handlers).
+  function onContainerClick(e: MouseEvent): void {
+    if (activeTool !== null || !ctx || !committedGroup || committedGroup.children.length === 0) return;
+    const topicId = raycastCommitted(e.clientX, e.clientY);
     if (topicId !== null) {
       e.stopPropagation();
       ctx.events.emit('markup:select', { topicId });
@@ -388,9 +342,7 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
 
   // -------------------------------------------------------------- view state
 
-  function getSceneCamera(): import('three').OrthographicCamera | null {
-    if (!ctx) return null;
-    const sceneApi = ctx.plugins.get<SceneAPI>('scene');
+  function getSceneCamera(): THREE.OrthographicCamera | null {
     return sceneApi?.camera ?? null;
   }
 
@@ -443,38 +395,30 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
   }
 
   function captureSnapshot(maxWidth = 480): string | null {
-    if (!ctx || !renderer) return null;
-    render();
+    if (!ctx || !sceneApi) return null;
+    // The shared renderer draws every layer; a markup snapshot wants only the
+    // page + markup, so hide the measure + entity-marker layers for the capture.
+    const measureLayer = sceneApi.getLayer('measure');
+    const markerLayer = sceneApi.getLayer('entity-markers');
+    const mPrev = measureLayer?.visible ?? true;
+    const kPrev = markerLayer?.visible ?? true;
+    if (measureLayer) measureLayer.visible = false;
+    if (markerLayer) markerLayer.visible = false;
+    sceneApi.renderer.render(sceneApi.scene, sceneApi.camera);
+    let out: string | null = null;
     const dims = ctx.getPageDimensions();
-    if (!dims) return null;
-    const viewport = computeViewportCrop();
-    return compositeSnapshot(ctx.canvas, renderer.domElement, dims, maxWidth, viewport);
-  }
-
-  // ------------------------------------------------------------------- resize
-
-  function resize(): void {
-    if (!ctx || !renderer || !camera || !pluginRoot) return;
-    const dims = ctx.getPageDimensions();
-    if (!dims) return;
-    const W = dims.width;
-    const H = dims.height;
-    pluginRoot.style.width = `${W}px`;
-    pluginRoot.style.height = `${H}px`;
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(W, H, true);
-    camera.left = 0;
-    camera.right = W;
-    camera.top = 0;
-    camera.bottom = H;
-    camera.updateProjectionMatrix();
+    if (dims) out = compositeSnapshot(ctx.canvas, sceneApi.renderer.domElement, dims, maxWidth, computeViewportCrop());
+    if (measureLayer) measureLayer.visible = mPrev;
+    if (markerLayer) markerLayer.visible = kPrev;
+    sceneApi.requestRender();
+    return out;
   }
 
   // ------------------------------------------------------------------- plugin
 
   const api: DocumentPlugin & MarkupCoreAPI = {
     name: MARKUP_CORE_NAME,
+    dependencies: ['scene'],
 
     registerTool(def: MarkupToolDefinition): void {
       tools.set(def.tool, def);
@@ -484,50 +428,44 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
 
     install(context: DocumentContext): void {
       ctx = context;
+      sceneApi = context.plugins.get<SceneAPI>('scene');
+      if (!sceneApi) throw new Error('markup-core requires the scene plugin');
 
-      pluginRoot = document.createElement('div');
-      pluginRoot.dataset['bqMarkup'] = '';
-      pluginRoot.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
-      canvasHost = document.createElement('div');
-      canvasHost.style.cssText = 'position:absolute;inset:0;';
-      labelHost = document.createElement('div');
-      labelHost.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
-      pluginRoot.append(canvasHost, labelHost);
-      context.overlayHost.appendChild(pluginRoot);
-
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
-      renderer.setClearColor(0x000000, 0);
-      renderer.domElement.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
-      canvasHost.appendChild(renderer.domElement);
-
-      scene = new THREE.Scene();
-      camera = new THREE.OrthographicCamera(0, 1, 0, 1, -1, 1);
+      layerGroup = sceneApi.addLayer(LAYER, RENDER_ORDER);
       committedGroup = new THREE.Group();
       previewGroup = new THREE.Group();
-      scene.add(committedGroup, previewGroup);
+      layerGroup.add(committedGroup, previewGroup);
 
-      const root = pluginRoot;
-      root.addEventListener('pointerdown', onPointerDown);
-      root.addEventListener('pointermove', onPointerMove);
-      root.addEventListener('pointerup', onPointerUp);
-      root.addEventListener('dblclick', onDoubleClick);
+      // Transient DOM (the text input) lives in the viewport-pinned overlay, so
+      // worldToScreen px line up regardless of the page's CSS transform.
+      labelHost = document.createElement('div');
+      labelHost.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+      context.viewportOverlay.appendChild(labelHost);
+
+      const el = context.container;
+      el.addEventListener('pointerdown', onPointerDown, true);
+      el.addEventListener('pointermove', onPointerMove, true);
+      el.addEventListener('pointerup', onPointerUp, true);
+      el.addEventListener('dblclick', onDoubleClick, true);
+      el.addEventListener('click', onContainerClick, true);
       window.addEventListener('keydown', onKeyDown);
-      context.container.addEventListener('click', onContainerClick, true);
       cleanups.push(() => {
-        root.removeEventListener('pointerdown', onPointerDown);
-        root.removeEventListener('pointermove', onPointerMove);
-        root.removeEventListener('pointerup', onPointerUp);
-        root.removeEventListener('dblclick', onDoubleClick);
+        el.removeEventListener('pointerdown', onPointerDown, true);
+        el.removeEventListener('pointermove', onPointerMove, true);
+        el.removeEventListener('pointerup', onPointerUp, true);
+        el.removeEventListener('dblclick', onDoubleClick, true);
+        el.removeEventListener('click', onContainerClick, true);
         window.removeEventListener('keydown', onKeyDown);
-        context.container.removeEventListener('click', onContainerClick, true);
       });
 
       cleanups.push(context.events.on('page:rendered', () => {
-        resize();
         rebuildCommitted();
       }));
       cleanups.push(context.events.on('page:change', () => {
         if (activeTool !== null) cancelLive();
+        // The draft's world points belong to the page it was drawn on; drop it
+        // rather than rendering it at stale coordinates on the new page.
+        draft = null;
         rebuildCommitted();
       }));
 
@@ -566,31 +504,23 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
         rebuildCommitted();
       }, { title: 'Provide the precise page box for normalization' });
 
-      resize();
-      render();
+      rebuildCommitted();
     },
 
     uninstall(): void {
       for (const c of cleanups.splice(0)) c();
       deactivate();
       committed = [];
-      hitShapes = [];
-      disposeGroup(committedGroup);
-      disposeGroup(previewGroup);
-      if (renderer) {
-        renderer.dispose();
-        renderer.forceContextLoss();
-      }
-      if (pluginRoot?.parentNode) pluginRoot.parentNode.removeChild(pluginRoot);
-      pluginRoot = null;
-      canvasHost = null;
+      clearGroup(committedGroup);
+      clearGroup(previewGroup);
+      if (sceneApi) sceneApi.removeLayer(LAYER);
+      if (labelHost?.parentNode) labelHost.parentNode.removeChild(labelHost);
       labelHost = null;
-      renderer = null;
-      scene = null;
-      camera = null;
+      layerGroup = null;
       committedGroup = null;
       previewGroup = null;
       tools.clear();
+      sceneApi = null;
       ctx = null;
     },
   };

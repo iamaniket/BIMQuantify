@@ -5,7 +5,12 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimstitch_api.auth.tokens import TokenError, create_token, decode_token_full
+from bimstitch_api.auth.tokens import (
+    TokenError,
+    create_token,
+    decode_token_full,
+    token_predates_epoch,
+)
 from bimstitch_api.cache import get_redis_dep
 from bimstitch_api.cache.blocklist import is_revoked
 from bimstitch_api.config import get_settings
@@ -69,6 +74,12 @@ async def refresh_access_token(
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="USER_NO_LONGER_ACTIVE"
+        )
+
+    # Reject refresh tokens minted before a global sign-out / password change.
+    if token_predates_epoch(decoded, user.tokens_valid_after):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="REFRESH_TOKEN_REVOKED"
         )
 
     # Propagate active_organization_id from the refresh token but verify the

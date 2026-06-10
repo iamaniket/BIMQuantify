@@ -4,16 +4,18 @@
  * intersection cap, dedup tolerance) without importing its 3D-fragment-coupled
  * internals.
  *
- * All snap candidates are stored in artifact space (PDF points, Y-up); they are
- * projected to CSS px on demand via {@link artifactToCss} so the same data
- * survives zoom and rotation.
+ * All snap candidates are stored in artifact space (PDF points, Y-up). Nearest-
+ * point search is done in a caller-chosen comparison space via a `project`
+ * function (artifact → comparison coords) — world space for the live viewer,
+ * CSS for the unit tests — so the engine is agnostic to how the page is drawn.
  */
 
 import type { Line } from './geometryTypes';
 
-import { artifactToCss, type PdfTransformParams } from './transform';
-
 export type SnapKind = 'endpoint' | 'intersection';
+
+/** Projects an artifact-space point into the comparison space (world or CSS px). */
+export type SnapProjector = (ax: number, ay: number) => [number, number];
 
 export interface SnapPoint {
   /** Artifact-space coordinates (PDF points, Y-up). */
@@ -40,11 +42,11 @@ export interface SnapResult {
   /** Snapped point, artifact space (PDF points, Y-up). */
   ax: number;
   ay: number;
-  /** Same point projected to CSS px (for marker rendering). */
-  cssX: number;
-  cssY: number;
+  /** Same point in comparison space (whatever `project` returns — world or CSS). */
+  px: number;
+  py: number;
   kind: SnapKind;
-  /** Distance in CSS px from the cursor to the snap point. */
+  /** Distance in comparison-space units from the cursor to the snap point. */
   distance: number;
 }
 
@@ -118,32 +120,36 @@ export function buildPageSnapData(lines: Line[]): PageSnapData {
   };
 }
 
-/** Nearest snap within `thresholdPx`: endpoints take priority over intersections. */
+/**
+ * Nearest snap within `threshold` (comparison-space units): endpoints take
+ * priority over intersections. `cursor` and `threshold` must be in the same
+ * space `project` maps candidates into.
+ */
 export function findNearestSnap(
   data: PageSnapData,
   cursor: { x: number; y: number },
-  params: PdfTransformParams,
-  thresholdPx: number,
+  project: SnapProjector,
+  threshold: number,
 ): SnapResult | null {
   return (
-    nearestInTier(data.endpoints, cursor, params, thresholdPx) ??
-    nearestInTier(data.intersections, cursor, params, thresholdPx)
+    nearestInTier(data.endpoints, cursor, project, threshold) ??
+    nearestInTier(data.intersections, cursor, project, threshold)
   );
 }
 
 function nearestInTier(
   points: SnapPoint[],
   cursor: { x: number; y: number },
-  params: PdfTransformParams,
-  thresholdPx: number,
+  project: SnapProjector,
+  threshold: number,
 ): SnapResult | null {
   let best: SnapResult | null = null;
   for (const pt of points) {
-    const [cssX, cssY] = artifactToCss(pt.ax, pt.ay, params);
-    const distance = Math.hypot(cssX - cursor.x, cssY - cursor.y);
-    if (distance > thresholdPx) continue;
+    const [px, py] = project(pt.ax, pt.ay);
+    const distance = Math.hypot(px - cursor.x, py - cursor.y);
+    if (distance > threshold) continue;
     if (best === null || distance < best.distance) {
-      best = { ax: pt.ax, ay: pt.ay, cssX, cssY, kind: pt.kind, distance };
+      best = { ax: pt.ax, ay: pt.ay, px, py, kind: pt.kind, distance };
     }
   }
   return best;

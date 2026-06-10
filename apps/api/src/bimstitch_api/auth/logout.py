@@ -5,10 +5,15 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api.auth.fastapi_users import current_active_user
 from bimstitch_api.auth.tokens import DecodedToken, TokenError, decode_token_full
 from bimstitch_api.cache import get_redis_dep
 from bimstitch_api.cache.blocklist import revoke_jti
+from bimstitch_api.db import get_async_session
+from bimstitch_api.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -56,5 +61,42 @@ async def logout(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="LOGOUT_REVOCATION_UNAVAILABLE",
         ) from exc
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+async def logout_all(
+    payload: LogoutRequest,
+    user: User = Depends(current_active_user),
+    access_token: str = Depends(oauth2_scheme),
+    session: AsyncSession = Depends(get_async_session),
+    redis: Redis = Depends(get_redis_dep),
+) -> Response:
+    """Sign out everywhere. Stamps the user's token epoch (`tokens_valid_after`)
+    so every previously-issued access/refresh token — this device and all
+    others — is rejected on its next use (any token whose `iat` predates the
+    stamp fails). A fresh login mints tokens after the epoch and works normally.
+
+    The DB-backed epoch is the durable guarantee; we also best-effort blocklist
+    the presented access/refresh pair for immediacy. A bad token or Redis hiccup
+    there must not fail the logout — the epoch already covers those tokens.
+    """
+    now = datetime.now(tz=UTC)
+    await session.execute(update(User).where(User.id == user.id).values(tokens_valid_after=now))
+    await session.commit()
+
+    try:
+        access = decode_token_full(access_token, expected_type="access")
+        if access.jti:
+            await revoke_jti(redis, access.jti, _ttl_seconds(access))
+        if payload.refresh_token:
+            refresh = decode_token_full(payload.refresh_token, expected_type="refresh")
+            if refresh.jti:
+                await revoke_jti(redis, refresh.jti, _ttl_seconds(refresh))
+    except (TokenError, RedisError):
+        # The epoch already invalidated every token durably; the blocklist
+        # write is only an immediacy optimisation, so swallow its failures.
+        pass
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

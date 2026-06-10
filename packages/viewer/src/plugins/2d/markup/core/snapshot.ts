@@ -1,13 +1,14 @@
 /**
- * Composite the pdf.js page raster and the markup WebGL canvas into one PNG
- * data URL (≤ maxWidth). Both source canvases represent the same page rect at
- * different native resolutions, so drawing each into the same output rect keeps
- * them aligned. Text markup lives in the WebGL canvas (CanvasTexture), so there
- * is nothing DOM to composite separately.
+ * Composite the pdf.js page raster and the shared-scene WebGL canvas into one
+ * PNG data URL (≤ maxWidth). The PDF canvas is page-sized and positioned via the
+ * pdf-underlay CSS transform; the WebGL canvas is container-sized and already
+ * camera-projected (it shows exactly the on-screen view), so it maps 1:1 onto
+ * the output. Text markup lives in the WebGL canvas (CanvasTexture), so there is
+ * nothing DOM to composite separately.
  *
- * The caller must render the markup scene immediately before calling this and
- * create the renderer with `preserveDrawingBuffer: true`, or the WebGL drawing
- * buffer may already be cleared.
+ * The caller must render the scene immediately before calling this and create
+ * the renderer with `preserveDrawingBuffer: true`, or the WebGL drawing buffer
+ * may already be cleared.
  */
 
 export type ViewportCrop = {
@@ -52,7 +53,7 @@ export function compositeSnapshot(
 
 function compositeViewport(
   pageCanvas: HTMLCanvasElement,
-  markupCanvas: HTMLCanvasElement,
+  webglCanvas: HTMLCanvasElement,
   pageCss: { width: number; height: number },
   maxWidth: number,
   vp: ViewportCrop,
@@ -69,26 +70,22 @@ function compositeViewport(
   const g = out.getContext('2d');
   if (g === null) return null;
 
-  // The pdf-underlay positions page-space canvases in the container via
-  // `translate(screenX, screenY) scale(cssScale)`. We replicate that here
-  // so the composite shows exactly what the user sees.
+  // Page canvas: the pdf-underlay positions it in the container via
+  // `translate(screenX, screenY) scale(cssScale)`. Replicate that so the
+  // composite shows exactly what the user sees.
   const sx = vp.screenX * downscale;
   const sy = vp.screenY * downscale;
   const sc = vp.cssScale * downscale;
-
-  // Page canvas: native size → page CSS size is implicit (canvas CSS size),
-  // so we draw from native pixels and scale to pageCss * cssScale.
   if (pageCanvas.width > 0 && pageCanvas.height > 0) {
     const dstW = pageCss.width * sc;
     const dstH = pageCss.height * sc;
     g.drawImage(pageCanvas, 0, 0, pageCanvas.width, pageCanvas.height, sx, sy, dstW, dstH);
   }
 
-  // Markup canvas: same page-space coordinate system, same transform.
-  if (markupCanvas.width > 0 && markupCanvas.height > 0) {
-    const dstW = pageCss.width * sc;
-    const dstH = pageCss.height * sc;
-    g.drawImage(markupCanvas, 0, 0, markupCanvas.width, markupCanvas.height, sx, sy, dstW, dstH);
+  // WebGL canvas: container-sized and already camera-projected — it covers the
+  // whole viewport, so map its full extent onto the full output.
+  if (webglCanvas.width > 0 && webglCanvas.height > 0) {
+    g.drawImage(webglCanvas, 0, 0, webglCanvas.width, webglCanvas.height, 0, 0, outW, outH);
   }
 
   return out.toDataURL('image/png');

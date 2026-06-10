@@ -18,9 +18,9 @@ function corners(a: Pt, b: Pt): Pt[] {
   ];
 }
 
-function build(css: Pt[], style: MarkupStyle, _opts: MarkupBuildOpts): THREE.Object3D[] {
-  if (css.length < 2) return [];
-  const pts = corners(css[0]!, css[1]!);
+function build(world: Pt[], style: MarkupStyle, _opts: MarkupBuildOpts): THREE.Object3D[] {
+  if (world.length < 2) return [];
+  const pts = corners(world[0]!, world[1]!);
   return [
     fillObject(pts, makeFillMaterial(style.color)),
     polylineObject(pts, true, makeLineMaterial(style.color)),

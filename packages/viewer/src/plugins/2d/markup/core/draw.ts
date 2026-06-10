@@ -4,9 +4,10 @@
  * These keep each per-shape plugin tiny — a shape plugin only supplies its
  * `build()` geometry and picks an interaction.
  *
- * All builders take CSS-px points (the markup overlay's ortho camera is in CSS
- * px, identical to the measure plugin) and return objects with `depthTest:false`
- * so markup always draws over the page raster.
+ * All builders take world-space points (PDF pts, Y-up — the shared scene's
+ * coordinate system) and return objects with `depthTest:false` so markup always
+ * draws over the page raster. Drag-distance thresholds are measured in screen px
+ * (via `worldToScreen`) so they feel consistent at any zoom.
  */
 
 import * as THREE from 'three';
@@ -92,7 +93,7 @@ export function twoPointDrag(c: MarkupToolContext): MarkupInteraction {
       if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
-      const p = c.cursorToArtifact(e);
+      const p = c.cursorToWorld(e);
       if (p0 === null) {
         p0 = p;
         dragging = true;
@@ -106,13 +107,13 @@ export function twoPointDrag(c: MarkupToolContext): MarkupInteraction {
     },
     onPointerMove(e: PointerEvent): void {
       if (p0 === null) return;
-      c.preview([p0, c.cursorToArtifact(e)]);
+      c.preview([p0, c.cursorToWorld(e)]);
     },
     onPointerUp(e: PointerEvent): void {
       if (p0 === null || !dragging) return;
-      const p = c.cursorToArtifact(e);
-      const a = c.artifactToCss(p0);
-      const b = c.artifactToCss(p);
+      const p = c.cursorToWorld(e);
+      const a = c.worldToScreen(p0);
+      const b = c.worldToScreen(p);
       if (Math.hypot(b[0] - a[0], b[1] - a[1]) > DRAG_COMMIT_PX) {
         c.submit([p0, p]);
         p0 = null;
@@ -136,17 +137,17 @@ export function sampledPath(c: MarkupToolContext): MarkupInteraction {
       if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
-      const p = c.cursorToArtifact(e);
+      const p = c.cursorToWorld(e);
       pts = [p];
       drawing = true;
-      lastCss = c.artifactToCss(p);
+      lastCss = c.worldToScreen(p);
       c.root.setPointerCapture?.(e.pointerId);
       c.preview(pts);
     },
     onPointerMove(e: PointerEvent): void {
       if (!drawing) return;
-      const p = c.cursorToArtifact(e);
-      const pc = c.artifactToCss(p);
+      const p = c.cursorToWorld(e);
+      const pc = c.worldToScreen(p);
       if (lastCss === null || Math.hypot(pc[0] - lastCss[0], pc[1] - lastCss[1]) >= FREEHAND_MIN_STEP) {
         pts.push(p);
         lastCss = pc;

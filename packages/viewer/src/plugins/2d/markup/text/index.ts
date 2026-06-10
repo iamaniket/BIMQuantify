@@ -2,11 +2,13 @@
  * Text markup tool — performance-minded: the string is rasterized to a 2D
  * canvas and shown as a `THREE.CanvasTexture` on a `PlaneGeometry`, NOT as
  * tessellated glyph geometry and NOT as a DOM label. Because it lives in the
- * WebGL scene it composites into the snapshot for free. A transient `<input>`
- * is used only while typing.
+ * shared WebGL scene it composites into the snapshot for free. A transient
+ * `<input>` is used only while typing.
  *
- * The markup overlay camera is Y-down (top=0, bottom=H), so the texture is
- * uploaded with `flipY = false` to render upright.
+ * The shape lives in world space (PDF pts, Y-up): the glyph height is a fraction
+ * of the world page height, so the text scales with the page like every other
+ * markup shape. The texture uses the default `flipY = true` to render upright in
+ * the Y-up scene.
  */
 
 import * as THREE from 'three';
@@ -19,44 +21,48 @@ import { MARKUP_CORE_NAME } from '../core/index.js';
 import { TEXT_SIZE_FRAC } from '../core/draw.js';
 
 const FONT_STACK = 'ui-sans-serif, system-ui, -apple-system, sans-serif';
+/** Raster font size (px) for the texture — high enough to stay crisp when zoomed. */
+const RASTER_FONT_PX = 64;
 
-function build(css: Pt[], style: MarkupStyle, opts: MarkupBuildOpts): THREE.Object3D[] {
+function build(world: Pt[], style: MarkupStyle, opts: MarkupBuildOpts): THREE.Object3D[] {
   const text = opts.text ?? '';
-  if (css.length < 1 || text === '') return [];
-  const anchor = css[0]!;
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-  const fontPx = Math.max(8, opts.pageCss.h * TEXT_SIZE_FRAC);
-  const padPx = Math.round(fontPx * 0.25);
+  if (world.length < 1 || text === '') return [];
+  const anchor = world[0]!;
+  // Glyph height in world units (PDF pts) — a fraction of the world page height.
+  const fontWorld = Math.max(opts.pageWorld.h * TEXT_SIZE_FRAC, 1);
+  const padPx = Math.round(RASTER_FONT_PX * 0.25);
 
   const canvas = document.createElement('canvas');
   const c2d = canvas.getContext('2d');
   if (c2d === null) return [];
-  const fontStr = `600 ${Math.round(fontPx * dpr)}px ${FONT_STACK}`;
+  const fontStr = `600 ${RASTER_FONT_PX}px ${FONT_STACK}`;
   c2d.font = fontStr;
   const textW = Math.ceil(c2d.measureText(text).width);
-  const bufW = Math.max(1, textW + padPx * 2 * dpr);
-  const bufH = Math.max(1, Math.ceil(fontPx * 1.3 * dpr));
+  const bufW = Math.max(1, textW + padPx * 2);
+  const bufH = Math.max(1, Math.ceil(RASTER_FONT_PX * 1.3));
   canvas.width = bufW;
   canvas.height = bufH;
   // Resizing the canvas resets the 2D context — re-apply font + styles.
   c2d.font = fontStr;
   c2d.textBaseline = 'middle';
   c2d.fillStyle = style.color;
-  c2d.fillText(text, padPx * dpr, bufH / 2);
+  c2d.fillText(text, padPx, bufH / 2);
 
   const tex = new THREE.CanvasTexture(canvas);
-  tex.flipY = false;
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false });
 
-  const planeW = bufW / dpr;
-  const planeH = bufH / dpr;
+  // Map raster px → world units so the glyph is `fontWorld` tall.
+  const worldPerRasterPx = fontWorld / RASTER_FONT_PX;
+  const planeW = bufW * worldPerRasterPx;
+  const planeH = bufH * worldPerRasterPx;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH), mat);
   mesh.frustumCulled = false;
   mesh.renderOrder = 3;
-  // Anchor is the top-left; the plane is centre-origin, so offset by half.
-  mesh.position.set(anchor[0] + planeW / 2, anchor[1] + planeH / 2, 0);
+  // Anchor is the top-left of the text box; the plane is centre-origin and the
+  // world is Y-up, so the box extends right and downward (−Y) from the anchor.
+  mesh.position.set(anchor[0] + planeW / 2, anchor[1] - planeH / 2, 0);
   return [mesh];
 }
 
@@ -83,8 +89,8 @@ function createInteraction(c: MarkupToolContext): MarkupInteraction {
       e.preventDefault();
       e.stopPropagation();
       done = false;
-      anchor = c.cursorToArtifact(e);
-      const css = c.artifactToCss(anchor);
+      anchor = c.cursorToWorld(e);
+      const css = c.worldToScreen(anchor);
       const el = document.createElement('input');
       el.type = 'text';
       el.style.cssText = [

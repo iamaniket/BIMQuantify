@@ -39,6 +39,10 @@ class DecodedToken:
     exp: int
     active_organization_id: UUID | None
     impersonator_user_id: UUID | None = None
+    # Issued-at (epoch seconds). Used by the per-user token-epoch check
+    # (`token_predates_epoch`). Optional/None for defensiveness on tokens
+    # minted before `iat` was surfaced here.
+    iat: int | None = None
 
 
 @dataclass(frozen=True)
@@ -166,6 +170,9 @@ def decode_token_full(token: str, expected_type: TokenType) -> DecodedToken:
     if not isinstance(raw_exp, int):
         raise TokenError("token missing exp")
 
+    raw_iat = payload.get("iat")
+    iat = raw_iat if isinstance(raw_iat, int) else None
+
     active_org_id: UUID | None = None
     raw_org = payload.get("org")
     if isinstance(raw_org, str) and raw_org:
@@ -188,8 +195,26 @@ def decode_token_full(token: str, expected_type: TokenType) -> DecodedToken:
         exp=raw_exp,
         active_organization_id=active_org_id,
         impersonator_user_id=impersonator_user_id,
+        iat=iat,
     )
 
 
 def decode_token(token: str, expected_type: TokenType) -> UUID:
     return decode_token_full(token, expected_type).user_id
+
+
+def token_predates_epoch(decoded: DecodedToken, tokens_valid_after: datetime | None) -> bool:
+    """True when `decoded` was issued at or before a user's `tokens_valid_after`
+    cutoff — i.e. it should be rejected by the per-user "sign out everywhere"
+    epoch.
+
+    `iat` is whole seconds (floored at mint), while `tokens_valid_after` keeps
+    sub-second precision, so a strict `<` means: any token minted in a second
+    strictly before the cutoff is dead, and a token minted in the *same* second
+    as the cutoff is also dead (its floored `iat` is < the sub-second cutoff).
+    A token minted in a later second survives. This errs toward security at the
+    1-second granularity boundary. Returns False when either side is absent.
+    """
+    if tokens_valid_after is None or decoded.iat is None:
+        return False
+    return datetime.fromtimestamp(decoded.iat, tz=UTC) < tokens_valid_after

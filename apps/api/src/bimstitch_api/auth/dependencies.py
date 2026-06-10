@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,21 +37,13 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/jwt/login", auto_error=Fals
 async def get_active_organization_id(
     request: Request,
     token: str | None = Depends(_oauth2_scheme),
-    x_active_organization_override: str | None = Header(default=None),
 ) -> UUID | None:
     """Resolve the org the current request acts within.
 
-    Source of truth is the JWT `org` claim — never request body or path.
-    Returns None if the token has no org claim (which is valid for
-    super-admin endpoints and for a newly invited user before they accept
+    Source of truth is the JWT `org` claim — never request body, path, or a
+    request header. Returns None if the token has no org claim (which is valid
+    for super-admin endpoints and for a newly invited user before they accept
     any invite).
-
-    The `X-Active-Organization-Override` header is honoured ONLY when the
-    decoded user is a superuser. It exists so a super admin can act on
-    behalf of an org without re-minting their token via
-    `/auth/switch-organization`. The check is enforced inside
-    `get_tenant_session`, not here, so admin endpoints that don't need a
-    tenant session never read it.
     """
     if token is None:
         return None

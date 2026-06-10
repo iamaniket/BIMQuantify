@@ -9,9 +9,9 @@ import type { MarkupStyle } from '../types.js';
 import { MARKUP_CORE_NAME } from '../core/index.js';
 import { makeLineMaterial, polylineObject, sampledPath } from '../core/draw.js';
 
-function build(css: Pt[], style: MarkupStyle, _opts: MarkupBuildOpts): THREE.Object3D[] {
-  if (css.length < 2) return [];
-  return [polylineObject(css, false, makeLineMaterial(style.color))];
+function build(world: Pt[], style: MarkupStyle, _opts: MarkupBuildOpts): THREE.Object3D[] {
+  if (world.length < 2) return [];
+  return [polylineObject(world, false, makeLineMaterial(style.color))];
 }
 
 export function markupFreehandPlugin(): DocumentPlugin {

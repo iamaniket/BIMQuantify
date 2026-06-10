@@ -25,6 +25,7 @@ from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from bimstitch_api.auth.tokens import create_token
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -189,6 +190,49 @@ async def test_login_returns_no_active_org_when_all_suspended(
     assert me.json()["active_organization_id"] is None
 
 
+async def test_require_active_org_rejects_non_member_claim(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """A token whose `org` claim names an org the user is NOT a member of must
+    be rejected (403 ORG_MEMBERSHIP_REQUIRED) before any tenant query runs. The
+    claim is a tenant *selector*, not a *grant* — `require_active_organization`
+    re-checks membership against the DB on every request."""
+    home = await _make_org(session, "MyHome")
+    other = await _make_org(session, "NotMine")
+    user = await _make_user(session, "outsider@example.com")
+    await _add_member(session, user=user, org=home)  # member of `home` only
+
+    # Forge an otherwise-valid access token pointing at `other`.
+    token = create_token(user.id, "access", active_organization_id=other.id)
+
+    response = await client.get("/projects", headers=_auth(token))
+    assert response.status_code == 403, response.text
+    assert response.json()["detail"] == "ORG_MEMBERSHIP_REQUIRED"
+
+
+async def test_active_org_override_header_is_ignored(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """The `X-Active-Organization-Override` header is dead — the active org is
+    resolved from the JWT `org` claim only. Sending a header pointing at a
+    different org must not change the resolved active org. Guards against the
+    header ever being re-wired into `get_active_organization_id`."""
+    home = await _make_org(session, "Home")
+    user = await _make_user(session, "noheader@example.com")
+    await _add_member(session, user=user, org=home)
+
+    tokens = await _login(client, user.email)
+    me = await client.get(
+        "/auth/me",
+        headers={
+            **_auth(tokens["access_token"]),
+            "X-Active-Organization-Override": str(uuid4()),
+        },
+    )
+    assert me.status_code == 200, me.text
+    assert me.json()["active_organization_id"] == str(home.id)
+
+
 async def test_switch_organization_rejects_suspended(
     client: AsyncClient, session: AsyncSession
 ) -> None:
@@ -208,6 +252,41 @@ async def test_switch_organization_rejects_suspended(
     )
     assert response.status_code == 403
     assert response.json()["detail"] == "ORG_SUSPENDED"
+
+
+async def test_switch_organization_revokes_old_refresh_token(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """A hard switch revokes the supplied old refresh token so a replayed
+    pre-switch refresh can't mint a fresh access for the previous org. The
+    new refresh token returned by the switch keeps working."""
+    home = await _make_org(session, "FromOrg")
+    target = await _make_org(session, "ToOrg")
+    user = await _make_user(session, "twohats@example.com")
+    await _add_member(session, user=user, org=home)
+    await _add_member(session, user=user, org=target)
+    user.active_organization_id = home.id
+    await session.commit()
+
+    tokens = await _login(client, user.email)
+    old_refresh = tokens["refresh_token"]
+
+    switched = await client.post(
+        "/auth/switch-organization",
+        json={"organization_id": str(target.id), "refresh_token": old_refresh},
+        headers=_auth(tokens["access_token"]),
+    )
+    assert switched.status_code == 200, switched.text
+
+    # Old refresh token is now revoked.
+    replayed = await client.post("/auth/jwt/refresh", json={"refresh_token": old_refresh})
+    assert replayed.status_code == 401
+    assert replayed.json()["detail"] == "REFRESH_TOKEN_REVOKED"
+
+    # The fresh refresh token from the switch still works.
+    new_refresh = switched.json()["refresh_token"]
+    ok = await client.post("/auth/jwt/refresh", json={"refresh_token": new_refresh})
+    assert ok.status_code == 200, ok.text
 
 
 async def test_patch_status_suspended_records_audit(

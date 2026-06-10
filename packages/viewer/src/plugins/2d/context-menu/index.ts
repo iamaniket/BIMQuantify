@@ -57,6 +57,7 @@ export function contextMenuPlugin(): DocumentPlugin {
 
   return {
     name: NAME,
+    dependencies: ['scene'],
 
     install(context: DocumentContext): void {
       ctx = context;

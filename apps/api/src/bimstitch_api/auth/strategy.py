@@ -2,7 +2,11 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi_users.authentication import JWTStrategy
 
-from bimstitch_api.auth.tokens import TokenError, decode_token_full
+from bimstitch_api.auth.tokens import (
+    TokenError,
+    decode_token_full,
+    token_predates_epoch,
+)
 from bimstitch_api.cache import get_redis
 from bimstitch_api.cache.blocklist import is_revoked
 
@@ -26,4 +30,12 @@ class BlocklistAwareJWTStrategy(JWTStrategy[Any, Any]):
         if await is_revoked(get_redis(), decoded.jti):
             return None
 
-        return await super().read_token(token, user_manager)
+        user = await super().read_token(token, user_manager)
+        # Per-user token epoch: reject tokens minted before a global sign-out
+        # / password change. `super().read_token` already loaded the user row,
+        # so this costs no extra query.
+        if user is not None and token_predates_epoch(
+            decoded, getattr(user, "tokens_valid_after", None)
+        ):
+            return None
+        return user

@@ -143,29 +143,14 @@ export function use2dBcfController(
               center_y: vs.center_y,
               zoom: typeof vs.zoom === 'number' ? vs.zoom : 1,
             })
-            .catch((err) => {
-              // eslint-disable-next-line no-console
-              console.error('[BCF] camera.restore2DView failed:', err);
-            });
+            .catch(() => undefined);
         }
       },
       activateMarkup: (tool: MarkupTool = 'rect') => {
-        console.log('[BCF] activateMarkup called, tool:', tool, 'documentHandle:', documentHandle !== null);
-        if (documentHandle === null) {
-          console.warn('[BCF] documentHandle is null — cannot activate markup');
-          return;
-        }
+        if (documentHandle === null) return;
         void documentHandle.commands.execute('measure.deactivate').catch(() => undefined);
-        void documentHandle.commands.execute('markup.setStyle', { color: '#ef4444' }).catch((err) => {
-          console.error('[BCF] markup.setStyle failed:', err);
-        });
-        documentHandle.commands.execute('markup.activate', { mode: tool })
-          .then(() => { console.log('[BCF] markup.activate succeeded'); })
-          .catch((err) => { console.error('[BCF] markup.activate FAILED:', err); });
-
-        documentHandle.commands.execute('markup.isActive')
-          .then((active) => { console.log('[BCF] markup.isActive after activate:', active); })
-          .catch(() => undefined);
+        void documentHandle.commands.execute('markup.setStyle', { color: '#ef4444' }).catch(() => undefined);
+        void documentHandle.commands.execute('markup.activate', { mode: tool }).catch(() => undefined);
       },
       clearDraft: () => {
         if (documentHandle === null) return;

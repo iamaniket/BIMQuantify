@@ -93,6 +93,14 @@ export interface DocumentEvents extends PluginLifecycleEvents {
   'markup:select': { topicId: string };
   /** Markup committed/draft set changed (panel re-pulls state). */
   'markup:change': { committedCount: number; hasDraft: boolean };
+  /** A finding/certificate/attachment marker glyph was clicked in the scene. */
+  'entity-marker:click': {
+    id: string;
+    type: 'finding' | 'certificate' | 'attachment';
+    entityId: string;
+  };
+  /** A pending marker placement was committed at a normalized page point. */
+  'entity-marker:place': { x: number; y: number; page: number };
 }
 
 /**

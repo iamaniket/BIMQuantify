@@ -160,6 +160,12 @@ export type {
   MouseBindingMap2D,
 } from './plugins/2d/mouse-bindings/index.js';
 export { contextMenuPlugin as contextMenuPlugin2D } from './plugins/2d/context-menu/index.js';
+export { entityMarker2DPlugin } from './plugins/2d/entity-marker/index.js';
+export type {
+  EntityMarker2DAPI,
+  EntityMarker2DData,
+  EntityMarker2DType,
+} from './plugins/2d/entity-marker/index.js';
 
 // Built-in plugin factories — re-exported so consumers can disable a
 // built-in (by passing `viewCube: { enabled: false }`) and re-add it

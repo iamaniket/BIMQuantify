@@ -1,7 +1,8 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,4 +39,14 @@ class User(SQLAlchemyBaseUserTableUUID, MasterBase):
         ForeignKey("public.organizations.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
+    )
+
+    # Per-user token epoch ("sign out everywhere"). Any access/refresh token
+    # whose `iat` predates this instant is rejected. Bumped on explicit
+    # logout-all and on every password change/reset. NULL means no cutoff.
+    # Enforced in `auth/strategy.py` (access) and `auth/refresh.py` (refresh)
+    # via `auth.tokens.token_predates_epoch`.
+    tokens_valid_after: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )

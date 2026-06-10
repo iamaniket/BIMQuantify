@@ -68,6 +68,11 @@ class AuthMeResponse(BaseModel):
 
 class SwitchOrgRequest(BaseModel):
     organization_id: UUID
+    # Optional: the caller's current refresh token. When provided it is
+    # revoked alongside the access token so a replayed pre-switch refresh
+    # can't silently mint a new access scoped to the previous org. Omitting
+    # it keeps the call backward compatible (soft switch).
+    refresh_token: str | None = None
 
 
 class ActivateRequest(BaseModel):
@@ -437,6 +442,20 @@ def build_auth_router() -> APIRouter:
                     await revoke_jti(redis, decoded.jti, ttl)
             except Exception:
                 # Bad/expired token — nothing to revoke.
+                pass
+
+        # Hard switch: also revoke the old refresh token when the client sends
+        # it, so a replayed pre-switch refresh can't mint a fresh access scoped
+        # to the previous org. Guard on `sub == user.id` defensively — a caller
+        # can only ever revoke their own token, but assert it anyway.
+        if payload.refresh_token:
+            try:
+                old_refresh = decode_token_full(payload.refresh_token, "refresh")
+                if old_refresh.user_id == user.id and old_refresh.jti is not None:
+                    ttl = max(old_refresh.exp - int(datetime.now(UTC).timestamp()), 1)
+                    await revoke_jti(redis, old_refresh.jti, ttl)
+            except Exception:
+                # Bad/expired refresh token — nothing to revoke.
                 pass
 
         # Persist the choice on the user row so subsequent logins land

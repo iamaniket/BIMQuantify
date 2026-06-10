@@ -21,22 +21,23 @@ import type { MarkupStyle, MarkupTool } from '../types.js';
 export interface MarkupBuildOpts {
   /** Present for `tool === 'text'`. */
   text?: string;
-  /** Rendered page size in CSS px (used to size text relative to the page). */
-  pageCss: { w: number; h: number };
+  /** World page size in PDF points (used to size text relative to the page). */
+  pageWorld: { w: number; h: number };
 }
 
 /**
  * Services the core hands a tool's {@link MarkupInteraction} while drawing.
- * Everything is in artifact space (PDF points) unless noted — the same space
- * the measure plugin stores in, so the shared transforms apply unchanged.
+ * Everything is in **world space** (PDF points, Y-up — the shared scene's
+ * coordinate system) unless noted. Screen-px helpers exist for distance checks
+ * and for positioning transient DOM (the text input).
  */
 export interface MarkupToolContext {
-  /** Pointer event → artifact-space point (PDF pts). */
-  cursorToArtifact(e: PointerEvent | MouseEvent): Pt;
-  /** Artifact-space point → CSS px (for distance checks during drawing). */
-  artifactToCss(p: Pt): Pt;
+  /** Pointer event → world-space point (PDF pts, Y-up). */
+  cursorToWorld(e: PointerEvent | MouseEvent): Pt;
+  /** World-space point → screen CSS px (container-relative) for distance checks / DOM placement. */
+  worldToScreen(p: Pt): Pt;
   getStyle(): MarkupStyle;
-  /** Show a live preview of `points` (artifact space) for the active tool. */
+  /** Show a live preview of `points` (world space) for the active tool. */
   preview(points: Pt[], text?: string): void;
   clearPreview(): void;
   /** Finish the shape — stores it as the draft and fires `markup:draftComplete`. */
@@ -44,9 +45,9 @@ export interface MarkupToolContext {
   /** Abort the in-progress drawing (keeps the tool active). */
   cancel(): void;
   requestRender(): void;
-  /** Page-aligned DOM host for transient inputs (e.g. the text entry field). */
+  /** Viewport-pinned DOM host for transient inputs (e.g. the text entry field). */
   readonly labelHost: HTMLElement;
-  /** The interactive overlay root (use for `setPointerCapture`). */
+  /** The interactive root (the document container; use for `setPointerCapture`). */
   readonly root: HTMLElement;
   /** Current 1-based page. */
   page(): number;
@@ -66,10 +67,11 @@ export interface MarkupInteraction {
 export interface MarkupToolDefinition {
   tool: MarkupTool;
   /**
-   * Build three.js objects for a shape from CSS-px points. Used for both the
-   * live preview and committed rendering, so it must be pure / stateless.
+   * Build three.js objects for a shape from world-space points (PDF pts, Y-up).
+   * Used for both the live preview and committed rendering, so it must be pure /
+   * stateless.
    */
-  build(cssPoints: Pt[], style: MarkupStyle, opts: MarkupBuildOpts): THREE.Object3D[];
+  build(worldPoints: Pt[], style: MarkupStyle, opts: MarkupBuildOpts): THREE.Object3D[];
   /** Create the drawing interaction, bound to the given tool context. */
   createInteraction(ctx: MarkupToolContext): MarkupInteraction;
 }

@@ -9,10 +9,10 @@ import type { MarkupStyle } from '../types.js';
 import { MARKUP_CORE_NAME } from '../core/index.js';
 import { makeLineMaterial, polylineObject, twoPointDrag } from '../core/draw.js';
 
-const ARC_D = 16; // target scallop diameter in px
+const ARC_D = 16; // target scallop diameter in world units (PDF pts)
 const STEPS = 6; // arc samples per scallop
 
-/** Build the scalloped outline (CSS px) for the rectangle spanned by a,b. */
+/** Build the scalloped outline (world pts) for the rectangle spanned by a,b. */
 function cloudOutline(a: Pt, b: Pt): Pt[] {
   const rectCorners: Pt[] = [
     [a[0], a[1]],
@@ -57,9 +57,9 @@ function cloudOutline(a: Pt, b: Pt): Pt[] {
   return verts;
 }
 
-function build(css: Pt[], style: MarkupStyle, _opts: MarkupBuildOpts): THREE.Object3D[] {
-  if (css.length < 2) return [];
-  return [polylineObject(cloudOutline(css[0]!, css[1]!), true, makeLineMaterial(style.color))];
+function build(world: Pt[], style: MarkupStyle, _opts: MarkupBuildOpts): THREE.Object3D[] {
+  if (world.length < 2) return [];
+  return [polylineObject(cloudOutline(world[0]!, world[1]!), true, makeLineMaterial(style.color))];
 }
 
 export function markupCloudPlugin(): DocumentPlugin {

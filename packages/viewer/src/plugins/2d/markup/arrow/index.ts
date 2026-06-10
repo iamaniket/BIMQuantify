@@ -9,13 +9,13 @@ import type { MarkupStyle } from '../types.js';
 import { MARKUP_CORE_NAME } from '../core/index.js';
 import { lineObject, makeLineMaterial, twoPointDrag } from '../core/draw.js';
 
-const HEAD_LEN = 12; // px (constant on screen — CSS is rebuilt every reproject)
+const HEAD_LEN = 12; // world units (PDF pts) — the arrowhead scales with the page
 const HEAD_SPREAD = 0.45; // radians
 
-function build(css: Pt[], style: MarkupStyle, _opts: MarkupBuildOpts): THREE.Object3D[] {
-  if (css.length < 2) return [];
-  const tail = css[0]!;
-  const head = css[1]!;
+function build(world: Pt[], style: MarkupStyle, _opts: MarkupBuildOpts): THREE.Object3D[] {
+  if (world.length < 2) return [];
+  const tail = world[0]!;
+  const head = world[1]!;
   const mat = makeLineMaterial(style.color);
   const ang = Math.atan2(head[1] - tail[1], head[0] - tail[0]);
   const p1: Pt = [head[0] - HEAD_LEN * Math.cos(ang - HEAD_SPREAD), head[1] - HEAD_LEN * Math.sin(ang - HEAD_SPREAD)];

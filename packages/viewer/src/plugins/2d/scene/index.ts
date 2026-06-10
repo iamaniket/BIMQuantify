@@ -27,6 +27,25 @@ export interface SceneAPI {
   requestRender(): void;
   /** Current container dimensions in CSS px. */
   containerSize(): { width: number; height: number };
+  /**
+   * Get (or lazily create) a named annotation layer — a `THREE.Group` added to
+   * the shared scene with a fixed `renderOrder`. This is how measure / markup /
+   * entity-marker plugins add their content to the one shared world-space scene
+   * instead of spinning up their own renderers. Idempotent by name.
+   */
+  addLayer(name: string, renderOrder: number): THREE.Group;
+  /** Look up a previously-added layer, or null. */
+  getLayer(name: string): THREE.Group | null;
+  /** Remove + dispose a named layer's group (children are the caller's to dispose). */
+  removeLayer(name: string): void;
+  /**
+   * Screen px per world unit at the current camera zoom — i.e. how many CSS px
+   * one PDF point currently occupies on screen. Multiply by it to size a glyph
+   * in px; its reciprocal {@link worldPerPx} converts px → world units.
+   */
+  pxPerWorldUnit(): number;
+  /** Reciprocal of {@link pxPerWorldUnit}: world units per screen px. */
+  worldPerPx(): number;
 }
 
 export interface ScenePluginOptions {
@@ -45,6 +64,7 @@ export function scenePlugin(
   let rafId = 0;
   let dirty = true;
   const cleanups: Array<() => void> = [];
+  const layers = new Map<string, THREE.Group>();
 
   const pageW = options.pageWidth ?? 595; // A4 default
   const pageH = options.pageHeight ?? 842;
@@ -116,6 +136,43 @@ export function scenePlugin(
       return { width: ctx.container.clientWidth, height: ctx.container.clientHeight };
     },
 
+    addLayer(name: string, renderOrder: number): THREE.Group {
+      const existing = layers.get(name);
+      if (existing) return existing;
+      const group = new THREE.Group();
+      group.name = name;
+      group.renderOrder = renderOrder;
+      if (scene) scene.add(group);
+      layers.set(name, group);
+      dirty = true;
+      return group;
+    },
+
+    getLayer(name: string): THREE.Group | null {
+      return layers.get(name) ?? null;
+    },
+
+    removeLayer(name: string): void {
+      const group = layers.get(name);
+      if (!group) return;
+      group.removeFromParent();
+      layers.delete(name);
+      dirty = true;
+    },
+
+    pxPerWorldUnit(): number {
+      if (!camera || !ctx) return 1;
+      const w = ctx.container.clientWidth;
+      const frustumW = camera.right - camera.left;
+      if (frustumW === 0 || w === 0) return 1;
+      return (w * camera.zoom) / frustumW;
+    },
+
+    worldPerPx(): number {
+      const p = this.pxPerWorldUnit();
+      return p === 0 ? 1 : 1 / p;
+    },
+
     install(context: DocumentContext): void {
       ctx = context;
 
@@ -139,7 +196,9 @@ export function scenePlugin(
       camera.lookAt(pageW / 2, pageH / 2, 0);
       camera.updateProjectionMatrix();
 
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      // preserveDrawingBuffer lets markup.captureSnapshot read the buffer back
+      // (composite into a BCF thumbnail) after a render.
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
       renderer.setClearColor(0x000000, 0);
       renderer.domElement.style.cssText =
         'position:absolute;inset:0;pointer-events:none;';
@@ -169,6 +228,8 @@ export function scenePlugin(
         rafId = 0;
       }
       for (const c of cleanups.splice(0)) c();
+      for (const group of layers.values()) group.removeFromParent();
+      layers.clear();
       if (renderer) {
         renderer.domElement.remove();
         renderer.dispose();

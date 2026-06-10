@@ -28,7 +28,7 @@ claim (e.g. fresh super-admin token), the dep returns 409
 from collections.abc import AsyncGenerator
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -84,15 +84,33 @@ async def resolve_platform_schema(session: AsyncSession) -> str:
 
 
 async def require_active_organization(
+    request: Request,
+    user: User = Depends(current_verified_user),
     org_id: UUID | None = Depends(get_active_organization_id),
+    master_session: AsyncSession = Depends(get_async_session),
 ) -> UUID:
-    """Pull the active org id out of the JWT. 409 if absent — the portal
-    surfaces this as "pick a workspace" and routes to the switcher."""
+    """Resolve the active org from the JWT `org` claim AND verify the caller
+    has a usable membership in it before returning.
+
+    409 NO_ACTIVE_ORGANIZATION if the token carries no claim — the portal
+    surfaces this as "pick a workspace" and routes to the switcher. 403 / 409
+    (from `_verify_membership`) if the claim names an org the user is not an
+    active member of, or one that is suspended / soft-deleted.
+
+    Verifying here — not just inside `get_tenant_session` — means the org id
+    handed to any endpoint that depends on this is always membership-checked,
+    so an endpoint can't accidentally trust a raw claim. The verified
+    `Organization.schema_name` is stashed on `request.state.active_schema` so
+    `get_tenant_session` can bind the schema without re-running the query
+    (FastAPI caches this dependency within a request → verified exactly once).
+    """
     if org_id is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="NO_ACTIVE_ORGANIZATION",
         )
+    _, org = await _verify_membership(master_session, user.id, org_id)
+    request.state.active_schema = org.schema_name
     return org_id
 
 
@@ -140,22 +158,20 @@ async def _verify_membership(
 
 
 async def get_tenant_session(
+    request: Request,
     user: User = Depends(current_verified_user),
     organization_id: UUID = Depends(require_active_organization),
-    master_session: AsyncSession = Depends(get_async_session),
 ) -> AsyncGenerator[AsyncSession, None]:
-    """Yield a session scoped to the active org's schema. Verifies the
-    user actually has an active membership before any tenant query runs.
+    """Yield a session scoped to the active org's schema.
 
-    The membership check uses a separate `master_session` (public schema,
-    no search_path tweaks) so the verification query can hit
-    `organization_members` directly. Once verified, a fresh session is
-    opened for the tenant work — keeping the two responsibilities cleanly
-    separated and avoiding any leakage of search_path between the check
-    and the work.
+    Membership is already verified by `require_active_organization` (which
+    this depends on), which also stashed the org's schema name on
+    `request.state.active_schema` using a separate master session (public
+    schema, no search_path tweaks). We read it here and open a fresh session
+    for the tenant work — keeping the verification and the work cleanly
+    separated and avoiding any leakage of search_path between them.
     """
-    _, org = await _verify_membership(master_session, user.id, organization_id)
-    schema = org.schema_name
+    schema: str = request.state.active_schema
 
     session_maker = get_session_maker()
     async with session_maker() as session, session.begin():

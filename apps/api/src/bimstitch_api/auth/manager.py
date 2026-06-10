@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from fastapi import Depends, Request
@@ -138,6 +139,31 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             subject=subject,
             body=body,
         )
+
+    async def on_after_update(
+        self,
+        user: User,
+        update_dict: dict[str, Any],
+        request: Request | None = None,
+    ) -> None:
+        # A password change (authenticated /users/me edit, or an admin update)
+        # rotates the credential — invalidate every existing session by stamping
+        # the token epoch. Other field edits (name, avatar, locale) are left
+        # alone. Note the invite/activate flow sets the initial password via
+        # `_update` directly, which does NOT call this hook — correct, since no
+        # tokens exist before first login.
+        if "password" in update_dict:
+            await self._bump_token_epoch(user)
+
+    async def on_after_reset_password(self, user: User, request: Request | None = None) -> None:
+        # Forgot-password → reset rotates the credential; kill existing sessions.
+        await self._bump_token_epoch(user)
+
+    async def _bump_token_epoch(self, user: User) -> None:
+        """Stamp `tokens_valid_after = now()` so every previously-issued
+        access/refresh token is rejected on next use (see
+        `auth.tokens.token_predates_epoch`)."""
+        await self.user_db.update(user, {"tokens_valid_after": datetime.now(UTC)})
 
 
 async def get_user_manager(
