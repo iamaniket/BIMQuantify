@@ -27,6 +27,7 @@ export type ViewerBundle = {
   fragmentsUrl: string;
   metadataUrl?: string;
   propertiesUrl?: string;
+  edgesUrl?: string;
   cacheKey?: string;
 };
 

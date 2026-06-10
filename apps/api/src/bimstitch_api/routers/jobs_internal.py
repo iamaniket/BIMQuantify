@@ -153,6 +153,7 @@ async def extraction_callback(
                 row.metadata_storage_key = payload.metadata_key
                 row.properties_storage_key = payload.properties_key
                 row.geometry_storage_key = payload.geometry_key
+                row.edges_storage_key = payload.edges_key
                 row.extraction_error = None
                 if payload.ifc_project_guid is not None:
                     row.ifc_project_guid = payload.ifc_project_guid

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  edgesKeyFor,
   fragmentsKeyFor,
   metadataKeyFor,
   propertiesKeyFor,
@@ -24,6 +25,12 @@ describe('storage key derivation', () => {
   it('replaces .ifc with .properties.json', () => {
     expect(propertiesKeyFor(source)).toBe(
       'projects/abc/123e4567-e89b-12d3-a456-426614174000.properties.json',
+    );
+  });
+
+  it('replaces .ifc with .edges.bin', () => {
+    expect(edgesKeyFor(source)).toBe(
+      'projects/abc/123e4567-e89b-12d3-a456-426614174000.edges.bin',
     );
   });
 

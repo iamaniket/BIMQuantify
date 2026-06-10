@@ -8,6 +8,10 @@
  * large model can stream/build slowly without freezing the UI — the whole
  * point is to pay this cost exactly once.
  *
+ * When the processor has already computed edges and serialised them as a
+ * binary artifact, `seedFromBinary()` bypasses the expensive per-element
+ * extraction entirely and populates the index from the pre-computed data.
+ *
  * From that index it can merge edges into a small set of
  * `LineSegmentsGeometry` chunks — either the full model (memoized, reused by
  * x-ray) or filtered to an arbitrary set of visible `localId`s (owned and
@@ -126,6 +130,60 @@ export class OutlineCache {
     });
     this.building.set(modelId, p);
     return p;
+  }
+
+  /**
+   * Seed the cache from a pre-computed binary edge artifact produced by the
+   * processor worker. This completely bypasses the expensive client-side
+   * per-element edge extraction.
+   *
+   * Binary format (little-endian):
+   *   u32  version       — must be 1
+   *   f32  threshold     — angle threshold (informational)
+   *   u32  numElements   — element count
+   *   Per element:
+   *     u32  expressID   — IFC express ID (= fragment localId)
+   *     u32  numFloats   — length of positions array
+   *     f32[numFloats]   — edge line-segment positions (world-space)
+   */
+  seedFromBinary(modelId: string, data: ArrayBuffer): void {
+    if (this.indices.has(modelId)) return;
+
+    const view = new DataView(data);
+    let offset = 0;
+
+    const version = view.getUint32(offset, true);
+    offset += 4;
+    if (version !== 1) {
+      throw new Error(`Unsupported edges format version: ${String(version)}`);
+    }
+
+    // threshold (informational — skip)
+    offset += 4;
+    const numElements = view.getUint32(offset, true);
+    offset += 4;
+
+    const perElement: Float32Array[] = [];
+    const elementIds: number[] = [];
+    let totalFloats = 0;
+
+    for (let i = 0; i < numElements; i++) {
+      const expressID = view.getUint32(offset, true);
+      offset += 4;
+      const numFloats = view.getUint32(offset, true);
+      offset += 4;
+      if (numFloats === 0) {
+        offset += 0;
+        continue;
+      }
+      const positions = new Float32Array(data, offset, numFloats);
+      offset += numFloats * 4;
+      perElement.push(positions);
+      elementIds.push(expressID);
+      totalFloats += numFloats;
+    }
+
+    this.indices.set(modelId, buildIndex(perElement, elementIds, totalFloats));
   }
 
   private async run(ctx: ViewerContext, modelId: string): Promise<void> {
