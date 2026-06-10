@@ -240,6 +240,7 @@ class ProjectFile(
     metadata_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     properties_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     geometry_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    edges_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     # --- attachment facet (NULL for model sources) ---------------------------
     attachment_category: Mapped[AttachmentCategory | None] = mapped_column(

@@ -17,6 +17,7 @@ import { postCallback } from '../api/callback.js';
 import { logger } from '../log.js';
 import {
   downloadObjectWithHash,
+  edgesKeyFor,
   fragmentsKeyFor,
   metadataKeyFor,
   propertiesKeyFor,
@@ -24,6 +25,7 @@ import {
 } from '../storage/s3.js';
 import type { ProgressReporter, WorkerJob } from '../queue/queue.js';
 import { classifyError } from './errors.js';
+import { generateEdges } from './edges.js';
 import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel, UnsupportedSchemaError } from './ifc.js';
 import { buildMetadata } from './metadata.js';
@@ -130,11 +132,15 @@ export async function runExtraction(
     logger.info('extracting properties');
     const properties = await buildProperties(ifcApi, modelID, metadata.elements);
 
+    logger.info('extracting edges');
+    const edgesBytes = generateEdges(ifcApi, modelID, metadata);
+
     const fragmentsKey = fragmentsKeyFor(payload.storage_key);
     const metadataKey = metadataKeyFor(payload.storage_key);
     const propertiesKey = propertiesKeyFor(payload.storage_key);
+    const edgesKey = edgesKeyFor(payload.storage_key);
 
-    logger.info({ fragmentsKey, metadataKey, propertiesKey }, 'uploading outputs');
+    logger.info({ fragmentsKey, metadataKey, propertiesKey, edgesKey }, 'uploading outputs');
     await Promise.all([
       uploadObject(fragmentsKey, fragmentBytes, 'application/octet-stream'),
       uploadObject(
@@ -147,6 +153,7 @@ export async function runExtraction(
         JSON.stringify(properties),
         'application/json',
       ),
+      uploadObject(edgesKey, edgesBytes, 'application/octet-stream'),
     ]);
 
     const elapsedMs = Math.round(performance.now() - startedAtMs);
@@ -163,6 +170,7 @@ export async function runExtraction(
       fragments_key: fragmentsKey,
       metadata_key: metadataKey,
       properties_key: propertiesKey,
+      edges_key: edgesKey,
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       extractor_version: version,

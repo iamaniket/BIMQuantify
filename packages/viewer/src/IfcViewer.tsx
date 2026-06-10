@@ -190,6 +190,29 @@ function IfcViewerImpl(
           }
         }
         if (cancelled) return;
+
+        // If the bundle includes a pre-computed edges URL, fetch the binary
+        // and seed it into the outline plugin *before* loading fragments.
+        // This way, when `model:loaded` fires the outline plugin can use the
+        // pre-computed data instead of recomputing edges client-side.
+        if (props.bundle.edgesUrl) {
+          try {
+            const edgesResp = await fetch(props.bundle.edgesUrl);
+            if (edgesResp.ok) {
+              const edgesData = await edgesResp.arrayBuffer();
+              if (!cancelled) {
+                await viewer.commands
+                  .execute('outline.seedEdges', { data: edgesData })
+                  .catch(() => undefined);
+              }
+            }
+          } catch {
+            // Non-fatal: the outline plugin will fall back to client-side
+            // edge extraction if no pre-computed data was seeded.
+          }
+        }
+        if (cancelled) return;
+
         await viewer.loadFragments(bytes);
         if (cancelled) return;
         const handle = handleRef.current;

@@ -86,6 +86,10 @@ export function propertiesKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.ifc$/i, '.properties.json');
 }
 
+export function edgesKeyFor(sourceKey: string): string {
+  return sourceKey.replace(/\.ifc$/i, '.edges.bin');
+}
+
 export function pdfMetadataKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.pdf$/i, '.metadata.json');
 }

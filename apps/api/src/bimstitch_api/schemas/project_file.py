@@ -71,6 +71,7 @@ class ViewerBundleResponse(BaseModel):
     metadata_url: str | None = None
     properties_url: str | None = None
     geometry_url: str | None = None
+    edges_url: str | None = None
     file_url: str | None = None
     expires_in: int
 
@@ -95,6 +96,7 @@ class ExtractionCallbackRequest(BaseModel):
     metadata_key: str | None = None
     properties_key: str | None = None
     geometry_key: str | None = None
+    edges_key: str | None = None
     page_count: int | None = None
     error: str | None = None
     extractor_version: str | None = None

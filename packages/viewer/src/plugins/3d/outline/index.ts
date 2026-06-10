@@ -59,6 +59,9 @@ export function outlinePlugin(
   let cleanup: (() => void) | null = null;
   let currentPlanes: THREE.Plane[] = [];
   let clipCount = 0;
+  // Pre-computed edge binary data, set via `outline.seedEdges` command
+  // before the model finishes loading.
+  let pendingEdgesData: ArrayBuffer | null = null;
 
   // Mirrored visibility state, keyed by modelId. When isolation is active the
   // visible set is `isolated`; otherwise it's everything minus `hidden`.
@@ -181,11 +184,30 @@ export function outlinePlugin(
       ctxRef = ctx;
 
       const offLoaded = ctx.events.on('model:loaded', ({ modelId }) => {
-        void cache.build(ctx, modelId).then(() => {
+        if (pendingEdgesData) {
+          // Use pre-computed edges from the processor — skip expensive
+          // client-side extraction entirely.
+          try {
+            cache.seedFromBinary(modelId, pendingEdgesData);
+          } catch {
+            // Malformed binary — fall through to client-side build.
+          }
+          pendingEdgesData = null;
+        }
+
+        if (cache.has(modelId)) {
+          // Already seeded from pre-computed data.
           ctx.events.emit('outline:ready', { modelId });
           rebuildLines();
           updateVisibility();
-        });
+        } else {
+          // No pre-computed data — fall back to client-side extraction.
+          void cache.build(ctx, modelId).then(() => {
+            ctx.events.emit('outline:ready', { modelId });
+            rebuildLines();
+            updateVisibility();
+          });
+        }
       });
       const offIdle = ctx.events.on('viewer:idle', () => {
         isIdle = true;
@@ -266,6 +288,16 @@ export function outlinePlugin(
       ctx.commands.register('outline.isEnabled', () => enabled, {
         title: 'Get outline enabled state',
       });
+      ctx.commands.register(
+        'outline.seedEdges',
+        (args: unknown) => {
+          const arg = args as { data?: ArrayBuffer } | undefined;
+          if (arg?.data instanceof ArrayBuffer) {
+            pendingEdgesData = arg.data;
+          }
+        },
+        { title: 'Provide pre-computed edge binary for the next model load' },
+      );
 
       cleanup = (): void => {
         offLoaded();
