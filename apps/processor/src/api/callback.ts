@@ -14,6 +14,10 @@ export type CallbackPayload = {
   fragments_key?: string;
   metadata_key?: string;
   properties_key?: string;
+  // Set only on `succeeded` when the outline artifact uploaded; absent for
+  // pre-outline extractions and when outline generation failed gracefully
+  // (the viewer falls back to client-side edge compute either way).
+  outline_key?: string | null;
   geometry_key?: string;
   page_count?: number;
   error?: string;

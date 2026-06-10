@@ -1164,6 +1164,7 @@ async def test_viewer_bundle_pdf_returns_file_url(
     assert "?download=plan.pdf" in body["file_url"]
     assert body["fragments_url"] is None
     assert body["geometry_url"] is None
+    assert body["outline_url"] is None
     assert body["expires_in"] == fake.presign_ttl_value
 
 

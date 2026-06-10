@@ -113,6 +113,15 @@ export interface ViewerContext {
   plugins: PluginRegistryView;
   /** All currently loaded models, keyed by modelId. */
   models: () => Map<string, FRAGS.FragmentsModel>;
+  /**
+   * Precomputed-outline supply handed to `loadFragments` for this model, if
+   * any. Resolves to the compressed artifact bytes, or null when the fetch
+   * failed — consumers (outline plugin) decode it and fall back to
+   * client-side edge extraction on null.
+   */
+  getPrecomputedOutline: (
+    modelId: string,
+  ) => Promise<Uint8Array | null> | undefined;
 }
 
 export type { PluginRegistryView };

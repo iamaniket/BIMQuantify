@@ -19,6 +19,7 @@ import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeome
 
 import type { ViewerContext } from '../../../core/types.js';
 import { extractEdgePositions, type RawMeshGeometry } from './edges.js';
+import type { DecodedOutline } from './outline-codec.js';
 
 const BATCH_SIZE = 1000;
 // ~500k segments per chunk (6 floats/segment) — keeps each instanced buffer
@@ -116,6 +117,28 @@ export class OutlineCache {
     return this.building.get(modelId) ?? Promise.resolve();
   }
 
+  /**
+   * Seed the index from the processor's precomputed artifact instead of
+   * extracting edges client-side. `starts` is derived by prefix-summing
+   * `lengths`. Once seeded, `build()` (including any in-flight run) is a
+   * no-op for this model.
+   */
+  loadPrecomputed(modelId: string, decoded: DecodedOutline): void {
+    if (this.indices.has(modelId)) return;
+    const { localIds, lengths, positions } = decoded;
+    const starts = new Uint32Array(lengths.length);
+    const slotOf = new Map<number, number>();
+    let off = 0;
+    for (let slot = 0; slot < lengths.length; slot++) {
+      starts[slot] = off;
+      const len = lengths[slot]!;
+      // The encoder omits zero-edge elements entirely; skip defensively.
+      if (len > 0) slotOf.set(localIds[slot]!, slot);
+      off += len;
+    }
+    this.indices.set(modelId, { positions, starts, lengths, slotOf });
+  }
+
   /** Build once; concurrent/repeat calls share the same in-flight promise. */
   build(ctx: ViewerContext, modelId: string): Promise<void> {
     if (this.indices.has(modelId)) return Promise.resolve();
@@ -138,7 +161,7 @@ export class OutlineCache {
     try {
       localIds = [...(await model.getLocalIds())];
     } catch {
-      this.indices.set(modelId, emptyIndex());
+      this.setBuilt(modelId, emptyIndex());
       return;
     }
 
@@ -177,7 +200,13 @@ export class OutlineCache {
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
 
-    this.indices.set(modelId, buildIndex(perElement, elementIds, totalFloats));
+    this.setBuilt(modelId, buildIndex(perElement, elementIds, totalFloats));
+  }
+
+  /** A precomputed index seeded mid-build wins; don't clobber it. */
+  private setBuilt(modelId: string, index: EdgeIndex): void {
+    if (this.indices.has(modelId)) return;
+    this.indices.set(modelId, index);
   }
 
   dispose(): void {

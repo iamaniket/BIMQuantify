@@ -15,7 +15,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { IfcAPI } from 'web-ifc';
+import { IfcAPI, LogLevel } from 'web-ifc';
 
 import { type SupportedSchema, SUPPORTED_SCHEMAS } from '../config.js';
 import { bumpGetLine } from './timing.js';
@@ -40,6 +40,10 @@ async function buildApi(): Promise<IfcAPI> {
   // "absolute path" (don't prepend the script directory).
   ifcApi.SetWasmPath(`${dir}${path.sep}`, true);
   await ifcApi.Init();
+  // web-ifc's JS-side module-static Log defaults to ERROR, and GetLines emits
+  // one "ERROR: Invalid IFC Line" per unparseable line — pure stdout spam on
+  // real-world models.
+  ifcApi.SetLogLevel(LogLevel.LOG_LEVEL_OFF);
   instrumentGetLine(ifcApi);
   return ifcApi;
 }

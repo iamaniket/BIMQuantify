@@ -1,12 +1,19 @@
 /**
  * Orchestrates one extraction job:
  *   1. Notify API: running.
- *   2. Download .ifc from MinIO.
- *   3. Parse with web-ifc, gate on supported schema.
- *   4. Generate fragments via @thatopen/fragments.
- *   5. Walk model for metadata + properties.
- *   6. Upload .frag, metadata.json, properties.json.
- *   7. Notify API: succeeded (or failed on any thrown error).
+ *   2. Download .ifc from MinIO (sha256 is of the stored bytes).
+ *   3. Spawn two worker threads (worker-host.ts / extraction-worker.ts) so the
+ *      fragments pipeline and the web-ifc walk run on separate cores instead
+ *      of time-slicing one event loop:
+ *        - 'frag-outline': IFC → .frag bytes, then the hard-edge outline
+ *          artifact (computed headless from the fragments).
+ *        - 'walk': parse + schema gate, then metadata + properties.
+ *   4. Pipelined uploads — each artifact uploads the moment its worker message
+ *      arrives (.frag, .outline.bin, metadata.json, properties.json).
+ *   5. Notify API: succeeded (or failed on any thrown error).
+ *
+ * Outline failure degrades gracefully: the job still succeeds without
+ * `outline_key` and the viewer falls back to its client-side edge compute.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -19,17 +26,16 @@ import {
   downloadObjectWithHash,
   fragmentsKeyFor,
   metadataKeyFor,
+  outlineKeyFor,
   propertiesKeyFor,
   uploadObject,
 } from '../storage/s3.js';
 import type { ProgressReporter, WorkerJob } from '../queue/queue.js';
 import { classifyError } from './errors.js';
-import { generateFragments } from './fragments.js';
-import { closeModel, getIfcApi, openModel, UnsupportedSchemaError } from './ifc.js';
-import { buildMetadata } from './metadata.js';
-import { buildProperties } from './properties.js';
+import { UnsupportedSchemaError } from './ifc.js';
 import { time } from './timing.js';
 import { extractIfcFromZip } from './unzip.js';
+import { type ExtractionWorkerHandle, startExtractionWorker } from './worker-host.js';
 
 /** Payload shape for `ifc_extraction` jobs. The API populates this when
  * dispatching; the worker reads it via `job.payload`. `compressed` flags an
@@ -106,12 +112,12 @@ export async function runExtraction(
 
   // Per-stage wall-clock, logged as one `stage complete` line each, so the real
   // breakdown is in the logs instead of inferred from start-of-stage gaps. The
-  // metadata/properties walks additionally log their own sub-step breakdowns.
+  // metadata/properties walks additionally log their own sub-step breakdowns
+  // (from inside the walk worker thread).
   const logStage = (stage: string, ms: number): void => {
     logger.info({ stage, ms, file_id: payload.file_id, job_id: job.job_id }, 'stage complete');
   };
 
-  let modelID: number | null = null;
   try {
     logger.info({ payload }, 'downloading source');
     const download = await time(() => downloadObjectWithHash(payload.storage_key));
@@ -122,59 +128,92 @@ export async function runExtraction(
     // For an ifcZIP the stored object is the zip; unwrap to the inner IFC
     // before parsing. `sha256` stays the hash of the stored (compressed) bytes
     // — that's what the client uploaded and what dedup keys on.
-    const ifcBytes = payload.compressed ? extractIfcFromZip(bytes) : bytes;
+    let ifcBytes = payload.compressed ? extractIfcFromZip(bytes) : bytes;
+    // The workers take the buffer via transfer; a view (byteOffset / shorter
+    // length than its buffer) can't transfer cleanly, so normalise first.
+    if (ifcBytes.byteOffset !== 0 || ifcBytes.byteLength !== ifcBytes.buffer.byteLength) {
+      ifcBytes = ifcBytes.slice();
+    }
 
     logger.info({ size: ifcBytes.length, sha256: sha256.slice(0, 16) }, 'parsing IFC');
-    const parse = await time(() => openModel(ifcBytes));
-    const opened = parse.result;
-    modelID = opened.modelID;
-    const modelIDForWalk = modelID;
-    logStage('parse', parse.ms);
-    await reportProgress(40);
-
-    // Fragment generation runs on its OWN web-ifc instance (inside IfcImporter)
-    // over the raw bytes, fully independent of the metadata/properties walk on
-    // the shared cached api. Run them concurrently so fragment work overlaps
-    // the walk wherever the event loop allows. (No extra peak memory: the
-    // shared model stays open until `finally` regardless, so the second parsed
-    // copy that IfcImporter holds already coexisted with it in the serial path.)
-    logger.info('generating fragments + walking model');
-    const ifcApi = await getIfcApi();
-    const both = await time(() =>
-      Promise.all([
-        time(() => generateFragments(ifcBytes)),
-        time(async () => {
-          const metadata = await buildMetadata(ifcApi, modelIDForWalk, opened.schema, logger);
-          const properties = await buildProperties(
-            ifcApi,
-            modelIDForWalk,
-            metadata.elements,
-            logger,
-          );
-          return { metadata, properties };
-        }),
-      ]),
-    );
-    const [frag, walk] = both.result;
-    const fragmentBytes = frag.result;
-    const { metadata, properties } = walk.result;
-    logStage('fragments', frag.ms);
-    logStage('walk', walk.ms);
-    logStage('fragments+walk', both.ms);
-    await reportProgress(80);
 
     const fragmentsKey = fragmentsKeyFor(payload.storage_key);
     const metadataKey = metadataKeyFor(payload.storage_key);
     const propertiesKey = propertiesKeyFor(payload.storage_key);
 
-    logger.info({ fragmentsKey, metadataKey, propertiesKey }, 'uploading outputs');
-    const upload = await time(() =>
-      Promise.all([
-        uploadObject(fragmentsKey, fragmentBytes, 'application/octet-stream'),
-        uploadObject(metadataKey, JSON.stringify(metadata), 'application/json'),
-        uploadObject(propertiesKey, JSON.stringify(properties), 'application/json'),
-      ]),
-    );
+    // Uploads start the moment an artifact message arrives. The immediate
+    // no-op catch keeps a pipelined upload failure from becoming an unhandled
+    // rejection while the (possibly much later) Promise.all below hasn't
+    // attached yet — the original promise still rejects there.
+    const pendingUploads: Promise<void>[] = [];
+    const startUpload = (key: string, body: Uint8Array | string, contentType: string): void => {
+      const upload = uploadObject(key, body, contentType);
+      upload.catch(() => undefined);
+      pendingUploads.push(upload);
+    };
+
+    let outlineKey: string | null = null;
+    let projectGlobalId: string | null = null;
+
+    logger.info('generating fragments + walking model');
+    // One worker gets the IFC buffer via transfer, the other a copy (also
+    // transferred) — main drops both references immediately, so the job never
+    // holds three live copies of the IFC at once.
+    const walkBytes = ifcBytes.slice();
+    let fragWorker: ExtractionWorkerHandle | null = null;
+    let walkWorker: ExtractionWorkerHandle | null = null;
+    try {
+      fragWorker = startExtractionWorker(
+        { task: 'frag-outline', bytes: ifcBytes },
+        [ifcBytes.buffer as ArrayBuffer],
+        (msg) => {
+          if (msg.type === 'fragments') {
+            logStage('fragments', msg.ms);
+            startUpload(fragmentsKey, msg.bytes, 'application/octet-stream');
+          } else if (msg.type === 'outline') {
+            if (msg.bytes === null) {
+              // Graceful degradation: extraction still succeeds without the
+              // artifact; the viewer computes outlines client-side instead.
+              logger.warn(
+                { error: msg.error, file_id: payload.file_id, job_id: job.job_id },
+                'outline generation failed — viewer falls back to client-side compute',
+              );
+            } else {
+              logStage('outline', msg.ms);
+              outlineKey = outlineKeyFor(payload.storage_key);
+              startUpload(outlineKey, msg.bytes, 'application/octet-stream');
+            }
+          }
+        },
+      );
+      walkWorker = startExtractionWorker(
+        { task: 'walk', bytes: walkBytes },
+        [walkBytes.buffer as ArrayBuffer],
+        async (msg) => {
+          if (msg.type === 'parsed') {
+            logStage('parse', msg.ms);
+            await reportProgress(40);
+          } else if (msg.type === 'walk') {
+            logStage('walk', msg.timings.walk);
+            projectGlobalId = msg.projectGlobalId;
+            startUpload(metadataKey, msg.metadataJson, 'application/json');
+            startUpload(propertiesKey, msg.propertiesJson, 'application/json');
+          }
+        },
+      );
+      await Promise.all([fragWorker.done, walkWorker.done]);
+    } finally {
+      // Any failure (either worker, schema gate, handler) must not leave the
+      // sibling thread running; after natural completion this is a no-op.
+      await Promise.allSettled([
+        fragWorker?.terminate() ?? Promise.resolve(),
+        walkWorker?.terminate() ?? Promise.resolve(),
+      ]);
+    }
+    await reportProgress(80);
+
+    logger.info({ fragmentsKey, metadataKey, propertiesKey, outlineKey }, 'uploading outputs');
+    const upload = await time(() => Promise.all(pendingUploads));
     logStage('upload', upload.ms);
 
     const elapsedMs = Math.round(performance.now() - startedAtMs);
@@ -191,11 +230,14 @@ export async function runExtraction(
       fragments_key: fragmentsKey,
       metadata_key: metadataKey,
       properties_key: propertiesKey,
+      // Only when the artifact actually uploaded — a graceful outline failure
+      // leaves the field off entirely.
+      ...(outlineKey !== null ? { outline_key: outlineKey } : {}),
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       extractor_version: version,
       content_sha256: sha256,
-      ifc_project_guid: metadata.project.globalId ?? undefined,
+      ifc_project_guid: projectGlobalId ?? undefined,
     });
   } catch (err) {
     const message =
@@ -219,13 +261,5 @@ export async function runExtraction(
       error_kind,
     });
     throw err;
-  } finally {
-    if (modelID !== null) {
-      try {
-        await closeModel(modelID);
-      } catch (closeErr) {
-        logger.warn({ err: closeErr }, 'closeModel failed');
-      }
-    }
   }
 }

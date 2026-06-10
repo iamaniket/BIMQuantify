@@ -145,17 +145,20 @@ describe('buildMetadata countElements integration', () => {
     expect(storey?.children).toEqual([]);
   });
 
-  it('builds zones from IfcRelAssignsToGroup', async () => {
+  it('builds zones from IfcRelAssignsToGroup without flattening', async () => {
     const { buildMetadata } = await import('../src/pipeline/metadata.js');
     const { IFCRELASSIGNSTOGROUP, IFCZONE, IFCSPACE } = await import('web-ifc');
 
-    // expressID → IFC type code. Zone 10 ⊃ spaces 11, 12 (object 13 is not a
-    // space and must be ignored). Object 20 is a non-zone group to be skipped.
+    // expressID → IFC type code. Zone 10 ⊃ spaces 11, 12 (member 13 is not a
+    // space and must be ignored). Group 20 is a non-zone group whose member 14
+    // must never be fetched — the IFCZONE gate short-circuits before any
+    // further GetLine.
     const typeByID: Record<number, number> = {
       10: IFCZONE,
       11: IFCSPACE,
       12: IFCSPACE,
       13: 0,
+      14: IFCSPACE,
       20: 0,
     };
     const nameByID: Record<number, string> = {
@@ -167,9 +170,21 @@ describe('buildMetadata countElements integration', () => {
     const rels: Record<number, { group: number; members: number[] }> = {
       100: { group: 10, members: [11, 13] },
       101: { group: 10, members: [12] },
-      102: { group: 20, members: [11] },
+      102: { group: 20, members: [14] },
     };
 
+    // `flatten: false` line shape — references come back as bare handles
+    // ({ type: 5, value: expressID }), never recursively expanded objects.
+    const getLine = vi.fn().mockImplementation((_: number, id: number) => {
+      const rel = rels[id];
+      if (rel) {
+        return {
+          RelatingGroup: { type: 5, value: rel.group },
+          RelatedObjects: rel.members.map((m) => ({ type: 5, value: m })),
+        };
+      }
+      return { GlobalId: `guid-${String(id)}`, Name: nameByID[id] ?? null };
+    });
     const mockApi = {
       GetAllLines: vi.fn().mockReturnValue(idList([])),
       GetLineType: vi.fn().mockImplementation((_: number, id: number) => typeByID[id] ?? 0),
@@ -178,16 +193,7 @@ describe('buildMetadata countElements integration', () => {
         if (code === IFCRELASSIGNSTOGROUP) return idList([100, 101, 102]);
         return idList([]);
       }),
-      GetLine: vi.fn().mockImplementation((_: number, id: number) => {
-        const rel = rels[id];
-        if (rel) {
-          return {
-            RelatingGroup: { expressID: rel.group },
-            RelatedObjects: rel.members.map((m) => ({ expressID: m })),
-          };
-        }
-        return { GlobalId: `guid-${String(id)}`, Name: nameByID[id] ?? null };
-      }),
+      GetLine: getLine,
       StreamAllMeshes: vi.fn(),
     } as never;
 
@@ -198,6 +204,19 @@ describe('buildMetadata countElements integration', () => {
     expect(zone?.name).toBe('Office 01');
     expect(zone?.spaces.map((s) => s.expressID)).toEqual([11, 12]);
     expect(zone?.spaces.map((s) => s.name)).toEqual(['CHIMIE', 'LABORATOIRE']);
+
+    // Every GetLine in the zone walk is a scalar `flatten: false` fetch —
+    // flattening a rel here recursively expanded every member's geometry tree
+    // (the 4.7M-GetLine-call regression on large models).
+    for (const call of getLine.mock.calls) {
+      expect(call[2]).toBe(false);
+    }
+    // Exactly rels 100-102 + zone 10 + spaces 11, 12. The non-zone group (20)
+    // short-circuits without any further GetLine, so neither it nor its member
+    // (14) nor the non-space member (13) is ever fetched.
+    expect(getLine.mock.calls).toHaveLength(6);
+    const fetchedIds = [...new Set(getLine.mock.calls.map((call) => call[1] as number))];
+    expect(fetchedIds.sort((a, b) => a - b)).toEqual([10, 11, 12, 100, 101, 102]);
   });
 
   it('returns no zones when the model has none', async () => {

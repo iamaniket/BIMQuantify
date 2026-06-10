@@ -67,6 +67,16 @@ export interface ZoomOptions {
   maxFactor?: number;
 }
 
+export interface LoadFragmentsOptions {
+  /**
+   * In-flight fetch of the processor-precomputed outline artifact
+   * (compressed bytes). Never blocks or fails the model load — the outline
+   * plugin awaits it and falls back to client-side edge extraction when it
+   * resolves null.
+   */
+  precomputedOutline?: Promise<Uint8Array | null>;
+}
+
 export interface ViewerOptions {
   /** Plugins to register at construction. Order matters for dependencies. */
   plugins?: Plugin[];
@@ -110,6 +120,10 @@ export class Viewer {
   private lastAppliedNear = 0.01;
   private lastAppliedFar = 2000;
   private zoomOutLimit = Infinity;
+  private readonly precomputedOutlines = new Map<
+    string,
+    Promise<Uint8Array | null>
+  >();
   modelId: string | null = null;
 
   constructor(private readonly options: ViewerOptions = {}) {}
@@ -303,6 +317,8 @@ export class Viewer {
         has: (name: string) => this.pluginManager?.has(name) ?? false,
       },
       models: () => fragmentsModels.models.list as unknown as Map<string, FRAGS.FragmentsModel>,
+      getPrecomputedOutline: (modelId: string) =>
+        this.precomputedOutlines.get(modelId),
     };
 
     this.pluginManager = new PluginManager(ctx, this.commands, this.events);
@@ -357,7 +373,10 @@ export class Viewer {
     }
   }
 
-  async loadFragments(bytes: Uint8Array): Promise<string> {
+  async loadFragments(
+    bytes: Uint8Array,
+    opts: LoadFragmentsOptions = {},
+  ): Promise<string> {
     const world = this.world;
     const fragments = this.fragmentsModels;
     if (world === null || fragments === null) {
@@ -370,6 +389,11 @@ export class Viewer {
     );
     const modelId = `model-${String(Date.now())}`;
     this.modelId = modelId;
+    // Stash before `model:loaded` fires so the outline plugin's handler
+    // sees the supply via ctx.getPrecomputedOutline.
+    if (opts.precomputedOutline) {
+      this.precomputedOutlines.set(modelId, opts.precomputedOutline);
+    }
     const model = await fragments.load(buffer as ArrayBuffer, { modelId });
 
     // Connect camera so the LOD streaming system knows the viewpoint and
@@ -651,6 +675,7 @@ export class Viewer {
       this.components = null;
     }
     this.world = null;
+    this.precomputedOutlines.clear();
     this.modelId = null;
     this.events.emit('viewer:unmounted', undefined);
     this.events.clear();

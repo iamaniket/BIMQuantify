@@ -240,18 +240,22 @@ function buildZones(api: IfcAPI, modelID: number): ZoneNode[] {
   const byZone = new Map<number, ZoneNode>();
   const relIds = api.GetLineIDsWithType(modelID, IFCRELASSIGNSTOGROUP);
   for (let i = 0; i < relIds.size(); i += 1) {
-    const rel = api.GetLine(modelID, relIds.get(i), true) as Record<
+    // `flatten: false` — RelatingGroup/RelatedObjects come back as bare
+    // handles (same pattern as collectElements). Flattening here recursively
+    // expanded every member's geometry tree before we even knew the group was
+    // a zone (4.7M GetLine calls on a 96MB model); the type gate below now
+    // runs before any further GetLine.
+    const rel = api.GetLine(modelID, relIds.get(i), false) as Record<
       string,
       unknown
     >;
-    const relating = rel['RelatingGroup'] as Record<string, unknown> | undefined;
-    const zoneID = relating ? numberValue(relating['expressID']) : null;
+    const zoneID = numberValue(rel['RelatingGroup']);
     if (zoneID === null) continue;
     if (api.GetLineType(modelID, zoneID) !== IFCZONE) continue;
 
     let zone = byZone.get(zoneID);
     if (!zone) {
-      const zoneLine = api.GetLine(modelID, zoneID) as Record<string, unknown>;
+      const zoneLine = api.GetLine(modelID, zoneID, false) as Record<string, unknown>;
       zone = {
         expressID: zoneID,
         globalId: stringValue(zoneLine['GlobalId']),
@@ -264,12 +268,11 @@ function buildZones(api: IfcAPI, modelID: number): ZoneNode[] {
     const related = rel['RelatedObjects'];
     if (!Array.isArray(related)) continue;
     for (const obj of related) {
-      const member = obj as Record<string, unknown>;
-      const spaceID = numberValue(member['expressID']);
+      const spaceID = numberValue(obj);
       if (spaceID === null) continue;
       if (api.GetLineType(modelID, spaceID) !== IFCSPACE) continue;
       if (zone.spaces.some((s) => s.expressID === spaceID)) continue;
-      const spaceLine = api.GetLine(modelID, spaceID) as Record<string, unknown>;
+      const spaceLine = api.GetLine(modelID, spaceID, false) as Record<string, unknown>;
       zone.spaces.push({
         expressID: spaceID,
         name: stringValue(spaceLine['Name']),

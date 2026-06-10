@@ -21,6 +21,7 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LAYER_DEFAULT } from '../../../core/layers.js';
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 import { OutlineCache } from '../shared/outline-cache.js';
+import { decodeOutline } from '../shared/outline-codec.js';
 import {
   applyClippingPlanes,
   buildClippingPlanes,
@@ -153,6 +154,28 @@ export function outlinePlugin(
     return hidden && hidden.size > 0 ? { hidden } : null;
   };
 
+  // Seed the cache from the processor's precomputed artifact when one was
+  // supplied with the model; on any failure (no supply, fetch resolved null,
+  // undecodable bytes) fall back to client-side edge extraction.
+  const seedCache = async (
+    ctx: ViewerContext,
+    modelId: string,
+  ): Promise<void> => {
+    try {
+      const bytes = await ctx.getPrecomputedOutline(modelId);
+      if (bytes) {
+        const decoded = await decodeOutline(bytes);
+        if (decoded) {
+          cache.loadPrecomputed(modelId, decoded);
+          return;
+        }
+      }
+    } catch {
+      // fall through to the client-side build
+    }
+    await cache.build(ctx, modelId);
+  };
+
   const clearLines = (): void => {
     if (ctxRef) {
       for (const line of lines) ctxRef.scene.remove(line);
@@ -181,7 +204,7 @@ export function outlinePlugin(
       ctxRef = ctx;
 
       const offLoaded = ctx.events.on('model:loaded', ({ modelId }) => {
-        void cache.build(ctx, modelId).then(() => {
+        void seedCache(ctx, modelId).then(() => {
           ctx.events.emit('outline:ready', { modelId });
           rebuildLines();
           updateVisibility();

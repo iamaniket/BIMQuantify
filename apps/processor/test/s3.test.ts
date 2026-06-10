@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fragmentsKeyFor,
   metadataKeyFor,
+  outlineKeyFor,
   propertiesKeyFor,
 } from '../src/storage/s3.js';
 
@@ -27,7 +28,14 @@ describe('storage key derivation', () => {
     );
   });
 
+  it('replaces .ifc with .outline.bin', () => {
+    expect(outlineKeyFor(source)).toBe(
+      'projects/abc/123e4567-e89b-12d3-a456-426614174000.outline.bin',
+    );
+  });
+
   it('is case-insensitive on the source extension', () => {
     expect(fragmentsKeyFor('projects/x/file.IFC')).toBe('projects/x/file.frag');
+    expect(outlineKeyFor('projects/x/file.IFC')).toBe('projects/x/file.outline.bin');
   });
 });

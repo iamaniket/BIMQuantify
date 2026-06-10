@@ -153,6 +153,7 @@ async def extraction_callback(
                 row.metadata_storage_key = payload.metadata_key
                 row.properties_storage_key = payload.properties_key
                 row.geometry_storage_key = payload.geometry_key
+                row.outline_storage_key = payload.outline_key
                 row.extraction_error = None
                 if payload.ifc_project_guid is not None:
                     row.ifc_project_guid = payload.ifc_project_guid
@@ -240,6 +241,7 @@ def _apply_job_update(job: Job, payload: ExtractionCallbackRequest) -> None:
                 "metadata_key": payload.metadata_key,
                 "properties_key": payload.properties_key,
                 "geometry_key": payload.geometry_key,
+                "outline_key": payload.outline_key,
                 "page_count": payload.page_count,
             }.items()
             if v is not None

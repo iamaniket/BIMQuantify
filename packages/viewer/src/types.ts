@@ -27,6 +27,8 @@ export type ViewerBundle = {
   fragmentsUrl: string;
   metadataUrl?: string;
   propertiesUrl?: string;
+  /** Precomputed hard-edge outline artifact (gzipped binary, format v1). */
+  outlineUrl?: string;
   cacheKey?: string;
 };
 

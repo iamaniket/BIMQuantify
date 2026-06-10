@@ -755,10 +755,13 @@ async def get_viewer_bundle(
     ]
     has_metadata = row.metadata_storage_key is not None
     has_properties = row.properties_storage_key is not None
+    outline_key = row.outline_storage_key
     if has_metadata:
         coros.append(storage.presigned_get_url(row.metadata_storage_key, "metadata.json"))
     if has_properties:
         coros.append(storage.presigned_get_url(row.properties_storage_key, "properties.json"))
+    if outline_key is not None:
+        coros.append(storage.presigned_get_url(outline_key, "outline.bin"))
 
     urls = await asyncio.gather(*coros)
     fragments_url = urls[0]
@@ -770,6 +773,10 @@ async def get_viewer_bundle(
     properties_url: str | None = None
     if has_properties:
         properties_url = urls[idx]
+        idx += 1
+    outline_url: str | None = None
+    if outline_key is not None:
+        outline_url = urls[idx]
 
     return ViewerBundleResponse(
         file_type=row.file_type,
@@ -777,6 +784,7 @@ async def get_viewer_bundle(
         fragments_key=row.fragments_storage_key,
         metadata_url=metadata_url,
         properties_url=properties_url,
+        outline_url=outline_url,
         expires_in=storage.presign_ttl,
     )
 

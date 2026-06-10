@@ -103,6 +103,7 @@ function buildBundle(response: ViewerBundleResponse): ViewerBundle {
   const out: ViewerBundle = { fragmentsUrl: response.fragments_url! };
   if (response.metadata_url !== null) out.metadataUrl = response.metadata_url;
   if (response.properties_url !== null) out.propertiesUrl = response.properties_url;
+  if (response.outline_url !== null) out.outlineUrl = response.outline_url;
   if (response.fragments_key !== null) out.cacheKey = response.fragments_key;
   return out;
 }

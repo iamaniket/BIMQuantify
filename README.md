@@ -163,3 +163,16 @@ Create a `.env` file in the root (see `.env.example`):
 ## License
 
 MIT © iamaniket
+
+
+
+#strat fresh docker
+
+docker compose down -v
+docker compose up -d
+
+ cd apps/api && uv run alembic -c alembic.master.ini upgrade head       
+
+ cd apps/api
+uv run alembic -c alembic.master.ini upgrade head
+uv run python -m bimstitch_api.seed

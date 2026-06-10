@@ -176,6 +176,14 @@ function IfcViewerImpl(
         if (cancelled) return;
         props.onSceneReady?.();
         const cacheKey = props.bundle.cacheKey;
+        // Kick off the outline-artifact fetch in parallel with the fragments
+        // fetch. It never blocks or fails the model load — the promise
+        // resolves null on any error and the outline plugin falls back to
+        // client-side edge extraction.
+        const outlineUrl = props.bundle.outlineUrl;
+        const precomputedOutline = outlineUrl
+          ? fetchOutlineArtifact(outlineUrl, cacheKey)
+          : null;
         let bytes: Uint8Array | null = null;
         if (cacheKey) {
           bytes = await getCached(cacheKey);
@@ -190,7 +198,10 @@ function IfcViewerImpl(
           }
         }
         if (cancelled) return;
-        await viewer.loadFragments(bytes);
+        await viewer.loadFragments(
+          bytes,
+          precomputedOutline ? { precomputedOutline } : {},
+        );
         if (cancelled) return;
         const handle = handleRef.current;
         if (handle) props.onReady?.(handle);
@@ -218,6 +229,35 @@ function IfcViewerImpl(
       style={{ width: '100%', height: '100%', position: 'relative' }}
     />
   );
+}
+
+/**
+ * Fetch the precomputed outline artifact, mirroring the fragments'
+ * IndexedDB caching (compressed bytes, key `<cacheKey>.outline`). Never
+ * throws — resolves null on any failure so the outline plugin falls back
+ * to client-side edge extraction.
+ */
+async function fetchOutlineArtifact(
+  url: string,
+  cacheKey: string | undefined,
+): Promise<Uint8Array | null> {
+  try {
+    const outlineKey = cacheKey ? `${cacheKey}.outline` : null;
+    if (outlineKey) {
+      const cached = await getCached(outlineKey);
+      if (cached) return cached;
+    }
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength === 0) return null;
+    if (outlineKey) {
+      putCached(outlineKey, bytes).catch(() => undefined);
+    }
+    return bytes;
+  } catch {
+    return null;
+  }
 }
 
 export const IfcViewer = forwardRef<ViewerHandle, IfcViewerProps>(IfcViewerImpl);

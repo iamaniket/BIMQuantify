@@ -78,6 +78,10 @@ export function fragmentsKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.ifc$/i, '.frag');
 }
 
+export function outlineKeyFor(sourceKey: string): string {
+  return sourceKey.replace(/\.ifc$/i, '.outline.bin');
+}
+
 export function metadataKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.ifc$/i, '.metadata.json');
 }
