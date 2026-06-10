@@ -24,6 +24,7 @@ from bimstitch_api.bcf.types import (
     ClippingPlane,
     ParsedBcf,
     ParsedComment,
+    ParsedFile,
     ParsedTopic,
     ParsedViewpoint,
     Vec3,
@@ -595,3 +596,61 @@ class TestArchiveRoundTrip:
         result = parse_bcf_archive(buf.getvalue())
         assert result.version == "2.1"
         assert len(result.topics) == 1
+
+
+# ---------------------------------------------------------------------------
+# Header / File (model reference) round-trip
+# ---------------------------------------------------------------------------
+
+
+class TestHeaderFileRoundTrip:
+    def test_markup_xml_header_round_trip(self) -> None:
+        topic = ParsedTopic(
+            guid="t-hdr",
+            title="Has files",
+            creation_author="a@b.com",
+            files=[
+                ParsedFile(
+                    ifc_project="2O2Fr$t4X7Zf8NOew3FNr2",
+                    filename="tower.ifc",
+                    date=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+                    is_external=True,
+                ),
+            ],
+        )
+        xml = serialize_markup_xml(topic)
+        assert b"<Header>" in xml
+        assert b"tower.ifc" in xml
+        parsed = parse_markup_xml(xml)
+        assert len(parsed.files) == 1
+        f = parsed.files[0]
+        assert f.ifc_project == "2O2Fr$t4X7Zf8NOew3FNr2"
+        assert f.filename == "tower.ifc"
+        assert f.date is not None
+
+    def test_topic_json_files_round_trip(self) -> None:
+        topic = ParsedTopic(
+            guid="t-json",
+            title="Has files",
+            creation_author="a@b.com",
+            files=[ParsedFile(ifc_project="GUID123", filename="m.ifc", is_external=False)],
+        )
+        data = serialize_topic_json(topic)
+        parsed = parse_topic_json(data)
+        assert len(parsed.files) == 1
+        assert parsed.files[0].ifc_project == "GUID123"
+        assert parsed.files[0].filename == "m.ifc"
+        assert parsed.files[0].is_external is False
+
+    def test_archive_round_trip_preserves_files(self) -> None:
+        topic = ParsedTopic(
+            guid="t-arc",
+            title="Archive files",
+            creation_author="a@b.com",
+            files=[ParsedFile(ifc_project="ABC", filename="x.ifc")],
+        )
+        for version in ("2.1", "3.0"):
+            archive = generate_bcf_archive(ParsedBcf(version=version, topics=[topic]))
+            parsed = parse_bcf_archive(archive)
+            assert len(parsed.topics[0].files) == 1, version
+            assert parsed.topics[0].files[0].ifc_project == "ABC", version

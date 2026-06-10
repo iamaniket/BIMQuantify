@@ -8,6 +8,12 @@ import type { BcfController } from './useBcfController';
 type Props = {
   projectId: string;
   controller: BcfController;
+  /** The model currently open in the viewer (logical model). */
+  modelId?: string | undefined;
+  /** The exact file version (ProjectFile) currently open. */
+  fileId?: string | undefined;
+  /** Viewer dimension — '3d' for IFC, '2d' for PDF/drawings. */
+  dimension?: '2d' | '3d' | undefined;
   createNonce?: number | undefined;
   onCreateClose?: ((saved: boolean) => void) | undefined;
   openTopicId?: string | undefined;
@@ -56,6 +62,9 @@ class BcfErrorBoundary extends Component<
 export function BcfPanel({
   projectId,
   controller,
+  modelId,
+  fileId,
+  dimension,
   createNonce,
   onCreateClose,
   openTopicId,
@@ -66,6 +75,9 @@ export function BcfPanel({
       <BcfTopicList
         projectId={projectId}
         controller={controller}
+        modelId={modelId}
+        fileId={fileId}
+        dimension={dimension}
         createNonce={createNonce}
         onCreateClose={onCreateClose}
         openTopicId={openTopicId}

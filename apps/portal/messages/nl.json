@@ -2708,6 +2708,17 @@
       "filter": {
         "allStatuses": "Alle statussen"
       },
+      "scope": {
+        "label": "Bereik van issues",
+        "thisModel": "Dit model",
+        "thisVersion": "Alleen deze versie",
+        "allIssues": "Alle issues"
+      },
+      "dimension": {
+        "2d": "2D",
+        "3d": "3D"
+      },
+      "versionBadge": "v{version}",
       "status": {
         "open": "Open",
         "in_progress": "In uitvoering",

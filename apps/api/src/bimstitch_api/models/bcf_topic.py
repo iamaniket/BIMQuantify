@@ -4,7 +4,7 @@ from datetime import date, datetime  # noqa: TC003 — SQLAlchemy Mapped[] needs
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from bimstitch_api.models.finding import Finding
     from bimstitch_api.models.model import Model
     from bimstitch_api.models.project import Project
+    from bimstitch_api.models.project_file import ProjectFile
     from bimstitch_api.models.user import User
 
 
@@ -28,6 +29,7 @@ class BcfTopic(TimestampMixin, SoftDeleteMixin, TenantBase):
         Index("ix_bcf_topics_project_status", "project_id", "topic_status"),
         Index("ix_bcf_topics_linked_finding_id", "linked_finding_id"),
         Index("ix_bcf_topics_linked_model_id", "linked_model_id"),
+        Index("ix_bcf_topics_linked_file_id", "linked_file_id"),
         Index("ix_bcf_topics_created_by_user_id", "created_by_user_id"),
     )
 
@@ -63,6 +65,22 @@ class BcfTopic(TimestampMixin, SoftDeleteMixin, TenantBase):
         ForeignKey("models.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # The specific model *version* (ProjectFile) the issue was raised against.
+    # Mirrors BcfViewpoint.linked_file_id but at topic level so the list can
+    # filter/display the version without joining viewpoints. ProjectFile carries
+    # version_number / file_type / ifc_project_guid (used for BCF Header/File).
+    linked_file_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("project_files.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Topic-level dimension discriminator. 3D (IFC) and 2D (drawing) issues are
+    # fundamentally different (BIMcollab/BCF): 2D issues live in a drawing's
+    # coordinate space and carry no element GlobalIds. Denormalized from the
+    # viewpoint's is_2d so the list endpoint can hard-filter by viewer type.
+    is_2d: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     created_by_user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("public.users.id", ondelete="RESTRICT"),
@@ -76,6 +94,7 @@ class BcfTopic(TimestampMixin, SoftDeleteMixin, TenantBase):
     project: Mapped[Project] = relationship("Project", lazy="raise")
     linked_finding: Mapped[Finding | None] = relationship("Finding", lazy="raise")
     linked_model: Mapped[Model | None] = relationship("Model", lazy="raise")
+    linked_file: Mapped[ProjectFile | None] = relationship("ProjectFile", lazy="raise")
     created_by: Mapped[User] = relationship("User", lazy="raise")
     viewpoints: Mapped[list[BcfViewpoint]] = relationship(
         "BcfViewpoint",

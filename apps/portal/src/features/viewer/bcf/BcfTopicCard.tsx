@@ -64,6 +64,16 @@ export function BcfTopicCard({ topic }: Props): JSX.Element {
               {topic.priority}
             </span>
           )}
+          {/* Dimension (2D/3D) — issues differ fundamentally by viewer type. */}
+          <span className="inline-flex rounded-full bg-surface-low px-1.5 py-px text-[10px] font-medium text-foreground-secondary tabular-nums">
+            {topic.is_2d ? t('dimension.2d') : t('dimension.3d')}
+          </span>
+          {/* Model version the issue was raised against. */}
+          {topic.model_version != null && (
+            <span className="inline-flex rounded-full bg-surface-low px-1.5 py-px text-[10px] font-medium text-foreground-tertiary tabular-nums">
+              {t('versionBadge', { version: topic.model_version })}
+            </span>
+          )}
         </div>
         <p className="mt-0.5 truncate text-[10px] text-foreground-tertiary">
           {topic.creation_author} &middot; {date}

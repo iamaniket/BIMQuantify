@@ -140,6 +140,11 @@ class BcfTopicCreate(BaseModel):
     due_date: date | None = None
     linked_finding_id: UUID | None = None
     linked_model_id: UUID | None = None
+    # The specific model version (ProjectFile) the issue was raised against, and
+    # whether this is a 2D (drawing) or 3D (IFC) issue. Both auto-derive from the
+    # initial viewpoint when omitted (see routers/bcf.py::create_topic).
+    linked_file_id: UUID | None = None
+    is_2d: bool = False
     viewpoint: BcfViewpointCreate | None = None
 
 
@@ -155,6 +160,8 @@ class BcfTopicUpdate(BaseModel):
     due_date: date | None = None
     linked_finding_id: UUID | None = None
     linked_model_id: UUID | None = None
+    linked_file_id: UUID | None = None
+    is_2d: bool | None = None
 
 
 class BcfTopicRead(BaseModel):
@@ -178,6 +185,11 @@ class BcfTopicRead(BaseModel):
     modified_date: datetime | None
     linked_finding_id: UUID | None
     linked_model_id: UUID | None
+    linked_file_id: UUID | None
+    is_2d: bool
+    # Derived from the linked ProjectFile (version raised against) for display.
+    model_version: int | None = None
+    file_type: str | None = None
     created_by_user_id: UUID
     bcf_version: str
     import_source: str | None
@@ -202,6 +214,14 @@ class BcfTopicSummary(BaseModel):
     creation_author: str
     creation_date: datetime
     linked_finding_id: UUID | None
+    linked_model_id: UUID | None = None
+    linked_file_id: UUID | None = None
+    is_2d: bool = False
+    model_version: int | None = None
+    file_type: str | None = None
+    # Whether the topic has at least one viewpoint to jump to. Drives the
+    # "go to viewpoint" button — independent of whether a snapshot image exists.
+    has_viewpoint: bool = False
     snapshot_url: str | None = None
     created_at: datetime
 

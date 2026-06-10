@@ -14,6 +14,7 @@ from bimstitch_api.bcf.types import (
     BcfComponents,
     ClippingPlane,
     ParsedComment,
+    ParsedFile,
     ParsedTopic,
     ParsedViewpoint,
     Vec3,
@@ -157,6 +158,25 @@ def parse_topic_json(data: bytes) -> ParsedTopic:
         reference_links=d.get("reference_links", []),
     )
 
+    # Header/File — accept both a top-level "files" list and a nested
+    # "header"/"files" shape (BCF 3.0 markup nests files under header).
+    files_raw = d.get("files")
+    if files_raw is None:
+        header = d.get("header")
+        if isinstance(header, dict):
+            files_raw = header.get("files")
+    for f in files_raw or []:
+        topic.files.append(
+            ParsedFile(
+                ifc_project=f.get("ifc_project"),
+                ifc_spatial_structure_element=f.get("ifc_spatial_structure_element"),
+                filename=f.get("filename"),
+                date=_parse_dt(f.get("date")),
+                reference=f.get("reference"),
+                is_external=bool(f.get("is_external", True)),
+            )
+        )
+
     # Viewpoint references
     for i, vp_ref in enumerate(d.get("viewpoints", [])):
         vp_guid = vp_ref.get("guid", "")
@@ -256,6 +276,25 @@ def serialize_topic_json(topic: ParsedTopic) -> bytes:
         d["modified_date"] = _dt_str(topic.modified_date)
     if topic.reference_links:
         d["reference_links"] = topic.reference_links
+
+    # Header/File — which IFC model(s) this topic relates to.
+    if topic.files:
+        files_out: list[dict[str, object]] = []
+        for f in topic.files:
+            fd: dict[str, object] = {"is_external": f.is_external}
+            if f.ifc_project:
+                fd["ifc_project"] = f.ifc_project
+            if f.ifc_spatial_structure_element:
+                fd["ifc_spatial_structure_element"] = f.ifc_spatial_structure_element
+            if f.filename:
+                fd["filename"] = f.filename
+            date_str = _dt_str(f.date)
+            if date_str:
+                fd["date"] = date_str
+            if f.reference:
+                fd["reference"] = f.reference
+            files_out.append(fd)
+        d["files"] = files_out
 
     # Viewpoint references
     if topic.viewpoints:

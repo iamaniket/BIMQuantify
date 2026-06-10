@@ -28,6 +28,10 @@ const SHAPE_TOOLS: { tool: MarkupTool; icon: AppIcon; labelKey: string }[] = [
 type Props = {
   projectId: string;
   controller: BcfController;
+  /** The model + version + dimension the new issue belongs to. */
+  modelId?: string | undefined;
+  fileId?: string | undefined;
+  dimension?: '2d' | '3d' | undefined;
   onCreated: (topicId: string) => void;
   onCancel?: () => void;
 };
@@ -35,6 +39,9 @@ type Props = {
 export function BcfCreateForm({
   projectId,
   controller,
+  modelId,
+  fileId,
+  dimension,
   onCreated,
   onCancel,
 }: Props): JSX.Element {
@@ -97,6 +104,13 @@ export function BcfCreateForm({
           topic_status: topicStatus,
           priority: priority || undefined,
           labels: [],
+          // Anchor the issue to the open model + version + dimension so the
+          // viewer can list it under the right model. linked_file_id also falls
+          // back to the viewpoint's on the backend, but set it here for the 3D
+          // path (whose controller does not stamp the viewpoint).
+          ...(modelId !== undefined ? { linked_model_id: modelId } : {}),
+          ...(fileId !== undefined ? { linked_file_id: fileId } : {}),
+          ...(dimension !== undefined ? { is_2d: dimension === '2d' } : {}),
           viewpoint: viewpointPayload,
         });
 
@@ -141,6 +155,9 @@ export function BcfCreateForm({
       createMutation,
       tokens,
       projectId,
+      modelId,
+      fileId,
+      dimension,
       t,
       onCreated,
     ],

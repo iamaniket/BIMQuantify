@@ -447,7 +447,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
       }
     >
       <SearchInput placeholder={t('searchPlaceholder')} value={search} onChange={setSearch} aria-label={t('searchAria')} />
-      <Select selectSize="sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); }} aria-label={t('statusFilterAria')}>
+      <Select selectsize="md" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); }} aria-label={t('statusFilterAria')}>
         <option value="all">{t('statusFilters.all')}</option>
         <option value="active">{t('statusFilters.active')}</option>
         <option value="suspended">{t('statusFilters.suspended')}</option>
@@ -463,12 +463,12 @@ export default function AdminOrganizationsPage(): JSX.Element {
         </Button>
       }
     >
-      <Select selectSize="sm" value={blogLocale} onChange={(e) => { setBlogLocale(e.target.value); }} aria-label={tBlog('localeFilterAria')}>
+      <Select selectsize="md" value={blogLocale} onChange={(e) => { setBlogLocale(e.target.value); }} aria-label={tBlog('localeFilterAria')}>
         <option value="all">{tBlog('localeFilters.all')}</option>
         <option value="en">EN</option>
         <option value="nl">NL</option>
       </Select>
-      <Select selectSize="sm" value={blogStatus} onChange={(e) => { setBlogStatus(e.target.value); }} aria-label={tBlog('statusFilterAria')}>
+      <Select selectsize="md" value={blogStatus} onChange={(e) => { setBlogStatus(e.target.value); }} aria-label={tBlog('statusFilterAria')}>
         <option value="all">{tBlog('statusFilters.all')}</option>
         <option value="published">{tBlog('statusFilters.published')}</option>
         <option value="draft">{tBlog('statusFilters.draft')}</option>
@@ -484,7 +484,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
       }
     >
       <SearchInput placeholder={tReq('searchPlaceholder')} value={reqSearch} onChange={setReqSearch} aria-label={tReq('searchAria')} />
-      <Select selectSize="sm" value={reqStatusFilter} onChange={(e) => { setReqStatusFilter(e.target.value); }} aria-label={tReq('statusFilterAria')}>
+      <Select selectsize="md" value={reqStatusFilter} onChange={(e) => { setReqStatusFilter(e.target.value); }} aria-label={tReq('statusFilterAria')}>
         <option value="all">{tReq('statusFilters.all')}</option>
         <option value="new">{tReq('statusFilters.new')}</option>
         <option value="approved">{tReq('statusFilters.approved')}</option>

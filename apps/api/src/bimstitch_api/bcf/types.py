@@ -67,6 +67,24 @@ class ParsedViewpoint:
 
 
 @dataclass
+class ParsedFile:
+    """A BCF ``Markup/Header/File`` entry — which IFC model a topic relates to.
+
+    Per the buildingSMART spec these "should be used to match which models to be
+    opened when displaying the topic viewpoints". ``ifc_project`` is the
+    IfcProject GUID (stable across versions); ``date`` is the model timestamp
+    (the FILE_NAME date in the IFC header) and disambiguates the version.
+    """
+
+    ifc_project: str | None = None
+    ifc_spatial_structure_element: str | None = None
+    filename: str | None = None
+    date: datetime | None = None
+    reference: str | None = None
+    is_external: bool = True
+
+
+@dataclass
 class ParsedComment:
     guid: str
     text: str
@@ -96,6 +114,10 @@ class ParsedTopic:
 
     viewpoints: list[ParsedViewpoint] = field(default_factory=list)
     comments: list[ParsedComment] = field(default_factory=list)
+
+    # BCF Markup/Header/File entries — the standard model references for this
+    # topic (used on import to match the app's model/version).
+    files: list[ParsedFile] = field(default_factory=list)
 
     # Preserved for round-trip: references to IFC files by GUID.
     reference_links: list[str] = field(default_factory=list)

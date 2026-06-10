@@ -13,6 +13,7 @@ from bimstitch_api.bcf.types import (
     BcfComponents,
     ClippingPlane,
     ParsedComment,
+    ParsedFile,
     ParsedTopic,
     ParsedViewpoint,
     Vec3,
@@ -173,6 +174,25 @@ def parse_markup_xml(data: bytes) -> ParsedTopic:
         if link:
             topic.reference_links.append(link)
 
+    # Header/File — which IFC model(s) this topic relates to. The Header is a
+    # sibling of <Topic> under <Markup>.
+    header_el = root.find("Header")
+    if header_el is not None:
+        for file_el in header_el.findall("File"):
+            is_external = file_el.get("isExternal", "true").lower() != "false"
+            topic.files.append(
+                ParsedFile(
+                    ifc_project=file_el.get("IfcProject") or None,
+                    ifc_spatial_structure_element=(
+                        file_el.get("IfcSpatialStructureElement") or None
+                    ),
+                    filename=_text(file_el.find("Filename")) or None,
+                    date=_parse_dt(_text(file_el.find("Date"))),
+                    reference=_text(file_el.find("Reference")) or None,
+                    is_external=is_external,
+                )
+            )
+
     # Viewpoint references (GUIDs only — actual viewpoint data comes from .bcfv files)
     vp_guids: list[str] = []
     for vp_el in root.findall("Viewpoints"):
@@ -272,6 +292,20 @@ def serialize_viewpoint_xml(vp: ParsedViewpoint) -> bytes:
 def serialize_markup_xml(topic: ParsedTopic) -> bytes:
     """Serialize a topic to BCF 2.1 markup.bcf XML."""
     root = ET.Element("Markup")
+
+    # Header/File first (BCF 2.1 sequence: Header?, Topic, Comment*, Viewpoints*).
+    if topic.files:
+        header_el = ET.SubElement(root, "Header")
+        for f in topic.files:
+            file_el = ET.SubElement(header_el, "File")
+            if f.ifc_project:
+                file_el.set("IfcProject", f.ifc_project)
+            if f.ifc_spatial_structure_element:
+                file_el.set("IfcSpatialStructureElement", f.ifc_spatial_structure_element)
+            file_el.set("isExternal", "true" if f.is_external else "false")
+            _add_sub(file_el, "Filename", f.filename)
+            _add_sub(file_el, "Date", _dt_str(f.date))
+            _add_sub(file_el, "Reference", f.reference)
 
     topic_el = ET.SubElement(
         root,

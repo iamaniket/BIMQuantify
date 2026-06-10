@@ -33,6 +33,12 @@ import { useImportBcf } from './useImportBcf';
 type Props = {
   projectId: string;
   controller: BcfController;
+  /** The model currently open in the viewer (logical model). */
+  modelId?: string | undefined;
+  /** The exact file version (ProjectFile) currently open. */
+  fileId?: string | undefined;
+  /** Viewer dimension — '3d' for IFC, '2d' for PDF/drawings. */
+  dimension?: '2d' | '3d' | undefined;
   /** Bump to open the create form pre-filled (the 2D draw-first flow). */
   createNonce?: number | undefined;
   /** Called when the create form closes; `saved` true if a topic was created. */
@@ -42,9 +48,20 @@ type Props = {
   openTopicNonce?: number | undefined;
 };
 
+/**
+ * Which issues the in-viewer panel lists:
+ * - `model`  → all versions of the open model (default; matches BCF/BIMcollab)
+ * - `version`→ only issues raised on the exact open file version
+ * - `all`    → every issue in the project (still scoped to the viewer dimension)
+ */
+type ScopeMode = 'model' | 'version' | 'all';
+
 export function BcfTopicList({
   projectId,
   controller,
+  modelId,
+  fileId,
+  dimension,
   createNonce,
   onCreateClose,
   openTopicId,
@@ -54,15 +71,21 @@ export function BcfTopicList({
   const { tokens } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [scope, setScope] = useState<ScopeMode>(modelId !== undefined ? 'model' : 'all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null);
   const [createExpanded, setCreateExpanded] = useState(false);
   const [deleteTopicId, setDeleteTopicId] = useState<string | null>(null);
 
+  // Hard-filter by viewer dimension (3D viewer → 3D issues, PDF → 2D), then
+  // narrow to the open model / version per the scope toggle.
   const { data: topics, isLoading } = useBcfTopics(projectId, {
     search: search || undefined,
     status: statusFilter || undefined,
+    is_2d: dimension !== undefined ? dimension === '2d' : undefined,
+    model_id: scope === 'model' && modelId !== undefined ? modelId : undefined,
+    file_id: scope === 'version' && fileId !== undefined ? fileId : undefined,
   });
 
   const importMutation = useImportBcf(projectId);
@@ -175,7 +198,24 @@ export function BcfTopicList({
           />
         </div>
 
-        {/* Row 2: Status filter dropdown + Split action button */}
+        {/* Row 2: Scope (model/version/all) — only inside a model viewer */}
+        {modelId !== undefined && (
+          <Select
+            selectSize="md"
+            value={scope}
+            onChange={(e) => { setScope(e.target.value as ScopeMode); }}
+            className="w-full"
+            aria-label={t('scope.label')}
+          >
+            <option value="model">{t('scope.thisModel')}</option>
+            {fileId !== undefined && (
+              <option value="version">{t('scope.thisVersion')}</option>
+            )}
+            <option value="all">{t('scope.allIssues')}</option>
+          </Select>
+        )}
+
+        {/* Row 3: Status filter dropdown + Split action button */}
         <div className="flex items-center gap-2">
           <Select
             selectSize="md"
@@ -219,6 +259,9 @@ export function BcfTopicList({
             <BcfCreateForm
               projectId={projectId}
               controller={controller}
+              modelId={modelId}
+              fileId={fileId}
+              dimension={dimension}
               onCreated={(topicId) => {
                 setCreateExpanded(false);
                 setExpandedTopicId(topicId);
@@ -256,7 +299,7 @@ export function BcfTopicList({
             >
               <DetailCardRow
                 actions={
-                  topic.snapshot_url != null ? (
+                  topic.has_viewpoint ? (
                     <button
                       type="button"
                       title={t('restoreView')}
@@ -277,7 +320,7 @@ export function BcfTopicList({
                 />
               </DetailCardBody>
               <DetailCardFooter className="justify-between">
-                {topic.snapshot_url != null ? (
+                {topic.has_viewpoint ? (
                   <Button variant="ghost" size="md" onClick={() => { void handleRestoreView(topic.id); }}>
                     <Eye className="h-3.5 w-3.5" />
                     {t('restoreView')}

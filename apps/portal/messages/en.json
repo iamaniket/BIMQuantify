@@ -2708,6 +2708,17 @@
       "filter": {
         "allStatuses": "All statuses"
       },
+      "scope": {
+        "label": "Issue scope",
+        "thisModel": "This model",
+        "thisVersion": "This version only",
+        "allIssues": "All issues"
+      },
+      "dimension": {
+        "2d": "2D",
+        "3d": "3D"
+      },
+      "versionBadge": "v{version}",
       "status": {
         "open": "Open",
         "in_progress": "In Progress",

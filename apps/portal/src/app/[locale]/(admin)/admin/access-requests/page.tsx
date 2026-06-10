@@ -130,7 +130,7 @@ export default function AdminAccessRequestsPage(): JSX.Element {
       >
         <SearchInput placeholder={t('searchPlaceholder')} value={search} onChange={setSearch} aria-label={t('searchAria')} />
         <Select
-          selectSize="sm"
+          selectsize="md"
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); }}
           aria-label={t('statusFilterAria')}

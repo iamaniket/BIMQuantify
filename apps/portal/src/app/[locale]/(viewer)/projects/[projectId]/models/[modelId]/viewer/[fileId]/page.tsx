@@ -745,11 +745,20 @@ export default function ViewerPage(): JSX.Element {
                 />
               ) : undefined}
               bcfContent={isIfc ? (
-                <BcfPanel projectId={projectId} controller={bcf3dController} />
+                <BcfPanel
+                  projectId={projectId}
+                  controller={bcf3dController}
+                  modelId={modelId}
+                  fileId={fileId}
+                  dimension="3d"
+                />
               ) : isPdf ? (
                 <BcfPanel
                   projectId={projectId}
                   controller={bcf2dController}
+                  modelId={modelId}
+                  fileId={fileId}
+                  dimension="2d"
                   createNonce={markupCreateNonce}
                   onCreateClose={handleMarkupCreateClose}
                   openTopicId={markupOpenTopic?.id}

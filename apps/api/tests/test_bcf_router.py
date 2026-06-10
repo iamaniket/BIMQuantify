@@ -9,7 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from tests.conftest import _add_member, _auth, _create_attachment_row, _create_project
+from tests.conftest import (
+    _add_member,
+    _auth,
+    _create_attachment_row,
+    _create_model,
+    _create_project,
+)
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -815,6 +821,237 @@ async def test_markup_2d_excludes_3d_viewpoints(
     assert resp.json() == []
 
 
+# ---------------------------------------------------------------------------
+# Model + version + dimension association
+# ---------------------------------------------------------------------------
+
+
+async def _create_model_file(
+    project_id: str,
+    model_id: str,
+    *,
+    version: int = 1,
+    ifc_project_guid: str | None = None,
+    filename: str = "model.ifc",
+) -> str:
+    """Insert a ready model_source ProjectFile (a model version) and return id."""
+    from uuid import uuid4
+
+    from sqlalchemy import text
+
+    from bimstitch_api.db import get_session_maker
+
+    fid = str(uuid4())
+    async with get_session_maker()() as s, s.begin():
+        candidates = (
+            await s.execute(
+                text(
+                    "SELECT schema_name FROM information_schema.schemata "
+                    "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+                )
+            )
+        ).scalars().all()
+        target = "public"
+        for cand in candidates:
+            hit = (
+                await s.execute(
+                    text(f'SELECT 1 FROM "{cand}".projects WHERE id = :pid'),
+                    {"pid": project_id},
+                )
+            ).scalar()
+            if hit:
+                target = cand
+                break
+        await s.execute(
+            text(
+                f'INSERT INTO "{target}".project_files '
+                "(id, project_id, role, status, file_type, model_id, ifc_project_guid, "
+                " storage_key, original_filename, size_bytes, content_type, version_number) "
+                "VALUES (:id, :pid, 'model_source', 'ready', 'ifc', :mid, :guid, :sk, "
+                ":fn, 100, 'application/octet-stream', :ver)"
+            ),
+            {
+                "id": fid,
+                "pid": project_id,
+                "mid": model_id,
+                "guid": ifc_project_guid,
+                "sk": f"models/{fid}.ifc",
+                "fn": filename,
+                "ver": version,
+            },
+        )
+    return fid
+
+
+async def test_create_topic_with_model_and_file(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    model = await _create_model(client, org_user["access_token"], project["id"])
+    file_id = await _create_model_file(project["id"], model["id"], version=2)
+
+    resp = await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(linked_model_id=model["id"], linked_file_id=file_id),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["linked_model_id"] == model["id"]
+    assert body["linked_file_id"] == file_id
+    assert body["is_2d"] is False
+    assert body["model_version"] == 2
+    assert body["file_type"] == "ifc"
+
+
+async def test_create_topic_backfills_model_from_file(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """Passing only linked_file_id backfills linked_model_id from the file."""
+    project = await _create_project(client, org_user["access_token"])
+    model = await _create_model(client, org_user["access_token"], project["id"])
+    file_id = await _create_model_file(project["id"], model["id"])
+
+    resp = await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(linked_file_id=file_id),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["linked_model_id"] == model["id"]
+
+
+async def test_create_topic_derives_dimension_and_file_from_2d_viewpoint(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """A 2D viewpoint stamps the topic as 2D and inherits its linked_file_id."""
+    project = await _create_project(client, org_user["access_token"])
+    file_id = await _create_attachment_row(project["id"])
+
+    resp = await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(viewpoint=_viewpoint_2d(file_id=file_id, page=4)),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["is_2d"] is True
+    assert body["linked_file_id"] == file_id
+
+
+async def test_create_topic_linked_file_404_other_project(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    project_a = await _create_project(client, org_user["access_token"], name="A")
+    project_b = await _create_project(client, org_user["access_token"], name="B")
+    model_b = await _create_model(client, org_user["access_token"], project_b["id"])
+    file_b = await _create_model_file(project_b["id"], model_b["id"])
+
+    resp = await client.post(
+        f"/projects/{project_a['id']}/bcf-topics",
+        json=_topic(linked_file_id=file_b),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "PROJECT_FILE_NOT_FOUND"
+
+
+async def test_list_filter_by_model_id(client: AsyncClient, org_user: dict[str, str]) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    model_a = await _create_model(client, org_user["access_token"], project["id"], name="A")
+    model_b = await _create_model(client, org_user["access_token"], project["id"], name="B")
+
+    await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(title="On A", linked_model_id=model_a["id"]),
+        headers=_auth(org_user["access_token"]),
+    )
+    await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(title="On B", linked_model_id=model_b["id"]),
+        headers=_auth(org_user["access_token"]),
+    )
+
+    resp = await client.get(
+        f"/projects/{project['id']}/bcf-topics?model_id={model_a['id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 1
+    assert items[0]["title"] == "On A"
+    assert items[0]["linked_model_id"] == model_a["id"]
+
+
+async def test_list_filter_by_file_id(client: AsyncClient, org_user: dict[str, str]) -> None:
+    """file_id is the 'this version only' filter — issues across versions of one model."""
+    project = await _create_project(client, org_user["access_token"])
+    model = await _create_model(client, org_user["access_token"], project["id"])
+    v1 = await _create_model_file(project["id"], model["id"], version=1, filename="v1.ifc")
+    v2 = await _create_model_file(project["id"], model["id"], version=2, filename="v2.ifc")
+
+    await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(title="On v1", linked_file_id=v1),
+        headers=_auth(org_user["access_token"]),
+    )
+    await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(title="On v2", linked_file_id=v2),
+        headers=_auth(org_user["access_token"]),
+    )
+
+    # Model-scoped: both versions show (default viewer behaviour).
+    by_model = await client.get(
+        f"/projects/{project['id']}/bcf-topics?model_id={model['id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert len(by_model.json()) == 2
+
+    # Version-scoped: only the v2 topic.
+    by_file = await client.get(
+        f"/projects/{project['id']}/bcf-topics?file_id={v2}",
+        headers=_auth(org_user["access_token"]),
+    )
+    items = by_file.json()
+    assert len(items) == 1
+    assert items[0]["title"] == "On v2"
+    assert items[0]["model_version"] == 2
+
+
+async def test_list_filter_by_is_2d(client: AsyncClient, org_user: dict[str, str]) -> None:
+    project = await _create_project(client, org_user["access_token"])
+    file_id = await _create_attachment_row(project["id"])
+    # One 3D topic, one 2D topic.
+    await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(title="3D issue", viewpoint=_viewpoint()),
+        headers=_auth(org_user["access_token"]),
+    )
+    await client.post(
+        f"/projects/{project['id']}/bcf-topics",
+        json=_topic(title="2D issue", viewpoint=_viewpoint_2d(file_id=file_id)),
+        headers=_auth(org_user["access_token"]),
+    )
+
+    only_2d = await client.get(
+        f"/projects/{project['id']}/bcf-topics?is_2d=true",
+        headers=_auth(org_user["access_token"]),
+    )
+    items_2d = only_2d.json()
+    assert len(items_2d) == 1
+    assert items_2d[0]["title"] == "2D issue"
+    assert items_2d[0]["is_2d"] is True
+
+    only_3d = await client.get(
+        f"/projects/{project['id']}/bcf-topics?is_2d=false",
+        headers=_auth(org_user["access_token"]),
+    )
+    items_3d = only_3d.json()
+    assert len(items_3d) == 1
+    assert items_3d[0]["title"] == "3D issue"
+
+
 async def test_import_and_roundtrip(client: AsyncClient, org_user: dict[str, str]) -> None:
     """Create a topic, export, import into a different project, verify."""
     project_a = await _create_project(client, org_user["access_token"], name="ExportProj")
@@ -858,3 +1095,41 @@ async def test_import_and_roundtrip(client: AsyncClient, org_user: dict[str, str
     assert body["topics"][0]["title"] == "Roundtrip topic"
     assert len(body["topics"][0]["viewpoints"]) == 1
     assert len(body["topics"][0]["comments"]) == 1
+
+
+async def test_import_matches_header_file_to_model(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """A BCF Header/File with an IfcProject GUID auto-links to the matching model."""
+    from bimstitch_api.bcf.generator import generate_bcf_archive
+    from bimstitch_api.bcf.types import ParsedBcf, ParsedFile, ParsedTopic
+
+    guid = "2O2Fr$t4X7Zf8NOew3FNr2"
+    project = await _create_project(client, org_user["access_token"], name="Importer")
+    model = await _create_model(client, org_user["access_token"], project["id"])
+    file_id = await _create_model_file(
+        project["id"], model["id"], version=1, ifc_project_guid=guid, filename="tower.ifc"
+    )
+
+    archive = generate_bcf_archive(
+        ParsedBcf(
+            version="3.0",
+            topics=[
+                ParsedTopic(
+                    guid=str(uuid4()),
+                    title="Clash near core",
+                    files=[ParsedFile(ifc_project=guid, filename="tower.ifc")],
+                )
+            ],
+        )
+    )
+
+    import_resp = await client.post(
+        f"/projects/{project['id']}/bcf-topics/import",
+        files={"file": ("in.bcf", archive, "application/zip")},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert import_resp.status_code == 200, import_resp.text
+    topic = import_resp.json()["topics"][0]
+    assert topic["linked_model_id"] == model["id"]
+    assert topic["linked_file_id"] == file_id

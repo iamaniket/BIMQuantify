@@ -27,10 +27,16 @@ def _indexed_columns(model: type) -> set[str]:
 
 
 def test_bcf_relationships_force_eager_loading() -> None:
+    # Relationships intentionally eager (not "raise"): the label rows back the
+    # read-only `BcfTopic.labels` property, so they're `selectin` by design.
+    allowed_eager: dict[type, set[str]] = {BcfTopic: {"label_rows"}}
     for model in (BcfTopic, BcfComment, BcfViewpoint):
         lazies = _lazy_by_key(model)
         assert lazies, f"{model.__name__} has no relationships"
+        exempt = allowed_eager.get(model, set())
         for key, lazy in lazies.items():
+            if key in exempt:
+                continue
             assert lazy == "raise", f"{model.__name__}.{key} is lazy={lazy!r}; expected 'raise'"
 
 
@@ -39,6 +45,7 @@ def test_bcf_foreign_keys_are_indexed() -> None:
         "project_id",
         "linked_finding_id",
         "linked_model_id",
+        "linked_file_id",
         "created_by_user_id",
     } <= _indexed_columns(BcfTopic)
     assert {"topic_id", "created_by_user_id"} <= _indexed_columns(BcfComment)

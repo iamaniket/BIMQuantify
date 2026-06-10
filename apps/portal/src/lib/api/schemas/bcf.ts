@@ -112,6 +112,11 @@ export const BcfTopicReadSchema = z.object({
   modified_date: z.union([z.string(), z.null()]),
   linked_finding_id: z.union([z.string().uuid(), z.null()]),
   linked_model_id: z.union([z.string().uuid(), z.null()]),
+  linked_file_id: z.union([z.string().uuid(), z.null()]),
+  is_2d: z.boolean(),
+  // Derived from the linked model version (ProjectFile) for display.
+  model_version: z.union([z.number(), z.null()]).optional(),
+  file_type: z.union([z.string(), z.null()]).optional(),
   created_by_user_id: z.string().uuid(),
   bcf_version: z.string(),
   import_source: z.union([z.string(), z.null()]),
@@ -134,6 +139,12 @@ export const BcfTopicSummarySchema = z.object({
   creation_author: z.string(),
   creation_date: z.string(),
   linked_finding_id: z.union([z.string().uuid(), z.null()]),
+  linked_model_id: z.union([z.string().uuid(), z.null()]).optional(),
+  linked_file_id: z.union([z.string().uuid(), z.null()]).optional(),
+  is_2d: z.boolean(),
+  model_version: z.union([z.number(), z.null()]).optional(),
+  file_type: z.union([z.string(), z.null()]).optional(),
+  has_viewpoint: z.boolean(),
   snapshot_url: z.union([z.string(), z.null()]).optional(),
   created_at: z.string(),
 });
@@ -190,6 +201,8 @@ export const BcfTopicCreateSchema = z.object({
   due_date: z.union([z.string(), z.null()]).optional(),
   linked_finding_id: z.union([z.string().uuid(), z.null()]).optional(),
   linked_model_id: z.union([z.string().uuid(), z.null()]).optional(),
+  linked_file_id: z.union([z.string().uuid(), z.null()]).optional(),
+  is_2d: z.boolean().optional(),
   viewpoint: BcfViewpointCreateSchema.optional(),
 });
 
@@ -207,6 +220,8 @@ export const BcfTopicUpdateSchema = z.object({
   due_date: z.union([z.string(), z.null()]).optional(),
   linked_finding_id: z.union([z.string().uuid(), z.null()]).optional(),
   linked_model_id: z.union([z.string().uuid(), z.null()]).optional(),
+  linked_file_id: z.union([z.string().uuid(), z.null()]).optional(),
+  is_2d: z.boolean().optional(),
 });
 
 export type BcfTopicUpdateInput = z.infer<typeof BcfTopicUpdateSchema>;

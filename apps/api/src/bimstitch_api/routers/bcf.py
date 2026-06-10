@@ -31,6 +31,7 @@ from bimstitch_api.bcf.types import (
     ClippingPlane,
     ParsedBcf,
     ParsedComment,
+    ParsedFile,
     ParsedTopic,
     ParsedViewpoint,
     Vec3,
@@ -39,6 +40,7 @@ from bimstitch_api.models.bcf_comment import BcfComment
 from bimstitch_api.models.bcf_topic import BcfTopic
 from bimstitch_api.models.bcf_topic_label import BcfTopicLabel
 from bimstitch_api.models.bcf_viewpoint import BcfViewpoint
+from bimstitch_api.models.project_file import ProjectFile, ProjectFileRole
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.projects import (
     _load_project_or_404,
@@ -99,11 +101,34 @@ async def _load_topic_or_404(
             selectinload(BcfTopic.viewpoints),
             selectinload(BcfTopic.comments),
             selectinload(BcfTopic.label_rows),
+            selectinload(BcfTopic.linked_file),
         )
     topic = (await session.execute(stmt)).scalar_one_or_none()
     if topic is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BCF_TOPIC_NOT_FOUND")
     return topic
+
+
+async def _load_project_file_or_404(
+    session: AsyncSession,
+    project_id: UUID,
+    file_id: UUID,
+) -> ProjectFile:
+    """Load a ProjectFile that belongs to the project (for topic version links)."""
+    pf = (
+        await session.execute(
+            select(ProjectFile).where(
+                ProjectFile.id == file_id,
+                ProjectFile.project_id == project_id,
+                ProjectFile.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if pf is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="PROJECT_FILE_NOT_FOUND"
+        )
+    return pf
 
 
 async def _load_comment_or_404(
@@ -122,6 +147,32 @@ async def _load_comment_or_404(
     if comment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BCF_COMMENT_NOT_FOUND")
     return comment
+
+
+def _match_file_to_project_file(
+    parsed_files: list[ParsedFile],
+    candidates: list[ProjectFile],
+) -> ProjectFile | None:
+    """Resolve a topic's BCF Header/File entries to a model-source ProjectFile.
+
+    Matches by IfcProject GUID first (stable across versions), falling back to
+    filename. When several versions match, the latest (highest version_number)
+    wins — the sensible default for a fresh import. ``File.Date`` is preserved on
+    round-trip but not used for matching (created_at differs across projects).
+    """
+    for ref in parsed_files:
+        matches: list[ProjectFile] = []
+        if ref.ifc_project:
+            matches = [
+                c
+                for c in candidates
+                if c.ifc_project_guid and c.ifc_project_guid == ref.ifc_project
+            ]
+        if not matches and ref.filename:
+            matches = [c for c in candidates if c.original_filename == ref.filename]
+        if matches:
+            return max(matches, key=lambda c: c.version_number)
+    return None
 
 
 def _snapshot_key(org_schema: str, topic_guid: str, vp_guid: str) -> str:
@@ -177,6 +228,12 @@ async def _topic_to_read(
         "modified_date": topic.modified_date,
         "linked_finding_id": topic.linked_finding_id,
         "linked_model_id": topic.linked_model_id,
+        "linked_file_id": topic.linked_file_id,
+        "is_2d": topic.is_2d,
+        "model_version": topic.linked_file.version_number if topic.linked_file else None,
+        "file_type": (
+            topic.linked_file.file_type.value if topic.linked_file else None
+        ),
         "created_by_user_id": topic.created_by_user_id,
         "bcf_version": topic.bcf_version,
         "import_source": topic.import_source,
@@ -296,6 +353,25 @@ async def create_topic(
 
     now = datetime.now(UTC)
     author = _user_display_name(user)
+
+    # Resolve the model version + dimension. Both fall back to the initial
+    # viewpoint when the caller omits them: the 2D controller already stamps the
+    # viewpoint with linked_file_id + is_2d, so a topic created from it inherits
+    # the right values without the form having to repeat them.
+    vp_payload = payload.viewpoint
+    linked_file_id = payload.linked_file_id
+    if linked_file_id is None and vp_payload is not None:
+        linked_file_id = vp_payload.linked_file_id
+    is_2d = payload.is_2d or (vp_payload.is_2d if vp_payload is not None else False)
+
+    linked_model_id = payload.linked_model_id
+    if linked_file_id is not None:
+        linked_file = await _load_project_file_or_404(session, project.id, linked_file_id)
+        # Backfill the logical-model anchor from the file when not given, so the
+        # list can group issues across versions of the same model.
+        if linked_model_id is None and linked_file.model_id is not None:
+            linked_model_id = linked_file.model_id
+
     topic = BcfTopic(
         project_id=project.id,
         guid=str(uuid4()),
@@ -312,7 +388,9 @@ async def create_topic(
         created_by_user_id=user.id,
         bcf_version=BCF_VERSION,
         linked_finding_id=payload.linked_finding_id,
-        linked_model_id=payload.linked_model_id,
+        linked_model_id=linked_model_id,
+        linked_file_id=linked_file_id,
+        is_2d=is_2d,
     )
     session.add(topic)
     await session.flush()
@@ -354,6 +432,9 @@ async def list_topics(
     topic_status: str | None = Query(default=None, alias="status", max_length=50),
     priority: str | None = Query(default=None, max_length=50),
     topic_type: str | None = Query(default=None, alias="type", max_length=50),
+    model_id: UUID | None = Query(default=None),
+    file_id: UUID | None = Query(default=None),
+    is_2d: bool | None = Query(default=None),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -374,12 +455,22 @@ async def list_topics(
         base = base.where(BcfTopic.priority == priority)
     if topic_type:
         base = base.where(BcfTopic.topic_type == topic_type)
+    # Viewer-scope filters: a model (across all its versions), an exact version
+    # (a ProjectFile), and the 2D/3D dimension. The in-viewer panel filters by
+    # model_id + is_2d by default; file_id is the "this version only" toggle.
+    if model_id is not None:
+        base = base.where(BcfTopic.linked_model_id == model_id)
+    if file_id is not None:
+        base = base.where(BcfTopic.linked_file_id == file_id)
+    if is_2d is not None:
+        base = base.where(BcfTopic.is_2d.is_(is_2d))
 
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
     response.headers["X-Total-Count"] = str(total)
 
     stmt = base.options(
         selectinload(BcfTopic.viewpoints),
+        selectinload(BcfTopic.linked_file),
     ).order_by(BcfTopic.creation_date.desc()).limit(limit).offset(offset)
 
     topics = list((await session.execute(stmt)).scalars().all())
@@ -402,6 +493,16 @@ async def list_topics(
                 creation_author=topic.creation_author,
                 creation_date=topic.creation_date,
                 linked_finding_id=topic.linked_finding_id,
+                linked_model_id=topic.linked_model_id,
+                linked_file_id=topic.linked_file_id,
+                is_2d=topic.is_2d,
+                model_version=(
+                    topic.linked_file.version_number if topic.linked_file else None
+                ),
+                file_type=(
+                    topic.linked_file.file_type.value if topic.linked_file else None
+                ),
+                has_viewpoint=bool(topic.viewpoints),
                 snapshot_url=snapshot_url,
                 created_at=topic.created_at,
             )
@@ -455,7 +556,25 @@ async def import_bcf(
     warnings_list: list[str] = []
     created_topics: list[BcfTopic] = []
 
+    # Model-source files in this project, for matching BCF Header/File → model.
+    candidate_files = list(
+        (
+            await session.execute(
+                select(ProjectFile).where(
+                    ProjectFile.project_id == project.id,
+                    ProjectFile.role == ProjectFileRole.model_source,
+                    ProjectFile.deleted_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+
     for pt in parsed.topics:
+        matched_file = (
+            _match_file_to_project_file(pt.files, candidate_files) if pt.files else None
+        )
         topic = BcfTopic(
             project_id=project.id,
             guid=str(uuid4()),
@@ -474,6 +593,9 @@ async def import_bcf(
             created_by_user_id=user.id,
             bcf_version=parsed.version or BCF_VERSION,
             import_source=file.filename,
+            linked_file_id=matched_file.id if matched_file else None,
+            linked_model_id=matched_file.model_id if matched_file else None,
+            is_2d=any(v.is_2d for v in (pt.viewpoints or [])),
         )
         session.add(topic)
         await session.flush()
@@ -579,6 +701,7 @@ async def export_bcf(
             selectinload(BcfTopic.viewpoints),
             selectinload(BcfTopic.comments),
             selectinload(BcfTopic.label_rows),
+            selectinload(BcfTopic.linked_file),
         )
         .order_by(BcfTopic.creation_date)
     )
@@ -640,6 +763,18 @@ async def export_bcf(
                 viewpoint_guid=c.viewpoint_guid,
             ))
 
+        # Header/File: emit the standard model reference so other BCF tools can
+        # match this topic to the right model + version.
+        files: list[ParsedFile] = []
+        if topic.linked_file is not None:
+            lf = topic.linked_file
+            files.append(ParsedFile(
+                ifc_project=lf.ifc_project_guid,
+                filename=lf.original_filename,
+                date=lf.created_at,
+                is_external=True,
+            ))
+
         parsed_topics.append(ParsedTopic(
             guid=topic.guid,
             title=topic.title,
@@ -655,6 +790,7 @@ async def export_bcf(
             modified_author=topic.modified_author,
             modified_date=topic.modified_date,
             labels=topic.labels,
+            files=files,
             viewpoints=viewpoints,
             comments=comments,
         ))

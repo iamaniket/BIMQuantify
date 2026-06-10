@@ -28,6 +28,11 @@ export type BcfListParams = {
   status?: string | undefined;
   priority?: string | undefined;
   topic_type?: string | undefined;
+  // Viewer-scope filters: a model (all its versions), an exact version
+  // (ProjectFile), and the 2D/3D dimension.
+  model_id?: string | undefined;
+  file_id?: string | undefined;
+  is_2d?: boolean | undefined;
 };
 
 export async function listBcfTopics(
@@ -40,6 +45,9 @@ export async function listBcfTopics(
   if (params?.status) qs.set('status', params.status);
   if (params?.priority) qs.set('priority', params.priority);
   if (params?.topic_type) qs.set('topic_type', params.topic_type);
+  if (params?.model_id) qs.set('model_id', params.model_id);
+  if (params?.file_id) qs.set('file_id', params.file_id);
+  if (params?.is_2d !== undefined) qs.set('is_2d', String(params.is_2d));
   const query = qs.toString();
   const path = query ? `${basePath(projectId)}?${query}` : basePath(projectId);
   return apiClient.get<BcfTopicList>(path, BcfTopicListSchema, accessToken);
