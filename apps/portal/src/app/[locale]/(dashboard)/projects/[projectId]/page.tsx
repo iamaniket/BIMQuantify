@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 
 import { useEffect, useMemo, useState, type JSX } from 'react';
 
-import { IconButton, Skeleton } from '@bimstitch/ui';
+import { Button, Skeleton } from '@bimstitch/ui';
 import { Pencil, Share2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 
@@ -130,22 +130,19 @@ export default function ProjectDetailPage(): JSX.Element {
 
   const heroAction = (
     <>
-      <IconButton
-        size="sm"
-        aria-label={tHero('editProject')}
+      <Button
+        variant="border"
         disabled={isProjectArchived(project)}
         onClick={() => { setEditOpen(true); }}
       >
-        <Pencil className="h-4 w-4" />
-      </IconButton>
-      <Link
-        href={`/projects/${project.id}/access`}
-        title={tHero('shareProject')}
-        aria-label={tHero('shareProject')}
-        className="inline-grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded border border-transparent bg-transparent text-foreground-tertiary transition-colors hover:bg-background-hover"
-      >
-        <Share2 className="h-4 w-4" />
-      </Link>
+        <Pencil className="mr-1 h-3.5 w-3.5" />
+        {tHero('editProject')}
+      </Button>
+      <Button variant="border" size="md" asChild>
+        <Link href={`/projects/${project.id}/access`}>
+          <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('shareProject')}
+        </Link>
+      </Button>
     </>
   );
 

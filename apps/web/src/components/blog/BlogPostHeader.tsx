@@ -13,7 +13,7 @@ export function BlogPostHeader({ meta }: BlogPostHeaderProps): JSX.Element {
     <header className="mb-10 flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         {meta.tags.map((tag) => (
-          <Badge key={tag} variant="primary" size="sm">
+          <Badge key={tag} variant="primary" size="md">
             {tag}
           </Badge>
         ))}

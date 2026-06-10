@@ -23,7 +23,7 @@ export function MultiElementHeader({
 
   return (
     <div className="flex items-center gap-2 truncate bg-surface-main px-[21px] py-2 leading-snug">
-      <Eyebrow size="sm" className="shrink-0 tracking-[0.06em]">
+      <Eyebrow size="md" className="shrink-0 tracking-[0.06em]">
         {eyebrowLabel}
       </Eyebrow>
       <span className="shrink-0 text-foreground-tertiary">:</span>

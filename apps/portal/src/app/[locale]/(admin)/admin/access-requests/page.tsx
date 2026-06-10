@@ -122,7 +122,7 @@ export default function AdminAccessRequestsPage(): JSX.Element {
       {/* Toolbar */}
       <TableToolbar
         actions={
-          <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
+          <Button size="md" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
             <Download className="mr-1 h-3.5 w-3.5" />
             {t('exportButton')}
           </Button>

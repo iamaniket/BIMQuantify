@@ -25,7 +25,7 @@ function SpatialRows({ node, depth }: { node: SpatialNode; depth: number }): JSX
         className="grid min-h-[30px] select-text items-center gap-2.5 border-l-2 border-transparent pr-2.5 transition-colors hover:bg-background-hover"
         style={{ paddingLeft: `${10 + depth * 14}px`, gridTemplateColumns: 'auto 1fr' }}
       >
-        <Eyebrow size="sm" title={node.type} className="shrink-0 tracking-[0.04em]">
+        <Eyebrow size="md" title={node.type} className="shrink-0 tracking-[0.04em]">
           {node.type}
         </Eyebrow>
         <span className="truncate font-sans text-[13px] leading-tight text-foreground">

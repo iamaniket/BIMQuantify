@@ -102,7 +102,7 @@ export default function ReportDetailPage(): JSX.Element {
     return (
       <main className="p-6">
         <Link href={`/projects/${projectId}`}>
-          <Button variant="border" size="sm">
+          <Button variant="border" size="md">
             <ArrowLeft className="mr-1.5 h-3 w-3" /> {t('backToProject')}
           </Button>
         </Link>
@@ -116,7 +116,7 @@ export default function ReportDetailPage(): JSX.Element {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href={`/projects/${projectId}`}>
-            <Button variant="border" size="sm">
+            <Button variant="border" size="md">
               <ArrowLeft className="mr-1.5 h-3 w-3" /> {t('backToProject')}
             </Button>
           </Link>
@@ -176,7 +176,7 @@ export default function ReportDetailPage(): JSX.Element {
             {tokens !== null && modelId !== undefined && (
               <Button
                 variant="border"
-                size="sm"
+                size="md"
                 onClick={() => { void handleDownloadRulesCsv(); }}
                 disabled={
                   rulesDownloading

@@ -440,7 +440,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const toolbar = tab === 'organizations' ? (
     <TableToolbar
       actions={
-        <Button size="sm" className="whitespace-nowrap" onClick={() => { setCreateOpen(true); }}>
+        <Button size="md" className="whitespace-nowrap" onClick={() => { setCreateOpen(true); }}>
           <Plus className="mr-1 h-3.5 w-3.5" />
           {t('createButton')}
         </Button>
@@ -457,7 +457,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
   ) : tab === 'blog' ? (
     <TableToolbar
       actions={
-        <Button size="sm" className="whitespace-nowrap" onClick={() => { setBlogCreateOpen(true); }}>
+        <Button size="md" className="whitespace-nowrap" onClick={() => { setBlogCreateOpen(true); }}>
           <Plus className="mr-1 h-3.5 w-3.5" />
           {tBlog('createButton')}
         </Button>
@@ -477,7 +477,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
   ) : tab === 'requests' ? (
     <TableToolbar
       actions={
-        <Button size="sm" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
+        <Button size="md" variant="border" className="whitespace-nowrap" onClick={() => { void handleExport(); }}>
           <Download className="mr-1 h-3.5 w-3.5" />
           {tReq('exportButton')}
         </Button>
@@ -498,9 +498,9 @@ export default function AdminOrganizationsPage(): JSX.Element {
       hero={<AdminOrgsHero organizations={allOrgs} pendingRequests={pendingRequestCount} />}
       tabs={[
         { value: 'overview', label: t('tabs.overview'), icon: <LayoutGrid className="h-4 w-4" /> },
-        { value: 'organizations', label: t('tabs.organizations'), icon: <Table2 className="h-4 w-4" />, badge: <Badge variant="primary" size="sm" bordered={false}>{allOrgs.length}</Badge> },
-        { value: 'requests', label: t('tabs.requests'), icon: <Inbox className="h-4 w-4" />, badge: pendingRequestCount > 0 ? <Badge variant="primary" size="sm" bordered={false}>{pendingRequestCount}</Badge> : undefined },
-        { value: 'blog', label: tBlog('tab'), icon: <BookOpen className="h-4 w-4" />, badge: <Badge variant="default" size="sm" bordered={false}>{blogPosts.length}</Badge> },
+        { value: 'organizations', label: t('tabs.organizations'), icon: <Table2 className="h-4 w-4" />, badge: <Badge variant="primary" size="md" bordered={false}>{allOrgs.length}</Badge> },
+        { value: 'requests', label: t('tabs.requests'), icon: <Inbox className="h-4 w-4" />, badge: pendingRequestCount > 0 ? <Badge variant="primary" size="md" bordered={false}>{pendingRequestCount}</Badge> : undefined },
+        { value: 'blog', label: tBlog('tab'), icon: <BookOpen className="h-4 w-4" />, badge: <Badge variant="default" size="md" bordered={false}>{blogPosts.length}</Badge> },
       ]}
       activeTab={tab}
       onTabChange={setTab}

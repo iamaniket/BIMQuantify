@@ -28,7 +28,7 @@ export function HeroShell({
     <div className="relative h-full overflow-hidden bg-surface-main text-foreground">
       <BlueprintTexture />
 
-      <div className="relative z-10 flex h-full items-center gap-5 px-4 py-4 sm:px-5">
+      <div className="relative z-10 flex h-full items-stretch gap-5 px-4 py-4 sm:px-5">
         {/* Left — general info (image + identity) */}
         <div className="flex min-w-0 flex-1 items-center gap-5">
           <div className="hidden shrink-0 xl:block">{image}</div>
@@ -53,13 +53,13 @@ export function HeroShell({
           </div>
         </div>
 
-        {/* Right — KPI cards + optional action (40% width) */}
-        <div className="hidden w-2/5 shrink-0 items-center xl:flex">
-          <div className="min-w-0 flex-1">
+        {/* Right — KPI cards centered + action pinned to image bottom (40% width) */}
+        <div className="hidden min-w-0 flex-1 flex-col xl:flex">
+          <div className="flex flex-1 items-center">
             <KpiStrip items={kpis} />
           </div>
           {action !== undefined && (
-            <div className="flex shrink-0 items-center gap-1.5 pl-2">{action}</div>
+            <div className="flex items-center gap-1.5 pb-2 pl-[22px]">{action}</div>
           )}
         </div>
       </div>

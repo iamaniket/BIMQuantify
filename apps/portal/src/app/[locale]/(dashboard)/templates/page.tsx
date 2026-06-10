@@ -72,7 +72,7 @@ export default function TemplatesPage(): JSX.Element {
           label: t('tabs.templates'),
           icon: <Table2 className="h-4 w-4" />,
           badge: (
-            <Badge variant="primary" size="sm" bordered={false}>
+            <Badge variant="primary" size="md" bordered={false}>
               {templates.length}
             </Badge>
           ),
@@ -85,7 +85,7 @@ export default function TemplatesPage(): JSX.Element {
         tab === 'templates' && canManage ? (
           <TableToolbar
             actions={
-              <Button size="sm" className="whitespace-nowrap" onClick={openCreate}>
+              <Button size="md" className="whitespace-nowrap" onClick={openCreate}>
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 {t('list.newButton')}
               </Button>

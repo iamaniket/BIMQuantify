@@ -94,7 +94,7 @@ export default function CertificatesPage(): JSX.Element {
           value: 'certificates',
           label: t('tabs.certificates'),
           icon: <Table2 className="h-4 w-4" />,
-          badge: <Badge variant="primary" size="sm" bordered={false}>{certificates.length}</Badge>,
+          badge: <Badge variant="primary" size="md" bordered={false}>{certificates.length}</Badge>,
         },
       ]}
       activeTab={tab}
@@ -104,7 +104,7 @@ export default function CertificatesPage(): JSX.Element {
         tab === 'certificates' ? (
           <TableToolbar
             actions={
-              <Button size="sm" className="whitespace-nowrap" onClick={() => { setUploadOpen(true); }}>
+              <Button size="md" className="whitespace-nowrap" onClick={() => { setUploadOpen(true); }}>
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 {t('list.uploadButton')}
               </Button>

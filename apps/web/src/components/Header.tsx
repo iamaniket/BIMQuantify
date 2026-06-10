@@ -49,7 +49,7 @@ export function Header(): JSX.Element {
           <LanguageToggle />
           <ThemeToggle />
           <a href={portalUrl} className="hidden sm:inline-block">
-            <Button variant="primary" size="sm">
+            <Button variant="primary" size="md">
               {t('signIn')}
             </Button>
           </a>
@@ -78,7 +78,7 @@ export function Header(): JSX.Element {
               </Link>
             ))}
             <a href={portalUrl}>
-              <Button variant="primary" size="sm" className="w-full">
+              <Button variant="primary" size="md" className="w-full">
                 {t('signIn')}
               </Button>
             </a>

@@ -25,7 +25,7 @@ export function BlogPostCard({ post }: BlogPostCardProps): JSX.Element {
       <div className="flex flex-col gap-3 p-6">
         <div className="flex flex-wrap items-center gap-2">
           {post.tags.map((tag) => (
-            <Badge key={tag} variant="primary" size="sm">
+            <Badge key={tag} variant="primary" size="md">
               {tag}
             </Badge>
           ))}

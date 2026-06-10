@@ -233,7 +233,7 @@ function ProfilePane({
                       />
                       <Button
                         variant="primary"
-                        size="sm"
+                        size="md"
                         disabled={nameBusy}
                         onClick={onSaveName}
                         className="flex items-center gap-1"
@@ -243,7 +243,7 @@ function ProfilePane({
                       </Button>
                       <Button
                         variant="border"
-                        size="sm"
+                        size="md"
                         disabled={nameBusy}
                         onClick={onCancelEditName}
                       >
@@ -282,7 +282,7 @@ function ProfilePane({
             <div className="flex gap-2">
               <Button
                 variant="border"
-                size="sm"
+                size="md"
                 disabled={avatarBusy}
                 onClick={() => { fileRef.current?.click(); }}
                 className="flex items-center gap-1.5"
@@ -293,7 +293,7 @@ function ProfilePane({
               {hasAvatar && (
                 <Button
                   variant="border"
-                  size="sm"
+                  size="md"
                   disabled={avatarBusy}
                   onClick={onAvatarRemove}
                   className="flex items-center gap-1.5 text-error"
@@ -459,7 +459,7 @@ function InvitationsPane({
                 <div className="mt-3 flex gap-2">
                   <Button
                     variant="primary"
-                    size="sm"
+                    size="md"
                     disabled={isPending}
                     onClick={() => { onAccept(inv.organization_id); }}
                     className="flex items-center gap-1.5"
@@ -469,7 +469,7 @@ function InvitationsPane({
                   </Button>
                   <Button
                     variant="border"
-                    size="sm"
+                    size="md"
                     disabled={isPending}
                     onClick={() => { onDecline(inv.organization_id); }}
                     className="flex items-center gap-1.5"
@@ -678,7 +678,7 @@ export default function AccountPage(): JSX.Element {
           label: t('tabs.invitations'),
           icon: <Mail className="h-4 w-4" />,
           badge: invitations.length > 0 ? (
-            <Badge variant="primary" size="sm" bordered={false}>{invitations.length}</Badge>
+            <Badge variant="primary" size="md" bordered={false}>{invitations.length}</Badge>
           ) : undefined,
         },
       ]}

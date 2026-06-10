@@ -269,7 +269,7 @@ function MembersToolbar({
       </Select>
       <div className="flex-1" />
       {canManage && (
-        <Button size="sm" onClick={onAddMember}>
+        <Button size="md" onClick={onAddMember}>
           <Plus className="mr-1 h-3.5 w-3.5" />
           {addLabel}
         </Button>
@@ -445,7 +445,7 @@ export default function ProjectAccessPage(): JSX.Element {
           value: 'members',
           label: t('tabs.members'),
           icon: <Users className="h-4 w-4" />,
-          badge: <Badge variant="primary" size="sm" bordered={false}>{members.length}</Badge>,
+          badge: <Badge variant="primary" size="md" bordered={false}>{members.length}</Badge>,
         },
       ]}
       activeTab={tab}
