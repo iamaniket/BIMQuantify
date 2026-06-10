@@ -7,7 +7,7 @@ import { uploadFileEnd2End, type UploadProgressEvent } from '@/lib/api/projectFi
 import type { ProjectFile } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
-import { modelFilesKey, modelKey } from './queryKeys';
+import { modelFilesKey, modelKey, modelsKey, modelsWithVersionsKey } from './queryKeys';
 
 type UploadInput = {
   projectId: string;
@@ -23,6 +23,8 @@ export function useUploadModelFile(): UseMutationResult<ProjectFile, Error, Uplo
     invalidateKeys: ({ projectId, modelId }) => [
       modelFilesKey(projectId, modelId),
       modelKey(projectId, modelId),
+      modelsWithVersionsKey(projectId),
+      modelsKey(projectId),
     ],
     onSuccess: (file, vars) => {
       track(PORTAL_EVENTS.FILE_UPLOADED, {

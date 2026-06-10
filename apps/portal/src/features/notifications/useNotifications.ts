@@ -18,10 +18,13 @@ import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import { notificationsKey, unreadCountKey } from './queryKeys';
 
+const POLL_FALLBACK_MS = 30_000;
+
 export function useNotifications(): UseQueryResult<NotificationListResponse> {
   return useAuthQuery({
     queryKey: notificationsKey,
     queryFn: (accessToken) => listNotifications(accessToken),
+    refetchInterval: POLL_FALLBACK_MS,
   });
 }
 
@@ -29,6 +32,7 @@ export function useUnreadCount(): UseQueryResult<UnreadCountResponse> {
   return useAuthQuery({
     queryKey: unreadCountKey,
     queryFn: (accessToken) => getUnreadCount(accessToken),
+    refetchInterval: POLL_FALLBACK_MS,
   });
 }
 

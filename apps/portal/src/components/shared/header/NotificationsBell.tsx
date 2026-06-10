@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Bell, CheckCircle2, Clock, Loader2, RefreshCw, X } from '@bimstitch/ui/icons';
+import { AlertTriangle, Bell, CheckCircle2, Clock, Loader2, Mail, RefreshCw, Search, UserPlus, X } from '@bimstitch/ui/icons';
 import {
   useEffect, useRef, useState, type JSX,
 } from 'react';
@@ -38,6 +38,10 @@ const ICON_BY_TYPE: Record<NotificationEventTypeValue, JSX.Element> = {
   job_failed: <AlertTriangle className="h-3 w-3" aria-hidden />,
   deadline_upcoming: <Clock className="h-3 w-3" aria-hidden />,
   deadline_missed: <AlertTriangle className="h-3 w-3" aria-hidden />,
+  finding_created: <Search className="h-3 w-3" aria-hidden />,
+  finding_resolved: <CheckCircle2 className="h-3 w-3" aria-hidden />,
+  invitation_sent: <Mail className="h-3 w-3" aria-hidden />,
+  invitation_accepted: <UserPlus className="h-3 w-3" aria-hidden />,
 };
 
 const TONE_BY_TYPE: Record<NotificationEventTypeValue, string> = {
@@ -47,6 +51,10 @@ const TONE_BY_TYPE: Record<NotificationEventTypeValue, string> = {
   job_failed: 'bg-error-lighter text-error',
   deadline_upcoming: 'bg-warning-lighter text-warning',
   deadline_missed: 'bg-error-lighter text-error',
+  finding_created: 'bg-warning-lighter text-warning',
+  finding_resolved: 'bg-success-lighter text-success',
+  invitation_sent: 'bg-info-lighter text-info-hover',
+  invitation_accepted: 'bg-success-lighter text-success',
 };
 
 function formatRelative(iso: string, t: ReturnType<typeof useTranslations>): string {

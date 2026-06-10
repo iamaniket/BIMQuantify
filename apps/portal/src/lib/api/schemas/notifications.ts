@@ -7,6 +7,10 @@ export const NotificationEventTypeEnum = z.enum([
   'job_progress',
   'deadline_upcoming',
   'deadline_missed',
+  'finding_created',
+  'finding_resolved',
+  'invitation_sent',
+  'invitation_accepted',
 ]);
 
 export type NotificationEventTypeValue = z.infer<typeof NotificationEventTypeEnum>;
