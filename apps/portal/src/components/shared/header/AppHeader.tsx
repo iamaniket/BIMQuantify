@@ -116,7 +116,7 @@ export function AppHeader({
 
   return (
     <header
-      className="relative flex h-[52px] shrink-0 items-center gap-2 border-b border-white/10 bg-[var(--brand-gradient-start)] px-4 text-white"
+      className="relative flex h-[46px] shrink-0 items-center gap-2 border-b border-white/10 bg-[var(--brand-gradient-start)] px-4 text-white"
     >
       <GridTexture />
 
