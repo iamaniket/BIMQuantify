@@ -19,9 +19,7 @@ export type DocumentAction =
   | 'toolSelect'
   | 'toolPan'
   | 'toolZoom'
-  | 'addFinding'
-  | 'addAttachment'
-  | 'viewCertificates';
+  | 'addFinding';
 
 /** Pre-defined mouse gestures we surface in the settings UI. */
 export type DocumentMouseGesture =
@@ -73,8 +71,6 @@ export const DEFAULT_DOCUMENT_SHORTCUTS: DocumentShortcutMap = {
   toolPan: 'H',
   toolZoom: 'Z',
   addFinding: 'B',
-  addAttachment: 'A',
-  viewCertificates: 'C',
 };
 
 export const DEFAULT_DOCUMENT_MOUSE_BINDINGS: DocumentMouseBindingMap = {
@@ -199,6 +195,4 @@ export const DOCUMENT_ACTION_LABEL_KEYS: Record<DocumentAction, string> = {
   toolPan: 'action.toolPan',
   toolZoom: 'action.toolZoom',
   addFinding: 'action.addFinding',
-  addAttachment: 'action.addAttachment',
-  viewCertificates: 'action.viewCertificates',
 };

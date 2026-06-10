@@ -5,7 +5,6 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_active_user
@@ -82,8 +81,9 @@ async def logout_all(
     the presented access/refresh pair for immediacy. A bad token or Redis hiccup
     there must not fail the logout — the epoch already covers those tokens.
     """
-    now = datetime.now(tz=UTC)
-    await session.execute(update(User).where(User.id == user.id).values(tokens_valid_after=now))
+    # `user` was loaded via the same (cached) master session, so it is attached
+    # here — mutate + commit directly.
+    user.tokens_valid_after = datetime.now(tz=UTC)
     await session.commit()
 
     try:

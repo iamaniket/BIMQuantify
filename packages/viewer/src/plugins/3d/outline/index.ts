@@ -60,6 +60,7 @@ export function outlinePlugin(
   let cleanup: (() => void) | null = null;
   let currentPlanes: THREE.Plane[] = [];
   let clipCount = 0;
+  let revealTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Mirrored visibility state, keyed by modelId. When isolation is active the
   // visible set is `isolated`; otherwise it's everything minus `hidden`.
@@ -204,7 +205,14 @@ export function outlinePlugin(
         void seedCache(ctx, modelId).then(() => {
           ctx.events.emit('outline:ready', { modelId });
           rebuildLines();
-          updateVisibility();
+          // Keep lines hidden until the model's initial tile streaming
+          // settles — otherwise outlines flash before geometry arrives.
+          for (const line of lines) line.visible = false;
+          if (revealTimer !== null) clearTimeout(revealTimer);
+          revealTimer = setTimeout(() => {
+            revealTimer = null;
+            updateVisibility();
+          }, 500);
         });
       });
       const offIdle = ctx.events.on('viewer:idle', () => {
@@ -314,6 +322,7 @@ export function outlinePlugin(
     uninstall() {
       cleanup?.();
       cleanup = null;
+      if (revealTimer !== null) { clearTimeout(revealTimer); revealTimer = null; }
       clearLines();
       material?.dispose();
       material = null;

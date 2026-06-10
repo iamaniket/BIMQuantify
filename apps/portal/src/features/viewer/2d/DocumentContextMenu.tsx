@@ -1,6 +1,6 @@
 'use client';
 
-import { FileBadge, Flag, Paperclip, FrameCorners } from '@bimstitch/ui/icons';
+import { Flag, FrameCorners } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   forwardRef,
@@ -31,7 +31,7 @@ type MenuItem = {
 
 type Props = {
   handle: DocumentViewerHandle | null;
-  onRequestInspector: (view: 'attachments' | 'findings' | 'certificates') => void;
+  onRequestInspector: (view: 'findings') => void;
   shortcuts?: DocumentShortcutMap;
   ready: boolean | undefined;
 };
@@ -210,26 +210,6 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, rea
         action: () => {
           stashPoint();
           onRequestInspector('findings');
-          closeMenu();
-        },
-      },
-      {
-        label: t('attach'),
-        icon: <Paperclip className={ICON_CLASS} />,
-        shortcut: sc('addAttachment'),
-        action: () => {
-          stashPoint();
-          onRequestInspector('attachments');
-          closeMenu();
-        },
-      },
-      {
-        label: t('viewCertificates'),
-        icon: <FileBadge className={ICON_CLASS} />,
-        shortcut: sc('viewCertificates'),
-        action: () => {
-          stashPoint();
-          onRequestInspector('certificates');
           closeMenu();
         },
       },

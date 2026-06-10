@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { anchorReadFields } from './anchor';
-
 export const CertificateTypeEnum = z.enum([
   'product',
   'installation_test',
@@ -32,10 +30,6 @@ export const CertificateSchema = z.object({
   subject: z.union([z.string(), z.null()]),
   valid_from: z.union([z.string(), z.null()]),
   valid_until: z.union([z.string(), z.null()]),
-  linked_element_global_id: z.union([z.string(), z.null()]),
-  linked_model_id: z.union([z.string().uuid(), z.null()]),
-  linked_file_id: z.union([z.string().uuid(), z.null()]),
-  ...anchorReadFields,
   org_certificate_id: z.union([z.string().uuid(), z.null()]),
   version_number: z.number(),
   parent_certificate_id: z.union([z.string().uuid(), z.null()]),

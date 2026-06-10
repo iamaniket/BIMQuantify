@@ -47,12 +47,10 @@ import { DocumentContextMenu } from '@/features/viewer/2d/DocumentContextMenu';
 import { DrawingCanvas } from '@/features/viewer/2d/drawing/DrawingCanvas';
 import { DrawingInfoBody } from '@/features/viewer/2d/drawing/DrawingInfoBody';
 import { useDrawingMetadata } from '@/features/viewer/2d/drawing/useDrawingMetadata';
-import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { useEntityMarkers3D } from '@/features/viewer/3d/useEntityMarkers3D';
 import { useEntityMarkers2D } from '@/features/viewer/2d/useEntityMarkers2D';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
-import { CertificateViewerDialog } from '@/features/certificates/CertificateViewerDialog';
 import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoadingOverlay';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
 import { StatusBar } from '@/features/viewer/shared/StatusBar';
@@ -156,15 +154,11 @@ export default function ViewerPage(): JSX.Element {
   const [pdfRotation, setPdfRotation] = useState<DocumentRotation>(0);
   const [pdfSettings, setPdfSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
-  const [pdfPinMode, setPdfPinMode] = useState(false);
-  const [pdfPinViewAttachment, setPdfPinViewAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
   const [mobileBannerDismissed, setMobileBannerDismissed] = useState(() => {
     if (typeof window === 'undefined') return true;
     return sessionStorage.getItem('bimstitch.viewerMobileBanner') === 'dismissed';
   });
   const [markerFinding, setMarkerFinding] = useState<import('@/lib/api/schemas').Finding | null>(null);
-  const [markerCertificate, setMarkerCertificate] = useState<import('@/lib/api/schemas').Certificate | null>(null);
-  const [markerAttachment, setMarkerAttachment] = useState<import('@/lib/api/schemas').Attachment | null>(null);
 
   // 2D BCF markup (PDF annotations): draft-create + click-to-open flow.
   const [markupCreateNonce, setMarkupCreateNonce] = useState(0);
@@ -173,7 +167,7 @@ export default function ViewerPage(): JSX.Element {
   const tMarkup = useTranslations('viewer.markup');
 
   const [inspectorRequest, setInspectorRequest] = useState<{
-    view: 'attachments' | 'findings' | 'certificates';
+    view: 'findings';
     nonce: number;
   } | null>(null);
   const [propertiesExpanded, setPropertiesExpanded] = useState(true);
@@ -205,7 +199,7 @@ export default function ViewerPage(): JSX.Element {
         setPropertiesExpanded(true);
       } else {
         setActivePanel('inspector');
-        setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
+        setInspectorRequest((prev) => ({ view: 'findings', nonce: (prev?.nonce ?? 0) + 1 }));
       }
     });
   }, [viewerReady]);
@@ -356,7 +350,7 @@ export default function ViewerPage(): JSX.Element {
   const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady && !isDrawing;
 
   // Entity markers for the 3D (IFC) viewer.
-  const { clickedFinding, clickedCertificate, clickedAttachment, clearClicked } = useEntityMarkers3D(
+  const { clickedFinding, clearClicked } = useEntityMarkers3D(
     viewerHandleRef.current,
     projectId,
     isIfc ? fileId : null,
@@ -367,39 +361,15 @@ export default function ViewerPage(): JSX.Element {
     if (clickedFinding) setMarkerFinding(clickedFinding);
   }, [clickedFinding]);
 
-  useEffect(() => {
-    if (clickedCertificate) setMarkerCertificate(clickedCertificate);
-  }, [clickedCertificate]);
-
-  useEffect(() => {
-    if (clickedAttachment) setMarkerAttachment(clickedAttachment);
-  }, [clickedAttachment]);
-
-  // PDF pin placement: stash the intent so the attachments inspector picks it up.
-  const handlePdfPinPlace = useCallback(
-    (point: { x: number; y: number }) => {
-      setPdfPinMode(false);
-      const pinData = JSON.stringify({
-        type: 'pdf', page: pdfCurrentPage, x: point.x, y: point.y,
-      });
-      sessionStorage.setItem('bimstitch.pendingPdfPin', pinData);
-      setActivePanel('inspector');
-    },
-    [pdfCurrentPage],
-  );
-
-  // 2D entity markers (findings / certificates / attachments) render as three.js
-  // glyphs in the shared scene via the entity-marker-2d plugin; clicks + pin
-  // placement arrive through the document handle's event bus.
+  // 2D entity markers (findings) render as three.js glyphs in the shared scene
+  // via the entity-marker-2d plugin; clicks arrive through the document handle's
+  // event bus.
   useEntityMarkers2D(documentHandle, {
     projectId,
     fileId,
     page: pdfCurrentPage,
     enabled: isPdf,
     onFindingClick: (f) => setMarkerFinding(f),
-    onCertificateClick: (c) => setMarkerCertificate(c),
-    onAttachmentClick: (a) => setPdfPinViewAttachment(a),
-    onPlace: handlePdfPinPlace,
   });
 
   // Per-page vector geometry (artifact `i` is 0-based; pdfCurrentPage is 1-based).
@@ -476,33 +446,15 @@ export default function ViewerPage(): JSX.Element {
     [documentHandle, queryClient, projectId, fileId],
   );
 
-  const handleMarkupToolChange = useCallback((tool: MarkupTool | null) => {
-    if (tool !== null) {
-      setPdfPinMode(false);
-      documentHandle?.commands.execute('entity-marker-2d.endPlace').catch(() => undefined);
-    }
-  }, [documentHandle]);
+  const handleMarkupToolChange = useCallback((_tool: MarkupTool | null) => {
+    // Markup tool selection no longer interacts with marker placement.
+  }, []);
 
   const handlePdfActiveToolChange = useCallback((tool: DocumentActiveTool) => {
     setPdfActiveTool(tool);
   }, []);
 
-  // Pin placement and measurement both drive page interaction — keep them
-  // mutually exclusive, and drive the marker plugin's placement mode.
-  const handlePdfPinModeChange = useCallback((next: boolean) => {
-    setPdfPinMode(next);
-    if (next) {
-      setPdfActiveTool('select');
-      documentHandle?.commands.execute('measure.deactivate').catch(() => undefined);
-      documentHandle?.commands
-        .execute('entity-marker-2d.beginPlace', { type: 'attachment' })
-        .catch(() => undefined);
-    } else {
-      documentHandle?.commands.execute('entity-marker-2d.endPlace').catch(() => undefined);
-    }
-  }, [documentHandle]);
-
-  const handleDocContextMenuInspector = useCallback((view: 'attachments' | 'findings' | 'certificates') => {
+  const handleDocContextMenuInspector = useCallback((view: 'findings') => {
     setActivePanel('inspector');
     setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
@@ -535,8 +487,6 @@ export default function ViewerPage(): JSX.Element {
       toolPan: () => { setPdfActiveTool('pan'); },
       toolZoom: () => { setPdfActiveTool('zoom'); },
       addFinding: () => { handleDocContextMenuInspector('findings'); },
-      addAttachment: () => { handleDocContextMenuInspector('attachments'); },
-      viewCertificates: () => { handleDocContextMenuInspector('certificates'); },
     },
   });
 
@@ -661,8 +611,6 @@ export default function ViewerPage(): JSX.Element {
                   {...(isPdf ? {
                     isPdf: true,
                     pdfCurrentPage,
-                    pdfPinMode,
-                    onPdfPinModeChange: handlePdfPinModeChange,
                   } : {})}
                 />
               }
@@ -798,32 +746,12 @@ export default function ViewerPage(): JSX.Element {
         fileId={fileId}
       />
 
-      {/* PDF pin attachment viewer */}
-      <AttachmentViewerDialog
-        attachment={pdfPinViewAttachment}
-        projectId={projectId}
-        open={pdfPinViewAttachment !== null}
-        onOpenChange={(open) => { if (!open) setPdfPinViewAttachment(null); }}
-      />
-
-      {/* Entity marker detail modals */}
+      {/* Entity marker detail modal */}
       <FindingDetailModal
         projectId={projectId}
         finding={markerFinding}
         open={markerFinding !== null}
         onOpenChange={(open) => { if (!open) { setMarkerFinding(null); clearClicked(); } }}
-      />
-      <CertificateViewerDialog
-        projectId={projectId}
-        certificate={markerCertificate}
-        open={markerCertificate !== null}
-        onOpenChange={(open) => { if (!open) { setMarkerCertificate(null); clearClicked(); } }}
-      />
-      <AttachmentViewerDialog
-        attachment={markerAttachment}
-        projectId={projectId}
-        open={markerAttachment !== null}
-        onOpenChange={(open) => { if (!open) { setMarkerAttachment(null); clearClicked(); } }}
       />
       </div>
       {showChrome && bundle !== null ? (

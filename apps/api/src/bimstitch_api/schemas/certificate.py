@@ -6,7 +6,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from bimstitch_api.models.certificate import CertificateStatus, CertificateType
-from bimstitch_api.schemas.anchor import validate_linked_anchor
 
 _HEX_SHA256 = r"^[a-f0-9]{64}$"
 
@@ -23,16 +22,6 @@ class CertificateInitiateRequest(BaseModel):
     valid_from: date | None = None
     valid_until: date | None = None
     description: str | None = Field(default=None, max_length=2000)
-    linked_element_global_id: str | None = Field(default=None, max_length=255)
-    linked_model_id: UUID | None = None
-    linked_file_id: UUID | None = None
-    # Anchor geometry — dedicated fields keyed by linked_file_type (see
-    # schemas/anchor.py); validated together below.
-    linked_file_type: str | None = None
-    anchor_x: float | None = None
-    anchor_y: float | None = None
-    anchor_z: float | None = None
-    anchor_page: int | None = None
     # When set, supersede an existing certificate: the new row joins that
     # certificate's version group as the next version. May reference any version
     # in the group; the root is resolved server-side.
@@ -46,13 +35,6 @@ class CertificateInitiateRequest(BaseModel):
             and self.valid_until < self.valid_from
         ):
             raise ValueError("valid_until must not be earlier than valid_from")
-        validate_linked_anchor(
-            self.linked_file_type,
-            anchor_x=self.anchor_x,
-            anchor_y=self.anchor_y,
-            anchor_z=self.anchor_z,
-            anchor_page=self.anchor_page,
-        )
         return self
 
 
@@ -83,14 +65,6 @@ class CertificateRead(BaseModel):
     subject: str | None
     valid_from: date | None
     valid_until: date | None
-    linked_element_global_id: str | None
-    linked_model_id: UUID | None
-    linked_file_id: UUID | None
-    linked_file_type: str | None
-    anchor_x: float | None
-    anchor_y: float | None
-    anchor_z: float | None
-    anchor_page: int | None
     org_certificate_id: UUID | None
     version_number: int
     parent_certificate_id: UUID | None
@@ -106,14 +80,6 @@ class CertificateUpdateRequest(BaseModel):
     valid_from: date | None = None
     valid_until: date | None = None
     description: str | None = Field(default=None, max_length=2000)
-    linked_element_global_id: str | None = Field(default=None, max_length=255)
-    linked_model_id: UUID | None = None
-    linked_file_id: UUID | None = None
-    linked_file_type: str | None = None
-    anchor_x: float | None = None
-    anchor_y: float | None = None
-    anchor_z: float | None = None
-    anchor_page: int | None = None
 
     @model_validator(mode="after")
     def _check_validity_window(self) -> CertificateUpdateRequest:
@@ -123,13 +89,6 @@ class CertificateUpdateRequest(BaseModel):
             and self.valid_until < self.valid_from
         ):
             raise ValueError("valid_until must not be earlier than valid_from")
-        validate_linked_anchor(
-            self.linked_file_type,
-            anchor_x=self.anchor_x,
-            anchor_y=self.anchor_y,
-            anchor_z=self.anchor_z,
-            anchor_page=self.anchor_page,
-        )
         return self
 
 

@@ -2,17 +2,13 @@
 
 import { useMemo } from 'react';
 
-import { listAttachments } from '@/lib/api/attachments';
-import { listCertificates } from '@/lib/api/certificates';
 import { listFindings } from '@/lib/api/findings';
-import type { Attachment, Certificate, Finding } from '@/lib/api/schemas';
+import type { Finding } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
 
 export type OrphanedElementItems = {
   findings: Finding[];
-  certificates: Certificate[];
-  attachments: Attachment[];
   total: number;
   /** True once the underlying queries AND the version metadata have resolved —
    * gates the notice so it never flashes a partial/empty state while loading. */
@@ -21,21 +17,21 @@ export type OrphanedElementItems = {
 
 const EMPTY: OrphanedElementItems = {
   findings: [],
-  certificates: [],
-  attachments: [],
   total: 0,
   ready: false,
 };
 
 /**
- * Element-linked items (findings / certificates / attachments) attached to this
- * model whose GlobalId is NOT present in the currently-open version's metadata —
- * i.e. the element was deleted or re-exported with a new GlobalId, so the item
- * would otherwise silently disappear from the viewer (#N9, "flag as orphaned").
+ * Findings attached to this model whose GlobalId is NOT present in the
+ * currently-open version's metadata — i.e. the element was deleted or
+ * re-exported with a new GlobalId, so the finding would otherwise silently
+ * disappear from the viewer (#N9, "flag as orphaned"). Findings are the only
+ * model-anchored item type; attachments and certificates live at the project
+ * level and are never element-linked.
  *
  * Fully client-side: the present-GlobalId set comes from the metadata artifact
  * already loaded for the open version, so detecting orphans costs no extra
- * round-trip beyond listing the model's element-linked items.
+ * round-trip beyond listing the model's findings.
  */
 export function useOrphanedElementItems(
   projectId: string,
@@ -49,18 +45,6 @@ export function useOrphanedElementItems(
     enabled,
     staleTime: 30_000,
   });
-  const certificatesQuery = useAuthQuery({
-    queryKey: ['projects', projectId, 'certificates', 'model', modelId] as const,
-    queryFn: (accessToken) => listCertificates(accessToken, projectId, { linkedModelId: modelId }),
-    enabled,
-    staleTime: 30_000,
-  });
-  const attachmentsQuery = useAuthQuery({
-    queryKey: ['projects', projectId, 'attachments', 'model', modelId] as const,
-    queryFn: (accessToken) => listAttachments(accessToken, projectId, { linkedModelId: modelId }),
-    enabled,
-    staleTime: 30_000,
-  });
 
   const presentGlobalIds = useMemo(() => {
     const set = new Set<string>();
@@ -71,37 +55,23 @@ export function useOrphanedElementItems(
   }, [metadata]);
 
   const findingsData = findingsQuery.data;
-  const certificatesData = certificatesQuery.data;
-  const attachmentsData = attachmentsQuery.data;
 
   return useMemo(() => {
     // Until the open version's metadata has loaded we cannot tell which
     // GlobalIds are present, so report nothing rather than flag everything.
     const haveMetadata = (metadata?.elements?.length ?? 0) > 0;
-    if (
-      !enabled
-      || !haveMetadata
-      || findingsQuery.isLoading
-      || certificatesQuery.isLoading
-      || attachmentsQuery.isLoading
-    ) {
+    if (!enabled || !haveMetadata || findingsQuery.isLoading) {
       return EMPTY;
     }
 
     const isOrphan = (g: string | null): g is string => g !== null && !presentGlobalIds.has(g);
 
     const fItems = findingsData?.data ?? [];
-    const cItems = certificatesData?.data ?? [];
-    const aItems = attachmentsData?.data ?? [];
     const findings = fItems.filter((f) => isOrphan(f.linked_element_global_id));
-    const certificates = cItems.filter((c) => isOrphan(c.linked_element_global_id));
-    const attachments = aItems.filter((a) => isOrphan(a.linked_element_global_id));
 
     return {
       findings,
-      certificates,
-      attachments,
-      total: findings.length + certificates.length + attachments.length,
+      total: findings.length,
       ready: true,
     };
   }, [
@@ -109,10 +79,6 @@ export function useOrphanedElementItems(
     metadata,
     presentGlobalIds,
     findingsQuery.isLoading,
-    certificatesQuery.isLoading,
-    attachmentsQuery.isLoading,
     findingsData,
-    certificatesData,
-    attachmentsData,
   ]);
 }

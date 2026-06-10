@@ -253,15 +253,6 @@ function KindChip({ kind }: { kind: string }): JSX.Element {
   );
 }
 
-function LinkChip({ id }: { id: string }): JSX.Element {
-  return (
-    <span className="inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded bg-primary-light px-1.5 py-0.5 font-sans text-[11px] font-semibold text-primary">
-      <LinkIcon className="h-3 w-3 shrink-0" />
-      <span className="truncate">{id}</span>
-    </span>
-  );
-}
-
 // ─── Dialog ──────────────────────────────────────────────────────────
 
 export function AttachmentViewerDialog({
@@ -363,20 +354,6 @@ export function AttachmentViewerDialog({
     },
     { label: t('viewerUploadedBy'), value: uploadedByNode, mono: false },
   ];
-  if (attachment.linked_element_global_id !== null) {
-    originRows.push({
-      label: t('viewerLinkedElement'),
-      value: <LinkChip id={attachment.linked_element_global_id} />,
-      mono: false,
-    });
-  }
-  if (attachment.linked_model_id !== null) {
-    originRows.push({
-      label: t('viewerLinkedModel'),
-      value: attachment.linked_model_id,
-      mono: true,
-    });
-  }
   if (attachment.version_number > 1) {
     originRows.push({
       label: t('viewerVersion'),

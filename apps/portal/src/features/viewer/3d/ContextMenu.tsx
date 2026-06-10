@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, FileBadge, Flag, Glasses, Paperclip, Search } from '@bimstitch/ui/icons';
+import { Eye, Flag, Glasses, Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   forwardRef,
@@ -120,29 +120,11 @@ function buildMenu(
       : null,
     hasItem
       ? {
-          label: t('attach'),
-          icon: <Paperclip className={ICON_CLASS} />,
-          command: 'inspect.attach',
-          targetItem: item,
-          shortcut: sc('inspect.attach'),
-        }
-      : null,
-    hasItem
-      ? {
           label: t('addFindings'),
           icon: <Flag className={ICON_CLASS} />,
           command: 'inspect.findings',
           targetItem: item,
           shortcut: sc('inspect.findings'),
-        }
-      : null,
-    hasItem
-      ? {
-          label: t('viewCertificates'),
-          icon: <FileBadge className={ICON_CLASS} />,
-          command: 'inspect.certificates',
-          targetItem: item,
-          shortcut: sc('inspect.certificates'),
         }
       : null,
     hasItem ? { label: '', separator: true } : null,

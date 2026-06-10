@@ -1,5 +1,4 @@
-"""Shared validation for the generalized anchor used by attachments, findings
-and certificates.
+"""Shared validation for the generalized anchor used by findings.
 
 The anchor is the trio ``(linked_element_global_id, linked_file_type, geometry)``
 alongside the ``linked_model_id`` / ``linked_file_id`` provenance links. The

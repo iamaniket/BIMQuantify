@@ -2,8 +2,6 @@
 
 import { useMemo } from 'react';
 
-import { useIfcFileAttachments } from '@/features/attachments/useAttachments';
-import { useFileCertificates } from '@/features/certificates/useCertificates';
 import { useFileFindings } from '@/features/findings/useFindings';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
@@ -36,33 +34,6 @@ export function usePageFindingMarkers(
   }, [data, page, fileId]);
 }
 
-export function usePageCertificateMarkers(
-  projectId: string,
-  fileId: string | null,
-  page: number | null,
-): EntityMarker2D[] {
-  const data = flattenPages(useFileCertificates(projectId, fileId).data);
-  return useMemo(() => {
-    if (data.length === 0 || page === null) return [];
-    return data
-      .filter(
-        (c) =>
-          c.linked_file_type === 'pdf' &&
-          c.anchor_page === page &&
-          c.anchor_x != null &&
-          c.anchor_y != null,
-      )
-      .map((c) => ({
-        id: c.id,
-        type: 'certificate' as const,
-        x: c.anchor_x!,
-        y: c.anchor_y!,
-        label: c.original_filename,
-        entityId: c.id,
-      }));
-  }, [data, page, fileId]);
-}
-
 export function useModelFindingMarkers(
   projectId: string,
   fileId: string | null,
@@ -84,57 +55,6 @@ export function useModelFindingMarkers(
         position: { x: f.anchor_x!, y: f.anchor_y!, z: f.anchor_z! },
         label: f.title,
         entityId: f.id,
-      }));
-  }, [data, fileId]);
-}
-
-export function useModelCertificateMarkers(
-  projectId: string,
-  fileId: string | null,
-): EntityMarker3D[] {
-  const data = flattenPages(useFileCertificates(projectId, fileId).data);
-  return useMemo(() => {
-    if (data.length === 0) return [];
-    return data
-      .filter(
-        (c) =>
-          c.linked_file_type === 'ifc' &&
-          c.anchor_x != null &&
-          c.anchor_y != null &&
-          c.anchor_z != null,
-      )
-      .map((c) => ({
-        id: c.id,
-        type: 'certificate' as const,
-        position: { x: c.anchor_x!, y: c.anchor_y!, z: c.anchor_z! },
-        label: c.original_filename,
-        entityId: c.id,
-      }));
-  }, [data, fileId]);
-}
-
-export function useModelAttachmentMarkers(
-  projectId: string,
-  fileId: string | null,
-): EntityMarker3D[] {
-  const query = useIfcFileAttachments(projectId, fileId);
-  const data = flattenPages(query.data);
-  return useMemo(() => {
-    if (data.length === 0) return [];
-    return data
-      .filter(
-        (a) =>
-          a.linked_file_type === 'ifc' &&
-          a.anchor_x != null &&
-          a.anchor_y != null &&
-          a.anchor_z != null,
-      )
-      .map((a) => ({
-        id: a.id,
-        type: 'attachment' as const,
-        position: { x: a.anchor_x!, y: a.anchor_y!, z: a.anchor_z! },
-        label: a.original_filename,
-        entityId: a.id,
       }));
   }, [data, fileId]);
 }

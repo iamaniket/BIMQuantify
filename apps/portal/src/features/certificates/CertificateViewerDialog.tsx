@@ -168,15 +168,6 @@ function MetaGroup({ title, rows }: { title: string; rows: MetaValue[] }): JSX.E
   );
 }
 
-function LinkChip({ id }: { id: string }): JSX.Element {
-  return (
-    <span className="inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded bg-primary-light px-1.5 py-0.5 font-sans text-[11px] font-semibold text-primary">
-      <LinkIcon className="h-3 w-3 shrink-0" />
-      <span className="truncate">{id}</span>
-    </span>
-  );
-}
-
 // ─── Dialog ──────────────────────────────────────────────────────────
 
 /**
@@ -269,14 +260,6 @@ export function CertificateViewerDialog({
   if (certificate.uploaded_by_name !== null) {
     originRows.push({ label: t('fieldUploadedBy'), value: certificate.uploaded_by_name, mono: false });
   }
-  if (certificate.linked_element_global_id !== null) {
-    originRows.push({
-      label: t('fieldLinkedElement'),
-      value: <LinkChip id={certificate.linked_element_global_id} />,
-      mono: false,
-    });
-  }
-
   const uploadedByText = certificate.uploaded_by_name ?? '—';
 
   return (

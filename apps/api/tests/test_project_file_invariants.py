@@ -235,38 +235,3 @@ async def test_soft_deleted_row_frees_the_dedup_slot(
             )
         )
         await session.flush()
-
-
-async def test_unknown_linked_file_type_rejected(
-    session_maker: async_sessionmaker[AsyncSession],
-) -> None:
-    """The CHECK constraint is the DB backstop behind the Pydantic anchor
-    validation: an unknown linked_file_type is rejected at flush, even when the
-    HTTP validation layer is bypassed (direct ORM insert)."""
-    async with session_maker() as session:
-        project, _ = await _seed_project_and_model(session)
-        session.add(
-            _file(
-                project_id=project.id,
-                role=ProjectFileRole.attachment,
-                linked_file_type="bogus",
-            )
-        )
-        with pytest.raises(IntegrityError) as exc:
-            await session.flush()
-    assert "ck_project_files_linked_file_type" in str(exc.value)
-
-
-async def test_null_and_known_linked_file_type_accepted(
-    session_maker: async_sessionmaker[AsyncSession],
-) -> None:
-    """NULL (unanchored) and any known value satisfy the CHECK."""
-    async with session_maker() as session:
-        project, _ = await _seed_project_and_model(session)
-        session.add(
-            _file(project_id=project.id, role=ProjectFileRole.attachment, linked_file_type=None)
-        )
-        session.add(
-            _file(project_id=project.id, role=ProjectFileRole.attachment, linked_file_type="dwg")
-        )
-        await session.flush()

@@ -11,7 +11,6 @@ import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 import { ExpandedBody } from './ExpandedBody';
-import { LinkChip } from './LinkChip';
 
 const CATEGORY_ICONS: Record<string, typeof FileText> = {
   image: Image,
@@ -111,12 +110,6 @@ export function AttachmentRow({
             <>
               <span className="shrink-0">·</span>
               <span className="truncate">{attachment.uploaded_by_name}</span>
-            </>
-          )}
-          {(attachment.linked_element_global_id !== null || attachment.linked_file_type !== null) && (
-            <>
-              <span className="shrink-0">·</span>
-              <LinkChip attachment={attachment} compact />
             </>
           )}
         </div>

@@ -8,10 +8,8 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
-    Float,
     ForeignKey,
     Index,
-    Integer,
     String,
     Text,
     text,
@@ -41,10 +39,10 @@ class ProjectFileRole(StrEnum):
 
     A single physical file table now backs two roles. ``model_source`` rows are
     the actual content of a ``Model`` — they run the extraction pipeline and are
-    what the 3D viewer renders. ``attachment`` rows are supporting files pinned
-    to a model/element/point, or just added to the project. The CHECK
-    constraints on the table tie ``model_id`` to this discriminator (a model
-    source must belong to a Model; an attachment never claims one).
+    what the 3D viewer renders. ``attachment`` rows are supporting files added
+    at the project level. The CHECK constraints on the table tie ``model_id`` to
+    this discriminator (a model source must belong to a Model; an attachment
+    never claims one).
     """
 
     model_source = "model_source"
@@ -259,31 +257,6 @@ class ProjectFile(
         ),
         nullable=True,
     )
-    # Generic entity id of the anchor (nullable). For an IFC anchor this is the
-    # element GlobalId; for a 2D anchor it is the source-specific handle (or
-    # null for a loose-coordinate pin). 255 chars to hold non-IFC handles.
-    linked_element_global_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    linked_model_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("models.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    # Anchor geometry — dedicated columns (no JSONB). The active set is keyed by
-    # linked_file_type (see schemas/anchor.py): ifc -> anchor_x/y/z;
-    # pdf -> anchor_page + anchor_x/y; image -> anchor_x/y; dxf/dwg -> anchor_x/y.
-    anchor_x: Mapped[float | None] = mapped_column(Float, nullable=True)
-    anchor_y: Mapped[float | None] = mapped_column(Float, nullable=True)
-    anchor_z: Mapped[float | None] = mapped_column(Float, nullable=True)
-    anchor_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Anchor file type — what kind of source the anchor points into
-    # (ifc/pdf/dxf/dwg/image). Single source of truth for the anchor_* shape.
-    # String + CHECK (not a Postgres enum) because the value set grows.
-    linked_file_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    linked_file_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("project_files.id", ondelete="SET NULL"),
-        nullable=True,
-    )
     capture_link_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("capture_links.id", ondelete="SET NULL"),
@@ -311,12 +284,6 @@ class ProjectFile(
     capture_link: Mapped[CaptureLink | None] = relationship(
         foreign_keys=[capture_link_id], lazy="raise"
     )
-    linked_model: Mapped[Model | None] = relationship(
-        foreign_keys=[linked_model_id], lazy="raise"
-    )
-    linked_file: Mapped[ProjectFile | None] = relationship(
-        foreign_keys=[linked_file_id], remote_side=[id], lazy="raise"
-    )
     parent_file: Mapped[ProjectFile | None] = relationship(
         foreign_keys=[parent_file_id], remote_side=[id], lazy="raise"
     )
@@ -330,8 +297,7 @@ class ProjectFile(
     __table_args__ = (
         CheckConstraint("size_bytes >= 0", name="ck_project_files_size_nonneg"),
         # A model source IS the content of a Model → must belong to one. An
-        # attachment is never a model version → it pins via linked_model_id
-        # instead and never claims model_id.
+        # attachment is never a model version → it never claims model_id.
         CheckConstraint(
             "role <> 'model_source' OR model_id IS NOT NULL",
             name="ck_project_files_model_source_has_model",
@@ -339,10 +305,6 @@ class ProjectFile(
         CheckConstraint(
             "role <> 'attachment' OR model_id IS NULL",
             name="ck_project_files_attachment_no_model",
-        ),
-        CheckConstraint(
-            "linked_file_type IS NULL OR linked_file_type IN ('ifc','pdf','dxf','dwg','image')",
-            name="ck_project_files_linked_file_type",
         ),
         # shared
         Index("ix_project_files_project_id", "project_id"),
@@ -389,14 +351,6 @@ class ProjectFile(
             postgresql_where=text("attachment_category IS NOT NULL"),
         ),
         Index("ix_project_files_capture_link_id", "capture_link_id"),
-        Index(
-            "ix_project_files_linked_element",
-            "linked_model_id",
-            "linked_element_global_id",
-            postgresql_where=text(
-                "linked_model_id IS NOT NULL AND linked_element_global_id IS NOT NULL"
-            ),
-        ),
         Index(
             "ix_project_files_active",
             "project_id",

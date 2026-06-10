@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from bimstitch_api.models.project_file import (
     AttachmentCategory,
@@ -12,7 +12,6 @@ from bimstitch_api.models.project_file import (
     ProjectFileRole,
     ProjectFileStatus,
 )
-from bimstitch_api.schemas.anchor import validate_linked_anchor
 
 _HEX_SHA256 = r"^[a-f0-9]{64}$"
 
@@ -58,32 +57,11 @@ class AttachmentInitiateRequest(BaseModel):
     content_sha256: str = Field(pattern=_HEX_SHA256)
     description: str | None = Field(default=None, max_length=2000)
     dossier_slot: DossierSlot | None = None
-    linked_element_global_id: str | None = Field(default=None, max_length=255)
-    linked_model_id: UUID | None = None
-    # Anchor geometry — dedicated fields keyed by linked_file_type (see
-    # schemas/anchor.py); validated together below.
-    linked_file_type: str | None = None
-    anchor_x: float | None = None
-    anchor_y: float | None = None
-    anchor_z: float | None = None
-    anchor_page: int | None = None
-    linked_file_id: UUID | None = None
     capture_metadata: CaptureMetadataInput | None = None
     # When set, this upload supersedes an existing attachment: the new row joins
     # that document's version group as the next version instead of starting a new
     # one. May reference any version in the group; the root is resolved server-side.
     supersedes_id: UUID | None = None
-
-    @model_validator(mode="after")
-    def _validate_anchor(self) -> AttachmentInitiateRequest:
-        validate_linked_anchor(
-            self.linked_file_type,
-            anchor_x=self.anchor_x,
-            anchor_y=self.anchor_y,
-            anchor_z=self.anchor_z,
-            anchor_page=self.anchor_page,
-        )
-        return self
 
 
 class AttachmentInitiateResponse(BaseModel):
@@ -111,14 +89,6 @@ class AttachmentRead(BaseModel):
     rejection_reason: str | None
     description: str | None
     dossier_slot: DossierSlot | None
-    linked_element_global_id: str | None
-    linked_model_id: UUID | None
-    linked_file_type: str | None
-    anchor_x: float | None
-    anchor_y: float | None
-    anchor_z: float | None
-    anchor_page: int | None
-    linked_file_id: UUID | None
     capture_metadata: dict[str, Any] | None
     server_metadata: dict[str, Any] | None
     version_number: int
@@ -130,25 +100,6 @@ class AttachmentRead(BaseModel):
 class AttachmentUpdateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     dossier_slot: DossierSlot | None = None
-    linked_element_global_id: str | None = Field(default=None, max_length=255)
-    linked_model_id: UUID | None = None
-    linked_file_type: str | None = None
-    anchor_x: float | None = None
-    anchor_y: float | None = None
-    anchor_z: float | None = None
-    anchor_page: int | None = None
-    linked_file_id: UUID | None = None
-
-    @model_validator(mode="after")
-    def _validate_anchor(self) -> AttachmentUpdateRequest:
-        validate_linked_anchor(
-            self.linked_file_type,
-            anchor_x=self.anchor_x,
-            anchor_y=self.anchor_y,
-            anchor_z=self.anchor_z,
-            anchor_page=self.anchor_page,
-        )
-        return self
 
 
 class AttachmentCallbackRequest(BaseModel):

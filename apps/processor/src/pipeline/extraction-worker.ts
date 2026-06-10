@@ -27,7 +27,13 @@ import { logger } from '../log.js';
 import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel } from './ifc.js';
 import { buildMetadata } from './metadata.js';
-import { elementEdgePositions, encodeOutline, type OutlineEntry } from './outline.js';
+import {
+  encodeOutline,
+  extractLocalEdgePositions,
+  mergeCollinearSegments,
+  type OutlineInstance,
+  type OutlineTemplate,
+} from './outline.js';
 import { buildProperties } from './properties.js';
 import {
   type ExtractionTask,
@@ -38,6 +44,31 @@ import {
 // Mirrors the viewer's OutlineCache batch size — getItemsGeometry is
 // synchronous here, batching just bounds per-call allocation.
 const GEOMETRY_BATCH_SIZE = 1000;
+
+// Column-major identity; only used if a mesh ever arrives without a transform
+// (MeshData.transform is always populated in practice).
+const IDENTITY_MATRIX = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+// FNV-1a over a mesh's local geometry bytes — the dedup fallback used only when
+// a mesh carries no representationId, so identical shapes still collapse to one
+// template. representationId is the fast path and wins whenever it is present.
+function meshContentKey(mesh: {
+  positions?: Float32Array | Float64Array | null;
+  indices?: Uint8Array | Uint16Array | Uint32Array | null;
+}): string {
+  let h = 0x811c9dc5;
+  const fold = (arr: ArrayBufferView | null | undefined): void => {
+    if (!arr) return;
+    const b = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+    for (let i = 0; i < b.length; i += 1) {
+      h ^= b[i]!;
+      h = Math.imul(h, 0x01000193);
+    }
+  };
+  fold(mesh.positions ?? null);
+  fold(mesh.indices ?? null);
+  return `h${(h >>> 0).toString(36)}`;
+}
 
 async function runFragOutline(port: MessagePort, bytes: Uint8Array): Promise<void> {
   const fragStart = performance.now();
@@ -60,19 +91,66 @@ async function runFragOutline(port: MessagePort, bytes: Uint8Array): Promise<voi
     model = new SingleThreadedFragmentsModel('outline', modelBytes);
     // getLocalIds() — NOT getItemsWithGeometry(), which returns duplicates.
     const localIds = await model.getLocalIds();
-    const entries: OutlineEntry[] = [];
+
+    // Dedup meshes into unique LOCAL-space edge templates keyed by the
+    // fragments instancing key (representationId), then record one instance row
+    // per element-mesh carrying its placement transform. Edges for a shared
+    // shape are computed ONCE; the GPU re-places the template per instance.
+    const templates: OutlineTemplate[] = [];
+    const instances: OutlineInstance[] = [];
+    const templateIndexByKey = new Map<string, number>(); // -1 ⇒ no hard edges
+    let elementsWithEdges = 0;
+
     for (let i = 0; i < localIds.length; i += GEOMETRY_BATCH_SIZE) {
       const batch = localIds.slice(i, i + GEOMETRY_BATCH_SIZE);
       const meshArrays = model.getItemsGeometry(batch);
       for (let j = 0; j < meshArrays.length; j += 1) {
         const localId = batch[j];
         if (localId === undefined) continue;
-        const positions = elementEdgePositions(meshArrays[j] ?? []);
-        if (positions === null) continue; // zero-edge elements are omitted
-        entries.push({ localId, positions });
+        const meshes = meshArrays[j] ?? [];
+        let hasEdges = false;
+        for (const mesh of meshes) {
+          const key =
+            typeof mesh.representationId === 'number'
+              ? `r${mesh.representationId}`
+              : meshContentKey(mesh);
+          let templateIndex = templateIndexByKey.get(key);
+          if (templateIndex === undefined) {
+            const local = extractLocalEdgePositions(mesh);
+            if (local === null) {
+              templateIndex = -1; // remember edge-less rep; never recompute
+            } else {
+              templateIndex = templates.length;
+              templates.push(mergeCollinearSegments(local));
+            }
+            templateIndexByKey.set(key, templateIndex);
+          }
+          if (templateIndex < 0) continue;
+          instances.push({
+            localId,
+            templateIndex,
+            transform: mesh.transform ? mesh.transform.toArray() : IDENTITY_MATRIX,
+          });
+          hasEdges = true;
+        }
+        if (hasEdges) elementsWithEdges += 1;
       }
     }
-    const encoded = encodeOutline(entries);
+
+    // Dedup ratio (instances ÷ templates) is the size win; logged so a model
+    // whose representationId is missing (ratio ≈ 1) is visible in the logs.
+    logger.info(
+      {
+        file_id: 'outline',
+        localIds: localIds.length,
+        elementsWithEdges,
+        templates: templates.length,
+        instances: instances.length,
+      },
+      'outline instancing summary',
+    );
+
+    const encoded = encodeOutline(templates, instances);
     port.postMessage(
       {
         type: 'outline',

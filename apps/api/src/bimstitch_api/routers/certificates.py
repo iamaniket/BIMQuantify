@@ -93,14 +93,6 @@ def _certificate_snapshot(cert: Certificate) -> dict[str, object]:
         "subject": cert.subject,
         "valid_from": cert.valid_from.isoformat() if cert.valid_from else None,
         "valid_until": cert.valid_until.isoformat() if cert.valid_until else None,
-        "linked_element_global_id": cert.linked_element_global_id,
-        "linked_model_id": str(cert.linked_model_id) if cert.linked_model_id else None,
-        "linked_file_id": str(cert.linked_file_id) if cert.linked_file_id else None,
-        "linked_file_type": cert.linked_file_type,
-        "anchor_x": cert.anchor_x,
-        "anchor_y": cert.anchor_y,
-        "anchor_z": cert.anchor_z,
-        "anchor_page": cert.anchor_page,
         "org_certificate_id": str(cert.org_certificate_id) if cert.org_certificate_id else None,
         "version_number": cert.version_number,
         "parent_certificate_id": (
@@ -190,14 +182,6 @@ async def initiate_certificate_upload(
         subject=payload.subject,
         valid_from=payload.valid_from,
         valid_until=payload.valid_until,
-        linked_element_global_id=payload.linked_element_global_id,
-        linked_model_id=payload.linked_model_id,
-        linked_file_id=payload.linked_file_id,
-        linked_file_type=payload.linked_file_type,
-        anchor_x=payload.anchor_x,
-        anchor_y=payload.anchor_y,
-        anchor_z=payload.anchor_z,
-        anchor_page=payload.anchor_page,
         version_number=version_number,
         parent_certificate_id=parent_id,
     )
@@ -309,10 +293,6 @@ async def list_certificates(
     project_id: UUID,
     response: Response,
     certificate_type: Annotated[CertificateType | None, Query()] = None,
-    linked_element_global_id: Annotated[str | None, Query(max_length=255)] = None,
-    linked_model_id: Annotated[UUID | None, Query()] = None,
-    linked_file_id: Annotated[UUID | None, Query()] = None,
-    unlinked: Annotated[bool, Query()] = False,
     expiring_before: Annotated[date | None, Query()] = None,
     expired: Annotated[bool, Query()] = False,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
@@ -346,16 +326,6 @@ async def list_certificates(
     base = base.where(~has_newer)
     if certificate_type is not None:
         base = base.where(Certificate.certificate_type == certificate_type)
-    if linked_element_global_id is not None:
-        base = base.where(Certificate.linked_element_global_id == linked_element_global_id)
-    # Version-independent identity (model + GlobalId): a certificate attached to
-    # an element shows on every version of the model that still contains it.
-    if linked_model_id is not None:
-        base = base.where(Certificate.linked_model_id == linked_model_id)
-    if linked_file_id is not None:
-        base = base.where(Certificate.linked_file_id == linked_file_id)
-    if unlinked:
-        base = base.where(Certificate.linked_element_global_id.is_(None))
     # Expiry filters drive the #N6 expiry-warning surface. A null valid_until is
     # "never expires", so it is excluded from both expiry views.
     if expired:

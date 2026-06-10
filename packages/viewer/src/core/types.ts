@@ -59,7 +59,7 @@ export interface ViewerEvents {
    * inspector on a specific tab for `item`. The viewer itself has no
    * inspector UI — the portal listens for this and drives its panel.
    */
-  'inspect:request': { item: ItemId | null; view: 'properties' | 'attachments' | 'findings' | 'certificates' };
+  'inspect:request': { item: ItemId | null; view: 'properties' | 'findings' };
   'contextmenu:open': { position: { x: number; y: number }; item: ItemId | null; point: Vec3 | null };
   'contextmenu:close': undefined;
   'xray:change': { xrayed: ItemId[]; opacityOverrides: Array<{ item: ItemId; opacity: number }> };

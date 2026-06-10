@@ -16,7 +16,7 @@ import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 
 const NAME = 'inspect' as const;
 
-type InspectView = 'properties' | 'attachments' | 'findings' | 'certificates';
+type InspectView = 'properties' | 'findings';
 
 export function inspectPlugin(): Plugin {
   let ctxRef: ViewerContext | null = null;
@@ -48,17 +48,9 @@ export function inspectPlugin(): Plugin {
         title: 'Inspect properties',
         defaultShortcut: 'P',
       });
-      ctx.commands.register('inspect.attach', () => request('attachments'), {
-        title: 'Attach to element',
-        defaultShortcut: 'A',
-      });
       ctx.commands.register('inspect.findings', () => request('findings'), {
         title: 'Add findings',
         defaultShortcut: 'B',
-      });
-      ctx.commands.register('inspect.certificates', () => request('certificates'), {
-        title: 'View certificates',
-        defaultShortcut: 'C',
       });
     },
 

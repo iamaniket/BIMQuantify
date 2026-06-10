@@ -87,23 +87,35 @@ describe('runExtraction (real worker threads)', () => {
       expect((fragBytes as Uint8Array).length).toBeGreaterThan(0);
 
       // The uploaded outline must decode (magic + length checks live inside
-      // decodeOutline) and satisfy the format-v1 invariants.
+      // decodeOutline) and satisfy the format-v2 invariants.
       const outlineBytes = uploads.get('projects/p1/IfcOpenHouse4.outline.bin');
       expect(outlineBytes).toBeInstanceOf(Uint8Array);
       const outline = decodeOutline(outlineBytes as Uint8Array);
-      expect(outline.elementCount).toBeGreaterThan(0);
-      expect(outline.localIds).toHaveLength(outline.elementCount);
-      expect(outline.lengths).toHaveLength(outline.elementCount);
+      expect(outline.templateCount).toBeGreaterThan(0);
+      expect(outline.instanceCount).toBeGreaterThan(0);
+      // Every template is referenced by ≥1 instance, so templates never
+      // outnumber instances; real buildings reuse shapes, shrinking the file.
+      expect(outline.templateCount).toBeLessThanOrEqual(outline.instanceCount);
+      expect(outline.templates).toHaveLength(outline.templateCount);
       let floatSum = 0;
-      for (const len of outline.lengths) {
-        // Segments are 6 floats; zero-edge elements are omitted entirely.
-        expect(len % 6).toBe(0);
-        expect(len).toBeGreaterThan(0);
-        floatSum += len;
+      for (const tmpl of outline.templates) {
+        // Segments are 6 floats; edge-less templates are never emitted.
+        expect(tmpl.length % 6).toBe(0);
+        expect(tmpl.length).toBeGreaterThan(0);
+        expect(tmpl.every((v) => Number.isFinite(v))).toBe(true);
+        floatSum += tmpl.length;
       }
-      expect(floatSum).toBe(outline.totalFloats);
-      expect(outline.positions).toHaveLength(outline.totalFloats);
-      expect(outline.positions.every((v) => Number.isFinite(v))).toBe(true);
+      expect(floatSum).toBe(outline.templateFloatsTotal);
+      expect(outline.instanceLocalIds).toHaveLength(outline.instanceCount);
+      expect(outline.instanceTemplateIndex).toHaveLength(outline.instanceCount);
+      expect(outline.instanceTransforms).toHaveLength(outline.instanceCount * 16);
+      expect(outline.instanceTransforms.every((v) => Number.isFinite(v))).toBe(true);
+      // Visibility into the size win (templates ≪ instances on repetitive models).
+      // eslint-disable-next-line no-console
+      console.log(
+        `[outline v2] templates=${outline.templateCount} instances=${outline.instanceCount} ` +
+          `bytes=${(outlineBytes as Uint8Array).length}`,
+      );
 
       const metadataRaw = uploads.get('projects/p1/IfcOpenHouse4.metadata.json');
       expect(metadataRaw).toBeInstanceOf(Uint8Array);

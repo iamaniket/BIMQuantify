@@ -65,6 +65,12 @@ export interface ControlsOptions {
 export interface ZoomOptions {
   /** Max dolly distance as multiple of model size. Default: 4. */
   maxFactor?: number;
+  /**
+   * Zoom toward the cursor (Forge/Navisworks-style) rather than the orbit
+   * centre. Default: true. When false, the wheel dollies toward the current
+   * camera target, which makes it hard to zoom into off-centre objects.
+   */
+  toCursor?: boolean;
 }
 
 export interface LoadFragmentsOptions {
@@ -114,12 +120,13 @@ export class Viewer {
   private shadowGround: THREE.Mesh | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private shadowsEnabled = true;
-  private baseNear = 0.01;
-  private baseFar = 2000;
-  private modelMaxDim = 1;
+  /** World-space AABB of all loaded models; near/far is fitted to this. */
+  private sceneBox: THREE.Box3 | null = null;
   private lastAppliedNear = 0.01;
   private lastAppliedFar = 2000;
   private zoomOutLimit = Infinity;
+  /** Reused scratch vector for the per-frame near/far fit (no per-call alloc). */
+  private readonly forwardAxis = new THREE.Vector3();
   private readonly precomputedOutlines = new Map<
     string,
     Promise<Uint8Array | null>
@@ -134,45 +141,71 @@ export class Viewer {
     const cam = world.camera.three;
     if (!(cam instanceof THREE.PerspectiveCamera)) return;
 
-    const target = new THREE.Vector3();
-    world.camera.controls.getTarget(target);
-    const distance = cam.position.distanceTo(target);
+    const box = this.sceneBox;
+    if (!box || box.isEmpty()) return;
 
-    // Dynamic near/far to prevent z-fighting on coplanar BIM surfaces.
-    //
-    // Strategy: keep far/near ratio ≤ 5000:1 at all times. When zoomed in
-    // close, the far plane shrinks proportionally — distant geometry clips
-    // but nearby surfaces get full depth precision. At normal orbit
-    // distance the entire model stays visible.
-    //
-    // Near: 1% of camera-to-target distance (floor 1 mm).
-    // Far: 100× distance, capped by baseFar, with model-size floor for
-    //      the zoomed-out case.
+    // Fit near/far to the model's actual depth range as seen from the current
+    // viewpoint: project the 8 bbox corners onto the camera's forward axis and
+    // take the min/max depth. This keeps the whole model inside the frustum
+    // from any distance — so distant geometry no longer clips when zoomed in —
+    // while tracking the camera so the depth budget stays as tight as the
+    // geometry allows (good precision, minimal z-fighting). Coplanar BIM
+    // surfaces are handled separately by per-material polygonOffset.
+    const forward = cam.getWorldDirection(this.forwardAxis);
+    const px = cam.position.x;
+    const py = cam.position.y;
+    const pz = cam.position.z;
+
+    let minDepth = Infinity;
+    let maxDepth = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      const cx = i & 1 ? box.max.x : box.min.x;
+      const cy = i & 2 ? box.max.y : box.min.y;
+      const cz = i & 4 ? box.max.z : box.min.z;
+      const depth = (cx - px) * forward.x + (cy - py) * forward.y + (cz - pz) * forward.z;
+      if (depth < minDepth) minDepth = depth;
+      if (depth > maxDepth) maxDepth = depth;
+    }
+
+    // Entire model is behind the camera — leave the planes untouched.
+    if (maxDepth <= 0) return;
+
+    // Far: farthest corner + 2% slack so the back face never clips.
+    const far = maxDepth * 1.02;
+
+    // Near: nearest corner, floored so the far/near ratio stays inside the
+    // depth-precision budget (5000:1, matching the prior z-fighting guard).
+    // When the camera is inside the model minDepth goes negative and the floor
+    // takes over; the absolute 1 mm floor guards tiny models.
     const MAX_DEPTH_RATIO = 5000;
+    const nearFloor = Math.max(far / MAX_DEPTH_RATIO, 0.001);
+    const near = Math.max(minDepth, nearFloor);
 
-    const dynamicNear = Math.min(
-      Math.max(distance * 0.01, 0.001),
-      this.baseNear,
-    );
-    let dynamicFar = Math.min(
-      Math.max(distance * 100, this.modelMaxDim * 2),
-      this.baseFar,
-    );
-
-    // Hard-cap ratio: tighten far plane to stay within depth budget.
-    if (dynamicFar / dynamicNear > MAX_DEPTH_RATIO) {
-      dynamicFar = dynamicNear * MAX_DEPTH_RATIO;
-    }
-
-    const nearChanged = Math.abs(dynamicNear - this.lastAppliedNear) > 1e-6;
-    const farChanged = Math.abs(dynamicFar - this.lastAppliedFar) > 1e-4;
+    const nearChanged = Math.abs(near - this.lastAppliedNear) > 1e-6;
+    const farChanged = Math.abs(far - this.lastAppliedFar) > 1e-4;
     if (nearChanged || farChanged) {
-      cam.near = dynamicNear;
-      cam.far = dynamicFar;
+      cam.near = near;
+      cam.far = far;
       cam.updateProjectionMatrix();
-      this.lastAppliedNear = dynamicNear;
-      this.lastAppliedFar = dynamicFar;
+      this.lastAppliedNear = near;
+      this.lastAppliedFar = far;
     }
+  }
+
+  /** Union of every loaded model's world-space AABB (empty Box3 if none). */
+  private computeWorldSceneBox(): THREE.Box3 {
+    const box = new THREE.Box3();
+    const fragments = this.fragmentsModels;
+    if (!fragments) return box;
+    const models = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
+    for (const model of models.values()) {
+      let mb = model.box;
+      if (!mb || mb.isEmpty()) {
+        mb = new THREE.Box3().setFromObject(model.object);
+      }
+      if (!mb.isEmpty()) box.union(mb);
+    }
+    return box;
   }
 
   async mount(container: HTMLElement): Promise<void> {
@@ -212,6 +245,13 @@ export class Viewer {
 
     world.camera.controls.setLookAt(15, 15, 15, 0, 0, 0);
     world.camera.three.layers.enable(LAYER_OVERLAY);
+
+    // Zoom toward the cursor (Forge/Navisworks-style) instead of the orbit
+    // centre, so scrolling in over an off-centre object actually approaches
+    // that object rather than flying past it toward the model centre. Matches
+    // the 2D viewer and the pivot-rotate orbit behaviour. Configurable via
+    // `zoom.toCursor` (default on).
+    world.camera.controls.dollyToCursor = this.options.zoom?.toCursor ?? true;
 
     this.applyControls(world);
     this.applyBackground(world);
@@ -448,19 +488,14 @@ export class Viewer {
       false,
     );
 
-    // Tighten depth range to the model's scale. The dynamic near/far
-    // updater enforces a max ratio of 5000:1 for z-fighting prevention;
-    // these base values are the generous defaults at resting distance.
-    const cam = world.camera.three;
-    if (cam instanceof THREE.PerspectiveCamera) {
-      cam.near = Math.max(maxDim / 200, 0.05);
-      cam.far = maxDim * 10;
-      this.baseNear = cam.near;
-      this.baseFar = cam.far;
-      this.modelMaxDim = maxDim;
-      this.lastAppliedNear = cam.near;
-      this.lastAppliedFar = cam.far;
-      cam.updateProjectionMatrix();
+    // Cache the world-space scene AABB and fit the depth range to it. The
+    // per-frame updater (updateDynamicNearFar) projects this box onto the view
+    // axis so the entire model always stays inside the frustum — distant
+    // geometry no longer clips when zoomed in — while staying tight enough
+    // (with polygonOffset) to avoid z-fighting on coplanar BIM surfaces.
+    this.sceneBox = this.computeWorldSceneBox();
+    if (world.camera.three instanceof THREE.PerspectiveCamera) {
+      this.updateDynamicNearFar();
     }
 
     const controls = world.camera.controls;
@@ -675,6 +710,7 @@ export class Viewer {
       this.components = null;
     }
     this.world = null;
+    this.sceneBox = null;
     this.precomputedOutlines.clear();
     this.modelId = null;
     this.events.emit('viewer:unmounted', undefined);

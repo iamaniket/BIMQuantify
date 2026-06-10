@@ -4,8 +4,8 @@ Tables: projects, project_members, models, project_files, jobs, reports,
 contractors, notifications, notification_reads, notification_dismissals, risks,
 borgingsplans, borgingsmomenten, checklist_items, checklist_item_results,
 checklist_item_result_attachments, capture_links, findings, finding_attachments,
-certificates, org_certificates, org_certificate_tags, bcf_topics,
-bcf_topic_labels, bcf_comments, bcf_viewpoints, audit_log,
+finding_templates, certificates, org_certificates, org_certificate_tags,
+bcf_topics, bcf_topic_labels, bcf_comments, bcf_viewpoints, audit_log,
 deadline_notification_log, deadline_notification_settings.
 
 This is the single squashed baseline for the tenant chain — the former
@@ -21,6 +21,16 @@ and model-declared index (including expression / partial / unique indexes via
 handful of indexes the model layer cannot express are created explicitly in
 upgrade() below.
 
+A later squash folded in the former 0002–0006 add-ons (finding_templates;
+bcf_viewpoints.xray/measurements; deadlines.reference_number/filing_notes/
+filed_at; project_files.outline_storage_key; bcf_topics.linked_file_id/is_2d)
+and dropped model anchoring from attachments and certificates: `project_files`
+(role='attachment') and `certificates` no longer carry the
+`linked_element_global_id` / `linked_model_id` / `linked_file_id` /
+`linked_file_type` / `anchor_x/y/z` / `anchor_page` columns. Findings keep
+their anchor (the only coordinate-anchored entity marker); the shared validator
+lives in `schemas/anchor.py`.
+
 There is no longer a separate `attachments` table: attachments are rows in the
 unified `project_files` table, distinguished by `role = 'attachment'`. The
 per-role dedup and version-group indexes are declared on the `ProjectFile`
@@ -32,7 +42,7 @@ search_path — audit_log's user_id / impersonator_user_id rely on this.
 
 Revision ID: 0001_tenant
 Revises:
-Create Date: 2026-06-02
+Create Date: 2026-06-10
 """
 
 from __future__ import annotations

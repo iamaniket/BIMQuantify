@@ -98,14 +98,6 @@ def _attachment_snapshot(att: ProjectFile) -> dict[str, object]:
         "status": att.status.value,
         "description": att.description,
         "dossier_slot": att.dossier_slot.value if att.dossier_slot else None,
-        "linked_element_global_id": att.linked_element_global_id,
-        "linked_model_id": str(att.linked_model_id) if att.linked_model_id else None,
-        "linked_file_id": str(att.linked_file_id) if att.linked_file_id else None,
-        "linked_file_type": att.linked_file_type,
-        "anchor_x": att.anchor_x,
-        "anchor_y": att.anchor_y,
-        "anchor_z": att.anchor_z,
-        "anchor_page": att.anchor_page,
         "capture_link_id": str(att.capture_link_id) if att.capture_link_id else None,
         "has_capture_metadata": att.capture_metadata is not None,
         "version_number": att.version_number,
@@ -215,14 +207,6 @@ async def initiate_attachment_upload(
         status=ProjectFileStatus.pending,
         description=payload.description,
         dossier_slot=payload.dossier_slot,
-        linked_element_global_id=payload.linked_element_global_id,
-        linked_model_id=payload.linked_model_id,
-        linked_file_type=payload.linked_file_type,
-        anchor_x=payload.anchor_x,
-        anchor_y=payload.anchor_y,
-        anchor_z=payload.anchor_z,
-        anchor_page=payload.anchor_page,
-        linked_file_id=payload.linked_file_id,
         capture_metadata=capture_meta,
         version_number=version_number,
         parent_file_id=parent_id,
@@ -376,12 +360,6 @@ async def list_attachments(
     category: Annotated[AttachmentCategory | None, Query()] = None,
     dossier_slot: Annotated[DossierSlot | None, Query()] = None,
     unslotted: Annotated[bool, Query()] = False,
-    linked_element_global_id: Annotated[str | None, Query(max_length=255)] = None,
-    linked_model_id: Annotated[UUID | None, Query()] = None,
-    linked_file_id: Annotated[UUID | None, Query()] = None,
-    unlinked: Annotated[bool, Query()] = False,
-    linked_file_type: Annotated[str | None, Query(max_length=16)] = None,
-    anchor_page: Annotated[int | None, Query(ge=1)] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     session: AsyncSession = Depends(get_tenant_session),
@@ -423,20 +401,6 @@ async def list_attachments(
     # "Link existing" picker: office docs not yet tagged to any dossier slot.
     if unslotted:
         base = base.where(ProjectFile.dossier_slot.is_(None))
-    if linked_element_global_id is not None:
-        base = base.where(ProjectFile.linked_element_global_id == linked_element_global_id)
-    # Version-independent identity (model + GlobalId): an attachment shows on
-    # every version of the model that still contains the element.
-    if linked_model_id is not None:
-        base = base.where(ProjectFile.linked_model_id == linked_model_id)
-    if linked_file_id is not None:
-        base = base.where(ProjectFile.linked_file_id == linked_file_id)
-    if unlinked:
-        base = base.where(ProjectFile.linked_element_global_id.is_(None))
-    if linked_file_type is not None:
-        base = base.where(ProjectFile.linked_file_type == linked_file_type)
-    if anchor_page is not None:
-        base = base.where(ProjectFile.anchor_page == anchor_page)
 
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
     response.headers["X-Total-Count"] = str(total)

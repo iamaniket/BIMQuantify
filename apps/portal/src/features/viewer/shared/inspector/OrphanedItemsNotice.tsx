@@ -24,15 +24,13 @@ type OrphanRow = {
 
 /**
  * Compact banner shown in the inspector when viewing a model version that is
- * missing elements other versions linked items to. Lists findings / certificates
- * / attachments whose GlobalId is absent here so they don't silently vanish.
+ * missing elements other versions linked findings to. Lists findings whose
+ * GlobalId is absent here so they don't silently vanish.
  */
 export function OrphanedItemsNotice({ projectId, modelId, metadata }: Props): JSX.Element | null {
   const t = useTranslations('viewerOrphans');
   const [expanded, setExpanded] = useState(false);
-  const {
-    findings, certificates, attachments, total, ready,
-  } = useOrphanedElementItems(
+  const { findings, total, ready } = useOrphanedElementItems(
     projectId,
     modelId,
     metadata,
@@ -42,16 +40,6 @@ export function OrphanedItemsNotice({ projectId, modelId, metadata }: Props): JS
 
   const rows: OrphanRow[] = [
     ...findings.map((f) => ({ key: `f-${f.id}`, kind: t('kindFinding'), label: f.title })),
-    ...certificates.map((c) => ({
-      key: `c-${c.id}`,
-      kind: t('kindCertificate'),
-      label: c.original_filename,
-    })),
-    ...attachments.map((a) => ({
-      key: `a-${a.id}`,
-      kind: t('kindAttachment'),
-      label: a.original_filename,
-    })),
   ];
 
   return (
