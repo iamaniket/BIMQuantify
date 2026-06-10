@@ -123,8 +123,31 @@ export function use2dBcfController(
       captureMode: '2d',
       capture,
       applyViewpoint: async (vp) => {
-        const vs = vp.view_state_2d as { page?: number } | null;
-        if (vs && typeof vs.page === 'number') onRestorePage(vs.page);
+        const vs = vp.view_state_2d as
+          | { page?: number; center_x?: number; center_y?: number; zoom?: number }
+          | null;
+        if (vs === null) return;
+        // Sync the React page state (drives the page indicator + controlled prop).
+        if (typeof vs.page === 'number') onRestorePage(vs.page);
+        // Pan + zoom the document to the stored framing. The command jumps to
+        // the page itself (waiting for its render) before positioning.
+        if (
+          documentHandle !== null &&
+          typeof vs.center_x === 'number' &&
+          typeof vs.center_y === 'number'
+        ) {
+          documentHandle.commands
+            .execute('camera.restore2DView', {
+              page: typeof vs.page === 'number' ? vs.page : undefined,
+              center_x: vs.center_x,
+              center_y: vs.center_y,
+              zoom: typeof vs.zoom === 'number' ? vs.zoom : 1,
+            })
+            .catch((err) => {
+              // eslint-disable-next-line no-console
+              console.error('[BCF] camera.restore2DView failed:', err);
+            });
+        }
       },
       activateMarkup: (tool: MarkupTool = 'rect') => {
         console.log('[BCF] activateMarkup called, tool:', tool, 'documentHandle:', documentHandle !== null);

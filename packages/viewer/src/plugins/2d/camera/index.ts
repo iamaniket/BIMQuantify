@@ -303,6 +303,35 @@ export function cameraPlugin(
       context.commands.register<CameraControlsConfig>('camera.setControls', (cfg) => {
         api.setButtonConfig(cfg);
       }, { title: 'Set camera controls' });
+
+      // Restore a saved 2D viewpoint: jump to the page, then pan + zoom the
+      // camera to the stored framing. `center_x`/`center_y` are normalised
+      // (0..1, top-left origin) and `zoom` is the camera-controls zoom — the
+      // same quantities `markup.getViewState` captures.
+      context.commands.register<{
+        page?: number;
+        center_x: number;
+        center_y: number;
+        zoom: number;
+      }>('camera.restore2DView', (a) => {
+        if (!controls || !ctx) return;
+        const place = (): void => {
+          const uv = ctx!.getUnscaledViewport();
+          if (!controls || !uv || uv.width <= 0 || uv.height <= 0) return;
+          const worldX = a.center_x * uv.width;
+          const worldY = (1 - a.center_y) * uv.height;
+          void controls.setLookAt(worldX, worldY, 10, worldX, worldY, 0, true);
+          if (a.zoom > 0) void controls.zoomTo(a.zoom, true);
+        };
+        // The viewport (page size + frustum) only settles once the target page
+        // has rendered, so defer positioning until then on a page change.
+        if (typeof a.page === 'number' && a.page !== ctx.getCurrentPage()) {
+          const off = ctx.events.on('page:rendered', () => { off(); place(); });
+          ctx.setCurrentPage(a.page);
+        } else {
+          place();
+        }
+      }, { title: 'Restore 2D viewpoint (page + center + zoom)' });
     },
 
     uninstall(): void {

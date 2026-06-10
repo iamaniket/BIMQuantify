@@ -408,7 +408,9 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
       page: ctx.getCurrentPage(),
       center_x: centerX,
       center_y: centerY,
-      zoom: ctx.getScale(),
+      // Camera-controls zoom (the value that defines on-screen framing), not the
+      // engine render scale — so center + zoom round-trip on restore.
+      zoom: cam?.zoom ?? 1,
     };
   }
 
