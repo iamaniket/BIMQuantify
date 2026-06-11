@@ -12,7 +12,7 @@ import * as FRAGS from '@thatopen/fragments';
 import {
   Components,
   FragmentsManager,
-  SimpleCamera,
+  OrthoPerspectiveCamera,
   SimpleRenderer,
   SimpleScene,
   SimpleWorld,
@@ -27,7 +27,7 @@ import { frameView } from './framing.js';
 import { LAYER_OVERLAY } from './layers.js';
 import type { Plugin, ViewerContext, ViewerEvents } from './types.js';
 
-type World = SimpleWorld<SimpleScene, SimpleCamera, SimpleRenderer>;
+type World = SimpleWorld<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>;
 
 export interface ShadowOptions {
   enabled?: boolean;
@@ -215,7 +215,7 @@ export class Viewer {
 
     const components = new Components();
     const worlds = components.get(Worlds);
-    const world = worlds.create<SimpleScene, SimpleCamera, SimpleRenderer>();
+    const world = worlds.create<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>();
 
     world.scene = new SimpleScene(components);
     // Z-fighting on coplanar BIM geometry (slab/wall, glazing/frame) is
@@ -229,7 +229,7 @@ export class Viewer {
       antialias: true,
     });
     world.renderer.showLogo = false;
-    world.camera = new SimpleCamera(components);
+    world.camera = new OrthoPerspectiveCamera(components);
     world.scene.setup();
 
     components.init();
@@ -252,6 +252,14 @@ export class Viewer {
     // the 2D viewer and the pivot-rotate orbit behaviour. Configurable via
     // `zoom.toCursor` (default on).
     world.camera.controls.dollyToCursor = this.options.zoom?.toCursor ?? true;
+
+    // OrthoPerspectiveCamera's default OrbitMode clamps minDistance=1 /
+    // maxDistance=300 (FirstPersonMode/OrbitMode swaps mutate these too).
+    // SimpleCamera left them at camera-controls' defaults, and large models
+    // need to dolly closer/farther than that — zoom-out is otherwise bounded
+    // by our own `zoomOutLimit` (see onCamChange). Restore the uncapped range.
+    world.camera.controls.minDistance = Number.EPSILON;
+    world.camera.controls.maxDistance = Infinity;
 
     this.applyControls(world);
     this.applyBackground(world);
@@ -339,6 +347,9 @@ export class Viewer {
       },
       get cameraControls() {
         return world.camera!.controls;
+      },
+      get obcCamera() {
+        return world.camera!;
       },
       get renderer() {
         return world.renderer!.three;

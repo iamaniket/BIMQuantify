@@ -1,17 +1,29 @@
 /**
- * Camera-fly plugin — arrow-key / D-pad camera navigation.
+ * Camera-fly plugin — WASD / D-pad camera navigation + first-person mouse-look.
  *
- * A non-exclusive companion to the camera plugin: while enabled it drives the
- * camera from a held-key set in a rAF loop, but it never repositions the camera
- * on enter, never remaps the mouse, and never suppresses selection/hover. It is
- * meant to be toggled on by a toolbar fly-out popover and off again when that
- * popover closes.
+ * The exclusive "fly" tool. While enabled it drives the camera from a
+ * held-direction set in a rAF loop (keyboard + on-screen D-pad), and it switches
+ * the ThatOpen camera into its `FirstPerson` navigation mode so the mouse does
+ * look-in-place (left-drag rotates the view about the camera, wheel dollies
+ * forward/back) instead of orbiting a distant pivot. While active it also
+ * suppresses click-selection / hover and stands `pivot-rotate` down (which in
+ * first-person would otherwise hijack the left-drag as an orbit-pivot grab).
+ * On disable everything is restored to the pre-fly orbit state. It is toggled on
+ * by the toolbar fly-out popover and off again when that popover closes.
  *
- * Direction scheme (camera height stays constant for the four arrows):
- *   - forward / back  → walk along the horizontal view direction (Y locked)
- *   - left / right    → turn (yaw) in place around the world Y axis (Y locked)
- *   - up / down       → raise / lower the camera straight along world Y
- *                       (the deliberate exception to the height lock)
+ * Direction scheme (camera height stays constant except for up/down):
+ *   - forward / back            → walk along the horizontal view direction (W / S)
+ *   - turnLeft / turnRight      → yaw in place around world Y (Q / E)
+ *   - strafeLeft / strafeRight  → slide along the horizontal right vector (A / D)
+ *   - up / down                 → raise / lower straight along world Y (R / F)
+ *
+ * The eight directions are registered as real commands (`cameraFly.forward`, …)
+ * with `defaultShortcut`s, so they live in the keyboard-shortcuts map and are
+ * rebindable from the viewer's Keyboard Settings like any other shortcut. The
+ * shortcut dispatch fires those commands on **keydown** (= press); this plugin
+ * owns a **keyup** listener for release (the shortcut system has no keyup) plus
+ * the rAF loop. The on-screen D-pad drives the same held set via
+ * `cameraFly.press` / `cameraFly.release`.
  *
  * Every move goes through `cameraControls.setLookAt(...)`, whose camera-controls
  * `update` event makes `Viewer` emit `camera:change` — so the split-view 2D
@@ -22,31 +34,80 @@ import * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
 
 import type { Plugin, ViewerContext } from '../../../core/types.js';
+import { suppressSelectionGestures } from '../shared/suppressSelection.js';
 
 const NAME = 'camera-fly' as const;
 
-export type FlyDirection = 'forward' | 'back' | 'left' | 'right' | 'up' | 'down';
+export type FlyDirection =
+  | 'forward'
+  | 'back'
+  | 'turnLeft'
+  | 'turnRight'
+  | 'strafeLeft'
+  | 'strafeRight'
+  | 'up'
+  | 'down'
+  // Keyboard-look (arrow keys) — rotate the view about the fixed eye. Not
+  // movement; not exposed on the D-pad popover.
+  | 'pitchUp'
+  | 'pitchDown';
 
-const ALL_DIRECTIONS: readonly FlyDirection[] = [
-  'forward', 'back', 'left', 'right', 'up', 'down',
+/** Direction → command name, label and default key. Source of truth for both
+ *  command registration and the keyup release map. */
+const DIRECTION_COMMANDS: ReadonlyArray<{
+  dir: FlyDirection;
+  command: string;
+  title: string;
+  shortcut: string;
+}> = [
+  { dir: 'forward', command: 'cameraFly.forward', title: 'Fly forward', shortcut: 'W' },
+  { dir: 'back', command: 'cameraFly.back', title: 'Fly back', shortcut: 'S' },
+  { dir: 'turnLeft', command: 'cameraFly.turnLeft', title: 'Fly turn left', shortcut: 'Q' },
+  { dir: 'turnRight', command: 'cameraFly.turnRight', title: 'Fly turn right', shortcut: 'E' },
+  { dir: 'strafeLeft', command: 'cameraFly.strafeLeft', title: 'Fly strafe left', shortcut: 'A' },
+  { dir: 'strafeRight', command: 'cameraFly.strafeRight', title: 'Fly strafe right', shortcut: 'D' },
+  { dir: 'up', command: 'cameraFly.up', title: 'Fly up', shortcut: 'R' },
+  { dir: 'down', command: 'cameraFly.down', title: 'Fly down', shortcut: 'F' },
 ];
+
+const ALL_DIRECTIONS: readonly FlyDirection[] = DIRECTION_COMMANDS.map((d) => d.dir);
+
+/** Arrow keys are a keyboard-look control (rotate the view about the fixed
+ *  eye), handled directly by the plugin rather than the rebindable shortcut
+ *  system: ArrowUp/Down pitch the look up/down, ArrowLeft/Right yaw it. */
+const ARROW_KEY_TO_DIR: Readonly<Record<string, FlyDirection>> = {
+  ArrowUp: 'pitchUp',
+  ArrowDown: 'pitchDown',
+  ArrowLeft: 'turnLeft',
+  ArrowRight: 'turnRight',
+};
 
 function isFlyDirection(value: unknown): value is FlyDirection {
   return typeof value === 'string' && (ALL_DIRECTIONS as readonly string[]).includes(value);
 }
 
-/** Keyboard codes → direction token. Arrows move/turn; PageUp/Down change height. */
-const KEY_TO_DIR: Record<string, FlyDirection> = {
-  ArrowUp: 'forward',
-  ArrowDown: 'back',
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  PageUp: 'up',
-  PageDown: 'down',
-};
+/** Last segment of a combo (e.g. "Shift+T" → "T"), matching the canonical key. */
+function lastKey(combo: string): string {
+  return combo.split('+').pop() ?? combo;
+}
+
+/** Base key for a keyup event, mirroring the shortcut plugin's canonical key. */
+function baseKeyFromEvent(ev: KeyboardEvent): string {
+  const code = ev.code;
+  if (code.startsWith('Key') && code.length === 4) return code.slice(3);
+  if (code.startsWith('Numpad')) return code;
+  let key = ev.key;
+  if (key === ' ') key = 'Space';
+  if (key.length === 1) key = key.toUpperCase();
+  return key;
+}
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const TWO_PI = Math.PI * 2;
+// Pitch clamp: keep the look direction within ~1° of straight up/down so the
+// view never crosses vertical and flips the camera's up vector.
+const MIN_PITCH_ANGLE = THREE.MathUtils.degToRad(1);
+const MAX_PITCH_ANGLE = Math.PI - MIN_PITCH_ANGLE;
 
 export interface CameraFlyPluginOptions {
   /**
@@ -56,10 +117,26 @@ export interface CameraFlyPluginOptions {
   moveFraction?: number;
   /** Turn speed in radians/second. Default: ~70°/s. */
   turnSpeed?: number;
+  /** Mouse look-drag sensitivity in radians/pixel. Default: 0.0025. */
+  lookSensitivity?: number;
 }
 
 export interface CameraFlyPluginAPI {
   isActive(): boolean;
+}
+
+/** camera-controls fields FirstPerson/Orbit mode switches mutate — saved on
+ *  enter so the exact pre-fly orbit config is restored on exit. */
+interface FlySavedControls {
+  minDistance: number;
+  maxDistance: number;
+  truckSpeed: number;
+  infinityDolly: boolean;
+  dollyToCursor: boolean;
+  mouseLeft: number;
+  mouseRight: number;
+  mouseMiddle: number;
+  mouseWheel: number;
 }
 
 export function cameraFlyPlugin(
@@ -69,10 +146,28 @@ export function cameraFlyPlugin(
   let active = false;
   const moveFraction = options.moveFraction ?? 0.35;
   const turnSpeed = options.turnSpeed ?? THREE.MathUtils.degToRad(70);
+  const lookSensitivity = options.lookSensitivity ?? 0.0025;
 
   let rafId: number | null = null;
   let lastTime = 0;
   const held = new Set<FlyDirection>();
+
+  // Mouse look-drag state. We take over the left button (camera-controls'
+  // ROTATE orbits the eye around the pinned target, which translates the
+  // camera — not look-in-place), so we track the drag ourselves.
+  let dragging = false;
+  let lastDragX = 0;
+  let lastDragY = 0;
+
+  // First-person mode bookkeeping: saved controls config + the disposer that
+  // rebinds the selection/hover gestures we suppressed on enter.
+  let savedControls: FlySavedControls | null = null;
+  let restoreSelection: (() => Promise<void>) | null = null;
+
+  // base key → direction, used to release the right direction on keyup. Seeded
+  // from defaults, refreshed from the live shortcut bindings on enable so user
+  // rebindings are honored.
+  let comboKeyToDir = new Map<string, FlyDirection>();
 
   /** World-space diagonal of all loaded models, used to scale move speed. */
   const sceneDiagonal = (): number => {
@@ -86,6 +181,51 @@ export function cameraFlyPlugin(
     const size = box.getSize(new THREE.Vector3());
     const diag = size.length();
     return diag > 0 ? diag : 10;
+  };
+
+  const internalPress = (dir: FlyDirection): void => {
+    if (!active) return;
+    held.add(dir);
+  };
+
+  /**
+   * Rotate the look direction about the *fixed* eye — yaw around world-up,
+   * pitch around the horizontal right axis — then re-aim. Because the camera
+   * position is preserved this is true look-in-place. Shared by the rAF loop
+   * (arrow keys) and the mouse look-drag. Pitch is clamped so the view can't
+   * cross vertical (which would flip the up vector).
+   */
+  const applyLook = (yawDelta: number, pitchDelta: number): void => {
+    if (!ctxRef || (yawDelta === 0 && pitchDelta === 0)) return;
+    const controls = ctxRef.cameraControls;
+
+    const pos = new THREE.Vector3();
+    controls.getPosition(pos);
+    const tgt = new THREE.Vector3();
+    controls.getTarget(tgt);
+
+    const offset = tgt.clone().sub(pos); // FirstPerson keeps |offset| ≈ 1
+    if (offset.lengthSq() < 1e-9) return;
+
+    if (yawDelta !== 0) offset.applyAxisAngle(WORLD_UP, yawDelta % TWO_PI);
+
+    if (pitchDelta !== 0) {
+      // Horizontal right = right of the ground-projected view direction.
+      const flat = new THREE.Vector3(offset.x, 0, offset.z);
+      if (flat.lengthSq() < 1e-6) flat.set(0, 0, -1); // looking near-vertical
+      const right = new THREE.Vector3().crossVectors(flat, WORLD_UP).normalize();
+      // Clamp: skip the pitch step if it would push within ~1° of straight
+      // up/down (angle of `offset` to WORLD_UP must stay in [1°, 179°]).
+      const current = offset.angleTo(WORLD_UP);
+      // pitchUp (positive) raises the look → decreases the angle to WORLD_UP.
+      const next = current - pitchDelta;
+      if (next > MIN_PITCH_ANGLE && next < MAX_PITCH_ANGLE) {
+        offset.applyAxisAngle(right, pitchDelta);
+      }
+    }
+
+    tgt.copy(pos).add(offset);
+    void controls.setLookAt(pos.x, pos.y, pos.z, tgt.x, tgt.y, tgt.z, false);
   };
 
   const tick = (time: number): void => {
@@ -113,18 +253,26 @@ export function cameraFlyPlugin(
     if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1); // looking straight up/down
     fwd.normalize();
 
+    // Horizontal right (Y-up coordinate system) for lateral strafe.
+    const right = new THREE.Vector3().crossVectors(fwd, WORLD_UP).normalize();
+
     const moveStep = sceneDiagonal() * moveFraction * dt;
     const translate = new THREE.Vector3();
     let yaw = 0;
+    let pitch = 0;
 
     for (const dir of held) {
       switch (dir) {
         case 'forward': translate.addScaledVector(fwd, moveStep); break;
         case 'back': translate.addScaledVector(fwd, -moveStep); break;
+        case 'strafeLeft': translate.addScaledVector(right, -moveStep); break;
+        case 'strafeRight': translate.addScaledVector(right, moveStep); break;
         case 'up': translate.addScaledVector(WORLD_UP, moveStep); break;
         case 'down': translate.addScaledVector(WORLD_UP, -moveStep); break;
-        case 'left': yaw += turnSpeed * dt; break;
-        case 'right': yaw -= turnSpeed * dt; break;
+        case 'turnLeft': yaw += turnSpeed * dt; break;
+        case 'turnRight': yaw -= turnSpeed * dt; break;
+        case 'pitchUp': pitch += turnSpeed * dt; break;
+        case 'pitchDown': pitch -= turnSpeed * dt; break;
       }
     }
 
@@ -132,82 +280,219 @@ export function cameraFlyPlugin(
     if (translate.lengthSq() > 0) {
       pos.add(translate);
       tgt.add(translate);
+      void controls.setLookAt(pos.x, pos.y, pos.z, tgt.x, tgt.y, tgt.z, false);
     }
 
-    // Yaw-in-place: rotate the look offset around world-up about the camera
-    // position. Pitch (and thus camera height relative to target) is preserved.
-    if (yaw !== 0) {
-      const offset = tgt.clone().sub(pos).applyAxisAngle(WORLD_UP, yaw % TWO_PI);
-      tgt.copy(pos).add(offset);
-    }
-
-    if (translate.lengthSq() === 0 && yaw === 0) return;
-    void controls.setLookAt(pos.x, pos.y, pos.z, tgt.x, tgt.y, tgt.z, false);
-  };
-
-  const onKeyDown = (e: KeyboardEvent): void => {
-    if (!active) return;
-    const tag = (e.target as HTMLElement)?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-    if ((e.target as HTMLElement)?.isContentEditable) return;
-    const dir = KEY_TO_DIR[e.code];
-    if (!dir) return;
-    e.preventDefault(); // stop page scroll on arrows / PageUp / PageDown
-    held.add(dir);
+    // Yaw/pitch-in-place: rotate the look offset about the (now updated) eye.
+    applyLook(yaw, pitch);
   };
 
   const onKeyUp = (e: KeyboardEvent): void => {
-    const dir = KEY_TO_DIR[e.code];
+    const arrowDir = ARROW_KEY_TO_DIR[e.key];
+    if (arrowDir) {
+      held.delete(arrowDir);
+      return;
+    }
+    const dir = comboKeyToDir.get(baseKeyFromEvent(e));
     if (dir) held.delete(dir);
   };
 
-  const enable = (): void => {
-    if (!ctxRef || active) return;
-    active = true;
-    held.clear();
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    lastTime = 0;
-    rafId = requestAnimationFrame(tick);
+  /** Arrow keys = keyboard-look. Handled here (not via the rebindable shortcut
+   *  system) so they're scoped to fly mode and don't steal arrows elsewhere. */
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (!active) return;
+    const dir = ARROW_KEY_TO_DIR[e.key];
+    if (!dir) return;
+    e.preventDefault(); // stop the page from scrolling
+    held.add(dir);
   };
 
-  const disable = (): void => {
+  const onPointerDown = (e: PointerEvent): void => {
+    if (!active || e.button !== 0 || !ctxRef) return;
+    if (e.target !== ctxRef.canvas) return;
+    dragging = true;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
+    ctxRef.canvas.setPointerCapture?.(e.pointerId);
+  };
+
+  const onPointerMove = (e: PointerEvent): void => {
+    if (!dragging) return;
+    const dx = e.clientX - lastDragX;
+    const dy = e.clientY - lastDragY;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
+    // Negate so drag-right looks right and drag-up looks up (standard FPS feel).
+    applyLook(-dx * lookSensitivity, -dy * lookSensitivity);
+  };
+
+  const onPointerUp = (e: PointerEvent): void => {
+    if (!dragging) return;
+    dragging = false;
+    ctxRef?.canvas.releasePointerCapture?.(e.pointerId);
+  };
+
+  /** Rebuild base-key → direction from the live shortcut bindings (falling back
+   *  to the built-in defaults), so keyup releases the correct direction even
+   *  after the user rebinds a fly key. */
+  const refreshKeyMap = async (): Promise<void> => {
+    const map = new Map<string, FlyDirection>();
+    for (const d of DIRECTION_COMMANDS) map.set(lastKey(d.shortcut), d.dir);
+    try {
+      if (ctxRef) {
+        const list = (await ctxRef.commands.execute('shortcuts.list')) as {
+          combo: string;
+          command: string;
+        }[];
+        const byCommand = new Map(DIRECTION_COMMANDS.map((d) => [d.command, d.dir]));
+        for (const { combo, command } of list) {
+          const dir = byCommand.get(command);
+          if (dir) map.set(lastKey(combo), dir);
+        }
+      }
+    } catch {
+      // shortcuts plugin unavailable — keep the default map.
+    }
+    comboKeyToDir = map;
+  };
+
+  const enable = async (): Promise<void> => {
+    if (!ctxRef || active) return;
+    const ctx = ctxRef;
+    active = true;
+    held.clear();
+    dragging = false;
+    void refreshKeyMap();
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('keydown', onKeyDown);
+    // pointerdown on the container in capture phase (camera-controls listens on
+    // the canvas; capture runs first). move/up on window so the drag tracks
+    // even if the pointer leaves the canvas.
+    ctx.container.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    lastTime = 0;
+    rafId = requestAnimationFrame(tick);
+
+    const controls = ctx.cameraControls;
+
+    // Save the orbit config FirstPerson/Orbit will overwrite, so exit can
+    // restore it byte-for-byte rather than inheriting OrbitMode's defaults.
+    savedControls = {
+      minDistance: controls.minDistance,
+      maxDistance: controls.maxDistance,
+      truckSpeed: controls.truckSpeed,
+      infinityDolly: controls.infinityDolly,
+      dollyToCursor: controls.dollyToCursor,
+      mouseLeft: controls.mouseButtons.left as number,
+      mouseRight: controls.mouseButtons.right as number,
+      mouseMiddle: controls.mouseButtons.middle as number,
+      mouseWheel: controls.mouseButtons.wheel as number,
+    };
+
+    // Enter ThatOpen first-person navigation: target locked 1 unit ahead so
+    // wheel DOLLY moves forward/back. infinityDolly lets the locked-distance
+    // dolly translate the camera instead of no-op'ing against min==max==1.
+    ctx.obcCamera.set('FirstPerson');
+    controls.infinityDolly = true;
+    // Dolly straight along the view axis (forward/back), not toward the cursor
+    // point — predictable first-person "scroll to move".
+    controls.dollyToCursor = false;
+
+    // Take over the left button: camera-controls' ROTATE orbits the eye around
+    // the pinned target (translating the camera), not look-in-place. Disable it
+    // and drive look ourselves via the pointer handlers (`onPointerMove` →
+    // `applyLook`). `mouseLeft` is saved above, so orbit is restored on exit.
+    const ACTION = (controls.constructor as { ACTION?: Record<string, number> }).ACTION;
+    if (ACTION) {
+      controls.mouseButtons.left = (ACTION['NONE'] ?? 0) as typeof controls.mouseButtons.left;
+    }
+
+    // Pure-look: suppress click-selection + hover, and stand pivot-rotate down
+    // (it grabs the left-drag as an orbit-pivot, which would fight our look).
+    await ctx.commands.execute('pivotRotate.disable').catch(() => undefined);
+    restoreSelection = await suppressSelectionGestures(ctx);
+  };
+
+  const disable = async (): Promise<void> => {
     if (!active) return;
+    const ctx = ctxRef;
     active = false;
     held.clear();
-    window.removeEventListener('keydown', onKeyDown);
+    dragging = false;
     window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('keydown', onKeyDown);
+    if (ctx) {
+      ctx.container.removeEventListener('pointerdown', onPointerDown, true);
+    }
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;
+    }
+    if (!ctx) return;
+
+    const controls = ctx.cameraControls;
+
+    // Re-enable pivot-rotate and rebind selection/hover.
+    await ctx.commands.execute('pivotRotate.enable').catch(() => undefined);
+    await restoreSelection?.();
+    restoreSelection = null;
+
+    // Back to orbit navigation (re-establishes a real orbit target), then
+    // restore the exact pre-fly controls config — OrbitMode would otherwise
+    // leave minDistance=1/maxDistance=300/truckSpeed=2 and infinityDolly on.
+    ctx.obcCamera.set('Orbit');
+    if (savedControls) {
+      controls.minDistance = savedControls.minDistance;
+      controls.maxDistance = savedControls.maxDistance;
+      controls.truckSpeed = savedControls.truckSpeed;
+      controls.infinityDolly = savedControls.infinityDolly;
+      controls.dollyToCursor = savedControls.dollyToCursor;
+      controls.mouseButtons.left = savedControls.mouseLeft as typeof controls.mouseButtons.left;
+      controls.mouseButtons.right = savedControls.mouseRight as typeof controls.mouseButtons.right;
+      controls.mouseButtons.middle = savedControls.mouseMiddle as typeof controls.mouseButtons.middle;
+      controls.mouseButtons.wheel = savedControls.mouseWheel as typeof controls.mouseButtons.wheel;
+      savedControls = null;
     }
   };
 
   return {
     name: NAME,
-    dependencies: ['camera'],
+    dependencies: ['camera', 'mouse-bindings'],
 
     isActive() { return active; },
 
     install(ctx: ViewerContext) {
       ctxRef = ctx;
 
-      ctx.commands.register('cameraFly.enable', () => { enable(); }, {
+      ctx.commands.register('cameraFly.enable', () => enable(), {
         title: 'Enable fly navigation',
       });
-      ctx.commands.register('cameraFly.disable', () => { disable(); }, {
+      ctx.commands.register('cameraFly.disable', () => disable(), {
         title: 'Disable fly navigation',
       });
       ctx.commands.register('cameraFly.isActive', () => active, {
         title: 'Check fly navigation state',
       });
 
+      // One command per direction, bound to a default key. The keyboard-shortcuts
+      // plugin dispatches these on keydown (= press); release happens on keyup
+      // (see `onKeyUp`). Registering them here also surfaces them in Keyboard
+      // Settings as rebindable shortcuts.
+      for (const { dir, command, title, shortcut } of DIRECTION_COMMANDS) {
+        ctx.commands.register(command, () => { internalPress(dir); }, {
+          title,
+          defaultShortcut: shortcut,
+        });
+      }
+
       // Press / release a direction — used by the on-screen D-pad buttons so
       // hold-to-move works identically to the keyboard.
       ctx.commands.register('cameraFly.press', (args: unknown) => {
-        if (!active) return;
         const dir = (args as { dir?: unknown })?.dir;
-        if (isFlyDirection(dir)) held.add(dir);
+        if (isFlyDirection(dir)) internalPress(dir);
       }, { title: 'Start moving in a direction' });
 
       ctx.commands.register('cameraFly.release', (args: unknown) => {
@@ -217,7 +502,7 @@ export function cameraFlyPlugin(
     },
 
     uninstall() {
-      disable();
+      void disable();
       ctxRef = null;
     },
   };

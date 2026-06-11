@@ -21,6 +21,13 @@ import { stashPendingPdfContextPoint } from '@/features/viewer/shared/inspector/
 
 type ContextMenuData = DocumentEvents['contextmenu:open'];
 
+/**
+ * Minimal structural handle the menu actually drives — both `DocumentViewerHandle`
+ * (PDF) and `FloorPlanViewerHandle` (Split/2D plan) satisfy this subset, so the
+ * same menu serves both surfaces.
+ */
+type ContextMenuHandle = Pick<DocumentViewerHandle, 'fitPage' | 'commands' | 'events'>;
+
 type MenuItem = {
   label: string;
   icon?: JSX.Element;
@@ -30,7 +37,7 @@ type MenuItem = {
 };
 
 type Props = {
-  handle: DocumentViewerHandle | null;
+  handle: ContextMenuHandle | null;
   onRequestInspector: (view: 'findings') => void;
   shortcuts?: DocumentShortcutMap;
   ready: boolean | undefined;

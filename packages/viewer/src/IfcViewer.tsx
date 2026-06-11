@@ -26,13 +26,13 @@ import { viewCubePlugin } from './plugins/3d/viewcube/index.js';
 import { visibilityPlugin } from './plugins/3d/visibility/index.js';
 import { inspectPlugin } from './plugins/3d/inspect/index.js';
 import { eraserPlugin } from './plugins/3d/eraser/index.js';
+import { toolManagerPlugin } from './plugins/3d/tool-manager/index.js';
 import { contextMenuPlugin } from './plugins/3d/context-menu/index.js';
 import { xrayPlugin } from './plugins/3d/xray/index.js';
 import { outlinePlugin } from './plugins/3d/outline/index.js';
 import { modePlugin } from './plugins/3d/mode/index.js';
 import { sectionPlugin } from './plugins/3d/section/index.js';
 import { measurementPlugin } from './plugins/3d/measurement/index.js';
-import { walkthroughPlugin } from './plugins/3d/walkthrough/index.js';
 import { snappingPlugin } from './plugins/3d/snapping/index.js';
 import { wireframePlugin } from './plugins/3d/wireframe/index.js';
 import { classifierPlugin } from './plugins/3d/classifier/index.js';
@@ -111,9 +111,6 @@ function IfcViewerImpl(
 
     const builtIns = [
       cameraPlugin(),
-      // Fly navigation — non-exclusive arrow-key / D-pad camera driver. Depends
-      // on the camera plugin; stays dormant until the toolbar fly-out enables it.
-      cameraFlyPlugin(),
       hoverHighlightPlugin(props.hoverHighlight ?? {}),
       selectionPlugin(props.selectionHighlight ?? {}),
       visibilityPlugin(),
@@ -127,6 +124,14 @@ function IfcViewerImpl(
       // Navigate depends on mouse-bindings, so it registers after it.
       navigatePlugin(),
       eraserPlugin(),
+      // Fly navigation — the first-person camera tool (WASD / D-pad + mouse-look).
+      // Depends on camera + mouse-bindings (it suppresses selection/hover gestures
+      // on enter), so it must register after mouse-bindings. Stays dormant until
+      // the toolbar fly-out enables it.
+      cameraFlyPlugin(),
+      // Single authority over which pointer/camera tool is active (select /
+      // navigate / eraser / fly). Depends on those four being registered first.
+      toolManagerPlugin(),
       snappingPlugin(props.snapping ?? {}),
       contextMenuPlugin(),
       ...(viewCubeEnabled
@@ -144,7 +149,6 @@ function IfcViewerImpl(
       interactivePerformancePlugin(props.interactivePerformance ?? {}),
       ...(props.section !== false ? [sectionPlugin(typeof props.section === 'object' ? props.section : {})] : []),
       measurementPlugin(),
-      ...(props.walkthrough !== false ? [walkthroughPlugin(typeof props.walkthrough === 'object' ? props.walkthrough : {})] : []),
       wireframePlugin(),
       classifierPlugin(),
       // Minimap depends on classifier + visibility (both registered above) for

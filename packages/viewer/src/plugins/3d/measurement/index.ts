@@ -1699,9 +1699,10 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       });
       ctx.commands.register('measure.toggleAxisLock', () => toggleAxisLock(), {
         title: 'Toggle axis lock',
+        defaultShortcut: 'Shift+A',
       });
       ctx.commands
-        .execute('shortcuts.bind', { combo: 'A', command: 'measure.toggleAxisLock' })
+        .execute('shortcuts.bind', { combo: 'Shift+A', command: 'measure.toggleAxisLock' })
         .catch(() => undefined);
       ctx.commands.register('measure.getConfig', () => ({ ...config }), {
         title: 'Get measurement config',

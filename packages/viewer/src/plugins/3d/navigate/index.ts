@@ -5,20 +5,16 @@
  *
  * Camera navigation is independent of the active tool, so "navigate mode"
  * is just "select mode with the selection/hover mouse gestures removed".
- * On enter, it unbinds every gesture wired to `selection.pick*` /
- * `hover.pick` / `hover.clear` (capturing them first); on exit, it rebinds
- * them. The selection plugin's state and its painted highlights are never
- * touched, so an existing selection stays visible while navigating.
+ * On enter it suppresses the selection/hover mouse gestures (via the shared
+ * `suppressSelectionGestures` helper) and rebinds them on exit. The selection
+ * plugin's state and its painted highlights are never touched, so an existing
+ * selection stays visible while navigating.
  */
 
 import type { Plugin, ViewerContext } from '../../../core/types.js';
+import { suppressSelectionGestures } from '../shared/suppressSelection.js';
 
 const NAME = 'navigate' as const;
-
-const isSuppressed = (command: string): boolean =>
-  command.startsWith('selection.pick') ||
-  command === 'hover.pick' ||
-  command === 'hover.clear';
 
 export interface NavigatePluginAPI {
   isActive(): boolean;
@@ -27,23 +23,12 @@ export interface NavigatePluginAPI {
 export function navigatePlugin(): Plugin & NavigatePluginAPI {
   let ctxRef: ViewerContext | null = null;
   let active = false;
-  let saved: Array<{ gesture: string; command: string }> = [];
+  let restore: (() => Promise<void>) | null = null;
 
   const enter = async (): Promise<void> => {
     if (!ctxRef || active) return;
 
-    const bindings =
-      (await ctxRef.commands.execute<undefined, Array<{ gesture: string; command: string }>>(
-        'mouseBindings.list',
-      )) ?? [];
-    saved = bindings.filter((b) => isSuppressed(b.command));
-
-    for (const b of saved) {
-      await ctxRef.commands.execute('mouseBindings.unbind', { gesture: b.gesture });
-    }
-
-    // Drop any lingering hover paint so nothing stays highlighted.
-    await ctxRef.commands.execute('hover.clear').catch(() => undefined);
+    restore = await suppressSelectionGestures(ctxRef);
 
     active = true;
     ctxRef.events.emit('navigate:change', { active: true });
@@ -52,14 +37,8 @@ export function navigatePlugin(): Plugin & NavigatePluginAPI {
   const exit = async (): Promise<void> => {
     if (!ctxRef || !active) return;
 
-    for (const b of saved) {
-      await ctxRef.commands.execute('mouseBindings.bind', {
-        gesture: b.gesture,
-        command: b.command,
-      });
-    }
-
-    saved = [];
+    await restore?.();
+    restore = null;
     active = false;
     ctxRef.events.emit('navigate:change', { active: false });
   };
@@ -75,9 +54,10 @@ export function navigatePlugin(): Plugin & NavigatePluginAPI {
     install(ctx: ViewerContext) {
       ctxRef = ctx;
 
+      // Shortcut '3' is owned by tool-manager's `tool.navigate`, which routes
+      // through the active-tool authority; binding it here too would double-bind.
       ctx.commands.register('navigate.enter', () => enter(), {
         title: 'Activate navigate tool',
-        defaultShortcut: '3',
       });
 
       ctx.commands.register('navigate.exit', () => exit(), {

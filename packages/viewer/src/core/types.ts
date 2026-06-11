@@ -4,7 +4,11 @@
 
 import type * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
-import type { Components, SimpleCamera } from '@thatopen/components';
+import type {
+  Components,
+  OrthoPerspectiveCamera,
+  SimpleCamera,
+} from '@thatopen/components';
 
 import type { CommandRegistry } from './CommandRegistry.js';
 import type { EventBus } from './EventBus.js';
@@ -70,7 +74,6 @@ export interface ViewerEvents {
   'measurement:change': { measurements: Array<{ id: string; type: string; value: number; unit: string; visible: boolean }> };
   'measurement:complete': { id: string; type: string; value: number };
   'measurement:axisLock': { active: boolean; axis: 'x' | 'y' | 'z' | null };
-  'walkthrough:change': { active: boolean };
   'wireframe:change': { active: boolean };
   'snapping:change': { enabled: boolean; snap: { point: Vec3; type: string } | null };
   'classification:change': { groups: Record<string, ItemId[]> };
@@ -82,6 +85,7 @@ export interface ViewerEvents {
   'grid:change': { visible: boolean };
   'eraser:change': { active: boolean };
   'navigate:change': { active: boolean };
+  'tool:change': { tool: 'select' | 'navigate' | 'eraser' | 'fly' };
   'screenshot:captured': { width: number; height: number };
   'colorCoding:change': { active: boolean; scheme: string | null; legend: Array<{ name: string; color: number; count: number }> };
   'exploder:change': { active: boolean; mode: string | null; factor: number };
@@ -112,6 +116,13 @@ export interface ViewerContext {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   cameraControls: CameraControls;
+  /**
+   * The ThatOpen `OrthoPerspectiveCamera` wrapper. Exposes navigation modes
+   * (`set('FirstPerson')` / `set('Orbit')`) and the projection manager. Plugins
+   * normally use `camera` / `cameraControls`; reach for this only to switch the
+   * camera's navigation mode (e.g. the fly tool's first-person look).
+   */
+  obcCamera: OrthoPerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   canvas: HTMLCanvasElement;
   container: HTMLElement;

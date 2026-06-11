@@ -67,6 +67,7 @@ export const DEFAULT_MOUSE_BINDINGS_SETTINGS: MouseBindingMap = {
 
 export const DEFAULT_ZOOM: Required<ZoomOptions> = {
   maxFactor: 4,
+  toCursor: true,
 };
 
 export const DEFAULT_BEHAVIOR: BehaviorSettings = {

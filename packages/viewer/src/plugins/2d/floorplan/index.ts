@@ -25,7 +25,7 @@ import type { DecodedFloorPlans, FloorPlanLevel } from '../../3d/shared/floorpla
 import { unionBbox, type PlanBbox } from '../../3d/shared/floorplanBbox.js';
 import type { CameraPluginAPI } from '../camera/index.js';
 import type { SceneAPI } from '../scene/index.js';
-import { applyConstantScale, clearGroup } from '../shared/screenConstant.js';
+import { applyConstantScale, clearGroup, containerPointToWorld } from '../shared/screenConstant.js';
 
 const NAME = 'floorplan' as const;
 const LAYER = 'floorplan' as const;
@@ -83,6 +83,11 @@ declare module '../../../pdf-core/documentTypes.js' {
   interface DocumentEvents {
     /** A left-click on the plan, resolved to a plan point + nearest room (or null). */
     'floorplan:pick': { planX: number; planY: number; spaceId: number | null };
+    /**
+     * The user dragged the "you are here" camera marker (move or aim). Plan
+     * coords — the host bridges this to the 3D camera (`minimap.placeCamera`).
+     */
+    'floorplan:cameraPose': { hereX: number; hereY: number; lookX: number; lookY: number };
   }
 }
 
@@ -122,40 +127,77 @@ function makeLabelSprite(text: string, color: string): THREE.Sprite | null {
   return sprite;
 }
 
+// Camera-marker geometry (authored in px, pointing +X). These px constants are
+// also the source of truth for drag hit-testing — keep them in sync.
+const CAM_FOV_RADIUS_PX = 28; // length of the field-of-view wedge
+const CAM_FOV_HALF_ANGLE = THREE.MathUtils.degToRad(30); // wedge half-spread
+const CAM_BODY_HALF_PX = 6; // camera-body half-extent
+const CAM_HANDLE_PX = CAM_FOV_RADIUS_PX; // rotate handle sits at the wedge tip (+X)
+const CAM_HANDLE_R_PX = 4; // rotate-handle dot radius
+const CAM_MOVE_HIT_PX = 14; // grab radius for the body (move drag)
+const CAM_AIM_HIT_PX = 13; // grab radius for the rotate handle (aim drag)
+
+/** Filled circle of `r` px centred at `(cx, cy)`. */
+function circleShape(cx: number, cy: number, r: number, segments = 20): THREE.Shape {
+  const pts: THREE.Vector2[] = [];
+  for (let i = 0; i < segments; i += 1) {
+    const t = (i / segments) * Math.PI * 2;
+    pts.push(new THREE.Vector2(cx + Math.cos(t) * r, cy + Math.sin(t) * r));
+  }
+  return new THREE.Shape(pts);
+}
+
 /**
- * Build the "you are here" marker — a view-cone triangle + center dot authored
- * in px (pointing +X), placed in a group that the caller scales by worldPerPx
- * and rotates to the camera heading (constant size on screen, like the canvas
- * minimap's marker).
+ * Build the "you are here" camera marker — a translucent field-of-view wedge
+ * (conveys aim), a small camera body at the origin, a center dot, and a rotate
+ * handle at the wedge tip (the drag affordance for aiming). Authored in px,
+ * pointing +X, in a group the caller scales by worldPerPx and rotates to the
+ * camera heading (constant size on screen, like the canvas minimap's marker).
  */
 function buildCameraMarker(color: THREE.ColorRepresentation): THREE.Group {
   const group = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
+  const solid = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
 
-  const cone = new THREE.Mesh(
-    new THREE.ShapeGeometry(
-      new THREE.Shape([
-        new THREE.Vector2(11, 0),
-        new THREE.Vector2(-4, -6),
-        new THREE.Vector2(-4, 6),
-      ]),
-    ),
-    mat,
-  );
-  cone.material.opacity = 0.85;
-  cone.renderOrder = RENDER_ORDER + 4;
-  cone.frustumCulled = false;
-
-  const dotPts: THREE.Vector2[] = [];
-  for (let i = 0; i < 24; i += 1) {
-    const t = (i / 24) * Math.PI * 2;
-    dotPts.push(new THREE.Vector2(Math.cos(t) * 4, Math.sin(t) * 4));
+  // Field-of-view wedge (sector from the origin), low opacity.
+  const wedgeShape = new THREE.Shape();
+  wedgeShape.moveTo(0, 0);
+  const STEPS = 16;
+  for (let i = 0; i <= STEPS; i += 1) {
+    const a = -CAM_FOV_HALF_ANGLE + (CAM_FOV_HALF_ANGLE * 2 * i) / STEPS;
+    wedgeShape.lineTo(Math.cos(a) * CAM_FOV_RADIUS_PX, Math.sin(a) * CAM_FOV_RADIUS_PX);
   }
-  const dot = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(dotPts)), mat);
-  dot.renderOrder = RENDER_ORDER + 5;
-  dot.frustumCulled = false;
+  wedgeShape.lineTo(0, 0);
+  const wedgeMat = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: 0.18 });
+  const wedge = new THREE.Mesh(new THREE.ShapeGeometry(wedgeShape), wedgeMat);
+  wedge.renderOrder = RENDER_ORDER + 4;
+  wedge.frustumCulled = false;
 
-  group.add(cone, dot);
+  // Camera body — a small rounded square with a lens nub poking toward +X.
+  const b = CAM_BODY_HALF_PX;
+  const bodyShape = new THREE.Shape([
+    new THREE.Vector2(-b, -b),
+    new THREE.Vector2(b * 0.4, -b),
+    new THREE.Vector2(b * 0.4, -b * 0.5),
+    new THREE.Vector2(b * 1.1, -b * 0.5),
+    new THREE.Vector2(b * 1.1, b * 0.5),
+    new THREE.Vector2(b * 0.4, b * 0.5),
+    new THREE.Vector2(b * 0.4, b),
+    new THREE.Vector2(-b, b),
+  ]);
+  const body = new THREE.Mesh(new THREE.ShapeGeometry(bodyShape), solid);
+  body.material.opacity = 0.95;
+  body.renderOrder = RENDER_ORDER + 5;
+  body.frustumCulled = false;
+
+  // Rotate handle at the wedge tip (white-ringed dot for affordance).
+  const handle = new THREE.Mesh(
+    new THREE.ShapeGeometry(circleShape(CAM_HANDLE_PX, 0, CAM_HANDLE_R_PX)),
+    solid,
+  );
+  handle.renderOrder = RENDER_ORDER + 6;
+  handle.frustumCulled = false;
+
+  group.add(wedge, body, handle);
   return group;
 }
 
@@ -175,6 +217,10 @@ export function floorPlanPlugin(
   let labelGroup: THREE.Group | null = null; // room labels (constant screen size)
   let pulseGroup: THREE.Group | null = null; // transient focus ring (constant size)
   let cameraGroup: THREE.Group | null = null; // "you are here" view cone (constant size)
+  /** Latest camera pose in plan coords (drives the marker + seeds drag math). */
+  let lastPose: { hereX: number; hereY: number; lookX: number; lookY: number } | null = null;
+  /** While the user drags the marker, ignore echoed poses so they don't fight it. */
+  let draggingCamera = false;
   let pulseTimer: ReturnType<typeof setTimeout> | null = null;
   let firstFit = true; // fit the camera once on the first render (pdf-underlay's job for PDFs)
   const cleanups: Array<() => void> = [];
@@ -303,6 +349,87 @@ export function floorPlanPlugin(
     return best;
   }
 
+  // ------------------------------------------------------ camera-marker drag
+
+  /** Aim-handle look distance in plan units (direction-only; magnitude is free). */
+  function aimDistance(): number {
+    const span = Math.max(union.maxX - union.minX, union.maxY - union.minY);
+    return span > 0 ? span * 0.1 : 1;
+  }
+
+  /** Event client coords → container-relative px. */
+  function toContainer(ev: PointerEvent): { x: number; y: number } {
+    const rect = ctx!.container.getBoundingClientRect();
+    return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+  }
+
+  /** Which part of the marker (if any) the cursor is over. */
+  function hitTestMarker(containerX: number, containerY: number): 'aim' | 'move' | null {
+    if (!sceneApi || !cameraGroup?.visible || !lastPose) return null;
+    const c = cameraGroup.position;
+    const wpp = sceneApi.worldPerPx();
+    const rot = cameraGroup.rotation.z;
+    const hWorld = sceneApi.worldToScreen(
+      c.x + Math.cos(rot) * CAM_HANDLE_PX * wpp,
+      c.y + Math.sin(rot) * CAM_HANDLE_PX * wpp,
+    );
+    if (Math.hypot(hWorld.x - containerX, hWorld.y - containerY) <= CAM_AIM_HIT_PX) return 'aim';
+    const cScreen = sceneApi.worldToScreen(c.x, c.y);
+    if (Math.hypot(cScreen.x - containerX, cScreen.y - containerY) <= CAM_MOVE_HIT_PX) return 'move';
+    return null;
+  }
+
+  let dragMode: 'aim' | 'move' | null = null;
+
+  function onDragMove(ev: PointerEvent): void {
+    if (!sceneApi || !cameraGroup || !lastPose || !dragMode) return;
+    const world = containerPointToWorld(ev, ctx!, sceneApi);
+    if (dragMode === 'move') {
+      // Reposition; keep the current heading (carry the here→look delta).
+      const dx = lastPose.lookX - lastPose.hereX;
+      const dy = lastPose.lookY - lastPose.hereY;
+      const hereX = world.x + offset.x;
+      const hereY = world.y + offset.y;
+      lastPose = { hereX, hereY, lookX: hereX + dx, lookY: hereY + dy };
+      cameraGroup.position.set(world.x, world.y, 0);
+    } else {
+      // Aim: keep position, point toward the cursor.
+      const angle = Math.atan2(world.y - cameraGroup.position.y, world.x - cameraGroup.position.x);
+      const d = aimDistance();
+      lastPose = {
+        hereX: lastPose.hereX,
+        hereY: lastPose.hereY,
+        lookX: lastPose.hereX + Math.cos(angle) * d,
+        lookY: lastPose.hereY + Math.sin(angle) * d,
+      };
+      cameraGroup.rotation.z = angle;
+    }
+    applyConstantScale(cameraGroup, sceneApi);
+    sceneApi.requestRender();
+    ctx!.events.emit('floorplan:cameraPose', { ...lastPose });
+  }
+
+  function endDrag(): void {
+    if (!dragMode) return;
+    dragMode = null;
+    draggingCamera = false;
+    window.removeEventListener('pointermove', onDragMove, true);
+    window.removeEventListener('pointerup', endDrag, true);
+  }
+
+  function onMarkerPointerDown(ev: PointerEvent): void {
+    if (ev.button !== 0 || !ctx) return;
+    const { x, y } = toContainer(ev);
+    const mode = hitTestMarker(x, y);
+    if (!mode) return; // not on the marker — let camera-controls / pick handle it
+    ev.preventDefault();
+    ev.stopPropagation();
+    dragMode = mode;
+    draggingCamera = true;
+    window.addEventListener('pointermove', onDragMove, true);
+    window.addEventListener('pointerup', endDrag, true);
+  }
+
   const api: DocumentPlugin & FloorPlanPluginAPI = {
     name: NAME,
     dependencies: ['scene'],
@@ -354,11 +481,16 @@ export function floorPlanPlugin(
 
     setCameraPose(pose): void {
       if (!sceneApi || !cameraGroup) return;
+      // A live drag owns the marker — ignore echoed poses (the camera:change →
+      // minimap:pose round-trip) until the drag ends.
+      if (draggingCamera) return;
       if (!pose) {
+        lastPose = null;
         cameraGroup.visible = false;
         sceneApi.requestRender();
         return;
       }
+      lastPose = { hereX: pose.hereX, hereY: pose.hereY, lookX: pose.lookX, lookY: pose.lookY };
       cameraGroup.visible = true;
       // Clamp the marker to the plan extent (with a small inset) so an exterior
       // camera — whose position projects outside the footprint — still shows at
@@ -388,6 +520,14 @@ export function floorPlanPlugin(
 
       cleanups.push(context.events.on('page:rendered', rebuild));
       cleanups.push(context.events.on('camera:change', onCameraChange));
+
+      // Grab the camera marker on pointerdown (capture phase) so a drag on it
+      // pre-empts camera-controls truck. Mirrors the measure plugin's pattern.
+      context.container.addEventListener('pointerdown', onMarkerPointerDown, true);
+      cleanups.push(() => {
+        context.container.removeEventListener('pointerdown', onMarkerPointerDown, true);
+        endDrag();
+      });
 
       context.commands.register<{ index: number }>('floorplan.setLevel', (a) => api.setLevel(a.index), {
         title: 'Set floor-plan level',

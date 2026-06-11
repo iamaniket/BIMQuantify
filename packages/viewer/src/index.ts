@@ -54,8 +54,6 @@ export type {
   SnappingPluginAPI,
   SnappingPluginOptions,
   SnapType,
-  WalkthroughPluginOptions,
-  WalkthroughPluginAPI,
   WireframePluginAPI,
   ClassifierPluginAPI,
   ClassificationStrategy,
@@ -202,6 +200,8 @@ export { pivotRotatePlugin } from './plugins/3d/pivot-rotate/index.js';
 export { visibilityPlugin } from './plugins/3d/visibility/index.js';
 export { inspectPlugin } from './plugins/3d/inspect/index.js';
 export { eraserPlugin } from './plugins/3d/eraser/index.js';
+export { toolManagerPlugin } from './plugins/3d/tool-manager/index.js';
+export type { ToolName, ToolManagerPluginAPI } from './plugins/3d/tool-manager/index.js';
 export { contextMenuPlugin } from './plugins/3d/context-menu/index.js';
 export { xrayPlugin } from './plugins/3d/xray/index.js';
 export { outlinePlugin } from './plugins/3d/outline/index.js';
@@ -229,7 +229,6 @@ export { sectionPlugin } from './plugins/3d/section/index.js';
 export { snappingPlugin } from './plugins/3d/snapping/index.js';
 export { modePlugin } from './plugins/3d/mode/index.js';
 export { measurementPlugin } from './plugins/3d/measurement/index.js';
-export { walkthroughPlugin } from './plugins/3d/walkthrough/index.js';
 export { cameraFlyPlugin } from './plugins/3d/camera-fly/index.js';
 export type {
   CameraFlyPluginOptions,

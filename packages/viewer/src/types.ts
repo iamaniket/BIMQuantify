@@ -21,7 +21,6 @@ import type { PivotRotateOptions } from './plugins/3d/pivot-rotate/index.js';
 import type { SelectionPluginOptions } from './plugins/3d/selection/index.js';
 import type { SectionPluginOptions } from './plugins/3d/section/index.js';
 import type { SnappingPluginOptions } from './plugins/3d/snapping/index.js';
-import type { WalkthroughPluginOptions } from './plugins/3d/walkthrough/index.js';
 
 export type ViewerBundle = {
   fragmentsUrl: string;
@@ -118,8 +117,6 @@ export type IfcViewerProps = {
   snapping?: SnappingPluginOptions;
   /** Clipping/section plane support. Pass `false` to disable. */
   section?: SectionPluginOptions | false;
-  /** First-person walkthrough. Pass `false` to disable. */
-  walkthrough?: WalkthroughPluginOptions | false;
   /** Min/max zoom (dolly) distance limits. Auto-computed from model size when omitted. */
   zoom?: ZoomOptions;
   ref?: Ref<ViewerHandle>;
@@ -160,7 +157,6 @@ export type { ModePluginAPI, ModeToolDescriptor, ViewerMode } from './plugins/3d
 
 export type { MeasurementPluginAPI, Measurement, MeasurementMode, MeasurementConfig } from './plugins/3d/measurement/index.js';
 
-export type { WalkthroughPluginOptions, WalkthroughPluginAPI } from './plugins/3d/walkthrough/index.js';
 
 export type { SnappingPluginOptions, SnappingPluginAPI, SnapType } from './plugins/3d/snapping/index.js';
 

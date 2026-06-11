@@ -83,6 +83,25 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
     return off;
   }, [fpHandle, viewerHandle]);
 
+  // 2D→3D: drag the "you are here" marker → place + aim the camera first-person.
+  useEffect(() => {
+    if (!fpHandle || !viewerHandle) return undefined;
+    const off = fpHandle.events.on('floorplan:cameraPose', (ev) => {
+      const lvl = levelsRef.current[activeLevelRef.current];
+      const elevation = lvl?.elevation ?? 0;
+      void viewerHandle.commands
+        .execute('minimap.placeCamera', {
+          planX: ev.hereX,
+          planY: ev.hereY,
+          lookX: ev.lookX,
+          lookY: ev.lookY,
+          elevation,
+        })
+        .catch(() => undefined);
+    });
+    return off;
+  }, [fpHandle, viewerHandle]);
+
   // 3D→2D: selection → project centroid → pan + pulse the plan.
   useEffect(() => {
     if (!fpHandle || !viewerHandle || !viewerReady) return undefined;

@@ -83,10 +83,12 @@ export function eraserPlugin(): Plugin & EraserPluginAPI {
         title: 'Deactivate eraser tool',
       });
 
+      // Shortcut '4' is owned by tool-manager's `tool.eraser`, which routes
+      // through the active-tool authority; binding it here too would double-bind.
       ctx.commands.register('eraser.toggle', async () => {
         if (active) await exit();
         else await enter();
-      }, { title: 'Toggle eraser tool', defaultShortcut: '4' });
+      }, { title: 'Toggle eraser tool' });
 
       ctx.commands.register('eraser.isActive', () => active, {
         title: 'Check if eraser is active',

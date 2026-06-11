@@ -53,6 +53,18 @@ export interface MinimapPluginAPI {
 
 type CalibrateArgs = { ifcBbox: Bbox3; planAxisX: number; planAxisY: number };
 type NavigateArgs = { planX: number; planY: number; elevation: number };
+/** Place + aim the camera first-person from the plan (here + look, plan coords). */
+type PlaceCameraArgs = {
+  planX: number;
+  planY: number;
+  lookX: number;
+  lookY: number;
+  elevation: number;
+  animate?: boolean;
+};
+
+/** Eye height above the storey floor (model units ≈ metres) for first-person placement. */
+const EYE_HEIGHT = 1.6;
 /** Resolved storey membership (local ids = IFC express ids) + a display label. */
 type IsolateArgs = { localIds: number[]; label?: string | null };
 type CameraPose = { position: ViewerVec3; target: ViewerVec3 };
@@ -116,6 +128,24 @@ export function minimapPlugin(
     const p = planToViewer(args.planX, args.planY, args.elevation, cal);
     await ctx.commands
       .execute('camera.flyToPoint', { x: p.x, y: p.y, z: p.z, animate: true })
+      .catch(() => undefined);
+  };
+
+  /**
+   * Place + aim the camera at an eye-level first-person pose from the plan: the
+   * `here` plan point becomes the eye (raised by {@link EYE_HEIGHT}), the `look`
+   * plan point the target at the same height → a level horizontal view. Unlike
+   * `navigateTo` (which preserves the current orbit), this sets the heading.
+   */
+  const placeCamera = async (args: PlaceCameraArgs): Promise<void> => {
+    const ctx = ctxRef;
+    const cal = calibration;
+    if (!ctx || !cal || !args) return;
+    const h = args.elevation + EYE_HEIGHT;
+    const eye = planToViewer(args.planX, args.planY, h, cal);
+    const tgt = planToViewer(args.lookX, args.lookY, h, cal);
+    await ctx.cameraControls
+      .setLookAt(eye.x, eye.y, eye.z, tgt.x, tgt.y, tgt.z, args.animate ?? false)
       .catch(() => undefined);
   };
 
@@ -206,6 +236,9 @@ export function minimapPlugin(
       });
       ctx.commands.register('minimap.navigateTo', (args: unknown) => navigateTo(args as NavigateArgs), {
         title: 'Fly the camera to a plan point',
+      });
+      ctx.commands.register('minimap.placeCamera', (args: unknown) => placeCamera(args as PlaceCameraArgs), {
+        title: 'Place + aim the camera first-person from the plan',
       });
       ctx.commands.register('minimap.isolateItems', (args: unknown) => isolateItems(args as IsolateArgs), {
         title: 'Isolate a storey in 3D (hide other levels)',

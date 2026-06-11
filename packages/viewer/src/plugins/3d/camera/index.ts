@@ -145,7 +145,7 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
           if (box.isEmpty()) return;
           await snapIsoAndFit(box);
         },
-        { title: 'Zoom to fit', defaultShortcut: 'F' },
+        { title: 'Zoom to fit', defaultShortcut: 'G' },
       );
 
       commands.register(

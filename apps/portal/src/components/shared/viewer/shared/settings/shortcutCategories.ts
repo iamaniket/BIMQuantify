@@ -2,6 +2,7 @@ import type { ShortcutCategory } from './types';
 
 const NAVIGATION_PREFIXES = [
   'camera.',
+  'cameraFly.',
   'zoomIn', 'zoomOut',
   'fitPage', 'fitWidth', 'actualSize',
   'nextPage', 'prevPage', 'firstPage', 'lastPage',

@@ -32,6 +32,7 @@ import { resolveColor } from '@/features/viewer/3d/minimap/spatialNames';
 import type { Finding } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 
+import { DocumentContextMenu } from './DocumentContextMenu';
 import { useFloorPlanData } from './useFloorPlanData';
 import { useFloorPlanFindingMarkers } from './useFloorPlanFindingMarkers';
 import { useFloorPlanLink } from './useFloorPlanLink';
@@ -49,6 +50,8 @@ type Props = {
   projectId: string;
   fileId: string;
   onFindingClick: (finding: Finding) => void;
+  /** Open a side-panel inspector view (e.g. from the right-click "Add finding"). */
+  onRequestInspector: (view: 'findings') => void;
 };
 
 /**
@@ -64,6 +67,7 @@ export function FloorPlanPane({
   projectId,
   fileId,
   onFindingClick,
+  onRequestInspector,
 }: Props): ReactElement | null {
   const t = useTranslations('viewer.floorplan');
   const levelFallback = useCallback((n: number) => t('levelFallback', { n }), [t]);
@@ -78,6 +82,7 @@ export function FloorPlanPane({
   const [activeLevel, setActiveLevel] = useState(0);
   const [isolate, setIsolate] = useState(true);
   const [fpHandle, setFpHandle] = useState<FloorPlanViewerHandle | null>(null);
+  const [planRendered, setPlanRendered] = useState(false);
 
   const handleFpRef = useCallback((h: FloorPlanViewerHandle | null) => {
     setFpHandle(h);
@@ -188,6 +193,14 @@ export function FloorPlanPane({
         activeLevel={safeLevel}
         colors={colors}
         className="absolute inset-0"
+        onLevelRendered={() => {
+          if (!planRendered) setPlanRendered(true);
+        }}
+      />
+      <DocumentContextMenu
+        handle={fpHandle}
+        onRequestInspector={onRequestInspector}
+        ready={planRendered}
       />
     </div>
   );

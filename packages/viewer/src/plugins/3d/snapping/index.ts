@@ -181,7 +181,7 @@ export function snappingPlugin(
       ctx.commands.register(
         'snapping.toggle',
         () => setEnabled(!enabled),
-        { title: 'Toggle snapping', defaultShortcut: 'S' },
+        { title: 'Toggle snapping', defaultShortcut: 'Shift+S' },
       );
       ctx.commands.register(
         'snapping.enable',
@@ -223,7 +223,7 @@ export function snappingPlugin(
       // keyboard-shortcuts seeds defaults at install time, but snapping
       // installs after it — manually bind the shortcut.
       ctx.commands
-        .execute('shortcuts.bind', { combo: 'S', command: 'snapping.toggle' })
+        .execute('shortcuts.bind', { combo: 'Shift+S', command: 'snapping.toggle' })
         .catch(() => undefined);
     },
 

@@ -143,6 +143,12 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       const defaultTruckSpeed = controls.truckSpeed;
       let referenceDistance = controls.distance > 0 ? controls.distance : 1;
 
+      // When a camera tool (e.g. fly / first-person) drives rotation itself,
+      // pivot-rotate must stand down: in first-person the left button is ROTATE,
+      // so our pointerdown would otherwise grab a far geometry point as the
+      // orbit pivot and break look-in-place. Toggled via pivotRotate.enable/disable.
+      let enabled = true;
+
       // Hover cache. lastHit is in world space; null means "no geometry
       // under the cursor at the last pick".
       let lastHit: THREE.Vector3 | null = null;
@@ -340,6 +346,7 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       };
 
       const onPointerDown = (ev: PointerEvent): void => {
+        if (!enabled) return;
         const buttonName = BUTTON_NAME[ev.button];
         if (!buttonName) return;
         const action = controls.mouseButtons[buttonName];
@@ -384,6 +391,7 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       // commit the deferred pivot and kick camera-controls into rotation
       // by re-dispatching the original pointerdown synthetically.
       const onDragMove = (ev: PointerEvent): void => {
+        if (!enabled) return;
         if (gestureButton < 0) return;
         if (pivotApplied) return;
 
@@ -466,6 +474,28 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
           return true;
         },
         { title: 'Set rotation pivot' },
+      );
+
+      // Suspend / resume the pivot interception. Camera tools that own
+      // rotation (fly / first-person) disable it on enter and re-enable on exit.
+      ctx.commands.register(
+        'pivotRotate.disable',
+        () => {
+          enabled = false;
+          // Drop any in-flight deferred gesture so a half-started drag can't
+          // apply a pivot after we've stood down.
+          deferredPivot = null;
+          gestureButton = -1;
+          controls.truckSpeed = defaultTruckSpeed;
+        },
+        { title: 'Suspend pivot-rotate' },
+      );
+      ctx.commands.register(
+        'pivotRotate.enable',
+        () => {
+          enabled = true;
+        },
+        { title: 'Resume pivot-rotate' },
       );
 
       cleanup = (): void => {

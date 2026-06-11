@@ -2805,7 +2805,7 @@
       "navigate": "Navigate",
       "eraser": "Eraser",
       "fly": "Fly",
-      "flyTooltip": "Fly navigation (arrow keys move and turn)",
+      "flyTooltip": "Fly navigation (WASD to move, Q/E turn, R/F height)",
       "wireframe": "Wireframe",
       "xray": "X-Ray",
       "isolate": "Isolate",
@@ -2836,14 +2836,14 @@
     },
     "flyNav": {
       "title": "Fly navigation",
-      "moveForward": "Move forward (Up arrow)",
-      "moveBack": "Move back (Down arrow)",
-      "turnLeft": "Turn left (Left arrow)",
-      "turnRight": "Turn right (Right arrow)",
-      "height": "Height",
-      "raise": "Raise camera (Page Up)",
-      "lower": "Lower camera (Page Down)",
-      "close": "Close fly navigation"
+      "moveForward": "Move forward (W)",
+      "moveBack": "Move back (S)",
+      "turnLeft": "Turn left (Q)",
+      "turnRight": "Turn right (E)",
+      "strafeLeft": "Move left (A)",
+      "strafeRight": "Move right (D)",
+      "raise": "Raise camera (R)",
+      "lower": "Lower camera (F)"
     },
     "measurement": {
       "modeDistance": "Distance",

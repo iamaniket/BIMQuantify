@@ -2805,7 +2805,7 @@
       "navigate": "Navigeren",
       "eraser": "Gum",
       "fly": "Vliegen",
-      "flyTooltip": "Vliegnavigatie (pijltjestoetsen verplaatsen en draaien)",
+      "flyTooltip": "Vliegnavigatie (WASD verplaatsen, Q/E draaien, R/F hoogte)",
       "wireframe": "Draadmodel",
       "xray": "Röntgen",
       "isolate": "Isoleren",
@@ -2836,14 +2836,14 @@
     },
     "flyNav": {
       "title": "Vliegnavigatie",
-      "moveForward": "Vooruit (pijl omhoog)",
-      "moveBack": "Achteruit (pijl omlaag)",
-      "turnLeft": "Naar links draaien (pijl naar links)",
-      "turnRight": "Naar rechts draaien (pijl naar rechts)",
-      "height": "Hoogte",
-      "raise": "Camera omhoog (Page Up)",
-      "lower": "Camera omlaag (Page Down)",
-      "close": "Vliegnavigatie sluiten"
+      "moveForward": "Vooruit (W)",
+      "moveBack": "Achteruit (S)",
+      "turnLeft": "Naar links draaien (Q)",
+      "turnRight": "Naar rechts draaien (E)",
+      "strafeLeft": "Naar links (A)",
+      "strafeRight": "Naar rechts (D)",
+      "raise": "Camera omhoog (R)",
+      "lower": "Camera omlaag (F)"
     },
     "measurement": {
       "modeDistance": "Afstand",

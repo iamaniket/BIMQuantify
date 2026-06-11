@@ -85,6 +85,10 @@ export function keyboardShortcutsPlugin(
         const target = ev.target as HTMLElement | null;
         if (target && ignoreTags.has(target.tagName)) return;
         if (target?.isContentEditable) return;
+        // Ignore OS key auto-repeat: a held key should fire its command once,
+        // not ~30×/s. Press-and-hold actions (e.g. fly navigation) manage their
+        // own held state and stop on keyup.
+        if (ev.repeat) return;
         const combo = comboFromEvent(ev);
         const cmd = bindings.get(combo);
         if (!cmd) return;

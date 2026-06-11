@@ -690,6 +690,7 @@ export default function ViewerPage(): JSX.Element {
               projectId={projectId}
               fileId={fileId}
               onFindingClick={setMarkerFinding}
+              onRequestInspector={handleDocContextMenuInspector}
             />
           </div>
         ) : null}

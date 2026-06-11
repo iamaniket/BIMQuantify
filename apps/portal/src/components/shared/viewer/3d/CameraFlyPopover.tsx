@@ -2,43 +2,61 @@
 
 import {
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   ArrowUp,
   ChevronsDown,
   ChevronsUp,
   RotateCcw,
   RotateCw,
-  X,
   type AppIcon,
 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, type JSX } from 'react';
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
 import type { ViewerHandle } from '@bimstitch/viewer';
 
-type FlyDirection = 'forward' | 'back' | 'left' | 'right' | 'up' | 'down';
+import { ToolbarGroup, ToolButton } from '@/components/shared/viewer/shared/_toolbarPrimitives';
+
+type FlyDirection =
+  | 'forward'
+  | 'back'
+  | 'turnLeft'
+  | 'turnRight'
+  | 'strafeLeft'
+  | 'strafeRight'
+  | 'up'
+  | 'down';
 
 type Props = {
   handle: ViewerHandle | null;
   onClose: () => void;
 };
 
+type FlyControl = { dir: FlyDirection; icon: AppIcon; labelKey: string };
+
 /**
- * Fly-out camera D-pad. Mirrors the arrow-key shortcuts: Up/Down walk the
- * camera forward/back, Left/Right turn it in place (all at constant height),
- * and the two elevation buttons raise/lower it. Each button drives the same
- * held-direction set as the keys via `cameraFly.press` / `cameraFly.release`,
- * so press-and-hold moves continuously.
+ * Fly-navigation flyout — styled as an extension of the toolbar (two stacked
+ * toolbar pills) whose two rows mirror the physical keyboard:
+ *   row 1 → Q W E R  (turn-left, forward, turn-right, up)
+ *   row 2 → A S D F  (strafe-left, back, strafe-right, down)
+ * Each button drives the same held-direction set as the keys via
+ * `cameraFly.press` / `cameraFly.release`, so press-and-hold moves continuously.
+ * Closing is the toolbar's Fly button (toggles select) plus Esc / click-outside.
  */
 export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
   const t = useTranslations('viewer.flyNav');
   const ref = useRef<HTMLDivElement | null>(null);
   /** Directions currently pressed via a pointer, so we can release on unmount. */
   const pressed = useRef<Set<FlyDirection>>(new Set());
+  /** Mirror of `pressed` for rendering the held button as active. */
+  const [held, setHeld] = useState<ReadonlySet<FlyDirection>>(new Set());
 
   const release = useCallback(
     (dir: FlyDirection): void => {
       if (!pressed.current.has(dir)) return;
       pressed.current.delete(dir);
+      setHeld(new Set(pressed.current));
       handle?.commands.execute('cameraFly.release', { dir }).catch(() => undefined);
     },
     [handle],
@@ -48,6 +66,7 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
     (dir: FlyDirection): void => {
       if (!handle || pressed.current.has(dir)) return;
       pressed.current.add(dir);
+      setHeld(new Set(pressed.current));
       handle.commands.execute('cameraFly.press', { dir }).catch(() => undefined);
     },
     [handle],
@@ -72,88 +91,65 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
   // Release any held direction if the popover unmounts mid-press.
   const pressedRef = pressed;
   useEffect(() => {
-    const held = pressedRef.current;
+    const heldDirs = pressedRef.current;
     return () => {
-      for (const dir of held) {
+      for (const dir of heldDirs) {
         handle?.commands.execute('cameraFly.release', { dir }).catch(() => undefined);
       }
-      held.clear();
+      heldDirs.clear();
     };
   }, [handle, pressedRef]);
+
+  const ROW_TOP: FlyControl[] = [
+    { dir: 'turnLeft', icon: RotateCcw, labelKey: 'turnLeft' },
+    { dir: 'forward', icon: ArrowUp, labelKey: 'moveForward' },
+    { dir: 'turnRight', icon: RotateCw, labelKey: 'turnRight' },
+    { dir: 'up', icon: ChevronsUp, labelKey: 'raise' },
+  ];
+  const ROW_BOTTOM: FlyControl[] = [
+    { dir: 'strafeLeft', icon: ArrowLeft, labelKey: 'strafeLeft' },
+    { dir: 'back', icon: ArrowDown, labelKey: 'moveBack' },
+    { dir: 'strafeRight', icon: ArrowRight, labelKey: 'strafeRight' },
+    { dir: 'down', icon: ChevronsDown, labelKey: 'lower' },
+  ];
+
+  const renderButton = ({ dir, icon: Icon, labelKey }: FlyControl): JSX.Element => {
+    const label = t(labelKey);
+    return (
+      <ToolButton
+        key={dir}
+        aria-label={label}
+        title={label}
+        disabled={!handle}
+        isActive={held.has(dir)}
+        data-testid={`viewer-fly-${dir}`}
+        className="touch-none select-none"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          press(dir);
+        }}
+        onPointerUp={() => { release(dir); }}
+        onPointerLeave={() => { release(dir); }}
+        onPointerCancel={() => { release(dir); }}
+      >
+        <Icon className="h-[22px] w-[22px]" weight="bold" />
+      </ToolButton>
+    );
+  };
 
   return (
     <div
       ref={ref}
-      role="dialog"
+      role="group"
       aria-label={t('title')}
       data-testid="viewer-fly-popover"
-      className="absolute bottom-12 left-1/2 z-20 -translate-x-1/2 rounded-md border border-border bg-background p-4 shadow-lg"
+      className="absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-1.5"
       onMouseDown={(e) => {
         e.stopPropagation();
       }}
     >
-      <div className="mb-3 flex items-center justify-between gap-6">
-        <h2 className="text-body2 font-medium text-foreground">{t('title')}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('close')}
-          className="inline-flex h-8 w-8 items-center justify-center rounded text-foreground-secondary hover:bg-background-secondary hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="flex items-start gap-5">
-        {/* Move + turn D-pad (height locked) */}
-        <div className="grid grid-cols-3 grid-rows-3 gap-1">
-          <span />
-          <FlyButton icon={ArrowUp} label={t('moveForward')} disabled={!handle} onPress={() => press('forward')} onRelease={() => release('forward')} />
-          <span />
-          <FlyButton icon={RotateCcw} label={t('turnLeft')} disabled={!handle} onPress={() => press('left')} onRelease={() => release('left')} />
-          <span />
-          <FlyButton icon={RotateCw} label={t('turnRight')} disabled={!handle} onPress={() => press('right')} onRelease={() => release('right')} />
-          <span />
-          <FlyButton icon={ArrowDown} label={t('moveBack')} disabled={!handle} onPress={() => press('back')} onRelease={() => release('back')} />
-          <span />
-        </div>
-
-        {/* Elevation (changes height) */}
-        <div className="flex flex-col items-center gap-1 border-l border-border pl-4">
-          <FlyButton icon={ChevronsUp} label={t('raise')} disabled={!handle} onPress={() => press('up')} onRelease={() => release('up')} />
-          <span className="text-caption text-foreground-tertiary">{t('height')}</span>
-          <FlyButton icon={ChevronsDown} label={t('lower')} disabled={!handle} onPress={() => press('down')} onRelease={() => release('down')} />
-        </div>
-      </div>
+      <ToolbarGroup>{ROW_TOP.map(renderButton)}</ToolbarGroup>
+      <ToolbarGroup>{ROW_BOTTOM.map(renderButton)}</ToolbarGroup>
     </div>
-  );
-}
-
-type FlyButtonProps = {
-  icon: AppIcon;
-  label: string;
-  disabled: boolean;
-  onPress: () => void;
-  onRelease: () => void;
-};
-
-function FlyButton({ icon: Icon, label, disabled, onPress, onRelease }: FlyButtonProps): JSX.Element {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      className="inline-flex h-10 w-10 touch-none select-none items-center justify-center rounded text-foreground-secondary hover:bg-background-secondary hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:text-foreground/20"
-      onPointerDown={(e) => {
-        e.preventDefault();
-        onPress();
-      }}
-      onPointerUp={onRelease}
-      onPointerLeave={onRelease}
-      onPointerCancel={onRelease}
-    >
-      <Icon className="h-5 w-5" weight="bold" />
-    </button>
   );
 }

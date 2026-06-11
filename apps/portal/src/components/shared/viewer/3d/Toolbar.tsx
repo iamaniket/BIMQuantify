@@ -4,7 +4,7 @@ import { Box, Columns3, Eraser, Home, MousePointer2, Move, Orbit, Settings, Squa
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { ToolName, ViewerHandle } from '@bimstitch/viewer';
 
 import type { ViewerSettings } from '@/lib/viewerSettings';
 
@@ -35,53 +35,31 @@ export function Toolbar({
   const t = useTranslations('viewer.toolbar');
   const tVm = useTranslations('viewer.viewMode');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [flyOpen, setFlyOpen] = useState(false);
-  const [activeTool, setActiveTool] = useState('select');
+  // Single source of truth for the active pointer/camera tool — driven by the
+  // tool-manager plugin's `tool:change` event. The four tools (select/navigate/
+  // eraser/fly) are mutually exclusive; the manager guarantees exactly one.
+  const [activeTool, setActiveTool] = useState<ToolName>('select');
+  const flyOpen = activeTool === 'fly';
 
   useEffect(() => {
     if (!handle) return;
-    const offEraser = handle.events.on('eraser:change', ({ active }) => {
-      setActiveTool(active ? 'eraser' : 'select');
-    });
-    const offNavigate = handle.events.on('navigate:change', ({ active }) => {
-      setActiveTool(active ? 'navigate' : 'select');
-    });
-    return () => { offEraser(); offNavigate(); };
+    return handle.events.on('tool:change', ({ tool }) => { setActiveTool(tool); });
   }, [handle]);
 
-  // Key 2 = select: exit any active mode and return to default
-  useEffect(() => {
-    const onKey = (ev: KeyboardEvent): void => {
-      const target = ev.target as HTMLElement | null;
-      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-      if (target?.isContentEditable) return;
-      if (ev.key !== '2') return;
-      ev.preventDefault();
-      if (!handle) return;
-      handle.commands.execute('eraser.exit').catch(() => undefined);
-      handle.commands.execute('navigate.exit').catch(() => undefined);
-      setActiveTool('select');
-    };
-    window.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('keydown', onKey); };
-  }, [handle]);
-
-  const run = (cmd: string): void => {
+  const run = (cmd: string, args?: unknown): void => {
     if (!handle) return;
-    handle.commands.execute(cmd).catch((err: unknown) => {
+    handle.commands.execute(cmd, args).catch((err: unknown) => {
       console.warn(`[viewer-toolbar] ${cmd} failed:`, err);
     });
   };
 
-  const setFly = (open: boolean): void => {
-    setFlyOpen(open);
-    run(open ? 'cameraFly.enable' : 'cameraFly.disable');
-  };
+  const setTool = (tool: ToolName): void => { run('tool.set', { tool }); };
 
-  // Fly navigation only applies to the 3D camera — close + disable it when the
-  // user switches to the pure 2D plan (where the fly button is hidden).
+  // Fly navigation only applies to the 3D camera — disable it (fall back to
+  // select) when the user switches to the pure 2D plan, where the fly button is
+  // hidden.
   useEffect(() => {
-    if (viewMode === '2d' && flyOpen) setFly(false);
+    if (viewMode === '2d' && flyOpen) setTool('select');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
 
@@ -99,11 +77,7 @@ export function Toolbar({
         label: t('select'),
         tooltip: `${t('select')} (2)`,
         isActive: activeTool === 'select',
-        onClick: () => {
-          if (activeTool === 'eraser') run('eraser.exit');
-          if (activeTool === 'navigate') run('navigate.exit');
-          setActiveTool('select');
-        },
+        onClick: () => { setTool('select'); },
       },
       {
         type: 'button',
@@ -112,11 +86,7 @@ export function Toolbar({
         label: t('navigate'),
         tooltip: `${t('navigate')} (3)`,
         isActive: activeTool === 'navigate',
-        onClick: () => {
-          if (activeTool === 'eraser') run('eraser.exit');
-          run('navigate.enter');
-          setActiveTool('navigate');
-        },
+        onClick: () => { setTool(activeTool === 'navigate' ? 'select' : 'navigate'); },
       },
       {
         type: 'button',
@@ -125,16 +95,7 @@ export function Toolbar({
         label: t('eraser'),
         tooltip: `${t('eraser')} (4)`,
         isActive: activeTool === 'eraser',
-        onClick: () => {
-          if (activeTool === 'eraser') {
-            run('eraser.exit');
-            setActiveTool('select');
-          } else {
-            if (activeTool === 'navigate') run('navigate.exit');
-            run('eraser.enter');
-            setActiveTool('eraser');
-          }
-        },
+        onClick: () => { setTool(activeTool === 'eraser' ? 'select' : 'eraser'); },
       },
       {
         type: 'button',
@@ -143,7 +104,7 @@ export function Toolbar({
         label: t('fly'),
         tooltip: t('flyTooltip'),
         isActive: flyOpen,
-        onClick: () => { setFly(!flyOpen); },
+        onClick: () => { setTool(flyOpen ? 'select' : 'fly'); },
       },
     ],
   };
@@ -186,7 +147,7 @@ export function Toolbar({
   return (
     <UnifiedToolbar groups={groups} testId="viewer-toolbar" testIdPrefix="viewer">
       {flyOpen ? (
-        <CameraFlyPopover handle={handle} onClose={() => { setFly(false); }} />
+        <CameraFlyPopover handle={handle} onClose={() => { setTool('select'); }} />
       ) : null}
       <SettingsDialog
         mode="3d"
