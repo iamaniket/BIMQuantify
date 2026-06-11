@@ -120,13 +120,20 @@ export class Viewer {
   private shadowGround: THREE.Mesh | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private shadowsEnabled = true;
-  /** World-space AABB of all loaded models; near/far is fitted to this. */
+  /** World-space AABB of all loaded models. */
   private sceneBox: THREE.Box3 | null = null;
+  /**
+   * World-space AABB the near/far planes are fitted to: the model bbox unioned
+   * with the blob-shadow ground plane (3× the model footprint) so the shadow's
+   * far edge never clips at the far plane.
+   */
+  private depthBox: THREE.Box3 | null = null;
   private lastAppliedNear = 0.01;
   private lastAppliedFar = 2000;
   private zoomOutLimit = Infinity;
-  /** Reused scratch vector for the per-frame near/far fit (no per-call alloc). */
+  /** Reused scratch vectors for the per-frame near/far fit (no per-call alloc). */
   private readonly forwardAxis = new THREE.Vector3();
+  private readonly depthBoxSize = new THREE.Vector3();
   private readonly precomputedOutlines = new Map<
     string,
     Promise<Uint8Array | null>
@@ -141,7 +148,7 @@ export class Viewer {
     const cam = world.camera.three;
     if (!(cam instanceof THREE.PerspectiveCamera)) return;
 
-    const box = this.sceneBox;
+    const box = this.depthBox;
     if (!box || box.isEmpty()) return;
 
     // Fit near/far to the model's actual depth range as seen from the current
@@ -170,16 +177,26 @@ export class Viewer {
     // Entire model is behind the camera — leave the planes untouched.
     if (maxDepth <= 0) return;
 
-    // Far: farthest corner + 2% slack so the back face never clips.
-    const far = maxDepth * 1.02;
+    // Near tracks the nearest geometry, pulled back 10% so a wall viewed
+    // head-on (its whole face at one depth) never sits exactly on the near
+    // plane and flickers. minDepth goes negative inside the model; the absolute
+    // floor (5 mm, scaled down for sub-metre models) takes over there, so the
+    // camera can approach and pass through surfaces without near-clipping.
+    // Keeping near close to the actual geometry means the near/far ratio is
+    // small at normal viewing distance — crisp depth, no back-of-model
+    // z-fighting (the original 5000:1 floor caused that).
+    const size = box.getSize(this.depthBoxSize);
+    const maxDim = Math.max(size.x, size.y, size.z, 1);
+    const nearFloor = Math.min(0.005, maxDim * 1e-4);
+    const near = Math.max(minDepth * 0.9, nearFloor);
 
-    // Near: nearest corner, floored so the far/near ratio stays inside the
-    // depth-precision budget (5000:1, matching the prior z-fighting guard).
-    // When the camera is inside the model minDepth goes negative and the floor
-    // takes over; the absolute 1 mm floor guards tiny models.
-    const MAX_DEPTH_RATIO = 5000;
-    const nearFloor = Math.max(far / MAX_DEPTH_RATIO, 0.001);
-    const near = Math.max(minDepth, nearFloor);
+    // Far always reaches the back of the scene (+2% slack) — NOT capped to a
+    // ratio of near. Capping far to near pulled the far plane in whenever any
+    // geometry was close to the eye, making the model you were flying toward
+    // vanish. When the eye is millimetres from a surface the ratio does grow,
+    // but the resulting far-end z-fighting is hidden behind the near geometry
+    // filling the screen, so it's never actually visible.
+    const far = maxDepth * 1.02;
 
     const nearChanged = Math.abs(near - this.lastAppliedNear) > 1e-6;
     const farChanged = Math.abs(far - this.lastAppliedFar) > 1e-4;
@@ -505,6 +522,10 @@ export class Viewer {
     // geometry no longer clips when zoomed in — while staying tight enough
     // (with polygonOffset) to avoid z-fighting on coplanar BIM surfaces.
     this.sceneBox = this.computeWorldSceneBox();
+    // Seed depthBox from the model bbox so near/far works before
+    // fitLightsToModel runs (and stays correct when shadows are disabled).
+    // fitLightsToModel unions the shadow ground plane into it afterwards.
+    this.depthBox = this.sceneBox.clone();
     if (world.camera.three instanceof THREE.PerspectiveCamera) {
       this.updateDynamicNearFar();
     }
@@ -676,6 +697,13 @@ export class Viewer {
       ground.scale.set(padX, padZ, 1);
       ground.position.set(center.x, box.min.y - maxDim * 0.05, center.z);
       ground.updateMatrixWorld();
+
+      // Fold the shadow plane's world AABB into the depth box so its far edge
+      // never clips at the far plane (grazing/plan views). setFromObject reads
+      // the transform just applied above, so the box can't drift from the
+      // shadow geometry. Re-derive from the model union to stay idempotent.
+      this.depthBox = this.computeWorldSceneBox();
+      this.depthBox.union(new THREE.Box3().setFromObject(ground));
     }
   }
 
@@ -722,6 +750,7 @@ export class Viewer {
     }
     this.world = null;
     this.sceneBox = null;
+    this.depthBox = null;
     this.precomputedOutlines.clear();
     this.modelId = null;
     this.events.emit('viewer:unmounted', undefined);

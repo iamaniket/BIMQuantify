@@ -201,7 +201,7 @@ export { visibilityPlugin } from './plugins/3d/visibility/index.js';
 export { inspectPlugin } from './plugins/3d/inspect/index.js';
 export { eraserPlugin } from './plugins/3d/eraser/index.js';
 export { toolManagerPlugin } from './plugins/3d/tool-manager/index.js';
-export type { ToolName, ToolManagerPluginAPI } from './plugins/3d/tool-manager/index.js';
+export type { NavMode, ActionMode, ToolManagerPluginAPI } from './plugins/3d/tool-manager/index.js';
 export { contextMenuPlugin } from './plugins/3d/context-menu/index.js';
 export { xrayPlugin } from './plugins/3d/xray/index.js';
 export { outlinePlugin } from './plugins/3d/outline/index.js';

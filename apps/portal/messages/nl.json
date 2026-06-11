@@ -2801,6 +2801,7 @@
     },
     "toolbar": {
       "homeView": "Beginaanzicht",
+      "orbit": "Orbit",
       "select": "Selecteren",
       "navigate": "Navigeren",
       "eraser": "Gum",

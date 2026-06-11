@@ -3,6 +3,7 @@ import type { ShortcutCategory } from './types';
 const NAVIGATION_PREFIXES = [
   'camera.',
   'cameraFly.',
+  'tool.orbit', 'tool.firstPerson',
   'zoomIn', 'zoomOut',
   'fitPage', 'fitWidth', 'actualSize',
   'nextPage', 'prevPage', 'firstPage', 'lastPage',
@@ -21,6 +22,7 @@ const EDITING_PREFIXES = [
   'section.',
   'measurement.',
   'eraser.',
+  'tool.select', 'tool.erase',
   'addFinding',
 ];
 

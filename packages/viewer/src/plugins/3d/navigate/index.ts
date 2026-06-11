@@ -54,8 +54,9 @@ export function navigatePlugin(): Plugin & NavigatePluginAPI {
     install(ctx: ViewerContext) {
       ctxRef = ctx;
 
-      // Shortcut '3' is owned by tool-manager's `tool.navigate`, which routes
-      // through the active-tool authority; binding it here too would double-bind.
+      // navigate.enter/exit are internal plumbing for the tool-manager's
+      // `action = none` state (suppress click-selection/hover); they carry no
+      // keyboard shortcut of their own.
       ctx.commands.register('navigate.enter', () => enter(), {
         title: 'Activate navigate tool',
       });

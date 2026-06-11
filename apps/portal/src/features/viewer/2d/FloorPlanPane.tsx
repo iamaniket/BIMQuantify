@@ -28,6 +28,7 @@ import {
   ToolbarDivider,
   ToolButton,
 } from '@/components/shared/viewer/shared/_toolbarPrimitives';
+import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { resolveColor } from '@/features/viewer/3d/minimap/spatialNames';
 import type { Finding } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
@@ -36,6 +37,7 @@ import { DocumentContextMenu } from './DocumentContextMenu';
 import { useFloorPlanData } from './useFloorPlanData';
 import { useFloorPlanFindingMarkers } from './useFloorPlanFindingMarkers';
 import { useFloorPlanLink } from './useFloorPlanLink';
+import { useSplitEntryCamera } from './useSplitEntryCamera';
 
 const FloorPlanViewer = dynamic(
   () => import('@bimstitch/viewer').then((m) => m.FloorPlanViewer),
@@ -49,6 +51,8 @@ type Props = {
   metadata: ModelMetadata | undefined;
   projectId: string;
   fileId: string;
+  /** Current viewer layout — drives the Split-entry camera/first-person behavior. */
+  viewMode: ViewMode;
   onFindingClick: (finding: Finding) => void;
   /** Open a side-panel inspector view (e.g. from the right-click "Add finding"). */
   onRequestInspector: (view: 'findings') => void;
@@ -66,6 +70,7 @@ export function FloorPlanPane({
   metadata,
   projectId,
   fileId,
+  viewMode,
   onFindingClick,
   onRequestInspector,
 }: Props): ReactElement | null {
@@ -117,6 +122,14 @@ export function FloorPlanPane({
     metadata,
     planAxisX,
     planAxisY,
+  });
+
+  useSplitEntryCamera({
+    viewerHandle: handle,
+    viewerReady,
+    enabled: viewMode === 'split',
+    levels,
+    setActiveLevel,
   });
 
   useFloorPlanFindingMarkers({

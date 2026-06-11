@@ -182,7 +182,7 @@ export function screenshotPlugin(
           const a = args as ({ filename?: string } & ScreenshotCaptureOptions) | undefined;
           download(a?.filename, a);
         },
-        { title: 'Download screenshot', defaultShortcut: '5' },
+        { title: 'Download screenshot', defaultShortcut: '6' },
       );
     },
 

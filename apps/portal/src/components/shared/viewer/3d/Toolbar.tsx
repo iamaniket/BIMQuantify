@@ -4,7 +4,7 @@ import { Box, Columns3, Eraser, Home, MousePointer2, Move, Orbit, Settings, Squa
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
-import type { ToolName, ViewerHandle } from '@bimstitch/viewer';
+import type { ActionMode, NavMode, ViewerHandle } from '@bimstitch/viewer';
 
 import type { ViewerSettings } from '@/lib/viewerSettings';
 
@@ -35,15 +35,19 @@ export function Toolbar({
   const t = useTranslations('viewer.toolbar');
   const tVm = useTranslations('viewer.viewMode');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // Single source of truth for the active pointer/camera tool — driven by the
-  // tool-manager plugin's `tool:change` event. The four tools (select/navigate/
-  // eraser/fly) are mutually exclusive; the manager guarantees exactly one.
-  const [activeTool, setActiveTool] = useState<ToolName>('select');
-  const flyOpen = activeTool === 'fly';
+  // Two INDEPENDENT axes, both owned by the tool-manager plugin and driven by
+  // its `navmode:change` / `action:change` events:
+  //   navMode — orbit ↔ first-person (one always active)
+  //   action  — select ↔ erase ↔ none (at most one; forced none in first-person)
+  const [navMode, setNavMode] = useState<NavMode>('orbit');
+  const [action, setAction] = useState<ActionMode>('none');
+  const firstPerson = navMode === 'firstPerson';
 
   useEffect(() => {
     if (!handle) return;
-    return handle.events.on('tool:change', ({ tool }) => { setActiveTool(tool); });
+    const offNav = handle.events.on('navmode:change', ({ mode }) => { setNavMode(mode); });
+    const offAction = handle.events.on('action:change', ({ action: a }) => { setAction(a); });
+    return () => { offNav(); offAction(); };
   }, [handle]);
 
   const run = (cmd: string, args?: unknown): void => {
@@ -53,16 +57,14 @@ export function Toolbar({
     });
   };
 
-  const setTool = (tool: ToolName): void => { run('tool.set', { tool }); };
-
-  // Fly navigation only applies to the 3D camera — disable it (fall back to
-  // select) when the user switches to the pure 2D plan, where the fly button is
-  // hidden.
+  // First-person navigation only applies to the 3D camera — fall back to orbit
+  // when the user switches to the pure 2D plan, where the nav group is hidden.
   useEffect(() => {
-    if (viewMode === '2d' && flyOpen) setTool('select');
+    if (viewMode === '2d' && firstPerson) run('tool.orbit');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
 
+  // Navigation axis: Home (one-shot) + Orbit ↔ First-person (mutually exclusive).
   const navGroup: ToolGroup = {
     tools: [
       {
@@ -72,39 +74,48 @@ export function Toolbar({
       },
       {
         type: 'button',
-        id: 'select',
-        icon: MousePointer2,
-        label: t('select'),
-        tooltip: `${t('select')} (2)`,
-        isActive: activeTool === 'select',
-        onClick: () => { setTool('select'); },
+        id: 'orbit',
+        icon: Orbit,
+        label: t('orbit'),
+        tooltip: `${t('orbit')} (2)`,
+        isActive: navMode === 'orbit',
+        onClick: () => { run('tool.orbit'); },
       },
       {
         type: 'button',
-        id: 'navigate',
-        icon: Orbit,
-        label: t('navigate'),
-        tooltip: `${t('navigate')} (3)`,
-        isActive: activeTool === 'navigate',
-        onClick: () => { setTool(activeTool === 'navigate' ? 'select' : 'navigate'); },
+        id: 'first-person',
+        icon: Move,
+        label: t('firstPerson'),
+        tooltip: `${t('flyTooltip')} (3)`,
+        isActive: firstPerson,
+        onClick: () => { run('tool.firstPerson'); },
+      },
+    ],
+  };
+
+  // Action axis: Select ↔ Erase ↔ none. Disabled while first-person owns the
+  // left button for mouse-look.
+  const actionGroup: ToolGroup = {
+    tools: [
+      {
+        type: 'button',
+        id: 'select',
+        icon: MousePointer2,
+        label: t('select'),
+        tooltip: `${t('select')} (4)`,
+        isActive: action === 'select',
+        disabled: firstPerson,
+        onClick: () => { run('tool.select'); },
       },
       {
         type: 'button',
         id: 'eraser',
         icon: Eraser,
         label: t('eraser'),
-        tooltip: `${t('eraser')} (4)`,
-        isActive: activeTool === 'eraser',
-        onClick: () => { setTool(activeTool === 'eraser' ? 'select' : 'eraser'); },
-      },
-      {
-        type: 'button',
-        id: 'fly',
-        icon: Move,
-        label: t('fly'),
-        tooltip: t('flyTooltip'),
-        isActive: flyOpen,
-        onClick: () => { setTool(flyOpen ? 'select' : 'fly'); },
+        tooltip: `${t('eraser')} (5)`,
+        isActive: action === 'erase',
+        disabled: firstPerson,
+        onClick: () => { run('tool.erase'); },
       },
     ],
   };
@@ -142,12 +153,12 @@ export function Toolbar({
   const groups: ToolGroup[] =
     viewMode === '2d'
       ? [...(hasFloorPlans ? [viewModeGroup] : []), settingsGroup]
-      : [navGroup, ...(hasFloorPlans ? [viewModeGroup] : []), settingsGroup];
+      : [navGroup, actionGroup, ...(hasFloorPlans ? [viewModeGroup] : []), settingsGroup];
 
   return (
     <UnifiedToolbar groups={groups} testId="viewer-toolbar" testIdPrefix="viewer">
-      {flyOpen ? (
-        <CameraFlyPopover handle={handle} onClose={() => { setTool('select'); }} />
+      {firstPerson ? (
+        <CameraFlyPopover handle={handle} onClose={() => { run('tool.orbit'); }} />
       ) : null}
       <SettingsDialog
         mode="3d"

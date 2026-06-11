@@ -689,6 +689,7 @@ export default function ViewerPage(): JSX.Element {
               metadata={metadata}
               projectId={projectId}
               fileId={fileId}
+              viewMode={viewMode}
               onFindingClick={setMarkerFinding}
               onRequestInspector={handleDocContextMenuInspector}
             />

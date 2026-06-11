@@ -85,7 +85,8 @@ export interface ViewerEvents {
   'grid:change': { visible: boolean };
   'eraser:change': { active: boolean };
   'navigate:change': { active: boolean };
-  'tool:change': { tool: 'select' | 'navigate' | 'eraser' | 'fly' };
+  'navmode:change': { mode: 'orbit' | 'firstPerson' };
+  'action:change': { action: 'none' | 'select' | 'erase' };
   'screenshot:captured': { width: number; height: number };
   'colorCoding:change': { active: boolean; scheme: string | null; legend: Array<{ name: string; color: number; count: number }> };
   'exploder:change': { active: boolean; mode: string | null; factor: number };
