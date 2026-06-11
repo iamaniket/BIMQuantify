@@ -1,29 +1,26 @@
 /**
  * Outline plugin — xeokit-style model emphasis from real geometry edges.
  *
- * Owns an OutlineCache: when a model finishes loading it builds the model's
- * hard-edge outline once (slow, batched, off the main thread of work) and
- * caches the geometry. It then draws that outline on the idle / "last" frame
- * — the still render shown once the camera stops — replacing the old Sobel
- * post-process edge pass with crisp, correctly-occluded lines.
+ * When a model finishes loading it seeds an OutlineCache from the processor's
+ * precomputed INSTANCED artifact (unique edge templates + per-element
+ * transforms) and hands it to an {@link InstancedOutline} renderer, which draws
+ * each shared shape once via GPU instancing. The outline is drawn on the idle /
+ * "last" frame — the still render shown once the camera stops — so it costs
+ * nothing during camera motion.
  *
  * The outline lives on LAYER_DEFAULT (depth-tested with the model) so only
- * front-facing edges show, and is gated to idle so it costs nothing during
- * camera motion. The cached geometry is also exposed (via the
- * `outline.getGeometries` command) so x-ray can reuse it instead of
- * recomputing edges for the whole model.
+ * front-facing edges show. The cache also still exposes flat merged geometry
+ * (via `outline.getGeometries`) and per-item edges (`outline.getItemEdges`) so
+ * x-ray and the hover/select edge overlay keep working unchanged.
  */
 
 import * as THREE from 'three';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
-import { LAYER_DEFAULT } from '../../../core/layers.js';
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
+import { InstancedOutline } from '../shared/instanced-outline.js';
 import { OutlineCache } from '../shared/outline-cache.js';
 import { decodeOutline } from '../shared/outline-codec.js';
 import {
-  applyClippingPlanes,
   buildClippingPlanes,
   type SectionPlaneData,
 } from '../shared/clipping.js';
@@ -48,18 +45,17 @@ export function outlinePlugin(
   options: OutlinePluginOptions = {},
 ): Plugin & OutlinePluginAPI {
   const cache = new OutlineCache();
-  const color = new THREE.Color(options.color ?? 0x0d0d14);
+  const color = options.color ?? 0x0d0d14;
   const lineWidth = options.lineWidth ?? 1.0;
 
   let enabled = options.enabled ?? false;
   let ctxRef: ViewerContext | null = null;
-  let lines: LineSegments2[] = [];
-  let material: LineMaterial | null = null;
+  let instanced: InstancedOutline | null = null;
+  const groups = new Map<string, THREE.Group>();
   let isIdle = false;
   let xrayActive = false;
   let cleanup: (() => void) | null = null;
   let currentPlanes: THREE.Plane[] = [];
-  let clipCount = 0;
   let revealTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Mirrored visibility state, keyed by modelId. When isolation is active the
@@ -67,13 +63,13 @@ export function outlinePlugin(
   const hiddenByModel = new Map<string, Set<number>>();
   const isolatedByModel = new Map<string, Set<number>>();
   let isolationActive = false;
-  // Set when visibility changes; the filtered geometry is rebuilt lazily on
-  // the next idle frame (the outline only draws on idle anyway).
+  // Set when visibility changes; the filtered element textures are rebuilt
+  // lazily on the next idle frame (the outline only draws on idle anyway).
   let dirty = false;
 
   const updateVisibility = (): void => {
     const show = enabled && isIdle && !xrayActive;
-    for (const line of lines) line.visible = show;
+    for (const group of groups.values()) group.visible = show;
   };
 
   const indexByModel = (items: ItemId[]): Map<string, Set<number>> => {
@@ -89,62 +85,9 @@ export function outlinePlugin(
     return map;
   };
 
-  const ensureMaterial = (ctx: ViewerContext): LineMaterial => {
-    if (material) return material;
-    const size = ctx.renderer.getSize(new THREE.Vector2());
-    const dpr = ctx.renderer.getPixelRatio();
-    material = new LineMaterial({
-      color: color.getHex(),
-      linewidth: lineWidth,
-      worldUnits: false,
-      transparent: true,
-      opacity: 0.9,
-      depthTest: true,
-      // Pull edges slightly toward the camera so they sit on top of their
-      // own surfaces instead of z-fighting with them.
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
-      resolution: new THREE.Vector2(size.x * dpr, size.y * dpr),
-    });
-    clipCount = applyClippingPlanes(material, currentPlanes, -1);
-    return material;
-  };
-
-  const syncClipping = (planes: SectionPlaneData[]): void => {
-    currentPlanes = buildClippingPlanes(planes);
-    if (material) clipCount = applyClippingPlanes(material, currentPlanes, clipCount);
-  };
-
-  // Rebuild every model's outline lines from the current visible set. The
-  // geometries are filtered copies OWNED by this plugin, so the old ones must
-  // be disposed here (never the cache's memoized full set used by x-ray).
-  const rebuildLines = (): void => {
-    if (!ctxRef) return;
-    clearLines();
-    const mat = ensureMaterial(ctxRef);
-    for (const [modelId] of ctxRef.models()) {
-      if (!cache.has(modelId)) continue;
-      const filter = filterFor(modelId);
-      const geos = cache.buildGeometries(modelId, filter);
-      for (const geo of geos) {
-        const line = new LineSegments2(geo, mat);
-        line.layers.set(LAYER_DEFAULT);
-        line.renderOrder = 998;
-        line.frustumCulled = false;
-        line.visible = enabled && isIdle;
-        line.name = `outline::${modelId}`;
-        ctxRef.scene.add(line);
-        lines.push(line);
-      }
-    }
-    dirty = false;
-  };
-
   // Resolve the visible-element filter for a model from mirrored state:
   // isolation wins (only isolated items), otherwise everything minus hidden.
-  // Returns `null` (full model) when nothing is hidden — the common case,
-  // which skips the per-element hidden check during the merge.
+  // Returns `null` (full model) when nothing is hidden — the common case.
   const filterFor = (
     modelId: string,
   ): { visible?: Set<number>; hidden?: Set<number> } | null => {
@@ -155,8 +98,41 @@ export function outlinePlugin(
     return hidden && hidden.size > 0 ? { hidden } : null;
   };
 
-  // Seed the cache from the processor's precomputed artifact. Client-side
-  // edge extraction has been removed — edges must come from the backend.
+  const syncResolution = (): void => {
+    if (!instanced || !ctxRef) return;
+    const s = ctxRef.renderer.getSize(new THREE.Vector2());
+    const r = ctxRef.renderer.getPixelRatio();
+    instanced.setResolution(s.x * r, s.y * r);
+  };
+
+  const syncClipping = (planes: SectionPlaneData[]): void => {
+    currentPlanes = buildClippingPlanes(planes);
+    instanced?.setClippingPlanes(currentPlanes);
+  };
+
+  // Build the GPU outline objects for a model and attach them to the scene.
+  const buildModel = (modelId: string): void => {
+    if (!ctxRef || !instanced) return;
+    const model = cache.getModel(modelId);
+    if (!model) return;
+    const group = instanced.setModel(modelId, model, filterFor(modelId));
+    ctxRef.scene.add(group);
+    groups.set(modelId, group);
+    instanced.setClippingPlanes(currentPlanes);
+    syncResolution();
+  };
+
+  // Re-filter every model's outline from the current visible set (idle only).
+  const applyFilters = (): void => {
+    if (!instanced) return;
+    for (const modelId of groups.keys()) {
+      instanced.applyFilter(modelId, filterFor(modelId));
+    }
+    dirty = false;
+  };
+
+  // Seed the cache from the processor's precomputed artifact. Client-side edge
+  // extraction has been removed — edges must come from the backend.
   const seedCache = async (
     ctx: ViewerContext,
     modelId: string,
@@ -172,15 +148,6 @@ export function outlinePlugin(
     } catch {
       // No precomputed outline available — edges won't be shown.
     }
-  };
-
-  const clearLines = (): void => {
-    if (ctxRef) {
-      for (const line of lines) ctxRef.scene.remove(line);
-    }
-    // Geometries here are per-call filtered copies owned by this plugin.
-    for (const line of lines) line.geometry.dispose();
-    lines = [];
   };
 
   const setEnabled = (next: boolean): void => {
@@ -200,14 +167,19 @@ export function outlinePlugin(
 
     install(ctx: ViewerContext) {
       ctxRef = ctx;
+      instanced = new InstancedOutline(ctx.renderer.capabilities.maxTextureSize, {
+        color,
+        lineWidth,
+      });
 
       const offLoaded = ctx.events.on('model:loaded', ({ modelId }) => {
         void seedCache(ctx, modelId).then(() => {
+          buildModel(modelId);
           ctx.events.emit('outline:ready', { modelId });
-          rebuildLines();
-          // Keep lines hidden until the model's initial tile streaming
+          // Keep the outline hidden until the model's initial tile streaming
           // settles — otherwise outlines flash before geometry arrives.
-          for (const line of lines) line.visible = false;
+          const group = groups.get(modelId);
+          if (group) group.visible = false;
           if (revealTimer !== null) clearTimeout(revealTimer);
           revealTimer = setTimeout(() => {
             revealTimer = null;
@@ -219,7 +191,7 @@ export function outlinePlugin(
         isIdle = true;
         // Visibility changes only repaint the outline on the idle frame, so
         // coalesce rapid tree-toggling into a single rebuild here.
-        if (dirty) rebuildLines();
+        if (dirty) applyFilters();
         updateVisibility();
       });
       const offCam = ctx.events.on('camera:change', () => {
@@ -238,7 +210,7 @@ export function outlinePlugin(
           // Repaint immediately if already settled; otherwise the next idle
           // frame picks it up.
           if (isIdle) {
-            rebuildLines();
+            applyFilters();
             updateVisibility();
           }
         },
@@ -250,7 +222,7 @@ export function outlinePlugin(
       const offSection = ctx.events.on('section:change', ({ planes }) => {
         syncClipping(planes);
       });
-      // Seed from any section that already exists before this plugin's lines
+      // Seed from any section that already exists before this plugin's objects
       // are built. Harmless if the section plugin isn't registered.
       void ctx.commands
         .execute('section.list')
@@ -260,10 +232,7 @@ export function outlinePlugin(
         .catch(() => undefined);
 
       const onResize = (): void => {
-        if (!material || !ctxRef) return;
-        const s = ctxRef.renderer.getSize(new THREE.Vector2());
-        const r = ctxRef.renderer.getPixelRatio();
-        material.resolution.set(s.x * r, s.y * r);
+        syncResolution();
       };
       const ro = new ResizeObserver(onResize);
       ro.observe(ctx.canvas);
@@ -322,10 +291,14 @@ export function outlinePlugin(
     uninstall() {
       cleanup?.();
       cleanup = null;
-      if (revealTimer !== null) { clearTimeout(revealTimer); revealTimer = null; }
-      clearLines();
-      material?.dispose();
-      material = null;
+      if (revealTimer !== null) {
+        clearTimeout(revealTimer);
+        revealTimer = null;
+      }
+      // Disposes every group's meshes + DataTextures and detaches them.
+      instanced?.dispose();
+      instanced = null;
+      groups.clear();
       cache.dispose();
       ctxRef = null;
     },

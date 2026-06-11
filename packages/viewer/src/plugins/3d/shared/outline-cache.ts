@@ -1,15 +1,18 @@
 /**
- * OutlineCache — build the model's hard-edge outline once, store it.
+ * OutlineCache — hold a model's INSTANCED hard-edge outline.
  *
- * Edges come exclusively from the backend precomputed artifact
- * (processor's `.outline.bin`). Client-side edge extraction has been
- * removed — if the artifact is unavailable, edges won't be shown.
+ * Edges come exclusively from the backend precomputed artifact (processor's
+ * `.outline.bin`, format v2): unique LOCAL-space "templates" + a per-element
+ * instance row carrying a 4x4 transform. The cache keeps that instanced shape
+ * (so {@link InstancedOutline} can upload each template to the GPU once) and
+ * also expands it on demand into world-space `LineSegmentsGeometry` chunks for
+ * the consumers that need flat positions:
+ *   - x-ray's "show all" outline (full model, memoized);
+ *   - the CPU-merged fallback for low-fan-out templates;
+ *   - hover/select edge overlay (one element at a time).
  *
- * From the cached index it can merge edges into a small set of
- * `LineSegmentsGeometry` chunks — either the full model (memoized, reused by
- * x-ray) or filtered to an arbitrary set of visible `localId`s (owned and
- * disposed by the caller). Only CPU-side geometry is stored (no
- * material/colour); consumers wrap chunks in their own `LineSegments2`.
+ * Client-side edge extraction has been removed — if the artifact is
+ * unavailable, edges won't be shown.
  */
 
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
@@ -20,25 +23,55 @@ import type { DecodedOutline } from './outline-codec.js';
 // well under GPU limits while keeping the chunk count tiny.
 const MAX_FLOATS_PER_CHUNK = 3_000_000;
 
+/** One element placement of a template: its localId + column-major 4x4. */
+export interface InstanceRow {
+  localId: number;
+  transform: Float32Array;
+}
+
+/** Per-model instanced outline: unique templates + who places them. */
+export interface OutlineModel {
+  /** Local-space segment endpoints per unique shape (each a multiple of 6). */
+  templates: Float32Array[];
+  /** index = templateIndex → the elements that place that template. */
+  instancesByTemplate: InstanceRow[][];
+  /** localId → its placement rows (an element may have several meshes). */
+  rowsByLocalId: Map<number, { templateIndex: number; transform: Float32Array }[]>;
+}
+
 /**
- * Per-model edge data: one concatenated position buffer + a per-element index
- * giving each element's span within it. `slotOf` maps localId → row in the
- * parallel `starts`/`lengths` arrays.
+ * Apply a column-major 4x4 (placement, no perspective) to every (x,y,z) triple
+ * in `src`, writing world-space coordinates into `dst` starting at `off`.
  */
-interface EdgeIndex {
-  positions: Float32Array;
-  starts: Uint32Array;
-  lengths: Uint32Array;
-  slotOf: Map<number, number>;
+export function transformSegments(
+  src: Float32Array,
+  m: Float32Array,
+  dst: Float32Array,
+  off: number,
+): void {
+  const m0 = m[0]!, m1 = m[1]!, m2 = m[2]!;
+  const m4 = m[4]!, m5 = m[5]!, m6 = m[6]!;
+  const m8 = m[8]!, m9 = m[9]!, m10 = m[10]!;
+  const m12 = m[12]!, m13 = m[13]!, m14 = m[14]!;
+  for (let i = 0; i < src.length; i += 3) {
+    const x = src[i]!, y = src[i + 1]!, z = src[i + 2]!;
+    dst[off + i] = m0 * x + m4 * y + m8 * z + m12;
+    dst[off + i + 1] = m1 * x + m5 * y + m9 * z + m13;
+    dst[off + i + 2] = m2 * x + m6 * y + m10 * z + m14;
+  }
 }
 
 export class OutlineCache {
-  private readonly indices = new Map<string, EdgeIndex>();
+  private readonly models = new Map<string, OutlineModel>();
   private readonly fullChunks = new Map<string, LineSegmentsGeometry[]>();
-  private readonly building = new Map<string, Promise<void>>();
 
   has(modelId: string): boolean {
-    return this.indices.has(modelId);
+    return this.models.has(modelId);
+  }
+
+  /** Raw instanced data for the GPU renderer. Owned by the cache — read only. */
+  getModel(modelId: string): OutlineModel | undefined {
+    return this.models.get(modelId);
   }
 
   /**
@@ -49,111 +82,114 @@ export class OutlineCache {
   getGeometries(modelId: string): LineSegmentsGeometry[] | undefined {
     const cached = this.fullChunks.get(modelId);
     if (cached) return cached;
-    const index = this.indices.get(modelId);
-    if (!index) return undefined;
+    if (!this.models.has(modelId)) return undefined;
     const chunks = this.buildGeometries(modelId, null);
     this.fullChunks.set(modelId, chunks);
     return chunks;
   }
 
   /**
-   * Merge edges into chunks for a subset of the model.
+   * Expand visible elements to world space and merge into `LineSegmentsGeometry`
+   * chunks under the float cap.
    *
    * - `null` → the full model.
-   * - `{ visible }` → only those localIds (used for isolation).
-   * - `{ hidden }` → every element except those localIds (used for hide).
+   * - `{ visible }` → only those localIds (isolation).
+   * - `{ hidden }` → every element except those localIds (hide).
    *
-   * The returned chunks are freshly allocated and OWNED BY THE CALLER
-   * (dispose them when replaced) — except the memoized full set returned via
+   * Returned chunks are freshly allocated and OWNED BY THE CALLER (dispose them
+   * when replaced) — except the memoized full set returned via
    * {@link getGeometries}.
    */
   buildGeometries(
     modelId: string,
     filter: { visible?: Set<number>; hidden?: Set<number> } | null,
   ): LineSegmentsGeometry[] {
-    const index = this.indices.get(modelId);
-    if (!index) return [];
-    const { positions, starts, lengths, slotOf } = index;
-
-    const sliceOf = (slot: number): Float32Array | null => {
-      const len = lengths[slot]!;
-      if (len === 0) return null;
-      return positions.subarray(starts[slot]!, starts[slot]! + len);
-    };
+    const model = this.models.get(modelId);
+    if (!model) return [];
 
     const slices: Float32Array[] = [];
+    const pushItem = (localId: number): void => {
+      const s = this.getItemPositions(modelId, localId);
+      if (s) slices.push(s);
+    };
+
     if (filter?.visible) {
-      for (const localId of filter.visible) {
-        const slot = slotOf.get(localId);
-        if (slot === undefined) continue;
-        const s = sliceOf(slot);
-        if (s) slices.push(s);
-      }
+      for (const localId of filter.visible) pushItem(localId);
     } else {
       const hidden = filter?.hidden;
-      for (const [localId, slot] of slotOf) {
+      for (const localId of model.rowsByLocalId.keys()) {
         if (hidden?.has(localId)) continue;
-        const s = sliceOf(slot);
-        if (s) slices.push(s);
+        pushItem(localId);
       }
     }
     return mergeChunks(slices);
   }
 
-  /** Resolves once the outline for `modelId` exists (or build is impossible). */
-  whenReady(modelId: string): Promise<void> {
-    if (this.indices.has(modelId)) return Promise.resolve();
-    return this.building.get(modelId) ?? Promise.resolve();
+  /** Outlines are seeded synchronously from the artifact, so this is immediate;
+   * kept async (and accepting a modelId) for call-site compatibility. */
+  whenReady(_modelId?: string): Promise<void> {
+    return Promise.resolve();
   }
 
   /**
-   * Seed the index from the processor's precomputed artifact instead of
-   * extracting edges client-side. `starts` is derived by prefix-summing
-   * `lengths`. Once seeded, `build()` (including any in-flight run) is a
+   * Seed from the processor's precomputed v2 artifact. Builds the per-template
+   * instance lists and the localId→rows index. Once seeded, repeat calls are a
    * no-op for this model.
    */
   loadPrecomputed(modelId: string, decoded: DecodedOutline): void {
-    if (this.indices.has(modelId)) return;
-    const { localIds, lengths, positions } = decoded;
-    const starts = new Uint32Array(lengths.length);
-    const slotOf = new Map<number, number>();
-    let off = 0;
-    for (let slot = 0; slot < lengths.length; slot++) {
-      starts[slot] = off;
-      const len = lengths[slot]!;
-      // The encoder omits zero-edge elements entirely; skip defensively.
-      if (len > 0) slotOf.set(localIds[slot]!, slot);
-      off += len;
+    if (this.models.has(modelId)) return;
+    const { templates, instanceLocalIds, instanceTemplateIndex, instanceTransforms } = decoded;
+
+    const instancesByTemplate: InstanceRow[][] = templates.map(() => []);
+    const rowsByLocalId = new Map<number, { templateIndex: number; transform: Float32Array }[]>();
+
+    for (let i = 0; i < instanceLocalIds.length; i++) {
+      const localId = instanceLocalIds[i]!;
+      const templateIndex = instanceTemplateIndex[i]!;
+      // View into the owned instanceTransforms buffer — no copy.
+      const transform = instanceTransforms.subarray(i * 16, i * 16 + 16);
+      instancesByTemplate[templateIndex]?.push({ localId, transform });
+      let rows = rowsByLocalId.get(localId);
+      if (!rows) {
+        rows = [];
+        rowsByLocalId.set(localId, rows);
+      }
+      rows.push({ templateIndex, transform });
     }
-    this.indices.set(modelId, { positions, starts, lengths, slotOf });
+
+    this.models.set(modelId, { templates, instancesByTemplate, rowsByLocalId });
   }
 
-  /** Build once; concurrent/repeat calls share the same in-flight promise. */
-  build(modelId: string): Promise<void> {
-    // Client-side edge extraction is removed — edges must come from the
-    // backend precomputed artifact. Return a no-op promise.
-    if (this.indices.has(modelId)) return Promise.resolve();
-    const existing = this.building.get(modelId);
-    if (existing) return existing;
-    const p = Promise.resolve();
-    this.building.set(modelId, p);
-    p.finally(() => this.building.delete(modelId));
-    return p;
+  /** No-op: client-side edge extraction was removed — edges come from the
+   * artifact. Kept so existing call sites resolve cleanly. */
+  build(): Promise<void> {
+    return Promise.resolve();
   }
 
   /**
-   * Look up precomputed edge positions for a single element. Returns the
-   * Float32Array sub-view into the cached buffer, or null when the model
-   * isn't cached or the element has no hard edges.
+   * World-space hard-edge positions for a single element, expanded on demand by
+   * applying each of its instance transforms to the referenced template.
+   * Returns null when the model isn't cached or the element has no edges.
    */
   getItemPositions(modelId: string, localId: number): Float32Array | null {
-    const index = this.indices.get(modelId);
-    if (!index) return null;
-    const slot = index.slotOf.get(localId);
-    if (slot === undefined) return null;
-    const len = index.lengths[slot]!;
-    if (len === 0) return null;
-    return index.positions.subarray(index.starts[slot]!, index.starts[slot]! + len);
+    const model = this.models.get(modelId);
+    if (!model) return null;
+    const rows = model.rowsByLocalId.get(localId);
+    if (!rows || rows.length === 0) return null;
+
+    let total = 0;
+    for (const r of rows) total += model.templates[r.templateIndex]?.length ?? 0;
+    if (total === 0) return null;
+
+    const out = new Float32Array(total);
+    let off = 0;
+    for (const r of rows) {
+      const tmpl = model.templates[r.templateIndex];
+      if (!tmpl || tmpl.length === 0) continue;
+      transformSegments(tmpl, r.transform, out, off);
+      off += tmpl.length;
+    }
+    return out;
   }
 
   dispose(): void {
@@ -161,13 +197,12 @@ export class OutlineCache {
       for (const geo of chunks) geo.dispose();
     }
     this.fullChunks.clear();
-    this.indices.clear();
-    this.building.clear();
+    this.models.clear();
   }
 }
 
 /** Merge position slices into `LineSegmentsGeometry` chunks under the float cap. */
-function mergeChunks(slices: Float32Array[]): LineSegmentsGeometry[] {
+export function mergeChunks(slices: Float32Array[]): LineSegmentsGeometry[] {
   const chunks: LineSegmentsGeometry[] = [];
   let pending: Float32Array[] = [];
   let pendingFloats = 0;
