@@ -130,8 +130,7 @@ export function FloorPlanPane({
   const level = levels[safeLevel];
   const levelName = level !== undefined ? level.name : '';
 
-  const levelPicker =
-    levels.length > 1 ? (
+  const levelPicker = levels.length > 1 ? (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -155,11 +154,11 @@ export function FloorPlanPane({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-    ) : (
+  ) : (
       <span className="max-w-[160px] truncate px-2 text-caption text-foreground-secondary">
         {levelName}
       </span>
-    );
+  );
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-surface-low">
