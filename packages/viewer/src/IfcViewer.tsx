@@ -128,7 +128,7 @@ function IfcViewerImpl(
       // Depends on camera + mouse-bindings (it suppresses selection/hover gestures
       // on enter), so it must register after mouse-bindings. Stays dormant until
       // the toolbar fly-out enables it.
-      cameraFlyPlugin(),
+      cameraFlyPlugin(props.cameraFly ?? {}),
       // Single authority over which pointer/camera tool is active (select /
       // navigate / eraser / fly). Depends on those four being registered first.
       toolManagerPlugin(),

@@ -600,6 +600,11 @@ export default function ViewerPage(): JSX.Element {
         controls={settings.controls}
         zoom={settings.zoom}
         interactivePerformance={settings.interactivePerformance}
+        cameraFly={{
+          moveFraction: settings.cameraFly.moveFraction,
+          turnSpeed: (settings.cameraFly.turnSpeedDeg * Math.PI) / 180,
+          lookSensitivity: settings.cameraFly.lookSensitivity,
+        }}
         onSceneReady={() => {
           setSceneReady(true);
         }}

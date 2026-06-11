@@ -119,6 +119,8 @@ export interface CameraFlyPluginOptions {
   turnSpeed?: number;
   /** Mouse look-drag sensitivity in radians/pixel. Default: 0.0025. */
   lookSensitivity?: number;
+  /** Movement multiplier applied while Shift is held (sprint). Default: 3. */
+  sprintMultiplier?: number;
 }
 
 export interface CameraFlyPluginAPI {
@@ -144,9 +146,14 @@ export function cameraFlyPlugin(
 ): Plugin & CameraFlyPluginAPI {
   let ctxRef: ViewerContext | null = null;
   let active = false;
-  const moveFraction = options.moveFraction ?? 0.35;
-  const turnSpeed = options.turnSpeed ?? THREE.MathUtils.degToRad(70);
-  const lookSensitivity = options.lookSensitivity ?? 0.0025;
+  // Mutable so the `cameraFly.setOptions` live command can retune them at
+  // runtime (driven by the portal's settings sliders).
+  let moveFraction = options.moveFraction ?? 0.18;
+  let turnSpeed = options.turnSpeed ?? THREE.MathUtils.degToRad(70);
+  let lookSensitivity = options.lookSensitivity ?? 0.0025;
+  const sprintMultiplier = options.sprintMultiplier ?? 3;
+  // True while Shift is held in fly mode — temporarily speeds up translation.
+  let shiftHeld = false;
 
   let rafId: number | null = null;
   let lastTime = 0;
@@ -256,7 +263,8 @@ export function cameraFlyPlugin(
     // Horizontal right (Y-up coordinate system) for lateral strafe.
     const right = new THREE.Vector3().crossVectors(fwd, WORLD_UP).normalize();
 
-    const moveStep = sceneDiagonal() * moveFraction * dt;
+    const moveStep =
+      sceneDiagonal() * moveFraction * dt * (shiftHeld ? sprintMultiplier : 1);
     const translate = new THREE.Vector3();
     let yaw = 0;
     let pitch = 0;
@@ -288,6 +296,7 @@ export function cameraFlyPlugin(
   };
 
   const onKeyUp = (e: KeyboardEvent): void => {
+    if (e.key === 'Shift') shiftHeld = false;
     const arrowDir = ARROW_KEY_TO_DIR[e.key];
     if (arrowDir) {
       held.delete(arrowDir);
@@ -301,6 +310,7 @@ export function cameraFlyPlugin(
    *  system) so they're scoped to fly mode and don't steal arrows elsewhere. */
   const onKeyDown = (e: KeyboardEvent): void => {
     if (!active) return;
+    if (e.key === 'Shift') shiftHeld = true;
     const dir = ARROW_KEY_TO_DIR[e.key];
     if (!dir) return;
     e.preventDefault(); // stop the page from scrolling
@@ -419,6 +429,7 @@ export function cameraFlyPlugin(
     const ctx = ctxRef;
     active = false;
     held.clear();
+    shiftHeld = false;
     dragging = false;
     window.removeEventListener('keyup', onKeyUp);
     window.removeEventListener('keydown', onKeyDown);
@@ -476,6 +487,15 @@ export function cameraFlyPlugin(
       ctx.commands.register('cameraFly.isActive', () => active, {
         title: 'Check fly navigation state',
       });
+
+      // Retune speeds live (driven by the portal settings sliders). Each field
+      // is optional; only provided values are applied. turnSpeed is radians/sec.
+      ctx.commands.register('cameraFly.setOptions', (args: unknown) => {
+        const o = args as Partial<CameraFlyPluginOptions> | undefined;
+        if (typeof o?.moveFraction === 'number') moveFraction = o.moveFraction;
+        if (typeof o?.turnSpeed === 'number') turnSpeed = o.turnSpeed;
+        if (typeof o?.lookSensitivity === 'number') lookSensitivity = o.lookSensitivity;
+      }, { title: 'Set fly speed options' });
 
       // One command per direction, bound to a default key. The keyboard-shortcuts
       // plugin dispatches these on keydown (= press); release happens on keyup

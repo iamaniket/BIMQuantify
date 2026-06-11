@@ -17,6 +17,7 @@ import type { EffectsOptions } from './plugins/3d/effects/types.js';
 import type { OutlinePluginOptions } from './plugins/3d/outline/index.js';
 import type { HoverPluginOptions } from './plugins/3d/hover-highlight/index.js';
 import type { InteractivePerformanceOptions } from './plugins/3d/interactive-performance/index.js';
+import type { CameraFlyPluginOptions } from './plugins/3d/camera-fly/index.js';
 import type { PivotRotateOptions } from './plugins/3d/pivot-rotate/index.js';
 import type { SelectionPluginOptions } from './plugins/3d/selection/index.js';
 import type { SectionPluginOptions } from './plugins/3d/section/index.js';
@@ -113,6 +114,8 @@ export type IfcViewerProps = {
    * Every toggle defaults to off — opt in per setting.
    */
   interactivePerformance?: InteractivePerformanceOptions;
+  /** First-person (fly) navigation speeds: movement, turn, mouse-look, sprint. */
+  cameraFly?: CameraFlyPluginOptions;
   /** Geometry snapping (vertex, edge, midpoint). */
   snapping?: SnappingPluginOptions;
   /** Clipping/section plane support. Pass `false` to disable. */

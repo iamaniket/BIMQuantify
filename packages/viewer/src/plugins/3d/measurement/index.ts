@@ -1645,6 +1645,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   const api: Plugin & MeasurementPluginAPI = {
     name: NAME,
     dependencies: ['mode'],
+    optionalDependencies: ['snapping', 'mouse-bindings'],
 
     isActive() { return currentMode !== null; },
     mode() { return currentMode; },

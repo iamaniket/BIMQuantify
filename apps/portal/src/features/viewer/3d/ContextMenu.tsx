@@ -12,11 +12,12 @@ import {
   type ForwardedRef,
   type JSX,
 } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import type { ItemId, ViewerHandle, ViewerEvents } from '@bimstitch/viewer';
 
 import { prettyKey } from '@/components/shared/viewer/shared/settings/prettyKey';
-import { useViewerState } from '@/components/shared/viewer/shared/useViewerState';
+import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { PENDING_ELEMENT_POINT_KEY } from '../shared/inspector/pendingElementPoint';
 
@@ -291,7 +292,17 @@ export function ContextMenu({ handle, viewerReady }: Props): JSX.Element | null 
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const viewerState = useViewerState(handle, viewerReady);
+  // Derived from the canonical entity store (kept in sync with the viewer by
+  // useViewerBridge) — no separate event-subscription shadow. Shape preserved
+  // so the menu-item enablement below reads unchanged.
+  const viewerState = useViewerEntityStore(
+    useShallow((s) => ({
+      selectionCount: s.selectedAll ? Number.MAX_SAFE_INTEGER : s.selected.size,
+      hasHidden: s.hidden.size > 0,
+      hasXray: s.xrayed.size > 0,
+      isIsolated: s.isolationActive,
+    })),
+  );
   const shortcuts = useShortcutMap(handle, viewerReady);
 
   useEffect(() => {

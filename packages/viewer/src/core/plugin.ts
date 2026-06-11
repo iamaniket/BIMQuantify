@@ -31,6 +31,13 @@ export interface Plugin<TContext = unknown> {
   readonly version?: string;
   /** Other plugin names that must be installed before this one. */
   readonly dependencies?: readonly string[];
+  /**
+   * Sibling plugins this one *uses if present* (via `ctx.plugins.get(name)`)
+   * but degrades gracefully without. Unlike {@link dependencies}, a missing
+   * optional dependency does NOT block registration — but when it IS present it
+   * must be installed first, so install order documents the real soft coupling.
+   */
+  readonly optionalDependencies?: readonly string[];
   install(ctx: TContext): void | Promise<void>;
   uninstall?(): void | Promise<void>;
 }
@@ -87,6 +94,17 @@ export class PluginManager<TContext, TEvents extends PluginLifecycleEvents>
       if (!entry || !entry.installed) {
         throw new Error(
           `Plugin "${plugin.name}" depends on "${dep}", which is not installed`,
+        );
+      }
+    }
+    // Optional deps are not required, but if one is already registered it must
+    // be installed first — guards against a non-sequential bootstrap wiring the
+    // soft coupling in the wrong order. Absent optional deps are silently fine.
+    for (const dep of plugin.optionalDependencies ?? []) {
+      const entry = this.entries.get(dep);
+      if (entry && !entry.installed) {
+        throw new Error(
+          `Plugin "${plugin.name}" optionally depends on "${dep}", which is registered but not yet installed`,
         );
       }
     }

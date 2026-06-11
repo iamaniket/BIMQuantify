@@ -25,6 +25,15 @@ export type BehaviorSettings = {
   selection: { enabled: boolean; color: number };
 };
 
+export type CameraFlySettings = {
+  /** Fraction of the model diagonal traversed per second (movement speed). */
+  moveFraction: number;
+  /** Keyboard turn/pitch speed, in degrees per second (slider-friendly unit). */
+  turnSpeedDeg: number;
+  /** Mouse look-drag sensitivity, in radians per pixel. */
+  lookSensitivity: number;
+};
+
 export type ViewerSettings = {
   viewCube: { enabled: boolean };
   shadows: { enabled: boolean };
@@ -44,6 +53,8 @@ export type ViewerSettings = {
   zoom: Required<ZoomOptions>;
   /** Hover-highlight & click-to-select toggles and colors. */
   behavior: BehaviorSettings;
+  /** First-person (fly) navigation speeds. */
+  cameraFly: CameraFlySettings;
 };
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
@@ -73,6 +84,13 @@ export const DEFAULT_ZOOM: Required<ZoomOptions> = {
 export const DEFAULT_BEHAVIOR: BehaviorSettings = {
   hoverHighlight: { enabled: true, color: 0xffd700 },
   selection: { enabled: true, color: 0x4a90d9 },
+};
+
+export const DEFAULT_CAMERA_FLY: CameraFlySettings = {
+  // Calmer baseline than the old 0.35 (which crossed the model in ~3s).
+  moveFraction: 0.18,
+  turnSpeedDeg: 70,
+  lookSensitivity: 0.0025,
 };
 
 export const DEFAULT_CONTROLS: ControlsSettings = {
@@ -124,6 +142,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   interactivePerformance: DEFAULT_INTERACTIVE_PERFORMANCE,
   zoom: DEFAULT_ZOOM,
   behavior: DEFAULT_BEHAVIOR,
+  cameraFly: DEFAULT_CAMERA_FLY,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
@@ -146,6 +165,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
       hoverHighlight: { ...d.behavior.hoverHighlight, ...(p.behavior?.hoverHighlight ?? {}) },
       selection: { ...d.behavior.selection, ...(p.behavior?.selection ?? {}) },
     },
+    cameraFly: { ...d.cameraFly, ...(p.cameraFly ?? {}) },
   };
 }
 

@@ -163,6 +163,7 @@ export function screenshotPlugin(
 
   const api: Plugin & ScreenshotPluginAPI = {
     name: NAME,
+    optionalDependencies: ['camera-fly', 'navigate'],
 
     capture,
     download,

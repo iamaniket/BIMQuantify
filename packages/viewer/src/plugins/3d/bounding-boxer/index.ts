@@ -141,6 +141,7 @@ export function boundingBoxerPlugin(): Plugin & BoundingBoxerPluginAPI {
 
   const api: Plugin & BoundingBoxerPluginAPI = {
     name: NAME,
+    optionalDependencies: ['selection'],
 
     show(items) {
       showBox(items);

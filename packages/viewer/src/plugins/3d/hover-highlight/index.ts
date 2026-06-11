@@ -15,6 +15,7 @@ import * as THREE from 'three';
 
 import { pick } from '../../../core/Raycaster.js';
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
+import { isPointClipped, type SectionPlaneData } from '../shared/clipping.js';
 import { EdgeOverlay } from '../shared/edge-overlay.js';
 
 const NAME = 'hover-highlight' as const;
@@ -53,16 +54,10 @@ export function hoverHighlightPlugin(
   let pending: { x: number; y: number } | null = null;
   let enabled = true;
   const edges = new EdgeOverlay({ lineWidth: 1.5 });
-  let cachedSectionPlanes: Array<{ normal: { x: number; y: number; z: number }; point: { x: number; y: number; z: number }; active: boolean }> = [];
+  let cachedSectionPlanes: SectionPlaneData[] = [];
 
   const isClippedBySection = (pt: { x: number; y: number; z: number }): boolean =>
-    cachedSectionPlanes.some((p) => {
-      if (!p.active) return false;
-      const d = (pt.x - p.point.x) * p.normal.x +
-                (pt.y - p.point.y) * p.normal.y +
-                (pt.z - p.point.z) * p.normal.z;
-      return d < 0;
-    });
+    isPointClipped(pt, cachedSectionPlanes);
 
   const sameItem = (a: ItemId | null, b: ItemId | null): boolean => {
     if (a === b) return true;
@@ -154,6 +149,7 @@ export function hoverHighlightPlugin(
 
   return {
     name: NAME,
+    optionalDependencies: ['selection'],
 
     setEnabled(next: boolean) {
       if (enabled === next) return;

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import {
   AppDialog, Select, Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@bimstitch/ui';
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { CameraFlyPluginOptions, ViewerHandle } from '@bimstitch/viewer';
 
 import {
   DEFAULT_VIEWER_SETTINGS,
@@ -107,6 +107,50 @@ function Viewer3DSection({
             onChange({
               ...settings,
               zoom: { ...settings.zoom, maxFactor },
+            });
+          }}
+        />
+      </Section>
+      <Section title={t('navigationSection')} note={t('sprintHint')}>
+        <RangeField
+          label={t('movementSpeed')}
+          value={settings.cameraFly.moveFraction}
+          min={0.05}
+          max={0.6}
+          step={0.01}
+          format={(v) => `${(v * 100).toFixed(0)}%`}
+          onChange={(moveFraction) => {
+            onChange({
+              ...settings,
+              cameraFly: { ...settings.cameraFly, moveFraction },
+            });
+          }}
+        />
+        <RangeField
+          label={t('turnSpeed')}
+          value={settings.cameraFly.turnSpeedDeg}
+          min={20}
+          max={180}
+          step={5}
+          format={(v) => `${String(v)}°/s`}
+          onChange={(turnSpeedDeg) => {
+            onChange({
+              ...settings,
+              cameraFly: { ...settings.cameraFly, turnSpeedDeg },
+            });
+          }}
+        />
+        <RangeField
+          label={t('lookSensitivity')}
+          value={settings.cameraFly.lookSensitivity}
+          min={0.001}
+          max={0.006}
+          step={0.0005}
+          format={(v) => `${(v / 0.0025).toFixed(1)}x`}
+          onChange={(lookSensitivity) => {
+            onChange({
+              ...settings,
+              cameraFly: { ...settings.cameraFly, lookSensitivity },
             });
           }}
         />
@@ -375,6 +419,22 @@ function applyLiveCommands3D(
   }
   if (Object.keys(ipPatch).length > 0) {
     handle.commands.execute('interactivePerformance.set', ipPatch).catch(() => undefined);
+  }
+
+  const snapFly = snapshot.cameraFly;
+  const draftFly = draft.cameraFly;
+  const flyPatch: CameraFlyPluginOptions = {};
+  if (snapFly.moveFraction !== draftFly.moveFraction) {
+    flyPatch.moveFraction = draftFly.moveFraction;
+  }
+  if (snapFly.turnSpeedDeg !== draftFly.turnSpeedDeg) {
+    flyPatch.turnSpeed = (draftFly.turnSpeedDeg * Math.PI) / 180;
+  }
+  if (snapFly.lookSensitivity !== draftFly.lookSensitivity) {
+    flyPatch.lookSensitivity = draftFly.lookSensitivity;
+  }
+  if (Object.keys(flyPatch).length > 0) {
+    handle.commands.execute('cameraFly.setOptions', flyPatch).catch(() => undefined);
   }
 
   const snapShortcuts = snapshot.shortcuts;

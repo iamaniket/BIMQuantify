@@ -18,6 +18,23 @@ export interface SectionPlaneData {
   active: boolean;
 }
 
+/**
+ * True if `pt` lies on the cut-away side of any active section plane — i.e. the
+ * point sits in the negative half-space of a plane (`(pt − point) · normal < 0`).
+ * Picking code uses this to reject raycast hits on geometry a section plane has
+ * clipped away. Inactive planes are ignored; an empty list is never clipped.
+ */
+export function isPointClipped(pt: Vec3, planes: SectionPlaneData[]): boolean {
+  return planes.some((p) => {
+    if (!p.active) return false;
+    const d =
+      (pt.x - p.point.x) * p.normal.x +
+      (pt.y - p.point.y) * p.normal.y +
+      (pt.z - p.point.z) * p.normal.z;
+    return d < 0;
+  });
+}
+
 /** Build `THREE.Plane`s for the active section planes only. */
 export function buildClippingPlanes(planes: SectionPlaneData[]): THREE.Plane[] {
   return planes

@@ -457,6 +457,7 @@ export function interactivePerformancePlugin(
 
   const api: Plugin & InteractivePerformanceAPI = {
     name: NAME,
+    optionalDependencies: ['visibility', 'xray', 'hover-highlight'],
 
     getOptions() {
       return { ...opts };
