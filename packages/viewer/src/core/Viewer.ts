@@ -235,15 +235,27 @@ export class Viewer {
     const world = worlds.create<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>();
 
     world.scene = new SimpleScene(components);
-    // Z-fighting on coplanar BIM geometry (slab/wall, glazing/frame) is
-    // handled by per-material polygonOffset wired up below — NOT by
-    // logarithmicDepthBuffer. The two conflict: log depth writes
-    // gl_FragDepth in the fragment shader, which runs after the rasterizer
-    // state polygonOffset operates on, so the offset is silently ignored.
-    // Linear depth + tight near/far (frameModel) + polygonOffset is the
-    // ThatOpen-recommended combo and preserves early-Z performance.
+    // Logarithmic depth buffer: BIM models span a huge depth range (whole
+    // building) yet must allow close inspection, which linear 24-bit depth
+    // can't do without either near-plane clipping or far-end z-fighting. Log
+    // depth gives uniform precision across the range, killing both.
+    //
+    // Trade-off: log depth writes gl_FragDepth in the fragment shader, AFTER
+    // the rasterizer stage where polygonOffset applies — so the per-material
+    // polygonOffset set up below is silently ignored. We keep those flags as a
+    // harmless fallback (they re-activate if log depth is ever disabled), but
+    // log depth's far superior precision is what now resolves near-coplanar
+    // BIM faces (glazing/frame, slab/wall). Truly-coincident faces are handled
+    // case-by-case via depthWrite/renderOrder (IFC Spaces, the shadow plane).
+    //
+    // Every custom in-scene shader must include the <logdepthbuf_*> chunks or
+    // it depth-tests in the wrong space: the forked outline material reuses the
+    // stock line shader's chunks (kept intact); the shadow-ground shader adds
+    // them explicitly (see applyLightingAndShadows). The post FX pipeline reads
+    // no depth (RenderPass → FXAA → OutputPass), so it is unaffected.
     world.renderer = new SimpleRenderer(components, container, {
       antialias: true,
+      logarithmicDepthBuffer: true,
     });
     world.renderer.showLogo = false;
     world.camera = new OrthoPerspectiveCamera(components);
@@ -623,20 +635,30 @@ export class Viewer {
           coreRadius: { value: 0.35 },
           uLinearBlend: { value: 0.0 },
         },
+        // The <logdepthbuf_*> chunks make this hand-written shader write its
+        // fragment depth in the same logarithmic space as the rest of the
+        // scene (the renderer has logarithmicDepthBuffer on). Without them the
+        // plane depth-tests against the model in a mismatched space and can
+        // punch through or vanish. three injects the USE_LOGDEPTHBUF define +
+        // logDepthBufFC uniform automatically for ShaderMaterial.
         vertexShader: /* glsl */ `
+          #include <logdepthbuf_pars_vertex>
           varying vec2 vUv;
           void main() {
             vUv = uv;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            #include <logdepthbuf_vertex>
           }
         `,
         fragmentShader: /* glsl */ `
+          #include <logdepthbuf_pars_fragment>
           uniform vec3 color;
           uniform float opacity;
           uniform float coreRadius;
           uniform float uLinearBlend;
           varying vec2 vUv;
           void main() {
+            #include <logdepthbuf_fragment>
             vec2 d = vUv - 0.5;
             float r = length(d) * 2.0;
             float a = 1.0 - smoothstep(coreRadius, 1.0, r);
