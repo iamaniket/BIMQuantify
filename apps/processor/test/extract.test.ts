@@ -15,6 +15,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { postCallback } from '../src/api/callback.js';
 import { runExtraction } from '../src/pipeline/extract.js';
+import { decodeFloorPlans } from '../src/pipeline/floorplans.js';
 import { decodeOutline } from '../src/pipeline/outline.js';
 import { downloadObjectWithHash, uploadObject } from '../src/storage/s3.js';
 
@@ -43,7 +44,7 @@ describe('runExtraction (real worker threads)', () => {
   });
 
   it(
-    'extracts fragments, metadata, properties and the outline artifact end-to-end',
+    'extracts fragments, metadata, properties, outline and floor-plan artifacts end-to-end',
     async () => {
       const raw = await readFile(FIXTURE);
       const bytes = new Uint8Array(raw);
@@ -69,6 +70,7 @@ describe('runExtraction (real worker threads)', () => {
       expect(succeeded?.metadata_key).toBe('projects/p1/IfcOpenHouse4.metadata.json');
       expect(succeeded?.properties_key).toBe('projects/p1/IfcOpenHouse4.properties.json');
       expect(succeeded?.outline_key).toBe('projects/p1/IfcOpenHouse4.outline.bin');
+      expect(succeeded?.floor_plans_key).toBe('projects/p1/IfcOpenHouse4.floorplans.bin');
       expect(succeeded?.content_sha256).toBe(sha256);
       expect(succeeded?.ifc_project_guid).toBeTruthy();
 
@@ -76,6 +78,7 @@ describe('runExtraction (real worker threads)', () => {
         vi.mocked(uploadObject).mock.calls.map(([key, body]) => [key, body]),
       );
       expect([...uploads.keys()].sort()).toEqual([
+        'projects/p1/IfcOpenHouse4.floorplans.bin',
         'projects/p1/IfcOpenHouse4.frag',
         'projects/p1/IfcOpenHouse4.metadata.json',
         'projects/p1/IfcOpenHouse4.outline.bin',
@@ -116,6 +119,17 @@ describe('runExtraction (real worker threads)', () => {
         `[outline v2] templates=${outline.templateCount} instances=${outline.instanceCount} ` +
           `bytes=${(outlineBytes as Uint8Array).length}`,
       );
+
+      // The uploaded floor-plan artifact must decode and carry ≥1 level with
+      // finite world-XY cut geometry (IfcOpenHouse4 is a single storey).
+      const floorPlansBytes = uploads.get('projects/p1/IfcOpenHouse4.floorplans.bin');
+      expect(floorPlansBytes).toBeInstanceOf(Uint8Array);
+      const floorPlans = decodeFloorPlans(floorPlansBytes as Uint8Array);
+      expect(floorPlans.levels.length).toBeGreaterThan(0);
+      const firstLevel = floorPlans.levels[0]!;
+      expect(firstLevel.wallSegments.length % 4).toBe(0);
+      expect(firstLevel.wallSegments.every((v) => Number.isFinite(v))).toBe(true);
+      expect(firstLevel.wallSegments.length > 0 || firstLevel.rooms.length > 0).toBe(true);
 
       const metadataRaw = uploads.get('projects/p1/IfcOpenHouse4.metadata.json');
       expect(metadataRaw).toBeInstanceOf(Uint8Array);

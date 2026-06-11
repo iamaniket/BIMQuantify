@@ -3,6 +3,8 @@ export type SpatialNode = {
   globalId: string | null;
   type: string;
   name: string | null;
+  /** Storey elevation (model units) for IfcBuildingStorey nodes; null/absent otherwise. */
+  elevation?: number | null;
   children: SpatialNode[];
 };
 

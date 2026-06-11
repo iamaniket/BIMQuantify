@@ -72,6 +72,7 @@ class ViewerBundleResponse(BaseModel):
     properties_url: str | None = None
     geometry_url: str | None = None
     outline_url: str | None = None
+    floor_plans_url: str | None = None
     file_url: str | None = None
     expires_in: int
 
@@ -97,6 +98,7 @@ class ExtractionCallbackRequest(BaseModel):
     properties_key: str | None = None
     geometry_key: str | None = None
     outline_key: str | None = None
+    floor_plans_key: str | None = None
     page_count: int | None = None
     error: str | None = None
     extractor_version: str | None = None

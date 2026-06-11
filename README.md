@@ -169,7 +169,7 @@ MIT © iamaniket
 #strat fresh docker
 
 docker compose down -v
-docker compose up -d
+docker compose up -d --build
 
  cd apps/api && uv run alembic -c alembic.master.ini upgrade head       
 

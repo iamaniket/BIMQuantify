@@ -40,6 +40,9 @@ export type SpatialNode = {
   globalId: string | null;
   type: string;
   name: string | null;
+  /** Storey elevation (model units) for IfcBuildingStorey nodes; null otherwise.
+   * Drives the portal's level ordering/labels and the floor-plan cut height. */
+  elevation: number | null;
   children: SpatialNode[];
 };
 
@@ -222,6 +225,7 @@ function readSpatialNode(
     globalId: stringValue(line['GlobalId']),
     type,
     name: stringValue(line['Name']),
+    elevation: type === 'IfcBuildingStorey' ? numberValue(line['Elevation']) : null,
     children,
   };
 }

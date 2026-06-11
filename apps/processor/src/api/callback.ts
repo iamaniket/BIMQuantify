@@ -18,6 +18,9 @@ export type CallbackPayload = {
   // pre-outline extractions and when outline generation failed gracefully
   // (the viewer falls back to client-side edge compute either way).
   outline_key?: string | null;
+  // Set only on `succeeded` when the per-level floor-plan artifact uploaded;
+  // absent when the model has no storeys or generation failed gracefully.
+  floor_plans_key?: string | null;
   geometry_key?: string;
   page_count?: number;
   error?: string;

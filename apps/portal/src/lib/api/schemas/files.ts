@@ -93,6 +93,7 @@ export const ViewerBundleResponseSchema = z.object({
   properties_url: z.union([z.string().url(), z.null()]),
   geometry_url: z.union([z.string().url(), z.null()]),
   outline_url: z.union([z.string().url(), z.null()]),
+  floor_plans_url: z.union([z.string().url(), z.null()]),
   file_url: z.union([z.string().url(), z.null()]),
   expires_in: z.number().int().positive(),
 });

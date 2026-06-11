@@ -2599,6 +2599,14 @@
     "attachmentDeleted": "Removed {filename}"
   },
   "viewer": {
+    "minimap": {
+      "title": "Floor plan",
+      "level": "Level",
+      "levelFallback": "Level {n}",
+      "collapse": "Collapse",
+      "expand": "Show floor plan",
+      "clickToNavigate": "Click to move the view here"
+    },
     "explorer": {
       "filter": "Filter…",
       "expandAll": "Expand all",

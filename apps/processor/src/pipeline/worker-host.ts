@@ -50,6 +50,9 @@ export type ExtractionWorkerMessage =
   // `bytes: null` = outline generation failed after fragments succeeded; the
   // job degrades gracefully (no artifact, viewer falls back to client compute).
   | { type: 'outline'; bytes: Uint8Array | null; ms: number; error?: string }
+  // `bytes: null` = no floor-plan artifact (no storeys, or generation failed
+  // after the walk succeeded); the job carries on and the viewer hides the 2D map.
+  | { type: 'floorplans'; bytes: Uint8Array | null; ms: number; error?: string }
   | { type: 'parsed'; ms: number; schema: string }
   | {
       type: 'walk';

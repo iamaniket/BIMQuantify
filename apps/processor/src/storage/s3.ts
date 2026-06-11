@@ -82,6 +82,10 @@ export function outlineKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.ifc$/i, '.outline.bin');
 }
 
+export function floorPlansKeyFor(sourceKey: string): string {
+  return sourceKey.replace(/\.ifc$/i, '.floorplans.bin');
+}
+
 export function metadataKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.ifc$/i, '.metadata.json');
 }

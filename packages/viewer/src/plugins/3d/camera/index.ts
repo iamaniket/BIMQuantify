@@ -187,6 +187,66 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         },
         { title: 'Frame visible' },
       );
+
+      // Recenter the camera on a world-space point (e.g. a minimap tap),
+      // preserving the current orbit (view direction + distance). Args are
+      // THREE world coords — callers convert from plan space first.
+      commands.register(
+        'camera.flyToPoint',
+        async (args) => {
+          const a = args as
+            | { x?: number; y?: number; z?: number; animate?: boolean }
+            | undefined;
+          if (!a || a.x === undefined || a.y === undefined || a.z === undefined) return;
+          const pos = new THREE.Vector3();
+          const tgt = new THREE.Vector3();
+          ctx.cameraControls.getPosition(pos);
+          ctx.cameraControls.getTarget(tgt);
+          const offset = pos.sub(tgt); // preserve orbit + distance
+          await ctx.cameraControls.setLookAt(
+            a.x + offset.x,
+            a.y + offset.y,
+            a.z + offset.z,
+            a.x,
+            a.y,
+            a.z,
+            a.animate ?? true,
+          );
+        },
+        { title: 'Fly to point' },
+      );
+
+      // Read the current camera pose so the minimap can draw "you are here"
+      // before the first camera:change event fires.
+      commands.register(
+        'camera.getPose',
+        () => {
+          const pos = new THREE.Vector3();
+          const tgt = new THREE.Vector3();
+          ctx.cameraControls.getPosition(pos);
+          ctx.cameraControls.getTarget(tgt);
+          return {
+            position: { x: pos.x, y: pos.y, z: pos.z },
+            target: { x: tgt.x, y: tgt.y, z: tgt.z },
+          };
+        },
+        { title: 'Get camera pose' },
+      );
+
+      // Model world-space AABB, used by the minimap to calibrate the IFC↔viewer
+      // transform (the model is recentered on load, so a fixed offset won't do).
+      commands.register(
+        'camera.getSceneBox',
+        () => {
+          const box = computeSceneBox(ctx);
+          if (box.isEmpty()) return null;
+          return {
+            min: { x: box.min.x, y: box.min.y, z: box.min.z },
+            max: { x: box.max.x, y: box.max.y, z: box.max.z },
+          };
+        },
+        { title: 'Get scene world box' },
+      );
     },
 
     uninstall() {

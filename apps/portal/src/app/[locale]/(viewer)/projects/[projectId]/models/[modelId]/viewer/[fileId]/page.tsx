@@ -41,6 +41,7 @@ import { useBcfMarkup2d } from '@/features/viewer/bcf/useBcfMarkup2d';
 import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
 import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
+import { Minimap } from '@/features/viewer/3d/minimap/Minimap';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
 import { DocumentContextMenu } from '@/features/viewer/2d/DocumentContextMenu';
@@ -691,6 +692,15 @@ export default function ViewerPage(): JSX.Element {
               }}
             />
           </div>
+        ) : null}
+
+        {ifcShellReady && bundle?.floor_plans_url ? (
+          <Minimap
+            handle={viewerHandleRef.current}
+            viewerReady={viewerReady}
+            floorPlansUrl={bundle.floor_plans_url}
+            metadata={metadata}
+          />
         ) : null}
 
         {pdfShellReady ? (

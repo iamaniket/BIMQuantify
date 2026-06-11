@@ -193,6 +193,14 @@ export type {
   OutlinePluginOptions,
   OutlinePluginAPI,
 } from './plugins/3d/outline/index.js';
+// Floor-plan artifact decoder (processor BIMFPLN1) — consumed by the portal
+// minimap and the 2D split-view floor-plan source.
+export { decodeFloorPlans } from './plugins/3d/shared/floorplan-codec.js';
+export type {
+  DecodedFloorPlans,
+  FloorPlanLevel,
+  FloorPlanRoom,
+} from './plugins/3d/shared/floorplan-codec.js';
 export { sectionPlugin } from './plugins/3d/section/index.js';
 export { snappingPlugin } from './plugins/3d/snapping/index.js';
 export { modePlugin } from './plugins/3d/mode/index.js';

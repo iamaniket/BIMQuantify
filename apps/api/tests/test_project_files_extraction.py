@@ -386,10 +386,12 @@ async def test_viewer_bundle_returns_presigned_urls_after_extraction(
     metadata_key = f"projects/{project_id}/{file_id}.metadata.json"
     properties_key = f"projects/{project_id}/{file_id}.properties.json"
     outline_key = f"projects/{project_id}/{file_id}.outline.bin"
+    floor_plans_key = f"projects/{project_id}/{file_id}.floorplans.bin"
     fake.objects[fragments_key] = b"frag-bytes"
     fake.objects[metadata_key] = b"{}"
     fake.objects[properties_key] = b"{}"
     fake.objects[outline_key] = b"outline-bytes"
+    fake.objects[floor_plans_key] = b"floorplans-bytes"
 
     cb = await client.post(
         "/internal/jobs/callback",
@@ -401,6 +403,7 @@ async def test_viewer_bundle_returns_presigned_urls_after_extraction(
             "metadata_key": metadata_key,
             "properties_key": properties_key,
             "outline_key": outline_key,
+            "floor_plans_key": floor_plans_key,
         },
         headers=_bearer(),
     )
@@ -419,6 +422,9 @@ async def test_viewer_bundle_returns_presigned_urls_after_extraction(
     assert body["outline_url"] is not None
     assert body["outline_url"].startswith("http://fake-storage/")
     assert ".outline.bin?download=" in body["outline_url"]
+    assert body["floor_plans_url"] is not None
+    assert body["floor_plans_url"].startswith("http://fake-storage/")
+    assert ".floorplans.bin?download=" in body["floor_plans_url"]
     assert body["expires_in"] == fake.presign_ttl_value
 
 
@@ -497,6 +503,85 @@ async def test_callback_without_outline_key_leaves_outline_null(
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["outline_url"] is None
+
+
+async def test_callback_floor_plans_key_persists_and_job_result_carries_it(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, fake = fake_storage_client
+    project_id, model_id, file_id = await _ready_file(
+        client, fake, org_user, name="floorplans.ifc"
+    )
+
+    list_resp = await client.get("/jobs", headers=_auth(org_user["access_token"]))
+    job_id = list_resp.json()["items"][0]["id"]
+
+    fragments_key = f"projects/{project_id}/{file_id}.frag"
+    floor_plans_key = f"projects/{project_id}/{file_id}.floorplans.bin"
+    cb = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "job_id": job_id,
+            "status": "succeeded",
+            "fragments_key": fragments_key,
+            "floor_plans_key": floor_plans_key,
+        },
+        headers=_bearer(),
+    )
+    assert cb.status_code == 200
+
+    job = await client.get(f"/jobs/{job_id}", headers=_auth(org_user["access_token"]))
+    assert job.json()["result"]["floor_plans_key"] == floor_plans_key
+
+    resp = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["floor_plans_url"] is not None
+
+
+async def test_callback_without_floor_plans_key_leaves_floor_plans_null(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Floor plans are optional: a model with no storeys (or a generation
+    failure) still succeeds, and the bundle reports floor_plans_url=null."""
+    client, fake = fake_storage_client
+    project_id, model_id, file_id = await _ready_file(
+        client, fake, org_user, name="no-floorplans.ifc"
+    )
+
+    list_resp = await client.get("/jobs", headers=_auth(org_user["access_token"]))
+    job_id = list_resp.json()["items"][0]["id"]
+
+    cb = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "job_id": job_id,
+            "status": "succeeded",
+            "fragments_key": f"projects/{project_id}/{file_id}.frag",
+        },
+        headers=_bearer(),
+    )
+    assert cb.status_code == 200
+
+    job = await client.get(f"/jobs/{job_id}", headers=_auth(org_user["access_token"]))
+    assert "floor_plans_key" not in job.json()["result"]
+
+    resp = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["floor_plans_url"] is None
 
 
 async def test_viewer_bundle_cross_org_returns_404(

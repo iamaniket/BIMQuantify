@@ -24,6 +24,7 @@ import { type MessagePort, parentPort, workerData } from 'node:worker_threads';
 import { SingleThreadedFragmentsModel } from '@thatopen/fragments';
 
 import { logger } from '../log.js';
+import { buildFloorPlans, encodeFloorPlans } from './floorplans.js';
 import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel } from './ifc.js';
 import { buildMetadata } from './metadata.js';
@@ -193,6 +194,38 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
     const metadataMs = Math.round(performance.now() - walkStart);
     const properties = await buildProperties(ifcApi, opened.modelID, metadata.elements, logger);
     const walkMs = Math.round(performance.now() - walkStart);
+
+    // Per-storey floor-plan artifact (section cut + IfcSpace rooms), posted
+    // before the terminal 'walk' message. Degrades gracefully: a failure — or a
+    // model with no storeys — posts bytes:null and the viewer hides the 2D map.
+    const fpStart = performance.now();
+    let floorPlansBytes: Uint8Array | null = null;
+    try {
+      const floorPlans = buildFloorPlans(
+        ifcApi,
+        opened.modelID,
+        metadata.project.lengthUnit,
+        metadata.elements,
+        logger,
+      );
+      if (floorPlans.levels.length > 0) floorPlansBytes = encodeFloorPlans(floorPlans);
+    } catch (err) {
+      logger.warn(
+        { error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) },
+        'floor-plan generation failed — viewer hides the 2D map',
+      );
+    }
+    const fpMs = Math.round(performance.now() - fpStart);
+    if (floorPlansBytes !== null) {
+      port.postMessage(
+        { type: 'floorplans', bytes: floorPlansBytes, ms: fpMs } satisfies ExtractionWorkerMessage,
+        [floorPlansBytes.buffer as ArrayBuffer],
+      );
+    } else {
+      port.postMessage(
+        { type: 'floorplans', bytes: null, ms: fpMs } satisfies ExtractionWorkerMessage,
+      );
+    }
 
     const encoder = new TextEncoder();
     const metadataJson = encoder.encode(JSON.stringify(metadata));

@@ -24,6 +24,7 @@ import { postCallback } from '../api/callback.js';
 import { logger } from '../log.js';
 import {
   downloadObjectWithHash,
+  floorPlansKeyFor,
   fragmentsKeyFor,
   metadataKeyFor,
   outlineKeyFor,
@@ -153,6 +154,7 @@ export async function runExtraction(
     };
 
     let outlineKey: string | null = null;
+    let floorPlansKey: string | null = null;
     let projectGlobalId: string | null = null;
 
     logger.info('generating fragments + walking model');
@@ -193,6 +195,19 @@ export async function runExtraction(
           if (msg.type === 'parsed') {
             logStage('parse', msg.ms);
             await reportProgress(40);
+          } else if (msg.type === 'floorplans') {
+            if (msg.bytes === null) {
+              // No storeys, or generation failed — the job still succeeds and
+              // the viewer simply hides the 2D floor-plan map.
+              logger.warn(
+                { error: msg.error, file_id: payload.file_id, job_id: job.job_id },
+                'no floor-plan artifact — viewer hides the 2D map',
+              );
+            } else {
+              logStage('floorplans', msg.ms);
+              floorPlansKey = floorPlansKeyFor(payload.storage_key);
+              startUpload(floorPlansKey, msg.bytes, 'application/octet-stream');
+            }
           } else if (msg.type === 'walk') {
             logStage('walk', msg.timings.walk);
             projectGlobalId = msg.projectGlobalId;
@@ -212,7 +227,10 @@ export async function runExtraction(
     }
     await reportProgress(80);
 
-    logger.info({ fragmentsKey, metadataKey, propertiesKey, outlineKey }, 'uploading outputs');
+    logger.info(
+      { fragmentsKey, metadataKey, propertiesKey, outlineKey, floorPlansKey },
+      'uploading outputs',
+    );
     const upload = await time(() => Promise.all(pendingUploads));
     logStage('upload', upload.ms);
 
@@ -233,6 +251,7 @@ export async function runExtraction(
       // Only when the artifact actually uploaded — a graceful outline failure
       // leaves the field off entirely.
       ...(outlineKey !== null ? { outline_key: outlineKey } : {}),
+      ...(floorPlansKey !== null ? { floor_plans_key: floorPlansKey } : {}),
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       extractor_version: version,

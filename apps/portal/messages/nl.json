@@ -2599,6 +2599,14 @@
     "attachmentDeleted": "Verwijderd: {filename}"
   },
   "viewer": {
+    "minimap": {
+      "title": "Plattegrond",
+      "level": "Verdieping",
+      "levelFallback": "Verdieping {n}",
+      "collapse": "Inklappen",
+      "expand": "Plattegrond tonen",
+      "clickToNavigate": "Klik om de weergave hierheen te verplaatsen"
+    },
     "explorer": {
       "filter": "Filter…",
       "expandAll": "Alles uitvouwen",
