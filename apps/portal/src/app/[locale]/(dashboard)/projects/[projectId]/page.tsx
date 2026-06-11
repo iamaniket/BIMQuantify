@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 
 import { Button, Skeleton } from '@bimstitch/ui';
-import { Pencil, Share2 } from '@bimstitch/ui/icons';
+import { Pencil, Settings, Share2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
@@ -30,6 +30,7 @@ import {
 } from '@/features/projects/detail/dossierTemplate';
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
 import { ProjectFormDialog } from '@/features/projects/ProjectFormDialog';
+import { ProjectSettingsDialog } from '@/features/projects/detail/ProjectSettingsDialog';
 import { isProjectArchived } from '@/lib/formatting/projects';
 import { Link } from '@/i18n/navigation';
 
@@ -39,6 +40,7 @@ export default function ProjectDetailPage(): JSX.Element {
   const tHero = useTranslations('projectDetail.hero');
   const projectQuery = useProject(projectId);
   const [editOpen, setEditOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     track(PORTAL_EVENTS.PROJECT_OPENED, { project_id: projectId });
@@ -138,6 +140,14 @@ export default function ProjectDetailPage(): JSX.Element {
         <Pencil className="mr-1 h-3.5 w-3.5" />
         {tHero('editProject')}
       </Button>
+      <Button
+        variant="border"
+        disabled={isProjectArchived(project)}
+        onClick={() => { setSettingsOpen(true); }}
+      >
+        <Settings className="mr-1 h-3.5 w-3.5" />
+        {tHero('settings')}
+      </Button>
       <Button variant="border" size="md" asChild>
         <Link href={`/projects/${project.id}/access`}>
           <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('shareProject')}
@@ -184,6 +194,11 @@ export default function ProjectDetailPage(): JSX.Element {
         project={project}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+      <ProjectSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        projectId={projectId}
       />
     </>
   );

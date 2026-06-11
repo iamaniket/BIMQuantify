@@ -45,6 +45,21 @@ export async function updateProject(
   return apiClient.patch<Project>(`/projects/${id}`, input, ProjectSchema, accessToken);
 }
 
+export async function uploadProjectThumbnail(
+  accessToken: string,
+  projectId: string,
+  file: File,
+): Promise<Project> {
+  const formData = new FormData();
+  formData.append('thumbnail', file);
+  return apiClient.postMultipart<Project>(
+    `/projects/${projectId}/thumbnail`,
+    formData,
+    ProjectSchema,
+    accessToken,
+  );
+}
+
 export async function archiveProject(accessToken: string, id: string): Promise<Project> {
   return apiClient.post<Project>(`/projects/${id}/archive`, undefined, ProjectSchema, accessToken);
 }

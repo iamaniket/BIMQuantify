@@ -44,6 +44,7 @@ export function ProjectDetailHeader({
   const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
   const tHero = useTranslations('projectDetail.hero');
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [aerialFailed, setAerialFailed] = useState(false);
   const address = formatAddress(project);
   const refLabel = project.reference_code ?? '—';
@@ -52,8 +53,9 @@ export function ProjectDetailHeader({
   const instrument = project.instrument_id === null
     ? undefined
     : INSTRUMENT_OPTIONS.find((opt) => opt.value === project.instrument_id);
+  const showThumbnail = project.thumbnail_url !== null && !thumbnailFailed;
   const aerialUrl = (
-    project.thumbnail_url === null
+    !showThumbnail
     && project.latitude !== null
     && project.longitude !== null
     && isWithinNetherlands(project.latitude, project.longitude)
@@ -74,12 +76,13 @@ export function ProjectDetailHeader({
 
   const thumbnail = (
     <div className="h-[140px] w-[200px] overflow-hidden rounded-[10px] bg-black/5 shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:bg-white/10 dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
-      {project.thumbnail_url !== null ? (
+      {showThumbnail ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={project.thumbnail_url}
+          src={project.thumbnail_url!}
           alt={tHero('thumbnailAlt', { name: project.name })}
           className="h-full w-full object-cover"
+          onError={() => setThumbnailFailed(true)}
         />
       ) : aerialUrl !== null ? (
         // eslint-disable-next-line @next/next/no-img-element

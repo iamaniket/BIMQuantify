@@ -430,7 +430,8 @@
         },
         "actions": {
           "removeCoverImage": "Remove cover image",
-          "addCoverImage": "Add cover image"
+          "addCoverImage": "Add cover image",
+          "changeCoverImage": "Change cover image"
         }
       },
       "details": {
@@ -872,7 +873,8 @@
       "noAddress": "No address set",
       "instrumentTooltip": "Approved instrument · {provider}",
       "thumbnailAlt": "{name} thumbnail",
-      "mapPreviewAlt": "{name} map preview"
+      "mapPreviewAlt": "{name} map preview",
+      "settings": "Settings"
     },
     "tabs": {
       "overzicht": {
@@ -1316,7 +1318,6 @@
           "filedBy": "Filed by {name}",
           "referenceShort": "Ref: {number}"
         },
-        "notificationSettingsToggle": "Notification settings",
         "notifications": {
           "title": "Notification settings",
           "description": "Configure when and to whom deadline reminders are sent.",
@@ -1331,6 +1332,20 @@
           "revertToDefaults": "Revert to defaults"
         }
       }
+    },
+    "settings": {
+      "title": "Project settings",
+      "description": "Configure notifications and display preferences for this project.",
+      "tabs": {
+        "notifications": "Notifications",
+        "display": "Display preferences"
+      },
+      "display": {
+        "placeholder": "Display preferences coming soon."
+      },
+      "save": "Save",
+      "cancel": "Cancel",
+      "resetDefaults": "Reset to defaults"
     }
   },
   "findings": {

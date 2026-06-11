@@ -726,6 +726,136 @@ async def test_create_project_thumbnail_unsupported_mime_returns_415(
 
 
 # ---------------------------------------------------------------------------
+# Thumbnail update (POST /projects/{id}/thumbnail)
+# ---------------------------------------------------------------------------
+
+
+async def test_update_project_thumbnail_ok(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+) -> None:
+    """POST /projects/{id}/thumbnail stores a new image, returns presigned URL,
+    and deletes the previous S3 object when one exists."""
+    client, fake = fake_storage_client  # type: ignore[misc]
+    p = (
+        await client.post(
+            "/projects/with-thumbnail",
+            data={"name": "ThumbnailUpdate"},
+            files={"thumbnail": ("old.jpg", _TINY_JPEG, "image/jpeg")},
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    old_keys = list(fake.objects.keys())  # type: ignore[attr-defined]
+    assert len(old_keys) == 1
+    old_key = old_keys[0]
+
+    response = await client.post(
+        f"/projects/{p['id']}/thumbnail",
+        files={"thumbnail": ("new.jpg", _TINY_JPEG, "image/jpeg")},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["thumbnail_url"] is not None
+    assert "http://fake-storage/" in body["thumbnail_url"]
+    assert "thumbnails/" in body["thumbnail_url"]
+    assert old_key in fake.deleted  # type: ignore[attr-defined]
+    new_keys = list(fake.objects.keys())  # type: ignore[attr-defined]
+    assert len(new_keys) == 1
+    assert new_keys[0] != old_key
+
+
+async def test_update_project_thumbnail_invalid_type(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+) -> None:
+    client, _ = fake_storage_client  # type: ignore[misc]
+    p = (
+        await client.post(
+            "/projects", json={"name": "BadThumb"}, headers=_auth(org_user["access_token"])
+        )
+    ).json()
+    response = await client.post(
+        f"/projects/{p['id']}/thumbnail",
+        files={"thumbnail": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 415
+    assert response.json()["detail"] == "THUMBNAIL_UNSUPPORTED_TYPE"
+
+
+async def test_update_project_thumbnail_too_large(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+) -> None:
+    client, _ = fake_storage_client  # type: ignore[misc]
+    p = (
+        await client.post(
+            "/projects", json={"name": "BigThumb2"}, headers=_auth(org_user["access_token"])
+        )
+    ).json()
+    over_limit = b"x" * (2 * 1024 * 1024 + 1)
+    response = await client.post(
+        f"/projects/{p['id']}/thumbnail",
+        files={"thumbnail": ("big.jpg", over_limit, "image/jpeg")},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 413
+    assert response.json()["detail"] == "THUMBNAIL_TOO_LARGE"
+
+
+async def test_update_project_thumbnail_viewer_forbidden(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    client, _ = fake_storage_client  # type: ignore[misc]
+    p = (
+        await client.post(
+            "/projects", json={"name": "ViewerThumb"}, headers=_auth(org_user["access_token"])
+        )
+    ).json()
+    await client.post(
+        f"/projects/{p['id']}/members",
+        json={"user_id": same_org_non_admin_user["id"], "role": "viewer"},
+        headers=_auth(org_user["access_token"]),
+    )
+    response = await client.post(
+        f"/projects/{p['id']}/thumbnail",
+        files={"thumbnail": ("cover.jpg", _TINY_JPEG, "image/jpeg")},
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert response.status_code == 403
+
+
+async def test_patch_project_clears_thumbnail_and_deletes_s3(
+    fake_storage_client: tuple[AsyncClient, object],
+    org_user: dict[str, str],
+) -> None:
+    """PATCH thumbnail_url=null clears the field and removes the old S3 object."""
+    client, fake = fake_storage_client  # type: ignore[misc]
+    p = (
+        await client.post(
+            "/projects/with-thumbnail",
+            data={"name": "ClearThumb"},
+            files={"thumbnail": ("cover.jpg", _TINY_JPEG, "image/jpeg")},
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    old_key = list(fake.objects.keys())[0]  # type: ignore[attr-defined]
+
+    response = await client.patch(
+        f"/projects/{p['id']}",
+        json={"thumbnail_url": None},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 200
+    assert response.json()["thumbnail_url"] is None
+    assert old_key in fake.deleted  # type: ignore[attr-defined]
+    assert old_key not in fake.objects  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
 # Superuser & org-admin project access
 # ---------------------------------------------------------------------------
 

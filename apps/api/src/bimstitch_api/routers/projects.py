@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import secrets
 from datetime import UTC, date, datetime
 from typing import Annotated
@@ -76,7 +77,7 @@ async def _resolve_thumbnail_url(thumbnail_url: str | None, storage: StorageBack
     if thumbnail_url is None:
         return None
     if thumbnail_url.startswith(_THUMBNAIL_KEY_PREFIX):
-        return await storage.presigned_get_url(thumbnail_url, "thumbnail")
+        return await storage.presigned_get_url(thumbnail_url, "thumbnail", disposition="inline")
     return thumbnail_url
 
 
@@ -527,6 +528,61 @@ async def create_project_with_thumbnail(
     return await _project_to_read(project, storage)
 
 
+@router.post("/{project_id}/thumbnail", response_model=ProjectRead)
+async def update_project_thumbnail(
+    project_id: UUID,
+    thumbnail: Annotated[UploadFile, File()],
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, object]:
+    """Upload or replace a project's thumbnail image (multipart/form-data)."""
+    project = await _load_project_or_404(session, project_id)
+    await _require_project_write_access(session, project.id, user, active_org_id)
+    _require_project_writable(project)
+
+    allowed_types = [t.strip() for t in settings.thumbnail_allowed_content_types.split(",")]
+    content_type = thumbnail.content_type or ""
+    if content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="THUMBNAIL_UNSUPPORTED_TYPE",
+        )
+
+    data = await thumbnail.read()
+    if len(data) > settings.thumbnail_max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="THUMBNAIL_TOO_LARGE",
+        )
+
+    ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+    new_key = f"{_THUMBNAIL_KEY_PREFIX}{uuid4()}.{ext}"
+    await storage.put_object(new_key, content_type, data)
+
+    old_key = project.thumbnail_url
+    if old_key is not None and old_key.startswith(_THUMBNAIL_KEY_PREFIX):
+        with contextlib.suppress(Exception):
+            await storage.delete_object(old_key)
+
+    project.thumbnail_url = new_key
+    await session.flush()
+    await session.refresh(project)
+    await audit.record(
+        session,
+        action="project.thumbnail_updated",
+        resource_type="project",
+        resource_id=project.id,
+        after={"thumbnail_url": new_key},
+        actor_user_id=user.id,
+        request=request,
+    )
+    return await _project_to_read(project, storage)
+
+
 @router.get("", response_model=list[ProjectRead])
 async def list_projects(
     response: Response,
@@ -597,6 +653,13 @@ async def update_project(
         _validate_instrument(updates["instrument_id"], target_country)
     if "contractor_id" in updates:
         await _validate_contractor_exists(session, updates["contractor_id"])
+    if "thumbnail_url" in updates:
+        old_key = project.thumbnail_url
+        new_val = updates["thumbnail_url"]
+        if old_key is not None and old_key.startswith(_THUMBNAIL_KEY_PREFIX) and new_val != old_key:
+            with contextlib.suppress(Exception):
+                await storage.delete_object(old_key)
+
     before = {k: _serialize_field(getattr(project, k)) for k in updates}
     for field, value in updates.items():
         setattr(project, field, value)

@@ -82,6 +82,7 @@ export type ProjectList = z.infer<typeof ProjectListSchema>;
 export const ProjectCreateSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.union([z.string(), z.null()]).optional(),
+  thumbnail_url: z.union([z.string(), z.null()]).optional(),
   reference_code: z.union([z.string().max(50), z.null()]).optional(),
   status: ProjectStatusEnum.optional(),
   phase: ProjectPhaseEnum.optional(),

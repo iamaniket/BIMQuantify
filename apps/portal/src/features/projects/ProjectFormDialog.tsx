@@ -126,6 +126,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+  const [thumbnailRemoved, setThumbnailRemoved] = useState(false);
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(ProjectFormSchema),
@@ -149,6 +150,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
       return null;
     });
     setThumbnailError(null);
+    setThumbnailRemoved(false);
     setCurrentStep(0);
     setHighestVisited(mode === 'edit' ? LAST_STEP : 0);
   }, [open, project, mode, resetForm, resetCreateMutation, resetUpdateMutation]);
@@ -208,6 +210,10 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     setThumbnailFile(null);
   };
 
+  const handleRemoveCurrentThumbnail = (): void => {
+    setThumbnailRemoved(true);
+  };
+
   const onSubmitImpl: SubmitHandler<ProjectFormValues> = (values) => {
     const description = nullableTrim(values.description);
 
@@ -260,6 +266,11 @@ export function ProjectFormDialog(props: Props): JSX.Element {
       {
         id: props.project.id,
         input: { name: values.name, description, ...sharedFields },
+        ...(thumbnailFile !== null
+          ? { thumbnailFile }
+          : thumbnailRemoved
+            ? { thumbnailFile: null }
+            : {}),
       },
       {
         onSuccess: () => {
@@ -373,12 +384,14 @@ export function ProjectFormDialog(props: Props): JSX.Element {
               <div ref={panelRef} className="flex flex-col gap-4">
                 {activeStepId === 'basics' && (
                   <StepBasics
-                    showThumbnail={mode === 'create'}
                     thumbnailFile={thumbnailFile}
                     thumbnailPreviewUrl={thumbnailPreviewUrl}
                     thumbnailError={thumbnailError}
+                    currentThumbnailUrl={project?.thumbnail_url ?? null}
+                    thumbnailRemoved={thumbnailRemoved}
                     onThumbnailFileChange={handleThumbnailChange}
                     onClearThumbnail={handleClearThumbnail}
+                    onRemoveCurrentThumbnail={handleRemoveCurrentThumbnail}
                     isSubmitting={isSubmitting}
                     isReadOnly={isReadOnly}
                     firstFieldRef={firstFieldRef}

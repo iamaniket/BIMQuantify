@@ -111,9 +111,11 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
       .catch(() => undefined);
   }, [tokens, queryClient, project.id]);
 
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [aerialFailed, setAerialFailed] = useState(false);
+  const showThumbnail = project.thumbnail_url !== null && !thumbnailFailed;
   const aerialUrl = (
-    project.thumbnail_url === null
+    !showThumbnail
     && project.latitude !== null
     && project.longitude !== null
     && isWithinNetherlands(project.latitude, project.longitude)
@@ -136,12 +138,13 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
             </span>
           </div>
 
-          {project.thumbnail_url !== null ? (
+          {showThumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={project.thumbnail_url}
+              src={project.thumbnail_url!}
               alt=""
               className={thumbnailClassName}
+              onError={() => setThumbnailFailed(true)}
             />
           ) : aerialUrl !== null ? (
             // eslint-disable-next-line @next/next/no-img-element

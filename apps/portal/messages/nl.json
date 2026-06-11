@@ -430,7 +430,8 @@
         },
         "actions": {
           "removeCoverImage": "Omslagafbeelding verwijderen",
-          "addCoverImage": "Omslagafbeelding toevoegen"
+          "addCoverImage": "Omslagafbeelding toevoegen",
+          "changeCoverImage": "Omslagafbeelding wijzigen"
         }
       },
       "details": {
@@ -872,7 +873,8 @@
       "noAddress": "Geen adres ingesteld",
       "instrumentTooltip": "Toegelaten instrument · {provider}",
       "thumbnailAlt": "Miniatuur van {name}",
-      "mapPreviewAlt": "Kaartvoorbeeld van {name}"
+      "mapPreviewAlt": "Kaartvoorbeeld van {name}",
+      "settings": "Instellingen"
     },
     "tabs": {
       "overzicht": {
@@ -1316,7 +1318,6 @@
           "filedBy": "Ingediend door {name}",
           "referenceShort": "Ref: {number}"
         },
-        "notificationSettingsToggle": "Meldingsinstellingen",
         "notifications": {
           "title": "Meldingsinstellingen",
           "description": "Stel in wanneer en aan wie deadlineherinneringen worden verstuurd.",
@@ -1331,6 +1332,20 @@
           "revertToDefaults": "Terug naar standaard"
         }
       }
+    },
+    "settings": {
+      "title": "Projectinstellingen",
+      "description": "Configureer meldingen en weergavevoorkeuren voor dit project.",
+      "tabs": {
+        "notifications": "Meldingen",
+        "display": "Weergavevoorkeuren"
+      },
+      "display": {
+        "placeholder": "Weergavevoorkeuren binnenkort beschikbaar."
+      },
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "resetDefaults": "Standaardwaarden herstellen"
     }
   },
   "findings": {
