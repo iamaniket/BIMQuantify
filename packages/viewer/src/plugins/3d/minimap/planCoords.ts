@@ -16,6 +16,10 @@
  *
  * SINGLE source of truth for the convention. If the "you are here" marker is
  * mirrored on an axis for some up-axis, flip that entry's sign here.
+ *
+ * Owned by the minimap plugin so the IFC↔viewer transform lives next to the
+ * camera-sync + storey-isolation logic that consumes it. The portal's minimap
+ * view only ever sees plan coords (via the `minimap:pose` event) and canvas math.
  */
 
 export type PlanVec2 = { x: number; y: number };
@@ -78,7 +82,7 @@ const centerComp = (c: ViewerVec3, axis: 'x' | 'y' | 'z'): number =>
 
 /** Recover IFC axis `i` from a camera-world point. */
 function ifcFromCamera(i: number, p: ViewerVec3, c: Calibration): number {
-  const m = c.map[i] ?? c.map[2];
+  const m = c.map[i] ?? c.map[2]!;
   return m.sign * (cameraComp(p, m.axis) - centerComp(c.worldCenter, m.axis)) + c.ifcCenter[i]!;
 }
 
@@ -100,7 +104,7 @@ export function planToViewer(
   ifc[c.upAxis] = elevation;
   const out: ViewerVec3 = { x: 0, y: 0, z: 0 };
   for (let i = 0; i < 3; i += 1) {
-    const m = c.map[i] ?? c.map[2];
+    const m = c.map[i] ?? c.map[2]!;
     const val = m.sign * (ifc[i]! - c.ifcCenter[i]!) + centerComp(c.worldCenter, m.axis);
     if (m.axis === 'x') out.x = val;
     else if (m.axis === 'y') out.y = val;

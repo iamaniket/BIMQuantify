@@ -2621,7 +2621,18 @@
       "levelFallback": "Level {n}",
       "collapse": "Collapse",
       "expand": "Show floor plan",
-      "clickToNavigate": "Click to move the view here"
+      "clickToNavigate": "Click to move the view here",
+      "isolateLevel": "Isolate level",
+      "allLevels": "All levels"
+    },
+    "viewMode": {
+      "label": "View",
+      "model": "3D",
+      "split": "Split",
+      "plan": "2D",
+      "modelTooltip": "3D model",
+      "splitTooltip": "Split — 3D and floor plan",
+      "planTooltip": "2D floor plan"
     },
     "explorer": {
       "filter": "Filter…",

@@ -208,6 +208,8 @@ export { measurementPlugin } from './plugins/3d/measurement/index.js';
 export { walkthroughPlugin } from './plugins/3d/walkthrough/index.js';
 export { wireframePlugin } from './plugins/3d/wireframe/index.js';
 export { classifierPlugin } from './plugins/3d/classifier/index.js';
+export { minimapPlugin } from './plugins/3d/minimap/index.js';
+export type { MinimapPluginAPI, MinimapPluginOptions } from './plugins/3d/minimap/index.js';
 export { itemsFinderPlugin } from './plugins/3d/items-finder/index.js';
 export { boundingBoxerPlugin } from './plugins/3d/bounding-boxer/index.js';
 export { viewpointsPlugin } from './plugins/3d/viewpoints/index.js';

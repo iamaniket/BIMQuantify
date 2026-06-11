@@ -85,6 +85,16 @@ export interface ViewerEvents {
   'screenshot:captured': { width: number; height: number };
   'colorCoding:change': { active: boolean; scheme: string | null; legend: Array<{ name: string; color: number; count: number }> };
   'exploder:change': { active: boolean; mode: string | null; factor: number };
+  /**
+   * Minimap plugin: the live camera position + look-target projected onto the
+   * floor-plan (IFC plan X/Y coords). The portal's minimap view draws the
+   * "you are here" marker from this — no world-space math in the view.
+   */
+  'minimap:pose': { here: { x: number; y: number }; look: { x: number; y: number } };
+  /** Minimap plugin: the IFC↔viewer calibration was (re)built and is usable. */
+  'minimap:calibrated': { calibrated: boolean };
+  /** Minimap plugin: the active level / storey isolation changed. */
+  'minimap:level': { storeyName: string | null; isolated: boolean };
   'command:executed': { name: string; ok: boolean; error?: string };
   'plugin:registered': { name: string };
   'plugin:unregistered': { name: string };

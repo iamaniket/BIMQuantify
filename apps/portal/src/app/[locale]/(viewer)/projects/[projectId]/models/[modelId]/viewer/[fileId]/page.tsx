@@ -41,7 +41,8 @@ import { useBcfMarkup2d } from '@/features/viewer/bcf/useBcfMarkup2d';
 import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
 import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
-import { Minimap } from '@/features/viewer/3d/minimap/Minimap';
+import { MinimapView } from '@/features/viewer/3d/minimap/MinimapView';
+import { ViewModeSwitcher, type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
 import { DocumentContextMenu } from '@/features/viewer/2d/DocumentContextMenu';
@@ -144,6 +145,8 @@ export default function ViewerPage(): JSX.Element {
   const isAllSelected = useViewerEntityStore((s) => s.selectedAll);
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_VIEWER_SETTINGS);
   const [viewerEpoch, setViewerEpoch] = useState(0);
+  // Viewport layout for IFC models: 3D only / Split (3D + plan) / 2D (plan).
+  const [viewMode, setViewMode] = useState<ViewMode>('3d');
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
 
   // PDF-mode state — owned here so the toolbar, pages panel, status bar, and
@@ -270,6 +273,7 @@ export default function ViewerPage(): JSX.Element {
     setPdfFirstPageRendered(false);
     pdfRenderedRef.current = false;
     prevLoadingRef.current = false;
+    setViewMode('3d');
   }, [modelId, fileId]);
 
   // Reset PDF state when switching to a different file.
@@ -302,6 +306,8 @@ export default function ViewerPage(): JSX.Element {
   const isDrawing = isDrawingFormat(format);
   const isPdf = format === 'pdf';
   const isIfc = format === 'ifc';
+  // Split / 2D modes (and the view switcher) require a floor-plan artifact.
+  const hasFloorPlans = Boolean(isIfc && bundle?.floor_plans_url);
 
   // Apply fit-to-page only once when a PDF is first loaded.
   useEffect(() => {
@@ -523,7 +529,7 @@ export default function ViewerPage(): JSX.Element {
       />
     );
   } else {
-    canvas = (
+    const ifcViewerEl = (
       <IfcViewer
         key={viewerEpoch}
         ref={viewerHandleRef}
@@ -563,6 +569,52 @@ export default function ViewerPage(): JSX.Element {
         }}
       />
     );
+    // Split / 2D layout. Panes are ABSOLUTELY positioned so the WebGL/plan
+    // canvases never drive the flex layout width (fixed-size canvases otherwise
+    // propagate their intrinsic width up the tree and break the split). The 3D
+    // viewer is ALWAYS mounted (hidden only in 2D) so the minimap plugin keeps
+    // driving the model and isolation persists across mode switches. Mobile
+    // stacks top/bottom; md+ splits left/right. The 2D pane reuses MinimapView.
+    // Mobile: stack top/bottom (each h-1/2). md+: split left/right (each w-1/2,
+    // full height). `inset-x-0` sets both left:0 and right:0, so md:right-auto /
+    // md:left-auto release the opposing edge to pin each pane to its side.
+    const threeDPaneClass =
+      viewMode === '2d'
+        ? 'hidden'
+        : viewMode === 'split'
+          ? 'absolute inset-x-0 top-0 h-1/2 overflow-hidden md:inset-y-0 md:right-auto md:h-full md:w-1/2'
+          : 'absolute inset-0 overflow-hidden';
+    const planPaneClass =
+      viewMode === '2d'
+        ? 'absolute inset-0 overflow-hidden'
+        : 'absolute inset-x-0 bottom-0 h-1/2 overflow-hidden border-t border-border md:inset-y-0 md:left-auto md:h-full md:w-1/2 md:border-l md:border-t-0';
+    canvas = (
+      <div className="relative h-full w-full overflow-hidden">
+        <div className={threeDPaneClass}>
+          {ifcViewerEl}
+          {hasFloorPlans && viewMode === '3d' && bundle.floor_plans_url ? (
+            <MinimapView
+              handle={viewerHandleRef.current}
+              viewerReady={viewerReady}
+              floorPlansUrl={bundle.floor_plans_url}
+              metadata={metadata}
+              variant="overlay"
+            />
+          ) : null}
+        </div>
+        {hasFloorPlans && viewMode !== '3d' && bundle.floor_plans_url ? (
+          <div className={planPaneClass}>
+            <MinimapView
+              handle={viewerHandleRef.current}
+              viewerReady={viewerReady}
+              floorPlansUrl={bundle.floor_plans_url}
+              metadata={metadata}
+              variant="full"
+            />
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -585,7 +637,7 @@ export default function ViewerPage(): JSX.Element {
       )}
       <div className="flex min-h-0 min-w-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {canvas}
 
         {(loadingActive || overlayFading) ? (
@@ -678,7 +730,7 @@ export default function ViewerPage(): JSX.Element {
           />
         ) : null}
 
-        {ifcShellReady ? (
+        {ifcShellReady && viewMode !== '2d' ? (
           <div className={isEditMode ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
             <Toolbar
               handle={viewerHandleRef.current}
@@ -694,13 +746,10 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
 
-        {ifcShellReady && bundle?.floor_plans_url ? (
-          <Minimap
-            handle={viewerHandleRef.current}
-            viewerReady={viewerReady}
-            floorPlansUrl={bundle.floor_plans_url}
-            metadata={metadata}
-          />
+        {ifcShellReady && hasFloorPlans ? (
+          <div className="absolute left-1/2 top-3 z-30 -translate-x-1/2">
+            <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
+          </div>
         ) : null}
 
         {pdfShellReady ? (

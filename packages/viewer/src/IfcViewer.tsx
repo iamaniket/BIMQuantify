@@ -35,6 +35,7 @@ import { walkthroughPlugin } from './plugins/3d/walkthrough/index.js';
 import { snappingPlugin } from './plugins/3d/snapping/index.js';
 import { wireframePlugin } from './plugins/3d/wireframe/index.js';
 import { classifierPlugin } from './plugins/3d/classifier/index.js';
+import { minimapPlugin } from './plugins/3d/minimap/index.js';
 import { itemsFinderPlugin } from './plugins/3d/items-finder/index.js';
 import { boundingBoxerPlugin } from './plugins/3d/bounding-boxer/index.js';
 import { viewpointsPlugin } from './plugins/3d/viewpoints/index.js';
@@ -142,6 +143,9 @@ function IfcViewerImpl(
       ...(props.walkthrough !== false ? [walkthroughPlugin(typeof props.walkthrough === 'object' ? props.walkthrough : {})] : []),
       wireframePlugin(),
       classifierPlugin(),
+      // Minimap depends on classifier + visibility (both registered above) for
+      // storey isolation; it owns the floor-plan↔model interaction surface.
+      minimapPlugin(),
       itemsFinderPlugin(),
       boundingBoxerPlugin(),
       viewpointsPlugin(),
