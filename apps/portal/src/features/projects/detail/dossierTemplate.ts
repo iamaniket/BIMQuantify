@@ -64,6 +64,9 @@ function resolveFulfillment(
       });
       return { fulfilled: matching.length > 0, count: matching.length, hasExpiredCert };
     }
+    case 'model': {
+      return { fulfilled: derived.modelCount > 0, count: derived.modelCount, hasExpiredCert: false };
+    }
     case 'derived': {
       switch (req.source_value) {
         case 'models':

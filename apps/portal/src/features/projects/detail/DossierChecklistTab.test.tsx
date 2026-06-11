@@ -34,6 +34,9 @@ vi.mock('@bimstitch/ui', () => ({
 }));
 
 vi.mock('./CertificateUploadDialog', () => ({ CertificateUploadDialog: () => null }));
+vi.mock('@/features/models/NewModelDialog', () => ({
+  NewModelDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="new-model-dialog" /> : null),
+}));
 
 const mockUseProject = vi.fn();
 const mockUseJurisdiction = vi.fn();
@@ -75,6 +78,14 @@ function infiniteData<T>(items: T[]) {
 
 const TEMPLATE: JurisdictionDossierRequirement[] = [
   {
+    code: 'model-present',
+    category: 'models',
+    label: '3D model / BIM model',
+    required: true,
+    source_kind: 'model',
+    source_value: 'models',
+  },
+  {
     code: 'drawings',
     category: 'documents',
     label: 'Drawings',
@@ -94,7 +105,7 @@ const TEMPLATE: JurisdictionDossierRequirement[] = [
 
 const JURISDICTION = {
   dossier_requirement_templates: { dwelling: TEMPLATE, other: TEMPLATE },
-  dossier_category_labels: { documents: 'Documents', certificates: 'Certificates' },
+  dossier_category_labels: { models: 'Models', documents: 'Documents', certificates: 'Certificates' },
 };
 
 function renderTab(): void {
@@ -120,13 +131,15 @@ beforeEach(() => {
 describe('DossierChecklistTab', () => {
   it('renders category groups and requirement labels with a 0% bar when nothing is uploaded', () => {
     renderTab();
+    expect(screen.getByText('Models')).toBeInTheDocument();
     expect(screen.getByText('Documents')).toBeInTheDocument();
     expect(screen.getByText('Certificates')).toBeInTheDocument();
+    expect(screen.getByText('3D model / BIM model')).toBeInTheDocument();
     expect(screen.getByText('Drawings')).toBeInTheDocument();
     expect(screen.getByText('Product certificates')).toBeInTheDocument();
     expect(screen.getByText('0%')).toBeInTheDocument();
-    // Both required items missing.
-    expect(screen.getAllByText('Missing').length).toBeGreaterThanOrEqual(2);
+    // All three required items missing.
+    expect(screen.getAllByText('Missing').length).toBeGreaterThanOrEqual(3);
   });
 
   it('reflects a fulfilled requirement once a matching document exists', () => {
@@ -135,8 +148,8 @@ describe('DossierChecklistTab', () => {
       isLoading: false,
     });
     renderTab();
-    // 1 of 2 required complete → 50%.
-    expect(screen.getByText('50%')).toBeInTheDocument();
+    // 1 of 3 required complete → 33%.
+    expect(screen.getByText('33%')).toBeInTheDocument();
     expect(screen.getByText('1 document provided')).toBeInTheDocument();
   });
 
@@ -175,5 +188,16 @@ describe('DossierChecklistTab', () => {
 
     expect(screen.getByRole('button', { name: 'Upload' })).toHaveAttribute('data-variant', 'primary');
     expect(screen.getByRole('button', { name: 'Upload certificate' })).toHaveAttribute('data-variant', 'primary');
+    expect(screen.getByRole('button', { name: 'Upload model' })).toHaveAttribute('data-variant', 'primary');
+  });
+
+  it('renders the Models category and opens NewModelDialog when Upload model is clicked', () => {
+    renderTab();
+
+    expect(screen.getByText('Models')).toBeInTheDocument();
+    expect(screen.getByText('3D model / BIM model')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload model' }));
+    expect(screen.getByTestId('new-model-dialog')).toBeInTheDocument();
   });
 });

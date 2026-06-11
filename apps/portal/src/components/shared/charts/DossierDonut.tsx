@@ -10,7 +10,7 @@ export type DossierDonutRequirement = {
   code: string;
   label: string;
   required: boolean;
-  sourceKind: 'attachment_slot' | 'certificate_type' | 'derived';
+  sourceKind: 'attachment_slot' | 'certificate_type' | 'derived' | 'model';
   fulfilled: boolean;
   count: number;
 };

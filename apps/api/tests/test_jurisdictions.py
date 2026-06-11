@@ -153,16 +153,17 @@ async def test_jurisdictions_exposes_dossier_templates(client: AsyncClient) -> N
     assert len(templates["dwelling"]) > 0
 
     # Category headers are exposed for the section grouping.
+    assert "models" in nl["dossier_category_labels"]
     assert "documents" in nl["dossier_category_labels"]
 
     # Every requirement carries the fields the portal needs to resolve it.
     req = templates["dwelling"][0]
     assert {"code", "category", "label", "required", "source_kind", "source_value"} <= set(req)
-    assert req["source_kind"] in {"attachment_slot", "certificate_type", "derived"}
+    assert req["source_kind"] in {"attachment_slot", "certificate_type", "derived", "model"}
 
     # At least one of each source kind exists across the dwelling set.
     kinds = {r["source_kind"] for r in templates["dwelling"]}
-    assert {"attachment_slot", "certificate_type", "derived"} <= kinds
+    assert {"attachment_slot", "certificate_type", "derived", "model"} <= kinds
 
 
 async def test_dossier_template_labels_localized(client: AsyncClient) -> None:

@@ -226,6 +226,20 @@ async def _check_fulfillment(
             ) or 0
             return count > 0, count
 
+    if source_kind == "model":
+        if source_value == "models":
+            count = (
+                await session.scalar(
+                    select(func.count()).select_from(
+                        select(Model.id).where(
+                            Model.project_id == project_id,
+                            Model.deleted_at.is_(None),
+                        ).subquery()
+                    )
+                )
+            ) or 0
+            return count > 0, count
+
     return False, 0
 
 

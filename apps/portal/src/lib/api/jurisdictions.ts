@@ -37,7 +37,7 @@ const DossierRequirementTemplateSchema = z.object({
   category: z.string(),
   label: z.string(),
   required: z.boolean(),
-  source_kind: z.enum(['attachment_slot', 'certificate_type', 'derived']),
+  source_kind: z.enum(['attachment_slot', 'certificate_type', 'derived', 'model']),
   source_value: z.string(),
 });
 

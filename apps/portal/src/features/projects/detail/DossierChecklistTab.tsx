@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Link2, ShieldCheck, SlidersHorizontal, Upload, X } from '@bimstitch/ui/icons';
+import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, ShieldCheck, SlidersHorizontal, Upload, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -27,6 +27,8 @@ import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
 
+import { NewModelDialog } from '@/features/models/NewModelDialog';
+
 import { CertificateUploadDialog } from './CertificateUploadDialog';
 import {
   computeDossierCompleteness,
@@ -44,6 +46,7 @@ const SOURCE_ICONS: Record<DossierRequirementResult['sourceKind'], typeof Check>
   attachment_slot: FileText,
   certificate_type: ShieldCheck,
   derived: SlidersHorizontal,
+  model: Box,
 };
 
 const OFFICE_ACCEPT = '.pdf,.docx,.xlsx,.pptx,.txt';
@@ -66,6 +69,7 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
   const pendingSlotRef = useRef<DossierSlotValue | null>(null);
   const [linkSlot, setLinkSlot] = useState<DossierSlotValue | null>(null);
   const [certType, setCertType] = useState<CertificateTypeValue | null>(null);
+  const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const buildingType = projectQuery.data?.building_type ?? null;
@@ -233,6 +237,7 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
                     onUpload={handleUploadInto}
                     onLink={setLinkSlot}
                     onUploadCertificate={setCertType}
+                    onUploadModel={() => { setModelDialogOpen(true); }}
                     busy={uploadMutation.isPending}
                   />
                 ))}
@@ -264,6 +269,12 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
         onOpenChange={(open) => { if (!open) setCertType(null); }}
         initialType={certType ?? 'product'}
       />
+
+      <NewModelDialog
+        projectId={projectId}
+        open={modelDialogOpen}
+        onOpenChange={setModelDialogOpen}
+      />
     </div>
   );
 }
@@ -273,12 +284,14 @@ function DossierRow({
   onUpload,
   onLink,
   onUploadCertificate,
+  onUploadModel,
   busy,
 }: {
   req: DossierRequirementResult;
   onUpload: (slot: DossierSlotValue) => void;
   onLink: (slot: DossierSlotValue) => void;
   onUploadCertificate: (type: CertificateTypeValue) => void;
+  onUploadModel: () => void;
   busy: boolean;
 }): JSX.Element {
   const t = useTranslations('projectDetail.tabs.dossier');
@@ -345,6 +358,17 @@ function DossierRow({
         >
           <Upload className="mr-1.5 h-3.5 w-3.5" />
           {t('uploadCertificate')}
+        </Button>
+      )}
+      {req.sourceKind === 'model' && (
+        <Button
+          variant="primary"
+          size="md"
+          className="shrink-0"
+          onClick={onUploadModel}
+        >
+          <Upload className="mr-1.5 h-3.5 w-3.5" />
+          {t('uploadModel')}
         </Button>
       )}
       {req.sourceKind === 'derived' && !req.fulfilled && (

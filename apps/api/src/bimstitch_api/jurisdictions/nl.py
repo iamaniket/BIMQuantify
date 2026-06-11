@@ -913,6 +913,7 @@ NL_INSTRUMENTS: tuple[Instrument, ...] = (
 # DossierSlot, certificate items to a CertificateType, progress items to a
 # derived signal. Last reviewed 2026-05-31.
 NL_DOSSIER_CATEGORY_LABELS: dict[str, LocaleMap] = {
+    "models": {"nl": "Modellen", "en": "Models"},
     "documents": {"nl": "Documenten", "en": "Documents"},
     "installations": {"nl": "Installaties", "en": "Installations"},
     "certificates": {"nl": "Certificaten", "en": "Certificates"},
@@ -922,6 +923,13 @@ NL_DOSSIER_CATEGORY_LABELS: dict[str, LocaleMap] = {
 }
 
 _NL_DOSSIER_BASE: tuple[DossierRequirementTemplate, ...] = (
+    DossierRequirementTemplate(
+        code="model-present",
+        category="models",
+        label={"nl": "3D-model / BIM-model", "en": "3D model / BIM model"},
+        source_kind="model",
+        source_value="models",
+    ),
     DossierRequirementTemplate(
         code="drawings",
         category="documents",
@@ -1006,21 +1014,9 @@ _NL_DOSSIER_BASE: tuple[DossierRequirementTemplate, ...] = (
     ),
 )
 
-# Commercial projects additionally benefit from a coordinated 3D model in the
-# dossier (optional). Dwelling/other reuse the base set.
 NL_DOSSIER_REQUIREMENT_TEMPLATES: dict[str, tuple[DossierRequirementTemplate, ...]] = {
     "dwelling": _NL_DOSSIER_BASE,
-    "commercial": _NL_DOSSIER_BASE
-    + (
-        DossierRequirementTemplate(
-            code="model-present",
-            category="quality",
-            label={"nl": "3D-model aanwezig", "en": "3D model present"},
-            required=False,
-            source_kind="derived",
-            source_value="models",
-        ),
-    ),
+    "commercial": _NL_DOSSIER_BASE,
     "other": _NL_DOSSIER_BASE,
 }
 

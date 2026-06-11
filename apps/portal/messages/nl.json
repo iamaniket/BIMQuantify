@@ -897,6 +897,7 @@
         "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
         "uploadCta": "Uploaden",
         "uploadCertificate": "Certificaat uploaden",
+        "uploadModel": "Model uploaden",
         "linkExisting": "Bestaand document koppelen",
         "uploadSuccess": "{name} geüpload",
         "linkSuccess": "Document gekoppeld aan het dossier",

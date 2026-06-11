@@ -129,6 +129,19 @@ describe('computeDossierCompleteness', () => {
     expect(byCode['d']?.fulfilled).toBe(true); // none overdue
   });
 
+  it('fulfils a model requirement when modelCount > 0', () => {
+    const template = [req({ code: 'model', category: 'models', source_kind: 'model', source_value: 'models' })];
+
+    const empty = computeDossierCompleteness(template, [], [], { modelCount: 0 });
+    expect(empty.requirements[0]?.fulfilled).toBe(false);
+    expect(empty.pct).toBe(0);
+
+    const present = computeDossierCompleteness(template, [], [], { modelCount: 1 });
+    expect(present.requirements[0]?.fulfilled).toBe(true);
+    expect(present.requirements[0]?.count).toBe(1);
+    expect(present.pct).toBe(100);
+  });
+
   it('drives pct from required items only; optional tracked separately', () => {
     const template = [
       req({ code: 'a', source_kind: 'attachment_slot', source_value: 'drawings', required: true }),

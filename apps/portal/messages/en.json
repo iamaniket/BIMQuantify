@@ -897,6 +897,7 @@
         "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
         "uploadCta": "Upload",
         "uploadCertificate": "Upload certificate",
+        "uploadModel": "Upload model",
         "linkExisting": "Link an existing document",
         "uploadSuccess": "Uploaded {name}",
         "linkSuccess": "Document linked to the dossier",
