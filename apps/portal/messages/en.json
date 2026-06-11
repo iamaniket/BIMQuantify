@@ -2625,6 +2625,14 @@
       "isolateLevel": "Isolate level",
       "allLevels": "All levels"
     },
+    "floorplan": {
+      "title": "Floor plan",
+      "level": "Level",
+      "levelFallback": "Level {n}",
+      "clickToNavigate": "Click to move the 3D view here",
+      "isolateLevel": "Isolate level",
+      "allLevels": "All levels"
+    },
     "viewMode": {
       "label": "View",
       "model": "3D",
@@ -2796,6 +2804,8 @@
       "select": "Select",
       "navigate": "Navigate",
       "eraser": "Eraser",
+      "fly": "Fly",
+      "flyTooltip": "Fly navigation (arrow keys move and turn)",
       "wireframe": "Wireframe",
       "xray": "X-Ray",
       "isolate": "Isolate",
@@ -2823,6 +2833,17 @@
       "nextPage": "Next page",
       "currentPage": "Current page",
       "toggleTheme": "Toggle theme"
+    },
+    "flyNav": {
+      "title": "Fly navigation",
+      "moveForward": "Move forward (Up arrow)",
+      "moveBack": "Move back (Down arrow)",
+      "turnLeft": "Turn left (Left arrow)",
+      "turnRight": "Turn right (Right arrow)",
+      "height": "Height",
+      "raise": "Raise camera (Page Up)",
+      "lower": "Lower camera (Page Down)",
+      "close": "Close fly navigation"
     },
     "measurement": {
       "modeDistance": "Distance",

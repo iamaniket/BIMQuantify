@@ -29,11 +29,15 @@ import {
   makeCalibration,
   planToViewer,
   viewerToPlan,
+  viewerToPlanElevation,
   type Bbox3,
   type Calibration,
   type ViewerVec3,
   type WorldBox,
 } from './planCoords.js';
+
+/** A world point projected onto the plan, with its recovered IFC elevation. */
+export type ProjectedPlanPoint = { x: number; y: number; elevation: number };
 
 const NAME = 'minimap' as const;
 
@@ -146,6 +150,40 @@ export function minimapPlugin(
     ctx.events.emit('minimap:level', { storeyName: activeStorey, isolated: false });
   };
 
+  const project = (p: ViewerVec3, cal: Calibration): ProjectedPlanPoint => {
+    const plan = viewerToPlan(p, cal);
+    return { x: plan.x, y: plan.y, elevation: viewerToPlanElevation(p, cal) };
+  };
+
+  /** Project a world-space point onto the plan (+elevation). Null until calibrated. */
+  const projectPoint = (p: ViewerVec3): ProjectedPlanPoint | null => {
+    const cal = calibration;
+    if (!cal || !p) return null;
+    return project(p, cal);
+  };
+
+  /** Batch variant of {@link projectPoint} — each entry null if invalid. */
+  const projectPoints = (points: ViewerVec3[]): Array<ProjectedPlanPoint | null> => {
+    const cal = calibration;
+    if (!cal || !Array.isArray(points)) return [];
+    return points.map((p) => (p ? project(p, cal) : null));
+  };
+
+  /**
+   * Select an IFC space (room) in 3D by its expressID (== fragment localId).
+   * Resolves the modelId internally so the portal never handles it — the 2D
+   * floor-plan pane only knows spaceIds.
+   */
+  const selectSpace = async (args: { spaceId: number } | null): Promise<void> => {
+    const ctx = ctxRef;
+    if (!ctx || typeof args?.spaceId !== 'number') return;
+    const modelId = [...ctx.models().keys()][0];
+    if (!modelId) return;
+    await ctx.commands
+      .execute('selection.set', [{ modelId, localId: args.spaceId }])
+      .catch(() => undefined);
+  };
+
   const api: Plugin & MinimapPluginAPI = {
     name: NAME,
     dependencies: ['visibility'],
@@ -180,6 +218,18 @@ export function minimapPlugin(
         activeStorey,
         isolated,
       }), { title: 'Get minimap state' });
+      ctx.commands.register('minimap.projectPoint', (args: unknown) =>
+        projectPoint(args as ViewerVec3), {
+        title: 'Project a world point onto the plan',
+      });
+      ctx.commands.register('minimap.projectPoints', (args: unknown) =>
+        projectPoints(args as ViewerVec3[]), {
+        title: 'Project world points onto the plan (batch)',
+      });
+      ctx.commands.register('minimap.selectSpace', (args: unknown) =>
+        selectSpace(args as { spaceId: number }), {
+        title: 'Select an IFC space in 3D by id',
+      });
 
       // Re-project the marker whenever the camera moves (rAF-coalesced).
       const offCam = ctx.events.on('camera:change', (pose: { position: Vec3; target: Vec3 }) => {

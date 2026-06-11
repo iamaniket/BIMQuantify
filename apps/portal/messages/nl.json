@@ -2625,6 +2625,14 @@
       "isolateLevel": "Verdieping isoleren",
       "allLevels": "Alle verdiepingen"
     },
+    "floorplan": {
+      "title": "Plattegrond",
+      "level": "Verdieping",
+      "levelFallback": "Verdieping {n}",
+      "clickToNavigate": "Klik om de 3D-weergave hierheen te verplaatsen",
+      "isolateLevel": "Verdieping isoleren",
+      "allLevels": "Alle verdiepingen"
+    },
     "viewMode": {
       "label": "Weergave",
       "model": "3D",
@@ -2796,6 +2804,8 @@
       "select": "Selecteren",
       "navigate": "Navigeren",
       "eraser": "Gum",
+      "fly": "Vliegen",
+      "flyTooltip": "Vliegnavigatie (pijltjestoetsen verplaatsen en draaien)",
       "wireframe": "Draadmodel",
       "xray": "Röntgen",
       "isolate": "Isoleren",
@@ -2823,6 +2833,17 @@
       "nextPage": "Volgende pagina",
       "currentPage": "Huidige pagina",
       "toggleTheme": "Thema wisselen"
+    },
+    "flyNav": {
+      "title": "Vliegnavigatie",
+      "moveForward": "Vooruit (pijl omhoog)",
+      "moveBack": "Achteruit (pijl omlaag)",
+      "turnLeft": "Naar links draaien (pijl naar links)",
+      "turnRight": "Naar rechts draaien (pijl naar rechts)",
+      "height": "Hoogte",
+      "raise": "Camera omhoog (Page Up)",
+      "lower": "Camera omlaag (Page Down)",
+      "close": "Vliegnavigatie sluiten"
     },
     "measurement": {
       "modeDistance": "Afstand",

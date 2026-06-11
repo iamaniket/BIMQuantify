@@ -167,6 +167,22 @@ export type {
   EntityMarker2DType,
 } from './plugins/2d/entity-marker/index.js';
 
+// Floor-plan 2D viewer — reuses the world-space 2D engine to render a decoded
+// BIMFPLN2 plan (sibling to the PDF `DocumentViewer`).
+export { FloorPlanViewer } from './FloorPlanViewer.js';
+export type {
+  FloorPlanViewerProps,
+  FloorPlanViewerHandle,
+  FloorPlanActiveTool,
+} from './FloorPlanViewer.js';
+export { FloorPlanEngine } from './floorplan-core/FloorPlanEngine.js';
+export { floorPlanPlugin } from './plugins/2d/floorplan/index.js';
+export type {
+  FloorPlanPluginAPI,
+  FloorPlanPluginOptions,
+  FloorPlanColors,
+} from './plugins/2d/floorplan/index.js';
+
 // Built-in plugin factories — re-exported so consumers can disable a
 // built-in (by passing `viewCube: { enabled: false }`) and re-add it
 // elsewhere, or compose them with custom ones.
@@ -201,11 +217,25 @@ export type {
   FloorPlanLevel,
   FloorPlanRoom,
 } from './plugins/3d/shared/floorplan-codec.js';
+export {
+  accumulateBbox,
+  emptyBbox,
+  isEmptyBbox,
+  levelBbox,
+  unionBbox,
+} from './plugins/3d/shared/floorplanBbox.js';
+export type { PlanBbox } from './plugins/3d/shared/floorplanBbox.js';
 export { sectionPlugin } from './plugins/3d/section/index.js';
 export { snappingPlugin } from './plugins/3d/snapping/index.js';
 export { modePlugin } from './plugins/3d/mode/index.js';
 export { measurementPlugin } from './plugins/3d/measurement/index.js';
 export { walkthroughPlugin } from './plugins/3d/walkthrough/index.js';
+export { cameraFlyPlugin } from './plugins/3d/camera-fly/index.js';
+export type {
+  CameraFlyPluginOptions,
+  CameraFlyPluginAPI,
+  FlyDirection,
+} from './plugins/3d/camera-fly/index.js';
 export { wireframePlugin } from './plugins/3d/wireframe/index.js';
 export { classifierPlugin } from './plugins/3d/classifier/index.js';
 export { minimapPlugin } from './plugins/3d/minimap/index.js';

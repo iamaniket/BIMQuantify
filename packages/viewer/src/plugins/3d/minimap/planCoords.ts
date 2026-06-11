@@ -91,6 +91,11 @@ export function viewerToPlan(p: ViewerVec3, c: Calibration): PlanVec2 {
   return { x: ifcFromCamera(c.planAxisX, p, c), y: ifcFromCamera(c.planAxisY, p, c) };
 }
 
+/** Recover the IFC up-axis component (elevation) of a viewer world-space point. */
+export function viewerToPlanElevation(p: ViewerVec3, c: Calibration): number {
+  return ifcFromCamera(c.upAxis, p, c);
+}
+
 /** Lift an IFC plan (X,Y) point at the given elevation into viewer world space. */
 export function planToViewer(
   planX: number,

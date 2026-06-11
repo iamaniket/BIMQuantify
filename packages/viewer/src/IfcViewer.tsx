@@ -13,6 +13,7 @@ import { Viewer } from './core/Viewer.js';
 import { getCached, putCached } from './fragmentCache.js';
 import { fetchFragments } from './loadFragments.js';
 import { cameraPlugin } from './plugins/3d/camera/index.js';
+import { cameraFlyPlugin } from './plugins/3d/camera-fly/index.js';
 import { effectsPlugin } from './plugins/3d/effects/index.js';
 import { hoverHighlightPlugin } from './plugins/3d/hover-highlight/index.js';
 import { interactivePerformancePlugin } from './plugins/3d/interactive-performance/index.js';
@@ -110,6 +111,9 @@ function IfcViewerImpl(
 
     const builtIns = [
       cameraPlugin(),
+      // Fly navigation — non-exclusive arrow-key / D-pad camera driver. Depends
+      // on the camera plugin; stays dormant until the toolbar fly-out enables it.
+      cameraFlyPlugin(),
       hoverHighlightPlugin(props.hoverHighlight ?? {}),
       selectionPlugin(props.selectionHighlight ?? {}),
       visibilityPlugin(),

@@ -2,7 +2,7 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { decodeFloorPlans } from '@bimstitch/viewer';
+import { decodeFloorPlans, accumulateBbox, emptyBbox } from '@bimstitch/viewer';
 
 /** One IfcSpace footprint on a level (geometry only — name joined later). */
 export type RawRoom = {
@@ -28,20 +28,6 @@ export type FloorPlanData = {
   levels: RawLevel[];
 };
 
-function accumulateBbox(
-  segs: Float32Array,
-  acc: { minX: number; minY: number; maxX: number; maxY: number },
-): void {
-  for (let i = 0; i + 1 < segs.length; i += 2) {
-    const x = segs[i]!;
-    const y = segs[i + 1]!;
-    if (x < acc.minX) acc.minX = x;
-    if (x > acc.maxX) acc.maxX = x;
-    if (y < acc.minY) acc.minY = y;
-    if (y > acc.maxY) acc.maxY = y;
-  }
-}
-
 /**
  * Fetch + decode the processor's `.floorplans.bin` artifact into per-storey
  * geometry with a precomputed 2D bbox. Names are NOT joined here (they come from
@@ -62,7 +48,7 @@ export function useFloorPlans(floorPlansUrl: string | null): UseQueryResult<Floo
       const decoded = await decodeFloorPlans(bytes);
       if (decoded === null) return { planAxisX: 0, planAxisY: 1, levels: [] };
       const levels = decoded.levels.map((lv): RawLevel => {
-        const acc = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+        const acc = emptyBbox();
         accumulateBbox(lv.wallSegments, acc);
         for (const r of lv.rooms) accumulateBbox(r.segments, acc);
         return {

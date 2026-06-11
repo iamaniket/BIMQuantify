@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
-import {
+import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -42,7 +42,8 @@ import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
 import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
 import { MinimapView } from '@/features/viewer/3d/minimap/MinimapView';
-import { ViewModeSwitcher, type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
+import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
+import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
 import { DocumentContextMenu } from '@/features/viewer/2d/DocumentContextMenu';
@@ -64,6 +65,7 @@ import { usePdfGeometry } from '@/features/viewer/2d/usePdfGeometry';
 import { viewerKeys } from '@/features/viewer/shared/queryKeys';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useViewerMode } from '@/features/viewer/3d/useViewerMode';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
@@ -178,6 +180,53 @@ export default function ViewerPage(): JSX.Element {
   const [modelTreeExpanded, setModelTreeExpanded] = useState(true);
   // Track whether initial fit-to-page has been applied for the current file
   const pdfInitializedRef = useRef<string | null>(null);
+
+  // ── Draggable split divider ───────────────────────────────────────────────
+  const SPLIT_RATIO_KEY = 'bimstitch.splitRatio';
+  const SPLIT_MIN = 0.2;
+  const SPLIT_MAX = 0.8;
+  const isMobile = useIsMobile();
+  const [splitRatio, setSplitRatio] = useState(0.5);
+  // Hydrate from localStorage after mount to avoid SSR mismatch.
+  useEffect(() => {
+    const stored = localStorage.getItem(SPLIT_RATIO_KEY);
+    const v = stored !== null ? parseFloat(stored) : NaN;
+    if (!isNaN(v) && v >= SPLIT_MIN && v <= SPLIT_MAX) setSplitRatio(v);
+  }, []);
+
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const threeDPaneRef = useRef<HTMLDivElement>(null);
+  const planPaneRef = useRef<HTMLDivElement>(null);
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const splitRatioRef = useRef(splitRatio);
+  const isDraggingRef = useRef(false);
+  useEffect(() => { splitRatioRef.current = splitRatio; }, [splitRatio]);
+
+  const handleDividerPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    isDraggingRef.current = true;
+  }, []);
+
+  const handleDividerPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || !splitContainerRef.current) return;
+    const rect = splitContainerRef.current.getBoundingClientRect();
+    const ratio = Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, (e.clientX - rect.left) / rect.width));
+    splitRatioRef.current = ratio;
+    if (threeDPaneRef.current)  threeDPaneRef.current.style.width  = `${ratio * 100}%`;
+    if (planPaneRef.current)    planPaneRef.current.style.width    = `${(1 - ratio) * 100}%`;
+    if (dividerRef.current)     dividerRef.current.style.left      = `calc(${ratio * 100}% - 4px)`;
+  }, []);
+
+  const handleDividerPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    const ratio = splitRatioRef.current;
+    setSplitRatio(ratio);
+    localStorage.setItem(SPLIT_RATIO_KEY, String(ratio));
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const togglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -573,24 +622,32 @@ export default function ViewerPage(): JSX.Element {
     // canvases never drive the flex layout width (fixed-size canvases otherwise
     // propagate their intrinsic width up the tree and break the split). The 3D
     // viewer is ALWAYS mounted (hidden only in 2D) so the minimap plugin keeps
-    // driving the model and isolation persists across mode switches. Mobile
-    // stacks top/bottom; md+ splits left/right. The 2D pane reuses MinimapView.
-    // Mobile: stack top/bottom (each h-1/2). md+: split left/right (each w-1/2,
-    // full height). `inset-x-0` sets both left:0 and right:0, so md:right-auto /
-    // md:left-auto release the opposing edge to pin each pane to its side.
+    // driving the model and isolation persists across mode switches.
+    // Mobile (<md): stacks top/bottom with fixed h-1/2 — no dragging.
+    // Desktop (md+): side-by-side; splitRatio drives inline width styles and
+    // the draggable divider updates them imperatively during drag.
     const threeDPaneClass =
       viewMode === '2d'
         ? 'hidden'
         : viewMode === 'split'
-          ? 'absolute inset-x-0 top-0 h-1/2 overflow-hidden md:inset-y-0 md:right-auto md:h-full md:w-1/2'
+          ? 'absolute inset-x-0 top-0 h-1/2 overflow-hidden md:inset-y-0 md:right-auto md:h-full'
           : 'absolute inset-0 overflow-hidden';
     const planPaneClass =
       viewMode === '2d'
         ? 'absolute inset-0 overflow-hidden'
-        : 'absolute inset-x-0 bottom-0 h-1/2 overflow-hidden border-t border-border md:inset-y-0 md:left-auto md:h-full md:w-1/2 md:border-l md:border-t-0';
+        : viewMode === 'split'
+          ? 'absolute inset-x-0 bottom-0 h-1/2 overflow-hidden border-t border-border md:inset-y-0 md:right-0 md:left-auto md:h-full md:border-t-0'
+          : 'absolute inset-0 overflow-hidden';
+
+    // Desktop inline styles drive the dynamic split ratio; mobile uses h-1/2 class.
+    const threeDSplitStyle =
+      viewMode === 'split' && !isMobile ? { width: `${splitRatio * 100}%` } : undefined;
+    const planSplitStyle =
+      viewMode === 'split' && !isMobile ? { width: `${(1 - splitRatio) * 100}%` } : undefined;
+
     canvas = (
-      <div className="relative h-full w-full overflow-hidden">
-        <div className={threeDPaneClass}>
+      <div ref={splitContainerRef} className="relative h-full w-full overflow-hidden">
+        <div ref={threeDPaneRef} className={threeDPaneClass} style={threeDSplitStyle}>
           {ifcViewerEl}
           {hasFloorPlans && viewMode === '3d' && bundle.floor_plans_url ? (
             <MinimapView
@@ -602,14 +659,37 @@ export default function ViewerPage(): JSX.Element {
             />
           ) : null}
         </div>
+
+        {/* Draggable divider — desktop split mode only */}
+        {viewMode === 'split' && !isMobile && (
+          <div
+            ref={dividerRef}
+            className="absolute inset-y-0 z-20 flex w-2 cursor-col-resize touch-none select-none flex-col items-center justify-center"
+            style={{ left: `calc(${splitRatio * 100}% - 4px)` }}
+            onPointerDown={handleDividerPointerDown}
+            onPointerMove={handleDividerPointerMove}
+            onPointerUp={handleDividerPointerUp}
+            onPointerCancel={handleDividerPointerUp}
+          >
+            {/* Thin visual bar */}
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
+            {/* Drag pip */}
+            <div className="relative z-10 flex h-8 w-3 items-center justify-center rounded-full border border-border bg-surface-low shadow-sm">
+              <div className="h-3 w-px rounded-full bg-foreground-tertiary" />
+            </div>
+          </div>
+        )}
+
         {hasFloorPlans && viewMode !== '3d' && bundle.floor_plans_url ? (
-          <div className={planPaneClass}>
-            <MinimapView
+          <div ref={planPaneRef} className={planPaneClass} style={planSplitStyle}>
+            <FloorPlanPane
               handle={viewerHandleRef.current}
               viewerReady={viewerReady}
               floorPlansUrl={bundle.floor_plans_url}
               metadata={metadata}
-              variant="full"
+              projectId={projectId}
+              fileId={fileId}
+              onFindingClick={setMarkerFinding}
             />
           </div>
         ) : null}
@@ -730,7 +810,7 @@ export default function ViewerPage(): JSX.Element {
           />
         ) : null}
 
-        {ifcShellReady && viewMode !== '2d' ? (
+        {ifcShellReady ? (
           <div className={isEditMode ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
             <Toolbar
               handle={viewerHandleRef.current}
@@ -742,13 +822,10 @@ export default function ViewerPage(): JSX.Element {
                 setProgress(null);
                 setViewerEpoch((n) => n + 1);
               }}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              hasFloorPlans={hasFloorPlans}
             />
-          </div>
-        ) : null}
-
-        {ifcShellReady && hasFloorPlans ? (
-          <div className="absolute left-1/2 top-3 z-30 -translate-x-1/2">
-            <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
           </div>
         ) : null}
 

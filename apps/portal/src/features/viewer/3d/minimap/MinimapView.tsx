@@ -13,8 +13,10 @@ import { useTranslations } from 'next-intl';
 
 import type { ViewerHandle } from '@bimstitch/viewer';
 
-import type { ModelMetadata, SpatialNode } from '@/lib/api/viewerTypes';
+import type { ModelMetadata } from '@/lib/api/viewerTypes';
 
+import { buildStoreyMembership } from './storeyMembership';
+import { collectSpatialNames, resolveColor } from './spatialNames';
 import { useFloorPlans, type RawLevel } from './useFloorPlans';
 
 /**
@@ -62,70 +64,6 @@ type PlanTransform = {
 
 const OVERLAY_SIZE = 168; // css px (square)
 const PAD = 10;
-
-function collectSpatialNames(
-  node: SpatialNode | null,
-  storeys: Map<number, string>,
-  spaces: Map<number, string>,
-): void {
-  if (!node) return;
-  if (node.type === 'IfcBuildingStorey' && node.name) storeys.set(node.expressID, node.name);
-  if (node.type === 'IfcSpace' && node.name) spaces.set(node.expressID, node.name);
-  for (const child of node.children) collectSpatialNames(child, storeys, spaces);
-}
-
-/**
- * Map each storey express id → the express ids of every element on that storey.
- * Built from the extraction metadata: an element's `containedIn` is its direct
- * spatial container (often an IfcSpace), so we walk each storey's subtree to map
- * every descendant container back to the storey, then bucket elements by it.
- * Express id == fragments local id, so these feed `visibility.isolateItem`
- * directly. (The runtime classifier can't do this — the viewer loads only
- * geometry, not the IFC spatial relations.)
- */
-function buildStoreyMembership(meta: ModelMetadata | undefined): Map<number, number[]> {
-  const out = new Map<number, number[]>();
-  const elements = meta?.elements;
-  const tree = meta?.spatialTree;
-  if (!elements || !tree) return out;
-  const storeyOfContainer = new Map<number, number>();
-  const mark = (node: SpatialNode, storeyId: number): void => {
-    storeyOfContainer.set(node.expressID, storeyId);
-    for (const c of node.children) mark(c, storeyId);
-  };
-  const findStoreys = (node: SpatialNode | null): void => {
-    if (!node) return;
-    if (node.type === 'IfcBuildingStorey') {
-      mark(node, node.expressID);
-      return;
-    }
-    for (const c of node.children) findStoreys(c);
-  };
-  findStoreys(tree);
-  for (const e of elements) {
-    if (e.containedIn == null) continue;
-    const sid = storeyOfContainer.get(e.containedIn);
-    if (sid == null) continue;
-    const arr = out.get(sid);
-    if (arr) arr.push(e.expressID);
-    else out.set(sid, [e.expressID]);
-  }
-  return out;
-}
-
-/** Resolve a Tailwind text-color utility to a concrete rgb() for canvas use. */
-function resolveColor(className: string): string {
-  if (typeof document === 'undefined') return '#888';
-  const probe = document.createElement('span');
-  probe.className = className;
-  probe.style.position = 'absolute';
-  probe.style.visibility = 'hidden';
-  probe.style.pointerEvents = 'none';
-  document.body.appendChild(probe);
-  const color = getComputedStyle(probe).color;
-  probe.remove();
-  return color || '#888';
-}
 
 export function MinimapView({
   handle,

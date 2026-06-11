@@ -328,3 +328,15 @@ Ephemeral, no volumes. Used by `pnpm --filter=portal test:e2e:full`. Project nam
 - `minio` — API **9002**, console **9003**, container `bimstitch-test-minio`
 
 Lifecycle: `docker compose -f docker-compose.test.yml up -d --wait` / `down -v`. The `run-e2e.mjs` script manages this automatically.
+
+## Hard-won operational rules
+
+**Docker rebuild after code changes**: after modifying any Docker-deployed service (`processor`, or viewer containers), always rebuild and redeploy before testing — `docker compose up -d --build <service>`. Editing source files without rebuilding leaves stale code running and produces confusing blank/no-change results.
+
+**pytest concurrency**: never launch multiple concurrent pytest sessions against the same test database. Run the full suite serially (`uv run pytest`). Concurrent runs cause DB contention failures that look like test bugs.
+
+**Coordinate system is Y-up**: this codebase uses Y-up coordinate models. Do not assume Z-up when writing section cuts, camera logic, or geometry transforms. A Z-up assumption breaks on every real model.
+
+**Alembic revision ID length**: Alembic revision IDs must fit within `VARCHAR(32)`. Keep generated IDs short; long IDs (e.g. 38-char slugs) exceed the column limit and cause rollback failures on upgrade.
+
+**Sibling model bug sweep**: when fixing a bug in one Pydantic request/response model (e.g. a missing field, wrong type, bad validator), immediately grep for the identical pattern across all sibling models in the same router/module and fix them all in the same commit. Isolated fixes leave identical bugs in adjacent models that will surface as 422s later.

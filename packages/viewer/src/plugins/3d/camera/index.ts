@@ -167,6 +167,23 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         { title: 'Frame selection', defaultShortcut: 'Shift+F' },
       );
 
+      // World-space centroid of the current selection, or null when nothing is
+      // selected. Used by the 2D floor-plan pane to pan/pulse the plan to a
+      // 3D-selected element (projected through the minimap calibration).
+      commands.register(
+        'camera.getSelectionCentroid',
+        async (): Promise<{ x: number; y: number; z: number } | null> => {
+          if (!commands.has('selection.get')) return null;
+          const selected = await commands.execute<undefined, ItemId[]>('selection.get');
+          if (!selected.length) return null;
+          const box = await computeSelectionBox(ctx, selected);
+          if (box.isEmpty()) return null;
+          const c = box.getCenter(new THREE.Vector3());
+          return { x: c.x, y: c.y, z: c.z };
+        },
+        { title: 'Get selection centroid (world)' },
+      );
+
       // Fit the camera to the currently visible set (all − hidden). When
       // nothing is hidden, this is just zoom-to-fit (fast path). Used by the
       // double-click gesture both to zoom an isolated element and to fit the

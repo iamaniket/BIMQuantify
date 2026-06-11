@@ -653,7 +653,7 @@ export function SettingsPopover({
           className="text-caption text-foreground-secondary"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          {t('resetDefaults')}
+          {('resetDefaults')}
         </Button>
         <Button
           variant="primary"

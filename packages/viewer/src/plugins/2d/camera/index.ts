@@ -77,6 +77,11 @@ export function cameraPlugin(
   /** The user-configured left-button action (from settings). */
   let configuredLeft: CameraAction2D = 'none';
 
+  // Tracks the page height used in the last fitPage/fitWidth call so the
+  // resize observer can correct the frustum aspect ratio without re-fitting.
+  let fittedOnce = false;
+  let currentPageH = 842;
+
   const cleanups: Array<() => void> = [];
 
   function applyConfig(cc: CameraControls, cfg: CameraControlsConfig): void {
@@ -237,6 +242,29 @@ export function cameraPlugin(
       controls = cc;
       lastTime = 0;
 
+      // ── Aspect-ratio correction on container resize ────────────────
+      // The scene plugin's ResizeObserver updates the canvas pixel size but
+      // not the ortho frustum. When the container resizes after the first fit
+      // (e.g. split→2D mode) this observer corrects the frustum aspect ratio
+      // while preserving the current zoom and camera position.
+      const roAspect = new ResizeObserver(() => {
+        if (!fittedOnce || !sceneApi) return;
+        const { clientWidth: w, clientHeight: h } = context.container;
+        if (w === 0 || h === 0) return;
+        const cam = sceneApi.camera;
+        const halfH = currentPageH / 2;
+        const halfW = halfH * (w / h);
+        cam.left = -halfW;
+        cam.right = halfW;
+        cam.top = halfH;
+        cam.bottom = -halfH;
+        cam.updateProjectionMatrix();
+        controls?.update(0);
+        sceneApi.requestRender();
+      });
+      roAspect.observe(context.container);
+      cleanups.push(() => roAspect.disconnect());
+
       // ── Tool-mode integration ──────────────────────────────────────
       // Override left button based on the active tool, and handle
       // zoom-tool click gestures.
@@ -274,6 +302,8 @@ export function cameraPlugin(
         const uv = context.getUnscaledViewport();
         const pw = a?.pageW ?? uv?.width ?? 595;
         const ph = a?.pageH ?? uv?.height ?? 842;
+        currentPageH = ph;
+        fittedOnce = true;
         api.fitToPage(pw, ph, a?.animate ?? true);
       }, { title: 'Fit page', defaultShortcut: '0' });
 
@@ -282,6 +312,8 @@ export function cameraPlugin(
         const uv = context.getUnscaledViewport();
         const pw = a?.pageW ?? uv?.width ?? 595;
         const ph = a?.pageH ?? uv?.height ?? 842;
+        currentPageH = ph;
+        fittedOnce = true;
         api.fitToWidth(pw, ph, a?.animate ?? true);
       }, { title: 'Fit width', defaultShortcut: 'W' });
 
@@ -345,6 +377,8 @@ export function cameraPlugin(
         controls = null;
       }
       lastTime = 0;
+      fittedOnce = false;
+      currentPageH = 842;
       sceneApi = null;
       ctx = null;
     },
