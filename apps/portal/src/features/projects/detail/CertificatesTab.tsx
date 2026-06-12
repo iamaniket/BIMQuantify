@@ -104,12 +104,6 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
             menuLabel={t('moreUploadOptions')}
             items={[
               {
-                id: 'upload-certificate',
-                label: t('uploadButton'),
-                icon: <Upload className="h-4 w-4" />,
-                onSelect: () => { setUploadOpen(true); },
-              },
-              {
                 id: 'link-from-library',
                 label: t('linkFromLibrary'),
                 icon: <Library className="h-4 w-4" />,

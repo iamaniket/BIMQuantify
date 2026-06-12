@@ -39,6 +39,8 @@ export interface EntityMarker2DData {
   y: number;
   label: string;
   entityId: string;
+  /** Finding lifecycle status — drives the glyph color for findings. */
+  status?: string;
 }
 
 const MARKER_COLORS: Record<EntityMarker2DType, number> = {
@@ -46,6 +48,24 @@ const MARKER_COLORS: Record<EntityMarker2DType, number> = {
   certificate: 0x3b82f6,
   attachment: 0x10b981,
 };
+
+// Finding lifecycle status -> glyph color. Mirrors the portal kanban palette
+// (dark-theme semantic tokens): draft=foreground-tertiary, open=info,
+// in_progress=primary, resolved/verified=success.
+const FINDING_STATUS_COLORS: Record<string, number> = {
+  draft: 0xc1c6cc,
+  open: 0x5f88b2,
+  in_progress: 0x3a5f99,
+  resolved: 0x4baf7d,
+  verified: 0x4baf7d,
+};
+
+function colorFor(type: EntityMarker2DType, status?: string): number {
+  if (type === 'finding') {
+    return (status !== undefined ? FINDING_STATUS_COLORS[status] : undefined) ?? MARKER_COLORS.finding;
+  }
+  return MARKER_COLORS[type];
+}
 
 export interface EntityMarker2DAPI {
   sync(markers: EntityMarker2DData[]): void;
@@ -60,37 +80,38 @@ interface MarkerEntry {
   group: THREE.Group;
 }
 
+/** 28-segment circle perimeter (px, centered on origin). */
+function circlePerimeter(): THREE.Vector2[] {
+  const seg = 28;
+  const pts: THREE.Vector2[] = [];
+  for (let i = 0; i < seg; i += 1) {
+    const t = (i / seg) * Math.PI * 2;
+    pts.push(new THREE.Vector2(Math.cos(t) * GLYPH_R, Math.sin(t) * GLYPH_R));
+  }
+  return pts;
+}
+
 /** Perimeter points (px, centered on origin) for a glyph type. */
 function glyphPerimeter(type: EntityMarker2DType): THREE.Vector2[] {
   switch (type) {
-    case 'finding': {
-      const a = GLYPH_R * 0.87;
-      const b = GLYPH_R * 0.5;
-      return [new THREE.Vector2(0, GLYPH_R), new THREE.Vector2(-a, -b), new THREE.Vector2(a, -b)];
-    }
     case 'certificate': {
       const r = GLYPH_R * 0.82;
       return [new THREE.Vector2(-r, -r), new THREE.Vector2(r, -r), new THREE.Vector2(r, r), new THREE.Vector2(-r, r)];
     }
+    // finding + attachment both render as a plain circle.
+    case 'finding':
     case 'attachment':
-    default: {
-      const seg = 28;
-      const pts: THREE.Vector2[] = [];
-      for (let i = 0; i < seg; i += 1) {
-        const t = (i / seg) * Math.PI * 2;
-        pts.push(new THREE.Vector2(Math.cos(t) * GLYPH_R, Math.sin(t) * GLYPH_R));
-      }
-      return pts;
-    }
+    default:
+      return circlePerimeter();
   }
 }
 
 /** Build the fill mesh + white outline for a glyph, tagged with `markerId`. */
-function buildGlyph(type: EntityMarker2DType, markerId: string): THREE.Object3D[] {
+function buildGlyph(type: EntityMarker2DType, markerId: string, status?: string): THREE.Object3D[] {
   const perimeter = glyphPerimeter(type);
   const fill = new THREE.Mesh(
     new THREE.ShapeGeometry(new THREE.Shape(perimeter)),
-    new THREE.MeshBasicMaterial({ color: MARKER_COLORS[type], depthTest: false, transparent: true }),
+    new THREE.MeshBasicMaterial({ color: colorFor(type, status), depthTest: false, transparent: true }),
   );
   fill.renderOrder = RENDER_ORDER;
   fill.frustumCulled = false;
@@ -147,7 +168,7 @@ export function entityMarker2DPlugin(): DocumentPlugin & EntityMarker2DAPI {
     if (!layer) return;
     const group = new THREE.Group();
     group.userData['markerId'] = data.id;
-    for (const obj of buildGlyph(data.type, data.id)) group.add(obj);
+    for (const obj of buildGlyph(data.type, data.id, data.status)) group.add(obj);
     layer.add(group);
     const entry: MarkerEntry = { data, group };
     markers.set(data.id, entry);
@@ -281,6 +302,7 @@ export function entityMarker2DPlugin(): DocumentPlugin & EntityMarker2DAPI {
           existing.data.x !== m.x ||
           existing.data.y !== m.y ||
           existing.data.type !== m.type ||
+          existing.data.status !== m.status ||
           existing.data.label !== m.label ||
           existing.data.entityId !== m.entityId
         ) {

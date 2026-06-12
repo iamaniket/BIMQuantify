@@ -1,17 +1,34 @@
 'use client';
 
+import {
+  CalendarDays,
+  Columns3,
+  Image as ImageIcon,
+  LayoutGrid,
+  MapPin,
+  Settings,
+  Table2,
+} from '@bimstitch/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useMemo, type JSX } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Badge, Skeleton, TabsContent } from '@bimstitch/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { PageShell } from '@/components/shared/layout/PageShell';
+import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { FindingsBoardHero } from '@/features/findings/board/FindingsBoardHero';
 import { FindingsKanbanBoard } from '@/features/findings/board/FindingsKanbanBoard';
+import { FindingsCalendarTab } from '@/features/findings/tabs/FindingsCalendarTab';
+import { FindingsListTab } from '@/features/findings/tabs/FindingsListTab';
+import { FindingsLocationsTab } from '@/features/findings/tabs/FindingsLocationsTab';
+import { FindingsOverviewTab } from '@/features/findings/tabs/FindingsOverviewTab';
+import { FindingsPhotosTab } from '@/features/findings/tabs/FindingsPhotosTab';
+import { FindingsSettingsTab } from '@/features/findings/tabs/FindingsSettingsTab';
 import { useFindings } from '@/features/findings/useFindings';
+import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useProject } from '@/features/projects/useProject';
 import { ApiError } from '@/lib/api/client';
@@ -21,6 +38,8 @@ export default function FindingsBoardPage(): JSX.Element {
   const t = useTranslations('findingsBoard');
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
+
+  const [tab, setTab] = useState('overview');
 
   const projectQuery = useProject(projectId);
   const findingsQuery = useFindings(projectId);
@@ -83,20 +102,73 @@ export default function FindingsBoardPage(): JSX.Element {
   const findings = flattenPages(findingsQuery.data);
   const members = membersQuery.data ?? [];
 
+  const panelHeading = {
+    board: { eyebrow: t('panel.boardEyebrow'), title: t('panel.boardTitle') },
+    list: { eyebrow: t('panel.listEyebrow'), title: t('panel.listTitle', { count: findings.length }) },
+    overview: { eyebrow: t('panel.overviewEyebrow'), title: t('panel.overviewTitle') },
+    calendar: { eyebrow: t('panel.calendarEyebrow'), title: t('panel.calendarTitle') },
+    locations: { eyebrow: t('panel.locationsEyebrow'), title: t('panel.locationsTitle') },
+    photos: { eyebrow: t('panel.photosEyebrow'), title: t('panel.photosTitle') },
+    settings: { eyebrow: t('panel.settingsEyebrow'), title: t('panel.settingsTitle') },
+  }[tab] ?? { eyebrow: '', title: '' };
+
   return (
-    <PageShell
-      hero={
-        <FindingsBoardHero
-          projectName={project.name}
-          findings={findings}
-        />
+    <TabbedPageShell
+      hero={<FindingsBoardHero projectName={project.name} findings={findings} />}
+      tabs={[
+        { value: 'overview', label: t('tabs.overview'), icon: <LayoutGrid className="h-4 w-4" /> },
+        {
+          value: 'board',
+          label: t('tabs.board'),
+          icon: <Columns3 className="h-4 w-4" />,
+          badge: <Badge variant="primary" size="md" bordered={false}>{findings.length}</Badge>,
+        },
+        { value: 'list', label: t('tabs.list'), icon: <Table2 className="h-4 w-4" /> },
+        { value: 'calendar', label: t('tabs.calendar'), icon: <CalendarDays className="h-4 w-4" /> },
+        { value: 'locations', label: t('tabs.locations'), icon: <MapPin className="h-4 w-4" /> },
+        { value: 'photos', label: t('tabs.photos'), icon: <ImageIcon className="h-4 w-4" /> },
+        { value: 'settings', label: t('tabs.settings'), icon: <Settings className="h-4 w-4" /> },
+      ]}
+      activeTab={tab}
+      onTabChange={setTab}
+      panelHeading={panelHeading}
+      toolbar={
+        tab === 'board' ? (
+          <div className="flex justify-end px-5 pt-3">
+            <LogFindingButton projectId={projectId} variant="border" />
+          </div>
+        ) : undefined
       }
     >
-      <FindingsKanbanBoard
-        projectId={projectId}
-        findings={findings}
-        members={members}
-      />
-    </PageShell>
+      <TabsContent value="board" className="mt-0 h-full">
+        <div className="flex h-full min-h-0 flex-col">
+          <FindingsKanbanBoard projectId={projectId} findings={findings} members={members} />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="list" className="mt-0">
+        <FindingsListTab projectId={projectId} />
+      </TabsContent>
+
+      <TabsContent value="overview" className="mt-0">
+        <FindingsOverviewTab projectId={projectId} findings={findings} members={members} />
+      </TabsContent>
+
+      <TabsContent value="calendar" className="mt-0">
+        <FindingsCalendarTab projectId={projectId} findings={findings} />
+      </TabsContent>
+
+      <TabsContent value="locations" className="mt-0">
+        <FindingsLocationsTab projectId={projectId} findings={findings} />
+      </TabsContent>
+
+      <TabsContent value="photos" className="mt-0">
+        <FindingsPhotosTab projectId={projectId} findings={findings} />
+      </TabsContent>
+
+      <TabsContent value="settings" className="mt-0">
+        <FindingsSettingsTab projectId={projectId} />
+      </TabsContent>
+    </TabbedPageShell>
   );
 }

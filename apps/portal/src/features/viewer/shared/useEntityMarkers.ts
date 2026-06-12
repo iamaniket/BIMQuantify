@@ -30,6 +30,7 @@ export function usePageFindingMarkers(
         y: f.anchor_y!,
         label: f.title,
         entityId: f.id,
+        status: f.status,
       }));
   }, [data, page, fileId]);
 }
@@ -55,6 +56,7 @@ export function useModelFindingMarkers(
         position: { x: f.anchor_x!, y: f.anchor_y!, z: f.anchor_z! },
         label: f.title,
         entityId: f.id,
+        status: f.status,
       }));
   }, [data, fileId]);
 }

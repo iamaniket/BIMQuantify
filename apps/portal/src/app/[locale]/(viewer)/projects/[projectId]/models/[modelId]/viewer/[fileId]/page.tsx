@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import React, {
   useCallback,
   useEffect,
@@ -53,6 +53,7 @@ import { useDrawingMetadata } from '@/features/viewer/2d/drawing/useDrawingMetad
 import { useEntityMarkers3D } from '@/features/viewer/3d/useEntityMarkers3D';
 import { useEntityMarkers2D } from '@/features/viewer/2d/useEntityMarkers2D';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useFileFindings } from '@/features/findings/useFindings';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoadingOverlay';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
@@ -119,6 +120,8 @@ function bundleErrorMessage(err: Error | null): string | null {
 export default function ViewerPage(): JSX.Element {
   const params = useParams<{ projectId: string; modelId: string; fileId: string }>();
   const { projectId, modelId, fileId } = params;
+  const searchParams = useSearchParams();
+  const deepLinkFindingId = searchParams.get('finding');
   const locale = useLocale();
   const { tokens } = useAuth();
 
@@ -425,11 +428,27 @@ export default function ViewerPage(): JSX.Element {
     projectId,
     isIfc ? fileId : null,
     viewerReady,
+    metadata,
   );
 
   useEffect(() => {
     if (clickedFinding) setMarkerFinding(clickedFinding);
   }, [clickedFinding]);
+
+  // Deep-link: open a finding's detail when arriving via `?finding=<id>` (the
+  // "View in model" link from /findings → Locations). The finding is anchored to
+  // this file, so it's already in the file-scoped query the markers fetch.
+  const fileFindings = flattenPages(useFileFindings(projectId, fileId).data);
+  const deepLinkOpenedRef = useRef(false);
+  useEffect(() => { deepLinkOpenedRef.current = false; }, [fileId, deepLinkFindingId]);
+  useEffect(() => {
+    if (deepLinkFindingId === null || deepLinkOpenedRef.current) return;
+    const match = fileFindings.find((f) => f.id === deepLinkFindingId);
+    if (match !== undefined) {
+      deepLinkOpenedRef.current = true;
+      setMarkerFinding(match);
+    }
+  }, [deepLinkFindingId, fileFindings]);
 
   // 2D entity markers (findings) render as three.js glyphs in the shared scene
   // via the entity-marker-2d plugin; clicks arrive through the document handle's

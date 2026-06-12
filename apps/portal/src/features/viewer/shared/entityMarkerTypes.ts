@@ -1,3 +1,5 @@
+import type { FindingStatusValue } from '@/lib/api/schemas';
+
 export type EntityMarkerType = 'finding' | 'certificate' | 'attachment';
 
 export interface EntityMarker2D {
@@ -7,6 +9,8 @@ export interface EntityMarker2D {
   y: number;
   label: string;
   entityId: string;
+  /** Finding lifecycle status — drives the marker color. */
+  status?: FindingStatusValue;
 }
 
 export interface EntityMarker3D {
@@ -15,4 +19,8 @@ export interface EntityMarker3D {
   position: { x: number; y: number; z: number };
   label: string;
   entityId: string;
+  /** Finding lifecycle status — drives the marker color. */
+  status?: FindingStatusValue;
+  /** Render dimmed (not associated with the isolated object). */
+  dimmed?: boolean;
 }

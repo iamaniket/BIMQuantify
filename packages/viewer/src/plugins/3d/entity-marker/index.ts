@@ -17,6 +17,10 @@ export interface EntityMarkerData {
   position: Vec3;
   label: string;
   entityId: string;
+  /** Finding lifecycle status — drives the circle color for findings. */
+  status?: string;
+  /** Render at reduced opacity (e.g. not associated with the isolated object). */
+  dimmed?: boolean;
 }
 
 export interface EntityMarkerPluginAPI {
@@ -25,22 +29,30 @@ export interface EntityMarkerPluginAPI {
   setVisible(visible: boolean): void;
 }
 
-const FLAG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M34.76,42A8,8,0,0,0,24,48V216a8,8,0,0,0,16,0V171.77c26.79-21.16,49.87-9.75,76.45,3.41,16.4,8.11,34.06,16.85,53,16.85,13.93,0,28.54-4.75,43.82-18a8,8,0,0,0,2.76-6V48a8,8,0,0,0-13.27-6c-28,24.23-51.72,12.49-79.21-1.12C91.11,24.31,54.28,6.15,34.76,42Z"/></svg>`;
-
-const BADGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"/></svg>`;
-
-const PAPERCLIP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M209.66,82.34l-80,80a48,48,0,0,1-67.88-67.88l80-80A32,32,0,1,1,187.06,59.7l-80,80a16,16,0,0,1-22.62-22.62l80-80a8,8,0,0,0-11.32-11.32l-80,80a32,32,0,0,0,45.26,45.26l80-80a48,48,0,0,0-67.88-67.88l-80,80A64,64,0,0,0,140.7,174.06l80-80a8,8,0,0,0-11.32-11.32Z"/></svg>`;
-
 const MARKER_COLORS: Record<string, string> = {
   finding: '#EF4444',
   certificate: '#3B82F6',
   attachment: '#10B981',
 };
 
-const MARKER_ICONS: Record<string, string> = {
-  finding: FLAG_SVG,
-  certificate: BADGE_SVG,
-  attachment: PAPERCLIP_SVG,
+// Finding lifecycle status -> circle color. Mirrors the portal kanban palette
+// (dark-theme semantic tokens): draft=foreground-tertiary, open=info,
+// in_progress=primary, resolved/verified=success.
+const FINDING_STATUS_COLORS: Record<string, string> = {
+  draft: '#c1c6cc',
+  open: '#5f88b2',
+  in_progress: '#3a5f99',
+  resolved: '#4baf7d',
+  verified: '#4baf7d',
+};
+
+const DIMMED_OPACITY = '0.25';
+
+const colorFor = (data: EntityMarkerData): string => {
+  if (data.type === 'finding') {
+    return (data.status && FINDING_STATUS_COLORS[data.status]) ?? MARKER_COLORS.finding!;
+  }
+  return MARKER_COLORS[data.type] ?? '#888';
 };
 
 export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
@@ -49,7 +61,10 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
   let css2dRafId: number | null = null;
   let globalVisible = true;
 
-  const activeMarkers = new Map<string, { data: EntityMarkerData; obj: CSS2DObject; group: THREE.Group }>();
+  const activeMarkers = new Map<
+    string,
+    { data: EntityMarkerData; obj: CSS2DObject; group: THREE.Group; wrapper: HTMLDivElement; circle: HTMLDivElement }
+  >();
 
   const startCss2dLoop = (): void => {
     if (css2dRafId !== null || !overlay) return;
@@ -67,10 +82,7 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
     }
   };
 
-  const createMarkerElement = (data: EntityMarkerData): HTMLDivElement => {
-    const color = MARKER_COLORS[data.type] ?? '#888';
-    const svg = MARKER_ICONS[data.type] ?? PAPERCLIP_SVG;
-
+  const createMarkerElement = (data: EntityMarkerData): { wrapper: HTMLDivElement; circle: HTMLDivElement } => {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = `
       position: relative;
@@ -79,6 +91,8 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
       align-items: center;
       pointer-events: auto;
       cursor: pointer;
+      opacity: ${data.dimmed ? DIMMED_OPACITY : '1'};
+      transition: opacity 150ms ease;
     `;
 
     const tooltip = document.createElement('span');
@@ -104,18 +118,17 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
       pointer-events: none;
     `;
 
+    // Plain filled circle — no icon. A white ring keeps it legible on any
+    // background (light geometry, dark scene). Kept lightweight: a DOM overlay,
+    // never part of the model tessellation.
     const circle = document.createElement('div');
-    circle.innerHTML = svg;
     circle.style.cssText = `
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
-      background: ${color};
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      background: ${colorFor(data)};
+      border: 2px solid #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
       transition: transform 150ms ease;
     `;
 
@@ -124,7 +137,7 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
 
     wrapper.addEventListener('mouseenter', () => {
       tooltip.style.opacity = '1';
-      circle.style.transform = 'scale(1.2)';
+      circle.style.transform = 'scale(1.3)';
     });
     wrapper.addEventListener('mouseleave', () => {
       tooltip.style.opacity = '0';
@@ -140,7 +153,7 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
       });
     });
 
-    return wrapper;
+    return { wrapper, circle };
   };
 
   const addMarker = (data: EntityMarkerData): void => {
@@ -150,16 +163,28 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
     group.renderOrder = 998;
 
     const pos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
-    const el = createMarkerElement(data);
-    const obj = new CSS2DObject(el);
+    const { wrapper, circle } = createMarkerElement(data);
+    const obj = new CSS2DObject(wrapper);
     obj.position.copy(pos);
     obj.layers.set(LAYER_OVERLAY);
     group.add(obj);
 
     group.visible = globalVisible;
     ctxRef.scene.add(group);
-    activeMarkers.set(data.id, { data, obj, group });
+    activeMarkers.set(data.id, { data, obj, group, wrapper, circle });
     startCss2dLoop();
+  };
+
+  // In-place restyle for color/dim changes — avoids destroying and recreating
+  // the CSS2D object (and its event listeners) when only the status or the
+  // dim flag moves.
+  const updateMarker = (
+    entry: { data: EntityMarkerData; wrapper: HTMLDivElement; circle: HTMLDivElement },
+    data: EntityMarkerData,
+  ): void => {
+    entry.circle.style.background = colorFor(data);
+    entry.wrapper.style.opacity = data.dimmed ? DIMMED_OPACITY : '1';
+    entry.data = data;
   };
 
   const removeMarker = (id: string): void => {
@@ -196,6 +221,13 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
         ) {
           removeMarker(m.id);
           addMarker(m);
+        } else if (
+          existing.data.status !== m.status ||
+          existing.data.type !== m.type ||
+          existing.data.dimmed !== m.dimmed
+        ) {
+          // Only the appearance changed (color / dim) — restyle in place.
+          updateMarker(existing, m);
         }
       }
     },

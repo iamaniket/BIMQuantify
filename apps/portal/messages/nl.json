@@ -1508,7 +1508,82 @@
     },
     "empty": "Geen bevindingen",
     "invalidDrop": "Kan hier niet naartoe",
-    "logFinding": "Bevinding vastleggen"
+    "logFinding": "Bevinding vastleggen",
+    "tabs": {
+      "board": "Bord",
+      "list": "Lijst",
+      "overview": "Overzicht",
+      "calendar": "Agenda",
+      "locations": "Locaties",
+      "photos": "Foto's",
+      "settings": "Instellingen"
+    },
+    "panel": {
+      "boardEyebrow": "Workflow",
+      "boardTitle": "Kanban-bord",
+      "listEyebrow": "Alle bevindingen",
+      "listTitle": "{count, plural, =0 {Geen bevindingen} one {# bevinding} other {# bevindingen}}",
+      "overviewEyebrow": "Samenvatting",
+      "overviewTitle": "In één oogopslag",
+      "calendarEyebrow": "Deadlines",
+      "calendarTitle": "Op deadline",
+      "locationsEyebrow": "Model",
+      "locationsTitle": "Op locatie",
+      "photosEyebrow": "Bewijs",
+      "photosTitle": "Foto's",
+      "settingsEyebrow": "Naslag",
+      "settingsTitle": "Workflow & instellingen"
+    },
+    "list": {
+      "searchPlaceholder": "Bevindingen zoeken…",
+      "filterAll": "Alle statussen",
+      "filterDraft": "Concept",
+      "filterOpen": "Open",
+      "filterInProgress": "In behandeling",
+      "filterResolved": "Opgelost",
+      "filterVerified": "Geverifieerd",
+      "noResults": "Geen bevindingen komen overeen met je filters.",
+      "emptyTitle": "Nog geen bevindingen",
+      "emptyDescription": "Leg een bevinding vast om kwaliteits- en complianceproblemen te volgen."
+    },
+    "overview": {
+      "statusTitle": "Op status",
+      "severityTitle": "Op ernst",
+      "assigneeTitle": "Open per toegewezene",
+      "overdueTitle": "Te laat",
+      "unassigned": "Niet toegewezen",
+      "noActive": "Geen open bevindingen.",
+      "noOverdue": "Niets te laat."
+    },
+    "calendar": {
+      "overdue": "Te laat",
+      "dueThisWeek": "Deze week",
+      "later": "Later",
+      "noDeadline": "Geen deadline",
+      "empty": "Geen bevindingen om in te plannen."
+    },
+    "locations": {
+      "viewInModel": "Bekijk in model",
+      "noModel": "Onbekend model",
+      "unplaced": "Niet geplaatst",
+      "openToPinHint": "Open deze in de viewer om ze aan een model of tekening te koppelen.",
+      "empty": "Geen bevindingen om te lokaliseren."
+    },
+    "photos": {
+      "empty": "Nog geen foto's gekoppeld aan bevindingen.",
+      "count": "{count, plural, one {# foto} other {# foto's}}"
+    },
+    "settings": {
+      "workflowTitle": "Statusworkflow",
+      "workflowIntro": "Bevindingen doorlopen deze statussen. Sleep een kaart op het bord om verder te gaan.",
+      "terminal": "eindstatus",
+      "inspectorNote": "Alleen een inspecteur kan een bevinding naar Geverifieerd verplaatsen.",
+      "confirmNote": "Een concept naar Open promoveren en een bevinding oplossen vragen eerst om bevestiging.",
+      "severityTitle": "Ernst",
+      "linksTitle": "Gerelateerd",
+      "templatesLink": "Sjablonen voor bevindingsformulieren",
+      "membersLink": "Projectleden & toegewezenen"
+    }
   },
   "reports": {
     "page": {

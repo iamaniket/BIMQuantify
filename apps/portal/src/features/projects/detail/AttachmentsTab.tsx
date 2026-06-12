@@ -124,12 +124,6 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
             menuLabel={t('captureLink')}
             items={[
               {
-                id: 'upload-file',
-                label: t('uploadButton'),
-                icon: <Upload className="h-4 w-4" />,
-                onSelect: () => { fileInputRef.current?.click(); },
-              },
-              {
                 id: 'capture-link',
                 label: t('captureLink'),
                 icon: <Camera className="h-4 w-4" />,

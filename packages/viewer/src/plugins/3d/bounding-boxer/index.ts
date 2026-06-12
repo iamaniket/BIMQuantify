@@ -22,6 +22,8 @@ export interface BoundingBoxerPluginAPI {
   show(items?: ItemId[]): void;
   hide(): void;
   dimensions(items?: ItemId[]): BboxDimensions | null;
+  /** Tight merged AABB around exactly the given items (async — reads geometry). */
+  itemsBox(items: ItemId[]): Promise<BboxDimensions | null>;
 }
 
 export function boundingBoxerPlugin(): Plugin & BoundingBoxerPluginAPI {
@@ -139,6 +141,43 @@ export function boundingBoxerPlugin(): Plugin & BoundingBoxerPluginAPI {
     };
   };
 
+  // Per-ITEM merged box (not the whole-model box `computeBox`/`bbox.get`
+  // return). Uses the FragmentsModel `getMergedBox(localIds)` API — the same
+  // one the camera plugin uses to frame a selection — so the result is the
+  // tight AABB around exactly the given elements.
+  const getItemsBox = async (items: ItemId[]): Promise<BboxDimensions | null> => {
+    if (!ctxRef || items.length === 0) return null;
+    const byModel = new Map<string, number[]>();
+    for (const it of items) {
+      let arr = byModel.get(it.modelId);
+      if (!arr) { arr = []; byModel.set(it.modelId, arr); }
+      arr.push(it.localId);
+    }
+    const box = new THREE.Box3();
+    const models = ctxRef.models();
+    for (const [modelId, ids] of byModel) {
+      const model = models.get(modelId);
+      if (!model) continue;
+      try {
+        const mb = await (model as unknown as {
+          getMergedBox(localIds: number[]): Promise<THREE.Box3>;
+        }).getMergedBox(ids);
+        if (!mb.isEmpty()) box.union(mb);
+      } catch {
+        // ignore; some items may have no geometry
+      }
+    }
+    if (box.isEmpty()) return null;
+    const size = box.getSize(new THREE.Vector3());
+    return {
+      min: { x: box.min.x, y: box.min.y, z: box.min.z },
+      max: { x: box.max.x, y: box.max.y, z: box.max.z },
+      width: size.x,
+      height: size.y,
+      depth: size.z,
+    };
+  };
+
   const api: Plugin & BoundingBoxerPluginAPI = {
     name: NAME,
     optionalDependencies: ['selection'],
@@ -153,6 +192,10 @@ export function boundingBoxerPlugin(): Plugin & BoundingBoxerPluginAPI {
 
     dimensions(items) {
       return getDimensions(items);
+    },
+
+    itemsBox(items) {
+      return getItemsBox(items);
     },
 
     install(ctx: ViewerContext) {
@@ -172,6 +215,11 @@ export function boundingBoxerPlugin(): Plugin & BoundingBoxerPluginAPI {
         const items = (args as { items?: ItemId[] })?.items;
         return getDimensions(items);
       }, { title: 'Get bounding box dimensions' });
+
+      ctx.commands.register('bbox.getItems', (args: unknown) => {
+        const items = (args as { items?: ItemId[] })?.items ?? [];
+        return getItemsBox(items);
+      }, { title: 'Get merged bounding box of specific items' });
     },
 
     uninstall() {

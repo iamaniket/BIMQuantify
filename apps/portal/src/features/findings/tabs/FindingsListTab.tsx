@@ -1,29 +1,26 @@
 'use client';
 
-import { AlertTriangle, Columns3 } from '@bimstitch/ui/icons';
+import { AlertTriangle } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 
-import { Button, EmptyState, Select } from '@bimstitch/ui';
+import { EmptyState, Select } from '@bimstitch/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
 import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useFindings } from '@/features/findings/useFindings';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
+import { FindingRow } from '@/features/projects/detail/FindingRow';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
-
-import { useRouter } from '@/i18n/navigation';
-
-import { FindingDetailModal } from './FindingDetailModal';
-import { FindingRow } from './FindingRow';
+import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 type Props = {
   projectId: string;
 };
 
-const STATUS_FILTERS: Array<{ value: FindingStatusValue | 'all'; labelKey: string }> = [
+const STATUS_FILTERS: { value: FindingStatusValue | 'all'; labelKey: string }[] = [
   { value: 'all', labelKey: 'filterAll' },
   { value: 'draft', labelKey: 'filterDraft' },
   { value: 'open', labelKey: 'filterOpen' },
@@ -32,8 +29,8 @@ const STATUS_FILTERS: Array<{ value: FindingStatusValue | 'all'; labelKey: strin
   { value: 'verified', labelKey: 'filterVerified' },
 ];
 
-export function BevindingenTab({ projectId }: Props): JSX.Element {
-  const t = useTranslations('projectDetail.tabs.bevindingen');
+export function FindingsListTab({ projectId }: Props): JSX.Element {
+  const t = useTranslations('findingsBoard.list');
   const findingsQuery = useFindings(projectId);
   const membersQuery = useProjectMembers(projectId);
   const deleteMutation = useDeleteFinding(projectId);
@@ -59,9 +56,9 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
     if (searchQuery !== '') {
       const q = searchQuery.toLowerCase();
       return (
-        f.title.toLowerCase().includes(q) ||
-        f.description.toLowerCase().includes(q) ||
-        (f.bbl_article_ref?.toLowerCase().includes(q) ?? false)
+        f.title.toLowerCase().includes(q)
+        || f.description.toLowerCase().includes(q)
+        || (f.bbl_article_ref?.toLowerCase().includes(q) ?? false)
       );
     }
     return true;
@@ -78,10 +75,8 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
     [deleteMutation, expandedId],
   );
 
-  const router = useRouter();
-
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <TabToolbar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
@@ -98,24 +93,9 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
             ))}
           </Select>
         )}
-        actions={(
-          <div className="flex items-center gap-2">
-            {allFindings.length > 0 && (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => { router.push(`/projects/${projectId}/findings`); }}
-              >
-                <Columns3 className="mr-1.5 h-3.5 w-3.5" />
-                {t('boardLabel')}
-              </Button>
-            )}
-            <LogFindingButton projectId={projectId} size="md" />
-          </div>
-        )}
+        actions={<LogFindingButton projectId={projectId} size="md" />}
       />
 
-      <div className="min-h-0 flex-1 overflow-auto">
       <ResourceList
         isLoading={findingsQuery.isLoading}
         total={allFindings.length}
@@ -128,8 +108,8 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
         empty={(
           <EmptyState
             icon={AlertTriangle}
-            title={t('title')}
-            description={t('description')}
+            title={t('emptyTitle')}
+            description={t('emptyDescription')}
             action={<LogFindingButton projectId={projectId} />}
             className={undefined}
           />
@@ -148,7 +128,6 @@ export function BevindingenTab({ projectId }: Props): JSX.Element {
           />
         ))}
       </ResourceList>
-      </div>
 
       <FindingDetailModal
         projectId={projectId}

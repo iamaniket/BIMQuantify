@@ -6,7 +6,6 @@ import { useCallback, useMemo, useState, type JSX } from 'react';
 import { type KanbanColumnDef } from '@bimstitch/ui';
 import { KanbanBoard } from '@bimstitch/ui';
 
-import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
@@ -109,10 +108,6 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex items-center justify-end px-3.5 pb-2">
-        <LogFindingButton projectId={projectId} variant="border" />
-      </div>
-
       <div className="min-h-0 flex-1 overflow-x-auto px-3.5 pb-3.5">
         <KanbanBoard<Finding>
           columns={columns}
