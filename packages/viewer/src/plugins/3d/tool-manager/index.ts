@@ -12,6 +12,16 @@
  * axis is forced to `none` and is disabled in the UI; the pre-fly action is
  * remembered (`savedAction`) and restored when the user returns to orbit.
  *
+ * Modal edit tools (measurement / section, via the `mode` plugin) borrow the
+ * action axis transiently: `tool.pushOverride` on enter forces the *effective*
+ * action to the neutral `none` baseline (eraser bind cleared + click-select /
+ * hover gestures suppressed) without mutating the stored `action`, and
+ * `tool.popOverride` on exit re-applies the stored `action`. So the eraser bind
+ * is guaranteed cleared when an edit tool starts and restored when it ends —
+ * this manager is the single arbiter of what a left-click does. While an
+ * override is held (`overrideDepth > 0`) both axes are inert: edit mode is modal
+ * over the pointer, just as first-person is over the action axis.
+ *
  * Every state is reached by re-orchestrating existing sub-plugins:
  *   navMode orbit       → cameraFly.disable
  *   navMode firstPerson → cameraFly.enable (suppresses selection/hover + pivot)
@@ -23,7 +33,9 @@
  *   - `tool.set { navMode? , action? }` — programmatic / toolbar dispatch.
  *   - `tool.orbit` / `tool.firstPerson` — nav-axis commands (shortcuts 2/3).
  *   - `tool.select` / `tool.erase` — action-axis toggles (shortcuts 4/5); ignored
- *     while first-person is active.
+ *     while first-person is active or a modal override is held.
+ *   - `tool.pushOverride` / `tool.popOverride` — enter/exit a modal edit-tool
+ *     override (called by the `mode` plugin); no keyboard shortcut.
  *
  * As a safety net it also listens to `navigate:change` / `eraser:change` so the
  * `action` field stays correct even if a sub-tool is ever driven directly
@@ -62,6 +74,15 @@ export function toolManagerPlugin(): Plugin & ToolManagerPluginAPI {
   // Guard so manager-initiated enter/exit (which re-emit navigate:change /
   // eraser:change) don't recurse back through the reconcile listeners.
   let switching = false;
+  // How many modal edit-tool overrides are currently held (measurement / section
+  // via `mode`). While > 0 both axes are inert and the effective action is forced
+  // to the neutral `none` baseline — edit mode is modal over the pointer.
+  let overrideDepth = 0;
+  // Serializes override push/pop so a tool eviction (a pop immediately followed by
+  // a push, when one edit tool replaces another) can't interleave two
+  // `applyAction` runs and leave the wrong `click:left` binding live. Mirrors the
+  // measurement plugin's clickChain pattern.
+  let overrideChain: Promise<void> = Promise.resolve();
 
   const disposers: Array<() => void> = [];
 
@@ -86,8 +107,9 @@ export function toolManagerPlugin(): Plugin & ToolManagerPluginAPI {
 
   const setAction = async (next: ActionMode): Promise<void> => {
     if (!ctxRef || switching) return;
-    // The action axis is inert while first-person owns the left button.
-    if (navMode === 'firstPerson' || next === action) return;
+    // The action axis is inert while first-person owns the left button or a modal
+    // edit tool holds an override (edit mode is modal over the action axis).
+    if (navMode === 'firstPerson' || overrideDepth > 0 || next === action) return;
     switching = true;
     try {
       await applyAction(next);
@@ -99,7 +121,9 @@ export function toolManagerPlugin(): Plugin & ToolManagerPluginAPI {
   };
 
   const setNavMode = async (next: NavMode): Promise<void> => {
-    if (!ctxRef || switching || next === navMode) return;
+    // Inert while a modal edit tool holds an override — edit mode is modal over
+    // the camera axis too (close the tool to switch nav modes).
+    if (!ctxRef || switching || overrideDepth > 0 || next === navMode) return;
     switching = true;
     try {
       if (next === 'firstPerson') {
@@ -130,6 +154,46 @@ export function toolManagerPlugin(): Plugin & ToolManagerPluginAPI {
     } finally {
       switching = false;
     }
+  };
+
+  /**
+   * Hold a modal edit-tool override on the action axis. On the first push (in
+   * orbit) the effective action drops to the neutral `none` baseline via
+   * `applyAction`, whose `eraser.exit → navigate.enter` ordering clears any live
+   * eraser bind *before* suppressing click-select/hover. The stored `action` is
+   * never touched, so the toolbar keeps showing it and the matching pop restores
+   * it exactly. In first-person camera-fly already owns the left button, so the
+   * action sub-plugins are neutral and push/pop are no-ops. Serialized on
+   * `overrideChain` so a pop-then-push eviction can't race.
+   */
+  const pushOverride = (): Promise<void> => {
+    overrideChain = overrideChain.then(async () => {
+      if (!ctxRef) return;
+      overrideDepth += 1;
+      if (overrideDepth !== 1 || navMode === 'firstPerson') return;
+      switching = true;
+      try {
+        await applyAction('none');
+      } finally {
+        switching = false;
+      }
+    });
+    return overrideChain;
+  };
+
+  const popOverride = (): Promise<void> => {
+    overrideChain = overrideChain.then(async () => {
+      if (!ctxRef || overrideDepth === 0) return;
+      overrideDepth -= 1;
+      if (overrideDepth !== 0 || navMode === 'firstPerson') return;
+      switching = true;
+      try {
+        await applyAction(action);
+      } finally {
+        switching = false;
+      }
+    });
+    return overrideChain;
   };
 
   return {
@@ -182,11 +246,23 @@ export function toolManagerPlugin(): Plugin & ToolManagerPluginAPI {
         { title: 'Toggle erase click-action', defaultShortcut: '5' },
       );
 
+      // Modal edit tools (measurement / section, via `mode`) push an override
+      // while active so the click-action axis is neutralized and restored as one
+      // unit — the eraser bind is cleared on enter and restored on exit. No
+      // shortcut: driven by `mode.enter` / `mode.exit`.
+      ctx.commands.register('tool.pushOverride', () => pushOverride(), {
+        title: 'Hold a modal edit-tool override on the click-action axis',
+      });
+      ctx.commands.register('tool.popOverride', () => popOverride(), {
+        title: 'Release a modal edit-tool override on the click-action axis',
+      });
+
       // Safety net: if a sub-tool is driven directly (not via this manager) keep
       // the `action` field — and the exclusivity — in sync. Only reconciles while
-      // in orbit; first-person owns the action axis (forced none).
+      // in orbit and not overridden; first-person / an override own the action
+      // axis (forced none).
       const reconcile = (tool: 'navigate' | 'eraser', active: boolean): void => {
-        if (switching || navMode === 'firstPerson') return;
+        if (switching || navMode === 'firstPerson' || overrideDepth > 0) return;
         const mapped: ActionMode = tool === 'navigate' ? 'none' : 'erase';
         if (active && action !== mapped) {
           // Mirror exclusivity: turning one on turns the other off.
@@ -218,6 +294,8 @@ export function toolManagerPlugin(): Plugin & ToolManagerPluginAPI {
       navMode = 'orbit';
       action = 'none';
       savedAction = 'none';
+      overrideDepth = 0;
+      overrideChain = Promise.resolve();
       ctxRef = null;
     },
   };

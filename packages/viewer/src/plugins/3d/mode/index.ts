@@ -38,8 +38,6 @@ export interface ModePluginAPI {
 export function modePlugin(): Plugin & ModePluginAPI {
   let ctxRef: ViewerContext | null = null;
   let currentTool: ModeToolDescriptor | null = null;
-  let savedSelectionEnabled = true;
-  let savedHoverEnabled = true;
   let savedLeftAction: number | null = null;
   let pluginUnregSub: (() => void) | null = null;
   let viewcubeEl: HTMLElement | null = null;
@@ -68,15 +66,12 @@ export function modePlugin(): Plugin & ModePluginAPI {
       controls.mouseButtons.left = (ACTION['NONE'] ?? 0) as typeof controls.mouseButtons.left;
     }
 
-    try {
-      savedSelectionEnabled = (await ctxRef.commands.execute<undefined, boolean>('selection.isEnabled')) ?? true;
-      await ctxRef.commands.execute('selection.setEnabled', false);
-    } catch { /* selection plugin may not exist */ }
-
-    try {
-      savedHoverEnabled = (await ctxRef.commands.execute<undefined, boolean>('hover.isEnabled')) ?? true;
-      await ctxRef.commands.execute('hover.setEnabled', false);
-    } catch { /* hover plugin may not exist */ }
+    // Hand the click-action axis to the tool-manager override: it clears any live
+    // eraser bind and suppresses click-select / hover gestures as one unit, then
+    // restores the prior action on exit. tool-manager is the single arbiter of
+    // what a left-click does, so `mode` no longer toggles selection/hover here.
+    // Optional dependency — degrades gracefully if tool-manager is absent.
+    await ctxRef.commands.execute('tool.pushOverride').catch(() => undefined);
 
     setViewcubeVisible(false);
 
@@ -99,8 +94,9 @@ export function modePlugin(): Plugin & ModePluginAPI {
       savedLeftAction = null;
     }
 
-    ctxRef.commands.execute('selection.setEnabled', savedSelectionEnabled).catch(() => undefined);
-    ctxRef.commands.execute('hover.setEnabled', savedHoverEnabled).catch(() => undefined);
+    // Release the click-action override — restores the action that was live before
+    // the tool started (erase/select/none) and its `click:left` binding.
+    ctxRef.commands.execute('tool.popOverride').catch(() => undefined);
     setViewcubeVisible(true);
 
     ctxRef.events.emit('mode:exit', { toolName });
@@ -118,6 +114,10 @@ export function modePlugin(): Plugin & ModePluginAPI {
 
   return {
     name: NAME,
+    // Soft coupling: edit-mode enter/exit delegates the click-action neutralization
+    // to tool-manager's push/pop override. Optional (not a hard dep) because `mode`
+    // installs before tool-manager and only calls it at runtime.
+    optionalDependencies: ['tool-manager'],
 
     mode() { return currentTool !== null ? 'edit' : 'normal'; },
     activeTool() { return currentTool; },
