@@ -43,6 +43,8 @@ export { CaretRight as ChevronRight } from '@phosphor-icons/react';
 export { CaretUp as ChevronUp } from '@phosphor-icons/react';
 export { CaretDoubleUp as ChevronsUp } from '@phosphor-icons/react';
 export { CaretDoubleDown as ChevronsDown } from '@phosphor-icons/react';
+export { CaretDoubleLeft as ChevronsLeft } from '@phosphor-icons/react';
+export { CaretDoubleRight as ChevronsRight } from '@phosphor-icons/react';
 export { Check } from '@phosphor-icons/react';
 export { CheckCircle } from '@phosphor-icons/react';
 export { CheckCircle as CheckCircle2 } from '@phosphor-icons/react';

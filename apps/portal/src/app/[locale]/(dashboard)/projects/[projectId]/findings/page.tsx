@@ -21,7 +21,7 @@ import { PageShell } from '@/components/shared/layout/PageShell';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { FindingsBoardHero } from '@/features/findings/board/FindingsBoardHero';
 import { FindingsKanbanBoard } from '@/features/findings/board/FindingsKanbanBoard';
-import { FindingsCalendarTab } from '@/features/findings/tabs/FindingsCalendarTab';
+import { ProjectCalendarTab } from '@/features/findings/calendar/ProjectCalendarTab';
 import { FindingsListTab } from '@/features/findings/tabs/FindingsListTab';
 import { FindingsLocationsTab } from '@/features/findings/tabs/FindingsLocationsTab';
 import { FindingsOverviewTab } from '@/features/findings/tabs/FindingsOverviewTab';
@@ -154,8 +154,8 @@ export default function FindingsBoardPage(): JSX.Element {
         <FindingsOverviewTab projectId={projectId} findings={findings} members={members} />
       </TabsContent>
 
-      <TabsContent value="calendar" className="mt-0">
-        <FindingsCalendarTab projectId={projectId} findings={findings} />
+      <TabsContent value="calendar" className="mt-0 h-full">
+        <ProjectCalendarTab projectId={projectId} findings={findings} />
       </TabsContent>
 
       <TabsContent value="locations" className="mt-0">

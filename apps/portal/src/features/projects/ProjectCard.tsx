@@ -3,7 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Building2, CalendarDays, FileText, Layers, MapPin, RefreshCw, Ruler, Truck } from '@bimstitch/ui/icons';
 import { Link } from '@/i18n/navigation';
-import { useCallback, useState, type JSX } from 'react';
+import { useCallback, useEffect, useState, type JSX } from 'react';
 
 import {
   Card, CardBody, CardFooter, Icon,
@@ -104,6 +104,11 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
 
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [aerialFailed, setAerialFailed] = useState(false);
+  // Clear the failed flags when the source changes, otherwise one <img> error
+  // (e.g. an expired presigned URL after S3_PRESIGN_TTL_SECONDS) pins the map
+  // fallback forever — even after a refetch delivers a fresh, loadable URL.
+  useEffect(() => { setThumbnailFailed(false); }, [project.thumbnail_url]);
+  useEffect(() => { setAerialFailed(false); }, [project.latitude, project.longitude]);
   const showThumbnail = project.thumbnail_url !== null && !thumbnailFailed;
   const aerialUrl = (
     !showThumbnail

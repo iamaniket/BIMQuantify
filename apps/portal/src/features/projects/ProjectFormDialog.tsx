@@ -118,6 +118,9 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   );
   const panelRef = useRef<HTMLDivElement | null>(null);
   const firstFieldRef = useRef<HTMLInputElement | null>(null);
+  // Tracks the previous `open` value so the reset effect fires only on the
+  // closed -> open transition (see the reset effect below).
+  const wasOpenRef = useRef(false);
 
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
@@ -138,9 +141,19 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   const { reset: resetCreateMutation } = createMutation;
   const { reset: resetUpdateMutation } = updateMutation;
 
-  // Reset everything whenever the dialog opens (or the edited project changes).
+  // Reset everything only on the dialog's closed -> open transition. Keying this
+  // off `project` identity (instead of the open edge) re-fires mid-session: a
+  // successful save invalidates the projects query, the awaited refetch hands us
+  // a fresh `project` reference while the dialog is still open, and the reset
+  // would snap the wizard back to step 0 AND call resetUpdateMutation() —
+  // cancelling the pending onOpenChange(false) so the dialog never closes.
+  // Rising-edge gating also stops a background refetch from wiping a half-filled
+  // form. `project`/`mode` stay in deps so reopening re-seeds from the latest
+  // values; `justOpened` makes the body a no-op on those non-edge re-runs.
   useEffect(() => {
-    if (!open) return;
+    const justOpened = open && !wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!justOpened) return;
     resetForm(project === null ? EMPTY_DEFAULTS : projectToValues(project));
     resetCreateMutation();
     resetUpdateMutation();
@@ -312,10 +325,13 @@ export function ProjectFormDialog(props: Props): JSX.Element {
       onOpenChange(false);
       return;
     }
+    // onSubmitImpl wires success/error via mutation callbacks. It is recreated
+    // every render and closes over thumbnailFile/thumbnailRemoved (separate
+    // useState, not RHF fields), so it MUST be a dependency — omitting it pins
+    // handleSubmit to the render-0 closure where thumbnailFile is null, which
+    // silently drops the cover-image upload on both create and edit.
     await form.handleSubmit(onSubmitImpl)();
-    // onSubmitImpl wires success/error via mutation callbacks.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, isReadOnly, onOpenChange]);
+  }, [form, isReadOnly, onOpenChange, onSubmitImpl]);
 
   const wizardSteps = PROJECT_WIZARD_STEPS.map((step) => ({
     ...step,

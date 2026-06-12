@@ -1,7 +1,7 @@
 'use client';
 
 import { Building2, Hammer, Layers, MapPin, Ruler, Scale } from '@bimstitch/ui/icons';
-import { useState, type JSX, type ReactNode } from 'react';
+import { useEffect, useState, type JSX, type ReactNode } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
 import {
@@ -46,6 +46,11 @@ export function ProjectDetailHeader({
   const tHero = useTranslations('projectDetail.hero');
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [aerialFailed, setAerialFailed] = useState(false);
+  // Clear the failed flags when the source changes, otherwise one <img> error
+  // (e.g. an expired presigned URL after S3_PRESIGN_TTL_SECONDS) pins the map
+  // fallback forever — even after a refetch delivers a fresh, loadable URL.
+  useEffect(() => { setThumbnailFailed(false); }, [project.thumbnail_url]);
+  useEffect(() => { setAerialFailed(false); }, [project.latitude, project.longitude]);
   const address = formatAddress(project);
   const refLabel = project.reference_code ?? '—';
   const statusBadgeClass = projectBadgeClasses(project);

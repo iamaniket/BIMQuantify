@@ -112,7 +112,7 @@ export default function CertificatesPage(): JSX.Element {
           >
             <SearchInput placeholder={t('list.searchPlaceholder')} value={search} onChange={setSearch} />
             <Select
-              selectsize="md"
+              selectSize="md"
               value={typeFilter ?? 'all'}
               onChange={(e) => { setTypeFilter(e.target.value === 'all' ? undefined : e.target.value as CertificateTypeValue); }}
             >

@@ -25,6 +25,24 @@ vi.mock('@bimstitch/ui', () => ({
     children: React.ReactNode;
     onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   }) => <select onChange={onChange}>{children}</select>,
+  Input: ({
+    leading,
+    trailing,
+    inputSize: _inputSize,
+    invalid: _invalid,
+    ...rest
+  }: {
+    leading?: React.ReactNode;
+    trailing?: React.ReactNode;
+    inputSize?: string;
+    invalid?: boolean;
+  } & React.InputHTMLAttributes<HTMLInputElement>) => (
+    <span>
+      {leading}
+      <input {...rest} />
+      {trailing}
+    </span>
+  ),
   Skeleton: () => <div data-testid="skeleton" />,
   EmptyState: ({
     title,

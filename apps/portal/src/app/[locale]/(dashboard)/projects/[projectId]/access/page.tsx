@@ -251,14 +251,14 @@ function MembersToolbar({
       <div className="relative min-w-0 w-full sm:w-auto sm:min-w-[260px]">
         <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-placeholder" />
         <Input
-          inputsize="md"
+          inputSize="md"
           className="pl-9"
           placeholder={t('searchPlaceholder')}
           value={query}
           onChange={(e) => { onQueryChange(e.target.value); }}
         />
       </div>
-      <Select selectsize="md" value={roleFilter} onChange={(e) => { onRoleFilterChange(e.target.value); }}>
+      <Select selectSize="md" value={roleFilter} onChange={(e) => { onRoleFilterChange(e.target.value); }}>
         <option value="all">{t('roleAll')}</option>
         <option value="owner">{t('roleOwner')}</option>
         <option value="editor">{t('roleEditor')}</option>

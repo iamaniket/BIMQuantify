@@ -12,6 +12,7 @@ string lookup so portal Zod schemas don't need to know about locales.
 
 from __future__ import annotations
 
+import holidays as _holidays
 from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel
 
@@ -235,3 +236,78 @@ async def list_jurisdictions(
             )
         )
     return JurisdictionListResponse(items=items)
+
+
+# ---------------------------------------------------------------------------
+# Public holidays
+#
+# Reuses the same `holidays` library the deadline working-day engine uses
+# (`deadlines/working_days.py`), so the calendar's holiday markers can never
+# drift from the dates that actually shift deadlines. Pass-through to the
+# library means every country it implements works for free — a country it
+# doesn't implement returns an empty list rather than erroring.
+# ---------------------------------------------------------------------------
+
+
+class HolidayResponse(BaseModel):
+    # ISO `YYYY-MM-DD`. A plain string (not `datetime.date`) keeps the wire
+    # shape a simple string the portal Zod schema reads directly, and avoids a
+    # type-only datetime import.
+    date: str
+    name: str
+
+
+class HolidayListResponse(BaseModel):
+    items: list[HolidayResponse]
+
+
+def _resolve_holiday_language(locale: str, supported: tuple[str, ...]) -> str | None:
+    """Map a portal locale (`en`, `nl`, …) onto a language the holidays library
+    ships for this country. Falls back to the country's default (``None``) when
+    there's no match, so an unsupported locale degrades to default-language
+    names rather than 500-ing."""
+    if not supported:
+        return None
+    if locale in supported:
+        return locale
+    base = locale.split("_")[0].split("-")[0].lower()
+    for lang in supported:
+        if lang.split("_")[0].lower() == base:
+            return lang
+    return None
+
+
+@router.get("/{country}/holidays", response_model=HolidayListResponse)
+async def list_holidays(
+    response: Response,
+    country: str,
+    year: int = Query(..., ge=1900, le=2200, description="Calendar year."),
+    locale: str = Query(
+        "nl",
+        max_length=10,
+        description=(
+            "Locale tag for holiday names. Falls back to the country's default "
+            "language when the requested locale isn't supported."
+        ),
+    ),
+) -> HolidayListResponse:
+    cache_response(response, CACHE_TTL_JURISDICTIONS, is_public=True)
+    code = country.upper()
+    try:
+        probe = _holidays.country_holidays(code, years=year)
+    except (NotImplementedError, KeyError):
+        # Country not implemented by the library → no markers, not an error.
+        return HolidayListResponse(items=[])
+
+    supported = tuple(getattr(probe, "supported_languages", ()) or ())
+    language = _resolve_holiday_language(locale, supported)
+    calendar = (
+        _holidays.country_holidays(code, years=year, language=language)
+        if language is not None
+        else probe
+    )
+    items = [
+        HolidayResponse(date=day.isoformat(), name=name)
+        for day, name in sorted(calendar.items())
+    ]
+    return HolidayListResponse(items=items)

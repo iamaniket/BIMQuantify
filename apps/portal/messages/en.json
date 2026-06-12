@@ -1500,6 +1500,14 @@
     "card": {
       "noAssignee": "Unassigned",
       "overdue": "Overdue",
+      "dueTitle": "Deadline",
+      "createdTitle": "Created",
+      "updatedTitle": "Last updated",
+      "loggedBy": "Logged by {name}",
+      "photosTitle": "Photos",
+      "attachmentsTitle": "Attachments",
+      "linkedTitle": "Linked to model/drawing",
+      "fromTemplate": "From template",
       "justNow": "Just now",
       "minutesAgo": "{count}m ago",
       "hoursAgo": "{count}h ago",
@@ -1525,8 +1533,8 @@
       "listTitle": "{count, plural, =0 {No findings} one {# finding} other {# findings}}",
       "overviewEyebrow": "Summary",
       "overviewTitle": "At a glance",
-      "calendarEyebrow": "Deadlines",
-      "calendarTitle": "By deadline",
+      "calendarEyebrow": "Schedule",
+      "calendarTitle": "Project calendar",
       "locationsEyebrow": "Model",
       "locationsTitle": "By location",
       "photosEyebrow": "Evidence",
@@ -1556,11 +1564,32 @@
       "noOverdue": "Nothing overdue."
     },
     "calendar": {
-      "overdue": "Overdue",
-      "dueThisWeek": "Due this week",
-      "later": "Later",
-      "noDeadline": "No deadline",
-      "empty": "No findings to schedule."
+      "today": "Today",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "prevYear": "Previous year",
+      "nextYear": "Next year",
+      "empty": "Nothing scheduled yet.",
+      "unscheduled": "Unscheduled",
+      "moreCount": "{count} more",
+      "kinds": {
+        "finding": "Findings",
+        "deadline": "Deadlines",
+        "borgingsmoment": "Moments"
+      },
+      "legend": {
+        "overdue": "Overdue",
+        "dueSoon": "Due soon",
+        "active": "Active",
+        "done": "Done",
+        "weekend": "Weekend",
+        "holiday": "Holiday"
+      },
+      "dayPanel": {
+        "count": "{count, plural, =0 {No items} one {# item} other {# items}}",
+        "close": "Close",
+        "openInspection": "Open inspection"
+      }
     },
     "locations": {
       "viewInModel": "View in model",

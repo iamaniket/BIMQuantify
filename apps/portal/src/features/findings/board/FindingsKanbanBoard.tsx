@@ -96,6 +96,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
       <FindingKanbanCard
         finding={finding}
         assigneeName={getAssigneeName(finding.assignee_user_id)}
+        reporterName={getAssigneeName(finding.created_by_user_id)}
       />
     ),
     [getAssigneeName],
