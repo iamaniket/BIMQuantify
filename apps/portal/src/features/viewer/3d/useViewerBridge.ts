@@ -1,5 +1,66 @@
 'use client';
 
+/**
+ * Portal ⇄ viewer state bridge — echo-suppression contract
+ * ========================================================
+ *
+ * Keeps two sources of truth in sync, in BOTH directions:
+ *   - `useViewerEntityStore` (Zustand) — what the portal UI reads (tree rows,
+ *     status bar, context menu).
+ *   - the viewer plugins (selection / visibility / xray / …) — what the 3D
+ *     canvas actually renders.
+ *
+ * Two sync paths run off this one hook:
+ *
+ *   1. viewer → store: the `handle.events.on(...)` listeners below. A user
+ *      gesture in the canvas makes a plugin emit (e.g. `selection:change`);
+ *      the listener mirrors it into the store via an `_applyViewer*` mutator.
+ *
+ *   2. store → viewer: the single `store.subscribe(...)` at the bottom. A
+ *      portal UI mutation (e.g. clicking a tree row → `store.select(...)`)
+ *      changes a store field; the subscriber dispatches the matching viewer
+ *      command (e.g. `selection.set`).
+ *
+ * Left unguarded these form an infinite echo: viewer event → store update →
+ * subscriber dispatches command → viewer re-emits the *same* event → store
+ * update → … . `_syncDepth` (on the store) breaks the loop.
+ *
+ * THE CONTRACT
+ * ------------
+ *  - INVARIANT — the store subscriber dispatches commands ONLY while
+ *    `_syncDepth === 0` (its first line is `if (state._syncDepth > 0) return;`).
+ *    Any store change made while the counter is raised is read as "this came
+ *    FROM the viewer — do not send it back".
+ *
+ *  - INCREMENT — every `_applyViewer*` mutator raises `_syncDepth` as part of
+ *    the *same* atomic `set()` that writes the mirrored field (see
+ *    `viewerEntityStore.ts`). Zustand notifies subscribers synchronously inside
+ *    `set()`, so the subscriber is guaranteed to observe `_syncDepth > 0` for a
+ *    viewer-originated change. The lone exception is the `selection:change`
+ *    "cleared" branch, which raises the counter by hand right before calling the
+ *    public `clearSelection()` (that mutator deliberately does NOT touch it).
+ *
+ *  - DECREMENT — each event listener lowers `_syncDepth` again inside a
+ *    `queueMicrotask(...)`, exactly once per event, with `Math.max(0, …)` as an
+ *    underflow guard (`_reset()` can zero the counter while a decrement is still
+ *    queued).
+ *
+ * WHY `queueMicrotask`
+ * --------------------
+ * The decrement must land AFTER the subscriber has run for the viewer-driven
+ * change (so it sees the raised counter and bails) but BEFORE the next genuine
+ * UI mutation (so that one is NOT suppressed). A microtask hits exactly that
+ * seam: it fires once the whole synchronous reaction to the event unwinds —
+ * however many `set()` calls a single listener makes (the "cleared" branch makes
+ * two) — and before any later task or user interaction. Decrementing
+ * synchronously could disarm the guard partway through a multi-`set` listener;
+ * deferring to a macrotask/timer would over-suppress real input arriving in the
+ * meantime.
+ *
+ * Covered by `useViewerBridge.test.ts` — a viewer→store→viewer round-trip
+ * dispatches each command exactly once (no echo). See review recommendation B3.
+ */
+
 import { useEffect } from 'react';
 
 import type { ItemId, ViewerHandle } from '@bimstitch/viewer';

@@ -1,7 +1,7 @@
 'use client';
 
 import { Box } from '@bimstitch/ui/icons';
-import { useState, type JSX } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
@@ -12,7 +12,7 @@ import { ClassesTab } from './ClassesTab';
 import { ObjectsTab } from './ObjectsTab';
 import { PropertiesSubPanel } from './PropertiesSubPanel';
 import { StoriesTab } from './StoriesTab';
-import { ZonesTab } from './ZonesTab';
+import { pruneSpaceNodes } from './treeBuilders';
 
 type ModelExplorerProps = {
   metadata: ModelMetadata | undefined;
@@ -25,13 +25,12 @@ type ModelExplorerProps = {
   modelTreeExpanded: boolean;
 };
 
-type ExplorerTab = 'objects' | 'classes' | 'stories' | 'zones';
+type ExplorerTab = 'objects' | 'classes' | 'stories';
 
 const TABS: TabDef<ExplorerTab>[] = [
   { id: 'objects', label: 'Model' },
   { id: 'classes', label: 'Classes' },
   { id: 'stories', label: 'Stories' },
-  { id: 'zones', label: 'Zones' },
 ];
 
 export function ModelExplorer({
@@ -45,6 +44,17 @@ export function ModelExplorer({
   modelTreeExpanded,
 }: ModelExplorerProps): JSX.Element {
   const [tab, setTab] = useState<ExplorerTab>('objects');
+
+  // Spaces (IfcSpace) are excluded from every listing — their visibility is
+  // controlled only by the toolbar toggle.
+  const elementsNoSpaces = useMemo(
+    () => (metadata?.elements ?? []).filter((el) => el.type !== 'IfcSpace'),
+    [metadata?.elements],
+  );
+  const treeNoSpaces = useMemo(
+    () => (metadata?.spatialTree ? pruneSpaceNodes(metadata.spatialTree) : null),
+    [metadata?.spatialTree],
+  );
 
   if (isLoading) {
     return <PanelEmptyState message="Loading model data..." />;
@@ -67,24 +77,19 @@ export function ModelExplorer({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {tab === 'objects' && (
               <ObjectsTab
-                spatialTree={metadata.spatialTree}
-                elements={metadata.elements}
+                spatialTree={treeNoSpaces}
+                elements={elementsNoSpaces}
               />
             )}
             {tab === 'classes' && (
               <ClassesTab
-                elements={metadata.elements}
+                elements={elementsNoSpaces}
               />
             )}
             {tab === 'stories' && (
               <StoriesTab
-                spatialTree={metadata.spatialTree}
-                elements={metadata.elements}
-              />
-            )}
-            {tab === 'zones' && (
-              <ZonesTab
-                zones={metadata.zones}
+                spatialTree={treeNoSpaces}
+                elements={elementsNoSpaces}
               />
             )}
           </div>

@@ -64,6 +64,7 @@ import { useModelProperties } from '@/features/viewer/3d/useModelProperties';
 import { usePdfGeometry } from '@/features/viewer/2d/usePdfGeometry';
 import { viewerKeys } from '@/features/viewer/shared/queryKeys';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
+import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
 import { useViewerMode } from '@/features/viewer/3d/useViewerMode';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
@@ -79,6 +80,7 @@ import {
 import {
   DEFAULT_VIEWER_SETTINGS,
   loadViewerSettings,
+  saveViewerSettings,
   type ViewerSettings,
 } from '@/lib/viewerSettings';
 import { useAuth } from '@/providers/AuthProvider';
@@ -285,6 +287,9 @@ export default function ViewerPage(): JSX.Element {
   // Feed the BCF plugin GlobalId -> ItemId so viewpoint selection/visibility
   // round-trips (the map is otherwise never populated).
   useBcfGlobalIdMap(viewerHandleRef.current, metadata);
+  // Spaces (IfcSpace) are hidden by default and controlled solely by the
+  // toolbar toggle; this keeps the viewer in sync with `settings.spaces.show`.
+  useSpaceVisibility(viewerHandleRef.current, viewerReady, metadata, settings.spaces.show);
   const hasSelection = isAllSelected || partialSelectionCount > 0;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,
@@ -308,6 +313,13 @@ export default function ViewerPage(): JSX.Element {
   useEffect(() => {
     setSettings(loadViewerSettings());
     setPdfSettings(loadDocumentSettings());
+  }, []);
+
+  // Persist + apply viewer settings (used by the toolbar toggles and the
+  // settings dialog) so toolbar changes like the spaces toggle survive reload.
+  const handleSettingsChange = useCallback((next: ViewerSettings) => {
+    saveViewerSettings(next);
+    setSettings(next);
   }, []);
 
   // Reset viewer state when switching models or files.
@@ -822,7 +834,7 @@ export default function ViewerPage(): JSX.Element {
             <Toolbar
               handle={viewerHandleRef.current}
               settings={settings}
-              onSettingsChange={setSettings}
+              onSettingsChange={handleSettingsChange}
               onReloadViewer={() => {
                 setViewerReady(false);
                 setSceneReady(false);

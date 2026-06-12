@@ -46,6 +46,19 @@ interface ViewerEntityState {
 
   enabled: ViewerFeatureFlags;
 
+  /**
+   * Echo-suppression guard for the portal ⇄ viewer bridge. Raised by the
+   * `_applyViewer*` mutators below — atomically, inside the same `set()` that
+   * writes the mirrored field — while a change is being applied *from* the
+   * viewer, so the bridge's store subscriber knows to skip dispatching that
+   * same change back to the viewer as a command. The bridge lowers it again in
+   * a `queueMicrotask`. It is a counter (one gesture can drive several viewer
+   * events at once) with `Math.max(0, …)` underflow guards.
+   *
+   * INVARIANT: store subscribers MUST early-return while `_syncDepth > 0`.
+   * Full contract (who increments/decrements, why `queueMicrotask`):
+   * see `features/viewer/3d/useViewerBridge.ts`.
+   */
   _syncDepth: number;
   _frameRequested: number;
 

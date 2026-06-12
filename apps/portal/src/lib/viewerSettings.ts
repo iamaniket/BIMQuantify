@@ -55,7 +55,13 @@ export type ViewerSettings = {
   behavior: BehaviorSettings;
   /** First-person (fly) navigation speeds. */
   cameraFly: CameraFlySettings;
+  /** IfcSpace visibility — off by default; the toolbar toggle is the only control. */
+  spaces: SpacesSettings;
 };
+
+export type SpacesSettings = { show: boolean };
+
+export const DEFAULT_SPACES: SpacesSettings = { show: false };
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
   enabled: true,
@@ -143,6 +149,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   zoom: DEFAULT_ZOOM,
   behavior: DEFAULT_BEHAVIOR,
   cameraFly: DEFAULT_CAMERA_FLY,
+  spaces: DEFAULT_SPACES,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
@@ -166,6 +173,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
       selection: { ...d.behavior.selection, ...(p.behavior?.selection ?? {}) },
     },
     cameraFly: { ...d.cameraFly, ...(p.cameraFly ?? {}) },
+    spaces: { ...d.spaces, ...(p.spaces ?? {}) },
   };
 }
 

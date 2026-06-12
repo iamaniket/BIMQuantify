@@ -34,6 +34,11 @@ export function visibilityPlugin(
   const isolatedItems = new Map<string, ItemId>();
   const hiddenSet = new Set<string>();
   const hiddenItemMap = new Map<string, ItemId>();
+  // Items that must stay hidden across `showAll`/`resetVisible` until
+  // explicitly cleared. Driven by the portal for IfcSpaces, so the spaces
+  // toolbar toggle is the single source of truth for their visibility and
+  // "Show all" treats them as an exception.
+  const persistentHidden = new Map<string, ItemId>();
 
   const emitChange = (): void => {
     if (!ctxRef) return;
@@ -246,6 +251,55 @@ export function visibilityPlugin(
     emitChange();
   };
 
+  // Re-hide the persistent set (e.g. after a full `resetVisible`) and fold it
+  // back into the authoritative `hidden` maps. Does not emit on its own.
+  const reapplyPersistent = async (): Promise<void> => {
+    if (!ctxRef || persistentHidden.size === 0) return;
+    const byModel = new Map<string, number[]>();
+    for (const it of persistentHidden.values()) {
+      let arr = byModel.get(it.modelId);
+      if (!arr) { arr = []; byModel.set(it.modelId, arr); }
+      arr.push(it.localId);
+      const k = itemKey(it);
+      hiddenSet.add(k);
+      hiddenItemMap.set(k, it);
+    }
+    for (const [modelId, ids] of byModel) {
+      const model = ctxRef.models().get(modelId);
+      if (model) await model.setVisible(ids, false).catch(() => undefined);
+    }
+  };
+
+  // Replace the persistent-hidden set. Items dropped from it are made visible
+  // again; the new set is hidden immediately. Passing `[]` clears it.
+  const setPersistentHidden = async (args: unknown): Promise<void> => {
+    if (!ctxRef) return;
+    const items = toItems(args);
+    const nextKeys = new Set(items.map(itemKey));
+
+    // Show items that were persistent before but no longer are.
+    const toShow = new Map<string, number[]>();
+    for (const [k, it] of persistentHidden) {
+      if (nextKeys.has(k)) continue;
+      hiddenSet.delete(k);
+      hiddenItemMap.delete(k);
+      let arr = toShow.get(it.modelId);
+      if (!arr) { arr = []; toShow.set(it.modelId, arr); }
+      arr.push(it.localId);
+    }
+
+    persistentHidden.clear();
+    for (const it of items) persistentHidden.set(itemKey(it), it);
+
+    for (const [modelId, ids] of toShow) {
+      const model = ctxRef.models().get(modelId);
+      if (model) await model.setVisible(ids, true).catch(() => undefined);
+    }
+
+    await reapplyPersistent();
+    emitChange();
+  };
+
   const showAll = async (): Promise<void> => {
     if (!ctxRef) return;
 
@@ -258,6 +312,9 @@ export function visibilityPlugin(
     hiddenSet.clear();
     hiddenItemMap.clear();
     isolationActive = false;
+    // Spaces (and any other persistent-hidden items) stay hidden through a
+    // full show-all — they are an exception, controlled only by their toggle.
+    await reapplyPersistent();
     emitChange();
   };
 
@@ -338,6 +395,17 @@ export function visibilityPlugin(
         title: 'Show all elements',
         defaultShortcut: 'Shift+I',
       });
+
+      ctx.commands.register(
+        'visibility.setPersistentHidden',
+        (args: unknown) => setPersistentHidden(args),
+        { title: 'Set items that stay hidden through show-all' },
+      );
+      ctx.commands.register(
+        'visibility.clearPersistentHidden',
+        () => setPersistentHidden([]),
+        { title: 'Clear the persistent-hidden set' },
+      );
 
       ctx.commands.register('visibility.setEnabled', (args: unknown) => {
         const on = typeof args === 'boolean' ? args : (args as { enabled?: boolean })?.enabled;

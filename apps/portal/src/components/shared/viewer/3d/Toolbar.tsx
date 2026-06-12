@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Columns3, Eraser, Home, MousePointer2, Move, Orbit, Settings, Square } from '@bimstitch/ui/icons';
+import { Box, Columns3, Eraser, Home, LayoutGrid, MousePointer2, Move, Orbit, Settings, Square } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -140,6 +140,23 @@ export function Toolbar({
     ],
   };
 
+  // Display toggles. Spaces (IfcSpace) are hidden by default — this button is
+  // the only control for their visibility; active (pressed) means spaces shown.
+  const displayGroup: ToolGroup = {
+    tools: [
+      {
+        type: 'button',
+        id: 'spaces',
+        icon: LayoutGrid,
+        label: t('spaces'),
+        isActive: settings.spaces.show,
+        onClick: () => {
+          onSettingsChange({ ...settings, spaces: { show: !settings.spaces.show } });
+        },
+      },
+    ],
+  };
+
   const settingsGroup: ToolGroup = {
     tools: [
       {
@@ -153,7 +170,7 @@ export function Toolbar({
   const groups: ToolGroup[] =
     viewMode === '2d'
       ? [...(hasFloorPlans ? [viewModeGroup] : []), settingsGroup]
-      : [navGroup, actionGroup, ...(hasFloorPlans ? [viewModeGroup] : []), settingsGroup];
+      : [navGroup, actionGroup, ...(hasFloorPlans ? [viewModeGroup] : []), displayGroup, settingsGroup];
 
   return (
     <UnifiedToolbar groups={groups} testId="viewer-toolbar" testIdPrefix="viewer">

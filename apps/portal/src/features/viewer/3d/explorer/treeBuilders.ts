@@ -73,6 +73,24 @@ export function filterTree(
   return nodes.map(walk).filter(Boolean) as TreeNodeData[];
 }
 
+/**
+ * Return a copy of the spatial tree with every IfcSpace node removed, hoisting
+ * any of its children up to the parent. Spaces are excluded from the explorer
+ * listings — their visibility is controlled solely by the toolbar toggle.
+ */
+export function pruneSpaceNodes(node: SpatialNode): SpatialNode {
+  const children: SpatialNode[] = [];
+  for (const child of node.children) {
+    const pruned = pruneSpaceNodes(child);
+    if (child.type === 'IfcSpace') {
+      children.push(...pruned.children);
+    } else {
+      children.push(pruned);
+    }
+  }
+  return { ...node, children };
+}
+
 export function collectSpatialExpressIDs(node: SpatialNode): Set<number> {
   const ids = new Set<number>([node.expressID]);
   for (const child of node.children) {
