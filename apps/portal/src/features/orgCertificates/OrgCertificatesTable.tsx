@@ -1,12 +1,14 @@
 'use client';
 
 import { Download, Eye, Trash2 } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Badge, type BadgeVariant } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
 import { PageTable, type Column } from '@/components/shared/PageTable';
+import { formatDate } from '@/lib/formatting/dates';
 import type { OrgCertificate } from '@/lib/api/schemas';
 import {
   getCertificateExpiryState,
@@ -27,13 +29,9 @@ const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
   expired: 'error',
 };
 
-function formatDate(value: string | null): string {
-  if (value === null || value === '') return '—';
-  return new Date(value).toLocaleDateString();
-}
-
 export function OrgCertificatesTable({ certificates, onDownload, onDelete, onView }: Props): JSX.Element {
   const t = useTranslations('orgCertificates');
+  const locale = useLocale() as Locale;
 
   const columns: Column<OrgCertificate>[] = [
     {
@@ -82,7 +80,7 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
             </Badge>
             {cert.valid_until !== null && (
               <div className="mt-0.5 font-sans text-caption text-foreground-tertiary tabular-nums">
-                {formatDate(cert.valid_until)}
+                {formatDate(cert.valid_until, locale)}
               </div>
             )}
           </>

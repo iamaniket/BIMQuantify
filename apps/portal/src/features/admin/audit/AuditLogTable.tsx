@@ -1,9 +1,12 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
+import type { Locale } from '@bimstitch/i18n';
+
 import { PageTable, type Column } from '@/components/shared/PageTable';
+import { formatDateTime } from '@/lib/formatting/dates';
 import type { AuditEntry } from '@/lib/api/schemas';
 
 function summarize(entry: AuditEntry): string {
@@ -17,12 +20,13 @@ function summarize(entry: AuditEntry): string {
 
 export function AuditLogTable({ entries }: { entries: AuditEntry[] }): JSX.Element {
   const t = useTranslations('admin.audit.table');
+  const locale = useLocale() as Locale;
 
   const columns: Column<AuditEntry>[] = [
     {
       header: t('when'),
       className: 'whitespace-nowrap font-sans text-caption text-foreground-tertiary',
-      cell: (entry) => new Date(entry.created_at).toLocaleString(),
+      cell: (entry) => formatDateTime(entry.created_at, locale),
     },
     {
       header: t('action'),

@@ -1,12 +1,14 @@
 'use client';
 
 import { Check, ChevronDown, ChevronUp, X } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
 import { Badge, Button, TableCell, TableRow } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
 import { PageTable, type Column } from '@/components/shared/PageTable';
+import { formatDate, formatDateTime } from '@/lib/formatting/dates';
 import type { AccessRequestRead } from '@/lib/api/schemas';
 
 type Props = {
@@ -23,6 +25,7 @@ function statusVariant(s: string): 'default' | 'success' | 'error' {
 
 export function AccessRequestsTable({ requests, onApprove, onReject }: Props): JSX.Element {
   const t = useTranslations('admin.accessRequests.table');
+  const locale = useLocale() as Locale;
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const columns: Column<AccessRequestRead>[] = [
@@ -58,7 +61,7 @@ export function AccessRequestsTable({ requests, onApprove, onReject }: Props): J
     {
       header: t('submitted'),
       className: 'text-foreground-tertiary',
-      cell: (req) => new Date(req.created_at).toLocaleDateString(),
+      cell: (req) => formatDate(req.created_at, locale),
     },
     {
       header: t('actions'),
@@ -97,7 +100,7 @@ export function AccessRequestsTable({ requests, onApprove, onReject }: Props): J
                 <div>
                   <span className="font-medium text-foreground-tertiary">{t('submittedFull')}</span>
                   <p className="mt-1 text-foreground-secondary">
-                    {new Date(req.created_at).toLocaleString()}
+                    {formatDateTime(req.created_at, locale)}
                   </p>
                 </div>
               </div>

@@ -2,8 +2,12 @@
 
 import { Download } from '@bimstitch/ui/icons';
 import { Skeleton } from '@bimstitch/ui';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
+
+import type { Locale } from '@bimstitch/i18n';
+
+import { formatDate } from '@/lib/formatting/dates';
 
 /**
  * The inline version list rendered inside an expanded resource card. One shared
@@ -34,12 +38,9 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatDate(value: string): string {
-  return value.slice(0, 10);
-}
-
 export function VersionHistoryList({ versions, isLoading, onDownload }: Props): JSX.Element {
   const t = useTranslations('common.versions');
+  const locale = useLocale() as Locale;
 
   if (isLoading === true) {
     return (
@@ -87,7 +88,7 @@ export function VersionHistoryList({ versions, isLoading, onDownload }: Props): 
                 {v.createdAt !== undefined && v.createdAt !== null && v.createdAt !== '' && (
                   <>
                     <span className="shrink-0">·</span>
-                    <span className="shrink-0">{formatDate(v.createdAt)}</span>
+                    <span className="shrink-0">{formatDate(v.createdAt, locale)}</span>
                   </>
                 )}
                 {v.uploadedByName !== undefined && v.uploadedByName !== null && v.uploadedByName !== '' && (

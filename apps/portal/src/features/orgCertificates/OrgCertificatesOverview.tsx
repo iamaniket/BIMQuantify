@@ -1,11 +1,13 @@
 'use client';
 
 import { CheckCircle, FileBadge, Clock } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
 import { Badge, type BadgeVariant } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
+import { formatDate } from '@/lib/formatting/dates';
 import type { OrgCertificate } from '@/lib/api/schemas';
 import {
   getCertificateExpiryState,
@@ -34,6 +36,7 @@ const TYPE_KEYS = ['product', 'installation_test', 'inspection', 'warranty', 'ot
 
 export function OrgCertificatesOverview({ certificates }: Props): JSX.Element {
   const t = useTranslations('orgCertificates');
+  const locale = useLocale() as Locale;
 
   const byType = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -161,7 +164,7 @@ export function OrgCertificatesOverview({ certificates }: Props): JSX.Element {
                       {t(`expiry.${expiryState}`)}
                     </Badge>
                     <span className="text-caption text-foreground-tertiary tabular-nums">
-                      {new Date(cert.created_at).toLocaleDateString()}
+                      {formatDate(cert.created_at, locale)}
                     </span>
                   </div>
                 </div>

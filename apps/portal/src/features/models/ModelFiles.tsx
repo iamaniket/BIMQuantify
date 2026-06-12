@@ -5,7 +5,9 @@ import { Link } from '@/i18n/navigation';
 import {
   useCallback, useState, type JSX,
 } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+
+import type { Locale } from '@bimstitch/i18n';
 
 import {
   Button,
@@ -36,6 +38,7 @@ import {
   formatRejection,
   formatSchemaLabel,
 } from '@/lib/formatting/files';
+import { formatDate } from '@/lib/formatting/dates';
 import { UploadProgressItem, type UploadState } from './UploadProgressItem';
 import { useCheckCompliance } from '@/features/compliance/hooks';
 import { useDeleteModelFile } from './useDeleteModelFile';
@@ -58,14 +61,6 @@ type PendingUpload = {
 
 function nextUploadId(): string {
   return crypto.randomUUID();
-}
-
-function formatDate(iso: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return '';
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  }).format(parsed);
 }
 
 function ExtractionBadge({
@@ -111,6 +106,7 @@ function FileRow({
   onDeleteRequest: (file: ProjectFile) => void;
 }): JSX.Element {
   const t = useTranslations('projectDetail.tabs.models.files');
+  const locale = useLocale() as Locale;
   const { tokens } = useAuth();
   const retryMutation = useRetryExtraction();
   const complianceMutation = useCheckCompliance(projectId, modelId);
@@ -137,7 +133,7 @@ function FileRow({
           {' · '}
           {formatSchemaLabel(file.ifc_schema, file.file_type)}
           {' · uploaded '}
-          {formatDate(file.created_at)}
+          {formatDate(file.created_at, locale, '')}
         </span>
       </div>
       <ExtractionBadge status={file.extraction_status} error={file.extraction_error} />

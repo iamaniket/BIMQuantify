@@ -1,7 +1,9 @@
 'use client';
 
 import { BookOpen, Building2, ChevronRight, Download, Inbox, LayoutGrid, Plus, Table2, Users } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+
+import type { Locale } from '@bimstitch/i18n';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
@@ -31,6 +33,7 @@ import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog'
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
 import { exportAccessRequests } from '@/lib/api/admin';
+import { formatDate } from '@/lib/formatting/dates';
 import type {
   AccessRequestRead,
   BlogPostRead,
@@ -110,6 +113,7 @@ function OverviewPane({
   onCreateTenant: () => void;
 }): JSX.Element {
   const t = useTranslations('admin.organizations.overview');
+  const locale = useLocale() as Locale;
 
   const byStatus = {
     active: organizations.filter((o) => o.status === 'active'),
@@ -230,7 +234,7 @@ function OverviewPane({
                     {org.status}
                   </Badge>
                   <span className="text-caption text-foreground-tertiary">
-                    {new Date(org.created_at).toLocaleDateString()}
+                    {formatDate(org.created_at, locale)}
                   </span>
                 </div>
               </div>

@@ -1,11 +1,14 @@
 'use client';
 
 import { Check, Mail, X } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
+
+import { formatDate } from '@/lib/formatting/dates';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
@@ -33,6 +36,7 @@ type WelcomeState = {
 
 export function InvitationsPanel(): JSX.Element {
   const t = useTranslations('invitations');
+  const locale = useLocale() as Locale;
   const router = useRouter();
   const { tokens, hasHydrated, refreshMe } = useAuth();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
@@ -156,10 +160,7 @@ export function InvitationsPanel(): JSX.Element {
       <ul className="flex w-full flex-col gap-3">
         {invitations.map((inv) => {
           const isPending = pendingOrgId === inv.organization_id;
-          const expiresAt = new Date(inv.expires_at);
-          const formattedExpiry = Number.isNaN(expiresAt.getTime())
-            ? inv.expires_at
-            : expiresAt.toLocaleDateString();
+          const formattedExpiry = formatDate(inv.expires_at, locale, inv.expires_at);
           return (
             <li
               key={inv.organization_id}

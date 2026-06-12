@@ -1,9 +1,13 @@
 'use client';
 
 import { FileBadge, Link2, Search } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { toast } from 'sonner';
+
+import type { Locale } from '@bimstitch/i18n';
+
+import { formatDate } from '@/lib/formatting/dates';
 
 import {
   Badge,
@@ -40,13 +44,9 @@ const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
   expired: 'error',
 };
 
-function formatDate(value: string | null): string {
-  if (value === null || value === '') return '—';
-  return value.slice(0, 10);
-}
-
 export function LinkFromLibraryDialog({ projectId, open, onOpenChange }: Props): JSX.Element {
   const t = useTranslations('orgCertificates.linkDialog');
+  const locale = useLocale() as Locale;
   const tType = useTranslations('orgCertificates.type');
   const tExpiry = useTranslations('orgCertificates.expiry');
   const [search, setSearch] = useState('');
@@ -129,7 +129,7 @@ export function LinkFromLibraryDialog({ projectId, open, onOpenChange }: Props):
                             <span>·</span>
                           </>
                         )}
-                        <span>{formatDate(cert.valid_until)}</span>
+                        <span>{formatDate(cert.valid_until, locale)}</span>
                         <span>·</span>
                         <Badge variant={EXPIRY_BADGE[expiryState]} size="md" bordered>
                           {tExpiry(expiryState)}

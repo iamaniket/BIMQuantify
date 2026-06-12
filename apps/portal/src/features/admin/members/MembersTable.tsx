@@ -1,8 +1,10 @@
 'use client';
 
 import { MoreHorizontal } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
+
+import type { Locale } from '@bimstitch/i18n';
 
 import {
   Badge,
@@ -15,6 +17,7 @@ import {
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { PageTable, type Column } from '@/components/shared/PageTable';
+import { formatDate } from '@/lib/formatting/dates';
 import { ApiError } from '@/lib/api/client';
 import type { MemberRead } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -42,6 +45,7 @@ const ERROR_CODE_TO_KEY: Record<string, string> = {
 
 export function MembersTable({ organizationId, members }: Props): JSX.Element {
   const t = useTranslations('admin.members.table');
+  const locale = useLocale() as Locale;
   const { me } = useAuth();
   const currentUserId = me?.user.id ?? null;
 
@@ -201,7 +205,7 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
     {
       header: t('invited'),
       className: 'text-foreground-tertiary',
-      cell: (m) => new Date(m.invited_at).toLocaleDateString(),
+      cell: (m) => formatDate(m.invited_at, locale),
     },
     {
       header: '',

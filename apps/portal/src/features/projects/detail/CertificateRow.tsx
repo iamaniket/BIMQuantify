@@ -1,9 +1,11 @@
 'use client';
 
 import { Box, CalendarDays, ClipboardCheck, Download, Eye, FileBadge, Glasses, Hash, ShieldCheck, Trash2, Upload } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, type ComponentType, type JSX } from 'react';
 import { toast } from 'sonner';
+
+import type { Locale } from '@bimstitch/i18n';
 
 import {
   Badge,
@@ -18,6 +20,7 @@ import {
 
 import { ResourceMediaTile, RowAsideStat, VersionBadge, VersionHistoryList, type MediaTileTone } from '@/components/shared/resource';
 import { getCertificateDownloadUrl } from '@/lib/api/certificates';
+import { formatDate } from '@/lib/formatting/dates';
 import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
 import {
   getCertificateExpiryState,
@@ -40,11 +43,6 @@ const TYPE_ICON: Record<CertificateTypeValue, { icon: ComponentType<{ className?
   warranty: { icon: ShieldCheck, tone: 'success' },
   other: { icon: FileBadge, tone: 'neutral' },
 };
-
-function formatDate(value: string | null): string {
-  if (value === null || value === '') return '—';
-  return value.slice(0, 10);
-}
 
 type Props = {
   projectId: string;
@@ -70,6 +68,7 @@ export function CertificateRow({
   deleteDisabled,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.certificates');
+  const locale = useLocale() as Locale;
   const { tokens } = useAuth();
 
   const hasVersions = certificate.version_number > 1;
@@ -103,10 +102,10 @@ export function CertificateRow({
     entries.push({ label: t('expandedNumber'), value: certificate.certificate_number });
   }
   if (certificate.valid_from !== null) {
-    entries.push({ label: t('expandedValidFrom'), value: formatDate(certificate.valid_from) });
+    entries.push({ label: t('expandedValidFrom'), value: formatDate(certificate.valid_from, locale) });
   }
-  entries.push({ label: t('expandedValidUntil'), value: formatDate(certificate.valid_until) });
-  entries.push({ label: t('expandedAdded'), value: formatDate(certificate.created_at) });
+  entries.push({ label: t('expandedValidUntil'), value: formatDate(certificate.valid_until, locale) });
+  entries.push({ label: t('expandedAdded'), value: formatDate(certificate.created_at, locale) });
 
   const versionEntries = (versionsQuery.data ?? []).map((v) => ({
     id: v.id,
@@ -126,7 +125,7 @@ export function CertificateRow({
             {certificate.certificate_number !== null && certificate.certificate_number !== '' && (
               <RowAsideStat icon={Hash} value={certificate.certificate_number} title={t('expandedNumber')} />
             )}
-            <RowAsideStat icon={CalendarDays} value={formatDate(certificate.created_at)} title={t('expandedAdded')} />
+            <RowAsideStat icon={CalendarDays} value={formatDate(certificate.created_at, locale)} title={t('expandedAdded')} />
           </>
         }
         actions={
@@ -166,7 +165,7 @@ export function CertificateRow({
               <span className="shrink-0">·</span>
             </>
           )}
-          <span className="shrink-0">{t('validUntilShort', { date: formatDate(certificate.valid_until) })}</span>
+          <span className="shrink-0">{t('validUntilShort', { date: formatDate(certificate.valid_until, locale) })}</span>
           <span className="shrink-0">·</span>
           <Badge variant={EXPIRY_BADGE[expiryState]} size="md" bordered>
             {t(`expiry.${expiryState}`)}

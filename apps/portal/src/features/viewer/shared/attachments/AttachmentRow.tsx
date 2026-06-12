@@ -1,14 +1,16 @@
 'use client';
 
 import { CalendarDays, Download, Eye, FileAudio, FileText, FileVideo, Image, Layers } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, type JSX } from 'react';
 import { toast } from 'sonner';
 
 import { DetailCard, DetailCardRow } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
 import { RowAsideStat } from '@/components/shared/resource';
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
+import { formatDateTime } from '@/lib/formatting/dates';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 import { ExpandedBody } from './ExpandedBody';
@@ -25,15 +27,6 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${String(bytes)} B`;
   if (bytes < 1024 * 1024) return `${String(Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 type Props = {
@@ -54,6 +47,7 @@ export function AttachmentRow({
   onDelete,
 }: Props): JSX.Element {
   const t = useTranslations('viewerAttachments');
+  const locale = useLocale() as Locale;
   const { tokens } = useAuth();
 
   const handleDownload = useCallback(async () => {
@@ -83,7 +77,7 @@ export function AttachmentRow({
             {attachment.version_number > 1 && (
               <RowAsideStat icon={Layers} value={`v${String(attachment.version_number)}`} title={t('expandedVersion')} />
             )}
-            <RowAsideStat icon={CalendarDays} value={formatDate(attachment.created_at)} title={t('expandedAdded')} />
+            <RowAsideStat icon={CalendarDays} value={formatDateTime(attachment.created_at, locale)} title={t('expandedAdded')} />
           </>
         }
         actions={

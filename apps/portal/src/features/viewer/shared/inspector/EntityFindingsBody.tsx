@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, Eye, Loader2, Plus, Search, Trash2 } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 
 import { Badge, Button, Input, MetaGrid, SplitButton, type SplitButtonItem } from '@bimstitch/ui';
@@ -26,17 +26,11 @@ import {
   statusBadgeVariant,
 } from '@/features/projects/detail/findingBadges';
 import type { Finding, FindingTemplate } from '@/lib/api/schemas';
+import { formatDate } from '@/lib/formatting/dates';
+import type { Locale } from '@bimstitch/i18n';
 
 import { consumePendingElementPoint } from './pendingElementPoint';
 import { consumePendingPdfContextPoint } from './pendingPdfContextPoint';
-
-function formatDate(value: string | null | undefined): string {
-  if (value === null || value === undefined || value === '') return '—';
-  return new Date(value).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 /**
  * How the findings shown here are scoped. The 3D viewer scopes by IFC element
@@ -81,6 +75,7 @@ export function EntityFindingsBody({
   const tStatus = useTranslations('findings.status');
   const tExpanded = useTranslations('findings.expanded');
   const tPicker = useTranslations('findingTemplates.picker');
+  const locale = useLocale() as Locale;
 
   // Resolve the active query unconditionally (Hooks rules) — inapplicable
   // queries are disabled via their `enabled`/null args.
@@ -231,7 +226,7 @@ export function EntityFindingsBody({
                 { label: tExpanded('severity'), value: tSeverity(finding.severity) },
               ];
               if (finding.deadline_date !== null) {
-                entries.push({ label: tExpanded('deadline'), value: formatDate(finding.deadline_date) });
+                entries.push({ label: tExpanded('deadline'), value: formatDate(finding.deadline_date, locale) });
               }
               if (finding.bbl_article_ref !== null && finding.bbl_article_ref !== '') {
                 entries.push({ label: tExpanded('bblRef'), value: finding.bbl_article_ref });
@@ -272,7 +267,7 @@ export function EntityFindingsBody({
                     <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
                       {finding.deadline_date !== null && (
                         <>
-                          <span className="shrink-0">{formatDate(finding.deadline_date)}</span>
+                          <span className="shrink-0">{formatDate(finding.deadline_date, locale)}</span>
                           <span className="shrink-0">·</span>
                         </>
                       )}

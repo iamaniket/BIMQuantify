@@ -1,11 +1,13 @@
 'use client';
 
 import { AlertTriangle, Check, Clock, FileText, Minus } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Badge, Button } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
+import { formatDate } from '@/lib/formatting/dates';
 import type { Deadline } from '@/lib/api/schemas/deadlines';
 
 type Props = {
@@ -91,6 +93,7 @@ export function DeadlineCard({
   onFile,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.deadlines');
+  const locale = useLocale() as Locale;
 
   const daysRemaining = deadline.due_date !== null
     ? daysUntil(deadline.due_date)
@@ -152,7 +155,7 @@ export function DeadlineCard({
             <>
               <span>·</span>
               <span>
-                {t('filing.filedOn', { date: deadline.filed_at.slice(0, 10) })}
+                {t('filing.filedOn', { date: formatDate(deadline.filed_at, locale) })}
               </span>
             </>
           )}

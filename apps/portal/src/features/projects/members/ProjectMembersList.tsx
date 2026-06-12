@@ -1,8 +1,10 @@
 'use client';
 
 import { MoreHorizontal } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
+
+import type { Locale } from '@bimstitch/i18n';
 
 import {
   Badge,
@@ -21,6 +23,7 @@ import {
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
+import { formatDate } from '@/lib/formatting/dates';
 import type { ProjectMember, ProjectRole } from '@/lib/api/schemas';
 
 import { useRemoveProjectMember } from './useRemoveProjectMember';
@@ -44,6 +47,7 @@ const ASSIGNABLE_ROLES: ProjectRole[] = [
 
 export function ProjectMembersList({ projectId, members, canManage }: Props): JSX.Element {
   const t = useTranslations('projectAccess.table');
+  const locale = useLocale() as Locale;
   const updateMutation = useUpdateProjectMemberRole();
   const removeMutation = useRemoveProjectMember();
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
@@ -88,7 +92,7 @@ export function ProjectMembersList({ projectId, members, canManage }: Props): JS
                   </Badge>
                 </TableCell>
                 <TableCell className="text-foreground-tertiary">
-                  {new Date(m.created_at).toLocaleDateString()}
+                  {formatDate(m.created_at, locale)}
                 </TableCell>
                 {canManage && (
                   <TableCell className="text-right">

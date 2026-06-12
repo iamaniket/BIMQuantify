@@ -1,7 +1,9 @@
 'use client';
 
 import { Download, FileBadge, Info, LinkIcon } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+
+import type { Locale } from '@bimstitch/i18n';
 import { useCallback, type JSX, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -21,6 +23,7 @@ import {
 
 import { Eyebrow } from '@/components/shared/Eyebrow';
 import { formatDateFull, formatSize } from '@/features/attachments/attachmentMeta';
+import { formatDate } from '@/lib/formatting/dates';
 import {
   getCertificateExpiryState,
   type CertificateExpiryState,
@@ -61,12 +64,6 @@ function isImage(c: FileLike): boolean {
 
 function isPdf(c: FileLike): boolean {
   return c.content_type === 'application/pdf' || /\.pdf$/i.test(c.original_filename);
-}
-
-/** Date-only display (the value is an ISO date string like `2026-05-30`). */
-function formatDate(value: string | null): string {
-  if (value === null || value === '') return '—';
-  return value.slice(0, 10);
 }
 
 // ─── Media stage — mirrors the attachment viewer's preview chrome ─────
@@ -186,6 +183,7 @@ export function CertificateViewerDialog({
   const t = useTranslations('viewerCertificates');
   const tType = useTranslations('projectDetail.tabs.certificates.type');
   const tExpiry = useTranslations('projectDetail.tabs.certificates.expiry');
+  const locale = useLocale() as Locale;
   const { tokens } = useAuth();
 
   const viewUrlQuery = useCertificateViewUrl(
@@ -240,9 +238,9 @@ export function CertificateViewerDialog({
     certRows.push({ label: t('fieldSubject'), value: certificate.subject, mono: false });
   }
   if (certificate.valid_from !== null) {
-    certRows.push({ label: t('fieldValidFrom'), value: formatDate(certificate.valid_from), mono: true });
+    certRows.push({ label: t('fieldValidFrom'), value: formatDate(certificate.valid_from, locale), mono: true });
   }
-  certRows.push({ label: t('fieldValidUntil'), value: formatDate(certificate.valid_until), mono: true });
+  certRows.push({ label: t('fieldValidUntil'), value: formatDate(certificate.valid_until, locale), mono: true });
   certRows.push({
     label: t('fieldStatus'),
     value: (
@@ -255,7 +253,7 @@ export function CertificateViewerDialog({
 
   // ── Origin ──
   const originRows: MetaValue[] = [
-    { label: t('fieldUploadedAt'), value: formatDateFull(certificate.created_at), mono: true },
+    { label: t('fieldUploadedAt'), value: formatDateFull(certificate.created_at, locale), mono: true },
   ];
   if (certificate.uploaded_by_name !== null) {
     originRows.push({ label: t('fieldUploadedBy'), value: certificate.uploaded_by_name, mono: false });
@@ -309,7 +307,7 @@ export function CertificateViewerDialog({
           <div className="flex min-w-0 items-center gap-2 text-foreground-tertiary">
             <Info className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate font-sans text-[11.5px]">
-              {`${formatDateFull(certificate.created_at)} · ${uploadedByText}`}
+              {`${formatDateFull(certificate.created_at, locale)} · ${uploadedByText}`}
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -359,6 +357,7 @@ export function OrgCertificateViewerDialog({
   const t = useTranslations('viewerCertificates');
   const tType = useTranslations('orgCertificates.type');
   const tExpiry = useTranslations('orgCertificates.expiry');
+  const locale = useLocale() as Locale;
   const { tokens } = useAuth();
 
   const viewUrlQuery = useOrgCertificateViewUrl(
@@ -415,9 +414,9 @@ export function OrgCertificateViewerDialog({
     certRows.push({ label: t('fieldSupplier'), value: certificate.supplier_name, mono: false });
   }
   if (certificate.valid_from !== null) {
-    certRows.push({ label: t('fieldValidFrom'), value: formatDate(certificate.valid_from), mono: true });
+    certRows.push({ label: t('fieldValidFrom'), value: formatDate(certificate.valid_from, locale), mono: true });
   }
-  certRows.push({ label: t('fieldValidUntil'), value: formatDate(certificate.valid_until), mono: true });
+  certRows.push({ label: t('fieldValidUntil'), value: formatDate(certificate.valid_until, locale), mono: true });
   certRows.push({
     label: t('fieldStatus'),
     value: (
@@ -429,7 +428,7 @@ export function OrgCertificateViewerDialog({
   });
 
   const originRows: MetaValue[] = [
-    { label: t('fieldUploadedAt'), value: formatDateFull(certificate.created_at), mono: true },
+    { label: t('fieldUploadedAt'), value: formatDateFull(certificate.created_at, locale), mono: true },
   ];
   if (certificate.uploaded_by_name !== null) {
     originRows.push({ label: t('fieldUploadedBy'), value: certificate.uploaded_by_name, mono: false });
@@ -494,7 +493,7 @@ export function OrgCertificateViewerDialog({
           <div className="flex min-w-0 items-center gap-2 text-foreground-tertiary">
             <Info className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate font-sans text-[11.5px]">
-              {`${formatDateFull(certificate.created_at)} · ${uploadedByText}`}
+              {`${formatDateFull(certificate.created_at, locale)} · ${uploadedByText}`}
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2">

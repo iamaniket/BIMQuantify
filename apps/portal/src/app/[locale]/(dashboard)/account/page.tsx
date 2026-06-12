@@ -1,7 +1,9 @@
 'use client';
 
 import { Camera, Check, ChevronRight, Mail, Pencil, Shield, Trash2, UserRound, Users, X } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+
+import type { Locale } from '@bimstitch/i18n';
 import {
   useCallback,
   useEffect,
@@ -39,6 +41,7 @@ import {
   uploadAvatar,
 } from '@/lib/api/profile';
 import type { InvitationRead } from '@/lib/api/schemas';
+import { formatDate } from '@/lib/formatting/dates';
 import { useAuth } from '@/providers/AuthProvider';
 
 function toInitials(nameOrEmail: string): string {
@@ -413,6 +416,7 @@ function InvitationsPane({
   onDecline: (orgId: string) => void;
 }): JSX.Element {
   const t = useTranslations('account');
+  const locale = useLocale() as Locale;
 
   if (invitationsLoading) {
     return (
@@ -430,10 +434,7 @@ function InvitationsPane({
         <ul className="flex flex-col gap-3">
           {invitations.map((inv) => {
             const isPending = pendingOrgId === inv.organization_id;
-            const expiresAt = new Date(inv.expires_at);
-            const formattedExpiry = Number.isNaN(expiresAt.getTime())
-              ? inv.expires_at
-              : expiresAt.toLocaleDateString();
+            const formattedExpiry = formatDate(inv.expires_at, locale, inv.expires_at);
 
             return (
               <li

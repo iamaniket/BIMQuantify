@@ -1,12 +1,14 @@
 'use client';
 
 import { CheckCircle, Pencil, Trash2 } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Badge } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
 import { PageTable, type Column } from '@/components/shared/PageTable';
+import { formatDate } from '@/lib/formatting/dates';
 import type { FindingTemplate } from '@/lib/api/schemas';
 
 type Props = {
@@ -20,10 +22,6 @@ type Props = {
 const ACTION_BTN =
   'inline-grid h-7 w-7 place-items-center rounded text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground';
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString();
-}
-
 export function FindingTemplatesTable({
   templates,
   canManage,
@@ -32,6 +30,7 @@ export function FindingTemplatesTable({
   onDelete,
 }: Props): JSX.Element {
   const t = useTranslations('findingTemplates');
+  const locale = useLocale() as Locale;
 
   const columns: Column<FindingTemplate>[] = [
     {
@@ -65,7 +64,7 @@ export function FindingTemplatesTable({
     {
       header: t('table.updated'),
       className: 'text-foreground-secondary tabular-nums',
-      cell: (tpl) => formatDate(tpl.updated_at),
+      cell: (tpl) => formatDate(tpl.updated_at, locale),
     },
     {
       header: '',

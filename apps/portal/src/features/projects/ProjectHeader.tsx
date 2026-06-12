@@ -1,28 +1,24 @@
 'use client';
 
 import { Building2, Pencil } from '@bimstitch/ui/icons';
+import { useLocale } from 'next-intl';
 import { useState, type JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
 import type { Project } from '@/lib/api/schemas';
 
 import { ProjectFormDialog } from './ProjectFormDialog';
 import { isProjectArchived } from '@/lib/formatting/projects';
+import { formatDate } from '@/lib/formatting/dates';
 
 type Props = {
   project: Project;
 };
 
-function formatDate(iso: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  }).format(parsed);
-}
-
 export function ProjectHeader({ project }: Props): JSX.Element {
+  const locale = useLocale() as Locale;
   const [editOpen, setEditOpen] = useState(false);
   const archived = isProjectArchived(project);
 
@@ -48,11 +44,11 @@ export function ProjectHeader({ project }: Props): JSX.Element {
         <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-body3 text-foreground-secondary sm:grid-cols-2">
           <div className="flex gap-2">
             <dt className="text-foreground-tertiary">Created</dt>
-            <dd>{formatDate(project.created_at)}</dd>
+            <dd>{formatDate(project.created_at, locale)}</dd>
           </div>
           <div className="flex gap-2">
             <dt className="text-foreground-tertiary">Updated</dt>
-            <dd>{formatDate(project.updated_at)}</dd>
+            <dd>{formatDate(project.updated_at, locale)}</dd>
           </div>
         </dl>
       </div>

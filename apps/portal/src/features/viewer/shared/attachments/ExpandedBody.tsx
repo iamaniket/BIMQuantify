@@ -1,10 +1,11 @@
 'use client';
 
 import { Download, Eye, MapPin, Trash2 } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Button, MetaGrid } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 import { DetailCardBody, DetailCardFooter } from '@bimstitch/ui';
 
 import {
@@ -33,6 +34,7 @@ export function ExpandedBody({
   onDelete,
 }: Props): JSX.Element {
   const t = useTranslations('viewerAttachments');
+  const locale = useLocale() as Locale;
 
   const entries: Array<{ label: string; value: string }> = [
     { label: t('expandedType'), value: attachment.content_type },
@@ -61,13 +63,13 @@ export function ExpandedBody({
     }
   }
   if (exif.capturedAt !== null) {
-    entries.push({ label: t('expandedCapturedAt'), value: formatDateFull(exif.capturedAt) });
+    entries.push({ label: t('expandedCapturedAt'), value: formatDateFull(exif.capturedAt, locale) });
   }
 
   // Record metadata anchored last — consistent with Findings/Certificates.
-  entries.push({ label: t('expandedAdded'), value: `${formatDateFull(attachment.created_at)}${attachment.uploaded_by_name !== null ? `  ·  ${attachment.uploaded_by_name}` : ''}` });
+  entries.push({ label: t('expandedAdded'), value: `${formatDateFull(attachment.created_at, locale)}${attachment.uploaded_by_name !== null ? `  ·  ${attachment.uploaded_by_name}` : ''}` });
   if (attachment.updated_at !== attachment.created_at) {
-    entries.push({ label: t('expandedUpdated'), value: formatDateFull(attachment.updated_at) });
+    entries.push({ label: t('expandedUpdated'), value: formatDateFull(attachment.updated_at, locale) });
   }
 
   const showMap = exif.gps !== null && isWithinNetherlands(exif.gps.latitude, exif.gps.longitude);

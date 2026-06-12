@@ -19,6 +19,8 @@ import { useAuth } from '@/providers/AuthProvider';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { useLocale, useTranslations } from 'next-intl';
 
+import type { Locale } from '@bimstitch/i18n';
+
 import { projectKey } from './queryKeys';
 
 import { ProjectCardMenu } from './ProjectCardMenu';
@@ -28,18 +30,7 @@ import {
   projectBadgeClasses,
   projectDotClasses,
 } from '@/lib/formatting/projects';
-
-function formatDateLabel(iso: string, locale: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return '';
-  }
-  return new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(parsed);
-}
+import { formatDate } from '@/lib/formatting/dates';
 
 function displayMemberName(member: ProjectMember): string {
   const fullName = member.full_name === null ? '' : member.full_name.trim();
@@ -68,15 +59,15 @@ type Props = {
 };
 
 export function ProjectCard({ project, members = [] }: Props): JSX.Element {
-  const locale = useLocale();
+  const locale = useLocale() as Locale;
   const queryClient = useQueryClient();
   const { tokens } = useAuth();
   const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
   const archived = isProjectArchived(project);
-  const createdLabel = formatDateLabel(project.created_at, locale);
-  const updatedLabel = formatDateLabel(project.updated_at, locale);
-  const deliveryLabel = project.delivery_date === null ? '' : formatDateLabel(project.delivery_date, locale);
+  const createdLabel = formatDate(project.created_at, locale, '');
+  const updatedLabel = formatDate(project.updated_at, locale, '');
+  const deliveryLabel = project.delivery_date === null ? '' : formatDate(project.delivery_date, locale, '');
   const cityLine = project.city ?? null;
   const contractorName = project.contractor_name ?? null;
   const sortedMembers = sortMembersForCard(members, project.owner_id);

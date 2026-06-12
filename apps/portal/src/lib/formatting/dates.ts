@@ -24,7 +24,10 @@ export function formatDateTime(
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return placeholder;
   return new Intl.DateTimeFormat(locale, {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(parsed);
 }

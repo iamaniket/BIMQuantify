@@ -1,10 +1,12 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
+import { formatDate } from '@/lib/formatting/dates';
 import type { BcfTopicSummary } from '@/lib/api/schemas/bcf';
 
 type Props = {
@@ -26,9 +28,10 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 export function BcfTopicCard({ topic }: Props): JSX.Element {
   const t = useTranslations('viewer.bcf');
+  const locale = useLocale() as Locale;
   const statusClass = STATUS_COLORS[topic.topic_status] ?? 'bg-surface-low text-foreground-secondary';
   const priorityClass = PRIORITY_COLORS[topic.priority ?? ''] ?? '';
-  const date = new Date(topic.creation_date).toLocaleDateString();
+  const date = formatDate(topic.creation_date, locale);
 
   return (
     <div className="flex items-center gap-2.5">

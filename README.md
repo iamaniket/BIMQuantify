@@ -176,3 +176,6 @@ docker compose up -d --build
  cd apps/api
 uv run alembic -c alembic.master.ini upgrade head
 uv run python -m bimstitch_api.seed
+
+viewer build
+pnpm --filter=@bimstitch/viewer build

@@ -1,10 +1,13 @@
 'use client';
 
 import { Link } from '@/i18n/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
+import type { Locale } from '@bimstitch/i18n';
+
 import { PageTable, type Column } from '@/components/shared/PageTable';
+import { formatDate } from '@/lib/formatting/dates';
 import type { OrganizationRead } from '@/lib/api/schemas';
 
 import { OrgStatusBadge } from './OrgStatusBadge';
@@ -13,6 +16,7 @@ import { StorageUsage } from './StorageUsage';
 
 export function OrgTable({ organizations }: { organizations: OrganizationRead[] }): JSX.Element {
   const t = useTranslations('admin.organizations.table');
+  const locale = useLocale() as Locale;
 
   const columns: Column<OrganizationRead>[] = [
     {
@@ -50,7 +54,7 @@ export function OrgTable({ organizations }: { organizations: OrganizationRead[] 
     {
       header: t('created'),
       className: 'text-foreground-tertiary',
-      cell: (org) => new Date(org.created_at).toLocaleDateString(),
+      cell: (org) => formatDate(org.created_at, locale),
     },
   ];
 

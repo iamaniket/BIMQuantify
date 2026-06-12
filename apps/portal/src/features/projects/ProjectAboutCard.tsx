@@ -12,18 +12,11 @@ import {
   formatAddress,
   formatDeliveryDate,
 } from '@/lib/formatting/projects';
+import { formatDate } from '@/lib/formatting/dates';
 
 type Props = {
   project: Project;
 };
-
-function formatDate(iso: string, locale: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return '—';
-  return new Intl.DateTimeFormat(locale, {
-    year: 'numeric', month: 'short', day: 'numeric',
-  }).format(parsed);
-}
 
 function Row({ label, value }: { label: string; value: string | null }): JSX.Element | null {
   if (value === null || value.length === 0) return null;

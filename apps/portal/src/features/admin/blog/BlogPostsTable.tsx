@@ -1,12 +1,14 @@
 'use client';
 
 import { Eye, EyeOff, Trash2 } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Badge, Button } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
 import { PageTable, type Column } from '@/components/shared/PageTable';
+import { formatDate } from '@/lib/formatting/dates';
 import type { BlogPostRead } from '@/lib/api/schemas';
 
 type Props = {
@@ -25,6 +27,7 @@ export function BlogPostsTable({
   togglingId,
 }: Props): JSX.Element {
   const t = useTranslations('admin.blog.table');
+  const locale = useLocale() as Locale;
 
   const columns: Column<BlogPostRead>[] = [
     {
@@ -55,7 +58,7 @@ export function BlogPostsTable({
     {
       header: t('published'),
       className: 'text-foreground-tertiary',
-      cell: (post) => new Date(post.published_at).toLocaleDateString(),
+      cell: (post) => formatDate(post.published_at, locale),
     },
     {
       header: '',

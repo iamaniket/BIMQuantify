@@ -106,6 +106,32 @@ const IDLE_MS = 150;
  */
 const XRAY_DITHER_MAX_OPACITY = 0.12;
 
+/**
+ * Coplanar separation under the logarithmic depth buffer. Log depth writes
+ * `gl_FragDepth` in the fragment shader, which bypasses the rasterizer's
+ * `polygonOffset` — so the per-material polygon offset set up in the material
+ * hook is silently ignored and coplanar opaque faces (floor finish on slab,
+ * ceiling under the slab above) z-fight. We re-create polygon offset *in log
+ * space* by nudging each material's `gl_FragDepth` toward the camera by a tiny,
+ * deterministic amount. Window-space depth is quantised uniformly (24-bit), so a
+ * constant bias separates coplanar faces equally at any distance.
+ *
+ * Coincident faces are separated by giving adjacent materials *different* bias
+ * levels: we cycle through `COPLANAR_BIAS_LEVELS` distinct steps so two
+ * overlapping surfaces almost always land on different levels and get a stable
+ * depth winner. The bias is baked into the shader as a literal (not a uniform)
+ * because custom `onBeforeCompile` uniforms are shared across materials that
+ * share a compiled program — a per-material uniform value would silently leak.
+ *
+ * `COPLANAR_BIAS_EPS` is the per-level step in window-depth units. It must clear
+ * 24-bit quantisation noise (~6e-8) yet stay far below anything visible. Tune
+ * here if separation is incomplete (raise) or surfaces visibly "peter-pan" /
+ * poke through neighbours (lower). Verify in the real viewer on :3001 — the
+ * preview origin can't load model geometry.
+ */
+const COPLANAR_BIAS_EPS = 2e-5;
+const COPLANAR_BIAS_LEVELS = 8;
+
 export class Viewer {
   readonly events = new EventBus<ViewerEvents>();
   readonly commands = new CommandRegistry();
@@ -323,7 +349,10 @@ export class Viewer {
 
     // Give every non-LOD material a unique polygon offset so coplanar BIM
     // surfaces (slab-on-wall, glazing/frame) resolve deterministically
-    // instead of z-fighting.
+    // instead of z-fighting. Because the logarithmic depth buffer makes that
+    // polygonOffset a no-op, the same offset is also applied in log space via a
+    // baked shader bias (see COPLANAR_BIAS_EPS and applyCoplanarBias below).
+    let coplanarBiasSeq = 0;
     fragmentsModels.models.materials.list.onItemSet.add(({ value: material }) => {
       if ('isLodMaterial' in material && material.isLodMaterial) return;
       material.polygonOffset = true;
@@ -364,6 +393,31 @@ export class Viewer {
         // (slab-on-wall, glazing-on-frame) resolve deterministically.
         material.polygonOffsetFactor = 1 + Math.random();
         material.polygonOffsetUnits = 4;
+      }
+
+      // Re-create the polygon offset above in logarithmic-depth space. Materials
+      // with depth writing + polygonOffset (every branch except the IfcSpace
+      // overlay, which disables both) get a baked per-material depth bias so
+      // coplanar faces separate even though the rasterizer's polygonOffset is
+      // bypassed under logarithmicDepthBuffer. The IfcSpace branch leaves
+      // polygonOffset=false, so it is skipped — it relies on depthWrite=false.
+      if (material.polygonOffset) {
+        const level = coplanarBiasSeq++ % COPLANAR_BIAS_LEVELS;
+        const bias = (level + 1) * COPLANAR_BIAS_EPS;
+        // Bake the bias as a GLSL literal so distinct values produce distinct
+        // programs automatically — a custom uniform would be shared across
+        // materials that share a program and leak the wrong value.
+        const biasLiteral = bias.toFixed(8);
+        material.onBeforeCompile = (shader): void => {
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <logdepthbuf_fragment>',
+            `#include <logdepthbuf_fragment>
+#if defined( USE_LOGARITHMIC_DEPTH_BUFFER )
+\tgl_FragDepth -= ${biasLiteral};
+#endif`,
+          );
+        };
+        material.needsUpdate = true;
       }
     });
 

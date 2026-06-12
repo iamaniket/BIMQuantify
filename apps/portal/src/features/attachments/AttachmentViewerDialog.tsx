@@ -1,7 +1,9 @@
 'use client';
 
 import { Camera, Download, FileAudio, FileText, FileVideo, Image, Info, LinkIcon } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+
+import type { Locale } from '@bimstitch/i18n';
 import {
   useCallback,
   useEffect,
@@ -262,6 +264,7 @@ export function AttachmentViewerDialog({
   onOpenChange,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.attachments');
+  const locale = useLocale() as Locale;
   const { tokens } = useAuth();
 
   const viewUrlQuery = useAttachmentViewUrl(
@@ -321,7 +324,7 @@ export function AttachmentViewerDialog({
   if (exif.capturedAt !== null) {
     mediaRows.push({
       label: t('viewerCapturedAt'),
-      value: formatDateFull(exif.capturedAt),
+      value: formatDateFull(exif.capturedAt, locale),
       mono: true,
     });
   }
@@ -349,7 +352,7 @@ export function AttachmentViewerDialog({
   const originRows: MetaValue[] = [
     {
       label: t('viewerUploadedAt'),
-      value: formatDateFull(attachment.created_at),
+      value: formatDateFull(attachment.created_at, locale),
       mono: true,
     },
     { label: t('viewerUploadedBy'), value: uploadedByNode, mono: false },
@@ -419,7 +422,7 @@ export function AttachmentViewerDialog({
           <div className="flex min-w-0 items-center gap-2 text-foreground-tertiary">
             <Info className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate font-sans text-[11.5px]">
-              {`${formatDateFull(attachment.created_at)} · ${uploadedByText}`}
+              {`${formatDateFull(attachment.created_at, locale)} · ${uploadedByText}`}
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2">

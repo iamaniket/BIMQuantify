@@ -1,10 +1,12 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
+import { formatDate } from '@/lib/formatting/dates';
 import type { BcfCommentRead } from '@/lib/api/schemas/bcf';
 
 import { useAddBcfComment } from './useAddBcfComment';
@@ -21,6 +23,7 @@ export function BcfCommentThread({
   comments,
 }: Props): JSX.Element {
   const t = useTranslations('viewer.bcf');
+  const locale = useLocale() as Locale;
   const [text, setText] = useState('');
   const addComment = useAddBcfComment(projectId);
 
@@ -63,7 +66,7 @@ export function BcfCommentThread({
               {c.author}
             </span>
             <span className="text-[10px] text-foreground-tertiary">
-              {new Date(c.date).toLocaleDateString()}
+              {formatDate(c.date, locale)}
             </span>
           </div>
           <p className="mt-0.5 font-sans text-body3 text-foreground-secondary">
