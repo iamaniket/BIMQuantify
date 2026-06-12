@@ -35,7 +35,7 @@ type Props<T> = {
 // Heuristic cell geometry (px) for fitting chips to the measured row height.
 const DAY_NUMBER_BAND = 20;
 const CHIP_HEIGHT = 18;
-const CELL_VPAD = 8;
+const CELL_VPAD = 6;
 const MAX_CHIPS = 10;
 
 /**
@@ -110,7 +110,7 @@ export function MonthCalendar<T>({
         {headers.map((label, i) => (
           <div
             key={i}
-            className="px-2 py-1.5 text-center text-caption font-semibold uppercase tracking-wide text-foreground-tertiary"
+            className="px-1.5 py-1 text-center text-caption font-semibold uppercase tracking-wide text-foreground-tertiary"
           >
             {label}
           </div>

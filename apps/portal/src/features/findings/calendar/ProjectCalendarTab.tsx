@@ -335,17 +335,17 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar: month/year navigation + kind filters + status legend */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
         <div className="flex items-center gap-1">
-          <IconButton size="sm" icon={ChevronsLeft} aria-label={t('prevYear')} onClick={() => { setViewDate((d) => addYears(d, -1)); }} />
-          <IconButton size="sm" icon={ChevronLeft} aria-label={t('prevMonth')} onClick={() => { setViewDate((d) => addMonths(d, -1)); }} />
+          <IconButton size="md" icon={ChevronsLeft} aria-label={t('prevYear')} onClick={() => { setViewDate((d) => addYears(d, -1)); }} />
+          <IconButton size="md" icon={ChevronLeft} aria-label={t('prevMonth')} onClick={() => { setViewDate((d) => addMonths(d, -1)); }} />
           <span className="min-w-[140px] text-center text-body3 font-semibold capitalize text-foreground">
             {monthLabel(viewDate, locale)}
           </span>
-          <IconButton size="sm" icon={ChevronRight} aria-label={t('nextMonth')} onClick={() => { setViewDate((d) => addMonths(d, 1)); }} />
-          <IconButton size="sm" icon={ChevronsRight} aria-label={t('nextYear')} onClick={() => { setViewDate((d) => addYears(d, 1)); }} />
+          <IconButton size="md" icon={ChevronRight} aria-label={t('nextMonth')} onClick={() => { setViewDate((d) => addMonths(d, 1)); }} />
+          <IconButton size="md" icon={ChevronsRight} aria-label={t('nextYear')} onClick={() => { setViewDate((d) => addYears(d, 1)); }} />
           <Button
-            size="sm"
+            size="md"
             variant="border"
             className="ml-1"
             disabled={isCurrentMonth}
@@ -367,7 +367,7 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
                   type="button"
                   onClick={() => { toggleKind(kind); }}
                   aria-pressed={active}
-                  className={`inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-caption font-medium transition-colors ${
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-body3 font-medium transition-colors ${
                     active
                       ? 'border-border bg-surface-low text-foreground-secondary'
                       : 'border-dashed border-border text-foreground-disabled'
@@ -381,18 +381,18 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
             })}
           </div>
 
-          <div className="hidden items-center gap-2.5 lg:flex">
+          <div className="hidden grid-cols-3 gap-x-3 gap-y-1.5 lg:grid">
             {LEGEND.map((entry) => (
-              <span key={entry.key} className="inline-flex items-center gap-1 text-caption text-foreground-tertiary">
+              <span key={entry.key} className="inline-flex items-center gap-1.5 text-body3 text-foreground-tertiary">
                 <span className={`h-2 w-2 rounded-full ${TONE_STYLES[entry.tone].dot}`} />
                 {t(entry.key)}
               </span>
             ))}
-            <span className="inline-flex items-center gap-1 text-caption text-foreground-tertiary">
+            <span className="inline-flex items-center gap-1.5 text-body3 text-foreground-tertiary">
               <span className="h-2 w-2 rounded-full bg-surface-low ring-1 ring-inset ring-border" />
               {t('legend.weekend')}
             </span>
-            <span className="inline-flex items-center gap-1 text-caption text-foreground-tertiary">
+            <span className="inline-flex items-center gap-1.5 text-body3 text-foreground-tertiary">
               <span className="h-2 w-2 rounded-full bg-info-lighter ring-1 ring-inset ring-info/40" />
               {t('legend.holiday')}
             </span>
@@ -409,7 +409,7 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
       >
         {/* Body: grid + day-agenda side panel */}
         <div className="flex min-h-0 flex-1">
-          <div className="flex min-w-0 flex-1 flex-col overflow-auto p-3.5">
+          <div className="flex min-w-0 flex-1 flex-col overflow-auto p-5">
             {events.length === 0 && !isLoading && (
               <p className="mb-3 rounded-lg border border-dashed border-border bg-background px-4 py-6 text-center text-body3 text-foreground-tertiary">
                 {t('empty')}

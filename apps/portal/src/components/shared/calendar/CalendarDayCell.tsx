@@ -58,7 +58,7 @@ export function CalendarDayCell<T>({
   const extra = items.length - shown.length;
   const isHoliday = holidayName !== null;
 
-  const base = `flex h-full min-h-[92px] flex-col gap-1 overflow-hidden p-1.5 ${cellBackground(
+  const base = `flex h-full min-h-[70px] flex-col gap-0.5 overflow-hidden p-1 ${cellBackground(
     cell,
     isHoliday,
   )} ${selected ? 'ring-2 ring-inset ring-primary' : ''}`;
