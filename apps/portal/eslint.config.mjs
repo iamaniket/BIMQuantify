@@ -116,6 +116,12 @@ export default tseslint.config(
       'import/extensions': 'off',
       'import/no-unresolved': 'off',
       'react/react-in-jsx-scope': 'off',
+      'react/forbid-elements': ['error', {
+        forbid: [{
+          element: 'select',
+          message: 'Raw <select> is banned. Use the shared <Select> from @bimstitch/ui so the dropdown chevron is applied automatically.',
+        }],
+      }],
       'react/jsx-filename-extension': ['error', { extensions: ['.tsx'] }],
       'react/jsx-props-no-spreading': 'off',
       '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
@@ -140,6 +146,21 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-member-access': 'off',
       'no-restricted-syntax': 'off',
       'import/no-extraneous-dependencies': 'off',
+    },
+  },
+  {
+    // The base <Select> (@bimstitch/ui) is the only sanctioned select; it
+    // bakes in the dropdown chevron. Test mocks legitimately render a raw
+    // <select>, so the forbid-elements guard is disabled for test files.
+    // Placed last so it overrides the project-wide 'error' above.
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/*.spec.{ts,tsx}',
+      'tests/**',
+      'src/__tests__/**',
+    ],
+    rules: {
+      'react/forbid-elements': 'off',
     },
   },
 );

@@ -1,4 +1,6 @@
 import type { Attachment } from '@/lib/api/schemas';
+import type { Locale } from '@bimstitch/i18n';
+import { formatDateTime } from '@/lib/formatting/dates';
 
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${String(bytes)} B`;
@@ -6,15 +8,8 @@ export function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function formatDateFull(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+export function formatDateFull(iso: string, locale: Locale): string {
+  return formatDateTime(iso, locale, iso);
 }
 
 export function formatCoord(lat: number, lon: number): string {

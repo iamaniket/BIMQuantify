@@ -25,6 +25,7 @@ type Props = {
   submitDisabled?: boolean;
   children: ReactNode;
   width?: number;
+  height?: number;
 };
 
 export function FormDialog({
@@ -38,14 +39,15 @@ export function FormDialog({
   submitDisabled = false,
   children,
   width = 520,
+  height,
 }: Props): JSX.Element {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="flex max-h-[calc(100vh-48px)] max-w-none flex-col"
-        style={{ width, maxWidth: 'calc(100vw - 48px)' }}
+        style={{ width, height, maxWidth: 'calc(100vw - 48px)' }}
       >
-        <form noValidate onSubmit={onSubmit}>
+        <form noValidate onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>

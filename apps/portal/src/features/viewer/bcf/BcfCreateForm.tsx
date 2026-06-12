@@ -6,7 +6,7 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { cn, type AppIcon } from '@bimstitch/ui';
+import { cn, Select, type AppIcon } from '@bimstitch/ui';
 import { ArrowRight, Check, Pencil, Square, StickyNote, UploadCloud } from '@bimstitch/ui/icons';
 import type { MarkupTool } from '@bimstitch/viewer';
 
@@ -200,10 +200,11 @@ export function BcfCreateForm({
               <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
                 {t('typeLabel')}
               </label>
-              <select
+              <Select
+                selectSize="lg"
+                className="text-body3"
                 value={topicType}
                 onChange={(e) => { setTopicType(e.target.value); }}
-                className="h-8 w-full rounded border border-border bg-background px-2 font-sans text-body3 text-foreground focus:border-primary focus:outline-none"
               >
                 <option value="Issue">{t('type.issue')}</option>
                 <option value="Warning">{t('type.warning')}</option>
@@ -211,21 +212,22 @@ export function BcfCreateForm({
                 <option value="Fault">{t('type.fault')}</option>
                 <option value="Inquiry">{t('type.inquiry')}</option>
                 <option value="Remark">{t('type.remark')}</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
                 {t('statusLabel')}
               </label>
-              <select
+              <Select
+                selectSize="lg"
+                className="text-body3"
                 value={topicStatus}
                 onChange={(e) => { setTopicStatus(e.target.value); }}
-                className="h-8 w-full rounded border border-border bg-background px-2 font-sans text-body3 text-foreground focus:border-primary focus:outline-none"
               >
                 <option value="Open">{t('status.open')}</option>
                 <option value="In Progress">{t('status.in_progress')}</option>
                 <option value="Closed">{t('status.closed')}</option>
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -234,16 +236,17 @@ export function BcfCreateForm({
             <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
               {t('priorityLabel')}
             </label>
-            <select
+            <Select
+              selectSize="lg"
+              className="text-body3"
               value={priority}
               onChange={(e) => { setPriority(e.target.value); }}
-              className="h-8 w-full rounded border border-border bg-background px-2 font-sans text-body3 text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">{t('priority.none')}</option>
               <option value="High">{t('priority.high')}</option>
               <option value="Medium">{t('priority.medium')}</option>
               <option value="Low">{t('priority.low')}</option>
-            </select>
+            </Select>
           </div>
 
           {/* 2D Annotation — form-first flow */}

@@ -1,12 +1,13 @@
 'use client';
 
-import { Download, Eye, FileAudio, FileText, FileVideo, Image } from '@bimstitch/ui/icons';
+import { CalendarDays, Download, Eye, FileAudio, FileText, FileVideo, Image, Layers } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, type JSX } from 'react';
 import { toast } from 'sonner';
 
 import { DetailCard, DetailCardRow } from '@bimstitch/ui';
 
+import { RowAsideStat } from '@/components/shared/resource';
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -77,6 +78,14 @@ export function AttachmentRow({
         media={
           <CategoryIcon className="h-7 w-7 shrink-0 text-foreground-secondary" aria-hidden />
         }
+        aside={
+          <>
+            {attachment.version_number > 1 && (
+              <RowAsideStat icon={Layers} value={`v${String(attachment.version_number)}`} title={t('expandedVersion')} />
+            )}
+            <RowAsideStat icon={CalendarDays} value={formatDate(attachment.created_at)} title={t('expandedAdded')} />
+          </>
+        }
         actions={
           <>
             <button
@@ -104,8 +113,6 @@ export function AttachmentRow({
         </div>
         <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
           <span className="shrink-0">{formatSize(attachment.size_bytes)}</span>
-          <span className="shrink-0">·</span>
-          <span className="shrink-0">{formatDate(attachment.created_at)}</span>
           {attachment.uploaded_by_name !== null && (
             <>
               <span className="shrink-0">·</span>

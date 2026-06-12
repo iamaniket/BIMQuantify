@@ -559,6 +559,20 @@ export function floorPlanPlugin(
         });
       }, { title: 'Pick a plan point + nearest room' });
 
+      // Synchronous screen → plan conversion (no nearest-room, no event). Used by
+      // the right-click "Add finding" flow, which converts the resulting plan
+      // point to a 3D world anchor via the minimap calibration. Same math as
+      // `floorplan.pick` so the two paths stay in lockstep.
+      context.commands.register<{ containerX: number; containerY: number }, { planX: number; planY: number } | null>(
+        'floorplan.planPointAt',
+        (a) => {
+          if (!sceneApi || !ctx) return null;
+          const world = sceneApi.screenToWorld(a.containerX, a.containerY);
+          return { planX: world.x + offset.x, planY: world.y + offset.y };
+        },
+        { title: 'Convert a screen point to a plan point' },
+      );
+
       // The engine emits page:rendered on load; if it already fired before this
       // plugin installed (it won't, install precedes load), rebuild defensively.
       if (ctx.getUnscaledViewport()) rebuild();

@@ -25,6 +25,13 @@ type EntityInspectorPanelProps = {
   requestNonce?: number | undefined;
   isPdf?: boolean;
   pdfCurrentPage?: number;
+  /**
+   * Floor-plan surface (Split/2D). When set and nothing is 3D-selected, findings
+   * are scoped to the model file and created IFC-anchored at the clicked
+   * storey-floor point (replacing the project-scope fallback). A live 3D element
+   * selection still takes precedence (element scope).
+   */
+  floorPlan?: boolean;
 };
 
 /**
@@ -44,6 +51,7 @@ export function EntityInspectorPanel({
   requestNonce,
   isPdf,
   pdfCurrentPage,
+  floorPlan,
 }: EntityInspectorPanelProps): JSX.Element {
   const t = useTranslations('viewerInspector');
   const tAttachments = useTranslations('viewerAttachments');
@@ -73,6 +81,9 @@ export function EntityInspectorPanel({
   } = useSelectedElement(metadata);
 
   const isProjectMode = isPdf !== true && !hasSelection;
+  // Floor-plan findings (file-scoped, IFC-anchored) replace the project-scope
+  // fallback when on the plan surface with no 3D element selected.
+  const isFloorPlanMode = floorPlan === true && isProjectMode;
 
   // --- Early states (after all hooks) ---
   if (isPdf === true) {
@@ -99,6 +110,21 @@ export function EntityInspectorPanel({
       <EntityFindingsBody
         projectId={projectId}
         scope={{ kind: 'file', fileId }}
+        autoOpenNonce={autoOpenNonce}
+        onAutoOpenConsumed={handleAutoOpenConsumed}
+      />
+    );
+  } else if (isFloorPlanMode) {
+    header = (
+      <ElementHeader
+        type={metadata?.schema ?? 'IFC'}
+        name={metadata?.project.name ?? null}
+      />
+    );
+    body = (
+      <EntityFindingsBody
+        projectId={projectId}
+        scope={{ kind: 'floorplanIfc', modelId, fileId }}
         autoOpenNonce={autoOpenNonce}
         onAutoOpenConsumed={handleAutoOpenConsumed}
       />
@@ -141,7 +167,7 @@ export function EntityInspectorPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {header}
-      {isProjectMode ? (
+      {isProjectMode && !isFloorPlanMode ? (
         <OrphanedItemsNotice projectId={projectId} modelId={modelId} metadata={metadata} />
       ) : null}
       <div className="min-h-0 flex-1 overflow-hidden">{body}</div>

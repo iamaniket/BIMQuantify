@@ -360,14 +360,17 @@ export function BlogPostCreateDialog({ open, onOpenChange }: Props): JSX.Element
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent
+        className="max-w-3xl max-h-[calc(100vh-48px)]"
+        style={{ height: 620 }}
+      >
         <FormProvider {...form}>
           <DialogHeader>
             <DialogTitle>{t('title')}</DialogTitle>
             <DialogDescription>{tCommon('eyebrowSuperAdmin')} — {t('subtitle')}</DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="min-h-[460px]">
+          <DialogBody className="min-h-0 flex-1 overflow-y-auto">
             <Wizard
               steps={wizardSteps}
               currentStep={currentStep}

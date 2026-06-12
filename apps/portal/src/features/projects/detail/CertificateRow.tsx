@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, ClipboardCheck, Download, Eye, FileBadge, Glasses, ShieldCheck, Trash2, Upload } from '@bimstitch/ui/icons';
+import { Box, CalendarDays, ClipboardCheck, Download, Eye, FileBadge, Glasses, Hash, ShieldCheck, Trash2, Upload } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, type ComponentType, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ import {
   type BadgeVariant,
 } from '@bimstitch/ui';
 
-import { ResourceMediaTile, VersionBadge, VersionHistoryList, type MediaTileTone } from '@/components/shared/resource';
+import { ResourceMediaTile, RowAsideStat, VersionBadge, VersionHistoryList, type MediaTileTone } from '@/components/shared/resource';
 import { getCertificateDownloadUrl } from '@/lib/api/certificates';
 import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
 import {
@@ -121,6 +121,14 @@ export function CertificateRow({
     <DetailCard expanded={expanded} onToggle={onToggle}>
       <DetailCardRow
         media={<ResourceMediaTile icon={TYPE_ICON[certificate.certificate_type].icon} tone={TYPE_ICON[certificate.certificate_type].tone} />}
+        aside={
+          <>
+            {certificate.certificate_number !== null && certificate.certificate_number !== '' && (
+              <RowAsideStat icon={Hash} value={certificate.certificate_number} title={t('expandedNumber')} />
+            )}
+            <RowAsideStat icon={CalendarDays} value={formatDate(certificate.created_at)} title={t('expandedAdded')} />
+          </>
+        }
         actions={
           <>
             <button

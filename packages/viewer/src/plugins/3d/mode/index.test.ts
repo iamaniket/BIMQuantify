@@ -55,4 +55,43 @@ describe('mode delegates the click-action axis to the tool-manager override', ()
       executed.indexOf('tool.popOverride'),
     );
   });
+
+  it('waits for an in-flight plugin-unregistered exit during uninstall', async () => {
+    const commands = new CommandRegistry();
+    const events = new EventBus<ViewerEvents>();
+    let resolvePop!: () => void;
+    const popDone = new Promise<void>((resolve) => { resolvePop = resolve; });
+
+    commands.register('tool.pushOverride', () => {});
+    commands.register('tool.popOverride', async () => { await popDone; });
+    const ctx = {
+      commands,
+      events,
+      cameraControls: {},
+      container: { querySelector: () => null },
+    } as unknown as ViewerContext;
+
+    const plugin = modePlugin();
+    plugin.install(ctx);
+
+    await commands.execute('mode.enter', {
+      name: 'measurement.distance',
+      label: 'Measure',
+      preserveCamera: true,
+      cancel: () => false,
+    });
+
+    events.emit('plugin:unregistered', { name: 'measurement' });
+
+    let uninstallResolved = false;
+    const uninstalling = Promise.resolve(plugin.uninstall?.()).then(() => {
+      uninstallResolved = true;
+    });
+    await tick();
+    expect(uninstallResolved).toBe(false);
+
+    resolvePop();
+    await uninstalling;
+    expect(uninstallResolved).toBe(true);
+  });
 });

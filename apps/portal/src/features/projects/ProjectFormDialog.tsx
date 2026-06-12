@@ -353,14 +353,17 @@ export function ProjectFormDialog(props: Props): JSX.Element {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent
+        className="max-w-3xl max-h-[calc(100vh-48px)]"
+        style={{ height: 640 }}
+      >
         <FormProvider {...form}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="min-h-[460px]">
+          <DialogBody className="min-h-0 flex-1 overflow-y-auto">
             <Wizard
               steps={wizardSteps}
               currentStep={currentStep}

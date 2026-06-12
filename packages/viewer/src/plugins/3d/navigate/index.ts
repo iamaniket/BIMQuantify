@@ -70,9 +70,9 @@ export function navigatePlugin(): Plugin & NavigatePluginAPI {
       });
     },
 
-    uninstall() {
+    async uninstall() {
       if (active && ctxRef) {
-        void exit();
+        await exit();
       }
       ctxRef = null;
     },

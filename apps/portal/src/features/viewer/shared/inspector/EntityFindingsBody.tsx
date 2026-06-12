@@ -47,12 +47,18 @@ function formatDate(value: string | null | undefined): string {
 export type FindingsScope =
   | { kind: 'element'; modelId: string; fileId: string; globalId: string }
   | { kind: 'project' }
-  | { kind: 'file'; fileId: string };
+  | { kind: 'file'; fileId: string }
+  // The 2D floor plan: findings are IFC-anchored to the model (world {x,y,z} at
+  // the clicked storey-floor spot) and listed by file, so they round-trip as
+  // markers on the plan and in 3D. Created with no element link (coordinate
+  // only); the world point is handed off via the pending-element-point stash.
+  | { kind: 'floorplanIfc'; modelId: string; fileId: string };
 
 const LINKED_FILE_TYPE_BY_SCOPE = {
   element: 'ifc',
   file: 'pdf',
   project: null,
+  floorplanIfc: 'ifc',
 } as const;
 
 type EntityFindingsBodyProps = {
@@ -79,17 +85,19 @@ export function EntityFindingsBody({
   // Resolve the active query unconditionally (Hooks rules) — inapplicable
   // queries are disabled via their `enabled`/null args.
   const elementScope = scope.kind === 'element' ? scope : null;
-  const fileScope = scope.kind === 'file' ? scope : null;
+  // Both PDF `file` and floor-plan `floorplanIfc` scopes list findings by file.
+  const fileFindingsFileId =
+    scope.kind === 'file' || scope.kind === 'floorplanIfc' ? scope.fileId : null;
   const elementQuery = useElementFindings(
     projectId,
     elementScope?.modelId ?? '',
     elementScope?.globalId ?? null,
   );
   const projectQuery = useProjectFindings(projectId, scope.kind === 'project');
-  const fileQuery = useFileFindings(projectId, fileScope?.fileId ?? null);
+  const fileQuery = useFileFindings(projectId, fileFindingsFileId);
   const query =
     scope.kind === 'project' ? projectQuery
-    : scope.kind === 'file' ? fileQuery
+    : scope.kind === 'file' || scope.kind === 'floorplanIfc' ? fileQuery
     : elementQuery;
   const deleteMutation = useDeleteFinding(projectId);
   const { data: templatesData } = useFindingTemplates();
@@ -107,7 +115,8 @@ export function EntityFindingsBody({
   // or a pending 2D PDF context point for file scope, so the new finding
   // anchors to the clicked location. Manual opens (no pick) carry none.
   const openCreate = useCallback((tpl: FindingTemplate | null) => {
-    if (scope.kind === 'element') {
+    if (scope.kind === 'element' || scope.kind === 'floorplanIfc') {
+      // Both anchor to a 3D world point handed off via the element-point stash.
       setPendingPoint(consumePendingElementPoint());
     } else if (scope.kind === 'file') {
       const pdfPt = consumePendingPdfContextPoint();
@@ -321,7 +330,7 @@ export function EntityFindingsBody({
         open={createOpen}
         onOpenChange={(o) => { setCreateOpen(o); if (!o) setPendingPoint(null); }}
         template={chosenTemplate}
-        linkedModelId={scope.kind === 'element' ? scope.modelId : null}
+        linkedModelId={scope.kind === 'element' || scope.kind === 'floorplanIfc' ? scope.modelId : null}
         linkedFileId={scope.kind === 'project' ? null : scope.fileId}
         linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
         linkedPoint={pendingPoint}

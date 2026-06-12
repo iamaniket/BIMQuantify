@@ -64,14 +64,24 @@ DetailCard.displayName = 'DetailCard';
 export type DetailCardRowProps = HTMLAttributes<HTMLDivElement> & {
   media?: ReactNode | undefined;
   actions?: ReactNode | undefined;
+  /** Right-aligned secondary info, shown only on `lg`+ widths. */
+  aside?: ReactNode | undefined;
   hideChevron?: boolean | undefined;
 };
 
 export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
-  ({ media, actions, hideChevron, className, children, ...rest }, ref) => {
+  ({ media, actions, aside, hideChevron, className, children, ...rest }, ref) => {
     const { expanded, onToggle } = useContext(Ctx);
     const [hovered, setHovered] = useState(false);
-    const showActions = hovered || expanded;
+
+    const gridTemplateColumns = [
+      media !== undefined ? '40px' : null,
+      '1fr',
+      aside !== undefined ? 'auto' : null,
+      'auto',
+    ]
+      .filter((c): c is string => c !== null)
+      .join(' ');
 
     return (
       <div
@@ -91,9 +101,7 @@ export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
           !expanded && hovered && 'bg-background-hover',
           className,
         )}
-        style={{
-          gridTemplateColumns: media !== undefined ? '40px 1fr auto' : '1fr auto',
-        }}
+        style={{ gridTemplateColumns }}
         {...rest}
       >
         {media !== undefined && (
@@ -106,11 +114,18 @@ export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
           {children}
         </div>
 
+        {aside !== undefined && (
+          <div className="hidden items-center gap-3 justify-self-end font-sans text-[11px] text-foreground-tertiary tabular-nums lg:flex">
+            {aside}
+          </div>
+        )}
+
         <div className="flex shrink-0 items-center gap-1.5">
-          {actions !== undefined && (
+          {/* Top actions only when collapsed — once expanded, the footer owns them. */}
+          {actions !== undefined && !expanded && (
             <div className={cn(
               'flex items-center gap-1.5 transition-all',
-              showActions ? 'opacity-100' : 'opacity-0',
+              hovered ? 'opacity-100' : 'opacity-0',
             )}>
               {actions}
             </div>
@@ -150,10 +165,9 @@ export const DetailCardBody = forwardRef<HTMLDivElement, DetailCardBodyProps>(
       <div
         ref={ref}
         className={cn(
-          'border-t border-border bg-surface-low px-3.5 pb-3 pt-1',
+          'border-t border-border bg-surface-low pl-7 pr-3.5 pb-3 pt-1',
           className,
         )}
-        style={{ paddingLeft: 64 }}
         {...rest}
       />
     );
@@ -177,10 +191,9 @@ export const DetailCardFooter = forwardRef<HTMLDivElement, DetailCardFooterProps
       <div
         ref={ref}
         className={cn(
-          'flex justify-end border-t border-border bg-surface-low px-3.5 pt-2.5 pb-2.5',
+          'flex justify-end border-t border-border bg-surface-low pl-7 pr-3.5 pt-2.5 pb-2.5',
           className,
         )}
-        style={{ paddingLeft: 64 }}
         {...rest}
       />
     );

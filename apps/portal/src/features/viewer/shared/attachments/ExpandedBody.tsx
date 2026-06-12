@@ -37,11 +37,7 @@ export function ExpandedBody({
   const entries: Array<{ label: string; value: string }> = [
     { label: t('expandedType'), value: attachment.content_type },
     { label: t('expandedSize'), value: formatSize(attachment.size_bytes) },
-    { label: t('expandedAdded'), value: `${formatDateFull(attachment.created_at)}${attachment.uploaded_by_name !== null ? `  ·  ${attachment.uploaded_by_name}` : ''}` },
   ];
-  if (attachment.updated_at !== attachment.created_at) {
-    entries.push({ label: t('expandedUpdated'), value: formatDateFull(attachment.updated_at) });
-  }
   if (attachment.version_number > 1) {
     entries.push({ label: t('expandedVersion'), value: `v${String(attachment.version_number)}` });
   }
@@ -66,6 +62,12 @@ export function ExpandedBody({
   }
   if (exif.capturedAt !== null) {
     entries.push({ label: t('expandedCapturedAt'), value: formatDateFull(exif.capturedAt) });
+  }
+
+  // Record metadata anchored last — consistent with Findings/Certificates.
+  entries.push({ label: t('expandedAdded'), value: `${formatDateFull(attachment.created_at)}${attachment.uploaded_by_name !== null ? `  ·  ${attachment.uploaded_by_name}` : ''}` });
+  if (attachment.updated_at !== attachment.created_at) {
+    entries.push({ label: t('expandedUpdated'), value: formatDateFull(attachment.updated_at) });
   }
 
   const showMap = exif.gps !== null && isWithinNetherlands(exif.gps.latitude, exif.gps.longitude);

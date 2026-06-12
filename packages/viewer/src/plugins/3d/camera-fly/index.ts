@@ -521,8 +521,8 @@ export function cameraFlyPlugin(
       }, { title: 'Stop moving in a direction' });
     },
 
-    uninstall() {
-      void disable();
+    async uninstall() {
+      await disable();
       ctxRef = null;
     },
   };

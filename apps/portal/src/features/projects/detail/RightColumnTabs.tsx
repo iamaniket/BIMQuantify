@@ -33,7 +33,7 @@ export function RightColumnTabs({
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const [topTab, setTopTab] = useState('overzicht');
-  const [bottomTab, setBottomTab] = useState('attachments');
+  const [bottomTab, setBottomTab] = useState('bevindingen');
   const attachmentCount = totalFromPages(useAttachments(projectId).data);
   const certificateCount = totalFromPages(useCertificates(projectId).data);
   const findingsCount = totalFromPages(useFindings(projectId).data);
@@ -96,12 +96,6 @@ export function RightColumnTabs({
           <div className="mb-2 flex min-w-max items-end justify-between gap-x-3">
             <Tabs value={bottomTab} onValueChange={setBottomTab}>
               <TabsList className="inline-flex w-auto">
-                <TabsTrigger value="attachments">
-                  {t('attachments.label')}
-                  <Badge variant="default" size="md" bordered={false}>
-                    {attachmentCount}
-                  </Badge>
-                </TabsTrigger>
                 <TabsTrigger value="bevindingen">
                   {t('bevindingen.label')}
                   <Badge variant="default" size="md" bordered={false}>
@@ -112,6 +106,12 @@ export function RightColumnTabs({
                   {t('certificates.label')}
                   <Badge variant="default" size="md" bordered={false}>
                     {certificateCount}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="attachments">
+                  {t('attachments.label')}
+                  <Badge variant="default" size="md" bordered={false}>
+                    {attachmentCount}
                   </Badge>
                 </TabsTrigger>
               </TabsList>
@@ -128,9 +128,9 @@ export function RightColumnTabs({
         </div>
 
         <div className="min-h-0 flex-1 overflow-hidden px-3 pb-3 pt-2">
-          {bottomTab === 'attachments' && <AttachmentsTab projectId={projectId} />}
           {bottomTab === 'bevindingen' && <BevindingenTab projectId={projectId} />}
           {bottomTab === 'certificates' && <CertificatesTab projectId={projectId} />}
+          {bottomTab === 'attachments' && <AttachmentsTab projectId={projectId} />}
         </div>
       </div>
     </div>

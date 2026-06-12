@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import type { FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentEvents, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
 import {
   DropdownMenu,
@@ -32,6 +32,8 @@ import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitche
 import { resolveColor } from '@/features/viewer/3d/minimap/spatialNames';
 import type { Finding } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
+
+import { stashPendingElementPoint } from '@/features/viewer/shared/inspector/pendingElementPoint';
 
 import { DocumentContextMenu } from './DocumentContextMenu';
 import { useFloorPlanData } from './useFloorPlanData';
@@ -144,6 +146,34 @@ export function FloorPlanPane({
     onFindingClick,
   });
 
+  // Right-click "Add finding" on the plan: convert the click to a 3D world
+  // anchor at the active storey's floor elevation, then stash it so the
+  // inspector creates an IFC-anchored finding linked to this model/file. If the
+  // minimap isn't calibrated yet, skip the stash — the finding is still created,
+  // just unanchored — rather than throwing.
+  const handleAddFinding = useCallback(
+    async (menu: DocumentEvents['contextmenu:open']): Promise<void> => {
+      if (!fpHandle || !handle) return;
+      const elevation = levels[safeLevel]?.elevation ?? 0;
+      const planPoint = await fpHandle.commands
+        .execute<{ planX: number; planY: number } | null>('floorplan.planPointAt', {
+          containerX: menu.position.x,
+          containerY: menu.position.y,
+        })
+        .catch(() => null);
+      if (!planPoint) return;
+      const world = await handle.commands
+        .execute<{ x: number; y: number; z: number } | null>('minimap.planToWorld', {
+          planX: planPoint.planX,
+          planY: planPoint.planY,
+          elevation,
+        })
+        .catch(() => null);
+      if (world) stashPendingElementPoint(world);
+    },
+    [fpHandle, handle, levels, safeLevel],
+  );
+
   if (!data || levels.length === 0) return null;
   const level = levels[safeLevel];
   const levelName = level !== undefined ? level.name : '';
@@ -213,6 +243,7 @@ export function FloorPlanPane({
       <DocumentContextMenu
         handle={fpHandle}
         onRequestInspector={onRequestInspector}
+        onAddFinding={handleAddFinding}
         ready={planRendered}
       />
     </div>

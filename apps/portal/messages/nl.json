@@ -1464,7 +1464,7 @@
       "bblRef": "BBL REF",
       "photos": "FOTO'S",
       "linkedElement": "GEKOPPELD",
-      "created": "AANGEMAAKT",
+      "created": "TOEGEVOEGD",
       "updated": "BIJGEWERKT",
       "noAssignee": "Niet toegewezen",
       "photoCount": "{count, plural, =0 {Geen} one {1 foto} other {# foto's}}",

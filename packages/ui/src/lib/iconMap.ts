@@ -88,6 +88,7 @@ export { Gear as Settings } from '@phosphor-icons/react';
 
 /* ── H ──────────────────────────────────────────────────────────── */
 export { Hammer } from '@phosphor-icons/react';
+export { Hash } from '@phosphor-icons/react';
 export { Question as HelpCircle } from '@phosphor-icons/react';
 export { House as Home } from '@phosphor-icons/react';
 export { House } from '@phosphor-icons/react';

@@ -53,6 +53,8 @@ export interface MinimapPluginAPI {
 
 type CalibrateArgs = { ifcBbox: Bbox3; planAxisX: number; planAxisY: number };
 type NavigateArgs = { planX: number; planY: number; elevation: number };
+/** Lift a plan point at a storey elevation into viewer world space. */
+type PlanToWorldArgs = { planX: number; planY: number; elevation: number };
 /** Place + aim the camera first-person from the plan (here + look, plan coords). */
 type PlaceCameraArgs = {
   planX: number;
@@ -200,6 +202,18 @@ export function minimapPlugin(
   };
 
   /**
+   * Lift a plan (X,Y) point at the given elevation into viewer world space — the
+   * inverse of {@link projectPoint}. Used by the 2D floor-plan "Add finding"
+   * flow to anchor a finding to the 3D model at the clicked storey-floor spot.
+   * Null until calibrated.
+   */
+  const planToWorld = (args: PlanToWorldArgs): ViewerVec3 | null => {
+    const cal = calibration;
+    if (!cal || !args) return null;
+    return planToViewer(args.planX, args.planY, args.elevation, cal);
+  };
+
+  /**
    * Select an IFC space (room) in 3D by its expressID (== fragment localId).
    * Resolves the modelId internally so the portal never handles it — the 2D
    * floor-plan pane only knows spaceIds.
@@ -254,6 +268,10 @@ export function minimapPlugin(
       ctx.commands.register('minimap.projectPoint', (args: unknown) =>
         projectPoint(args as ViewerVec3), {
         title: 'Project a world point onto the plan',
+      });
+      ctx.commands.register('minimap.planToWorld', (args: unknown) =>
+        planToWorld(args as PlanToWorldArgs), {
+        title: 'Lift a plan point at an elevation into world space',
       });
       ctx.commands.register('minimap.projectPoints', (args: unknown) =>
         projectPoints(args as ViewerVec3[]), {

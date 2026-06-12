@@ -1,8 +1,10 @@
 'use client';
 
-import { AlertCircle, CheckCircle, Clock, Eye, Pencil, Trash2 } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
+import { AlertCircle, CalendarDays, CheckCircle, Clock, Eye, LinkIcon, Pencil, Trash2 } from '@bimstitch/ui/icons';
+import { useLocale, useTranslations } from 'next-intl';
 import type { ComponentType, JSX } from 'react';
+
+import type { Locale } from '@bimstitch/i18n';
 
 import {
   Badge,
@@ -14,7 +16,8 @@ import {
   MetaGrid,
 } from '@bimstitch/ui';
 
-import { ResourceMediaTile, type MediaTileTone } from '@/components/shared/resource';
+import { ResourceMediaTile, RowAsideStat, type MediaTileTone } from '@/components/shared/resource';
+import { formatDate } from '@/lib/formatting/dates';
 import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 
 import { severityBadgeVariant, statusBadgeVariant } from './findingBadges';
@@ -26,15 +29,6 @@ const STATUS_ICON: Record<FindingStatusValue, { icon: ComponentType<{ className?
   resolved: { icon: CheckCircle, tone: 'success' },
   verified: { icon: CheckCircle, tone: 'success' },
 };
-
-function formatDate(value: string | null | undefined): string {
-  if (value === null || value === undefined || value === '') return '—';
-  return new Date(value).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
 
 type Props = {
   finding: Finding;
@@ -58,6 +52,7 @@ export function FindingRow({
   const tSeverity = useTranslations('findings.severity');
   const tStatus = useTranslations('findings.status');
   const tExpanded = useTranslations('findings.expanded');
+  const locale = useLocale() as Locale;
 
   const entries: Array<{ label: string; value: string }> = [
     { label: tExpanded('status'), value: tStatus(finding.status) },
@@ -65,7 +60,7 @@ export function FindingRow({
     { label: tExpanded('assignee'), value: assigneeName ?? tExpanded('noAssignee') },
   ];
   if (finding.deadline_date !== null) {
-    entries.push({ label: tExpanded('deadline'), value: formatDate(finding.deadline_date) });
+    entries.push({ label: tExpanded('deadline'), value: formatDate(finding.deadline_date, locale) });
   }
   if (finding.bbl_article_ref !== null && finding.bbl_article_ref !== '') {
     entries.push({ label: tExpanded('bblRef'), value: finding.bbl_article_ref });
@@ -76,15 +71,23 @@ export function FindingRow({
   if (finding.linked_element_global_id !== null) {
     entries.push({ label: tExpanded('linkedElement'), value: tExpanded('linkedYes') });
   }
-  entries.push({ label: tExpanded('created'), value: formatDate(finding.created_at) });
+  entries.push({ label: tExpanded('created'), value: formatDate(finding.created_at, locale) });
   if (finding.updated_at !== finding.created_at) {
-    entries.push({ label: tExpanded('updated'), value: formatDate(finding.updated_at) });
+    entries.push({ label: tExpanded('updated'), value: formatDate(finding.updated_at, locale) });
   }
 
   return (
     <DetailCard expanded={expanded} onToggle={onToggle}>
       <DetailCardRow
         media={<ResourceMediaTile icon={STATUS_ICON[finding.status].icon} tone={STATUS_ICON[finding.status].tone} />}
+        aside={
+          <>
+            {finding.linked_element_global_id !== null && (
+              <RowAsideStat icon={LinkIcon} title={tExpanded('linkedYes')} />
+            )}
+            <RowAsideStat icon={CalendarDays} value={formatDate(finding.created_at, locale)} title={tExpanded('created')} />
+          </>
+        }
         actions={
           <button
             type="button"
@@ -113,7 +116,7 @@ export function FindingRow({
           )}
           {finding.deadline_date !== null && (
             <>
-              <span className="shrink-0">{formatDate(finding.deadline_date)}</span>
+              <span className="shrink-0">{formatDate(finding.deadline_date, locale)}</span>
               <span className="shrink-0">·</span>
             </>
           )}

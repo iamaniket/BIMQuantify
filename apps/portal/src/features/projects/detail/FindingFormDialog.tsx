@@ -202,6 +202,7 @@ export function FindingFormDialog({
       onSubmit={form.handleSubmit(onSubmit)}
       submitLabel={t('submit')}
       submitDisabled={mutation.isPending}
+      height={600}
     >
       <div className="flex flex-col gap-4">
         <Field form={form} name="title" label={t('fields.title')}>

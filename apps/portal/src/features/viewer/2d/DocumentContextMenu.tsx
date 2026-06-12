@@ -41,6 +41,13 @@ type Props = {
   onRequestInspector: (view: 'findings') => void;
   shortcuts?: DocumentShortcutMap;
   ready: boolean | undefined;
+  /**
+   * Override for the "Add finding" action. When provided (the floor-plan pane),
+   * it replaces the default PDF normalized-point stash: the floor plan converts
+   * the click to a 3D world anchor before the inspector opens. Awaited so the
+   * anchor is stashed before the create dialog reads it. PDF callers omit it.
+   */
+  onAddFinding?: (menu: ContextMenuData) => void | Promise<void>;
 };
 
 const ICON_CLASS = 'h-4 w-4 shrink-0 text-foreground-secondary';
@@ -149,7 +156,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
 // Root component
 // ---------------------------------------------------------------------------
 
-export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, ready }: Props): JSX.Element | null {
+export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, ready, onAddFinding }: Props): JSX.Element | null {
   const t = useTranslations('viewer.docContextMenu');
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -215,9 +222,15 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, rea
         icon: <Flag className={ICON_CLASS} />,
         shortcut: sc('addFinding'),
         action: () => {
-          stashPoint();
-          onRequestInspector('findings');
-          closeMenu();
+          void (async () => {
+            if (onAddFinding) {
+              if (menu) await onAddFinding(menu);
+            } else {
+              stashPoint();
+            }
+            onRequestInspector('findings');
+            closeMenu();
+          })();
         },
       },
       { label: '', separator: true, action: () => undefined },
@@ -231,7 +244,7 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, rea
         },
       },
     ];
-  }, [t, menu, handle, closeMenu, onRequestInspector, sc, stashPoint]);
+  }, [t, menu, handle, closeMenu, onRequestInspector, sc, stashPoint, onAddFinding]);
 
   if (!menu) return null;
 

@@ -14,6 +14,20 @@ export const PENDING_ELEMENT_POINT_KEY = 'bimstitch.pendingElementPoint';
 
 export type PendingElementPoint = { x: number; y: number; z: number };
 
+/**
+ * Stash a 3D world point for later consumption by the inspector body. Used by
+ * the 2D floor-plan "Add finding" flow, which converts a plan click to a 3D
+ * world anchor before opening the inspector. (The 3D viewer's own context menu
+ * writes the same key inline.)
+ */
+export function stashPendingElementPoint(point: PendingElementPoint): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(
+    PENDING_ELEMENT_POINT_KEY,
+    JSON.stringify({ x: point.x, y: point.y, z: point.z }),
+  );
+}
+
 /** Read and remove the stashed 3D pick point, or null if none is pending. */
 export function consumePendingElementPoint(): PendingElementPoint | null {
   if (typeof window === 'undefined') return null;

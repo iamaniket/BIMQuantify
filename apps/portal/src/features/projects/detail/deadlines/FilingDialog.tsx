@@ -83,7 +83,7 @@ export function FilingDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="flex max-h-[calc(100vh-48px)] max-w-none flex-col"
-        style={{ width: 520, maxWidth: 'calc(100vw - 48px)' }}
+        style={{ width: 520, height: 480, maxWidth: 'calc(100vw - 48px)' }}
       >
         <DialogHeader>
           <DialogTitle>{t('dialogTitle', { label })}</DialogTitle>

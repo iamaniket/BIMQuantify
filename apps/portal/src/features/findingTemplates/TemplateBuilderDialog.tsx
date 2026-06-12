@@ -273,13 +273,16 @@ export function TemplateBuilderDialog({ open, onOpenChange, template }: Props): 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent
+        className="max-w-2xl max-h-[calc(100vh-48px)]"
+        style={{ height: 560 }}
+      >
         <DialogHeader>
           <DialogTitle>{isEditing ? t('builder.editTitle') : t('builder.createTitle')}</DialogTitle>
           <DialogDescription>{t('builder.subtitle')}</DialogDescription>
         </DialogHeader>
 
-        <DialogBody className="min-h-[420px]">
+        <DialogBody className="min-h-0 flex-1 overflow-y-auto">
           <Wizard
             steps={wizardSteps}
             currentStep={currentStep}

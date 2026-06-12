@@ -4,6 +4,7 @@ import type {
   ProjectStatusValue,
 } from '@/lib/api/schemas';
 import type { Locale } from '@bimstitch/i18n';
+import { formatDate } from '@/lib/formatting/dates';
 
 // Tailwind classes for the colored dot + badge per status.
 const STATUS_BADGE_CLASSES: Record<ProjectStatusValue, string> = {
@@ -111,9 +112,5 @@ export function daysUntil(isoDate: string): number {
 }
 
 export function formatDeliveryDate(isoDate: string, locale: Locale): string {
-  const parsed = new Date(isoDate);
-  if (Number.isNaN(parsed.getTime())) return isoDate;
-  return new Intl.DateTimeFormat(locale, {
-    year: 'numeric', month: 'short', day: 'numeric',
-  }).format(parsed);
+  return formatDate(isoDate, locale, isoDate);
 }

@@ -177,6 +177,8 @@ export default function ViewerPage(): JSX.Element {
   const [inspectorRequest, setInspectorRequest] = useState<{
     view: 'findings';
     nonce: number;
+    /** Set when the request came from the 2D floor-plan pane (IFC-anchored). */
+    surface?: 'floorplan';
   } | null>(null);
   const [propertiesExpanded, setPropertiesExpanded] = useState(true);
   const [modelTreeExpanded, setModelTreeExpanded] = useState(true);
@@ -527,6 +529,13 @@ export default function ViewerPage(): JSX.Element {
     setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
 
+  // The floor-plan pane's "Add finding" routes here so the inspector uses the
+  // IFC-anchored, file-scoped floor-plan findings scope (not project scope).
+  const handleFloorPlanInspector = useCallback((view: 'findings') => {
+    setActivePanel('inspector');
+    setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1, surface: 'floorplan' }));
+  }, []);
+
   useDocumentShortcuts({
     enabled: isPdf && documentHandle !== null,
     shortcuts: pdfSettings.shortcuts,
@@ -708,7 +717,7 @@ export default function ViewerPage(): JSX.Element {
               fileId={fileId}
               viewMode={viewMode}
               onFindingClick={setMarkerFinding}
-              onRequestInspector={handleDocContextMenuInspector}
+              onRequestInspector={handleFloorPlanInspector}
             />
           </div>
         ) : null}
@@ -760,6 +769,7 @@ export default function ViewerPage(): JSX.Element {
                   fileId={fileId}
                   requestedView={inspectorRequest?.view}
                   requestNonce={inspectorRequest?.nonce}
+                  floorPlan={inspectorRequest?.surface === 'floorplan' && viewMode !== '3d'}
                   {...(isPdf ? {
                     isPdf: true,
                     pdfCurrentPage,

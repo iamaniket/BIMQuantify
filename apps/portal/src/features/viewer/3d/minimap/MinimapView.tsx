@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 
+import { Select } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
@@ -341,18 +342,19 @@ export function MinimapView({
 
   const levelPicker =
     levels.length > 1 ? (
-      <select
+      <Select
+        selectSize="sm"
         aria-label={t('level')}
         value={selected}
         onChange={(e) => setSelected(Number(e.target.value))}
-        className="max-w-[120px] truncate rounded border border-border bg-background px-1 py-0.5 text-caption text-foreground"
+        className="max-w-[120px] truncate text-caption"
       >
         {levels.map((lv, i) => (
           <option key={lv.storeyExpressID} value={i}>
             {lv.name}
           </option>
         ))}
-      </select>
+      </Select>
     ) : (
       <span className="max-w-[120px] truncate text-caption text-foreground-secondary">{level.name}</span>
     );

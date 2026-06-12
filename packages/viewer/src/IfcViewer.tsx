@@ -115,7 +115,6 @@ function IfcViewerImpl(
       selectionPlugin(props.selectionHighlight ?? {}),
       visibilityPlugin(),
       inspectPlugin(),
-      modePlugin(),
       outlinePlugin(props.outline ?? {}),
       xrayPlugin(),
       // Mouse-bindings registers AFTER selection/hover so the default
@@ -132,6 +131,9 @@ function IfcViewerImpl(
       // Single authority over which pointer/camera tool is active (select /
       // navigate / eraser / fly). Depends on those four being registered first.
       toolManagerPlugin(),
+      // Edit mode delegates click-action neutralization to tool-manager, so it
+      // registers after it and disposes before it.
+      modePlugin(),
       snappingPlugin(props.snapping ?? {}),
       contextMenuPlugin(),
       ...(viewCubeEnabled

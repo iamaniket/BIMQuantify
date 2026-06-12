@@ -41,6 +41,7 @@ export function modePlugin(): Plugin & ModePluginAPI {
   let savedLeftAction: number | null = null;
   let pluginUnregSub: (() => void) | null = null;
   let viewcubeEl: HTMLElement | null = null;
+  let exitChain: Promise<void> = Promise.resolve();
 
   const setViewcubeVisible = (visible: boolean): void => {
     if (!ctxRef) return;
@@ -55,7 +56,7 @@ export function modePlugin(): Plugin & ModePluginAPI {
     const tool = args as ModeToolDescriptor;
     if (!tool?.name || !tool?.label || typeof tool.cancel !== 'function') return;
 
-    if (currentTool !== null) exit();
+    if (currentTool !== null) await exit();
 
     currentTool = tool;
 
@@ -81,34 +82,38 @@ export function modePlugin(): Plugin & ModePluginAPI {
     });
   };
 
-  const exit = (): void => {
-    if (!ctxRef || currentTool === null) return;
-    const toolName = currentTool.name;
-    const onExit = currentTool.onExit;
-    currentTool = null;
+  const exit = (): Promise<void> => {
+    exitChain = exitChain.then(async () => {
+      const ctx = ctxRef;
+      if (!ctx || currentTool === null) return;
+      const toolName = currentTool.name;
+      const onExit = currentTool.onExit;
+      currentTool = null;
 
-    onExit?.();
+      onExit?.();
 
-    if (savedLeftAction !== null) {
-      ctxRef.cameraControls.mouseButtons.left = savedLeftAction as typeof ctxRef.cameraControls.mouseButtons.left;
-      savedLeftAction = null;
-    }
+      if (savedLeftAction !== null) {
+        ctx.cameraControls.mouseButtons.left = savedLeftAction as typeof ctx.cameraControls.mouseButtons.left;
+        savedLeftAction = null;
+      }
 
-    // Release the click-action override — restores the action that was live before
-    // the tool started (erase/select/none) and its `click:left` binding.
-    ctxRef.commands.execute('tool.popOverride').catch(() => undefined);
-    setViewcubeVisible(true);
+      // Release the click-action override — restores the action that was live before
+      // the tool started (erase/select/none) and its `click:left` binding.
+      await ctx.commands.execute('tool.popOverride').catch(() => undefined);
+      setViewcubeVisible(true);
 
-    ctxRef.events.emit('mode:exit', { toolName });
+      ctx.events.emit('mode:exit', { toolName });
+    });
+    return exitChain;
   };
 
-  const cancel = (): boolean => {
+  const cancel = async (): Promise<boolean> => {
     if (currentTool === null) {
-      ctxRef?.commands.execute('selection.clear').catch(() => undefined);
+      await ctxRef?.commands.execute('selection.clear').catch(() => undefined);
       return false;
     }
     const handled = currentTool.cancel();
-    if (!handled) exit();
+    if (!handled) await exit();
     return true;
   };
 
@@ -144,13 +149,13 @@ export function modePlugin(): Plugin & ModePluginAPI {
 
       pluginUnregSub = ctx.events.on('plugin:unregistered', ({ name }) => {
         if (currentTool !== null && currentTool.name.startsWith(name)) {
-          exit();
+          void exit();
         }
       });
     },
 
-    uninstall() {
-      if (currentTool !== null) exit();
+    async uninstall() {
+      await exit();
       pluginUnregSub?.();
       pluginUnregSub = null;
       ctxRef = null;

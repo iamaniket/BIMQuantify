@@ -179,15 +179,31 @@ export class Viewer {
 
     // Near tracks the nearest geometry, pulled back 10% so a wall viewed
     // head-on (its whole face at one depth) never sits exactly on the near
-    // plane and flickers. minDepth goes negative inside the model; the absolute
-    // floor (5 mm, scaled down for sub-metre models) takes over there, so the
-    // camera can approach and pass through surfaces without near-clipping.
-    // Keeping near close to the actual geometry means the near/far ratio is
-    // small at normal viewing distance — crisp depth, no back-of-model
-    // z-fighting (the original 5000:1 floor caused that).
+    // plane and flickers. Keeping near close to the actual geometry means the
+    // near/far ratio is small at normal viewing distance — crisp depth, no
+    // back-of-model z-fighting (the original 5000:1 floor caused that).
+    //
+    // The floor that takes over once minDepth goes negative has two regimes:
+    //   - Outside the model (minDepth >= 0, normal orbit): a tiny 5 mm floor
+    //     (scaled down for sub-metre models) lets a camera pressed right up
+    //     against a surface keep approaching it. Any far-end z-fighting the
+    //     small near induces is genuinely hidden behind that near surface
+    //     filling the screen.
+    //   - Inside the model (minDepth < 0, i.e. fly / first-person walkthrough
+    //     or orbit-dolly-inside): the nearest AABB corner is behind the eye, so
+    //     the tiny floor would pin near to 5 mm while far still spans the whole
+    //     building (~20,000:1). That wastes the log-depth budget on the empty
+    //     space in front of the eye and z-fights distant coplanar surfaces.
+    //     A scale-relative floor (~0.1 m for a typical building) keeps the
+    //     budget on the visible depth range. Trade-off: geometry within ~10 cm
+    //     of the eye may clip — negligible (and arguably desirable) in BIM
+    //     walkthrough.
     const size = box.getSize(this.depthBoxSize);
     const maxDim = Math.max(size.x, size.y, size.z, 1);
-    const nearFloor = Math.min(0.005, maxDim * 1e-4);
+    const insideModel = minDepth < 0;
+    const nearFloor = insideModel
+      ? Math.min(Math.max(maxDim * 1e-3, 0.05), 0.5)
+      : Math.min(0.005, maxDim * 1e-4);
     const near = Math.max(minDepth * 0.9, nearFloor);
 
     // Far always reaches the back of the scene (+2% slack) — NOT capped to a
@@ -642,6 +658,7 @@ export class Viewer {
         // punch through or vanish. three injects the USE_LOGDEPTHBUF define +
         // logDepthBufFC uniform automatically for ShaderMaterial.
         vertexShader: /* glsl */ `
+          #include <common>
           #include <logdepthbuf_pars_vertex>
           varying vec2 vUv;
           void main() {
