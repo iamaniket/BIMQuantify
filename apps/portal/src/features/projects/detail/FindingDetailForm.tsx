@@ -1,0 +1,90 @@
+'use client';
+
+import { Trash2 } from '@bimstitch/ui/icons';
+import { useTranslations } from 'next-intl';
+import type { JSX } from 'react';
+
+import { Button } from '@bimstitch/ui';
+
+import type { Finding } from '@/lib/api/schemas';
+
+import { FindingDetailFields } from './FindingDetailFields';
+import { useFindingDetailForm } from './useFindingDetailForm';
+
+type Props = {
+  projectId: string;
+  finding: Finding;
+  /** Fired after a successful save/promote/resolve/verify. */
+  onSaved?: () => void;
+  /** Fired after a successful delete. */
+  onDeleted?: () => void;
+};
+
+/**
+ * In-panel finding editor — the dialog-free counterpart to `FindingDetailModal`.
+ * Renders the shared {@link FindingDetailFields} plus its own Save/Delete action
+ * row, so it drops straight into an expanded inspector row (no modal chrome).
+ */
+export function FindingDetailForm({
+  projectId,
+  finding,
+  onSaved,
+  onDeleted,
+}: Props): JSX.Element {
+  const t = useTranslations('findings.detail');
+  const api = useFindingDetailForm(projectId, finding, { onSaved, onDeleted });
+  const { confirmDelete, setConfirmDelete, isPending } = api;
+
+  return (
+    <div className="flex flex-col gap-3 py-1">
+      <FindingDetailFields projectId={projectId} finding={finding} api={api} />
+
+      <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+        {confirmDelete ? (
+          <div className="flex items-center gap-2">
+            <span className="text-body3 text-foreground-secondary">
+              {t('delete.confirm')}
+            </span>
+            <Button
+              type="button"
+              variant="destructive"
+              size="md"
+              disabled={isPending}
+              onClick={api.remove}
+            >
+              {t('delete.confirmAction')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => { setConfirmDelete(false); }}
+            >
+              {t('delete.cancel')}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            className="text-error hover:text-error"
+            onClick={() => { setConfirmDelete(true); }}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            {t('delete.action')}
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="primary"
+          size="md"
+          disabled={isPending}
+          onClick={api.save}
+        >
+          {t('save')}
+        </Button>
+      </div>
+    </div>
+  );
+}

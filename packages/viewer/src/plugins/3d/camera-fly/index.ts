@@ -8,8 +8,11 @@
  * forward/back) instead of orbiting a distant pivot. While active it also
  * suppresses click-selection / hover and stands `pivot-rotate` down (which in
  * first-person would otherwise hijack the left-drag as an orbit-pivot grab).
- * On disable everything is restored to the pre-fly orbit state. It is toggled on
- * by the toolbar fly-out popover and off again when that popover closes.
+ * On disable everything is restored to the pre-fly orbit state — including the
+ * exact camera pose, re-asserted across the mode switch so ThatOpen's Orbit/
+ * FirstPerson swaps (which relocate the orbit pivot and nudge the eye) can't
+ * drift the view. It is toggled by the toolbar Orbit/Navigation buttons (via the
+ * tool-manager) and Esc; clicks and drags in the scene stay in fly mode.
  *
  * Direction scheme (camera height stays constant except for up/down):
  *   - forward / back            → walk along the horizontal view direction (W / S)
@@ -139,6 +142,15 @@ interface FlySavedControls {
   mouseRight: number;
   mouseMiddle: number;
   mouseWheel: number;
+  /**
+   * Pre-fly camera pose, re-asserted after each ThatOpen mode swap so the view
+   * never drifts on a mode change. `OrbitMode.activateOrbitControls` places the
+   * orbit pivot `|eyeFromOrigin|` away and `FirstPersonMode` nudges the eye ~1
+   * unit — re-aiming to this snapshot overrides both. `null` when the pre-fly
+   * offset was degenerate (eye ≈ target): skip the re-assert and let the mode
+   * default stand.
+   */
+  pose: { pos: THREE.Vector3; dir: THREE.Vector3; radius: number } | null;
 }
 
 export function cameraFlyPlugin(
@@ -386,6 +398,23 @@ export function cameraFlyPlugin(
 
     const controls = ctx.cameraControls;
 
+    // Snapshot the exact pre-fly pose (eye + normalized view direction + orbit
+    // radius) so it can be re-asserted across the ThatOpen mode swaps below and
+    // in `disable()`. Captured BEFORE `set('FirstPerson')` mutates the rig.
+    const eye = new THREE.Vector3();
+    const lookTarget = new THREE.Vector3();
+    controls.getPosition(eye);
+    controls.getTarget(lookTarget);
+    const viewDir = lookTarget.clone().sub(eye);
+    const pose =
+      viewDir.lengthSq() < 1e-9
+        ? null
+        : {
+            pos: eye.clone(),
+            radius: eye.distanceTo(lookTarget),
+            dir: viewDir.normalize(),
+          };
+
     // Save the orbit config FirstPerson/Orbit will overwrite, so exit can
     // restore it byte-for-byte rather than inheriting OrbitMode's defaults.
     savedControls = {
@@ -398,6 +427,7 @@ export function cameraFlyPlugin(
       mouseRight: controls.mouseButtons.right as number,
       mouseMiddle: controls.mouseButtons.middle as number,
       mouseWheel: controls.mouseButtons.wheel as number,
+      pose,
     };
 
     // Enter ThatOpen first-person navigation: target locked 1 unit ahead so
@@ -416,6 +446,22 @@ export function cameraFlyPlugin(
     const ACTION = (controls.constructor as { ACTION?: Record<string, number> }).ACTION;
     if (ACTION) {
       controls.mouseButtons.left = (ACTION['NONE'] ?? 0) as typeof controls.mouseButtons.left;
+    }
+
+    // Re-assert the snapshot pose at FirstPerson's unit radius so set('FirstPerson')'s
+    // ~1-unit eye nudge doesn't show as a jump when entering fly. Synchronous —
+    // a deferred re-assert could land after the Split-entry `minimap.placeCamera`.
+    if (pose) {
+      const { pos, dir } = pose;
+      void controls.setLookAt(
+        pos.x,
+        pos.y,
+        pos.z,
+        pos.x + dir.x,
+        pos.y + dir.y,
+        pos.z + dir.z,
+        false,
+      );
     }
 
     // Pure-look: suppress click-selection + hover, and stand pivot-rotate down
@@ -465,6 +511,25 @@ export function cameraFlyPlugin(
       controls.mouseButtons.right = savedControls.mouseRight as typeof controls.mouseButtons.right;
       controls.mouseButtons.middle = savedControls.mouseMiddle as typeof controls.mouseButtons.middle;
       controls.mouseButtons.wheel = savedControls.mouseWheel as typeof controls.mouseButtons.wheel;
+
+      // Re-assert the pre-fly pose AFTER min/maxDistance are restored, so the
+      // orbit radius isn't clamped to ThatOpen's [1, 300]. This overrides
+      // OrbitMode.activateOrbitControls, which would otherwise place the orbit
+      // pivot |eyeFromOrigin| away and drift the view (and a far pivot can trip
+      // Viewer.onCamChange's zoomOutLimit clamp and move the eye too).
+      const { pose } = savedControls;
+      if (pose) {
+        const { pos, dir, radius } = pose;
+        void controls.setLookAt(
+          pos.x,
+          pos.y,
+          pos.z,
+          pos.x + dir.x * radius,
+          pos.y + dir.y * radius,
+          pos.z + dir.z * radius,
+          false,
+        );
+      }
       savedControls = null;
     }
   };

@@ -44,11 +44,38 @@ const Schema = z.object({
 
 export type Config = z.infer<typeof Schema>;
 
+// Known dev-only defaults. Outside `NODE_ENV=production` they are convenient;
+// in production they must be overridden, so we refuse to start if any is still
+// in effect — a forgotten env var crashes the worker at boot instead of running
+// with a public credential. Mirrors `validate_production_config` on the API.
+const DEV_PROCESSOR_SHARED_SECRET = 'dev-shared-secret-change-me';
+const DEV_S3_ACCESS_KEY_ID = 'bimstitch';
+const DEV_S3_SECRET_ACCESS_KEY = 'bimstitch-secret';
+
+function assertProductionConfig(cfg: Config): void {
+  if (cfg.NODE_ENV !== 'production') return;
+  const errors: string[] = [];
+  if (cfg.PROCESSOR_SHARED_SECRET === DEV_PROCESSOR_SHARED_SECRET) {
+    errors.push('PROCESSOR_SHARED_SECRET is the dev default; set a real value.');
+  }
+  if (cfg.S3_ACCESS_KEY_ID === DEV_S3_ACCESS_KEY_ID) {
+    errors.push('S3_ACCESS_KEY_ID is the dev default; set a real value.');
+  }
+  if (cfg.S3_SECRET_ACCESS_KEY === DEV_S3_SECRET_ACCESS_KEY) {
+    errors.push('S3_SECRET_ACCESS_KEY is the dev default; set a real value.');
+  }
+  if (errors.length > 0) {
+    throw new Error(`insecure production configuration:\n  - ${errors.join('\n  - ')}`);
+  }
+}
+
 let cached: Config | null = null;
 
 export function getConfig(): Config {
   if (cached === null) {
-    cached = Schema.parse(process.env);
+    const parsed = Schema.parse(process.env);
+    assertProductionConfig(parsed);
+    cached = parsed;
   }
   return cached;
 }

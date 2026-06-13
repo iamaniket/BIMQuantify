@@ -1,8 +1,24 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { getConfig } from '../config.js';
 import { enqueueJob, removeQueuedJob } from '../queue/queue.js';
+
+/**
+ * Constant-time bearer-token check. A plain `auth !== expected` leaks timing on
+ * the common-prefix case; `timingSafeEqual` does not. Lengths are compared
+ * first because `timingSafeEqual` throws on unequal-length buffers — a length
+ * mismatch is already a non-match, so short-circuiting it is safe.
+ */
+function isAuthorized(header: string | undefined, secret: string): boolean {
+  if (!header) return false;
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const actual = Buffer.from(header);
+  if (actual.length !== expected.length) return false;
+  return timingSafeEqual(actual, expected);
+}
 
 /**
  * Generic job envelope. Type-specific fields live inside `payload` —
@@ -24,7 +40,7 @@ export function registerRoutes(app: FastifyInstance): void {
   app.post('/jobs', async (request, reply) => {
     const cfg = getConfig();
     const auth = request.headers.authorization;
-    if (auth !== `Bearer ${cfg.PROCESSOR_SHARED_SECRET}`) {
+    if (!isAuthorized(auth, cfg.PROCESSOR_SHARED_SECRET)) {
       return reply.code(401).send({ error: 'UNAUTHORIZED' });
     }
 
@@ -46,7 +62,7 @@ export function registerRoutes(app: FastifyInstance): void {
   app.post('/jobs/:jobId/cancel', async (request, reply) => {
     const cfg = getConfig();
     const auth = request.headers.authorization;
-    if (auth !== `Bearer ${cfg.PROCESSOR_SHARED_SECRET}`) {
+    if (!isAuthorized(auth, cfg.PROCESSOR_SHARED_SECRET)) {
       return reply.code(401).send({ error: 'UNAUTHORIZED' });
     }
 

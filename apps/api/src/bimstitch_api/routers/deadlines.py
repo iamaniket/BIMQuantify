@@ -140,6 +140,41 @@ class DeadlineReadiness(BaseModel):
     is_ready: bool
 
 
+async def _count_ready_attachments_in_slot(
+    session: AsyncSession,
+    project_id: UUID,
+    slot: str,
+) -> int:
+    """Count ready, non-deleted attachments tagged with the given dossier slot."""
+    return (
+        await session.scalar(
+            select(func.count()).select_from(
+                select(ProjectFile.id).where(
+                    ProjectFile.project_id == project_id,
+                    ProjectFile.role == ProjectFileRole.attachment,
+                    ProjectFile.dossier_slot == slot,
+                    ProjectFile.status == ProjectFileStatus.ready,
+                    ProjectFile.deleted_at.is_(None),
+                ).subquery()
+            )
+        )
+    ) or 0
+
+
+async def _count_models(session: AsyncSession, project_id: UUID) -> int:
+    """Count non-deleted BIM models in the project."""
+    return (
+        await session.scalar(
+            select(func.count()).select_from(
+                select(Model.id).where(
+                    Model.project_id == project_id,
+                    Model.deleted_at.is_(None),
+                ).subquery()
+            )
+        )
+    ) or 0
+
+
 async def _check_fulfillment(
     session: AsyncSession,
     project_id: UUID,
@@ -151,20 +186,17 @@ async def _check_fulfillment(
     Returns (fulfilled, count) where count is the number of matching items.
     """
     if source_kind == "attachment_slot":
-        count = (
-            await session.scalar(
-                select(func.count()).select_from(
-                    select(ProjectFile.id).where(
-                        ProjectFile.project_id == project_id,
-                        ProjectFile.role == ProjectFileRole.attachment,
-                        ProjectFile.dossier_slot == source_value,
-                        ProjectFile.status == ProjectFileStatus.ready,
-                        ProjectFile.deleted_at.is_(None),
-                    ).subquery()
-                )
-            )
-        ) or 0
+        count = await _count_ready_attachments_in_slot(session, project_id, source_value)
         return count > 0, count
+
+    if source_kind == "attachment_or_model":
+        # Drawings: an uploaded drawing in the slot, or a BIM model (which carries
+        # the geometry the per-storey 2D plans derive from).
+        count = await _count_ready_attachments_in_slot(session, project_id, source_value)
+        if count > 0:
+            return True, count
+        model_count = await _count_models(session, project_id)
+        return model_count > 0, model_count
 
     if source_kind == "certificate_type":
         count = (
@@ -214,30 +246,12 @@ async def _check_fulfillment(
             return overdue_count == 0, overdue_count
 
         if source_value == "models":
-            count = (
-                await session.scalar(
-                    select(func.count()).select_from(
-                        select(Model.id).where(
-                            Model.project_id == project_id,
-                            Model.deleted_at.is_(None),
-                        ).subquery()
-                    )
-                )
-            ) or 0
+            count = await _count_models(session, project_id)
             return count > 0, count
 
     if source_kind == "model":
         if source_value == "models":
-            count = (
-                await session.scalar(
-                    select(func.count()).select_from(
-                        select(Model.id).where(
-                            Model.project_id == project_id,
-                            Model.deleted_at.is_(None),
-                        ).subquery()
-                    )
-                )
-            ) or 0
+            count = await _count_models(session, project_id)
             return count > 0, count
 
     return False, 0

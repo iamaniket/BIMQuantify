@@ -1367,6 +1367,7 @@
       "createTitle": "Bevinding vastleggen",
       "createSubtitle": "Leg een inspectiebevinding vast zodat deze tot oplossing kan worden gevolgd.",
       "submit": "Bevinding aanmaken",
+      "cancel": "Annuleren",
       "requiredError": "Vul alle verplichte velden in.",
       "fields": {
         "title": "Titel",

@@ -90,7 +90,7 @@ const TEMPLATE: JurisdictionDossierRequirement[] = [
     category: 'documents',
     label: 'Drawings',
     required: true,
-    source_kind: 'attachment_slot',
+    source_kind: 'attachment_or_model',
     source_value: 'drawings',
   },
   {
@@ -151,6 +151,15 @@ describe('DossierChecklistTab', () => {
     // 1 of 3 required complete → 33%.
     expect(screen.getByText('33%')).toBeInTheDocument();
     expect(screen.getByText('1 document provided')).toBeInTheDocument();
+  });
+
+  it('marks the drawings row fulfilled from a BIM model alone (no drawing upload)', () => {
+    mockUseModels.mockReturnValue({ data: [{ id: 'm1' }] });
+    renderTab();
+    // model-present AND drawings are both satisfied by the one model → 2 of 3 → 67%.
+    expect(screen.getByText('67%')).toBeInTheDocument();
+    // The drawings row still offers an upload affordance for a real PDF drawing set.
+    expect(screen.getByRole('button', { name: 'Upload' })).toBeInTheDocument();
   });
 
   it('shows the empty state when no template is configured', () => {

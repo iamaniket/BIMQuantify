@@ -42,7 +42,9 @@ type FlyControl = { dir: FlyDirection; icon: AppIcon; labelKey: string };
  *   row 2 → A S D F  (strafe-left, back, strafe-right, down)
  * Each button drives the same held-direction set as the keys via
  * `cameraFly.press` / `cameraFly.release`, so press-and-hold moves continuously.
- * Closing is the toolbar's Fly button (toggles select) plus Esc / click-outside.
+ * This is a passive D-pad: it never closes itself on a scene click — fly mode is
+ * exited only via the toolbar Orbit/Navigation toggle buttons (which route through
+ * the tool-manager) or Esc. So clicks and drags in the scene stay in fly mode.
  */
 export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
   const t = useTranslations('viewer.flyNav');
@@ -72,18 +74,15 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
     [handle],
   );
 
+  // Esc is the only key-driven exit; routed through `onClose` (→ tool.orbit).
+  // There is deliberately NO click-outside dismissal — a navigation mode must
+  // survive clicks/drags in the scene (see the component doc above).
   useEffect(() => {
-    const onDocClick = (ev: MouseEvent): void => {
-      const node = ref.current;
-      if (node && !node.contains(ev.target as Node)) onClose();
-    };
     const onEsc = (ev: KeyboardEvent): void => {
       if (ev.key === 'Escape') onClose();
     };
-    document.addEventListener('mousedown', onDocClick);
     document.addEventListener('keydown', onEsc);
     return () => {
-      document.removeEventListener('mousedown', onDocClick);
       document.removeEventListener('keydown', onEsc);
     };
   }, [onClose]);
@@ -143,10 +142,13 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
       role="group"
       aria-label={t('title')}
       data-testid="viewer-fly-popover"
-      className="absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-1.5"
-      onMouseDown={(e) => {
-        e.stopPropagation();
-      }}
+      // Anchored above the Move/fly button (its trigger), not centered on the
+      // whole bar. The nav pill is always the first group when fly mode is
+      // reachable (3D only), so the Move button's center is a stable ~113px from
+      // the toolbar's left edge: 1px border + 4px pad + Home 40 + gap 4 + Orbit
+      // 40 + gap 4 + half of Move 20. `-translate-x-1/2` then centers the panel
+      // over that point.
+      className="absolute bottom-16 left-[113px] z-40 flex -translate-x-1/2 flex-col items-center gap-1.5"
     >
       <ToolbarGroup>{ROW_TOP.map(renderButton)}</ToolbarGroup>
       <ToolbarGroup>{ROW_BOTTOM.map(renderButton)}</ToolbarGroup>

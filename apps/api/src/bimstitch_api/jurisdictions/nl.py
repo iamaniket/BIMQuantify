@@ -934,7 +934,9 @@ _NL_DOSSIER_BASE: tuple[DossierRequirementTemplate, ...] = (
         code="drawings",
         category="documents",
         label={"nl": "Tekeningen", "en": "Drawings"},
-        source_kind="attachment_slot",
+        # Satisfied by an uploaded drawing OR a BIM model (the model carries the
+        # geometry and the processor derives per-storey 2D plans from it).
+        source_kind="attachment_or_model",
         source_value="drawings",
     ),
     DossierRequirementTemplate(

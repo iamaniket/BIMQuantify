@@ -154,13 +154,17 @@ class DossierRequirementTemplate:
     """One required item in the "dossier bevoegd gezag" completeness checklist.
 
     Drives the per-building-type checklist the aannemer works through before
-    gereedmelding. Each requirement is satisfied by exactly one source:
+    gereedmelding. Each requirement is satisfied by one source:
 
-    - ``source_kind="attachment_slot"``  → a document tagged with the
+    - ``source_kind="attachment_slot"``     → a document tagged with the
       ``DossierSlot`` named in ``source_value`` (e.g. "structural_calculations")
-    - ``source_kind="certificate_type"`` → a Certificate whose
+    - ``source_kind="certificate_type"``    → a Certificate whose
       ``certificate_type`` equals ``source_value`` (e.g. "product")
-    - ``source_kind="derived"``          → a computed signal in ``source_value``
+    - ``source_kind="model"``               → at least one BIM model is present
+      (``source_value="models"``)
+    - ``source_kind="attachment_or_model"`` → satisfied by either an attachment in
+      the ``source_value`` slot (e.g. "drawings") OR a BIM model being present
+    - ``source_kind="derived"``             → a computed signal in ``source_value``
       ("models" present / "findings" all resolved / "deadlines" on track)
 
     `category` groups rows under a section header localized via
@@ -171,7 +175,8 @@ class DossierRequirementTemplate:
     category: str
     label: LocaleMap
     required: bool = True
-    source_kind: str = "attachment_slot"  # "attachment_slot" | "certificate_type" | "derived"
+    # "attachment_slot" | "certificate_type" | "model" | "attachment_or_model" | "derived"
+    source_kind: str = "attachment_slot"
     source_value: str = ""
 
 

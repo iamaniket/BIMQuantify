@@ -67,6 +67,13 @@ function resolveFulfillment(
     case 'model': {
       return { fulfilled: derived.modelCount > 0, count: derived.modelCount, hasExpiredCert: false };
     }
+    case 'attachment_or_model': {
+      // Drawings: satisfied by an uploaded drawing in the slot, or by a BIM model
+      // (the model carries the geometry the per-storey 2D plans derive from).
+      const count = readyAttachments.filter((a) => a.dossier_slot === req.source_value).length;
+      if (count > 0) return { fulfilled: true, count, hasExpiredCert: false };
+      return { fulfilled: derived.modelCount > 0, count: derived.modelCount, hasExpiredCert: false };
+    }
     case 'derived': {
       switch (req.source_value) {
         case 'models':
@@ -194,7 +201,9 @@ export function buildCompletionSeries(
   attachments: Attachment[],
   certificates: Certificate[] = [],
 ): CompletionPoint[] {
-  const slotReqs = template.filter((r) => r.source_kind === 'attachment_slot');
+  const slotReqs = template.filter(
+    (r) => r.source_kind === 'attachment_slot' || r.source_kind === 'attachment_or_model',
+  );
   const certReqs = template.filter((r) => r.source_kind === 'certificate_type');
   const requiredSlots = new Set(slotReqs.map((r) => r.source_value));
   const requiredCertTypes = new Set(certReqs.map((r) => r.source_value));

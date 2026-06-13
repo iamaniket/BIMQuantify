@@ -13,7 +13,7 @@ from bimstitch_api.admin.invitation_expiry import InvitationExpirySweeper
 from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.auth.tokens import TokenError, decode_token_full
 from bimstitch_api.cache import close_redis, get_redis
-from bimstitch_api.config import get_settings
+from bimstitch_api.config import get_settings, validate_production_config
 from bimstitch_api.db import get_engine
 from bimstitch_api.deadlines.reminder_engine import DeadlineReminderSweeper
 from bimstitch_api.jobs.dispatcher import close_http_client
@@ -125,6 +125,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if errors:
         _startup_fatal("cannot reach required services", errors)
 
+    # --- Production config guard ---
+    # Outside dev, refuse to boot with known dev-default secrets / wildcard CORS
+    # so a forgotten env var fails loudly instead of silently shipping a public
+    # credential. No-op in dev (deploy_region == "dev").
+    insecure = validate_production_config(settings)
+    if insecure:
+        _startup_fatal("insecure production configuration", insecure)
+
     # --- Rate limiter ---
     try:
         await FastAPILimiter.init(redis)
@@ -214,9 +222,14 @@ def create_app() -> FastAPI:
 
     app.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=5)
 
+    # CORS is restricted to the configured allowlist (CORS_ORIGINS, optional
+    # CORS_ORIGIN_REGEX). A wildcard here together with allow_credentials=True
+    # would defeat the allowlist the config already wires up — never re-introduce
+    # allow_origins=["*"]. Dev keeps working via the localhost default.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_origin_list,
+        allow_origin_regex=settings.cors_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

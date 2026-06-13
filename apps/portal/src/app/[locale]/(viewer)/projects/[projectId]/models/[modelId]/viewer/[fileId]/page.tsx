@@ -54,7 +54,7 @@ import { useEntityMarkers3D } from '@/features/viewer/3d/useEntityMarkers3D';
 import { useEntityMarkers2D } from '@/features/viewer/2d/useEntityMarkers2D';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { useFileFindings } from '@/features/findings/useFindings';
-import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
+import { buildGlobalIdToLocalId } from '@/features/viewer/shared/buildGlobalIdToLocalId';
 import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoadingOverlay';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
 import { StatusBar } from '@/features/viewer/shared/StatusBar';
@@ -71,7 +71,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 
 import { ApiError } from '@/lib/api/client';
 import { getViewerBundle } from '@/lib/api/projectFiles';
-import type { ViewerBundleResponse } from '@/lib/api/schemas';
+import type { Finding, ViewerBundleResponse } from '@/lib/api/schemas';
 import {
   DEFAULT_DOCUMENT_SETTINGS,
   controlsFrom3D,
@@ -85,7 +85,7 @@ import {
   type ViewerSettings,
 } from '@/lib/viewerSettings';
 import { useAuth } from '@/providers/AuthProvider';
-import { useViewerEntityStore } from '@/stores/viewerEntityStore';
+import { toEntityKey, useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 const IfcViewer = dynamic(
   () => import('@bimstitch/viewer').then((m) => m.IfcViewer),
@@ -169,7 +169,9 @@ export default function ViewerPage(): JSX.Element {
     if (typeof window === 'undefined') return true;
     return sessionStorage.getItem('bimstitch.viewerMobileBanner') === 'dismissed';
   });
-  const [markerFinding, setMarkerFinding] = useState<import('@/lib/api/schemas').Finding | null>(null);
+  // Marker / deep-link click → expand that finding's row in the inspector
+  // (replacing the old floating detail modal). `nonce` re-fires on repeat clicks.
+  const [openFinding, setOpenFinding] = useState<{ id: string; nonce: number } | null>(null);
 
   // 2D BCF markup (PDF annotations): draft-create + click-to-open flow.
   const [markupCreateNonce, setMarkupCreateNonce] = useState(0);
@@ -422,6 +424,32 @@ export default function ViewerPage(): JSX.Element {
   const showChrome = error === null;
   const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady && !isDrawing;
 
+  // GlobalId → ItemId for the open model, so a marker click can select the
+  // finding's linked element and drive the inspector into element scope.
+  const gidToLocal = useMemo(
+    () => buildGlobalIdToLocalId(metadata, modelId),
+    [metadata, modelId],
+  );
+
+  // Open a finding inside the inspector panel: switch the inspector scope (select
+  // the linked element, or clear selection for coordinate-only / unlinked /
+  // PDF findings → project/file scope), then bump the open nonce so the findings
+  // body expands that row once its scoped query has loaded it.
+  const openFindingInInspector = useCallback((finding: Finding) => {
+    setActivePanel('inspector');
+    const item =
+      finding.linked_element_global_id != null
+        ? gidToLocal.get(finding.linked_element_global_id)
+        : undefined;
+    const store = useViewerEntityStore.getState();
+    if (item !== undefined) {
+      store.select([toEntityKey(item.modelId, item.localId)]);
+    } else {
+      store.clearSelection();
+    }
+    setOpenFinding((prev) => ({ id: finding.id, nonce: (prev?.nonce ?? 0) + 1 }));
+  }, [gidToLocal]);
+
   // Entity markers for the 3D (IFC) viewer.
   const { clickedFinding, clearClicked } = useEntityMarkers3D(
     viewerHandleRef.current,
@@ -432,7 +460,10 @@ export default function ViewerPage(): JSX.Element {
   );
 
   useEffect(() => {
-    if (clickedFinding) setMarkerFinding(clickedFinding);
+    if (clickedFinding) {
+      openFindingInInspector(clickedFinding);
+      clearClicked();
+    }
   }, [clickedFinding]);
 
   // Deep-link: open a finding's detail when arriving via `?finding=<id>` (the
@@ -446,7 +477,7 @@ export default function ViewerPage(): JSX.Element {
     const match = fileFindings.find((f) => f.id === deepLinkFindingId);
     if (match !== undefined) {
       deepLinkOpenedRef.current = true;
-      setMarkerFinding(match);
+      openFindingInInspector(match);
     }
   }, [deepLinkFindingId, fileFindings]);
 
@@ -458,7 +489,7 @@ export default function ViewerPage(): JSX.Element {
     fileId,
     page: pdfCurrentPage,
     enabled: isPdf,
-    onFindingClick: (f) => setMarkerFinding(f),
+    onFindingClick: (f) => { openFindingInInspector(f); },
   });
 
   // Per-page vector geometry (artifact `i` is 0-based; pdfCurrentPage is 1-based).
@@ -735,7 +766,7 @@ export default function ViewerPage(): JSX.Element {
               projectId={projectId}
               fileId={fileId}
               viewMode={viewMode}
-              onFindingClick={setMarkerFinding}
+              onFindingClick={openFindingInInspector}
               onRequestInspector={handleFloorPlanInspector}
             />
           </div>
@@ -788,6 +819,8 @@ export default function ViewerPage(): JSX.Element {
                   fileId={fileId}
                   requestedView={inspectorRequest?.view}
                   requestNonce={inspectorRequest?.nonce}
+                  openFindingId={openFinding?.id}
+                  openFindingNonce={openFinding?.nonce}
                   floorPlan={inspectorRequest?.surface === 'floorplan' && viewMode !== '3d'}
                   {...(isPdf ? {
                     isPdf: true,
@@ -930,13 +963,6 @@ export default function ViewerPage(): JSX.Element {
         fileId={fileId}
       />
 
-      {/* Entity marker detail modal */}
-      <FindingDetailModal
-        projectId={projectId}
-        finding={markerFinding}
-        open={markerFinding !== null}
-        onOpenChange={(open) => { if (!open) { setMarkerFinding(null); clearClicked(); } }}
-      />
       </div>
       {showChrome && bundle !== null ? (
         <SideRail

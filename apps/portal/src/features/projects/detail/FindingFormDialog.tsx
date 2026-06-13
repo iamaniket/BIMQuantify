@@ -18,14 +18,11 @@ import { Field } from '@/components/shared/forms/Field';
 import { renderFieldInput } from '@/features/findingTemplates/fieldTypes';
 import { useCreateFinding } from '@/features/findings/useCreateFinding';
 import { useRegisterField } from '@/hooks/useRegisterField';
-import {
-  anchorFieldsFromPoint,
-  type FindingTemplate,
-  type LinkedFileTypeValue,
-} from '@/lib/api/schemas';
+import type { FindingTemplate, LinkedFileTypeValue } from '@/lib/api/schemas';
 
 import { FindingPhotos } from './FindingPhotos';
 import { ReferenceDocumentPicker } from './ReferenceDocumentPicker';
+import { buildFindingCreatePayload } from './findingCreatePayload';
 
 const SEVERITIES = ['low', 'medium', 'high'] as const;
 
@@ -66,14 +63,6 @@ type Props = {
   linkedPoint?: Record<string, number> | null;
   linkedFileType?: LinkedFileTypeValue | null;
 };
-
-function isBlank(value: unknown): boolean {
-  return (
-    value === undefined ||
-    value === null ||
-    (typeof value === 'string' && value.trim() === '')
-  );
-}
 
 export function FindingFormDialog({
   projectId,
@@ -126,71 +115,19 @@ export function FindingFormDialog({
   const customFields = template?.fields ?? [];
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
-    const bblValue = values.bbl_article_ref ?? '';
-
-    // Required-field checks for built-ins + custom fields (the API is the
-    // authoritative backstop; this gives immediate feedback).
-    if (showBbl && builtins['bbl_article_ref']?.required === true && isBlank(bblValue)) {
+    const result = buildFindingCreatePayload(
+      values,
+      { photoIds, referenceAttachmentIds, customValues, template },
+      { linkedModelId, linkedFileId, linkedElementGlobalId, linkedPoint, linkedFileType },
+    );
+    if (!result.ok) {
       setExtraError(t('requiredError'));
       return;
-    }
-    if (showPhotos && builtins['photos']?.required === true && photoIds.length === 0) {
-      setExtraError(t('requiredError'));
-      return;
-    }
-    if (
-      showReferences &&
-      builtins['references']?.required === true &&
-      referenceAttachmentIds.length === 0
-    ) {
-      setExtraError(t('requiredError'));
-      return;
-    }
-
-    const customPayload: Record<string, unknown> = {};
-    for (const field of customFields) {
-      const value = customValues[field.id];
-      if (field.type === 'checkbox') {
-        const checked = value === true;
-        if (field.required && !checked) {
-          setExtraError(t('requiredError'));
-          return;
-        }
-        customPayload[field.id] = checked;
-        continue;
-      }
-      if (isBlank(value)) {
-        if (field.required) {
-          setExtraError(t('requiredError'));
-          return;
-        }
-        continue;
-      }
-      customPayload[field.id] = value;
     }
     setExtraError(null);
-
-    mutation.mutate(
-      {
-        title: values.title.trim(),
-        description: values.description.trim(),
-        severity: values.severity,
-        bbl_article_ref: isBlank(bblValue) ? null : bblValue.trim(),
-        linked_model_id: linkedModelId === undefined ? null : linkedModelId,
-        linked_file_id: linkedFileId === undefined ? null : linkedFileId,
-        linked_element_global_id:
-          linkedElementGlobalId === undefined ? null : linkedElementGlobalId,
-        ...anchorFieldsFromPoint(linkedFileType, linkedPoint),
-        photo_ids: photoIds.length > 0 ? photoIds : undefined,
-        reference_attachment_ids:
-          referenceAttachmentIds.length > 0 ? referenceAttachmentIds : undefined,
-        template_id: template != null ? template.id : null,
-        custom_values: Object.keys(customPayload).length > 0 ? customPayload : undefined,
-      },
-      {
-        onSuccess: () => { onOpenChange(false); },
-      },
-    );
+    mutation.mutate(result.payload, {
+      onSuccess: () => { onOpenChange(false); },
+    });
   };
 
   return (

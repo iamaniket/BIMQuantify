@@ -598,6 +598,11 @@ async def fake_storage_client(
 
     Returns the (client, fake_storage) tuple so tests can assert on storage calls."""
     from bimstitch_api import db as db_module
+    from bimstitch_api.auth.ratelimit import (
+        COMPLIANCE_CHECK_LIMITER,
+        REPORT_GEN_LIMITER,
+        UPLOAD_INITIATE_LIMITER,
+    )
     from bimstitch_api.auth.refresh import REFRESH_RATE_LIMITER
     from bimstitch_api.auth.routes import (
         FORGOT_RATE_LIMITER,
@@ -622,6 +627,9 @@ async def fake_storage_client(
         FORGOT_RATE_LIMITER,
         REFRESH_RATE_LIMITER,
         ACCESS_REQUEST_RATE_LIMITER,
+        COMPLIANCE_CHECK_LIMITER,
+        REPORT_GEN_LIMITER,
+        UPLOAD_INITIATE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 
@@ -819,6 +827,11 @@ async def client(
     redis_client: Redis,
 ) -> AsyncGenerator[AsyncClient, None]:
     from bimstitch_api import db as db_module
+    from bimstitch_api.auth.ratelimit import (
+        COMPLIANCE_CHECK_LIMITER,
+        REPORT_GEN_LIMITER,
+        UPLOAD_INITIATE_LIMITER,
+    )
     from bimstitch_api.auth.refresh import REFRESH_RATE_LIMITER
     from bimstitch_api.auth.routes import (
         FORGOT_RATE_LIMITER,
@@ -841,6 +854,9 @@ async def client(
         FORGOT_RATE_LIMITER,
         REFRESH_RATE_LIMITER,
         ACCESS_REQUEST_RATE_LIMITER,
+        COMPLIANCE_CHECK_LIMITER,
+        REPORT_GEN_LIMITER,
+        UPLOAD_INITIATE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 

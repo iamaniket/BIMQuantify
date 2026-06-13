@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
+from bimstitch_api.auth.ratelimit import COMPLIANCE_CHECK_LIMITER
 from bimstitch_api.compliance import ComplianceCheckError, run_compliance_check
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jurisdictions import is_supported_framework
@@ -60,6 +61,7 @@ project_router = APIRouter(
 @router.post(
     "/check",
     response_model=ComplianceCheckResponse,
+    dependencies=[Depends(COMPLIANCE_CHECK_LIMITER)],
 )
 async def check_compliance(
     project_id: UUID,

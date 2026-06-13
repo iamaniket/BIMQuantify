@@ -159,11 +159,21 @@ async def test_jurisdictions_exposes_dossier_templates(client: AsyncClient) -> N
     # Every requirement carries the fields the portal needs to resolve it.
     req = templates["dwelling"][0]
     assert {"code", "category", "label", "required", "source_kind", "source_value"} <= set(req)
-    assert req["source_kind"] in {"attachment_slot", "certificate_type", "derived", "model"}
+    assert req["source_kind"] in {
+        "attachment_slot",
+        "certificate_type",
+        "derived",
+        "model",
+        "attachment_or_model",
+    }
 
     # At least one of each source kind exists across the dwelling set.
     kinds = {r["source_kind"] for r in templates["dwelling"]}
     assert {"attachment_slot", "certificate_type", "derived", "model"} <= kinds
+    # Drawings is satisfied by an uploaded drawing OR a present BIM model.
+    assert "attachment_or_model" in kinds
+    drawings = next(r for r in templates["dwelling"] if r["code"] == "drawings")
+    assert drawings["source_kind"] == "attachment_or_model"
 
 
 async def test_dossier_template_labels_localized(client: AsyncClient) -> None:

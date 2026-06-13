@@ -47,6 +47,7 @@ const SOURCE_ICONS: Record<DossierRequirementResult['sourceKind'], typeof Check>
   certificate_type: ShieldCheck,
   derived: SlidersHorizontal,
   model: Box,
+  attachment_or_model: FileText,
 };
 
 const OFFICE_ACCEPT = '.pdf,.docx,.xlsx,.pptx,.txt';
@@ -328,7 +329,7 @@ function DossierRow({
       </div>
 
       {/* CTAs by source kind */}
-      {req.sourceKind === 'attachment_slot' && (
+      {(req.sourceKind === 'attachment_slot' || req.sourceKind === 'attachment_or_model') && (
         <div className="flex shrink-0 items-center gap-1.5">
           <Button
             variant="ghost"

@@ -33,6 +33,7 @@ from sqlalchemy.orm import aliased, selectinload
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
+from bimstitch_api.auth.ratelimit import REPORT_GEN_LIMITER
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.i18n import coerce_locale, t
 from bimstitch_api.jobs import (
@@ -562,6 +563,7 @@ _RESOLVERS: dict[ReportType, _Resolver] = {
     "",
     response_model=ReportResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(REPORT_GEN_LIMITER)],
 )
 async def create_report(
     project_id: UUID,

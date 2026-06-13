@@ -1367,6 +1367,7 @@
       "createTitle": "Log finding",
       "createSubtitle": "Record an inspection finding so it can be tracked to resolution.",
       "submit": "Create finding",
+      "cancel": "Cancel",
       "requiredError": "Please fill in all required fields.",
       "fields": {
         "title": "Title",

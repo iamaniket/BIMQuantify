@@ -1,31 +1,25 @@
 'use client';
 
-import { AlertTriangle, Eye, Loader2, Plus, Search, Trash2 } from '@bimstitch/ui/icons';
+import { AlertTriangle, Loader2, Plus, Search } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 
-import { Badge, Button, Input, MetaGrid, SplitButton, type SplitButtonItem } from '@bimstitch/ui';
-import {
-  DetailCard,
-  DetailCardBody,
-  DetailCardFooter,
-  DetailCardRow,
-} from '@bimstitch/ui';
+import { Badge, Button, Input, SplitButton, type SplitButtonItem } from '@bimstitch/ui';
+import { DetailCard, DetailCardBody, DetailCardRow } from '@bimstitch/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
 import { useFindingTemplates } from '@/features/findingTemplates/useFindingTemplates';
-import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useElementFindings } from '@/features/findings/useElementFindings';
 import { useFileFindings, useProjectFindings } from '@/features/findings/useFindings';
 import { flattenPages, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
-import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
-import { FindingFormDialog } from '@/features/projects/detail/FindingFormDialog';
+import { FindingCreateForm } from '@/features/projects/detail/FindingCreateForm';
+import { FindingDetailForm } from '@/features/projects/detail/FindingDetailForm';
 import {
   severityBadgeVariant,
   statusBadgeVariant,
 } from '@/features/projects/detail/findingBadges';
-import type { Finding, FindingTemplate } from '@/lib/api/schemas';
+import type { FindingTemplate } from '@/lib/api/schemas';
 import { formatDate } from '@/lib/formatting/dates';
 import type { Locale } from '@bimstitch/i18n';
 
@@ -58,10 +52,13 @@ const LINKED_FILE_TYPE_BY_SCOPE = {
 type EntityFindingsBodyProps = {
   projectId: string;
   scope: FindingsScope;
-  /** When this nonce changes, auto-open the new-finding dialog. */
+  /** When this nonce changes, auto-open the inline new-finding form. */
   autoOpenNonce?: number | undefined;
   /** Called once the nonce has been consumed so the parent can clear it. */
   onAutoOpenConsumed?: () => void;
+  /** Expand this finding's row when `openFindingNonce` changes (marker click). */
+  openFindingId?: string | undefined;
+  openFindingNonce?: number | undefined;
 };
 
 export function EntityFindingsBody({
@@ -69,11 +66,12 @@ export function EntityFindingsBody({
   scope,
   autoOpenNonce,
   onAutoOpenConsumed,
+  openFindingId,
+  openFindingNonce,
 }: EntityFindingsBodyProps): JSX.Element {
   const t = useTranslations('viewerFindings');
   const tSeverity = useTranslations('findings.severity');
   const tStatus = useTranslations('findings.status');
-  const tExpanded = useTranslations('findings.expanded');
   const tPicker = useTranslations('findingTemplates.picker');
   const locale = useLocale() as Locale;
 
@@ -94,20 +92,22 @@ export function EntityFindingsBody({
     scope.kind === 'project' ? projectQuery
     : scope.kind === 'file' || scope.kind === 'floorplanIfc' ? fileQuery
     : elementQuery;
-  const deleteMutation = useDeleteFinding(projectId);
   const { data: templatesData } = useFindingTemplates();
   const templates = templatesData ?? [];
   const defaultTemplate = templates.find((tpl) => tpl.is_default) ?? null;
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createExpanded, setCreateExpanded] = useState(false);
   const [chosenTemplate, setChosenTemplate] = useState<FindingTemplate | null>(null);
   // 3D pick point handed off by the context menu, anchored onto the new finding.
   const [pendingPoint, setPendingPoint] = useState<Record<string, number> | null>(null);
-  const [selected, setSelected] = useState<Finding | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const lastConsumedNonce = useRef<number | undefined>(undefined);
+  const lastOpenNonce = useRef<number | undefined>(undefined);
 
-  // Open the create dialog, consuming a pending 3D pick point for element scope
-  // or a pending 2D PDF context point for file scope, so the new finding
+  const findings = flattenPages(query.data);
+
+  // Open the inline create form, consuming a pending 3D pick point for element
+  // scope or a pending 2D PDF context point for file scope, so the new finding
   // anchors to the clicked location. Manual opens (no pick) carry none.
   const openCreate = useCallback((tpl: FindingTemplate | null) => {
     if (scope.kind === 'element' || scope.kind === 'floorplanIfc') {
@@ -120,7 +120,8 @@ export function EntityFindingsBody({
       setPendingPoint(null);
     }
     setChosenTemplate(tpl);
-    setCreateOpen(true);
+    setExpandedId(null);
+    setCreateExpanded(true);
   }, [scope]);
 
   const pickerItems: SplitButtonItem[] = [
@@ -132,7 +133,7 @@ export function EntityFindingsBody({
     { id: '__standard__', label: tPicker('standardForm'), onSelect: () => { openCreate(null); } },
   ];
 
-  // Auto-open the new-finding dialog when triggered from a context-menu command.
+  // Auto-open the new-finding form when triggered from a context-menu command.
   useEffect(() => {
     if (autoOpenNonce !== undefined && autoOpenNonce !== lastConsumedNonce.current) {
       lastConsumedNonce.current = autoOpenNonce;
@@ -141,9 +142,19 @@ export function EntityFindingsBody({
     }
   }, [autoOpenNonce, onAutoOpenConsumed, openCreate, defaultTemplate]);
 
-  const findings = flattenPages(query.data);
+  // Expand a specific finding when its marker is clicked. Depends on `findings`
+  // so it re-fires once the (possibly still-loading) scoped query resolves;
+  // `lastOpenNonce` keeps it idempotent against unrelated re-renders.
+  useEffect(() => {
+    if (openFindingNonce === undefined || openFindingNonce === lastOpenNonce.current) return;
+    if (openFindingId === undefined) return;
+    if (!findings.some((f) => f.id === openFindingId)) return;
+    lastOpenNonce.current = openFindingNonce;
+    setSearch('');
+    setCreateExpanded(false);
+    setExpandedId(openFindingId);
+  }, [openFindingNonce, openFindingId, findings]);
 
-  const [search, setSearch] = useState('');
   const filteredFindings = useMemo(() => {
     if (search.trim() === '') return findings;
     const q = search.toLowerCase();
@@ -152,17 +163,6 @@ export function EntityFindingsBody({
       return f.description !== null && f.description !== undefined && f.description.toLowerCase().includes(q);
     });
   }, [findings, search]);
-
-  const handleDelete = useCallback(
-    (finding: Finding) => {
-      deleteMutation.mutate(finding.id, {
-        onSuccess: () => {
-          if (expandedId === finding.id) setExpandedId(null);
-        },
-      });
-    },
-    [deleteMutation, expandedId],
-  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -202,58 +202,62 @@ export function EntityFindingsBody({
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
+        {/* Inline create form — toggled by the toolbar button / context menu. */}
+        {createExpanded && (
+          <div className="border-b border-border px-3 py-3">
+            <FindingCreateForm
+              projectId={projectId}
+              template={chosenTemplate}
+              linkedModelId={scope.kind === 'element' || scope.kind === 'floorplanIfc' ? scope.modelId : null}
+              linkedFileId={scope.kind === 'project' ? null : scope.fileId}
+              linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
+              linkedPoint={pendingPoint}
+              linkedFileType={LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
+              onCreated={(id) => {
+                setCreateExpanded(false);
+                setPendingPoint(null);
+                setExpandedId(id);
+              }}
+              onCancel={() => {
+                setCreateExpanded(false);
+                setPendingPoint(null);
+              }}
+            />
+          </div>
+        )}
+
         {query.isLoading ? (
           <PanelEmptyState icon={Loader2} message={t('loading')} />
         ) : filteredFindings.length === 0 ? (
-          <PanelEmptyState
-            icon={AlertTriangle}
-            message={
-              scope.kind === 'project'
-                ? t('emptyProjectEmpty')
-                : scope.kind === 'file'
-                  ? t('emptyFileEmpty')
-                  : t('emptyNoItems')
-            }
-          />
+          !createExpanded && (
+            <PanelEmptyState
+              icon={AlertTriangle}
+              message={
+                scope.kind === 'project'
+                  ? t('emptyProjectEmpty')
+                  : scope.kind === 'file'
+                    ? t('emptyFileEmpty')
+                    : t('emptyNoItems')
+              }
+            />
+          )
         ) : (
           <div className="flex flex-col">
             {filteredFindings.map((finding) => {
-
               const isExpanded = expandedId === finding.id;
-
-              const entries: Array<{ label: string; value: string }> = [
-                { label: tExpanded('status'), value: tStatus(finding.status) },
-                { label: tExpanded('severity'), value: tSeverity(finding.severity) },
-              ];
-              if (finding.deadline_date !== null) {
-                entries.push({ label: tExpanded('deadline'), value: formatDate(finding.deadline_date, locale) });
-              }
-              if (finding.bbl_article_ref !== null && finding.bbl_article_ref !== '') {
-                entries.push({ label: tExpanded('bblRef'), value: finding.bbl_article_ref });
-              }
-              if (finding.photo_ids !== null && finding.photo_ids.length > 0) {
-                entries.push({ label: tExpanded('photos'), value: tExpanded('photoCount', { count: finding.photo_ids.length }) });
-              }
 
               return (
                 <DetailCard
                   key={finding.id}
                   expanded={isExpanded}
-                  onToggle={() => { setExpandedId(isExpanded ? null : finding.id); }}
+                  onToggle={() => {
+                    setCreateExpanded(false);
+                    setExpandedId(isExpanded ? null : finding.id);
+                  }}
                 >
                   <DetailCardRow
                     media={
                       <AlertTriangle className="h-5 w-5 text-foreground-tertiary" aria-hidden />
-                    }
-                    actions={
-                      <button
-                        type="button"
-                        title={tExpanded('view')}
-                        onClick={(e) => { e.stopPropagation(); setSelected(finding); }}
-                        className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
                     }
                   >
                     <div className="flex items-center gap-2">
@@ -278,34 +282,12 @@ export function EntityFindingsBody({
                   </DetailCardRow>
 
                   <DetailCardBody>
-                    {finding.description !== '' && (
-                      <div className="whitespace-pre-wrap border-b border-dashed border-border py-2.5 text-body3 leading-snug text-foreground-secondary">
-                        {finding.description}
-                      </div>
-                    )}
-                    <MetaGrid entries={entries} />
+                    <FindingDetailForm
+                      projectId={projectId}
+                      finding={finding}
+                      onDeleted={() => { setExpandedId(null); }}
+                    />
                   </DetailCardBody>
-
-                  <DetailCardFooter className="justify-between">
-                    <Button
-                      variant="ghost"
-                      size="md"
-                      onClick={() => { setSelected(finding); }}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      {tExpanded('view')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="md"
-                      onClick={() => { handleDelete(finding); }}
-                      disabled={deleteMutation.isPending}
-                      className="text-error hover:text-error"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      {tExpanded('delete')}
-                    </Button>
-                  </DetailCardFooter>
                 </DetailCard>
               );
             })}
@@ -319,24 +301,6 @@ export function EntityFindingsBody({
           </div>
         )}
       </div>
-
-      <FindingFormDialog
-        projectId={projectId}
-        open={createOpen}
-        onOpenChange={(o) => { setCreateOpen(o); if (!o) setPendingPoint(null); }}
-        template={chosenTemplate}
-        linkedModelId={scope.kind === 'element' || scope.kind === 'floorplanIfc' ? scope.modelId : null}
-        linkedFileId={scope.kind === 'project' ? null : scope.fileId}
-        linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
-        linkedPoint={pendingPoint}
-        linkedFileType={LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
-      />
-      <FindingDetailModal
-        projectId={projectId}
-        finding={selected}
-        open={selected !== null}
-        onOpenChange={(o) => { if (!o) setSelected(null); }}
-      />
     </div>
   );
 }

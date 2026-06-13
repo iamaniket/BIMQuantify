@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
+from bimstitch_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER
 from bimstitch_api.cad.header import looks_like_dwg, looks_like_dxf
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.ifc.header import looks_like_zip, parse_ifc_header
@@ -101,6 +102,7 @@ async def _load_file_or_404(session: AsyncSession, model_id: UUID, file_id: UUID
     "/initiate",
     response_model=InitiateUploadResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(UPLOAD_INITIATE_LIMITER)],
 )
 async def initiate_upload(
     project_id: UUID,

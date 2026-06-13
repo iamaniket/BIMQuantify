@@ -76,6 +76,15 @@ class Settings(BaseSettings):
     rate_limit_register_per_hour: int = Field(default=3, alias="RATE_LIMIT_REGISTER_PER_HOUR")
     rate_limit_refresh_per_min: int = Field(default=10, alias="RATE_LIMIT_REFRESH_PER_MIN")
     rate_limit_forgot_per_hour: int = Field(default=3, alias="RATE_LIMIT_FORGOT_PER_HOUR")
+    # Per-user/hour budgets on the expensive authenticated endpoints (synchronous
+    # arbiter compliance check, puppeteer report pipeline, upload presign churn).
+    rate_limit_compliance_per_hour: int = Field(
+        default=20, alias="RATE_LIMIT_COMPLIANCE_PER_HOUR"
+    )
+    rate_limit_report_per_hour: int = Field(default=10, alias="RATE_LIMIT_REPORT_PER_HOUR")
+    rate_limit_upload_initiate_per_hour: int = Field(
+        default=100, alias="RATE_LIMIT_UPLOAD_INITIATE_PER_HOUR"
+    )
 
     s3_endpoint_url: str = Field(default="http://localhost:9000", alias="S3_ENDPOINT_URL")
     s3_region: str = Field(default="us-east-1", alias="S3_REGION")
@@ -131,3 +140,38 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+# Known dev-only default secrets. `validate_production_config` refuses to boot
+# outside dev if any of these is still in effect, so a forgotten prod env var
+# fails loudly at startup instead of silently shipping a public credential.
+DEV_S3_ACCESS_KEY_ID = "bimstitch"
+DEV_S3_SECRET_ACCESS_KEY = "bimstitch-secret"
+DEV_PROCESSOR_SHARED_SECRET = "dev-shared-secret-change-me"
+MIN_JWT_SECRET_LENGTH = 32
+
+
+def validate_production_config(settings: Settings) -> list[str]:
+    """Return insecure-config errors when running outside dev.
+
+    An empty list means the config is safe to boot. Called from the app lifespan
+    (the processor has its own mirror in ``config.ts``). In dev
+    (``deploy_region == "dev"``) this always returns ``[]`` so local/test/CI keep
+    using the convenient defaults.
+    """
+    if settings.deploy_region == "dev":
+        return []
+    errors: list[str] = []
+    if settings.s3_access_key_id == DEV_S3_ACCESS_KEY_ID:
+        errors.append("S3_ACCESS_KEY_ID is the dev default; set a real value.")
+    if settings.s3_secret_access_key == DEV_S3_SECRET_ACCESS_KEY:
+        errors.append("S3_SECRET_ACCESS_KEY is the dev default; set a real value.")
+    if settings.processor_shared_secret == DEV_PROCESSOR_SHARED_SECRET:
+        errors.append("PROCESSOR_SHARED_SECRET is the dev default; set a real value.")
+    if "*" in settings.cors_origin_list:
+        errors.append("CORS_ORIGINS contains '*'; set an explicit origin allowlist.")
+    if len(settings.jwt_secret) < MIN_JWT_SECRET_LENGTH:
+        errors.append(
+            f"JWT_SECRET is shorter than {MIN_JWT_SECRET_LENGTH} chars; use a strong random secret."
+        )
+    return errors

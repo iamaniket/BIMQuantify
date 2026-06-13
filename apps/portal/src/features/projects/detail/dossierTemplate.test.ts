@@ -142,6 +142,33 @@ describe('computeDossierCompleteness', () => {
     expect(present.pct).toBe(100);
   });
 
+  it('fulfils an attachment_or_model requirement from a drawing OR a present model', () => {
+    const template = [
+      req({ code: 'drawings', source_kind: 'attachment_or_model', source_value: 'drawings' }),
+    ];
+
+    // Neither a drawing nor a model → missing.
+    const none = computeDossierCompleteness(template, [], [], { modelCount: 0 });
+    expect(none.requirements[0]?.fulfilled).toBe(false);
+    expect(none.pct).toBe(0);
+
+    // A BIM model present, no drawing attachment → fulfilled via the model.
+    const viaModel = computeDossierCompleteness(template, [], [], { modelCount: 1 });
+    expect(viaModel.requirements[0]?.fulfilled).toBe(true);
+    expect(viaModel.requirements[0]?.count).toBe(1);
+    expect(viaModel.pct).toBe(100);
+
+    // A matching drawing attachment, no model → fulfilled via the attachment.
+    const viaDrawing = computeDossierCompleteness(
+      template,
+      [att({ dossier_slot: 'drawings' })],
+      [],
+      { modelCount: 0 },
+    );
+    expect(viaDrawing.requirements[0]?.fulfilled).toBe(true);
+    expect(viaDrawing.requirements[0]?.count).toBe(1);
+  });
+
   it('drives pct from required items only; optional tracked separately', () => {
     const template = [
       req({ code: 'a', source_kind: 'attachment_slot', source_value: 'drawings', required: true }),
@@ -209,6 +236,14 @@ describe('buildCompletionSeries', () => {
     );
     // 3 trackable requirements (2 slots + 1 cert type) → 33%, 67%, 100%.
     expect(series.map((p) => p.pct)).toEqual([33, 67, 100]);
+  });
+
+  it('tracks an attachment_or_model slot in the completion series', () => {
+    const template = [
+      req({ code: 'drawings', source_kind: 'attachment_or_model', source_value: 'drawings' }),
+    ];
+    const series = buildCompletionSeries(template, [att({ dossier_slot: 'drawings' })]);
+    expect(series.map((p) => p.pct)).toEqual([100]);
   });
 
   it('returns [] when the template has no trackable requirements', () => {

@@ -23,6 +23,9 @@ type EntityInspectorPanelProps = {
   requestedView?: 'findings' | undefined;
   /** Nonce that increments on each new request, so repeated requests re-fire. */
   requestNonce?: number | undefined;
+  /** Expand this finding's row when `openFindingNonce` changes (marker click). */
+  openFindingId?: string | undefined;
+  openFindingNonce?: number | undefined;
   isPdf?: boolean;
   pdfCurrentPage?: number;
   /**
@@ -49,6 +52,8 @@ export function EntityInspectorPanel({
   fileId,
   requestedView,
   requestNonce,
+  openFindingId,
+  openFindingNonce,
   isPdf,
   pdfCurrentPage,
   floorPlan,
@@ -156,6 +161,8 @@ export function EntityInspectorPanel({
           scope={{ kind: 'element', modelId, fileId, globalId }}
           autoOpenNonce={autoOpenNonce}
           onAutoOpenConsumed={handleAutoOpenConsumed}
+          openFindingId={openFindingId}
+          openFindingNonce={openFindingNonce}
         />
       );
   } else {
