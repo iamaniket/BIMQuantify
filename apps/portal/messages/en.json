@@ -921,6 +921,7 @@
         "dossierTitle": "Dossier",
         "timelineTitle": "Timeline",
         "completionLabel": "Complete",
+        "placeholder": "More dossier insights coming soon",
         "noActivity": "No activity yet",
         "done": "Done",
         "missing": "Missing",

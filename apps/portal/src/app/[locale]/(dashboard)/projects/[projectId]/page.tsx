@@ -23,7 +23,6 @@ import { ProjectChartsPanel } from '@/features/projects/detail/ProjectChartsPane
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
 import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
 import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
-import { useProjectActivity } from '@/features/projects/detail/useProjectActivity';
 import {
   computeDossierCompleteness,
   selectDossierTemplate,
@@ -48,13 +47,11 @@ export default function ProjectDetailPage(): JSX.Element {
   const modelsQuery = useModels(projectId);
   const deadlinesQuery = useDeadlines(projectId);
   const attachmentsQuery = useAttachments(projectId);
-  const activityQuery = useProjectActivity(projectId);
   const findingsQuery = useFindings(projectId);
   const certificatesQuery = useCertificates(projectId);
 
   const deadlines = deadlinesQuery.data ?? [];
   const attachments = flattenPages(attachmentsQuery.data);
-  const activityEntries = flattenPages(activityQuery.data);
   const findings = flattenPages(findingsQuery.data);
   const certificates = flattenPages(certificatesQuery.data);
 
@@ -170,14 +167,7 @@ export default function ProjectDetailPage(): JSX.Element {
         }
       >
         <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-[2fr_3fr] xl:grid-cols-[2fr_4fr_2fr]">
-          <ProjectChartsPanel
-            dossier={dossier}
-            template={dossierTemplate}
-            deadlines={deadlines}
-            attachments={attachments}
-            certificates={certificates}
-            activityEntries={activityEntries}
-          />
+          <ProjectChartsPanel dossier={dossier} />
 
           <RightColumnTabs
             projectId={projectId}

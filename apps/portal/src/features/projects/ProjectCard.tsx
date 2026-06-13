@@ -13,15 +13,23 @@ import { AvatarStack } from '@/components/shared/AvatarStack';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { listModels } from '@/lib/api/models';
 import { getProject } from '@/lib/api/projects';
+import { listDeadlines } from '@/lib/api/deadlines';
+import { listAttachments } from '@/lib/api/attachments';
+import { listFindings } from '@/lib/api/findings';
+import { listCertificates } from '@/lib/api/certificates';
+import { getProjectActivity } from '@/lib/api/activity';
 import type { Project, ProjectMember } from '@/lib/api/schemas';
 import { modelsKey } from '@/features/models/queryKeys';
+import { attachmentsKey } from '@/features/attachments/queryKeys';
+import { findingsKey } from '@/features/findings/queryKeys';
+import { certificatesKey } from '@/features/certificates/queryKeys';
 import { useAuth } from '@/providers/AuthProvider';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { useLocale, useTranslations } from 'next-intl';
 
 import type { Locale } from '@bimstitch/i18n';
 
-import { projectKey } from './queryKeys';
+import { projectKey, projectDeadlinesKey } from './queryKeys';
 
 import { ProjectCardMenu } from './ProjectCardMenu';
 import {
@@ -83,24 +91,77 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
     ? 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-background-secondary to-background-tertiary grayscale'
     : 'flex h-36 items-center justify-center gap-3 bg-gradient-to-br from-background-secondary to-background-tertiary';
 
+  // Warm every query the project-detail page mounts so its panels are already
+  // populated by the time navigation completes. Best-effort: clicking without
+  // hovering simply falls back to the page's own on-mount fetches. Each query
+  // reuses the same key + api fn (and page size) as its feature hook so the
+  // detail page reads straight from cache rather than refetching.
   const prefetchProject = useCallback(() => {
     if (tokens === null) return;
-    const accessToken = tokens.access_token;
+    const { access_token: accessToken } = tokens;
+    const { id } = project;
+    const swallow = (): undefined => undefined;
+    const page = (offset: number): { limit: number; offset: number } => ({ limit: 50, offset });
+    const actPage = (o: number) => getProjectActivity(accessToken, id, undefined, 25, o, undefined);
+
     queryClient
       .prefetchQuery({
-        queryKey: projectKey(project.id),
-        queryFn: () => getProject(accessToken, project.id),
+        queryKey: projectKey(id),
+        queryFn: () => getProject(accessToken, id),
         staleTime: 30_000,
       })
-      .catch(() => undefined);
+      .catch(swallow);
     queryClient
       .prefetchQuery({
-        queryKey: modelsKey(project.id),
-        queryFn: () => listModels(accessToken, project.id),
+        queryKey: modelsKey(id),
+        queryFn: () => listModels(accessToken, id),
         staleTime: 30_000,
       })
-      .catch(() => undefined);
-  }, [tokens, queryClient, project.id]);
+      .catch(swallow);
+    queryClient
+      .prefetchQuery({
+        queryKey: projectDeadlinesKey(id),
+        queryFn: () => listDeadlines(accessToken, id),
+        staleTime: 30_000,
+      })
+      .catch(swallow);
+    queryClient
+      .prefetchInfiniteQuery({
+        queryKey: [...attachmentsKey(id), 'all'] as const,
+        queryFn: ({ pageParam }) => listAttachments(accessToken, id, page(pageParam)),
+        initialPageParam: 0,
+        getNextPageParam: () => undefined,
+        staleTime: 30_000,
+      })
+      .catch(swallow);
+    queryClient
+      .prefetchInfiniteQuery({
+        queryKey: findingsKey(id),
+        queryFn: ({ pageParam }) => listFindings(accessToken, id, page(pageParam)),
+        initialPageParam: 0,
+        getNextPageParam: () => undefined,
+        staleTime: 30_000,
+      })
+      .catch(swallow);
+    queryClient
+      .prefetchInfiniteQuery({
+        queryKey: [...certificatesKey(id), 'all'] as const,
+        queryFn: ({ pageParam }) => listCertificates(accessToken, id, page(pageParam)),
+        initialPageParam: 0,
+        getNextPageParam: () => undefined,
+        staleTime: 30_000,
+      })
+      .catch(swallow);
+    queryClient
+      .prefetchInfiniteQuery({
+        queryKey: ['projects', id, 'activity', 'all', 'all'] as const,
+        queryFn: ({ pageParam }) => actPage(pageParam),
+        initialPageParam: 0,
+        getNextPageParam: () => undefined,
+        staleTime: 30_000,
+      })
+      .catch(swallow);
+  }, [tokens, queryClient, project]);
 
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [aerialFailed, setAerialFailed] = useState(false);
