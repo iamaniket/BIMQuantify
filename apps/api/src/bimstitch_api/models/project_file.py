@@ -240,6 +240,12 @@ class ProjectFile(
     geometry_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     outline_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     floor_plans_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Content-based discipline classification computed at extraction time from
+    # the element histogram (architectural / structural / mep / mixed / none).
+    # NULL for non-IFC files and files extracted before this field existed.
+    # String + app-level values (not a PG enum) per the enum-evolution rule —
+    # this set may grow and must not incur a tenant-fan-out migration.
+    detected_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     # --- attachment facet (NULL for model sources) ---------------------------
     attachment_category: Mapped[AttachmentCategory | None] = mapped_column(

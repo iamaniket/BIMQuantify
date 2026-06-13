@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Badge, Button, Spinner } from '@bimstitch/ui';
+import { Badge, Button, IconButton, Spinner } from '@bimstitch/ui';
 import {
   DetailCard,
   DetailCardBody,
@@ -207,30 +207,29 @@ export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onTo
                 onMouseEnter={prewarmViewer}
                 onFocus={prewarmViewer}
                 title={t('viewFile')}
-                className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+                className="inline-grid h-6 w-7 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
               >
                 <Eye className="h-4 w-4" />
               </Link>
             ) : (
-              <button
-                type="button"
+              <IconButton
+                size="sm"
                 disabled
-                aria-disabled="true"
-                onClick={(e) => { e.stopPropagation(); }}
                 title={t('noViewableFile')}
-                className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={t('noViewableFile')}
+                onClick={(e) => { e.stopPropagation(); }}
               >
                 <Eye className="h-4 w-4" />
-              </button>
+              </IconButton>
             )}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+            <IconButton
+              size="sm"
               title={t('uploadFile')}
-              className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
+              aria-label={t('uploadFile')}
+              onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
             >
               <Upload className="h-4 w-4" />
-            </button>
+            </IconButton>
             <input
               ref={inputRef}
               type="file"

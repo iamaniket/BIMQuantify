@@ -6,7 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type JSX } from 'react';
 
-import { Badge, Button, Skeleton } from '@bimstitch/ui';
+import { Badge, Button, Eyebrow, Skeleton } from '@bimstitch/ui';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
 import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
@@ -121,9 +121,9 @@ export default function ReportDetailPage(): JSX.Element {
             </Button>
           </Link>
           <div>
-            <div className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+            <Eyebrow as="div" tone="tertiary">
               {t('title', { projectName: project?.name ?? 'Project' })}
-            </div>
+            </Eyebrow>
             <div className="flex items-center gap-2">
               <Badge variant={framework === 'bbl' ? 'default' : 'info'} className="uppercase">
                 {framework}
@@ -164,9 +164,9 @@ export default function ReportDetailPage(): JSX.Element {
 
       <div className="rounded-lg border border-border bg-background p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+          <Eyebrow as="div" tone="tertiary">
             {t('ruleBreakdownTitle')}
-          </div>
+          </Eyebrow>
           <div className="flex items-center gap-3">
             {latestQuery.data !== undefined && (
               <span className="text-caption text-foreground-tertiary">
@@ -204,9 +204,9 @@ export default function ReportDetailPage(): JSX.Element {
       </div>
 
       <div className="rounded-lg border border-border bg-background p-4 shadow-sm">
-        <div className="mb-3 text-caption font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
+        <Eyebrow as="div" tone="tertiary" className="mb-3">
           {t('issuesTitle', { count: issues.length })}
-        </div>
+        </Eyebrow>
         {tokens === null ? (
           <IssuesTab issues={issues} />
         ) : (

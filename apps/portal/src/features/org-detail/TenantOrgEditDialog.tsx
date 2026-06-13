@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { AppDialog, Button, Input } from '@bimstitch/ui';
+import { AppDialog, Button, Input, Label } from '@bimstitch/ui';
 
 import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';
@@ -134,9 +134,9 @@ export function TenantOrgEditDialog({
       <div className="flex flex-col gap-5">
         {/* Logo */}
         <div>
-          <label className="mb-1.5 block text-body3 font-medium text-foreground-secondary">
+          <Label className="mb-1.5 block">
             {t('fields.logo')}
-          </label>
+          </Label>
           <div className="flex items-center gap-4">
             <div className="group relative h-[78px] w-[117px] overflow-hidden rounded-lg border border-black/10 bg-black/5 shadow-sm dark:border-white/15 dark:bg-white/10">
               {imageUrl ? (

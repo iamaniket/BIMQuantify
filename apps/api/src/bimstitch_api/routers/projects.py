@@ -81,12 +81,22 @@ async def _resolve_thumbnail_url(thumbnail_url: str | None, storage: StorageBack
     return thumbnail_url
 
 
-async def _project_to_read(project: Project, storage: StorageBackend) -> dict[str, object]:
+async def _project_to_read(
+    project: Project,
+    storage: StorageBackend,
+    my_role: ProjectRole | None = None,
+) -> dict[str, object]:
     """Serialize a Project ORM object to a dict with the thumbnail URL resolved
-    and the linked contractor's name denormalized into `contractor_name`."""
+    and the linked contractor's name denormalized into `contractor_name`.
+
+    `my_role` is the requesting caller's role on this project (or None when they
+    reach it via an admin bypass rather than a membership row); it is surfaced so
+    the portal can gate its UI against the permission matrix.
+    """
     data: dict[str, object] = ProjectRead.model_validate(project).model_dump()
     data["thumbnail_url"] = await _resolve_thumbnail_url(project.thumbnail_url, storage)
     data["contractor_name"] = project.contractor.name if project.contractor is not None else None
+    data["my_role"] = my_role.value if my_role is not None else None
     return data
 
 
@@ -446,7 +456,7 @@ async def create_project(
         actor_user_id=user.id,
         request=request,
     )
-    return await _project_to_read(project, storage)
+    return await _project_to_read(project, storage, my_role=ProjectRole.owner)
 
 
 @router.post("/with-thumbnail", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
@@ -525,7 +535,7 @@ async def create_project_with_thumbnail(
         actor_user_id=user.id,
         request=request,
     )
-    return await _project_to_read(project, storage)
+    return await _project_to_read(project, storage, my_role=ProjectRole.owner)
 
 
 @router.post("/{project_id}/thumbnail", response_model=ProjectRead)
@@ -607,8 +617,27 @@ async def list_projects(
     stmt = base.order_by(Project.created_at).limit(limit).offset(offset)
     result = await session.execute(stmt)
     projects = list(result.scalars().all())
+
+    # Resolve the caller's own role per project so the portal can gate its UI.
+    # One lookup covers both branches: non-admins always have a membership row
+    # (that's how they see the project); an admin who isn't a member maps to
+    # None and the portal falls back to its org-admin flag.
+    role_by_project: dict[UUID, ProjectRole] = {}
+    if projects:
+        member_rows = await session.execute(
+            select(ProjectMember.project_id, ProjectMember.role).where(
+                ProjectMember.user_id == user.id,
+                ProjectMember.project_id.in_([p.id for p in projects]),
+            )
+        )
+        role_by_project = {pid: role for pid, role in member_rows.all()}
+
     cache_response(response, CACHE_TTL_PROJECT_LIST)
-    return list(await asyncio.gather(*[_project_to_read(p, storage) for p in projects]))
+    return list(
+        await asyncio.gather(
+            *[_project_to_read(p, storage, my_role=role_by_project.get(p.id)) for p in projects]
+        )
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
@@ -622,8 +651,16 @@ async def get_project(
 ) -> dict[str, object]:
     project = await _load_project_or_404(session, project_id)
     await _require_project_read_access(session, project.id, user, active_org_id)
+    # `my_role` is the caller's *actual* membership role, fetched independently of
+    # the read gate above: an org-admin/superuser reaches the project via the
+    # bypass (which returns no membership), yet may still hold a real role here
+    # (e.g. the creating org-admin is the owner). Writes are gated on the real
+    # role, so this must reflect the row, not the bypass.
+    my_membership = await _get_membership(session, project.id, user.id)
     cache_response(response, CACHE_TTL_PROJECT_DETAIL)
-    return await _project_to_read(project, storage)
+    return await _project_to_read(
+        project, storage, my_role=my_membership.role if my_membership is not None else None
+    )
 
 
 @router.patch("/{project_id}", response_model=ProjectRead)

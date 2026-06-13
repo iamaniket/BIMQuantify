@@ -51,7 +51,18 @@ export interface MinimapPluginAPI {
   isIsolated(): boolean;
 }
 
-type CalibrateArgs = { ifcBbox: Bbox3; planAxisX: number; planAxisY: number };
+type CalibrateArgs = {
+  ifcBbox: Bbox3;
+  planAxisX: number;
+  planAxisY: number;
+  /**
+   * The model whose floor plan this minimap represents. In a federated
+   * multi-discipline view the portal passes the ARCHITECTURAL model's id so
+   * storey isolation + space selection target it (not whichever model loaded
+   * first). Omitted for the single-file viewer → falls back to the first model.
+   */
+  modelId?: string;
+};
 type NavigateArgs = { planX: number; planY: number; elevation: number };
 /** Lift a plan point at a storey elevation into viewer world space. */
 type PlanToWorldArgs = { planX: number; planY: number; elevation: number };
@@ -76,6 +87,9 @@ export function minimapPlugin(
 ): Plugin & MinimapPluginAPI {
   let ctxRef: ViewerContext | null = null;
   let calibration: Calibration | null = null;
+  // The model the floor plan represents (set at calibrate time). Falls back to
+  // the first loaded model when unset (single-file viewer).
+  let planModelId: string | null = null;
   let activeStorey: string | null = null;
   let isolated = false;
   /** Latest world-space camera pose, projected on the next animation frame. */
@@ -104,6 +118,12 @@ export function minimapPlugin(
     rafId = requestAnimationFrame(projectAndEmit);
   };
 
+  // The model whose floor plan drives the minimap. Federated callers calibrate
+  // with the architectural model's id; the single-file viewer falls back to the
+  // first (only) loaded model.
+  const resolvePlanModelId = (ctx: ViewerContext): string | null =>
+    planModelId ?? [...ctx.models().keys()][0] ?? null;
+
   const calibrate = async (args: CalibrateArgs): Promise<void> => {
     const ctx = ctxRef;
     if (!ctx || !args) return;
@@ -111,6 +131,7 @@ export function minimapPlugin(
       .execute<undefined, WorldBox | null>('camera.getSceneBox')
       .catch(() => null);
     if (!worldBox) return;
+    planModelId = args.modelId ?? null;
     calibration = makeCalibration(args.ifcBbox, worldBox, args.planAxisX, args.planAxisY);
     ctx.events.emit('minimap:calibrated', { calibrated: true });
     // Seed the marker immediately from the current camera pose.
@@ -166,7 +187,7 @@ export function minimapPlugin(
       await showAllLevels();
       return;
     }
-    const modelId = [...ctx.models().keys()][0];
+    const modelId = resolvePlanModelId(ctx);
     if (!modelId) return;
     const items = localIds.map((localId) => ({ modelId, localId }));
     await ctx.commands.execute('visibility.isolateItem', items).catch(() => undefined);
@@ -221,7 +242,7 @@ export function minimapPlugin(
   const selectSpace = async (args: { spaceId: number } | null): Promise<void> => {
     const ctx = ctxRef;
     if (!ctx || typeof args?.spaceId !== 'number') return;
-    const modelId = [...ctx.models().keys()][0];
+    const modelId = resolvePlanModelId(ctx);
     if (!modelId) return;
     await ctx.commands
       .execute('selection.set', [{ modelId, localId: args.spaceId }])

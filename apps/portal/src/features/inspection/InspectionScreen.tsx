@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { Button, Skeleton } from '@bimstitch/ui';
 
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { useProjectPermissions } from '@/features/permissions';
 import { useRouter } from '@/i18n/navigation';
 import type {
   Borgingsmoment,
@@ -39,6 +40,10 @@ type Props = {
 export function InspectionScreen({ projectId, moment, plan }: Props): JSX.Element {
   const t = useTranslations('inspection');
   const router = useRouter();
+  const { can } = useProjectPermissions(projectId);
+  // Inspection start / submit-result / complete are all gated on
+  // Resource.inspection update (owner, editor, inspector). Others view-only.
+  const canInspect = can('inspection', 'update');
 
   const items = useMemo(
     () => moment.checklist_items.slice().sort((a, b) => a.sequence - b.sequence),
@@ -135,7 +140,7 @@ export function InspectionScreen({ projectId, moment, plan }: Props): JSX.Elemen
             variant="primary"
             size="lg"
             onClick={handleStart}
-            disabled={startMutation.isPending || items.length === 0}
+            disabled={startMutation.isPending || items.length === 0 || !canInspect}
           >
             {t('start.button')}
           </Button>
@@ -174,7 +179,7 @@ export function InspectionScreen({ projectId, moment, plan }: Props): JSX.Elemen
         <span className="text-caption font-medium text-foreground-secondary">
           {t('stepper.item', { current: currentIdx + 1, total: items.length })}
         </span>
-        {allDone && !isTerminal && (
+        {allDone && !isTerminal && canInspect && (
           <Button
             variant="primary"
             size="md"
@@ -195,7 +200,7 @@ export function InspectionScreen({ projectId, moment, plan }: Props): JSX.Elemen
           existingResult={resultByItemId.get(currentItem.id) ?? null}
           onSubmit={handleSubmit}
           isPending={submitMutation.isPending}
-          isCompleted={isTerminal}
+          isCompleted={isTerminal || !canInspect}
           syncStatus={syncStatuses.get(currentItem.id)}
         />
       </div>

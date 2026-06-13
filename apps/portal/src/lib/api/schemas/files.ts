@@ -1,6 +1,22 @@
 import { z } from 'zod';
 
+import { ModelDisciplineEnum } from './models';
+
 export const FileTypeEnum = z.enum(['ifc', 'pdf', 'dxf', 'dwg']);
+
+// Content-based discipline classification the extractor stamps on each IFC
+// file (see apps/processor/src/pipeline/classify.ts). Drives the discipline
+// badge and which model supplies the 2D plan in the federated viewer. Null for
+// non-IFC files and files extracted before the field existed.
+export const DetectedKindEnum = z.enum([
+  'architectural',
+  'structural',
+  'mep',
+  'mixed',
+  'none',
+]);
+
+export type DetectedKindValue = z.infer<typeof DetectedKindEnum>;
 
 export type FileTypeValue = z.infer<typeof FileTypeEnum>;
 
@@ -99,3 +115,28 @@ export const ViewerBundleResponseSchema = z.object({
 });
 
 export type ViewerBundleResponse = z.infer<typeof ViewerBundleResponseSchema>;
+
+// One model in a project's federated viewer manifest: the latest ready IFC
+// file for a model plus its presigned artifact URLs and discipline metadata.
+export const ProjectViewerModelEntrySchema = z.object({
+  file_id: z.string().uuid(),
+  model_id: z.string().uuid(),
+  model_name: z.string(),
+  discipline: ModelDisciplineEnum,
+  detected_kind: z.union([DetectedKindEnum, z.null()]),
+  fragments_url: z.union([z.string().url(), z.null()]),
+  fragments_key: z.union([z.string(), z.null()]),
+  metadata_url: z.union([z.string().url(), z.null()]),
+  properties_url: z.union([z.string().url(), z.null()]),
+  outline_url: z.union([z.string().url(), z.null()]),
+  floor_plans_url: z.union([z.string().url(), z.null()]),
+});
+
+export type ProjectViewerModelEntry = z.infer<typeof ProjectViewerModelEntrySchema>;
+
+export const ProjectViewerManifestResponseSchema = z.object({
+  expires_in: z.number().int().positive(),
+  models: z.array(ProjectViewerModelEntrySchema),
+});
+
+export type ProjectViewerManifestResponse = z.infer<typeof ProjectViewerManifestResponseSchema>;

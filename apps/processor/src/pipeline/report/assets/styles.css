@@ -19,6 +19,9 @@
   --c-fail: #991b1b;
   --c-fail-bg: #fee2e2;
   --c-primary: #1d4ed8;
+  /* Secondary accent — defaults to muted so non-branded reports are unchanged;
+     a template's accent_color_secondary overrides it via an injected <style>. */
+  --c-secondary: #6b7280;
 }
 
 * { box-sizing: border-box; }
@@ -149,6 +152,33 @@ td.warn, .warn { color: var(--c-warn); font-weight: 600; }
 .photo-grid figcaption { font-size: 8pt; color: var(--c-muted); margin-top: 1mm; }
 .finding { margin: 3mm 0 5mm 0; page-break-inside: avoid; }
 .finding h3 { font-size: 11pt; margin: 0 0 1mm 0; }
+
+/* Template branding (logo band above the cover + free-placed text blocks) */
+.brand-band {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+  padding-bottom: 4mm;
+  margin-bottom: 6mm;
+  border-bottom: 2px solid var(--c-primary);
+}
+.brand-logo {
+  max-height: 16mm;
+  max-width: 60mm;
+  object-fit: contain;
+}
+.brand-header {
+  font-size: 12pt;
+  font-weight: 700;
+  color: var(--c-secondary);
+}
+.text-block {
+  font-size: 10.5pt;
+  line-height: 1.5;
+}
+.text-block p {
+  margin: 0 0 3mm 0;
+}
 
 .page-footer {
   /* Visible only inside the html shell — Puppeteer's own

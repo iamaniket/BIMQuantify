@@ -7,6 +7,7 @@ import { useMemo, useState, type JSX } from 'react';
 import { Badge, Button, Spinner } from '@bimstitch/ui';
 
 import { useProjectReports, useCheckCompliance } from '@/features/compliance/hooks';
+import { useProjectPermissions } from '@/features/permissions';
 import { useModelFiles } from '@/features/models/useModelFiles';
 import type { Model, ProjectComplianceReportItem, ProjectFile } from '@/lib/api/schemas';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
@@ -43,6 +44,8 @@ type Props = {
 };
 
 export function ReportsTab({ projectId, models }: Props): JSX.Element {
+  const { can } = useProjectPermissions(projectId);
+  const canRunCheck = can('compliance', 'create');
   const [framework, setFramework] = useState<Framework>('all');
   const reportsQuery = useProjectReports(
     projectId,
@@ -109,12 +112,14 @@ export function ReportsTab({ projectId, models }: Props): JSX.Element {
         </div>
       )}
 
-      <ModelsWithoutReports
-        projectId={projectId}
-        models={models}
-        framework={framework === 'all' ? 'bbl' : framework}
-        reportedKeys={reportedFileIds}
-      />
+      {canRunCheck ? (
+        <ModelsWithoutReports
+          projectId={projectId}
+          models={models}
+          framework={framework === 'all' ? 'bbl' : framework}
+          reportedKeys={reportedFileIds}
+        />
+      ) : null}
     </div>
   );
 }

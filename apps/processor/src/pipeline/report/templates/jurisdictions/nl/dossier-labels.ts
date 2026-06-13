@@ -37,6 +37,9 @@ export const NL_DOSSIER_LABELS = {
   resolution: 'Oplossing',
   deadline: 'Deadline',
   noFindings: 'Geen bevindingen vastgelegd.',
+  element: 'Element-ID',
+  location: 'Locatie',
+  page: 'Pagina',
 
   certType: 'Type',
   certNumber: 'Nummer',

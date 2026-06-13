@@ -40,6 +40,13 @@ type Props = {
   floorPlansUrl: string | null;
   metadata: ModelMetadata | undefined;
   variant?: Variant;
+  /**
+   * The model this floor plan belongs to. In a federated multi-discipline view
+   * the caller passes the ARCHITECTURAL model's id so storey isolation + space
+   * selection target it. Omit for the single-file viewer (defaults to the only
+   * loaded model).
+   */
+  planModelId?: string;
 };
 
 type DisplayLevel = RawLevel & {
@@ -72,6 +79,7 @@ export function MinimapView({
   floorPlansUrl,
   metadata,
   variant = 'overlay',
+  planModelId,
 }: Props): ReactElement | null {
   const t = useTranslations('viewer.minimap');
   const { data: fp } = useFloorPlans(floorPlansUrl);
@@ -289,6 +297,7 @@ export function MinimapView({
         ifcBbox,
         planAxisX: fp.planAxisX,
         planAxisY: fp.planAxisY,
+        ...(planModelId ? { modelId: planModelId } : {}),
       })
       .catch(() => undefined);
     const off = handle.events.on('minimap:pose', (pose) => {
@@ -296,7 +305,7 @@ export function MinimapView({
       scheduleComposite();
     });
     return off;
-  }, [handle, viewerReady, metadata, fp, scheduleComposite]);
+  }, [handle, viewerReady, metadata, fp, scheduleComposite, planModelId]);
 
   // Full variant: isolate the selected storey in 3D (hide other levels). On
   // unmount (leaving Split/2D), restore the full model.

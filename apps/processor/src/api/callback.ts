@@ -21,6 +21,10 @@ export type CallbackPayload = {
   // Set only on `succeeded` when the per-level floor-plan artifact uploaded;
   // absent when the model has no storeys or generation failed gracefully.
   floor_plans_key?: string | null;
+  // Content-based discipline classification of the model (architectural /
+  // structural / mep / mixed / none), persisted on the file. Drives the
+  // floor-plan gate and the portal's discipline badge + federated 2D source.
+  detected_kind?: string | null;
   geometry_key?: string;
   page_count?: number;
   error?: string;

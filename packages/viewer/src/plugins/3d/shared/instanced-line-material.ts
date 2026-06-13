@@ -102,6 +102,33 @@ function buildVertexShader(): string {
   return out;
 }
 
+/**
+ * Build the fragment shader. When `bias > 0` we re-create polygon offset in
+ * log-depth space (the rasterizer's `polygonOffset` is a no-op under
+ * `logarithmicDepthBuffer`) by nudging `gl_FragDepth` toward the camera — the
+ * same trick `Viewer.ts` applies to surfaces, but with a larger bias so edges
+ * win the depth test against the surface they trace. Throws if the stock chunk
+ * moved, so a three.js upgrade surfaces the drift at module load.
+ */
+function buildFragmentShader(bias: number): string {
+  const base = ShaderLib['line']!.fragmentShader;
+  if (bias <= 0) return base;
+  if (!base.includes('#include <logdepthbuf_fragment>')) {
+    throw new Error(
+      'InstancedLineMaterial: failed to patch the stock line fragment shader ' +
+        '(three.js ShaderLib["line"] dropped <logdepthbuf_fragment>). ' +
+        'Re-check the substring edit.',
+    );
+  }
+  return base.replace(
+    '#include <logdepthbuf_fragment>',
+    `#include <logdepthbuf_fragment>
+#if defined( USE_LOGARITHMIC_DEPTH_BUFFER )
+\tgl_FragDepth -= ${bias.toFixed(8)};
+#endif`,
+  );
+}
+
 export interface InstancedLineMaterialParameters {
   color?: number;
   linewidth?: number;
@@ -111,6 +138,8 @@ export interface InstancedLineMaterialParameters {
   polygonOffset?: boolean;
   polygonOffsetFactor?: number;
   polygonOffsetUnits?: number;
+  /** Log-space depth bias toward the camera (px-independent). Default: 0. */
+  depthBias?: number;
 }
 
 export class InstancedLineMaterial extends ShaderMaterial {
@@ -129,7 +158,7 @@ export class InstancedLineMaterial extends ShaderMaterial {
         },
       ]),
       vertexShader: buildVertexShader(),
-      fragmentShader: ShaderLib['line']!.fragmentShader,
+      fragmentShader: buildFragmentShader(params.depthBias ?? 0),
       clipping: true, // required so the clipping_planes chunks compile in
     });
 

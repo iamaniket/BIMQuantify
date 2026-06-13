@@ -4,6 +4,8 @@ import type { JSX } from 'react';
 
 import { useLocale, useTranslations } from 'next-intl';
 
+import { Eyebrow } from '@bimstitch/ui';
+
 import type { Locale } from '@bimstitch/i18n';
 
 import type { Project } from '@/lib/api/schemas';
@@ -30,6 +32,7 @@ function Row({ label, value }: { label: string; value: string | null }): JSX.Ele
 
 export function ProjectAboutCard({ project }: Props): JSX.Element {
   const locale = useLocale() as Locale;
+  const t = useTranslations('projects.about');
   const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
   const description = project.description === null || project.description.trim().length === 0
@@ -44,12 +47,10 @@ export function ProjectAboutCard({ project }: Props): JSX.Element {
   return (
     <aside className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
       <section className="flex flex-col gap-1.5">
-        <h2 className="text-caption font-medium uppercase tracking-wide text-foreground-tertiary">
-          Description
-        </h2>
+        <Eyebrow as="div" tone="tertiary">{t('descriptionHeading')}</Eyebrow>
         {description === null ? (
           <p className="text-body3 italic text-foreground-tertiary">
-            No description.
+            {t('noDescription')}
           </p>
         ) : (
           <p className="whitespace-pre-line text-body2 text-foreground-secondary">
@@ -59,39 +60,33 @@ export function ProjectAboutCard({ project }: Props): JSX.Element {
       </section>
 
       <section className="flex flex-col gap-2 border-t border-border pt-4">
-        <h2 className="text-caption font-medium uppercase tracking-wide text-foreground-tertiary">
-          Project info
-        </h2>
+        <Eyebrow as="div" tone="tertiary">{t('infoHeading')}</Eyebrow>
         <dl className="flex flex-col gap-1 text-body3">
-          <Row label="Reference code" value={project.reference_code} />
-          <Row label="Status" value={tStatuses(project.status)} />
-          <Row label="Phase" value={tPhases(project.phase)} />
-          <Row label="Delivery" value={deliveryDate} />
-          <Row label="Permit" value={project.permit_number} />
-          <Row label="Contractor" value={project.contractor_name} />
+          <Row label={t('referenceCode')} value={project.reference_code} />
+          <Row label={t('status')} value={tStatuses(project.status)} />
+          <Row label={t('phase')} value={tPhases(project.phase)} />
+          <Row label={t('delivery')} value={deliveryDate} />
+          <Row label={t('permit')} value={project.permit_number} />
+          <Row label={t('contractor')} value={project.contractor_name} />
         </dl>
       </section>
 
       {(address !== null || project.municipality !== null) && (
         <section className="flex flex-col gap-2 border-t border-border pt-4">
-          <h2 className="text-caption font-medium uppercase tracking-wide text-foreground-tertiary">
-            Site address
-          </h2>
+          <Eyebrow as="div" tone="tertiary">{t('addressHeading')}</Eyebrow>
           <dl className="flex flex-col gap-1 text-body3">
-            <Row label="Address" value={address} />
-            <Row label="Municipality" value={project.municipality} />
-            <Row label="BAG ID" value={project.bag_id} />
+            <Row label={t('address')} value={address} />
+            <Row label={t('municipality')} value={project.municipality} />
+            <Row label={t('bagId')} value={project.bag_id} />
           </dl>
         </section>
       )}
 
       <section className="flex flex-col gap-2 border-t border-border pt-4">
-        <h2 className="text-caption font-medium uppercase tracking-wide text-foreground-tertiary">
-          Timestamps
-        </h2>
+        <Eyebrow as="div" tone="tertiary">{t('timestampsHeading')}</Eyebrow>
         <dl className="flex flex-col gap-1 text-body3">
-          <Row label="Created" value={formatDate(project.created_at, locale)} />
-          <Row label="Updated" value={formatDate(project.updated_at, locale)} />
+          <Row label={t('created')} value={formatDate(project.created_at, locale)} />
+          <Row label={t('updated')} value={formatDate(project.updated_at, locale)} />
         </dl>
       </section>
     </aside>

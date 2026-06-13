@@ -24,6 +24,11 @@ class ReportCreateRequest(BaseModel):
     # If omitted, server resolves from the project's jurisdiction registry
     # entry (NL → 'nl'). Pass an explicit BCP47 code (e.g. 'en') to override.
     locale: str | None = Field(default=None, max_length=8)
+    # Optional org report-template to render with. Must be a report-kind template
+    # whose template_type matches report_type (else 422 TEMPLATE_TYPE_MISMATCH).
+    # Omit to use the org default for this report type, or the built-in layout if
+    # none is set.
+    template_id: UUID | None = Field(default=None)
     # Optional input filters — for compliance_report you can scope to specific
     # files; omit for project-wide. Snapshotted into Report.params.
     params: dict = Field(default_factory=dict)
@@ -42,6 +47,7 @@ class ReportResponse(BaseModel):
     locale: str
     job_id: UUID | None
     source_job_id: UUID | None
+    template_id: UUID | None = None
     storage_key: str | None
     byte_size: int | None
     sha256: str | None

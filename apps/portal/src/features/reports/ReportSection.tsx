@@ -13,9 +13,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  Select,
   Spinner,
 } from '@bimstitch/ui';
 
+import { useProjectPermissions } from '@/features/permissions';
+import { useReportTemplates } from '@/features/reportTemplates/hooks';
 import { ApiError } from '@/lib/api/client';
 import type { Report, ReportStatus, ReportType } from '@/lib/api/schemas/reports';
 
@@ -68,15 +71,28 @@ export function ReportSection({
   renderRowActions,
 }: Props): JSX.Element {
   const t = useTranslations('reports');
+  const { can } = useProjectPermissions(projectId);
+  const canGenerate = can('report', 'create');
   const reportsQuery = useReports(projectId, reportType);
   const generate = useGenerateReport(projectId);
+  const templatesQuery = useReportTemplates(reportType);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [templateOverride, setTemplateOverride] = useState<string | undefined>(undefined);
 
   const reports = reportsQuery.data?.items ?? [];
+  const templates = templatesQuery.data ?? [];
+  const defaultTemplate = templates.find((tpl) => tpl.is_default);
+  // Preselect the org default so the Generate button stays one-click; '' = none.
+  const selectedTemplateId = templateOverride ?? defaultTemplate?.id ?? '';
 
   const handleGenerate = (): void => {
     generate.mutate(
-      { report_type: reportType, locale: null, params: {} },
+      {
+        report_type: reportType,
+        locale: null,
+        template_id: selectedTemplateId === '' ? null : selectedTemplateId,
+        params: {},
+      },
       { onSuccess: (report) => { setPreviewId(report.id); } },
     );
   };
@@ -98,14 +114,34 @@ export function ReportSection({
             {t(`types.${reportType}.description`)}
           </p>
         </div>
-        <Button variant="primary" size="md" disabled={generate.isPending} onClick={handleGenerate}>
-          {generate.isPending ? (
-            <Spinner size="md" className="mr-1.5 h-3 w-3 text-current" />
-          ) : (
-            <Sparkles className="mr-1.5 h-3 w-3" />
-          )}
-          {t(`types.${reportType}.generate`)}
-        </Button>
+        {canGenerate ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {templates.length > 0 ? (
+              <Select
+                value={selectedTemplateId}
+                onChange={(e) => { setTemplateOverride(e.target.value); }}
+                className="w-44"
+                aria-label={t('shared.templateLabel')}
+              >
+                <option value="">{t('shared.noTemplate')}</option>
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.name}
+                    {tpl.is_default ? ` (${t('shared.defaultSuffix')})` : ''}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+            <Button variant="primary" size="md" disabled={generate.isPending} onClick={handleGenerate}>
+              {generate.isPending ? (
+                <Spinner size="md" className="mr-1.5 h-3 w-3 text-current" />
+              ) : (
+                <Sparkles className="mr-1.5 h-3 w-3" />
+              )}
+              {t(`types.${reportType}.generate`)}
+            </Button>
+          </div>
+        ) : null}
       </header>
 
       {showMissingData ? (

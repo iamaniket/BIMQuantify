@@ -10,6 +10,7 @@ import { ResourceList, TabToolbar } from '@/components/shared/resource';
 import type { Model, ModelDisciplineValue, ProjectFile } from '@/lib/api/schemas';
 import { NewModelDialog } from '@/features/models/NewModelDialog';
 import { useModelsWithVersions } from '@/features/models/useModelsWithVersions';
+import { useProjectPermissions } from '@/features/permissions';
 
 import { ModelsTableRow } from './ModelsTableRow';
 
@@ -33,6 +34,8 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
   const [searchQuery, setSearchQuery] = useState('');
   const [disciplineFilter, setDisciplineFilter] = useState<ModelDisciplineValue | undefined>(undefined);
   const t = useTranslations('projectDetail.tabs.models');
+  const { can } = useProjectPermissions(projectId);
+  const canCreateModel = can('model', 'create');
 
   // Fetch all models with their file versions in a single API call.
   const modelsWithVersionsQuery = useModelsWithVersions(projectId, true);
@@ -66,14 +69,16 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
           </Select>
         )}
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => { setNewModelOpen(true); }}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            {t('newModel')}
-          </Button>
+          canCreateModel ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => { setNewModelOpen(true); }}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              {t('newModel')}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -88,7 +93,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
             icon={Box}
             title={t('emptyState')}
             description={t('emptyDescription')}
-            action={(
+            action={canCreateModel ? (
               <Button
                 variant="primary"
                 size="md"
@@ -97,7 +102,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 {t('newModel')}
               </Button>
-            )}
+            ) : undefined}
             className={undefined}
           />
         )}

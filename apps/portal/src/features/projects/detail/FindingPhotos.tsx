@@ -1,5 +1,6 @@
 'use client';
 
+import { Label } from '@bimstitch/ui';
 import { ImagePlus, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
@@ -101,7 +102,7 @@ export function FindingPhotos({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-label2 font-medium text-foreground">{label ?? t('label')}</span>
+      <Label>{label ?? t('label')}</Label>
       <div className="flex flex-wrap gap-2">
         {photoIds.map((id) => (
           <PhotoThumbnail

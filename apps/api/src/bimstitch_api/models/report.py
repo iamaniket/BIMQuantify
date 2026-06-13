@@ -45,9 +45,7 @@ class ReportStatus(StrEnum):
     failed = "failed"
 
 
-_REPORT_TERMINAL: frozenset[ReportStatus] = frozenset(
-    {ReportStatus.ready, ReportStatus.failed}
-)
+_REPORT_TERMINAL: frozenset[ReportStatus] = frozenset({ReportStatus.ready, ReportStatus.failed})
 
 
 class Report(TimestampMixin, TenantBase):
@@ -97,6 +95,16 @@ class Report(TimestampMixin, TenantBase):
         nullable=True,
     )
 
+    # The org template (report kind) this report was rendered with. Null = the
+    # built-in default layout. SET NULL — deleting a template never breaks a
+    # historical report; the resolved config was snapshotted into the worker
+    # payload at generation, so the FK is provenance only.
+    template_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("org_templates.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # S3 artifact (set when status=ready).
     storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     byte_size: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -136,10 +144,13 @@ class Report(TimestampMixin, TenantBase):
             text("created_at DESC"),
         ),
         Index("ix_reports_status", "status"),
-        Index(
-            "ix_reports_job_id", "job_id", postgresql_where=text("job_id IS NOT NULL")
-        ),
+        Index("ix_reports_job_id", "job_id", postgresql_where=text("job_id IS NOT NULL")),
         Index("ix_reports_report_type", "report_type"),
         Index("ix_reports_source_job_id", "source_job_id"),
+        Index(
+            "ix_reports_template_id",
+            "template_id",
+            postgresql_where=text("template_id IS NOT NULL"),
+        ),
         Index("ix_reports_created_by", "created_by_user_id"),
     )

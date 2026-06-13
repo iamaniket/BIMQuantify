@@ -19,6 +19,7 @@ import {
   Card,
   CardBody,
   CardHeader,
+  Eyebrow,
   Skeleton,
   TabsContent,
 } from '@bimstitch/ui';
@@ -222,9 +223,9 @@ function ProfilePane({
               <div className="min-w-0 flex-1 space-y-3">
                 {/* Name */}
                 <div>
-                  <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-tertiary">
+                  <Eyebrow as="div" tone="tertiary">
                     {t('nameLabel')}
-                  </div>
+                  </Eyebrow>
                   {editingName ? (
                     <div className="mt-1 flex items-center gap-2">
                       <input
@@ -270,9 +271,9 @@ function ProfilePane({
 
                 {/* Email */}
                 <div>
-                  <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-tertiary">
+                  <Eyebrow as="div" tone="tertiary">
                     {t('emailLabel')}
-                  </div>
+                  </Eyebrow>
                   <div className="mt-0.5 flex items-center gap-1.5 text-body2 text-foreground">
                     <Mail size={15} className="text-foreground-tertiary" />
                     {email}

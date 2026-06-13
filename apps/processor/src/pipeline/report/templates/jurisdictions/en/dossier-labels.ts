@@ -38,6 +38,9 @@ export const EN_DOSSIER_LABELS: DossierLabels = {
   resolution: 'Resolution',
   deadline: 'Deadline',
   noFindings: 'No findings recorded.',
+  element: 'Element ID',
+  location: 'Location',
+  page: 'Page',
 
   certType: 'Type',
   certNumber: 'Number',

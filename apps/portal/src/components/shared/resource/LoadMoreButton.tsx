@@ -3,6 +3,8 @@
 import type { JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
+import { Button, Spinner } from '@bimstitch/ui';
+
 type Props = {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
@@ -19,20 +21,16 @@ export function LoadMoreButton({
   if (!hasNextPage) return null;
 
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
+      size="md"
       disabled={isFetchingNextPage}
       onClick={fetchNextPage}
-      className="mt-2 w-full rounded-md bg-surface-high py-1.5 text-body3 font-medium text-foreground-secondary transition-colors hover:bg-surface-main hover:text-foreground disabled:opacity-60"
+      className="mt-2 w-full"
     >
-      {isFetchingNextPage ? (
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          {t('loadMore')}
-        </span>
-      ) : (
-        t('loadMore')
-      )}
-    </button>
+      {isFetchingNextPage ? <Spinner size="sm" /> : null}
+      {t('loadMore')}
+    </Button>
   );
 }

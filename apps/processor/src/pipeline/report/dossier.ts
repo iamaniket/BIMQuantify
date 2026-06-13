@@ -16,8 +16,9 @@ import { logger } from '../../log.js';
 import type { ProgressReporter, WorkerJob } from '../../queue/queue.js';
 import { downloadObject } from '../../storage/s3.js';
 import { runReportJob } from './index.js';
-import { reportInstrumentSchema, reportProjectSchema } from './templates/_helpers.js';
+import { reportInstrumentSchema, reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
 import { renderHtml, type DossierData } from './templates/dossier.js';
+import { embedTemplateLogo, mergeTemplateCover } from './templateAssets.js';
 
 const PHOTO = z.object({
   storage_key: z.string(),
@@ -70,6 +71,13 @@ const PayloadSchema: z.ZodType<DossierData & { storage_key: string }> = z
         deadline_date: z.string().nullable().optional(),
         bbl_article_ref: z.string().nullable().optional(),
         resolution_note: z.string().nullable().optional(),
+        linked_element_global_id: z.string().nullable().optional(),
+        linked_model_id: z.string().nullable().optional(),
+        linked_file_type: z.string().nullable().optional(),
+        anchor_page: z.number().nullable().optional(),
+        anchor_x: z.number().nullable().optional(),
+        anchor_y: z.number().nullable().optional(),
+        anchor_z: z.number().nullable().optional(),
         photos: z.array(PHOTO),
       }),
     ),
@@ -93,6 +101,7 @@ const PayloadSchema: z.ZodType<DossierData & { storage_key: string }> = z
         signature_hash: z.string().nullable().optional(),
       })
       .nullable(),
+    template: reportTemplateSchema,
   })
   .passthrough() as unknown as z.ZodType<DossierData & { storage_key: string }>;
 
@@ -110,6 +119,8 @@ async function prepare(payload: DossierPayload): Promise<DossierPayload> {
       }
     }
   }
+  // Embed the template logo (if any) after the finding photos.
+  await embedTemplateLogo(payload);
   return payload;
 }
 
@@ -122,21 +133,24 @@ async function postProcess(pdfBytes: Uint8Array, payload: DossierPayload): Promi
   for (const cert of payload.certificates) {
     if (cert.content_type === 'application/pdf') keys.push(cert.storage_key);
   }
-  if (keys.length === 0) return pdfBytes;
-
-  const { PDFDocument } = await import('pdf-lib');
-  const merged = await PDFDocument.load(pdfBytes);
-  for (const key of keys) {
-    try {
-      const bytes = await downloadObject(key);
-      const src = await PDFDocument.load(bytes);
-      const pages = await merged.copyPages(src, src.getPageIndices());
-      for (const page of pages) merged.addPage(page);
-    } catch (err) {
-      logger.warn({ err, key }, 'dossier: PDF merge failed for object, skipping');
+  let bytes = pdfBytes;
+  if (keys.length > 0) {
+    const { PDFDocument } = await import('pdf-lib');
+    const merged = await PDFDocument.load(pdfBytes);
+    for (const key of keys) {
+      try {
+        const objBytes = await downloadObject(key);
+        const src = await PDFDocument.load(objBytes);
+        const pages = await merged.copyPages(src, src.getPageIndices());
+        for (const page of pages) merged.addPage(page);
+      } catch (err) {
+        logger.warn({ err, key }, 'dossier: PDF merge failed for object, skipping');
+      }
     }
+    bytes = await merged.save({ useObjectStreams: false });
   }
-  return await merged.save({ useObjectStreams: false });
+  // Prepend the template cover/letterhead (if any) so it lands first.
+  return mergeTemplateCover(bytes, payload);
 }
 
 export async function runDossierReport(

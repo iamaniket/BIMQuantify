@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 
 import { Button, Skeleton } from '@bimstitch/ui';
-import { Pencil, Settings, Share2 } from '@bimstitch/ui/icons';
+import { Layers, Pencil, Settings, Share2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
@@ -150,6 +150,13 @@ export default function ProjectDetailPage(): JSX.Element {
           <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('shareProject')}
         </Link>
       </Button>
+      {modelCount > 0 && (
+        <Button variant="border" size="md" asChild>
+          <Link href={`/projects/${project.id}/viewer`}>
+            <Layers className="mr-1 h-3.5 w-3.5" /> {tHero('viewAllModels')}
+          </Link>
+        </Button>
+      )}
     </>
   );
 

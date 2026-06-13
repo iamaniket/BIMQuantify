@@ -14,6 +14,10 @@ const KNOWN_DETAILS: Record<string, string> = {
   CANNOT_DELETE_DEFAULT_TEMPLATE: 'You can’t delete the default template. Set another as default first.',
   DEFAULT_TEMPLATE_CONFLICT: 'Another template was just set as default. Please try again.',
   FINDING_TEMPLATE_NOT_FOUND: 'That template no longer exists.',
+  // Project-role gating backstop. UI gating should keep users from triggering
+  // this, but if a stale view lets one through, show a clear message instead of
+  // the raw serialized detail object.
+  PERMISSION_DENIED: 'You don’t have permission to perform this action.',
 };
 
 const STATUS_MESSAGES: Record<number, string> = {
@@ -29,6 +33,14 @@ const STATUS_MESSAGES: Record<number, string> = {
 export function getErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) {
     return 'An unexpected error occurred.';
+  }
+
+  // Structured detail objects ({ code, ... }) — e.g. PERMISSION_DENIED — carry
+  // the SCREAMING_SNAKE code in `code`; map it before falling back to the raw
+  // (JSON-stringified) detail text.
+  const code = error.detailObject !== null ? error.detailObject['code'] : undefined;
+  if (typeof code === 'string' && KNOWN_DETAILS[code] !== undefined) {
+    return KNOWN_DETAILS[code];
   }
 
   const knownDetail = KNOWN_DETAILS[error.detail];

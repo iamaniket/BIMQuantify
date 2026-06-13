@@ -51,6 +51,7 @@ from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.finding import Finding
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.notification import NotificationEventType
+from bimstitch_api.models.org_template import OrgTemplate
 from bimstitch_api.models.project import Project
 from bimstitch_api.models.project_file import ProjectFile, ProjectFileRole
 from bimstitch_api.models.report import Report, ReportStatus, ReportType
@@ -68,7 +69,7 @@ from bimstitch_api.schemas.report import (
     ReportListResponse,
     ReportResponse,
 )
-from bimstitch_api.storage import StorageBackend, get_storage
+from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
@@ -166,6 +167,58 @@ async def _to_response(
     payload = ReportResponse.model_validate(report).model_dump()
     payload["download_url"] = download_url
     return ReportResponse(**payload)
+
+
+async def _resolve_template(
+    session: AsyncSession, report_type: ReportType, explicit_id: UUID | None
+) -> OrgTemplate | None:
+    """The report template to render with: an explicit id (validated to match
+    report_type) → the org default for this report type → None (built-in layout)."""
+    if explicit_id is not None:
+        tpl = (
+            await session.execute(
+                select(OrgTemplate).where(
+                    OrgTemplate.id == explicit_id,
+                    OrgTemplate.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if tpl is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="REPORT_TEMPLATE_NOT_FOUND"
+            )
+        if tpl.template_type != report_type.value:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="TEMPLATE_TYPE_MISMATCH",
+            )
+        return tpl
+    return (
+        await session.execute(
+            select(OrgTemplate)
+            .where(
+                OrgTemplate.template_type == report_type.value,
+                OrgTemplate.is_default.is_(True),
+                OrgTemplate.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+def _template_payload(tpl: OrgTemplate) -> dict[str, object]:
+    """The template config shipped to the worker. Branding asset keys travel with
+    their bucket (the worker fetches logo/cover from MinIO by key); sections and
+    text blocks travel inline and are applied/interpolated at render time."""
+    config = tpl.config or {}
+    branding = dict(config.get("branding") or {})
+    branding["bucket"] = get_attachments_bucket()
+    return {
+        "id": str(tpl.id),
+        "branding": branding,
+        "sections": config.get("sections") or [],
+        "options": config.get("options") or {},
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -413,6 +466,18 @@ def _dossier_finding_payload(
         "deadline_date": finding.deadline_date.isoformat() if finding.deadline_date else None,
         "bbl_article_ref": finding.bbl_article_ref,
         "resolution_note": finding.resolution_note,
+        # Anchored BIM element identity + location (the "snap" GUID/location the
+        # dossier surfaces per finding). Coordinates are the only location stored
+        # on a finding — there is no human-readable storey name.
+        "linked_element_global_id": finding.linked_element_global_id,
+        "linked_model_id": str(finding.linked_model_id)
+        if finding.linked_model_id is not None
+        else None,
+        "linked_file_type": finding.linked_file_type,
+        "anchor_page": finding.anchor_page,
+        "anchor_x": finding.anchor_x,
+        "anchor_y": finding.anchor_y,
+        "anchor_z": finding.anchor_z,
         "photos": photos,
     }
 
@@ -609,6 +674,9 @@ async def create_report(
         )
     plan = await resolver(session, project, user, locale)
 
+    # Resolve the org report-template (explicit id → org default → built-in).
+    template = await _resolve_template(session, payload.report_type, payload.template_id)
+
     generated_at = datetime.now(UTC)
 
     # Create Report first so we have its ID for the worker's storage key.
@@ -620,6 +688,7 @@ async def create_report(
         locale=locale,
         params=payload.params or {},
         source_job_id=plan.source_job_id,
+        template_id=template.id if template is not None else None,
         created_by_user_id=user.id,
     )
     session.add(report)
@@ -639,6 +708,8 @@ async def create_report(
         "jurisdiction": project.country,
         **plan.payload_extra,
     }
+    if template is not None:
+        worker_payload["template"] = _template_payload(template)
 
     try:
         await check_job_concurrency(session, settings)

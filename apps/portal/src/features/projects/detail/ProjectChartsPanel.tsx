@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { type JSX } from 'react';
 
-import { Eyebrow } from '@/components/shared/Eyebrow';
+import { Eyebrow } from '@bimstitch/ui';
 
 import { type DossierCompleteness } from './dossierTemplate';
 
@@ -23,7 +23,7 @@ export function ProjectChartsPanel({ dossier }: Props): JSX.Element {
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-        <Eyebrow as="span">{t('dossierTitle')}</Eyebrow>
+        <Eyebrow as="span" tone="tertiary">{t('dossierTitle')}</Eyebrow>
         <span
           className="text-h2 font-semibold leading-none tabular-nums"
           style={{ color: completionColor(dossier.pct) }}

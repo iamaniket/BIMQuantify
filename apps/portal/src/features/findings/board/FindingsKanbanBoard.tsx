@@ -7,10 +7,10 @@ import { type KanbanColumnDef } from '@bimstitch/ui';
 import { KanbanBoard } from '@bimstitch/ui';
 
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
+import { useProjectPermissions } from '@/features/permissions';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 import type { ProjectMember } from '@/lib/api/schemas';
-import { useAuth } from '@/providers/AuthProvider';
 
 import { FindingKanbanCard } from './FindingKanbanCard';
 import { isValidTransition, needsModal } from './kanbanTransitions';
@@ -35,14 +35,10 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
   const t = useTranslations('findingsBoard');
   const tColumns = useTranslations('findingsBoard.columns');
   const updateMutation = useUpdateFinding(projectId);
-  const { me } = useAuth();
+  const { can, canVerifyFinding } = useProjectPermissions(projectId);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
 
-  const currentUserId = me === null ? null : me.user.id;
-  const isInspector = useMemo(
-    () => members.some((m) => m.user_id === currentUserId && m.role === 'inspector'),
-    [members, currentUserId],
-  );
+  const canUpdateFinding = can('finding', 'update');
 
   const getAssigneeName = useCallback(
     (userId: string | null): string | null => {
@@ -64,8 +60,9 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
 
   const canDrop = useCallback(
     (_itemId: string, from: string, to: string): boolean =>
-      isValidTransition(from as FindingStatusValue, to as FindingStatusValue, isInspector),
-    [isInspector],
+      canUpdateFinding
+      && isValidTransition(from as FindingStatusValue, to as FindingStatusValue, canVerifyFinding),
+    [canUpdateFinding, canVerifyFinding],
   );
 
   const handleMove = useCallback(

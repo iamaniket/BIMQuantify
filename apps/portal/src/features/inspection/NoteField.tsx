@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Textarea } from '@bimstitch/ui';
+import { Label, Textarea } from '@bimstitch/ui';
 
 type Props = {
   value: string;
@@ -17,10 +17,10 @@ export function NoteField({ value, onChange, required, disabled }: Props): JSX.E
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-caption font-medium text-foreground-secondary">
+      <Label>
         {t('label')}
         {required && <span className="text-error"> *</span>}
-      </label>
+      </Label>
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from bimstitch_api.models.model import ModelDiscipline
 from bimstitch_api.models.project_file import (
     ExtractionStatus,
     FileType,
@@ -55,6 +56,7 @@ class ProjectFileRead(BaseModel):
     extraction_started_at: datetime | None
     extraction_finished_at: datetime | None
     extractor_version: str | None
+    detected_kind: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -75,6 +77,34 @@ class ViewerBundleResponse(BaseModel):
     floor_plans_url: str | None = None
     file_url: str | None = None
     expires_in: int
+
+
+class ProjectViewerModelEntry(BaseModel):
+    """One IFC model in a project's federated viewer manifest: the latest
+    ready, extraction-succeeded IFC file for a model, with its presigned
+    artifact URLs and discipline metadata. `detected_kind` is the content-based
+    classification the portal uses to pick the architectural model as the 2D
+    (floor-plan) source; `discipline` is the user-entered label, informational."""
+
+    file_id: UUID
+    model_id: UUID
+    model_name: str
+    discipline: ModelDiscipline
+    detected_kind: str | None = None
+    fragments_url: str | None = None
+    fragments_key: str | None = None
+    metadata_url: str | None = None
+    properties_url: str | None = None
+    outline_url: str | None = None
+    floor_plans_url: str | None = None
+
+
+class ProjectViewerManifestResponse(BaseModel):
+    """All viewable IFC models in a project, for the federated multi-discipline
+    viewer. Models with no ready IFC file are omitted."""
+
+    expires_in: int
+    models: list[ProjectViewerModelEntry]
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +129,9 @@ class ExtractionCallbackRequest(BaseModel):
     geometry_key: str | None = None
     outline_key: str | None = None
     floor_plans_key: str | None = None
+    # Content-based discipline classification of the model, computed by the
+    # extractor (architectural / structural / mep / mixed / none).
+    detected_kind: str | None = None
     page_count: int | None = None
     error: str | None = None
     extractor_version: str | None = None

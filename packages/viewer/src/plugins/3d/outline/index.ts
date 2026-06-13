@@ -63,13 +63,19 @@ export function outlinePlugin(
   const hiddenByModel = new Map<string, Set<number>>();
   const isolatedByModel = new Map<string, Set<number>>();
   let isolationActive = false;
+  // Whole-model visibility (federated layer toggle, via the `model:visibility`
+  // event). A model in this set keeps its outline hidden regardless of the
+  // global enabled/idle state — a layer distinct from element isolation above.
+  const hiddenModels = new Set<string>();
   // Set when visibility changes; the filtered element textures are rebuilt
   // lazily on the next idle frame (the outline only draws on idle anyway).
   let dirty = false;
 
   const updateVisibility = (): void => {
     const show = enabled && isIdle && !xrayActive;
-    for (const group of groups.values()) group.visible = show;
+    for (const [modelId, group] of groups) {
+      group.visible = show && !hiddenModels.has(modelId);
+    }
   };
 
   const indexByModel = (items: ItemId[]): Map<string, Set<number>> => {
@@ -219,6 +225,16 @@ export function outlinePlugin(
         xrayActive = xrayed.length > 0;
         updateVisibility();
       });
+      // Whole-model visibility (federated layer toggle): hide/show this model's
+      // outline group in step with its geometry.
+      const offModelVis = ctx.events.on(
+        'model:visibility',
+        ({ modelId, visible }) => {
+          if (visible) hiddenModels.delete(modelId);
+          else hiddenModels.add(modelId);
+          updateVisibility();
+        },
+      );
       const offSection = ctx.events.on('section:change', ({ planes }) => {
         syncClipping(planes);
       });
@@ -283,6 +299,7 @@ export function outlinePlugin(
         offCam();
         offVisibility();
         offXray();
+        offModelVis();
         offSection();
         ro.disconnect();
       };
@@ -299,6 +316,7 @@ export function outlinePlugin(
       instanced?.dispose();
       instanced = null;
       groups.clear();
+      hiddenModels.clear();
       cache.dispose();
       ctxRef = null;
     },

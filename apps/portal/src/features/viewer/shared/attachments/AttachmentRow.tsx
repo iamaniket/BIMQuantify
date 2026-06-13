@@ -33,6 +33,7 @@ type Props = {
   attachment: Attachment;
   projectId: string;
   expanded: boolean;
+  canDelete: boolean;
   onToggle: () => void;
   onView: () => void;
   onDelete: () => void;
@@ -42,6 +43,7 @@ export function AttachmentRow({
   attachment,
   projectId,
   expanded,
+  canDelete,
   onToggle,
   onView,
   onDelete,
@@ -118,6 +120,7 @@ export function AttachmentRow({
 
       <ExpandedBody
         attachment={attachment}
+        canDelete={canDelete}
         onView={onView}
         onDownload={() => { void handleDownload(); }}
         onDelete={onDelete}

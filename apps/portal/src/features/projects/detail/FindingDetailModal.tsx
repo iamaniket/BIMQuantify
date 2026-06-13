@@ -36,9 +36,9 @@ export function FindingDetailModal({
     return <></>;
   }
 
-  const { confirmDelete, setConfirmDelete, isPending } = api;
+  const { confirmDelete, setConfirmDelete, isPending, canEdit, canDelete } = api;
 
-  const deleteFooter = confirmDelete ? (
+  const deleteFooter = !canDelete ? undefined : confirmDelete ? (
     <div className="flex items-center gap-2">
       <span className="text-body3 text-foreground-secondary">
         {t('delete.confirm')}
@@ -84,7 +84,7 @@ export function FindingDetailModal({
           {tStatus(finding.status)}
         </Badge>
       )}
-      onSave={api.save}
+      {...(canEdit ? { onSave: api.save } : {})}
       saveLabel={t('save')}
       saveDisabled={isPending}
       footerInfo={deleteFooter}

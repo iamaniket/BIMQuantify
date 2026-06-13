@@ -13,6 +13,13 @@
  */
 
 import { layout } from './_layout.js';
+import {
+  buildMergeContext,
+  renderSections,
+  toLayoutBranding,
+  type ContentSectionRender,
+  type ReportTemplate,
+} from './_helpers.js';
 import { NL_COMPLIANCE_LABELS, type ComplianceReportLabels } from './jurisdictions/nl/labels.js';
 import { EN_COMPLIANCE_LABELS } from './jurisdictions/en/labels.js';
 
@@ -89,6 +96,7 @@ export type ComplianceReportData = {
       warned?: number;
     }>;
   };
+  template?: ReportTemplate;
 };
 
 export function escapeHtml(value: string): string {
@@ -259,21 +267,25 @@ export function renderHtml(data: ComplianceReportData): string {
       </section>
     </header>`;
 
-  const body = `
-    <section class="page">
-      <h2>${labels.sectionByCategory}</h2>
-      ${renderCategoryTable(data, labels)}
-    </section>
-
-    <section class="page">
-      <h2>${labels.sectionByRule}</h2>
-      ${renderRulesTable(data, labels)}
-    </section>`;
+  const content: ContentSectionRender[] = [
+    {
+      key: 'by_category',
+      defaultTitle: labels.sectionByCategory,
+      html: renderCategoryTable(data, labels),
+    },
+    { key: 'by_rule', defaultTitle: labels.sectionByRule, html: renderRulesTable(data, labels) },
+  ];
+  const body = renderSections(
+    content,
+    data.template?.sections,
+    buildMergeContext({ project: data.project, generated_at: data.generated_at }),
+  );
 
   return layout({
     title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
     locale: data.locale,
+    branding: toLayoutBranding(data.template?.branding),
   });
 }

@@ -138,6 +138,7 @@ export function FindingFormDialog({
       description={t('createSubtitle')}
       onSubmit={form.handleSubmit(onSubmit)}
       submitLabel={t('submit')}
+      cancelLabel={t('cancel')}
       submitDisabled={mutation.isPending}
       height={600}
     >

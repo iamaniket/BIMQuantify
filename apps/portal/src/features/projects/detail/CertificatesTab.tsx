@@ -18,8 +18,7 @@ import { CertificateViewerDialog } from '@/features/certificates/CertificateView
 import { useCertificates } from '@/features/certificates/useCertificates';
 import { useDeleteCertificate } from '@/features/certificates/useDeleteCertificate';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
-import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
-import { useAuth } from '@/providers/AuthProvider';
+import { useProjectPermissions } from '@/features/permissions';
 
 import { LinkFromLibraryDialog } from '@/features/orgCertificates/LinkFromLibraryDialog';
 
@@ -39,11 +38,9 @@ const TYPE_FILTERS: Array<{ value: CertificateTypeValue | 'all'; labelKey: strin
   { value: 'other', labelKey: 'type.other' },
 ];
 
-const WRITE_ROLES = new Set(['owner', 'editor', 'contractor']);
-
 export function CertificatesTab({ projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.certificates');
-  const { me } = useAuth();
+  const { can } = useProjectPermissions(projectId);
   const [typeFilter, setTypeFilter] = useState<CertificateTypeValue | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -54,12 +51,9 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
 
   const certificatesQuery = useCertificates(projectId, typeFilter);
   const deleteMutation = useDeleteCertificate(projectId);
-  const membersQuery = useProjectMembers(projectId);
 
-  const currentUserId = me === null ? null : me.user.id;
-  const canUpload = (membersQuery.data ?? []).some(
-    (m) => m.user_id === currentUserId && WRITE_ROLES.has(m.role),
-  );
+  const canUpload = can('certificate', 'create');
+  const canDelete = can('certificate', 'delete');
 
   const all = flattenPages(certificatesQuery.data);
   const certificates = searchQuery === ''
@@ -145,6 +139,7 @@ export function CertificatesTab({ projectId }: Props): JSX.Element {
             certificate={certificate}
             expanded={expandedId === certificate.id}
             canUpload={canUpload}
+            canDelete={canDelete}
             onToggle={() => { setExpandedId(expandedId === certificate.id ? null : certificate.id); }}
             onView={setViewingCertificate}
             onSupersede={setSupersedeCertificate}

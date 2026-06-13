@@ -6,9 +6,13 @@ accidental policy changes show up in PR diffs.
 
 from __future__ import annotations
 
-import pytest
-
-from bimstitch_api.auth.permissions import _MATRIX, Action, Resource, has_permission
+from bimstitch_api.auth.permissions import (
+    _MATRIX,
+    Action,
+    Resource,
+    has_permission,
+    serialize_matrix,
+)
 from bimstitch_api.models.project_member import ProjectRole
 
 # ---------------------------------------------------------------------------
@@ -27,11 +31,26 @@ def test_matrix_covers_every_resource_for_every_role() -> None:
         )
 
 
+def test_serialize_matrix_covers_every_role_and_resource() -> None:
+    """The wire payload served to the portal must mirror the matrix exactly:
+    every role, every resource, action codes matching `has_permission`."""
+    serialized = serialize_matrix()
+    assert set(serialized.keys()) == {role.value for role in ProjectRole}
+    for role in ProjectRole:
+        role_map = serialized[role.value]
+        assert set(role_map.keys()) == {resource.value for resource in Resource}
+        for resource in Resource:
+            expected = {a.value for a in Action if has_permission(role, resource, a)}
+            assert set(role_map[resource.value]) == expected
+            # Sorted + JSON-safe: a plain list of strings, deterministic order.
+            assert role_map[resource.value] == sorted(role_map[resource.value])
+
+
 def test_has_permission_never_raises() -> None:
     """Sanity: every (role, resource, action) triple resolves to a bool.
 
-    Previously parametrized as 432 individual tests (6 roles × 12 resources
-    × 6 actions). Collapsed into a single loop — same coverage, ~150s faster
+    Previously parametrized as 432 individual tests (6 roles x 12 resources
+    x 6 actions). Collapsed into a single loop — same coverage, ~150s faster
     because we avoid 431 extra ``_clean_tables`` teardowns.
     """
     for role in ProjectRole:

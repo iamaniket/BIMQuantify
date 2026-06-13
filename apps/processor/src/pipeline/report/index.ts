@@ -27,6 +27,8 @@ import { classifyError } from '../errors.js';
 import { postReportCallback } from './callback.js';
 import { htmlToPdf } from './pdf.js';
 import { renderHtml, type ComplianceReportData } from './templates/compliance-report.js';
+import { reportTemplateSchema } from './templates/_helpers.js';
+import { embedTemplateLogo, mergeTemplateCover } from './templateAssets.js';
 
 /** The fields every report payload carries — the orchestrator reads these. */
 export type BaseReportPayload = {
@@ -191,6 +193,7 @@ const CompliancePayloadSchema: z.ZodType<ComplianceReportData & { storage_key: s
         .optional(),
     }),
     compliance: z.record(z.unknown()),
+    template: reportTemplateSchema,
   })
   .passthrough() as unknown as z.ZodType<ComplianceReportData & { storage_key: string }>;
 
@@ -202,5 +205,14 @@ export async function runComplianceReport(
   job: WorkerJob,
   onProgress?: ProgressReporter,
 ): Promise<void> {
-  return runReportJob(job, { payloadSchema: CompliancePayloadSchema, renderHtml }, onProgress);
+  return runReportJob(
+    job,
+    {
+      payloadSchema: CompliancePayloadSchema,
+      prepare: embedTemplateLogo,
+      renderHtml,
+      postProcess: mergeTemplateCover,
+    },
+    onProgress,
+  );
 }

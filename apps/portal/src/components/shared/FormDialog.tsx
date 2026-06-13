@@ -20,8 +20,9 @@ type Props = {
   title: string;
   description: string;
   onSubmit: FormEventHandler<HTMLFormElement>;
-  submitLabel?: string;
-  cancelLabel?: string;
+  /** Required so the action labels are always routed through i18n — no English fallback. */
+  submitLabel: string;
+  cancelLabel: string;
   submitDisabled?: boolean;
   children: ReactNode;
   width?: number;
@@ -34,8 +35,8 @@ export function FormDialog({
   title,
   description,
   onSubmit,
-  submitLabel = 'Save',
-  cancelLabel = 'Cancel',
+  submitLabel,
+  cancelLabel,
   submitDisabled = false,
   children,
   width = 520,

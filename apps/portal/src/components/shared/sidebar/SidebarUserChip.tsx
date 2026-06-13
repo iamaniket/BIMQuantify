@@ -62,7 +62,7 @@ export function SidebarUserChip(): JSX.Element {
             {userName}
           </div>
           {roleLabel && (
-            <div className="mt-0.5 truncate text-[10px] text-white/55">{roleLabel}</div>
+            <div className="mt-0.5 truncate text-caption text-white/55">{roleLabel}</div>
           )}
         </div>
       )}

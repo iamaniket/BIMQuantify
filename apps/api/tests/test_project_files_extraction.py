@@ -57,6 +57,38 @@ async def _ready_file(
     return project["id"], model["id"], init["file_id"]
 
 
+async def _complete_ready_ifc(
+    client: AsyncClient,
+    fake: FakeStorage,
+    org_user: dict[str, str],
+    project_id: str,
+    model_id: str,
+    name: str,
+    sha256: str,
+) -> str:
+    """Initiate + complete an IFC file in an EXISTING project/model. `sha256`
+    must be unique within the project (per-role dedup index)."""
+    init = (
+        await client.post(
+            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            json={
+                "filename": name,
+                "size_bytes": len(VALID_IFC_HEADER),
+                "content_type": "application/octet-stream",
+                "content_sha256": sha256,
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_IFC_HEADER
+    complete = await client.post(
+        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert complete.status_code == 200, complete.text
+    return init["file_id"]
+
+
 # ---------------------------------------------------------------------------
 # Dispatch behaviour after complete_upload
 # ---------------------------------------------------------------------------
@@ -582,6 +614,136 @@ async def test_callback_without_floor_plans_key_leaves_floor_plans_null(
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["floor_plans_url"] is None
+
+
+async def test_callback_detected_kind_persists_on_file(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """The extractor's content classification is persisted on the file so the
+    portal can badge the discipline and pick the architectural model as the 2D
+    source in a federated view."""
+    client, fake = fake_storage_client
+    project_id, model_id, file_id = await _ready_file(
+        client, fake, org_user, name="mep.ifc"
+    )
+
+    cb = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+            "fragments_key": f"projects/{project_id}/{file_id}.frag",
+            "detected_kind": "mep",
+        },
+        headers=_bearer(),
+    )
+    assert cb.status_code == 200, cb.text
+    assert cb.json()["detected_kind"] == "mep"
+
+    # Re-read via the files list to confirm it durably persisted.
+    files = await client.get(
+        f"/projects/{project_id}/models/{model_id}/files",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert files.status_code == 200, files.text
+    row = next(f for f in files.json() if f["id"] == file_id)
+    assert row["detected_kind"] == "mep"
+
+
+async def test_project_viewer_bundle_lists_models_with_detected_kind(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """The federated manifest returns one entry per model with a ready IFC
+    file: presigned URLs + the discipline classification. The architectural
+    model carries a floor_plans_url (the 2D source); MEP is 3D-only; a model
+    with no ready IFC is omitted."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    org_id = org_user["organization_id"]
+
+    project = await _create_project(client, token, name="federated")
+    project_id = project["id"]
+    arch = await _create_model(client, token, project_id, name="ARC", discipline="architectural")
+    mep = await _create_model(client, token, project_id, name="MEP", discipline="mep")
+    # Structural model with NO ready IFC file — must be omitted from the manifest.
+    await _create_model(client, token, project_id, name="EMPTY", discipline="structural")
+
+    arch_file = await _complete_ready_ifc(
+        client, fake, org_user, project_id, arch["id"], "arc.ifc", f"{1:064x}"
+    )
+    mep_file = await _complete_ready_ifc(
+        client, fake, org_user, project_id, mep["id"], "mep.ifc", f"{2:064x}"
+    )
+
+    # Architectural model: succeeded WITH a floor-plan artifact (the 2D source).
+    cb_arch = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": arch_file,
+            "organization_id": org_id,
+            "status": "succeeded",
+            "fragments_key": f"projects/{project_id}/{arch_file}.frag",
+            "floor_plans_key": f"projects/{project_id}/{arch_file}.floorplans.bin",
+            "detected_kind": "architectural",
+        },
+        headers=_bearer(),
+    )
+    assert cb_arch.status_code == 200, cb_arch.text
+
+    # MEP model: succeeded, NO floor-plan artifact (3D-only per the gate).
+    cb_mep = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": mep_file,
+            "organization_id": org_id,
+            "status": "succeeded",
+            "fragments_key": f"projects/{project_id}/{mep_file}.frag",
+            "detected_kind": "mep",
+        },
+        headers=_bearer(),
+    )
+    assert cb_mep.status_code == 200, cb_mep.text
+
+    resp = await client.get(f"/projects/{project_id}/viewer-bundle", headers=_auth(token))
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["expires_in"] > 0
+    models = body["models"]
+    assert len(models) == 2  # EMPTY model omitted
+    by_kind = {m["detected_kind"]: m for m in models}
+    assert set(by_kind) == {"architectural", "mep"}
+
+    arch_entry = by_kind["architectural"]
+    assert arch_entry["model_id"] == arch["id"]
+    assert arch_entry["discipline"] == "architectural"
+    assert arch_entry["fragments_url"] is not None
+    assert arch_entry["floor_plans_url"] is not None  # arch supplies the 2D plan
+
+    mep_entry = by_kind["mep"]
+    assert mep_entry["model_id"] == mep["id"]
+    assert mep_entry["fragments_url"] is not None
+    assert mep_entry["floor_plans_url"] is None  # MEP is 3D-only
+
+
+async def test_project_viewer_bundle_requires_read_access(
+    org_user: dict[str, str],
+    other_org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A user from another org cannot read a project's federated manifest."""
+    client, fake = fake_storage_client
+    project_id, _model_id, _file_id = await _ready_file(client, fake, org_user, name="iso-fed.ifc")
+    resp = await client.get(
+        f"/projects/{project_id}/viewer-bundle",
+        headers=_auth(other_org_user["access_token"]),
+    )
+    assert resp.status_code == 404, resp.text
 
 
 async def test_viewer_bundle_cross_org_returns_404(

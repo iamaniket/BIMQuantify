@@ -1,5 +1,6 @@
 'use client';
 
+import { IconButton } from '@bimstitch/ui';
 import { AlertTriangle, Bell, CheckCircle2, Clock, Loader2, Mail, RefreshCw, Search, UserPlus, X } from '@bimstitch/ui/icons';
 import {
   useEffect, useRef, useState, type JSX,
@@ -183,18 +184,17 @@ function NotificationRow({
         <JobControls notification={n} />
       </div>
       <div className="flex shrink-0 flex-col items-center gap-1.5">
-        <button
-          type="button"
+        <IconButton
+          size="sm"
           aria-label={t('dismiss')}
           title={t('dismiss')}
           onClick={(e) => {
             e.stopPropagation();
             onDismiss(n.id);
           }}
-          className="grid h-5 w-5 place-items-center rounded text-foreground-tertiary hover:bg-background-hover hover:text-foreground"
         >
           <X className="h-3 w-3" aria-hidden />
-        </button>
+        </IconButton>
         {n.is_read ? null : (
           <span className="h-[7px] w-[7px] rounded-full bg-primary" />
         )}

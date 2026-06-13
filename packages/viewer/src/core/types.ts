@@ -38,6 +38,13 @@ export interface ViewerEvents {
   'viewer:unmounted': undefined;
   'model:loaded': { modelId: string };
   'model:elementCount': { modelId: string; count: number };
+  /**
+   * Whole-model visibility toggled (federated viewer layer panel). Distinct
+   * from `visibility:change`, which is element-level isolation — a model
+   * hidden here stays hidden through element show-all (see `hiddenModelIds`
+   * in Viewer + the outline plugin's handler).
+   */
+  'model:visibility': { modelId: string; visible: boolean };
   'pointer:move': { ndc: { x: number; y: number }; clientX: number; clientY: number };
   'pointer:click': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean; clientX: number; clientY: number };
   'pointer:doubleclick': { ndc: { x: number; y: number }; button: number; shift: boolean; ctrl: boolean; meta: boolean; clientX: number; clientY: number };

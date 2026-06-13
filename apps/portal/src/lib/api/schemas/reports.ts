@@ -20,6 +20,7 @@ export const ReportSchema = z.object({
   locale: z.string(),
   job_id: z.string().uuid().nullable(),
   source_job_id: z.string().uuid().nullable(),
+  template_id: z.string().uuid().nullable().optional(),
   storage_key: z.string().nullable(),
   byte_size: z.number().int().nullable(),
   sha256: z.string().nullable(),
@@ -45,6 +46,8 @@ export const CreateReportRequestSchema = z.object({
   // BCP47 locale tag. Omit (or pass null) to let the server resolve from
   // the project's jurisdiction (NL → 'nl').
   locale: z.string().nullable().optional(),
+  // Optional org report-template to render with (null = built-in / org default).
+  template_id: z.string().uuid().nullable().optional(),
   params: z.record(z.unknown()).default({}),
 });
 export type CreateReportRequest = z.infer<typeof CreateReportRequestSchema>;

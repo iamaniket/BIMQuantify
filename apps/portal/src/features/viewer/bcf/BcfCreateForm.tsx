@@ -2,11 +2,20 @@
 
 import { useTranslations } from 'next-intl';
 import {
-  useCallback, useEffect, useState, type JSX,
+  useCallback, useEffect, useId, useState, type JSX,
 } from 'react';
 import { toast } from 'sonner';
 
-import { cn, Select, type AppIcon } from '@bimstitch/ui';
+import {
+  Button,
+  Checkbox,
+  FormField,
+  IconButton,
+  Input,
+  Select,
+  Textarea,
+  type AppIcon,
+} from '@bimstitch/ui';
 import { ArrowRight, Check, Pencil, Square, StickyNote, UploadCloud } from '@bimstitch/ui/icons';
 import type { MarkupTool } from '@bimstitch/viewer';
 
@@ -163,44 +172,45 @@ export function BcfCreateForm({
     ],
   );
 
+  const titleId = useId();
+  const descriptionId = useId();
+  const typeId = useId();
+  const statusId = useId();
+  const priorityId = useId();
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 py-1">
           {/* Title */}
-          <div>
-            <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
-              {t('titleLabel')} *
-            </label>
-            <input
+          <FormField label={t('titleLabel')} htmlFor={titleId} required>
+            <Input
+              id={titleId}
               type="text"
+              inputSize="lg"
+              className="text-body3"
               value={title}
               onChange={(e) => { setTitle(e.target.value); }}
               placeholder={t('titlePlaceholder')}
               required
-              className="h-8 w-full rounded border border-border bg-background px-2 font-sans text-body3 text-foreground placeholder:text-foreground-tertiary focus:border-primary focus:outline-none"
             />
-          </div>
+          </FormField>
 
           {/* Description */}
-          <div>
-            <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
-              {t('descriptionLabel')}
-            </label>
-            <textarea
+          <FormField label={t('descriptionLabel')} htmlFor={descriptionId}>
+            <Textarea
+              id={descriptionId}
+              className="resize-none text-body3"
               value={description}
               onChange={(e) => { setDescription(e.target.value); }}
               placeholder={t('descriptionPlaceholder')}
               rows={3}
-              className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 font-sans text-body3 text-foreground placeholder:text-foreground-tertiary focus:border-primary focus:outline-none"
             />
-          </div>
+          </FormField>
 
           {/* Type + Status row */}
           <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
-                {t('typeLabel')}
-              </label>
+            <FormField label={t('typeLabel')} htmlFor={typeId}>
               <Select
+                id={typeId}
                 selectSize="lg"
                 className="text-body3"
                 value={topicType}
@@ -213,12 +223,10 @@ export function BcfCreateForm({
                 <option value="Inquiry">{t('type.inquiry')}</option>
                 <option value="Remark">{t('type.remark')}</option>
               </Select>
-            </div>
-            <div>
-              <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
-                {t('statusLabel')}
-              </label>
+            </FormField>
+            <FormField label={t('statusLabel')} htmlFor={statusId}>
               <Select
+                id={statusId}
                 selectSize="lg"
                 className="text-body3"
                 value={topicStatus}
@@ -228,15 +236,13 @@ export function BcfCreateForm({
                 <option value="In Progress">{t('status.in_progress')}</option>
                 <option value="Closed">{t('status.closed')}</option>
               </Select>
-            </div>
+            </FormField>
           </div>
 
           {/* Priority */}
-          <div>
-            <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
-              {t('priorityLabel')}
-            </label>
+          <FormField label={t('priorityLabel')} htmlFor={priorityId}>
             <Select
+              id={priorityId}
               selectSize="lg"
               className="text-body3"
               value={priority}
@@ -247,31 +253,30 @@ export function BcfCreateForm({
               <option value="Medium">{t('priority.medium')}</option>
               <option value="Low">{t('priority.low')}</option>
             </Select>
-          </div>
+          </FormField>
 
           {/* 2D Annotation — form-first flow */}
           {is2d && (
-            <div>
-              <label className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
-                {t('annotationLabel')}
-              </label>
+            <FormField label={t('annotationLabel')}>
               {hasDraft ? (
                 <div className="flex items-center gap-2">
                   <span className="flex items-center gap-1.5 font-sans text-body3 text-success">
                     <Check className="h-3.5 w-3.5" />
                     {t('annotationAdded')}
                   </span>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       if (controller.clearDraft !== undefined) controller.clearDraft();
                       setHasDraft(false);
                       setShowShapePicker(false);
                     }}
-                    className="font-sans text-body3 text-foreground-tertiary underline hover:text-foreground-secondary"
+                    className="px-1 text-foreground-tertiary underline"
                   >
                     {t('annotationRemove')}
-                  </button>
+                  </Button>
                 </div>
               ) : isDrawing ? (
                 <div className="flex h-8 items-center gap-1.5 rounded border border-primary bg-primary/5 px-3 font-sans text-body3 text-primary">
@@ -281,9 +286,10 @@ export function BcfCreateForm({
               ) : showShapePicker ? (
                 <div className="flex items-center gap-1 rounded border border-border bg-surface-low px-1.5 py-1">
                   {SHAPE_TOOLS.map(({ tool, icon: Icon, labelKey }) => (
-                    <button
+                    <IconButton
                       key={tool}
-                      type="button"
+                      size="sm"
+                      aria-label={t(`shapes.${labelKey}`)}
                       title={t(`shapes.${labelKey}`)}
                       onClick={() => {
                         if (controller.activateMarkup !== undefined) {
@@ -292,33 +298,32 @@ export function BcfCreateForm({
                           setShowShapePicker(false);
                         }
                       }}
-                      className="inline-grid h-7 w-7 place-items-center rounded text-foreground-secondary transition-colors hover:bg-background-hover hover:text-foreground"
                     >
                       <Icon className="h-4 w-4" />
-                    </button>
+                    </IconButton>
                   ))}
                 </div>
               ) : (
-                <button
+                <Button
                   type="button"
+                  variant="border"
+                  size="lg"
                   onClick={() => { setShowShapePicker(true); }}
-                  className="flex h-8 items-center gap-1.5 rounded border border-dashed border-border bg-background px-3 font-sans text-body3 text-foreground-secondary transition-colors hover:border-primary hover:text-primary"
+                  className="w-full border-dashed"
                 >
                   <Square className="h-3.5 w-3.5" />
                   {t('addAnnotation')}
-                </button>
+                </Button>
               )}
-            </div>
+            </FormField>
           )}
 
           {/* Capture toggle — 3D only; in 2D the markup is always captured. */}
           {!is2d && (
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={captureView}
                 onChange={(e) => { setCaptureView(e.target.checked); }}
-                className="h-4 w-4 rounded border-border"
               />
               <span className="font-sans text-body3 text-foreground-secondary">
                 {t('captureCurrentView')}
@@ -329,24 +334,19 @@ export function BcfCreateForm({
         {/* Submit (+ Cancel for the 2D draw-first flow) */}
         <div className="flex items-center gap-2">
           {onCancel !== undefined && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="h-9 shrink-0 rounded border border-border bg-background px-3 font-sans text-body3 font-medium text-foreground-secondary transition-colors hover:bg-background-hover"
-            >
+            <Button type="button" variant="border" size="lg" onClick={onCancel} className="shrink-0">
               {t('cancel')}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            size="lg"
             disabled={title.trim() === '' || isSubmitting}
-            className={cn(
-              'h-9 flex-1 rounded bg-primary font-sans text-body3 font-medium text-primary-foreground transition-colors',
-              'hover:bg-primary-hover disabled:opacity-50',
-            )}
+            className="flex-1"
           >
             {isSubmitting ? t('creating') : t('createIssue')}
-          </button>
+          </Button>
         </div>
     </form>
   );

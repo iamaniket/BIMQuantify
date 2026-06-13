@@ -41,6 +41,7 @@ import {
 import { formatDate } from '@/lib/formatting/dates';
 import { UploadProgressItem, type UploadState } from './UploadProgressItem';
 import { useCheckCompliance } from '@/features/compliance/hooks';
+import { useProjectPermissions } from '@/features/permissions';
 import { useDeleteModelFile } from './useDeleteModelFile';
 import { acceptedExtensions, isAllowedFile } from './fileValidation';
 import { useModelFiles } from './useModelFiles';
@@ -108,6 +109,10 @@ function FileRow({
   const t = useTranslations('projectDetail.tabs.models.files');
   const locale = useLocale() as Locale;
   const { tokens } = useAuth();
+  const { can } = useProjectPermissions(projectId);
+  const canRetry = can('project_file', 'update');
+  const canCheckCompliance = can('compliance', 'create');
+  const canDeleteFile = can('project_file', 'delete');
   const retryMutation = useRetryExtraction();
   const complianceMutation = useCheckCompliance(projectId, modelId);
 
@@ -137,7 +142,7 @@ function FileRow({
         </span>
       </div>
       <ExtractionBadge status={file.extraction_status} error={file.extraction_error} />
-      {file.extraction_status === 'failed' ? (
+      {file.extraction_status === 'failed' && canRetry ? (
         <Button
           type="button"
           variant="ghost"
@@ -169,7 +174,7 @@ function FileRow({
           )}
         </Link>
       ) : null}
-      {file.extraction_status === 'succeeded' && file.file_type === 'ifc' ? (
+      {file.extraction_status === 'succeeded' && file.file_type === 'ifc' && canCheckCompliance ? (
         <Button
           type="button"
           variant="border"
@@ -197,31 +202,33 @@ function FileRow({
       >
         <Download className="h-4 w-4" />
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="md"
-            aria-label={t('fileActions')}
-            className="h-8 w-8 p-0"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={(event) => {
-              event.preventDefault();
-              onDeleteRequest(file);
-            }}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {t('delete')}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {canDeleteFile && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              aria-label={t('fileActions')}
+              className="h-8 w-8 p-0"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={(event) => {
+                event.preventDefault();
+                onDeleteRequest(file);
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {t('delete')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </li>
   );
 }
@@ -231,6 +238,9 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
   const filesQuery = useModelFiles(projectId, modelId, 'all');
   const uploadMutation = useUploadModelFile();
   const deleteMutation = useDeleteModelFile();
+  const { can } = useProjectPermissions(projectId);
+  const canUpload = can('project_file', 'create');
+  const canDelete = can('project_file', 'delete');
 
   const [pending, setPending] = useState<PendingUpload[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<ProjectFile | null>(null);
@@ -334,7 +344,7 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
 
   return (
     <div className="flex flex-col gap-3">
-      {!hasFiles && (
+      {!hasFiles && canUpload && (
         <FileDropZone
           accept={acceptedExtensions(lockedFileType).join(',')}
           multiple
@@ -426,16 +436,18 @@ export function ModelFiles({ projectId, modelId, primaryFileType }: Props): JSX.
               >
                 <span className="truncate">{file.original_filename}</span>
                 <span className="text-error">{formatRejection(file.rejection_reason)}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="md"
-                  aria-label={t('removeAria', { filename: file.original_filename })}
-                  className="h-8 w-8 p-0"
-                  onClick={() => { setDeleteTarget(file); }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {canDelete && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="md"
+                    aria-label={t('removeAria', { filename: file.original_filename })}
+                    className="h-8 w-8 p-0"
+                    onClick={() => { setDeleteTarget(file); }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

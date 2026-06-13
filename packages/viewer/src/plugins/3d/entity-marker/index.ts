@@ -3,6 +3,12 @@ import * as THREE from 'three';
 import { LAYER_OVERLAY } from '../../../core/layers.js';
 import type { Plugin, ViewerContext, Vec3 } from '../../../core/types.js';
 import {
+  MARKER_DIAMETER_PX,
+  MARKER_RING_PX,
+  findingFillColor,
+  findingRingColor,
+} from '../../shared/findingMarkerStyle.js';
+import {
   acquireCss2dOverlay,
   releaseCss2dOverlay,
   CSS2DObject,
@@ -35,24 +41,20 @@ const MARKER_COLORS: Record<string, string> = {
   attachment: '#10B981',
 };
 
-// Finding lifecycle status -> circle color. Mirrors the portal kanban palette
-// (dark-theme semantic tokens): draft=foreground-tertiary, open=info,
-// in_progress=primary, resolved/verified=success.
-const FINDING_STATUS_COLORS: Record<string, string> = {
-  draft: '#c1c6cc',
-  open: '#5f88b2',
-  in_progress: '#3a5f99',
-  resolved: '#4baf7d',
-  verified: '#4baf7d',
-};
-
 const DIMMED_OPACITY = '0.25';
 
-const colorFor = (data: EntityMarkerData): string => {
-  if (data.type === 'finding') {
-    return (data.status && FINDING_STATUS_COLORS[data.status]) ?? MARKER_COLORS.finding!;
-  }
+// Inner-disc fill. Findings use their lifecycle status color (shared source of
+// truth with the 2D plugin); cert/attachment keep their solid type color.
+const fillFor = (data: EntityMarkerData): string => {
+  if (data.type === 'finding') return findingFillColor(data.status);
   return MARKER_COLORS[data.type] ?? '#888';
+};
+
+// Ring color. Findings: red while open, neutral once resolved/verified.
+// cert/attachment keep a plain white ring.
+const ringFor = (data: EntityMarkerData): string => {
+  if (data.type === 'finding') return findingRingColor(data.status);
+  return '#fff';
 };
 
 export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
@@ -118,17 +120,18 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
       pointer-events: none;
     `;
 
-    // Plain filled circle — no icon. A white ring keeps it legible on any
-    // background (light geometry, dark scene). Kept lightweight: a DOM overlay,
-    // never part of the model tessellation.
+    // Plain filled circle — no icon. The status-colored fill sits inside a ring
+    // (red while open, neutral once resolved). A thin white halo via box-shadow
+    // keeps the red ring legible on busy/red backgrounds. Kept lightweight: a
+    // DOM overlay, never part of the model tessellation.
     const circle = document.createElement('div');
     circle.style.cssText = `
-      width: 14px;
-      height: 14px;
+      width: ${MARKER_DIAMETER_PX}px;
+      height: ${MARKER_DIAMETER_PX}px;
       border-radius: 50%;
-      background: ${colorFor(data)};
-      border: 2px solid #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      background: ${fillFor(data)};
+      border: ${MARKER_RING_PX}px solid ${ringFor(data)};
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.55), 0 1px 3px rgba(0,0,0,0.4);
       transition: transform 150ms ease;
     `;
 
@@ -182,7 +185,8 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
     entry: { data: EntityMarkerData; wrapper: HTMLDivElement; circle: HTMLDivElement },
     data: EntityMarkerData,
   ): void => {
-    entry.circle.style.background = colorFor(data);
+    entry.circle.style.background = fillFor(data);
+    entry.circle.style.borderColor = ringFor(data);
     entry.wrapper.style.opacity = data.dimmed ? DIMMED_OPACITY : '1';
     entry.data = data;
   };

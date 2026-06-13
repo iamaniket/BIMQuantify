@@ -3,9 +3,8 @@
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Badge, Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
+import { Badge, Eyebrow, Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
 
-import { Eyebrow } from '@/components/shared/Eyebrow';
 import type { Model } from '@/lib/api/schemas';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useCertificates } from '@/features/certificates/useCertificates';
@@ -66,7 +65,7 @@ export function RightColumnTabs({
               </TabsList>
             </Tabs>
             <div className="text-right">
-              <Eyebrow>
+              <Eyebrow as="div" tone="tertiary">
                 {t(`${topTab}.eyebrow`)}
               </Eyebrow>
               <div className="text-body2 font-medium tracking-tight text-foreground">
@@ -117,7 +116,7 @@ export function RightColumnTabs({
               </TabsList>
             </Tabs>
             <div className="text-right">
-              <Eyebrow>
+              <Eyebrow as="div" tone="tertiary">
                 {t(`${bottomTab}.eyebrow`)}
               </Eyebrow>
               <div className="text-body2 font-medium tracking-tight text-foreground">

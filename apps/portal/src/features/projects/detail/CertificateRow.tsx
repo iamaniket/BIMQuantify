@@ -49,6 +49,7 @@ type Props = {
   certificate: Certificate;
   expanded: boolean;
   canUpload: boolean;
+  canDelete: boolean;
   onToggle: () => void;
   onView: (certificate: Certificate) => void;
   onSupersede: (certificate: Certificate) => void;
@@ -61,6 +62,7 @@ export function CertificateRow({
   certificate,
   expanded,
   canUpload,
+  canDelete,
   onToggle,
   onView,
   onSupersede,
@@ -206,7 +208,7 @@ export function CertificateRow({
             </Button>
           )}
         </div>
-        {canUpload && (
+        {canDelete && (
           <Button
             variant="ghost"
             size="md"

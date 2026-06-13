@@ -6,11 +6,10 @@ import type { JSX } from 'react';
 
 import { Button, Spinner } from '@bimstitch/ui';
 
-import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
+import { useProjectPermissions } from '@/features/permissions';
 import { ReportSection } from '@/features/reports/ReportSection';
 import { useSignReport } from '@/features/reports/hooks';
 import type { Report } from '@/lib/api/schemas/reports';
-import { useAuth } from '@/providers/AuthProvider';
 
 type Props = {
   projectId: string;
@@ -24,11 +23,8 @@ type Props = {
  */
 export function RapportenTab({ projectId }: Props): JSX.Element {
   const t = useTranslations('reports.sign');
-  const { me } = useAuth();
-  const currentUserId = me === null ? null : me.user.id;
-  const membersQuery = useProjectMembers(projectId);
-  const myRole = membersQuery.data?.find((m) => m.user_id === currentUserId)?.role;
-  const canSign = myRole === 'inspector';
+  const { can } = useProjectPermissions(projectId);
+  const canSign = can('completion_declaration', 'sign');
   const sign = useSignReport(projectId);
 
   const renderVerklaringActions = (report: Report): JSX.Element | null => {

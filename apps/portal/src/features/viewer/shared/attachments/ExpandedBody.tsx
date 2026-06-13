@@ -22,6 +22,7 @@ import type { Attachment } from '@/lib/api/schemas';
 
 type Props = {
   attachment: Attachment;
+  canDelete: boolean;
   onView: () => void;
   onDownload: () => void;
   onDelete: () => void;
@@ -29,6 +30,7 @@ type Props = {
 
 export function ExpandedBody({
   attachment,
+  canDelete,
   onView,
   onDownload,
   onDelete,
@@ -118,10 +120,12 @@ export function ExpandedBody({
             {t('expandedDownload')}
           </Button>
         </div>
-        <Button variant="ghost" size="md" onClick={onDelete} className="text-error hover:text-error">
-          <Trash2 className="h-3.5 w-3.5" />
-          {t('expandedRemove')}
-        </Button>
+        {canDelete && (
+          <Button variant="ghost" size="md" onClick={onDelete} className="text-error hover:text-error">
+            <Trash2 className="h-3.5 w-3.5" />
+            {t('expandedRemove')}
+          </Button>
+        )}
       </DetailCardFooter>
     </>
   );

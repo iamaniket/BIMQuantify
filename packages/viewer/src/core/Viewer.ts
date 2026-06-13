@@ -24,6 +24,7 @@ import { CommandRegistry } from './CommandRegistry.js';
 import { EventBus } from './EventBus.js';
 import { PluginManager } from './PluginManager.js';
 import { frameView } from './framing.js';
+import { COPLANAR_BIAS_EPS, COPLANAR_BIAS_LEVELS } from './depth-bias.js';
 import { LAYER_OVERLAY } from './layers.js';
 import type { Plugin, ViewerContext, ViewerEvents } from './types.js';
 
@@ -81,6 +82,13 @@ export interface LoadFragmentsOptions {
    * resolves null.
    */
   precomputedOutline?: Promise<Uint8Array | null>;
+  /**
+   * Stable model id. Federated callers pass a deterministic id (e.g.
+   * `file-<fileId>`) so model↔file mapping is stable and the per-model
+   * `precomputedOutlines` map keys correctly. Omitted for the single-file
+   * path, which falls back to a timestamp id (unchanged behaviour).
+   */
+  modelId?: string;
 }
 
 export interface ViewerOptions {
@@ -106,31 +114,18 @@ const IDLE_MS = 150;
  */
 const XRAY_DITHER_MAX_OPACITY = 0.12;
 
-/**
- * Coplanar separation under the logarithmic depth buffer. Log depth writes
- * `gl_FragDepth` in the fragment shader, which bypasses the rasterizer's
- * `polygonOffset` — so the per-material polygon offset set up in the material
- * hook is silently ignored and coplanar opaque faces (floor finish on slab,
- * ceiling under the slab above) z-fight. We re-create polygon offset *in log
- * space* by nudging each material's `gl_FragDepth` toward the camera by a tiny,
- * deterministic amount. Window-space depth is quantised uniformly (24-bit), so a
- * constant bias separates coplanar faces equally at any distance.
- *
- * Coincident faces are separated by giving adjacent materials *different* bias
- * levels: we cycle through `COPLANAR_BIAS_LEVELS` distinct steps so two
- * overlapping surfaces almost always land on different levels and get a stable
- * depth winner. The bias is baked into the shader as a literal (not a uniform)
- * because custom `onBeforeCompile` uniforms are shared across materials that
- * share a compiled program — a per-material uniform value would silently leak.
- *
- * `COPLANAR_BIAS_EPS` is the per-level step in window-depth units. It must clear
- * 24-bit quantisation noise (~6e-8) yet stay far below anything visible. Tune
- * here if separation is incomplete (raise) or surfaces visibly "peter-pan" /
- * poke through neighbours (lower). Verify in the real viewer on :3001 — the
- * preview origin can't load model geometry.
- */
-const COPLANAR_BIAS_EPS = 2e-5;
-const COPLANAR_BIAS_LEVELS = 8;
+// Coplanar separation under the logarithmic depth buffer (constants in
+// `depth-bias.ts`). Log depth writes `gl_FragDepth` in the fragment shader,
+// bypassing the rasterizer's `polygonOffset`, so coplanar opaque faces (floor
+// finish on slab, ceiling under the slab above) z-fight. We re-create polygon
+// offset *in log space* by nudging each material's `gl_FragDepth` toward the
+// camera by a tiny amount. Coincident faces are separated by giving adjacent
+// materials *different* bias levels: we cycle through `COPLANAR_BIAS_LEVELS`
+// distinct steps so two overlapping surfaces almost always land on different
+// levels and get a stable depth winner. The bias is baked into the shader as a
+// literal (not a uniform) because custom `onBeforeCompile` uniforms are shared
+// across materials that share a compiled program — a per-material uniform value
+// would silently leak.
 
 export class Viewer {
   readonly events = new EventBus<ViewerEvents>();
@@ -164,7 +159,15 @@ export class Viewer {
     string,
     Promise<Uint8Array | null>
   >();
+  /** Last-loaded model id (back-compat single-model accessor). */
   modelId: string | null = null;
+  /**
+   * Whole-model visibility layer for the federated viewer — model ids the user
+   * has toggled off. Separate from element-level isolation so a hidden model
+   * survives element show-all; the outline plugin and any future show-all path
+   * consult this via the `model:visibility` event.
+   */
+  private readonly hiddenModelIds = new Set<string>();
 
   constructor(private readonly options: ViewerOptions = {}) {}
 
@@ -516,6 +519,15 @@ export class Viewer {
       camControls.removeEventListener('update', onCamChange);
     };
 
+    // Core command (no owner / no default shortcut): whole-model visibility for
+    // the federated viewer's layer panel. Registered before plugins so it's
+    // available the moment the viewer mounts.
+    this.commands.register<{ modelId: string; visible: boolean }, void>(
+      'model:setVisible',
+      ({ modelId, visible }) => this.setModelVisible(modelId, visible),
+      { title: 'Toggle model visibility' },
+    );
+
     this.events.emit('viewer:mounted', { container });
 
     for (const plugin of this.options.plugins ?? []) {
@@ -537,7 +549,13 @@ export class Viewer {
       bytes.byteOffset,
       bytes.byteOffset + bytes.byteLength,
     );
-    const modelId = `model-${String(Date.now())}`;
+    // First model into an empty world frames the camera (the single-file
+    // behaviour). Subsequent models in a federation only extend the bounds —
+    // the host re-frames once via `camera.zoomExtents` after all loads, so a
+    // late-arriving model never yanks the camera off what the user is viewing.
+    const isFirstModel =
+      (fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>).size === 0;
+    const modelId = opts.modelId ?? `model-${String(Date.now())}`;
     this.modelId = modelId;
     // Stash before `model:loaded` fires so the outline plugin's handler
     // sees the supply via ctx.getPrecomputedOutline.
@@ -558,9 +576,15 @@ export class Viewer {
     const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
     sceneThree.add(model.object);
 
-    await this.frameModel(model);
-    // Position sun + size the blob shadow plane to the model's footprint.
-    this.fitLightsToModel(model);
+    if (isFirstModel) {
+      await this.frameModel(model);
+    } else {
+      // Extend the scene/depth bounds + zoom limit to include the new model
+      // without moving the camera.
+      this.refreshSceneBounds();
+    }
+    // Position sun + size the blob shadow plane to the whole-scene footprint.
+    this.fitLightsToScene();
     // Trigger an immediate idle frame so post-processing kicks in.
     this.events.emit('viewer:idle', undefined);
 
@@ -598,25 +622,33 @@ export class Viewer {
       false,
     );
 
-    // Cache the world-space scene AABB and fit the depth range to it. The
-    // per-frame updater (updateDynamicNearFar) projects this box onto the view
-    // axis so the entire model always stays inside the frustum — distant
-    // geometry no longer clips when zoomed in — while staying tight enough
-    // (with polygonOffset) to avoid z-fighting on coplanar BIM surfaces.
-    this.sceneBox = this.computeWorldSceneBox();
-    // Seed depthBox from the model bbox so near/far works before
-    // fitLightsToModel runs (and stays correct when shadows are disabled).
-    // fitLightsToModel unions the shadow ground plane into it afterwards.
-    this.depthBox = this.sceneBox.clone();
-    if (world.camera.three instanceof THREE.PerspectiveCamera) {
-      this.updateDynamicNearFar();
-    }
-
     const controls = world.camera.controls;
     // ThatOpen sets infinityDolly=true and minDistance=6. Keep infinityDolly
     // so the orbit target shifts forward on zoom-in (needed to go inside the
     // model). Max zoom-out is enforced manually in the camera update handler.
     controls.minDistance = 0;
+    // Cache the world-space scene AABB + depth range + zoom limit. Extracted so
+    // federated loads can extend the bounds without re-framing the camera.
+    this.refreshSceneBounds();
+  }
+
+  /**
+   * Recompute the world-space scene AABB (union of all loaded models), the
+   * depth box the per-frame near/far fit projects against, and the max
+   * zoom-out limit. Camera-position-agnostic — safe to call after every model
+   * load. `fitLightsToScene` later unions the shadow ground plane into
+   * `depthBox`.
+   */
+  private refreshSceneBounds(): void {
+    const world = this.world;
+    if (world === null) return;
+    this.sceneBox = this.computeWorldSceneBox();
+    this.depthBox = this.sceneBox.clone();
+    if (world.camera.three instanceof THREE.PerspectiveCamera) {
+      this.updateDynamicNearFar();
+    }
+    const size = this.sceneBox.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 1);
     const maxF = this.options.zoom?.maxFactor ?? 4;
     this.zoomOutLimit = maxDim * maxF;
   }
@@ -759,13 +791,12 @@ export class Viewer {
    * The blob plane is sized to roughly 2.5× the model footprint so the
    * gradient extends well beyond the model's edges.
    */
-  private fitLightsToModel(model: FRAGS.FragmentsModel): void {
+  private fitLightsToScene(): void {
     const sun = this.sun;
     if (sun === null) return;
-    let box = model.box;
-    if (!box || box.isEmpty()) {
-      box = new THREE.Box3().setFromObject(model.object);
-    }
+    // Whole-scene footprint (union of all loaded models) so the sun + blob
+    // shadow cover the entire federation, not just the last-loaded model.
+    const box = this.computeWorldSceneBox();
     if (box.isEmpty()) return;
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -814,6 +845,42 @@ export class Viewer {
     return this.pluginManager?.get<T>(name) ?? null;
   }
 
+  /** Ids of all currently loaded models, in load order. */
+  getModelIds(): string[] {
+    const fragments = this.fragmentsModels;
+    if (fragments === null) return [];
+    return [
+      ...(fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>).keys(),
+    ];
+  }
+
+  /** False once a model has been hidden via the federated layer toggle. */
+  isModelVisible(modelId: string): boolean {
+    return !this.hiddenModelIds.has(modelId);
+  }
+
+  /**
+   * Toggle a whole model's visibility (federated layer panel). Bulk-toggles
+   * every item in the model and tracks the off-state in `hiddenModelIds` so it
+   * is a layer distinct from element isolation. Emits `model:visibility` so the
+   * outline plugin hides/shows that model's edges in step, then nudges a
+   * repaint. NOTE: showing re-reveals every item in the model, overriding any
+   * element-level isolation on it — a known v1 coarseness of the layer toggle.
+   */
+  async setModelVisible(modelId: string, visible: boolean): Promise<void> {
+    const fragments = this.fragmentsModels;
+    if (fragments === null) return;
+    const model = (
+      fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>
+    ).get(modelId);
+    if (!model) return;
+    if (visible) this.hiddenModelIds.delete(modelId);
+    else this.hiddenModelIds.add(modelId);
+    await model.setVisible(undefined, visible).catch(() => undefined);
+    this.events.emit('model:visibility', { modelId, visible });
+    this.events.emit('viewer:idle', undefined);
+  }
+
   async unmount(): Promise<void> {
     if (this.pluginManager) {
       await this.pluginManager.disposeAll();
@@ -845,6 +912,7 @@ export class Viewer {
     this.sceneBox = null;
     this.depthBox = null;
     this.precomputedOutlines.clear();
+    this.hiddenModelIds.clear();
     this.modelId = null;
     this.events.emit('viewer:unmounted', undefined);
     this.events.clear();

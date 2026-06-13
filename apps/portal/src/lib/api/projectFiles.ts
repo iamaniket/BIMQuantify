@@ -5,6 +5,7 @@ import {
   ProjectFileDownloadResponseSchema,
   ProjectFileListSchema,
   ProjectFileSchema,
+  ProjectViewerManifestResponseSchema,
   ViewerBundleResponseSchema,
   type InitiateUploadRequest,
   type InitiateUploadResponse,
@@ -12,6 +13,7 @@ import {
   type ProjectFileDownloadResponse,
   type ProjectFileList,
   type ProjectFileStatusValue,
+  type ProjectViewerManifestResponse,
   type ViewerBundleResponse,
 } from './schemas';
 
@@ -100,6 +102,22 @@ export async function getViewerBundle(
   return apiClient.get<ViewerBundleResponse>(
     `/projects/${projectId}/models/${modelId}/files/${fileId}/viewer-bundle`,
     ViewerBundleResponseSchema,
+    accessToken,
+  );
+}
+
+/**
+ * Project-level federated viewer manifest: one entry per model with a ready
+ * IFC file (presigned artifact URLs + discipline classification). Powers the
+ * multi-discipline viewer that loads several models into one scene.
+ */
+export async function getProjectViewerBundle(
+  accessToken: string,
+  projectId: string,
+): Promise<ProjectViewerManifestResponse> {
+  return apiClient.get<ProjectViewerManifestResponse>(
+    `/projects/${projectId}/viewer-bundle`,
+    ProjectViewerManifestResponseSchema,
     accessToken,
   );
 }

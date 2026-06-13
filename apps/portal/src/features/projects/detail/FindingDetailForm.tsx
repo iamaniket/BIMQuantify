@@ -33,58 +33,64 @@ export function FindingDetailForm({
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const api = useFindingDetailForm(projectId, finding, { onSaved, onDeleted });
-  const { confirmDelete, setConfirmDelete, isPending } = api;
+  const { confirmDelete, setConfirmDelete, isPending, canEdit, canDelete } = api;
 
   return (
     <div className="flex flex-col gap-3 py-1">
       <FindingDetailFields projectId={projectId} finding={finding} api={api} />
 
-      <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-        {confirmDelete ? (
-          <div className="flex items-center gap-2">
-            <span className="text-body3 text-foreground-secondary">
-              {t('delete.confirm')}
-            </span>
-            <Button
-              type="button"
-              variant="destructive"
-              size="md"
-              disabled={isPending}
-              onClick={api.remove}
-            >
-              {t('delete.confirmAction')}
-            </Button>
+      {(canEdit || canDelete) && (
+        <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+          {canDelete && confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <span className="text-body3 text-foreground-secondary">
+                {t('delete.confirm')}
+              </span>
+              <Button
+                type="button"
+                variant="destructive"
+                size="md"
+                disabled={isPending}
+                onClick={api.remove}
+              >
+                {t('delete.confirmAction')}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                onClick={() => { setConfirmDelete(false); }}
+              >
+                {t('delete.cancel')}
+              </Button>
+            </div>
+          ) : canDelete ? (
             <Button
               type="button"
               variant="ghost"
               size="md"
-              onClick={() => { setConfirmDelete(false); }}
+              className="text-error hover:text-error"
+              onClick={() => { setConfirmDelete(true); }}
             >
-              {t('delete.cancel')}
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              {t('delete.action')}
             </Button>
-          </div>
-        ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="md"
-            className="text-error hover:text-error"
-            onClick={() => { setConfirmDelete(true); }}
-          >
-            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            {t('delete.action')}
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          disabled={isPending}
-          onClick={api.save}
-        >
-          {t('save')}
-        </Button>
-      </div>
+          ) : (
+            <span />
+          )}
+          {canEdit && (
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              disabled={isPending}
+              onClick={api.save}
+            >
+              {t('save')}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

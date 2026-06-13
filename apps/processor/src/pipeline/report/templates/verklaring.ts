@@ -10,11 +10,16 @@
 import { layout } from './_layout.js';
 import {
   addressLine,
+  buildMergeContext,
   escapeHtml,
   fmtDate,
   or,
+  renderSections,
+  toLayoutBranding,
+  type ContentSectionRender,
   type ReportInstrument,
   type ReportProject,
+  type ReportTemplate,
 } from './_helpers.js';
 import {
   NL_VERKLARING_LABELS,
@@ -36,6 +41,7 @@ export type VerklaringData = {
     signed_at?: string | null;
     signature_hash?: string | null;
   };
+  template?: ReportTemplate;
 };
 
 const LABELS_BY_LOCALE: Record<string, VerklaringLabels> = {
@@ -109,18 +115,22 @@ export function renderHtml(data: VerklaringData): string {
     address: addressLine(data.project.address),
   });
 
-  const body = `
-    <section class="page">
-      <h2>${labels.declarationHeading}</h2>
-      <div class="declaration"><p>${bodyText}</p></div>
-      <p class="muted">${labels.draftNotice}</p>
-    </section>
-    ${signatureSection(data, labels)}`;
+  const content: ContentSectionRender[] = [
+    {
+      key: 'declaration',
+      defaultTitle: labels.declarationHeading,
+      html: `<div class="declaration"><p>${bodyText}</p></div><p class="muted">${labels.draftNotice}</p>`,
+    },
+  ];
+  const body =
+    renderSections(content, data.template?.sections, buildMergeContext(data)) +
+    signatureSection(data, labels);
 
   return layout({
     title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
     locale: data.locale,
+    branding: toLayoutBranding(data.template?.branding),
   });
 }

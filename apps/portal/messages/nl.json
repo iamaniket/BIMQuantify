@@ -33,7 +33,10 @@
       "empty": "Nog geen versies geüpload.",
       "download": "Downloaden"
     },
-    "loadMore": "Meer laden"
+    "loadMore": "Meer laden",
+    "errors": {
+      "permissionDenied": "Je hebt geen toestemming voor deze actie."
+    }
   },
   "requestAccess": {
     "intro": {
@@ -283,6 +286,24 @@
     }
   },
   "projects": {
+    "about": {
+      "descriptionHeading": "Beschrijving",
+      "noDescription": "Geen beschrijving.",
+      "infoHeading": "Projectgegevens",
+      "addressHeading": "Locatieadres",
+      "timestampsHeading": "Tijdstempels",
+      "referenceCode": "Referentiecode",
+      "status": "Status",
+      "phase": "Fase",
+      "delivery": "Oplevering",
+      "permit": "Vergunning",
+      "contractor": "Aannemer",
+      "address": "Adres",
+      "municipality": "Gemeente",
+      "bagId": "BAG-id",
+      "created": "Aangemaakt",
+      "updated": "Bijgewerkt"
+    },
     "hero": {
       "title": "Projecten",
       "badge": "Portfoliooverzicht",
@@ -504,6 +525,7 @@
     }
   },
   "findingTemplates": {
+    "reportTemplatesLink": "Rapportsjablonen",
     "hero": {
       "title": "Sjablonen",
       "badge": "Bevindingen",
@@ -869,6 +891,7 @@
       "attachmentsCount": "{count} geüpload",
       "noAttachments": "Nog geen",
       "shareProject": "Project delen",
+      "viewAllModels": "Alle modellen bekijken",
       "editProject": "Project bewerken",
       "noAddress": "Geen adres ingesteld",
       "instrumentTooltip": "Toegelaten instrument · {provider}",
@@ -957,6 +980,7 @@
           "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in het model.",
           "submitCreate": "Aanmaken",
           "submitCreating": "Bezig met aanmaken…",
+          "cancel": "Annuleren",
           "errors": {
             "nameTaken": "Deze naam is al in gebruik"
           },
@@ -1714,6 +1738,9 @@
       "download": "Download",
       "errorGenerating": "Genereren van het rapport is mislukt.",
       "noPreview": "Geen preview beschikbaar.",
+      "templateLabel": "Sjabloon",
+      "noTemplate": "Geen sjabloon",
+      "defaultSuffix": "standaard",
       "status": {
         "queued": "In wachtrij",
         "running": "Wordt gegenereerd",
@@ -1751,6 +1778,83 @@
       "sign": "Onderteken",
       "signing": "Bezig met ondertekenen…",
       "signed": "Ondertekend"
+    }
+  },
+  "reportTemplates": {
+    "reportTypes": {
+      "compliance_report": "Nalevingsrapport",
+      "assurance_plan": "Borgingsplan",
+      "completion_declaration": "Verklaring kwaliteitsborger",
+      "dossier": "Dossier bevoegd gezag"
+    },
+    "panel": {
+      "reportsTitle": "Rapportsjablonen",
+      "reportsSubtitle": "Geef je rapporten een eigen huisstijl en indeling. Kies een sjabloon bij het genereren.",
+      "showing": "{count} sjablonen"
+    },
+    "list": {
+      "newButton": "Nieuw sjabloon",
+      "empty": "Nog geen sjablonen voor dit rapporttype",
+      "emptyHint": "Maak er een om dit rapport vorm te geven.",
+      "defaultBadge": "Standaard",
+      "setDefault": "Als standaard instellen",
+      "edit": "Bewerken",
+      "remove": "Verwijderen",
+      "removeSuccess": "\"{name}\" verwijderd",
+      "setDefaultSuccess": "\"{name}\" is nu de standaard",
+      "cannotDeleteDefault": "Stel eerst een ander sjabloon als standaard in voordat je dit verwijdert."
+    },
+    "builder": {
+      "createTitle": "Nieuw rapportsjabloon",
+      "editTitle": "Rapportsjabloon bewerken",
+      "subtitle": "Geef dit rapport vorm.",
+      "save": "Sjabloon opslaan",
+      "saving": "Opslaan…",
+      "next": "Volgende",
+      "back": "Terug",
+      "cancel": "Annuleren",
+      "nameLabel": "Naam sjabloon",
+      "namePlaceholder": "bv. ACME huisstijl",
+      "descriptionLabel": "Omschrijving",
+      "defaultLabel": "Als standaard instellen",
+      "defaultHint": "Vooraf geselecteerd bij het genereren van dit rapporttype.",
+      "accentLabel": "Primaire kleur",
+      "accentSecondaryLabel": "Secundaire kleur",
+      "headerLabel": "Koptekst",
+      "footerLabel": "Voettekst",
+      "logoLabel": "Logo",
+      "coverLabel": "Voorblad / briefpapier (PDF)",
+      "upload": "Uploaden",
+      "replace": "Vervangen",
+      "uploaded": "Geüpload",
+      "uploadFailed": "Uploaden mislukt. Controleer bestandstype en -grootte.",
+      "contentHint": "Schakel secties in/uit, herorden en hernoem ze. Voeg vrije tekstblokken toe met {data}-velden.",
+      "titleOverridePlaceholder": "Aangepaste titel (optioneel)",
+      "textBlock": "Tekstblok",
+      "textTitlePlaceholder": "Bloktitel (optioneel)",
+      "textBodyPlaceholder": "Je tekst. Voeg gegevens toe met de knoppen hieronder.",
+      "addTextBlock": "Tekstblok toevoegen",
+      "moveUp": "Omhoog",
+      "moveDown": "Omlaag",
+      "remove": "Verwijderen",
+      "checkFields": "Controleer de gemarkeerde velden.",
+      "createSuccess": "Sjabloon aangemaakt",
+      "updateSuccess": "Sjabloon bijgewerkt",
+      "steps": {
+        "setup": { "title": "Basis", "description": "Naam en standaard" },
+        "branding": { "title": "Huisstijl", "description": "Logo, kleuren, voorblad" },
+        "content": { "title": "Inhoud", "description": "Secties en tekst" }
+      }
+    },
+    "errors": {
+      "NAME_REQUIRED": "Voer een naam voor het sjabloon in.",
+      "INVALID_CONFIG": "De sjablooninstellingen zijn ongeldig.",
+      "UNKNOWN_SECTION_KEY": "Er is een onbekende sectie geselecteerd.",
+      "DUPLICATE_SECTION_KEY": "Een sectie is dubbel.",
+      "DUPLICATE_TEXT_BLOCK_ID": "Een tekstblok is dubbel.",
+      "INVALID_ASSET_KEY": "Een verwijzing naar een geüpload bestand is ongeldig.",
+      "TEMPLATE_TYPE_MISMATCH": "Dit sjabloon is voor een ander rapporttype.",
+      "DEFAULT_TEMPLATE_CONFLICT": "Er werd tegelijk een andere standaard ingesteld — probeer opnieuw."
     }
   },
   "auth": {
@@ -2730,6 +2834,21 @@
       "clickToNavigate": "Klik om de weergave hierheen te verplaatsen",
       "isolateLevel": "Verdieping isoleren",
       "allLevels": "Alle verdiepingen"
+    },
+    "federated": {
+      "title": "Alle modellen",
+      "empty": "Nog geen verwerkte modellen",
+      "emptyHint": "Upload en verwerk IFC-modellen in dit project om ze samen te bekijken.",
+      "loadError": "Kan de modellen van het project niet laden.",
+      "layersTitle": "Lagen",
+      "kind": {
+        "architectural": "Architectuur",
+        "structural": "Constructief",
+        "mep": "Installaties",
+        "mixed": "Gemengd",
+        "none": "Overig",
+        "unknown": "Niet geclassificeerd"
+      }
     },
     "floorplan": {
       "title": "Plattegrond",

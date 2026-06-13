@@ -10,12 +10,17 @@
 import { layout } from './_layout.js';
 import {
   addressLine,
+  buildMergeContext,
   escapeHtml,
   fmtDate,
   fmtDay,
   or,
+  renderSections,
+  toLayoutBranding,
+  type ContentSectionRender,
   type ReportInstrument,
   type ReportProject,
+  type ReportTemplate,
 } from './_helpers.js';
 import {
   NL_ASSURANCE_PLAN_LABELS,
@@ -65,6 +70,7 @@ export type AssurancePlanData = {
     moments: AssuranceMoment[];
   };
   risks: AssuranceRisk[];
+  template?: ReportTemplate;
 };
 
 const LABELS_BY_LOCALE: Record<string, AssurancePlanLabels> = {
@@ -202,23 +208,23 @@ export function renderHtml(data: AssurancePlanData): string {
       </dl>
     </header>`;
 
-  const body = `
-    <section class="page">
-      <h2>${labels.sectionRisks}</h2>
-      ${renderRisks(data.risks, labels)}
-    </section>
-
-    <section class="page">
-      <h2>${labels.sectionMoments}</h2>
-      ${renderMoments(plan.moments, labels)}
-    </section>
-
-    ${signatureBlock(labels)}`;
+  const content: ContentSectionRender[] = [
+    { key: 'risks', defaultTitle: labels.sectionRisks, html: renderRisks(data.risks, labels) },
+    {
+      key: 'moments',
+      defaultTitle: labels.sectionMoments,
+      html: renderMoments(plan.moments, labels),
+    },
+  ];
+  const body =
+    renderSections(content, data.template?.sections, buildMergeContext(data)) +
+    signatureBlock(labels);
 
   return layout({
     title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
     locale: data.locale,
+    branding: toLayoutBranding(data.template?.branding),
   });
 }

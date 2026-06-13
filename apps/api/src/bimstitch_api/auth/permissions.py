@@ -238,6 +238,23 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
 )
 
 
+def serialize_matrix() -> dict[str, dict[str, list[str]]]:
+    """Serialize the whole matrix to plain JSON-safe data: role -> resource ->
+    sorted action codes.
+
+    This is the wire shape served by `GET /permissions/matrix` so the portal can
+    mirror the exact same policy without hard-coding it. Actions are sorted for a
+    stable, diff-friendly payload.
+    """
+    return {
+        role.value: {
+            resource.value: sorted(action.value for action in _MATRIX[role][resource])
+            for resource in Resource
+        }
+        for role in ProjectRole
+    }
+
+
 def has_permission(role: ProjectRole, resource: Resource, action: Action) -> bool:
     """Return True iff `role` is allowed to perform `action` on `resource`."""
     return action in _MATRIX[role][resource]
@@ -267,4 +284,10 @@ def require_permission(role: ProjectRole, resource: Resource, action: Action) ->
     )
 
 
-__all__ = ["Action", "Resource", "has_permission", "require_permission"]
+__all__ = [
+    "Action",
+    "Resource",
+    "has_permission",
+    "require_permission",
+    "serialize_matrix",
+]

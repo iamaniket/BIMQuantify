@@ -134,13 +134,13 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
     # a written note and >=1 evidence attachment.
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Custom form template (#templates): the FindingTemplate this finding was
-    # created from. Null = the built-in "standard form". SET NULL so a template
-    # can be soft-deleted without blocking; `custom_values` snapshots the labels
-    # so the finding stays renderable even when the template row is gone.
+    # Custom form template (#templates): the OrgTemplate (findings kind) this
+    # finding was created from. Null = the built-in "standard form". SET NULL so a
+    # template can be soft-deleted without blocking; `custom_values` snapshots the
+    # labels so the finding stays renderable even when the template row is gone.
     template_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("finding_templates.id", ondelete="SET NULL"),
+        ForeignKey("org_templates.id", ondelete="SET NULL"),
         nullable=True,
     )
     # Answers to the template's custom fields, snapshotted as

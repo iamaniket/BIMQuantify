@@ -8,6 +8,8 @@ import { Skeleton } from '@bimstitch/ui';
 
 import type { Deadline, EffectiveDeadlineNotificationSettings } from '@/lib/api/schemas/deadlines';
 
+import { useProjectPermissions } from '@/features/permissions';
+
 import { DeadlineCard } from './deadlines/DeadlineCard';
 import { DeadlineNotificationForm } from './deadlines/DeadlineNotificationForm';
 import { FilingDialog } from './deadlines/FilingDialog';
@@ -25,6 +27,9 @@ type Props = {
 
 export function DeadlinesTab({ projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.deadlines');
+  const { can } = useProjectPermissions(projectId);
+  // Mark-met and filing both hit deadline update (owner/editor/inspector/contractor).
+  const canUpdateDeadline = can('deadline', 'update');
   const deadlinesQuery = useDeadlines(projectId);
   const settingsQuery = useProjectDeadlineSettings(projectId);
   const fileMutation = useFileDeadline(projectId);
@@ -78,10 +83,12 @@ export function DeadlinesTab({ projectId }: Props): JSX.Element {
             deadline={dl}
             label={dlLabel}
             legalReference={ref}
-            canMarkMet={dl.status === 'pending'}
+            canMarkMet={canUpdateDeadline && dl.status === 'pending'}
             isPending={fileMutation.isPending}
             onMarkMet={() => { fileMutation.mutate({ deadlineId: dl.id }); }}
-            onFile={() => { setFilingDeadline({ deadline: dl, label: dlLabel }); }}
+            {...(canUpdateDeadline
+              ? { onFile: () => { setFilingDeadline({ deadline: dl, label: dlLabel }); } }
+              : {})}
           />
         );
       })}

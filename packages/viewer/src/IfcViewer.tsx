@@ -47,7 +47,7 @@ import { screenshotPlugin } from './plugins/3d/screenshot/index.js';
 import { bcfPlugin } from './plugins/3d/bcf/index.js';
 import { colorCodingPlugin } from './plugins/3d/color-coding/index.js';
 import { exploderPlugin } from './plugins/3d/exploder/index.js';
-import type { IfcViewerProps, ViewerHandle } from './types.js';
+import type { IfcViewerProps, ViewerBundle, ViewerHandle } from './types.js';
 
 /**
  * Headless React wrapper around `Viewer`. Renders a fullsize <div>; the
@@ -95,10 +95,17 @@ function IfcViewerImpl(
           (viewerRef.current?.getPlugin(name) as T | null) ?? null,
       },
       getModelId: () => viewerRef.current?.modelId ?? null,
+      getModelIds: () => viewerRef.current?.getModelIds() ?? [],
     };
     handleRef.current = handle;
     return handle;
   }, []);
+
+  // Stable dependency for the mount effect — changes only when the SET of
+  // federated models changes, not when a layer's visibility toggles.
+  const additionalBundlesKey = (props.additionalBundles ?? [])
+    .map((b) => b.fragmentsUrl)
+    .join('|');
 
   useEffect(() => {
     const container = containerRef.current;
@@ -185,38 +192,60 @@ function IfcViewerImpl(
     let cancelled = false;
 
     (async () => {
-      try {
-        await viewer.mount(container);
-        if (cancelled) return;
-        props.onSceneReady?.();
-        const cacheKey = props.bundle.cacheKey;
+      // Fetch (cache-first) + load one bundle into the viewer. Only the
+      // primary bundle reports progress; federated extras load quietly.
+      const loadBundle = async (
+        b: ViewerBundle,
+        reportProgress: boolean,
+      ): Promise<void> => {
         // Kick off the outline-artifact fetch in parallel with the fragments
         // fetch. It never blocks or fails the model load — the promise
         // resolves null on any error and the outline plugin falls back to
         // client-side edge extraction.
-        const outlineUrl = props.bundle.outlineUrl;
-        const precomputedOutline = outlineUrl
-          ? fetchOutlineArtifact(outlineUrl, cacheKey)
+        const precomputedOutline = b.outlineUrl
+          ? fetchOutlineArtifact(b.outlineUrl, b.cacheKey)
           : null;
         let bytes: Uint8Array | null = null;
-        if (cacheKey) {
-          bytes = await getCached(cacheKey);
+        if (b.cacheKey) {
+          bytes = await getCached(b.cacheKey);
         }
         if (bytes === null) {
           bytes = await fetchFragments(
-            props.bundle.fragmentsUrl,
-            props.onProgress,
+            b.fragmentsUrl,
+            reportProgress ? props.onProgress : undefined,
           );
-          if (cacheKey && bytes.byteLength > 0) {
-            putCached(cacheKey, bytes).catch(() => undefined);
+          if (b.cacheKey && bytes.byteLength > 0) {
+            putCached(b.cacheKey, bytes).catch(() => undefined);
           }
         }
         if (cancelled) return;
-        await viewer.loadFragments(
-          bytes,
-          precomputedOutline ? { precomputedOutline } : {},
-        );
+        await viewer.loadFragments(bytes, {
+          ...(precomputedOutline ? { precomputedOutline } : {}),
+          ...(b.modelId ? { modelId: b.modelId } : {}),
+        });
+      };
+
+      try {
+        await viewer.mount(container);
         if (cancelled) return;
+        props.onSceneReady?.();
+
+        await loadBundle(props.bundle, true);
+        if (cancelled) return;
+
+        // Federated extras — load sequentially into the same scene, then
+        // re-frame the camera to encompass everything.
+        const extras = props.additionalBundles ?? [];
+        for (const extra of extras) {
+          await loadBundle(extra, false);
+          if (cancelled) return;
+        }
+        if (extras.length > 0) {
+          await viewer.commands
+            .execute('camera.zoomExtents')
+            .catch(() => undefined);
+        }
+
         const handle = handleRef.current;
         if (handle) props.onReady?.(handle);
       } catch (err) {
@@ -230,11 +259,13 @@ function IfcViewerImpl(
       viewer.unmount().catch(() => undefined);
       viewerRef.current = null;
     };
-    // The bundle URL is the only thing we re-mount for; everything else
-    // (callbacks, plugin lists, shortcuts) is read at mount time. Hosts
-    // wanting to swap plugins at runtime should use `handle.plugins.*`.
+    // Bundle URLs are the only thing we re-mount for; everything else
+    // (callbacks, plugin lists, shortcuts) is read at mount time. The extras
+    // key is a stable join so toggling layer visibility (which doesn't change
+    // URLs) never remounts. Hosts swapping plugins at runtime use
+    // `handle.plugins.*`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.bundle.fragmentsUrl]);
+  }, [props.bundle.fragmentsUrl, additionalBundlesKey]);
 
   return (
     <div

@@ -14,6 +14,7 @@ import {
 } from '@/lib/api/schemas';
 import type { JurisdictionRiskTemplate } from '@/lib/api/jurisdictions';
 
+import { useProjectPermissions } from '@/features/permissions';
 import { useBblRiskCatalog } from '@/features/risks/useBblRiskCatalog';
 import { useCreateRisk } from '@/features/risks/useCreateRisk';
 import { useDeleteRisk } from '@/features/risks/useDeleteRisk';
@@ -37,6 +38,9 @@ export function RiskAssessmentSection({ projectId, country }: Props): JSX.Elemen
   const t = useTranslations('projectDetail.tabs.borgingsplan.risks');
   const catalog = useBblRiskCatalog(country);
   const risksQuery = useRisks(projectId);
+  const { can } = useProjectPermissions(projectId);
+  // Risk create/update/delete are all owner/editor only — one flag covers them.
+  const canManage = can('risk', 'create');
 
   if (catalog === null || risksQuery.data === undefined) {
     return (
@@ -68,6 +72,7 @@ export function RiskAssessmentSection({ projectId, country }: Props): JSX.Elemen
           label={label}
           templates={catalog.templatesByCategory[code] ?? []}
           risks={risksByCategory.get(code) ?? []}
+          canManage={canManage}
         />
       ))}
     </div>
@@ -80,6 +85,7 @@ type CategorySectionProps = {
   label: string;
   templates: JurisdictionRiskTemplate[];
   risks: Risk[];
+  canManage: boolean;
 };
 
 function CategorySection({
@@ -88,6 +94,7 @@ function CategorySection({
   label,
   templates,
   risks,
+  canManage,
 }: CategorySectionProps): JSX.Element {
   const t = useTranslations('projectDetail.tabs.borgingsplan.risks');
   const [open, setOpen] = useState(true);
@@ -131,10 +138,10 @@ function CategorySection({
           )}
 
           {risks.map((risk) => (
-            <RiskRow key={risk.id} projectId={projectId} risk={risk} />
+            <RiskRow key={risk.id} projectId={projectId} risk={risk} canManage={canManage} />
           ))}
 
-          {availableTemplates.length > 0 && (
+          {canManage && availableTemplates.length > 0 && (
             <details className="mt-1 rounded-md border border-dashed border-border bg-background-secondary p-2">
               <summary className="cursor-pointer text-caption font-medium text-foreground-secondary">
                 {t('templatePickerLabel', { count: availableTemplates.length })}
@@ -152,19 +159,21 @@ function CategorySection({
             </details>
           )}
 
-          <div className="flex justify-end pt-1">
-            <Button
-              variant="ghost"
-              size="md"
-              onClick={() => setShowCustomForm((v) => !v)}
-              aria-expanded={showCustomForm}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              {showCustomForm ? t('cancelCustom') : t('addCustom')}
-            </Button>
-          </div>
+          {canManage && (
+            <div className="flex justify-end pt-1">
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => setShowCustomForm((v) => !v)}
+                aria-expanded={showCustomForm}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {showCustomForm ? t('cancelCustom') : t('addCustom')}
+              </Button>
+            </div>
+          )}
 
-          {showCustomForm && (
+          {canManage && showCustomForm && (
             <CustomRiskForm
               projectId={projectId}
               category={category}
@@ -180,9 +189,10 @@ function CategorySection({
 type RiskRowProps = {
   projectId: string;
   risk: Risk;
+  canManage: boolean;
 };
 
-function RiskRow({ projectId, risk }: RiskRowProps): JSX.Element {
+function RiskRow({ projectId, risk, canManage }: RiskRowProps): JSX.Element {
   const t = useTranslations('projectDetail.tabs.borgingsplan.risks');
   const deleteMutation = useDeleteRisk(projectId);
   const [editing, setEditing] = useState(false);
@@ -208,27 +218,29 @@ function RiskRow({ projectId, risk }: RiskRowProps): JSX.Element {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="text-foreground-tertiary hover:text-foreground"
-            aria-label={t('editRisk')}
-            title={t('editRisk')}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => deleteMutation.mutate(risk.id)}
-            disabled={deleteMutation.isPending}
-            className="text-foreground-tertiary hover:text-error disabled:opacity-50"
-            aria-label={t('deleteRisk')}
-            title={t('deleteRisk')}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-foreground-tertiary hover:text-foreground"
+              aria-label={t('editRisk')}
+              title={t('editRisk')}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => deleteMutation.mutate(risk.id)}
+              disabled={deleteMutation.isPending}
+              className="text-foreground-tertiary hover:text-error disabled:opacity-50"
+              aria-label={t('deleteRisk')}
+              title={t('deleteRisk')}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
       <p className="text-body3 text-foreground">{risk.description}</p>
       <p className="text-caption text-foreground-secondary">

@@ -92,7 +92,15 @@ export function useFloorPlanFindingMarkers(opts: FloorPlanFindingMarkersOptions)
         // Normalized 0..1, top-left, Y-down — relative to the union page box.
         const nx = (p.x - union.minX) / planW;
         const ny = 1 - (p.y - union.minY) / planH;
-        markers2D.push({ id: m.id, type: 'finding', x: nx, y: ny, label: m.label, entityId: m.entityId });
+        markers2D.push({
+          id: m.id,
+          type: 'finding',
+          x: nx,
+          y: ny,
+          label: m.label,
+          entityId: m.entityId,
+          ...(m.status ? { status: m.status } : {}),
+        });
       });
 
       fpHandle.commands.execute('entity-marker-2d.sync', markers2D).catch(() => undefined);

@@ -133,3 +133,174 @@ export const reportInstrumentSchema = z
   })
   .nullable()
   .optional();
+
+// ---------------------------------------------------------------------------
+// Report templates (branding wrapper + structured content)
+// ---------------------------------------------------------------------------
+
+/** Runtime schema for the optional `template` an org report-template injects into
+ * the payload. Every field is optional/nullable so existing (template-less)
+ * payloads validate unchanged. */
+export const reportTemplateSchema = z
+  .object({
+    id: z.string().optional(),
+    branding: z
+      .object({
+        logo_storage_key: z.string().nullable().optional(),
+        logo_data_url: z.string().nullable().optional(),
+        accent_color: z.string().nullable().optional(),
+        accent_color_secondary: z.string().nullable().optional(),
+        header_text: z.string().nullable().optional(),
+        footer_text: z.string().nullable().optional(),
+        cover_pdf_storage_key: z.string().nullable().optional(),
+        bucket: z.string().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+    sections: z
+      .array(
+        z.union([
+          z.object({
+            type: z.literal('content'),
+            key: z.string(),
+            enabled: z.boolean().optional(),
+            title_override: z.string().nullable().optional(),
+          }),
+          z.object({
+            type: z.literal('text'),
+            id: z.string(),
+            title: z.string().nullable().optional(),
+            body: z.string(),
+            enabled: z.boolean().optional(),
+          }),
+        ]),
+      )
+      .optional(),
+    options: z
+      .object({
+        signature_label: z.string().nullable().optional(),
+        show_toc: z.boolean().optional(),
+      })
+      .nullable()
+      .optional(),
+  })
+  .nullable()
+  .optional();
+
+export type ReportTemplateBranding = {
+  logo_storage_key?: string | null;
+  logo_data_url?: string | null;
+  accent_color?: string | null;
+  accent_color_secondary?: string | null;
+  header_text?: string | null;
+  footer_text?: string | null;
+  cover_pdf_storage_key?: string | null;
+  bucket?: string | null;
+};
+
+export type ReportTemplateSection =
+  | { type: 'content'; key: string; enabled?: boolean; title_override?: string | null }
+  | { type: 'text'; id: string; title?: string | null; body: string; enabled?: boolean };
+
+export type ReportTemplate = {
+  id?: string;
+  branding?: ReportTemplateBranding | null;
+  sections?: ReportTemplateSection[];
+  options?: { signature_label?: string | null; show_toc?: boolean } | null;
+};
+
+/** Logic-less `{{a.b.c}}` interpolation over a context object. Walks dotted
+ * paths; unknown/blank paths resolve to '' and every value is HTML-escaped.
+ * No code execution — safe for user-authored text blocks. */
+export function interpolate(tpl: string, ctx: Record<string, unknown>): string {
+  return tpl.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, path: string) => {
+    let cur: unknown = ctx;
+    for (const part of path.split('.')) {
+      if (cur !== null && typeof cur === 'object' && part in (cur as Record<string, unknown>)) {
+        cur = (cur as Record<string, unknown>)[part];
+      } else {
+        return '';
+      }
+    }
+    if (cur === null || cur === undefined) return '';
+    return escapeHtml(String(cur));
+  });
+}
+
+/** Build the scalar merge context for a report payload's text blocks. */
+export function buildMergeContext(payload: {
+  project: ReportProject;
+  generated_at: string;
+  instrument?: ReportInstrument | null;
+}): Record<string, unknown> {
+  return {
+    project: payload.project,
+    contractor: payload.project.contractor ?? {},
+    report: { generated_at: fmtDate(payload.generated_at) },
+    instrument: payload.instrument ?? {},
+  };
+}
+
+/** One built-in content section: its key, default heading, and inner HTML. */
+export type ContentSectionRender = { key: string; defaultTitle: string; html: string };
+
+function pageSection(title: string, inner: string): string {
+  return `<section class="page"><h2>${escapeHtml(title)}</h2>${inner}</section>`;
+}
+
+/**
+ * Render the ordered section list for a report body.
+ *
+ * - No template config → every content section in canonical order (the exact
+ *   pre-template output).
+ * - With config → only `enabled !== false` entries, in the configured order:
+ *   `content` → its mapped inner HTML under `title_override ?? defaultTitle`;
+ *   `text` → an interpolated free block (legal disclaimers etc.).
+ */
+export function renderSections(
+  content: ContentSectionRender[],
+  cfg: ReportTemplateSection[] | undefined | null,
+  ctx: Record<string, unknown>,
+): string {
+  if (!cfg || cfg.length === 0) {
+    return content.map((c) => pageSection(c.defaultTitle, c.html)).join('\n');
+  }
+  const byKey = new Map(content.map((c) => [c.key, c]));
+  const out: string[] = [];
+  for (const entry of cfg) {
+    if (entry.enabled === false) continue;
+    if (entry.type === 'content') {
+      const c = byKey.get(entry.key);
+      if (c) out.push(pageSection(entry.title_override || c.defaultTitle, c.html));
+    } else {
+      const heading = entry.title ? `<h2>${escapeHtml(entry.title)}</h2>` : '';
+      out.push(
+        `<section class="page">${heading}<div class="text-block">${interpolate(entry.body, ctx)}</div></section>`,
+      );
+    }
+  }
+  return out.join('\n');
+}
+
+/** Map a template's (snake_case) branding config to the `layout()` branding
+ * shape. Returns undefined when there's no template so `layout` renders bare. */
+export function toLayoutBranding(
+  branding: ReportTemplateBranding | null | undefined,
+):
+  | {
+      logoDataUrl?: string | null;
+      accentColor?: string | null;
+      accentColorSecondary?: string | null;
+      headerText?: string | null;
+      footerText?: string | null;
+    }
+  | undefined {
+  if (!branding) return undefined;
+  return {
+    logoDataUrl: branding.logo_data_url,
+    accentColor: branding.accent_color,
+    accentColorSecondary: branding.accent_color_secondary,
+    headerText: branding.header_text,
+    footerText: branding.footer_text,
+  };
+}

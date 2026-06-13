@@ -53,7 +53,6 @@ from bimstitch_api.routers.deadline_notification_settings import (
 from bimstitch_api.routers.deadlines import router as deadlines_router
 from bimstitch_api.routers.element_inspections import router as element_inspections_router
 from bimstitch_api.routers.finding import router as finding_router
-from bimstitch_api.routers.finding_templates import router as finding_templates_router
 from bimstitch_api.routers.health import router as health_router
 from bimstitch_api.routers.inspection import router as inspection_router
 from bimstitch_api.routers.jobs import router as jobs_router
@@ -67,6 +66,7 @@ from bimstitch_api.routers.me_profile import router as me_profile_router
 from bimstitch_api.routers.models import router as models_router
 from bimstitch_api.routers.notifications import router as notifications_router
 from bimstitch_api.routers.org_certificates import router as org_certificates_router
+from bimstitch_api.routers.org_templates import router as org_templates_router
 from bimstitch_api.routers.organization_image import (
     admin_router as org_image_admin_router,
 )
@@ -75,7 +75,13 @@ from bimstitch_api.routers.organization_image import (
 )
 from bimstitch_api.routers.organization_members import router as organization_members_router
 from bimstitch_api.routers.organization_settings import router as org_settings_router
-from bimstitch_api.routers.project_files import router as project_files_router
+from bimstitch_api.routers.permissions import router as permissions_router
+from bimstitch_api.routers.project_files import (
+    project_viewer_router,
+)
+from bimstitch_api.routers.project_files import (
+    router as project_files_router,
+)
 from bimstitch_api.routers.projects import router as projects_router
 from bimstitch_api.routers.public import router as public_router
 from bimstitch_api.routers.reports import router as reports_router
@@ -240,6 +246,7 @@ def create_app() -> FastAPI:
     app.include_router(public_router)
     app.include_router(access_requests_router)
     app.include_router(jurisdictions_router)
+    app.include_router(permissions_router)
     app.include_router(build_auth_router())
     app.include_router(admin_organizations_router)
     app.include_router(admin_blog_router)
@@ -255,6 +262,7 @@ def create_app() -> FastAPI:
     app.include_router(contractors_router)
     app.include_router(models_router)
     app.include_router(project_files_router)
+    app.include_router(project_viewer_router)
     app.include_router(jobs_internal_router)
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
@@ -264,7 +272,7 @@ def create_app() -> FastAPI:
     app.include_router(risks_router)
     app.include_router(bcf_router)
     app.include_router(finding_router)
-    app.include_router(finding_templates_router)
+    app.include_router(org_templates_router)
     app.include_router(borgingsplan_plan_router)
     app.include_router(borgingsplan_moment_router)
     app.include_router(attachments_router)

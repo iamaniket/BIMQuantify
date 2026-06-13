@@ -1,6 +1,6 @@
 """Validate a finding's custom-field answers against its template.
 
-Pure, DB-free, unit-testable. Given a `FindingTemplate` (or None) and the raw
+Pure, DB-free, unit-testable. Given an `OrgTemplate` (findings kind, or None) and the raw
 answer map a client submitted, returns the snapshot stored on
 `Finding.custom_values`:
 
@@ -19,10 +19,10 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException, status
 
-from bimstitch_api.schemas.finding_template import FieldDef, FindingFieldType
+from bimstitch_api.schemas.org_template import FieldDef, FindingFieldType
 
 if TYPE_CHECKING:
-    from bimstitch_api.models.finding_template import FindingTemplate
+    from bimstitch_api.models.org_template import OrgTemplate
 
 _MAX_TEXT = 4000
 
@@ -76,7 +76,7 @@ def _coerce(field: FieldDef, value: Any) -> Any:
 
 
 def build_custom_values(
-    template: FindingTemplate | None,
+    template: OrgTemplate | None,
     raw: dict[str, Any] | None,
 ) -> dict[str, dict[str, Any]] | None:
     raw = raw or {}

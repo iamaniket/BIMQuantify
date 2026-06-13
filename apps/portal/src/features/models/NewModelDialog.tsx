@@ -78,6 +78,7 @@ export function NewModelDialog({ open, onOpenChange, projectId }: Props): JSX.El
       description={t('description')}
       onSubmit={form.handleSubmit(onSubmit)}
       submitLabel={isSubmitting ? t('submitCreating') : t('submitCreate')}
+      cancelLabel={t('cancel')}
       submitDisabled={isSubmitting}
     >
       <div className="flex flex-col gap-4">

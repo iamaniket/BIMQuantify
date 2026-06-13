@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import text
 
@@ -99,6 +99,166 @@ async def _seed_succeeded_compliance_job(
             },
         )
     return job_id
+
+
+# ---------------------------------------------------------------------------
+# Report templates (template_id → worker payload)
+# ---------------------------------------------------------------------------
+
+
+_DOSSIER_TEMPLATE_CONFIG = {
+    "branding": {
+        "accent_color": "#1d4ed8",
+        "accent_color_secondary": "#0ea5e9",
+        "header_text": "ACME",
+    },
+    "sections": [
+        {"type": "content", "key": "risks", "enabled": True},
+        {"type": "text", "id": "t_intro1", "title": "Intro", "body": "Voor {{project.name}}"},
+        {"type": "content", "key": "certificates", "enabled": False},
+    ],
+    "options": {"show_toc": True},
+}
+
+
+async def _create_dossier_template(
+    client: AsyncClient, token: str, *, is_default: bool = False, name: str = "ACME"
+) -> dict:
+    resp = await client.post(
+        "/org-templates",
+        json={
+            "template_type": "dossier",
+            "name": name,
+            "config": _DOSSIER_TEMPLATE_CONFIG,
+            "is_default": is_default,
+        },
+        headers=_auth(token),
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+async def test_create_report_with_template_id_injects_template(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="P-tmpl")
+    template = await _create_dossier_template(client, token)
+
+    job_dispatch_calls.clear()
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "dossier", "template_id": template["id"]},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["template_id"] == template["id"]
+
+    assert len(job_dispatch_calls) == 1
+    payload = job_dispatch_calls[0]["payload"]
+    assert isinstance(payload, dict)
+    tmpl = payload["template"]
+    assert tmpl["id"] == template["id"]
+    assert tmpl["branding"]["accent_color"] == "#1d4ed8"
+    assert tmpl["branding"]["accent_color_secondary"] == "#0ea5e9"
+    assert "bucket" in tmpl["branding"]
+    section_keys = [s.get("key") or s.get("id") for s in tmpl["sections"]]
+    assert section_keys == ["risks", "t_intro1", "certificates"]
+
+
+async def test_create_report_uses_org_default_template(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="P-default")
+    template = await _create_dossier_template(client, token, is_default=True, name="Default")
+
+    job_dispatch_calls.clear()
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "dossier"},  # no template_id → org default
+        headers=_auth(token),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["template_id"] == template["id"]
+    payload = job_dispatch_calls[0]["payload"]
+    assert isinstance(payload, dict)
+    assert payload["template"]["id"] == template["id"]
+
+
+async def test_create_report_without_template_omits_key(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="P-none")
+
+    job_dispatch_calls.clear()
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "dossier"},  # no template, no org default → built-in
+        headers=_auth(token),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["template_id"] is None
+    payload = job_dispatch_calls[0]["payload"]
+    assert isinstance(payload, dict)
+    assert "template" not in payload
+
+
+async def test_create_report_template_type_mismatch_422(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="P-mismatch")
+    findings = await client.post(
+        "/org-templates",
+        json={
+            "template_type": "findings",
+            "name": "F",
+            "config": {"fields": [], "builtin_fields": {}},
+        },
+        headers=_auth(token),
+    )
+    assert findings.status_code == 201
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "dossier", "template_id": findings.json()["id"]},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "TEMPLATE_TYPE_MISMATCH"
+
+
+async def test_create_report_unknown_template_404(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="P-unknown")
+    resp = await client.post(
+        f"/projects/{project['id']}/reports",
+        json={"report_type": "dossier", "template_id": str(uuid4())},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "REPORT_TEMPLATE_NOT_FOUND"
 
 
 # ---------------------------------------------------------------------------

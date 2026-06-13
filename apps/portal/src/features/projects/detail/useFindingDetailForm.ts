@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
+import { useProjectPermissions } from '@/features/permissions';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useRegisterField } from '@/hooks/useRegisterField';
 import type {
@@ -21,7 +22,6 @@ import type {
   FindingUpdateInput,
   ProjectMemberList,
 } from '@/lib/api/schemas';
-import { useAuth } from '@/providers/AuthProvider';
 
 export const FINDING_SEVERITIES = ['low', 'medium', 'high'] as const;
 
@@ -110,6 +110,10 @@ export type FindingDetailFormApi = {
   showResolve: boolean;
   isResolved: boolean;
   isInspector: boolean;
+  /** May edit finding fields / promote / resolve (Resource.finding update). */
+  canEdit: boolean;
+  /** May delete the finding (Resource.finding delete). */
+  canDelete: boolean;
   isLinked: boolean;
   /** form.handleSubmit(onSubmit) — persists edits without changing status. */
   save: () => void;
@@ -138,7 +142,7 @@ export function useFindingDetailForm(
   opts: { onSaved?: (() => void) | undefined; onDeleted?: (() => void) | undefined } = {},
 ): FindingDetailFormApi {
   const { onSaved, onDeleted } = opts;
-  const { me } = useAuth();
+  const { can, canVerifyFinding } = useProjectPermissions(projectId);
   const membersQuery = useProjectMembers(projectId);
   const updateMutation = useUpdateFinding(projectId);
   const deleteMutation = useDeleteFinding(projectId);
@@ -189,10 +193,9 @@ export function useFindingDetailForm(
   const hasDeadline = deadlineValue !== undefined && deadlineValue !== '';
   const isPending = updateMutation.isPending || deleteMutation.isPending;
 
-  const currentUserId = me === null ? null : me.user.id;
-  const isInspector = members.some(
-    (m) => m.user_id === currentUserId && m.role === 'inspector',
-  );
+  const isInspector = canVerifyFinding;
+  const canEdit = can('finding', 'update');
+  const canDelete = can('finding', 'delete');
   const status = finding?.status ?? null;
   const canPromote = status === 'draft' && hasAssignee && hasDeadline;
   const canResolve =
@@ -248,6 +251,8 @@ export function useFindingDetailForm(
     showResolve,
     isResolved,
     isInspector,
+    canEdit,
+    canDelete,
     isLinked,
     save: form.handleSubmit(onSubmit),
     promote: form.handleSubmit(onPromoteSubmit),

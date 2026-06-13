@@ -5,9 +5,8 @@ import { ChevronDown } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';
+import { Eyebrow, Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';
 
-import { Eyebrow } from '@/components/shared/Eyebrow';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { useSidebar } from './SidebarContext';
@@ -99,7 +98,7 @@ export function SidebarTenantCard(): JSX.Element | null {
 
   return (
     <div className="px-3 pb-2 pt-3">
-      <Eyebrow className="mb-1.5 px-2.5 text-sidebar-fg-muted">
+      <Eyebrow as="div" tone="tertiary" className="mb-1.5 px-2.5 text-sidebar-fg-muted">
         {t('label')}
       </Eyebrow>
       <div className="relative">

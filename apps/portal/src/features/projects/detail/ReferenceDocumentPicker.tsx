@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Label,
   Skeleton,
 } from '@bimstitch/ui';
 
@@ -44,9 +45,9 @@ export function ReferenceDocumentPicker({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-label2 font-medium text-foreground">
+      <Label>
         {label ?? t('label')}
-      </span>
+      </Label>
       {referenced.length > 0 && (
         <ul className="flex flex-col gap-1.5">
           {referenced.map((doc) => (

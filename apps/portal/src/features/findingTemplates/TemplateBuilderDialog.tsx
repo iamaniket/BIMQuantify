@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  IconButton,
   Input,
   Label,
   Select,
@@ -58,9 +59,6 @@ const STEPS: readonly (WizardStep & { id: TemplateStepId })[] = [
 
 const BUILTIN_KEYS = TEMPLATABLE_BUILTINS;
 const KNOWN_ERROR_CODE = /^[A-Z_]+$/;
-
-const ICON_BTN =
-  'inline-grid h-7 w-7 place-items-center rounded text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent';
 
 function makeFieldId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -428,32 +426,33 @@ export function TemplateBuilderDialog({ open, onOpenChange, template }: Props): 
                           />
                         </label>
                         <div className="flex shrink-0 items-center">
-                          <button
-                            type="button"
+                          <IconButton
+                            size="sm"
                             title={t('builder.moveUp')}
-                            className={ICON_BTN}
+                            aria-label={t('builder.moveUp')}
                             disabled={index === 0}
                             onClick={() => { moveField(index, -1); }}
                           >
                             <ChevronUp className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
+                          </IconButton>
+                          <IconButton
+                            size="sm"
                             title={t('builder.moveDown')}
-                            className={ICON_BTN}
+                            aria-label={t('builder.moveDown')}
                             disabled={index === fields.length - 1}
                             onClick={() => { moveField(index, 1); }}
                           >
                             <ChevronDown className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
+                          </IconButton>
+                          <IconButton
+                            size="sm"
                             title={t('builder.removeField')}
-                            className={`${ICON_BTN} hover:text-error`}
+                            aria-label={t('builder.removeField')}
+                            className="hover:text-error"
                             onClick={() => { removeField(index); }}
                           >
                             <Trash2 className="h-4 w-4" />
-                          </button>
+                          </IconButton>
                         </div>
                       </div>
 

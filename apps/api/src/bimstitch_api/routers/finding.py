@@ -27,8 +27,8 @@ from bimstitch_api.i18n import resolve_org_locale, t
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimstitch_api.models.finding_attachment import FindingAttachment
-from bimstitch_api.models.finding_template import FindingTemplate
 from bimstitch_api.models.notification import NotificationEventType
+from bimstitch_api.models.org_template import OrgTemplate
 from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.user import User
 from bimstitch_api.notifications.service import create_notification
@@ -95,7 +95,7 @@ def _finding_snapshot(finding: Finding) -> dict[str, object]:
 
 
 def _enforce_builtin_required(
-    template: FindingTemplate | None,
+    template: OrgTemplate | None,
     data: dict[str, object],
     photo_ids: list[str] | None,
     reference_attachment_ids: list[str] | None,
@@ -174,13 +174,13 @@ async def create_finding(
     template_id = data.pop("template_id", None)
     raw_custom_values = data.pop("custom_values", None)
 
-    template: FindingTemplate | None = None
+    template: OrgTemplate | None = None
     if template_id is not None:
         template = (
             await session.execute(
-                select(FindingTemplate).where(
-                    FindingTemplate.id == template_id,
-                    FindingTemplate.deleted_at.is_(None),
+                select(OrgTemplate).where(
+                    OrgTemplate.id == template_id,
+                    OrgTemplate.deleted_at.is_(None),
                 )
             )
         ).scalar_one_or_none()

@@ -117,10 +117,16 @@ export default tseslint.config(
       'import/no-unresolved': 'off',
       'react/react-in-jsx-scope': 'off',
       'react/forbid-elements': ['error', {
-        forbid: [{
-          element: 'select',
-          message: 'Raw <select> is banned. Use the shared <Select> from @bimstitch/ui so the dropdown chevron is applied automatically.',
-        }],
+        forbid: [
+          {
+            element: 'select',
+            message: 'Raw <select> is banned. Use the shared <Select> from @bimstitch/ui so the dropdown chevron is applied automatically.',
+          },
+          {
+            element: 'textarea',
+            message: 'Raw <textarea> is banned. Use the shared <Textarea> from @bimstitch/ui.',
+          },
+        ],
       }],
       'react/jsx-filename-extension': ['error', { extensions: ['.tsx'] }],
       'react/jsx-props-no-spreading': 'off',

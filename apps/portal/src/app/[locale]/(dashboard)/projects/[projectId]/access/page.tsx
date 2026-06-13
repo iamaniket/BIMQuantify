@@ -30,6 +30,7 @@ import { useProject } from '@/features/projects/useProject';
 import { AddProjectMemberDialog } from '@/features/projects/members/AddProjectMemberDialog';
 import { ProjectMembersList } from '@/features/projects/members/ProjectMembersList';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
+import { useProjectPermissions } from '@/features/permissions';
 import { useAuth } from '@/providers/AuthProvider';
 
 const ROLE_COLORS: Record<string, string> = {
@@ -289,7 +290,8 @@ export default function ProjectAccessPage(): JSX.Element {
   const rawProjectId = params['projectId'];
   const projectId = typeof rawProjectId === 'string' ? rawProjectId : '';
 
-  const { me, activeMembership } = useAuth();
+  const { activeMembership } = useAuth();
+  const { canManageMembers: canManage } = useProjectPermissions(projectId);
   const projectQuery = useProject(projectId);
   const membersQuery = useProjectMembers(projectId);
 
@@ -311,28 +313,10 @@ export default function ProjectAccessPage(): JSX.Element {
   );
   useHeaderCrumbsOverride(crumbs);
 
-  const currentUserId = me === null ? null : me.user.id;
-  let isOrgAdmin = false;
-  if (activeMembership !== null) {
-    isOrgAdmin = activeMembership.is_org_admin;
-  }
-
-  let isSuperuser = false;
-  if (me !== null) {
-    isSuperuser = me.user.is_superuser;
-  }
-
   const members = useMemo(
     () => membersQuery.data ?? [],
     [membersQuery.data],
   );
-
-  const isProjectOwner = useMemo(() => {
-    if (currentUserId === null) return false;
-    return members.some((m) => m.user_id === currentUserId && m.role === 'owner');
-  }, [currentUserId, members]);
-
-  const canManage = isSuperuser || isOrgAdmin || isProjectOwner;
 
   const filteredMembers = useMemo(() => members.filter((m) => {
     if (roleFilter !== 'all' && m.role !== roleFilter) return false;

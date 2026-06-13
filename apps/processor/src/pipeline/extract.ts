@@ -156,6 +156,7 @@ export async function runExtraction(
     let outlineKey: string | null = null;
     let floorPlansKey: string | null = null;
     let projectGlobalId: string | null = null;
+    let detectedKind: string | null = null;
 
     logger.info('generating fragments + walking model');
     // One worker gets the IFC buffer via transfer, the other a copy (also
@@ -211,6 +212,7 @@ export async function runExtraction(
           } else if (msg.type === 'walk') {
             logStage('walk', msg.timings.walk);
             projectGlobalId = msg.projectGlobalId;
+            detectedKind = msg.detectedKind;
             startUpload(metadataKey, msg.metadataJson, 'application/json');
             startUpload(propertiesKey, msg.propertiesJson, 'application/json');
           }
@@ -252,6 +254,7 @@ export async function runExtraction(
       // leaves the field off entirely.
       ...(outlineKey !== null ? { outline_key: outlineKey } : {}),
       ...(floorPlansKey !== null ? { floor_plans_key: floorPlansKey } : {}),
+      ...(detectedKind !== null ? { detected_kind: detectedKind } : {}),
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       extractor_version: version,

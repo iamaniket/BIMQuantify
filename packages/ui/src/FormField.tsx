@@ -26,7 +26,7 @@ export interface FormFieldProps {
 }
 
 const DEFAULT_LABEL_CLASS =
-  'text-[11px] font-bold uppercase tracking-[0.06em] text-foreground-tertiary';
+  'text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary';
 
 /**
  * Label + control + hint/error row. Matches the design's auth-form styling

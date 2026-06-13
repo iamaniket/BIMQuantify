@@ -3,10 +3,9 @@
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Tabs, TabsList, TabsTrigger, Progress } from '@bimstitch/ui';
+import { Eyebrow, Tabs, TabsList, TabsTrigger, Progress } from '@bimstitch/ui';
 
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
-import { Eyebrow } from '@/components/shared/Eyebrow';
 import { ComplianceDonut } from '@/components/shared/charts/ComplianceDonut';
 import { ComplianceBar } from '@/components/shared/charts/ComplianceBar';
 import { TrendSparkline } from '@/components/shared/charts/TrendSparkline';
@@ -66,7 +65,7 @@ export function ComplianceByDomainCard({
       {/* Header */}
       <div className="relative mb-3 flex items-end justify-between">
         <div>
-          <Eyebrow>
+          <Eyebrow as="div" tone="tertiary">
             {t('eyebrow')}
           </Eyebrow>
           <div className="mt-0.5 text-title3 font-medium tracking-tight text-foreground">
@@ -192,7 +191,7 @@ export function ComplianceByDomainCard({
       {/* Trend strip */}
       <div className="relative mt-3 flex shrink-0 items-center gap-3 border-t border-border pt-3">
         <div>
-          <Eyebrow>
+          <Eyebrow as="div" tone="tertiary">
             {t('trendEyebrow')}
           </Eyebrow>
           <div className="mt-0.5 flex items-baseline gap-1.5">

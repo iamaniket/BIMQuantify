@@ -5,9 +5,8 @@ import {
   type JSX, type ReactNode, useCallback, useRef, useState,
 } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn, Eyebrow } from '@bimstitch/ui';
 
-import { Eyebrow } from '@/components/shared/Eyebrow';
 import type { PanelId } from '@/components/shared/viewer/shared/SideRail';
 
 export type { PanelId } from '@/components/shared/viewer/shared/SideRail';
@@ -141,7 +140,7 @@ export function SidePanel({
                       <polyline points="2.5,1.5 5.5,4 2.5,6.5" />
                     </svg>
                   </span>
-                  <Eyebrow as="span" className="flex-1 text-white">
+                  <Eyebrow as="span" tone="tertiary" className="flex-1 text-white">
                     {t(PANEL_TITLE_KEYS[activePanel])}
                   </Eyebrow>
                 </button>
@@ -158,7 +157,7 @@ export function SidePanel({
                   background: 'linear-gradient(135deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)',
                 }}
               >
-                <Eyebrow as="span" className="text-white">
+                <Eyebrow as="span" tone="tertiary" className="text-white">
                   {t(PANEL_TITLE_KEYS[activePanel])}
                 </Eyebrow>
                 {headerActions?.[activePanel] && (

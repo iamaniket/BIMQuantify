@@ -25,6 +25,7 @@ import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import type { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
+import { OUTLINE_LOG_DEPTH_BIAS } from '../../../core/depth-bias.js';
 import { LAYER_DEFAULT } from '../../../core/layers.js';
 import { applyClippingPlanes } from './clipping.js';
 import { InstancedLineMaterial } from './instanced-line-material.js';
@@ -193,6 +194,11 @@ export class InstancedOutline {
   constructor(maxTextureSize: number, opts: InstancedOutlineOptions) {
     this.maxTex = Math.max(1, Math.floor(maxTextureSize) || 1);
     const opacity = opts.opacity ?? 0.9;
+    // `polygonOffset` is a no-op under the renderer's logarithmic depth buffer,
+    // so the edges are pulled in front of their surfaces by a baked log-space
+    // bias (OUTLINE_LOG_DEPTH_BIAS) instead — larger than the surface bias so
+    // edges always win. The polygonOffset flags stay as a fallback for the
+    // non-log-depth path, matching Viewer's stance.
     this.materialInstanced = new InstancedLineMaterial({
       color: opts.color,
       linewidth: opts.lineWidth,
@@ -202,6 +208,7 @@ export class InstancedOutline {
       polygonOffset: true,
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1,
+      depthBias: OUTLINE_LOG_DEPTH_BIAS,
     });
     this.materialCpu = new LineMaterial({
       color: opts.color,
@@ -215,6 +222,18 @@ export class InstancedOutline {
       polygonOffsetUnits: -1,
       resolution: new THREE.Vector2(1, 1),
     });
+    // The CPU LineMaterial is three's stock examples material, so bake the same
+    // log-space bias via onBeforeCompile (it has no depthBias option).
+    const biasLiteral = OUTLINE_LOG_DEPTH_BIAS.toFixed(8);
+    this.materialCpu.onBeforeCompile = (shader): void => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <logdepthbuf_fragment>',
+        `#include <logdepthbuf_fragment>
+#if defined( USE_LOGARITHMIC_DEPTH_BUFFER )
+\tgl_FragDepth -= ${biasLiteral};
+#endif`,
+      );
+    };
   }
 
   has(modelId: string): boolean {

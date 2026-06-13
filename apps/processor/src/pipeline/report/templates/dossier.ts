@@ -12,12 +12,17 @@
 import { layout } from './_layout.js';
 import {
   addressLine,
+  buildMergeContext,
   escapeHtml,
   fmtDate,
   fmtDay,
   or,
+  renderSections,
+  toLayoutBranding,
+  type ContentSectionRender,
   type ReportInstrument,
   type ReportProject,
+  type ReportTemplate,
 } from './_helpers.js';
 import type { AssuranceMoment, AssuranceRisk } from './assurance-plan.js';
 import { NL_DOSSIER_LABELS, type DossierLabels } from './jurisdictions/nl/dossier-labels.js';
@@ -33,6 +38,14 @@ export type DossierFinding = {
   deadline_date?: string | null;
   bbl_article_ref?: string | null;
   resolution_note?: string | null;
+  // Anchored BIM element identity + location (the "snap" GUID/location).
+  linked_element_global_id?: string | null;
+  linked_model_id?: string | null;
+  linked_file_type?: string | null;
+  anchor_page?: number | null;
+  anchor_x?: number | null;
+  anchor_y?: number | null;
+  anchor_z?: number | null;
   photos: DossierPhoto[];
 };
 
@@ -65,6 +78,7 @@ export type DossierData = {
   findings: DossierFinding[];
   certificates: DossierCertificate[];
   verklaring: { storage_key: string; content_type: string; signature_hash?: string | null } | null;
+  template?: ReportTemplate;
 };
 
 const LABELS_BY_LOCALE: Record<string, DossierLabels> = {
@@ -136,6 +150,24 @@ function renderPhotos(photos: DossierPhoto[]): string {
   return `<div class="photo-grid">${figs}</div>`;
 }
 
+/** The anchored BIM element + location line for a finding ("snap"), if any. */
+function findingLocation(f: DossierFinding, labels: DossierLabels): string {
+  const parts: string[] = [];
+  if (f.linked_element_global_id) {
+    parts.push(`${labels.element}: ${escapeHtml(f.linked_element_global_id)}`);
+  }
+  if (f.linked_file_type === 'pdf' && f.anchor_page != null) {
+    parts.push(`${labels.page} ${f.anchor_page}`);
+  } else if (f.anchor_x != null && f.anchor_y != null) {
+    const coords =
+      f.linked_file_type === 'ifc' && f.anchor_z != null
+        ? `${f.anchor_x.toFixed(2)}, ${f.anchor_y.toFixed(2)}, ${f.anchor_z.toFixed(2)}`
+        : `${f.anchor_x.toFixed(2)}, ${f.anchor_y.toFixed(2)}`;
+    parts.push(`${labels.location}: ${coords}`);
+  }
+  return parts.length > 0 ? `<p class="muted">${parts.join(' &nbsp;·&nbsp; ')}</p>` : '';
+}
+
 function renderFindings(findings: DossierFinding[], labels: DossierLabels): string {
   if (findings.length === 0) return `<p class="muted">${labels.noFindings}</p>`;
   return findings
@@ -149,6 +181,7 @@ function renderFindings(findings: DossierFinding[], labels: DossierLabels): stri
           ${f.deadline_date ? `&nbsp;·&nbsp; ${labels.deadline}: ${fmtDay(f.deadline_date)}` : ''}
           ${f.bbl_article_ref ? `&nbsp;·&nbsp; ${escapeHtml(f.bbl_article_ref)}` : ''}
         </p>
+        ${findingLocation(f, labels)}
         <p>${or(f.description)}</p>
         ${f.resolution_note ? `<p><strong>${labels.resolution}:</strong> ${or(f.resolution_note)}</p>` : ''}
         ${renderPhotos(f.photos)}
@@ -224,19 +257,38 @@ export function renderHtml(data: DossierData): string {
       </div>
     </header>`;
 
-  const body = `
-    <section class="page"><h2>${labels.sectionRisks}</h2>${renderRisks(data.risks, labels)}</section>
-    <section class="page"><h2>${labels.sectionPlan}</h2>${
-      data.assurance_plan ? renderMoments(data.assurance_plan.moments, labels) : `<p class="muted">${labels.noMoments}</p>`
-    }</section>
-    <section class="page"><h2>${labels.sectionFindings}</h2>${renderFindings(data.findings, labels)}</section>
-    <section class="page"><h2>${labels.sectionCertificates}</h2>${renderCertificates(data.certificates, labels)}</section>
-    <section class="page"><h2>${labels.sectionDeclaration}</h2>${renderDeclaration(data, labels)}</section>`;
+  const content: ContentSectionRender[] = [
+    { key: 'risks', defaultTitle: labels.sectionRisks, html: renderRisks(data.risks, labels) },
+    {
+      key: 'plan',
+      defaultTitle: labels.sectionPlan,
+      html: data.assurance_plan
+        ? renderMoments(data.assurance_plan.moments, labels)
+        : `<p class="muted">${labels.noMoments}</p>`,
+    },
+    {
+      key: 'findings',
+      defaultTitle: labels.sectionFindings,
+      html: renderFindings(data.findings, labels),
+    },
+    {
+      key: 'certificates',
+      defaultTitle: labels.sectionCertificates,
+      html: renderCertificates(data.certificates, labels),
+    },
+    {
+      key: 'declaration',
+      defaultTitle: labels.sectionDeclaration,
+      html: renderDeclaration(data, labels),
+    },
+  ];
+  const body = renderSections(content, data.template?.sections, buildMergeContext(data));
 
   return layout({
     title: `${labels.reportTitle} — ${or(data.project.name)}`,
     generatedAt: fmtDate(data.generated_at),
     body: cover + body,
     locale: data.locale,
+    branding: toLayoutBranding(data.template?.branding),
   });
 }

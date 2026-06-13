@@ -6,7 +6,8 @@ import type { JSX } from 'react';
 
 import { useTranslations } from 'next-intl';
 
-import { Eyebrow } from '@/components/shared/Eyebrow';
+import { Eyebrow } from '@bimstitch/ui';
+
 import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
 import { SidebarNavItem } from '@/components/shared/sidebar/SidebarNavItem';
 
@@ -34,7 +35,7 @@ export function SidebarWorkspaceNav(): JSX.Element {
   return (
     <div className={collapsed ? 'flex flex-col gap-0.5 px-0 py-2' : 'flex flex-col gap-0.5 px-3 py-2'}>
       {!collapsed && (
-        <Eyebrow className="mb-1.5 px-2.5 text-white/55">
+        <Eyebrow as="div" tone="tertiary" className="mb-1.5 px-2.5 text-white/55">
           {t('workspace')}
         </Eyebrow>
       )}

@@ -159,6 +159,8 @@ async def extraction_callback(
                 row.geometry_storage_key = payload.geometry_key
                 row.outline_storage_key = payload.outline_key
                 row.floor_plans_storage_key = payload.floor_plans_key
+                if payload.detected_kind is not None:
+                    row.detected_kind = payload.detected_kind
                 row.extraction_error = None
                 if payload.ifc_project_guid is not None:
                     row.ifc_project_guid = payload.ifc_project_guid

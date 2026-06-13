@@ -26,6 +26,7 @@ import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLin
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
+import { useProjectPermissions } from '@/features/permissions';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 type Props = {
@@ -58,6 +59,10 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
   const attachmentsQuery = useAttachments(projectId, categoryFilter);
   const uploadMutation = useUploadAttachment(projectId);
   const deleteMutation = useDeleteAttachment(projectId);
+  const { can } = useProjectPermissions(projectId);
+  const canUpload = can('attachment', 'create');
+  const canDelete = can('attachment', 'delete');
+  const canCreateCaptureLink = can('capture_link', 'create');
 
   const allAttachments = flattenPages(attachmentsQuery.data);
   const attachments = searchQuery === ''
@@ -115,7 +120,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
             ))}
           </Select>
         )}
-        actions={(
+        actions={canUpload ? (
           <SplitButton
             label={t('uploadButton')}
             icon={<Upload className="h-3.5 w-3.5" />}
@@ -140,7 +145,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
               },
             ]}
           />
-        )}
+        ) : undefined}
       />
       <input
         ref={fileInputRef}
@@ -176,7 +181,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
             icon={FileText}
             title={t('title')}
             description={t('description')}
-            action={(
+            action={canUpload ? (
               <Button
                 variant="primary"
                 size="md"
@@ -184,7 +189,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
               >
                 {t('ctaLabel')}
               </Button>
-            )}
+            ) : undefined}
             className={undefined}
           />
         )}
@@ -195,6 +200,7 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
             attachment={attachment}
             projectId={projectId}
             expanded={expandedId === attachment.id}
+            canDelete={canDelete}
             onToggle={() => { setExpandedId(expandedId === attachment.id ? null : attachment.id); }}
             onView={() => { setViewingAttachment(attachment); }}
             onDelete={() => { handleDelete(attachment); }}
@@ -207,13 +213,15 @@ export function AttachmentsTab({ projectId }: Props): JSX.Element {
         <div className="space-y-2 border-t border-border pt-3">
           <div className="flex items-center justify-between">
             <div className="text-body3 font-semibold text-foreground">{t('captureLink')}</div>
-            <Button
-              variant="border"
-              size="md"
-              onClick={() => { setCaptureLinkDialogOpen(true); }}
-            >
-              {t('captureLinkCreate')}
-            </Button>
+            {canCreateCaptureLink && (
+              <Button
+                variant="border"
+                size="md"
+                onClick={() => { setCaptureLinkDialogOpen(true); }}
+              >
+                {t('captureLinkCreate')}
+              </Button>
+            )}
           </div>
           <CaptureLinksList projectId={projectId} />
         </div>

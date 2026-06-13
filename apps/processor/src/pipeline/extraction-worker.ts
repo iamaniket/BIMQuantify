@@ -24,6 +24,7 @@ import { type MessagePort, parentPort, workerData } from 'node:worker_threads';
 import { SingleThreadedFragmentsModel } from '@thatopen/fragments';
 
 import { logger } from '../log.js';
+import { detectContentKind, shouldGenerateFloorPlan } from './classify.js';
 import { buildFloorPlans, encodeFloorPlans } from './floorplans.js';
 import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel } from './ifc.js';
@@ -195,24 +196,38 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
     const properties = await buildProperties(ifcApi, opened.modelID, metadata.elements, logger);
     const walkMs = Math.round(performance.now() - walkStart);
 
+    // Classify the model from its element histogram. Drives the floor-plan gate
+    // below and is surfaced on the file as `detected_kind`.
+    const detectedKind = detectContentKind(metadata.elementCounts);
+
     // Per-storey floor-plan artifact (section cut + IfcSpace rooms), posted
-    // before the terminal 'walk' message. Degrades gracefully: a failure — or a
-    // model with no storeys — posts bytes:null and the viewer hides the 2D map.
+    // before the terminal 'walk' message. The 1.2 m cut is an architectural
+    // convention, so it is generated only for architectural/mixed content —
+    // MEP/structural-only models stay 3D-only (the cut would be noise). Also
+    // degrades gracefully: a failure — or a model with no storeys — posts
+    // bytes:null and the viewer hides the 2D map.
     const fpStart = performance.now();
     let floorPlansBytes: Uint8Array | null = null;
-    try {
-      const floorPlans = buildFloorPlans(
-        ifcApi,
-        opened.modelID,
-        metadata.project.lengthUnit,
-        metadata.elements,
-        logger,
-      );
-      if (floorPlans.levels.length > 0) floorPlansBytes = encodeFloorPlans(floorPlans);
-    } catch (err) {
-      logger.warn(
-        { error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) },
-        'floor-plan generation failed — viewer hides the 2D map',
+    if (shouldGenerateFloorPlan(detectedKind)) {
+      try {
+        const floorPlans = buildFloorPlans(
+          ifcApi,
+          opened.modelID,
+          metadata.project.lengthUnit,
+          metadata.elements,
+          logger,
+        );
+        if (floorPlans.levels.length > 0) floorPlansBytes = encodeFloorPlans(floorPlans);
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) },
+          'floor-plan generation failed — viewer hides the 2D map',
+        );
+      }
+    } else {
+      logger.info(
+        { detectedKind, file_id: 'walk' },
+        'skipping floor-plan cut for non-architectural content — viewer stays 3D-only',
       );
     }
     const fpMs = Math.round(performance.now() - fpStart);
@@ -236,6 +251,7 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
         metadataJson,
         propertiesJson,
         projectGlobalId: metadata.project.globalId,
+        detectedKind,
         timings: { metadata: metadataMs, properties: walkMs - metadataMs, walk: walkMs },
       } satisfies ExtractionWorkerMessage,
       [metadataJson.buffer as ArrayBuffer, propertiesJson.buffer as ArrayBuffer],

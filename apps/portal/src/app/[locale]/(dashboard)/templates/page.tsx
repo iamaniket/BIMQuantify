@@ -9,6 +9,7 @@ import { Badge, Button, Skeleton, TabsContent } from '@bimstitch/ui';
 
 import { PageTableContent, TableToolbar } from '@/components/shared/PageTable';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
+import { Link } from '@/i18n/navigation';
 
 import { FindingTemplatesHero } from '@/features/findingTemplates/FindingTemplatesHero';
 import { FindingTemplatesOverview } from '@/features/findingTemplates/FindingTemplatesOverview';
@@ -85,10 +86,18 @@ export default function TemplatesPage(): JSX.Element {
         tab === 'templates' && canManage ? (
           <TableToolbar
             actions={
-              <Button size="md" className="whitespace-nowrap" onClick={openCreate}>
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                {t('list.newButton')}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/templates/reports"
+                  className="inline-flex h-8 items-center rounded-md border border-border bg-background px-3 font-sans text-body3 text-foreground-secondary transition-colors hover:bg-background-hover"
+                >
+                  {t('reportTemplatesLink')}
+                </Link>
+                <Button size="md" className="whitespace-nowrap" onClick={openCreate}>
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  {t('list.newButton')}
+                </Button>
+              </div>
             }
           >
             <></>

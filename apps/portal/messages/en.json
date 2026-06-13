@@ -33,7 +33,10 @@
       "empty": "No versions uploaded yet.",
       "download": "Download"
     },
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "errors": {
+      "permissionDenied": "You don't have permission to perform this action."
+    }
   },
   "requestAccess": {
     "intro": {
@@ -283,6 +286,24 @@
     }
   },
   "projects": {
+    "about": {
+      "descriptionHeading": "Description",
+      "noDescription": "No description.",
+      "infoHeading": "Project info",
+      "addressHeading": "Site address",
+      "timestampsHeading": "Timestamps",
+      "referenceCode": "Reference code",
+      "status": "Status",
+      "phase": "Phase",
+      "delivery": "Delivery",
+      "permit": "Permit",
+      "contractor": "Contractor",
+      "address": "Address",
+      "municipality": "Municipality",
+      "bagId": "BAG ID",
+      "created": "Created",
+      "updated": "Updated"
+    },
     "hero": {
       "title": "Projects",
       "badge": "Portfolio overview",
@@ -504,6 +525,7 @@
     }
   },
   "findingTemplates": {
+    "reportTemplatesLink": "Report templates",
     "hero": {
       "title": "Templates",
       "badge": "Findings",
@@ -869,6 +891,7 @@
       "attachmentsCount": "{count} uploaded",
       "noAttachments": "None yet",
       "shareProject": "Share project",
+      "viewAllModels": "View all models",
       "editProject": "Edit project",
       "noAddress": "No address set",
       "instrumentTooltip": "Approved instrument · {provider}",
@@ -957,6 +980,7 @@
           "description": "Group file versions by discipline. You can upload a file into the model after creating it.",
           "submitCreate": "Create",
           "submitCreating": "Creating…",
+          "cancel": "Cancel",
           "errors": {
             "nameTaken": "This name is taken"
           },
@@ -1714,6 +1738,9 @@
       "download": "Download",
       "errorGenerating": "Failed to generate the report.",
       "noPreview": "No preview available.",
+      "templateLabel": "Template",
+      "noTemplate": "No template",
+      "defaultSuffix": "default",
       "status": {
         "queued": "Queued",
         "running": "Running",
@@ -1751,6 +1778,83 @@
       "sign": "Sign",
       "signing": "Signing…",
       "signed": "Signed"
+    }
+  },
+  "reportTemplates": {
+    "reportTypes": {
+      "compliance_report": "Compliance report",
+      "assurance_plan": "Assurance plan",
+      "completion_declaration": "Completion declaration",
+      "dossier": "Dossier for the authority"
+    },
+    "panel": {
+      "reportsTitle": "Report templates",
+      "reportsSubtitle": "Brand and configure how your reports look. Pick a template when you generate.",
+      "showing": "{count} templates"
+    },
+    "list": {
+      "newButton": "New template",
+      "empty": "No templates for this report type yet",
+      "emptyHint": "Create one to brand and configure this report.",
+      "defaultBadge": "Default",
+      "setDefault": "Set as default",
+      "edit": "Edit",
+      "remove": "Delete",
+      "removeSuccess": "Removed \"{name}\"",
+      "setDefaultSuccess": "\"{name}\" is now the default",
+      "cannotDeleteDefault": "Set another template as default before deleting this one."
+    },
+    "builder": {
+      "createTitle": "New report template",
+      "editTitle": "Edit report template",
+      "subtitle": "Brand and configure this report.",
+      "save": "Save template",
+      "saving": "Saving…",
+      "next": "Next",
+      "back": "Back",
+      "cancel": "Cancel",
+      "nameLabel": "Template name",
+      "namePlaceholder": "e.g. ACME house style",
+      "descriptionLabel": "Description",
+      "defaultLabel": "Set as default",
+      "defaultHint": "Preselected when generating this report type.",
+      "accentLabel": "Primary colour",
+      "accentSecondaryLabel": "Secondary colour",
+      "headerLabel": "Header text",
+      "footerLabel": "Footer text",
+      "logoLabel": "Logo",
+      "coverLabel": "Cover / letterhead PDF",
+      "upload": "Upload",
+      "replace": "Replace",
+      "uploaded": "Uploaded",
+      "uploadFailed": "Upload failed. Check the file type and size.",
+      "contentHint": "Toggle, reorder and re-title sections. Add free text blocks with {data} placeholders.",
+      "titleOverridePlaceholder": "Custom title (optional)",
+      "textBlock": "Text block",
+      "textTitlePlaceholder": "Block title (optional)",
+      "textBodyPlaceholder": "Your text. Insert data with the chips below.",
+      "addTextBlock": "Add text block",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove",
+      "checkFields": "Please check the highlighted fields.",
+      "createSuccess": "Template created",
+      "updateSuccess": "Template updated",
+      "steps": {
+        "setup": { "title": "Setup", "description": "Name and default" },
+        "branding": { "title": "Branding", "description": "Logo, colours, cover" },
+        "content": { "title": "Content", "description": "Sections and text" }
+      }
+    },
+    "errors": {
+      "NAME_REQUIRED": "Enter a template name.",
+      "INVALID_CONFIG": "The template settings are invalid.",
+      "UNKNOWN_SECTION_KEY": "An unknown section was selected.",
+      "DUPLICATE_SECTION_KEY": "A section is duplicated.",
+      "DUPLICATE_TEXT_BLOCK_ID": "A text block is duplicated.",
+      "INVALID_ASSET_KEY": "An uploaded file reference is invalid.",
+      "TEMPLATE_TYPE_MISMATCH": "This template is for a different report type.",
+      "DEFAULT_TEMPLATE_CONFLICT": "Another default was set at the same time — try again."
     }
   },
   "auth": {
@@ -2730,6 +2834,21 @@
       "clickToNavigate": "Click to move the view here",
       "isolateLevel": "Isolate level",
       "allLevels": "All levels"
+    },
+    "federated": {
+      "title": "All models",
+      "empty": "No processed models yet",
+      "emptyHint": "Upload and process IFC models in this project to view them together.",
+      "loadError": "Failed to load the project's models.",
+      "layersTitle": "Layers",
+      "kind": {
+        "architectural": "Architectural",
+        "structural": "Structural",
+        "mep": "MEP",
+        "mixed": "Mixed",
+        "none": "Other",
+        "unknown": "Unclassified"
+      }
     },
     "floorplan": {
       "title": "Floor plan",

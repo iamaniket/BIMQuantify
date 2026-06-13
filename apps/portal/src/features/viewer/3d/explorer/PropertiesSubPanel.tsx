@@ -1,13 +1,12 @@
 'use client';
 
-import { cn, CountChip } from '@bimstitch/ui';
+import { cn, CountChip, Eyebrow } from '@bimstitch/ui';
 import { Info } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useRef, useState, type JSX,
 } from 'react';
 
-import { Eyebrow } from '@/components/shared/Eyebrow';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { ModelInfoBody } from '@/features/viewer/shared/inspector/ModelInfoBody';
 import { MultiPropertiesBody } from '@/features/viewer/shared/inspector/MultiPropertiesBody';
@@ -170,7 +169,7 @@ export function PropertiesSubPanel({
           </svg>
         </span>
 
-        <Eyebrow as="span" className="flex-1 truncate text-white">
+        <Eyebrow as="span" tone="tertiary" className="flex-1 truncate text-white">
           {t('propertiesTitle')}
         </Eyebrow>
 

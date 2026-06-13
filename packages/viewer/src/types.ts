@@ -30,6 +30,12 @@ export type ViewerBundle = {
   /** Precomputed hard-edge outline artifact (gzipped binary, format v1). */
   outlineUrl?: string;
   cacheKey?: string;
+  /**
+   * Stable model id for federated loads (e.g. `file-<fileId>`). When set, the
+   * viewer uses it as the FragmentsModel id so model↔file mapping is
+   * deterministic. Omit for the single-file path (a timestamp id is used).
+   */
+  modelId?: string;
 };
 
 export type ViewCubeOptions = {
@@ -69,11 +75,21 @@ export type ViewerHandle = {
     unregister(name: string): Promise<void>;
     get<T extends Plugin = Plugin>(name: string): T | null;
   };
+  /** Last-loaded model id (single-file convenience). */
   getModelId(): string | null;
+  /** Ids of every loaded model, in load order (federated viewer). */
+  getModelIds(): string[];
 };
 
 export type IfcViewerProps = {
   bundle: ViewerBundle;
+  /**
+   * Extra models loaded into the SAME scene after `bundle` (federated
+   * multi-discipline viewer). Each should carry a stable `modelId`. The
+   * camera re-frames to encompass all once every model has loaded. Omit for
+   * the single-file viewer.
+   */
+  additionalBundles?: ViewerBundle[];
   className?: string;
   onSceneReady?: () => void;
   onReady?: (handle: ViewerHandle) => void;

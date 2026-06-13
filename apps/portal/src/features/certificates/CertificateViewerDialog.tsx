@@ -17,11 +17,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Eyebrow,
   Spinner,
   type BadgeVariant,
 } from '@bimstitch/ui';
 
-import { Eyebrow } from '@/components/shared/Eyebrow';
 import { formatDateFull, formatSize } from '@/features/attachments/attachmentMeta';
 import { formatDate } from '@/lib/formatting/dates';
 import {
@@ -139,7 +139,7 @@ type MetaValue = { label: string; value: ReactNode; mono: boolean };
 function MetaGroup({ title, rows }: { title: string; rows: MetaValue[] }): JSX.Element {
   return (
     <div>
-      <Eyebrow className="mb-2.5">
+      <Eyebrow as="div" tone="tertiary" className="mb-2.5">
         {title}
       </Eyebrow>
       <div className="flex flex-col">

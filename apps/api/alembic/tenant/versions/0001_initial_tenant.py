@@ -4,7 +4,7 @@ Tables: projects, project_members, models, project_files, jobs, reports,
 contractors, notifications, notification_reads, notification_dismissals, risks,
 borgingsplans, borgingsmomenten, checklist_items, checklist_item_results,
 checklist_item_result_attachments, capture_links, findings, finding_attachments,
-finding_templates, certificates, org_certificates, org_certificate_tags,
+org_templates, certificates, org_certificates, org_certificate_tags,
 bcf_topics, bcf_topic_labels, bcf_comments, bcf_viewpoints, audit_log,
 deadline_notification_log, deadline_notification_settings.
 
@@ -21,9 +21,14 @@ and model-declared index (including expression / partial / unique indexes via
 handful of indexes the model layer cannot express are created explicitly in
 upgrade() below.
 
-A later squash folded in the former 0002–0006 add-ons (finding_templates;
+A later squash folded in the former 0002–0006 add-ons (org_templates;
+the unified finding-form + report-layout template table — formerly
+finding_templates — with a single `config` JSONB; reports.template_id;
+project_files.floor_plans_storage_key, formerly the standalone 0002 migration;
 bcf_viewpoints.xray/measurements; deadlines.reference_number/filing_notes/
-filed_at; project_files.outline_storage_key; bcf_topics.linked_file_id/is_2d)
+filed_at; project_files.outline_storage_key; project_files.detected_kind
+(content-based discipline classification: architectural/structural/mep/mixed/
+none); bcf_topics.linked_file_id/is_2d)
 and dropped model anchoring from attachments and certificates: `project_files`
 (role='attachment') and `certificates` no longer carry the
 `linked_element_global_id` / `linked_model_id` / `linked_file_id` /

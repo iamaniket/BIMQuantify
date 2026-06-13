@@ -8,8 +8,9 @@ import { z } from 'zod';
 
 import type { ProgressReporter, WorkerJob } from '../../queue/queue.js';
 import { runReportJob } from './index.js';
-import { reportInstrumentSchema, reportProjectSchema } from './templates/_helpers.js';
+import { reportInstrumentSchema, reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
 import { renderHtml, type AssurancePlanData } from './templates/assurance-plan.js';
+import { embedTemplateLogo, mergeTemplateCover } from './templateAssets.js';
 
 const PayloadSchema: z.ZodType<AssurancePlanData & { storage_key: string }> = z
   .object({
@@ -54,6 +55,7 @@ const PayloadSchema: z.ZodType<AssurancePlanData & { storage_key: string }> = z
         bbl_article_ref: z.string().nullable().optional(),
       }),
     ),
+    template: reportTemplateSchema,
   })
   .passthrough() as unknown as z.ZodType<AssurancePlanData & { storage_key: string }>;
 
@@ -61,5 +63,14 @@ export async function runAssurancePlanReport(
   job: WorkerJob,
   onProgress?: ProgressReporter,
 ): Promise<void> {
-  return runReportJob(job, { payloadSchema: PayloadSchema, renderHtml }, onProgress);
+  return runReportJob(
+    job,
+    {
+      payloadSchema: PayloadSchema,
+      prepare: embedTemplateLogo,
+      renderHtml,
+      postProcess: mergeTemplateCover,
+    },
+    onProgress,
+  );
 }

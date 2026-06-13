@@ -6,6 +6,10 @@ export const viewerKeys = {
     fileId: string,
   ): readonly ['viewer', 'bundle', string, string, string] =>
     ['viewer', 'bundle', projectId, modelId, fileId] as const,
+  projectBundle: (
+    projectId: string,
+  ): readonly ['viewer', 'projectBundle', string] =>
+    ['viewer', 'projectBundle', projectId] as const,
   elementInspections: (
     projectId: string,
     fileId: string,

@@ -37,6 +37,17 @@ export type BuildingTypeValue = z.infer<typeof BuildingTypeEnum>;
 export const ConsequenceClassEnum = z.enum(['cc1', 'cc2', 'cc3']);
 export type ConsequenceClassValue = z.infer<typeof ConsequenceClassEnum>;
 
+export const ProjectRoleEnum = z.enum([
+  'owner',
+  'editor',
+  'viewer',
+  'inspector',
+  'contractor',
+  'client',
+]);
+
+export type ProjectRole = z.infer<typeof ProjectRoleEnum>;
+
 export const ProjectSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -71,6 +82,12 @@ export const ProjectSchema = z.object({
 
   contractor_id: z.union([z.string().uuid(), z.null()]),
   contractor_name: z.union([z.string(), z.null()]),
+
+  // The current caller's own role on this project (null when reached via an
+  // org-admin/superuser bypass without a membership row). Drives UI gating
+  // against the permission matrix. Keep as a plain union (input == output) —
+  // never `.default()` — so apiClient response validation round-trips.
+  my_role: z.union([ProjectRoleEnum, z.null()]),
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
@@ -111,17 +128,6 @@ export const ProjectUpdateSchema = ProjectCreateSchema.partial();
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateSchema>;
 
 // Project Members
-
-export const ProjectRoleEnum = z.enum([
-  'owner',
-  'editor',
-  'viewer',
-  'inspector',
-  'contractor',
-  'client',
-]);
-
-export type ProjectRole = z.infer<typeof ProjectRoleEnum>;
 
 export const ProjectMemberSchema = z.object({
   project_id: z.string().uuid(),

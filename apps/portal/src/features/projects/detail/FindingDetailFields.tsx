@@ -27,19 +27,22 @@ type Props = {
 export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const tSeverity = useTranslations('findings.severity');
-  const { form, fields, isPending } = api;
+  const { form, fields, isPending, canEdit } = api;
+  // No write permission (viewer/client) → form is a read-only view: inputs
+  // disabled, write actions hidden. The API would 403 these anyway.
+  const fieldsDisabled = isPending || !canEdit;
 
   return (
     <div className="grid grid-cols-2 gap-4">
       <Field form={form} name="title" label={t('fields.title')} className="col-span-2">
-        {({ id }) => <Input id={id} {...fields.title} />}
+        {({ id }) => <Input id={id} {...fields.title} disabled={fieldsDisabled} />}
       </Field>
       <Field form={form} name="description" label={t('fields.description')} className="col-span-2">
-        {({ id }) => <Textarea id={id} rows={3} {...fields.description} />}
+        {({ id }) => <Textarea id={id} rows={3} {...fields.description} disabled={fieldsDisabled} />}
       </Field>
       <Field form={form} name="severity" label={t('fields.severity')}>
         {({ id }) => (
-          <Select id={id} {...fields.severity}>
+          <Select id={id} {...fields.severity} disabled={fieldsDisabled}>
             {FINDING_SEVERITIES.map((s) => (
               <option key={s} value={s}>{tSeverity(s)}</option>
             ))}
@@ -47,11 +50,11 @@ export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Ele
         )}
       </Field>
       <Field form={form} name="bbl_article_ref" label={t('fields.bblArticleRef')}>
-        {({ id }) => <Input id={id} {...fields.bbl} />}
+        {({ id }) => <Input id={id} {...fields.bbl} disabled={fieldsDisabled} />}
       </Field>
       <Field form={form} name="assignee_user_id" label={t('fields.assignee')}>
         {({ id }) => (
-          <Select id={id} disabled={api.membersLoading} {...fields.assignee}>
+          <Select id={id} disabled={api.membersLoading || fieldsDisabled} {...fields.assignee}>
             <option value="">{t('placeholders.assignee')}</option>
             {api.members.map((m) => (
               <option key={m.user_id} value={m.user_id}>
@@ -62,7 +65,7 @@ export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Ele
         )}
       </Field>
       <Field form={form} name="deadline_date" label={t('fields.deadline')}>
-        {({ id }) => <Input id={id} type="date" {...fields.deadline} />}
+        {({ id }) => <Input id={id} type="date" {...fields.deadline} disabled={fieldsDisabled} />}
       </Field>
 
       <div className="col-span-2">
@@ -70,7 +73,7 @@ export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Ele
           projectId={projectId}
           photoIds={api.photoIds}
           onChange={api.setPhotoIds}
-          disabled={isPending}
+          disabled={fieldsDisabled}
         />
       </div>
 
@@ -79,7 +82,7 @@ export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Ele
           projectId={projectId}
           referenceIds={api.referenceAttachmentIds}
           onChange={api.setReferenceAttachmentIds}
-          disabled={isPending || finding.status === 'verified'}
+          disabled={fieldsDisabled || finding.status === 'verified'}
         />
       </div>
 
@@ -93,20 +96,22 @@ export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Ele
               {t('linkedElement.description')}
             </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="md"
-            disabled={isPending}
-            onClick={api.unlink}
-          >
-            <Unlink className="mr-1.5 h-3.5 w-3.5" />
-            {t('linkedElement.unlink')}
-          </Button>
+          {canEdit && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              disabled={isPending}
+              onClick={api.unlink}
+            >
+              <Unlink className="mr-1.5 h-3.5 w-3.5" />
+              {t('linkedElement.unlink')}
+            </Button>
+          )}
         </div>
       )}
 
-      {finding.status === 'draft' && (
+      {finding.status === 'draft' && canEdit && (
         <div className="col-span-2 rounded-md border border-border bg-surface-low p-3">
           <div className="text-label2 font-medium text-foreground">
             {t('promote.title')}
@@ -127,7 +132,7 @@ export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Ele
         </div>
       )}
 
-      {api.showResolve && (
+      {api.showResolve && canEdit && (
         <div className="col-span-2 flex flex-col gap-3 rounded-md border border-border bg-surface-low p-3">
           <div>
             <div className="text-label2 font-medium text-foreground">

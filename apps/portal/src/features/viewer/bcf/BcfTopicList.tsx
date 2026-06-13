@@ -19,6 +19,7 @@ import {
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { PanelToolbar } from '@/components/shared/viewer/shared/PanelToolbar';
 import { getBcfTopic } from '@/lib/api/bcf';
+import { useProjectPermissions } from '@/features/permissions';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { BcfCreateForm } from './BcfCreateForm';
@@ -69,6 +70,9 @@ export function BcfTopicList({
 }: Props): JSX.Element {
   const t = useTranslations('viewer.bcf');
   const { tokens } = useAuth();
+  const { can } = useProjectPermissions(projectId);
+  const canCreate = can('bcf_topic', 'create');
+  const canDelete = can('bcf_topic', 'delete');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [scope, setScope] = useState<ScopeMode>(modelId !== undefined ? 'model' : 'all');
@@ -229,16 +233,18 @@ export function BcfTopicList({
             <option value="Closed">{t('status.closed')}</option>
           </Select>
 
-          <SplitButton
-            label={t('createIssue')}
-            icon={<Plus className="h-3.5 w-3.5" />}
-            onClick={toggleCreate}
-            items={splitItems}
-            menuLabel={t('moreActions')}
-            variant="primary"
-            size="md"
-            className="shrink-0"
-          />
+          {canCreate && (
+            <SplitButton
+              label={t('createIssue')}
+              icon={<Plus className="h-3.5 w-3.5" />}
+              onClick={toggleCreate}
+              items={splitItems}
+              menuLabel={t('moreActions')}
+              variant="primary"
+              size="md"
+              className="shrink-0"
+            />
+          )}
         </div>
       </PanelToolbar>
 
@@ -254,7 +260,7 @@ export function BcfTopicList({
       {/* Scrollable list */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* Inline create form — toggled by the toolbar button */}
-        {createExpanded && (
+        {createExpanded && canCreate && (
           <div className="border-b border-border px-3 py-3">
             <BcfCreateForm
               projectId={projectId}
@@ -328,15 +334,17 @@ export function BcfTopicList({
                 ) : (
                   <span />
                 )}
-                <Button
-                  variant="ghost"
-                  size="md"
-                  onClick={() => { setDeleteTopicId(topic.id); }}
-                  className="text-error hover:text-error"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  {t('deleteIssue')}
-                </Button>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => { setDeleteTopicId(topic.id); }}
+                    className="text-error hover:text-error"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {t('deleteIssue')}
+                  </Button>
+                )}
               </DetailCardFooter>
             </DetailCard>
           ))}

@@ -96,6 +96,12 @@ class ProjectRead(ProjectBase):
     created_at: datetime
     updated_at: datetime
     contractor_name: str | None = None
+    # The requesting caller's own role on this project, so the portal can gate
+    # its UI against the permission matrix without a second members fetch.
+    # None when the caller reaches the project via an admin/superuser bypass
+    # rather than a project_members row (the portal then falls back to its
+    # org-admin flag).
+    my_role: ProjectRole | None = None
 
 
 class ProjectMemberRead(BaseModel):

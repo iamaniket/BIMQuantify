@@ -1,9 +1,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Progress } from '@bimstitch/ui';
-
-import { Eyebrow } from '@/components/shared/Eyebrow';
+import { Eyebrow, Progress } from '@bimstitch/ui';
 
 type Props = {
   holdbackAmount: string;
@@ -14,7 +12,7 @@ export function HoldbackUnlock({ holdbackAmount, dossierPct }: Props): JSX.Eleme
   const t = useTranslations('reports.holdback');
   return (
     <div className="rounded-xl border border-primary-light bg-primary-lighter p-3 dark:border-white/20 dark:bg-white/10">
-      <Eyebrow className="text-primary dark:text-white/70">
+      <Eyebrow as="div" tone="tertiary" className="text-primary dark:text-white/70">
         {t('title')}
       </Eyebrow>
       <div className="mt-0.5 text-title2 font-semibold tracking-tight text-primary dark:text-white">

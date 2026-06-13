@@ -22,10 +22,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Eyebrow,
   Spinner,
 } from '@bimstitch/ui';
 
-import { Eyebrow } from '@/components/shared/Eyebrow';
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -218,7 +218,7 @@ function MetaGroup({
 }): JSX.Element {
   return (
     <div>
-      <Eyebrow className="mb-2.5">
+      <Eyebrow as="div" tone="tertiary" className="mb-2.5">
         {title}
       </Eyebrow>
       <div className="flex flex-col">

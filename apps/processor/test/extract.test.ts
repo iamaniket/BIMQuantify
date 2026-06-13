@@ -71,6 +71,10 @@ describe('runExtraction (real worker threads)', () => {
       expect(succeeded?.properties_key).toBe('projects/p1/IfcOpenHouse4.properties.json');
       expect(succeeded?.outline_key).toBe('projects/p1/IfcOpenHouse4.outline.bin');
       expect(succeeded?.floor_plans_key).toBe('projects/p1/IfcOpenHouse4.floorplans.bin');
+      // A house carries architectural content → classified as a plan-generating
+      // kind (architectural, or mixed when it also has notable framing), so the
+      // floor-plan cut is generated (gate in extraction-worker.ts::runWalk).
+      expect(['architectural', 'mixed']).toContain(succeeded?.detected_kind);
       expect(succeeded?.content_sha256).toBe(sha256);
       expect(succeeded?.ifc_project_guid).toBeTruthy();
 

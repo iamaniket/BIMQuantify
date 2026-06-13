@@ -40,7 +40,6 @@ from bimstitch_api.models.finding_attachment import (
     FINDING_ATTACHMENT_KINDS,
     FindingAttachment,
 )
-from bimstitch_api.models.finding_template import FindingTemplate
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.notification import (
@@ -50,6 +49,7 @@ from bimstitch_api.models.notification import (
 )
 from bimstitch_api.models.org_certificate import OrgCertificate
 from bimstitch_api.models.org_certificate_tag import OrgCertificateTag
+from bimstitch_api.models.org_template import OrgTemplate
 from bimstitch_api.models.organization import Organization, OrganizationStatus
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
@@ -120,7 +120,6 @@ __all__ = [
     "FindingAttachment",
     "FindingSeverity",
     "FindingStatus",
-    "FindingTemplate",
     "IfcSchema",
     "InspectionVerdict",
     "Job",
@@ -134,6 +133,7 @@ __all__ = [
     "NotificationRead",
     "OrgCertificate",
     "OrgCertificateTag",
+    "OrgTemplate",
     "Organization",
     "OrganizationMember",
     "OrganizationMemberStatus",
