@@ -1049,6 +1049,7 @@ async def _provision_user_in_org(
     organization_name: str | None = None,
     is_org_admin: bool = True,
     is_superuser: bool = False,
+    is_guest: bool = False,
 ) -> dict[str, str]:
     """Create a verified user + active membership directly in the DB, then
     log them in to get tokens.
@@ -1116,6 +1117,7 @@ async def _provision_user_in_org(
                 user_id=user.id,
                 organization_id=org.id,
                 is_org_admin=is_org_admin,
+                is_guest=is_guest,
                 status=OrganizationMemberStatus.active,
                 accepted_at=datetime.now(timezone.utc),
             )
@@ -1254,4 +1256,24 @@ async def superuser_in_org(
         organization_id=org_user["organization_id"],
         is_org_admin=True,
         is_superuser=True,
+    )
+
+
+@pytest.fixture
+async def same_org_guest_user(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    engine: AsyncEngine,
+    org_user: dict[str, str],
+) -> dict[str, str]:
+    """An active *guest* member of AlphaCo (cross-org collaborator). Guests are
+    excluded from selectable-member listings and cannot create projects."""
+    return await _provision_user_in_org(
+        client,
+        session_maker,
+        engine,
+        email="guest@example.com",
+        organization_id=org_user["organization_id"],
+        is_org_admin=False,
+        is_guest=True,
     )

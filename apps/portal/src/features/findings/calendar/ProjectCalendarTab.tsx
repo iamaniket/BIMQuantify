@@ -18,7 +18,11 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ChevronUp,
+  Columns3,
   ExternalLink,
+  LayoutGrid,
+  Move,
+  Square,
   X,
 } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
@@ -27,18 +31,27 @@ import {
 } from 'react';
 
 import { Button, CountChip, IconButton } from '@bimstitch/ui';
+import type { AppIcon } from '@bimstitch/ui';
 import type { Locale } from '@bimstitch/i18n';
 
 import { CalendarEventChip, TONE_STYLES } from '@/components/shared/calendar/CalendarEventChip';
 import { MonthCalendar } from '@/components/shared/calendar/MonthCalendar';
+import { WeekCalendar } from '@/components/shared/calendar/WeekCalendar';
 import {
+  addDays,
   addMonths,
+  addWeeks,
   addYears,
+  buildWeekDays,
   dayHeading,
+  fullDayHeading,
+  isoDay,
+  isSameDay,
   isSameMonth,
+  isSameWeek,
   monthLabel,
   parseDayKey,
-  startOfMonth,
+  weekRangeLabel,
 } from '@/components/shared/calendar/monthGrid';
 import { useBorgingsplan } from '@/features/borgingsplan/useBorgingsplan';
 import { useUpdateMoment } from '@/features/borgingsplan/useMomentMutations';
@@ -71,6 +84,22 @@ import {
 } from './dnd/calendarDnd';
 
 const KINDS: CalendarEventKind[] = ['finding', 'deadline', 'borgingsmoment'];
+
+/** The three calendar layouts, à la Google Calendar. */
+type CalendarView = 'month' | 'week' | 'day';
+
+const VIEWS: { value: CalendarView; icon: AppIcon }[] = [
+  { value: 'month', icon: LayoutGrid },
+  { value: 'week', icon: Columns3 },
+  { value: 'day', icon: Square },
+];
+
+/** Per-view aria labels for the single-step (‹ ›) and big-step (« ») nav. */
+const NAV_LABELS: Record<CalendarView, { single: [string, string]; big: [string, string] }> = {
+  month: { single: ['prevMonth', 'nextMonth'], big: ['prevYear', 'nextYear'] },
+  week: { single: ['prevWeek', 'nextWeek'], big: ['prevMonth', 'nextMonth'] },
+  day: { single: ['prevDay', 'nextDay'], big: ['prevWeek', 'nextWeek'] },
+};
 
 const LEGEND = [
   { tone: 'error', key: 'legend.overdue' },
@@ -113,7 +142,9 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }, []);
 
-  const [viewDate, setViewDate] = useState<Date>(() => startOfMonth(today));
+  const [view, setView] = useState<CalendarView>('month');
+  // Anchor day for the viewed period (the month/week/day it falls in).
+  const [viewDate, setViewDate] = useState<Date>(today);
   const [kindFilters, setKindFilters] = useState<Record<CalendarEventKind, boolean>>({
     finding: true,
     deadline: true,
@@ -214,8 +245,36 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
   const selectedDate = selectedDay === null ? null : parseDayKey(selectedDay);
   const dayEvents = selectedDay === null ? [] : itemsByDay.get(selectedDay) ?? [];
 
+  // Week view: the 7 Monday-first day cells around the anchor.
+  const weekDays = useMemo(() => buildWeekDays(viewDate, today), [viewDate, today]);
+  // Day view: the focused day and its events.
+  const dayKey = isoDay(viewDate);
+  const dayViewEvents = itemsByDay.get(dayKey) ?? [];
+  const dayHoliday = holidaysByDay.get(dayKey) ?? null;
+
   const isLoading = deadlinesQuery.isLoading || planQuery.isLoading || settingsQuery.isLoading;
-  const isCurrentMonth = isSameMonth(viewDate, today);
+
+  // Whether the viewed period already contains today (disables "Today").
+  const isCurrentPeriod = view === 'month'
+    ? isSameMonth(viewDate, today)
+    : view === 'week'
+      ? isSameWeek(viewDate, today)
+      : isSameDay(viewDate, today);
+
+  // Localized header label for the active period.
+  const periodLabel = view === 'month'
+    ? monthLabel(viewDate, locale)
+    : view === 'week'
+      ? weekRangeLabel(viewDate, locale)
+      : fullDayHeading(viewDate, locale);
+
+  const navLabels = NAV_LABELS[view];
+
+  // True while a dated finding is mid-drag — invites a drop on the unscheduled
+  // tray to clear its date.
+  const draggingDatedFinding = activeEvent !== null
+    && activeEvent.kind === 'finding'
+    && activeEvent.isoDay !== null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -223,6 +282,20 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
 
   const toggleKind = (kind: CalendarEventKind): void => {
     setKindFilters((prev) => ({ ...prev, [kind]: !prev[kind] }));
+  };
+
+  const changeView = (next: CalendarView): void => {
+    setView(next);
+    setSelectedDay(null); // the side panel only belongs to the month grid
+  };
+
+  // Step the anchor by one unit of the active view; `big` jumps a larger unit.
+  const stepBy = (dir: -1 | 1, big: boolean): void => {
+    setViewDate((d) => {
+      if (view === 'month') return big ? addYears(d, dir) : addMonths(d, dir);
+      if (view === 'week') return big ? addMonths(d, dir) : addWeeks(d, dir);
+      return big ? addWeeks(d, dir) : addDays(d, dir);
+    });
   };
 
   const handleDragStart = (event: DragStartEvent): void => {
@@ -270,23 +343,32 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
   function renderEventRow(event: CalendarEvent, draggable = false): JSX.Element {
     const Icon = KIND_ICON[event.kind];
     const dateStr = eventDateString(event);
+    const isDraggable = draggable && (event.kind === 'finding' || event.kind === 'borgingsmoment');
     const secondary = `${t(`kinds.${event.kind}`)} · ${event.statusLabel}${
       dateStr !== null ? ` · ${formatDate(dateStr, locale)}` : ''
     }`;
 
     const inner = (
       <>
-        <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md ${TONE_STYLES[event.tone].chip}`}>
-          <Icon className="h-3.5 w-3.5" aria-hidden />
+        {/* Status accent bar — clipped to the row's rounded corners. */}
+        <span className={`absolute inset-y-0 left-0 w-1 ${TONE_STYLES[event.tone].dot}`} aria-hidden />
+        {isDraggable && (
+          <Move
+            className="mt-1.5 h-3.5 w-3.5 shrink-0 text-foreground-disabled transition-colors group-hover/row:text-foreground-tertiary"
+            aria-hidden
+          />
+        )}
+        <span className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md ${TONE_STYLES[event.tone].chip}`}>
+          <Icon className="h-4 w-4" aria-hidden />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-body3 font-medium text-foreground">{event.title}</span>
+          <span className="truncate text-body3 font-semibold text-foreground">{event.title}</span>
           <span className="truncate text-caption text-foreground-tertiary">{secondary}</span>
         </span>
       </>
     );
 
-    const rowClass = 'flex w-full items-start gap-2 rounded-lg border border-border bg-background px-2.5 py-2 text-left transition-colors hover:bg-background-hover';
+    const rowClass = 'group/row relative flex w-full items-start gap-2 overflow-hidden rounded-lg border border-border bg-background py-2 pl-3 pr-2.5 text-left transition-all hover:bg-background-hover hover:shadow-sm';
 
     const buildRow = (): JSX.Element => {
       if (event.kind === 'finding') {
@@ -326,7 +408,7 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
     };
 
     const row = buildRow();
-    if (draggable && (event.kind === 'finding' || event.kind === 'borgingsmoment')) {
+    if (isDraggable) {
       return <DraggableEvent id={event.id} kind={event.kind}>{row}</DraggableEvent>;
     }
     return row;
@@ -334,26 +416,51 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Toolbar: month/year navigation + kind filters + status legend */}
+      {/* Toolbar: view switcher + period navigation + kind filters + legend */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
-        <div className="flex items-center gap-1">
-          <IconButton size="md" icon={ChevronsLeft} aria-label={t('prevYear')} onClick={() => { setViewDate((d) => addYears(d, -1)); }} />
-          <IconButton size="md" icon={ChevronLeft} aria-label={t('prevMonth')} onClick={() => { setViewDate((d) => addMonths(d, -1)); }} />
-          <span className="min-w-[140px] text-center text-body3 font-semibold capitalize text-foreground">
-            {monthLabel(viewDate, locale)}
-          </span>
-          <IconButton size="md" icon={ChevronRight} aria-label={t('nextMonth')} onClick={() => { setViewDate((d) => addMonths(d, 1)); }} />
-          <IconButton size="md" icon={ChevronsRight} aria-label={t('nextYear')} onClick={() => { setViewDate((d) => addYears(d, 1)); }} />
-          <Button
-            size="md"
-            variant="border"
-            className="ml-1"
-            disabled={isCurrentMonth}
-            onClick={() => { setViewDate(startOfMonth(today)); }}
-          >
-            <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-            {t('today')}
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Month / Week / Day switcher */}
+          <div className="inline-flex items-center rounded-md border border-border bg-surface-low p-0.5">
+            {VIEWS.map(({ value, icon: Icon }) => {
+              const active = view === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => { changeView(value); }}
+                  aria-pressed={active}
+                  className={`inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-body3 font-medium transition-all ${
+                    active
+                      ? 'bg-gradient-to-br from-primary to-primary-hover text-primary-foreground shadow-sm'
+                      : 'text-foreground-secondary hover:bg-background-hover'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                  {t(`views.${value}`)}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <IconButton size="md" icon={ChevronsLeft} aria-label={t(navLabels.big[0])} onClick={() => { stepBy(-1, true); }} />
+            <IconButton size="md" icon={ChevronLeft} aria-label={t(navLabels.single[0])} onClick={() => { stepBy(-1, false); }} />
+            <span className="min-w-[150px] text-center text-body3 font-semibold capitalize text-foreground">
+              {periodLabel}
+            </span>
+            <IconButton size="md" icon={ChevronRight} aria-label={t(navLabels.single[1])} onClick={() => { stepBy(1, false); }} />
+            <IconButton size="md" icon={ChevronsRight} aria-label={t(navLabels.big[1])} onClick={() => { stepBy(1, true); }} />
+            <Button
+              size="md"
+              variant="border"
+              className="ml-1"
+              disabled={isCurrentPeriod}
+              onClick={() => { setViewDate(today); }}
+            >
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+              {t('today')}
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -407,36 +514,90 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
         onDragEnd={handleDragEnd}
         onDragCancel={() => { setActiveEvent(null); }}
       >
-        {/* Body: grid + day-agenda side panel */}
+        {/* Body: active view (month grid / week columns / day agenda) + panel */}
         <div className="flex min-h-0 flex-1">
-          <div className="flex min-w-0 flex-1 flex-col overflow-auto p-5">
-            {events.length === 0 && !isLoading && (
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-5">
+            {view === 'month' && events.length === 0 && !isLoading && (
               <p className="mb-3 rounded-lg border border-dashed border-border bg-background px-4 py-6 text-center text-body3 text-foreground-tertiary">
                 {t('empty')}
               </p>
             )}
-            <MonthCalendar<CalendarEvent>
-              className="min-h-0 flex-1"
-              viewDate={viewDate}
-              today={today}
-              locale={locale}
-              itemsByDay={itemsByDay}
-              getItemId={(event) => event.id}
-              renderChip={renderChip}
-              selectedDay={selectedDay}
-              onSelectDay={setSelectedDay}
-              moreLabel={(count) => t('moreCount', { count })}
-              holidaysByDay={holidaysByDay}
-              overdueDays={overdueDays}
-              wrapDay={(iso, cell) => <DroppableDay iso={iso}>{cell}</DroppableDay>}
-            />
+
+            {view === 'month' && (
+              <MonthCalendar<CalendarEvent>
+                className="min-h-0 flex-1"
+                viewDate={viewDate}
+                today={today}
+                locale={locale}
+                itemsByDay={itemsByDay}
+                getItemId={(event) => event.id}
+                renderChip={renderChip}
+                selectedDay={selectedDay}
+                onSelectDay={setSelectedDay}
+                moreLabel={(count) => t('moreCount', { count })}
+                holidaysByDay={holidaysByDay}
+                overdueDays={overdueDays}
+                wrapDay={(iso, cell) => <DroppableDay iso={iso}>{cell}</DroppableDay>}
+              />
+            )}
+
+            {view === 'week' && (
+              <WeekCalendar<CalendarEvent>
+                className="flex-1"
+                days={weekDays}
+                locale={locale}
+                itemsByDay={itemsByDay}
+                getItemId={(event) => event.id}
+                renderItem={(event) => renderEventRow(event, true)}
+                selectedDay={selectedDay}
+                onSelectDay={setSelectedDay}
+                holidaysByDay={holidaysByDay}
+                overdueDays={overdueDays}
+                wrapDay={(iso, column) => <DroppableDay iso={iso}>{column}</DroppableDay>}
+              />
+            )}
+
+            {view === 'day' && (
+              <DroppableDay iso={dayKey}>
+                <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border">
+                  <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-gradient-to-r from-primary-light to-primary-lighter px-4 py-3">
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-body1 font-semibold capitalize text-foreground">
+                        {fullDayHeading(viewDate, locale)}
+                      </span>
+                      <span className="text-caption text-foreground-tertiary">
+                        {t('dayPanel.count', { count: dayViewEvents.length })}
+                      </span>
+                    </div>
+                    {dayHoliday !== null && (
+                      <span className="shrink-0 rounded-md bg-info-light px-2 py-0.5 text-caption font-medium text-info">
+                        {dayHoliday}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                    {dayViewEvents.length === 0 ? (
+                      <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-body3 text-foreground-tertiary">
+                        {t('dayEmpty')}
+                      </p>
+                    ) : (
+                      <ul className="mx-auto flex max-w-2xl flex-col gap-2">
+                        {dayViewEvents.map((event) => (
+                          <li key={event.id}>{renderEventRow(event, true)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </DroppableDay>
+            )}
           </div>
 
-          {selectedDay !== null && selectedDate !== null && (
+          {view === 'month' && selectedDay !== null && selectedDate !== null && (
             <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-surface-main">
-              <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+              <div className="flex items-center justify-between gap-2 border-b border-border bg-gradient-to-r from-primary-light to-primary-lighter px-4 py-3">
                 <div className="flex min-w-0 flex-col">
-                  <span className="truncate text-body3 font-semibold capitalize text-foreground">
+                  <span className="truncate text-body2 font-semibold capitalize text-foreground">
                     {dayHeading(selectedDate, locale)}
                   </span>
                   <span className="text-caption text-foreground-tertiary">
@@ -446,31 +607,52 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
                 <IconButton icon={X} aria-label={t('dayPanel.close')} onClick={() => { setSelectedDay(null); }} />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                <ul className="flex flex-col gap-1.5">
-                  {dayEvents.map((event) => (
-                    <li key={event.id}>{renderEventRow(event)}</li>
-                  ))}
-                </ul>
+                {dayEvents.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-body3 text-foreground-tertiary">
+                    {t('dayEmpty')}
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {dayEvents.map((event) => (
+                      <li key={event.id}>{renderEventRow(event, true)}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </aside>
           )}
         </div>
 
         {/* Unscheduled: items with no date (mostly findings without a deadline).
-            Drop a calendar item here to clear its date. */}
-        {unscheduled.length > 0 && (
+            Drop a calendar item here to clear its date. Stays mounted while a
+            dated finding is being dragged so it can act as the drop target. */}
+        {(unscheduled.length > 0 || draggingDatedFinding) && (
           <DroppableUnscheduled>
-            <div className="shrink-0 border-t border-border bg-surface-low px-4 py-2">
-              <button
-                type="button"
-                onClick={() => { setUnscheduledOpen((v) => !v); }}
-                className="flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-foreground-tertiary"
-              >
-                {unscheduledOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
-                {t('unscheduled')}
-                <CountChip>{unscheduled.length}</CountChip>
-              </button>
-              {unscheduledOpen && (
+            <div
+              className={`shrink-0 border-t px-4 py-2 transition-colors ${
+                draggingDatedFinding
+                  ? 'border-dashed border-primary bg-primary-lighter/50'
+                  : 'border-border bg-surface-low'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setUnscheduledOpen((v) => !v); }}
+                  className="flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-foreground-tertiary transition-colors hover:text-foreground-secondary"
+                >
+                  {unscheduledOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                  {t('unscheduled')}
+                  {unscheduled.length > 0 && <CountChip>{unscheduled.length}</CountChip>}
+                </button>
+                {draggingDatedFinding && (
+                  <span className="flex items-center gap-1.5 text-caption font-medium text-primary">
+                    <Move className="h-3.5 w-3.5" aria-hidden />
+                    {t('dropToUnschedule')}
+                  </span>
+                )}
+              </div>
+              {unscheduledOpen && unscheduled.length > 0 && (
                 <ul className="mt-2 grid max-h-40 grid-cols-1 gap-1.5 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
                   {unscheduled.map((event) => (
                     <li key={event.id}>{renderEventRow(event, true)}</li>
@@ -483,7 +665,7 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
 
         <DragOverlay dropAnimation={null}>
           {activeEvent !== null && (
-            <div className="rounded-md border border-primary bg-background px-2 py-1 shadow-lg">
+            <div className="rounded-md border border-primary bg-background px-2 py-1 shadow-lg ring-2 ring-primary/30">
               <CalendarEventChip
                 tone={activeEvent.tone}
                 icon={KIND_ICON[activeEvent.kind]}

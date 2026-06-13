@@ -34,7 +34,7 @@
  * docker-compose.test.yml, runs tests, tears down).
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 
 import { injectSavedAuth, loginViaAPI, loginViaUI, updateTokenCacheFromPage } from '../support/auth';
 import { clearAllEmails, extractUrlFromEmail, waitForEmail } from '../support/mailhog';
@@ -62,6 +62,33 @@ function flushRedis(): void {
   } catch (err) {
     console.warn(`[flushRedis] Redis flush failed (non-fatal): ${err}`);
   }
+}
+
+/**
+ * Project creation now requires at least one teammate — the create wizard has
+ * a final "Team" step whose minimum-one-person rule gates the "Create project"
+ * button (`submitDisabled` in ProjectFormDialog). The creator is auto-owner and
+ * never selectable, and no *other* org member is `active` at creation time, so
+ * the only run-independent way to satisfy the gate is an email invite.
+ *
+ * Call this while the wizard is on the Details step (the last optional step). It
+ * advances to the Team step, queues one email invite, and returns with the
+ * primary "Create project" button enabled and ready to click.
+ */
+async function addWizardTeamInvite(dialog: Locator, email: string): Promise<void> {
+  await dialog.getByRole('button', { name: 'Next' }).click();
+  await expect(dialog.locator('[aria-current="step"]')).toContainText('Team');
+
+  // Default tab is "From organization", which has no candidates here. The
+  // email-invite tab needs no existing org member, so it always satisfies the
+  // gate. Radix unmounts the inactive tab panel, so the visible "Add" button is
+  // unambiguous.
+  await dialog.getByRole('tab', { name: /invite by email/i }).click();
+  await dialog.locator('#team-invite-email').fill(email);
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
+
+  // "People to add (1)" confirms the entry is queued and the gate is satisfied.
+  await expect(dialog.getByText(/People to add \(1\)/i)).toBeVisible();
 }
 
 // ---------------------------------------------------------------------------
@@ -398,6 +425,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
     // Select a real value so form.trigger() passes and Create can submit.
     await dialog.locator('select[name="building_type"]').selectOption('dwelling');
     await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
+
+    // Step 4 (Team): creation requires >=1 teammate. Queue an email invite to
+    // satisfy the gate (no other org member is active yet at this point).
+    await addWizardTeamInvite(dialog, `c3team-${RUN}@example.com`);
 
     await dialog.getByRole('button', { name: 'Create project' }).click();
 
@@ -857,6 +888,11 @@ test.describe.serial('Multitenant E2E Journey', () => {
     // Step 3 — Details
     await dialog.locator('select[name="building_type"]').selectOption('dwelling');
     await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
+
+    // Step 4 — Team: satisfy the create gate so the guest can actually press
+    // "Create project". The 403 comes from the server (POST /projects); the
+    // queued invite never fires because createProject throws first.
+    await addWizardTeamInvite(dialog, `h2team-${RUN}@example.com`);
 
     // "Create project" on the last step
     const [createResp] = await Promise.all([
@@ -1902,6 +1938,9 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await dialog.locator('select[name="building_type"]').selectOption('dwelling');
     await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
 
+    // Team step: queue an email invite so the create gate (>=1 teammate) passes.
+    await addWizardTeamInvite(dialog, `s1team-${RUN}@example.com`);
+
     await dialog.getByRole('button', { name: 'Create project' }).click();
 
     await page.waitForURL(/\/projects\/[0-9a-f-]+/, { timeout: 20_000 });
@@ -2559,8 +2598,15 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.goto('/en/projects');
     await page.waitForLoadState('domcontentloaded');
 
-    // Wait for projects to load (ensures auth is fully hydrated).
-    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
+    // Wait for the dashboard to hydrate before reaching for the sidebar. The
+    // (dashboard) layout renders a <main> only as its pre-hydration fallback;
+    // once hydrated it's a sidebar + <div>, and the projects list page is a
+    // <div> too — so getByRole('main') races hydration and vanishes the moment
+    // the real page mounts. Gate on the client-only "New project" action, which
+    // is present iff the projects page is hydrated and interactive.
+    await expect(page.getByRole('button', { name: /new project/i })).toBeVisible({
+      timeout: 10_000,
+    });
 
     // The logout button is in the sidebar. Its aria-label or text content is
     // "Sign out". The sidebar may be collapsed; look for the sidebar nav item.

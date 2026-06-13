@@ -41,6 +41,7 @@ from bimstitch_api.routers.projects import (
 )
 from bimstitch_api.schemas.finding import (
     FindingCreate,
+    FindingHistoryChange,
     FindingHistoryEntry,
     FindingRead,
     FindingUpdate,
@@ -89,6 +90,10 @@ def _finding_snapshot(finding: Finding) -> dict[str, object]:
         "anchor_page": finding.anchor_page,
         "resolution_note": finding.resolution_note,
         "has_references": bool(finding.reference_attachment_ids),
+        # Counts (not the id lists) so the history diff can render "added 2
+        # photos" without leaking attachment ids into the audit snapshot.
+        "photo_count": len(finding.photo_ids or []),
+        "resolution_evidence_count": len(finding.resolution_evidence_ids or []),
         "template_id": str(finding.template_id) if finding.template_id else None,
         "has_custom_values": bool(finding.custom_values),
     }
@@ -297,6 +302,62 @@ def _snapshot_status(snapshot: dict[str, object] | None) -> str | None:
     return value if isinstance(value, str) else None
 
 
+# Fields surfaced in the per-entry history diff. `status` is intentionally
+# excluded — it is already carried by `from_status`/`to_status`.
+_HISTORY_DIFF_FIELDS: tuple[str, ...] = (
+    "title",
+    "description",
+    "severity",
+    "bbl_article_ref",
+    "assignee_user_id",
+    "deadline_date",
+    "resolution_note",
+    "has_references",
+    "photo_count",
+    "resolution_evidence_count",
+)
+
+
+def _history_value(value: object) -> str | None:
+    """Stringify a snapshot value for the history diff (None stays None)."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def _diff_snapshots(
+    before: dict[str, object] | None, after: dict[str, object] | None
+) -> list[FindingHistoryChange]:
+    """Field-level diff of two finding snapshots for the history timeline.
+
+    Emits one change per curated field whose value differs. `created`/`deleted`
+    entries (one snapshot is None) carry no diff — the action verb stands alone.
+    A field absent from *both* snapshots (older audit rows predate it, e.g.
+    `photo_count`) is skipped; the two snapshots in one mutation always share
+    the same keys, so a None->value false positive can't arise.
+    """
+    if not before or not after:
+        return []
+    changes: list[FindingHistoryChange] = []
+    for field in _HISTORY_DIFF_FIELDS:
+        if field not in before and field not in after:
+            continue
+        old = before.get(field)
+        new = after.get(field)
+        if old == new:
+            continue
+        changes.append(
+            FindingHistoryChange(
+                field=field,
+                from_value=_history_value(old),
+                to_value=_history_value(new),
+            )
+        )
+    return changes
+
+
 @router.get("/{finding_id}/history", response_model=list[FindingHistoryEntry])
 async def get_finding_history(
     project_id: UUID,
@@ -343,6 +404,7 @@ async def get_finding_history(
             actor_email=actor.email if actor else None,
             from_status=_snapshot_status(log.before),
             to_status=_snapshot_status(log.after),
+            changes=_diff_snapshots(log.before, log.after),
             created_at=log.created_at,
         )
         for log, actor in rows

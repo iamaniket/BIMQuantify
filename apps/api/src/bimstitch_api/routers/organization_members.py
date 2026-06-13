@@ -29,6 +29,7 @@ from bimstitch_api.admin.membership_rules import (
 )
 from bimstitch_api.admin.seats import assert_seat_available
 from bimstitch_api.auth.dependencies import require_org_admin
+from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.manager import UserManager, get_user_manager
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_async_session
@@ -48,6 +49,7 @@ from bimstitch_api.schemas.admin import (
     MemberInvite,
     MemberRead,
     MemberUpdate,
+    SelectableMemberRead,
 )
 from bimstitch_api.tenancy import schema_name_for
 
@@ -127,6 +129,66 @@ async def list_members(
     rows = result.all()
     caps_by_user = await compute_member_capabilities(session, organization_id, rows)
     return [_build_member_read(m, u, caps_by_user.get(u.id)) for m, u in rows]
+
+
+@router.get(
+    "/{organization_id}/selectable-members",
+    response_model=list[SelectableMemberRead],
+)
+async def list_selectable_members(
+    organization_id: UUID,
+    user: User = Depends(current_verified_user),
+    session: AsyncSession = Depends(get_async_session),
+    limit: int = Query(default=500, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+) -> list[SelectableMemberRead]:
+    """Active, non-guest members of the org, for "add member" pickers.
+
+    Unlike `list_members` (org-admin only, returns status + capability
+    flags), this is callable by any active non-guest member of the org so a
+    project creator or owner — who need not be an org admin — can populate
+    the member-selection dropdown in the new-project wizard and the access
+    page. Superusers bypass the membership check.
+    """
+    if not user.is_superuser:
+        is_member = (
+            await session.execute(
+                select(OrganizationMember.id).where(
+                    OrganizationMember.user_id == user.id,
+                    OrganizationMember.organization_id == organization_id,
+                    OrganizationMember.status == OrganizationMemberStatus.active,
+                    OrganizationMember.is_guest.is_(False),
+                )
+            )
+        ).scalar_one_or_none()
+        if is_member is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="NOT_ORG_MEMBER",
+            )
+
+    stmt = (
+        select(OrganizationMember, User)
+        .join(User, User.id == OrganizationMember.user_id)
+        .where(
+            OrganizationMember.organization_id == organization_id,
+            OrganizationMember.status == OrganizationMemberStatus.active,
+            OrganizationMember.is_guest.is_(False),
+        )
+        .order_by(User.email.asc())
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        SelectableMemberRead(
+            user_id=u.id,
+            email=u.email,
+            full_name=u.full_name,
+            is_org_admin=m.is_org_admin,
+        )
+        for m, u in rows
+    ]
 
 
 @router.post(

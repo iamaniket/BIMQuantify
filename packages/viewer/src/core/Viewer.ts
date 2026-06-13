@@ -527,6 +527,13 @@ export class Viewer {
       ({ modelId, visible }) => this.setModelVisible(modelId, visible),
       { title: 'Toggle model visibility' },
     );
+    // Incremental unload — remove one model from a federated scene without
+    // remounting the viewer (the dropdown's no-flash remove).
+    this.commands.register<{ modelId: string }, void>(
+      'model:unload',
+      ({ modelId }) => this.unloadModel(modelId),
+      { title: 'Unload model' },
+    );
 
     this.events.emit('viewer:mounted', { container });
 
@@ -878,6 +885,38 @@ export class Viewer {
     else this.hiddenModelIds.add(modelId);
     await model.setVisible(undefined, visible).catch(() => undefined);
     this.events.emit('model:visibility', { modelId, visible });
+    this.events.emit('viewer:idle', undefined);
+  }
+
+  /**
+   * Unload a single model from a federated scene WITHOUT remounting the viewer
+   * or moving the camera. Mirror of the per-model load path: removes the model
+   * from the scene, disposes it in the fragments runtime, drops its
+   * outline/visibility bookkeeping, re-unions the scene bounds, and emits
+   * `model:unloaded` so plugins tear down their per-model caches.
+   */
+  async unloadModel(modelId: string): Promise<void> {
+    const fragments = this.fragmentsModels;
+    const world = this.world;
+    if (fragments === null || world === null) return;
+    const modelsList = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
+    const model = modelsList.get(modelId);
+    if (model === undefined) return;
+
+    const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
+    sceneThree.remove(model.object);
+    await fragments.disposeModel(modelId).catch(() => undefined);
+
+    this.hiddenModelIds.delete(modelId);
+    this.precomputedOutlines.delete(modelId);
+    if (this.modelId === modelId) {
+      this.modelId = this.getModelIds()[0] ?? null;
+    }
+
+    // Re-union bounds + relight, but do NOT re-frame — the user is mid-view.
+    this.refreshSceneBounds();
+    this.fitLightsToScene();
+    this.events.emit('model:unloaded', { modelId });
     this.events.emit('viewer:idle', undefined);
   }
 

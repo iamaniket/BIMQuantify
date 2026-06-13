@@ -20,6 +20,9 @@ export type WizardProps = {
   onBack: () => void;
   onSubmit: () => void | Promise<void>;
   isSubmitting?: boolean;
+  /** Disables the primary button on the LAST step only (e.g. an unmet
+   * minimum). Ignored on intermediate steps, where the button is "Next". */
+  submitDisabled?: boolean;
   submitLabel?: string;
   submitPendingLabel?: string;
   nextLabel?: string;
@@ -161,6 +164,7 @@ export function Wizard({
   onBack,
   onSubmit,
   isSubmitting = false,
+  submitDisabled = false,
   submitLabel = 'Submit',
   submitPendingLabel = 'Submitting…',
   nextLabel = 'Next',
@@ -211,7 +215,7 @@ export function Wizard({
             variant="primary"
             size="md"
             onClick={handlePrimary}
-            disabled={isSubmitting}
+            disabled={isSubmitting || (isLast && submitDisabled)}
           >
             {isLast
               ? (isSubmitting ? submitPendingLabel : submitLabel)

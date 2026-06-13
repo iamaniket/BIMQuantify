@@ -187,6 +187,7 @@
     "projects": "Projects",
     "project": "Project",
     "model": "Model",
+    "allModels": "All models",
     "report": "Report",
     "settings": "Settings",
     "admin": "Admin",
@@ -414,6 +415,10 @@
         "contractor": {
           "title": "Contractor",
           "description": "Assign a company"
+        },
+        "members": {
+          "title": "Team",
+          "description": "Add people to the project"
         }
       },
       "dialog": {
@@ -520,6 +525,41 @@
           "adding": "Adding…",
           "add": "Add",
           "cancel": "Cancel"
+        }
+      },
+      "members": {
+        "intro": "Add at least one teammate so the project doesn't start empty. Pick existing members or invite new people by email — you can change access anytime.",
+        "tabs": {
+          "fromOrg": "From organization",
+          "inviteByEmail": "Invite by email"
+        },
+        "fields": {
+          "user": "Member",
+          "role": "Role",
+          "email": "Email",
+          "fullName": "Full name"
+        },
+        "placeholders": {
+          "user": "Select a member…",
+          "email": "name@company.com",
+          "fullName": "Jane Doe (optional)"
+        },
+        "guestHint": "If they don't have an account yet, we'll email them an invite to join this project.",
+        "adminsAutoAdded": "Organization admins already have access and are added automatically.",
+        "noCandidates": "No other members to add — invite someone by email instead.",
+        "actions": {
+          "add": "Add",
+          "remove": "Remove"
+        },
+        "listHeading": "People to add ({count})",
+        "emptyState": "No one added yet.",
+        "minOneHint": "Add at least one person to create the project.",
+        "inviteBadge": "Invite",
+        "partialFailure": "Project created, but some people couldn't be added: {names}. Add them from the project's access page.",
+        "errors": {
+          "pickUser": "Select a member to add.",
+          "invalidEmail": "Enter a valid email address.",
+          "duplicate": "This person is already in the list."
         }
       }
     }
@@ -973,6 +1013,7 @@
         "filterCoordination": "Coordination",
         "filterOther": "Other",
         "newModel": "New model",
+        "loadSelected": "Load selected ({count})",
         "emptyState": "No models yet",
         "emptyDescription": "Upload IFC files to view and manage your BIM models.",
         "newModelDialog": {
@@ -1005,6 +1046,7 @@
         "row": {
           "noFiles": "No files",
           "viewFile": "View file",
+          "selectAria": "Select {name} to load in the viewer",
           "noViewableFile": "No viewable file yet",
           "uploadFile": "Upload file",
           "checkBbl": "Check BBL",
@@ -1412,6 +1454,10 @@
       "title": "Finding",
       "subtitle": "Edit the finding, assign an owner and a deadline, then promote it.",
       "save": "Save changes",
+      "tabs": {
+        "edit": "Edit",
+        "history": "History"
+      },
       "fields": {
         "title": "Title",
         "description": "Description",
@@ -1465,7 +1511,22 @@
           "verified": "verified the finding",
           "updated": "updated the finding",
           "deleted": "deleted the finding"
-        }
+        },
+        "fields": {
+          "title": "Title",
+          "description": "Description",
+          "severity": "Severity",
+          "bblArticleRef": "Bbl article reference",
+          "assignee": "Assignee",
+          "deadline": "Deadline",
+          "resolutionNote": "Resolution note",
+          "references": "Reference documents",
+          "photos": "Photos",
+          "resolutionEvidence": "Resolution evidence"
+        },
+        "edited": "edited",
+        "added": "added",
+        "removed": "removed"
       }
     },
     "photos": {
@@ -1595,9 +1656,20 @@
       "nextMonth": "Next month",
       "prevYear": "Previous year",
       "nextYear": "Next year",
+      "prevWeek": "Previous week",
+      "nextWeek": "Next week",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
       "empty": "Nothing scheduled yet.",
+      "dayEmpty": "Nothing on this day.",
       "unscheduled": "Unscheduled",
+      "dropToUnschedule": "Drop here to remove the date",
       "moreCount": "{count} more",
+      "views": {
+        "month": "Month",
+        "week": "Week",
+        "day": "Day"
+      },
       "kinds": {
         "finding": "Findings",
         "deadline": "Deadlines",
@@ -2839,16 +2911,7 @@
       "title": "All models",
       "empty": "No processed models yet",
       "emptyHint": "Upload and process IFC models in this project to view them together.",
-      "loadError": "Failed to load the project's models.",
-      "layersTitle": "Layers",
-      "kind": {
-        "architectural": "Architectural",
-        "structural": "Structural",
-        "mep": "MEP",
-        "mixed": "Mixed",
-        "none": "Other",
-        "unknown": "Unclassified"
-      }
+      "loadError": "Failed to load the project's models."
     },
     "floorplan": {
       "title": "Floor plan",

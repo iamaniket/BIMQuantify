@@ -187,6 +187,7 @@
     "projects": "Projecten",
     "project": "Project",
     "model": "Model",
+    "allModels": "Alle modellen",
     "report": "Rapport",
     "settings": "Instellingen",
     "admin": "Beheer",
@@ -414,6 +415,10 @@
         "contractor": {
           "title": "Aannemer",
           "description": "Koppel een bedrijf"
+        },
+        "members": {
+          "title": "Team",
+          "description": "Mensen aan het project toevoegen"
         }
       },
       "dialog": {
@@ -520,6 +525,41 @@
           "adding": "Bezig met toevoegen…",
           "add": "Toevoegen",
           "cancel": "Annuleren"
+        }
+      },
+      "members": {
+        "intro": "Voeg minstens één teamlid toe zodat het project niet leeg begint. Kies bestaande leden of nodig nieuwe mensen uit via e-mail — je kunt de toegang altijd aanpassen.",
+        "tabs": {
+          "fromOrg": "Uit organisatie",
+          "inviteByEmail": "Uitnodigen via e-mail"
+        },
+        "fields": {
+          "user": "Lid",
+          "role": "Rol",
+          "email": "E-mail",
+          "fullName": "Volledige naam"
+        },
+        "placeholders": {
+          "user": "Selecteer een lid…",
+          "email": "naam@bedrijf.nl",
+          "fullName": "Jan Jansen (optioneel)"
+        },
+        "guestHint": "Heeft diegene nog geen account? Dan mailen we een uitnodiging om aan dit project deel te nemen.",
+        "adminsAutoAdded": "Organisatiebeheerders hebben al toegang en worden automatisch toegevoegd.",
+        "noCandidates": "Geen andere leden om toe te voegen — nodig iemand uit via e-mail.",
+        "actions": {
+          "add": "Toevoegen",
+          "remove": "Verwijderen"
+        },
+        "listHeading": "Toe te voegen mensen ({count})",
+        "emptyState": "Nog niemand toegevoegd.",
+        "minOneHint": "Voeg minstens één persoon toe om het project aan te maken.",
+        "inviteBadge": "Uitnodiging",
+        "partialFailure": "Project aangemaakt, maar sommige mensen konden niet worden toegevoegd: {names}. Voeg ze toe via de toegangspagina van het project.",
+        "errors": {
+          "pickUser": "Selecteer een lid om toe te voegen.",
+          "invalidEmail": "Voer een geldig e-mailadres in.",
+          "duplicate": "Deze persoon staat al in de lijst."
         }
       }
     }
@@ -973,6 +1013,7 @@
         "filterCoordination": "Coördinatie",
         "filterOther": "Overig",
         "newModel": "Nieuw model",
+        "loadSelected": "Geselecteerde laden ({count})",
         "emptyState": "Nog geen modellen",
         "emptyDescription": "Upload IFC-bestanden om uw BIM-modellen te bekijken en beheren.",
         "newModelDialog": {
@@ -1005,6 +1046,7 @@
         "row": {
           "noFiles": "Geen bestanden",
           "viewFile": "Bestand bekijken",
+          "selectAria": "{name} selecteren om in de viewer te laden",
           "noViewableFile": "Nog geen weergeefbaar bestand",
           "uploadFile": "Bestand uploaden",
           "checkBbl": "BBL controleren",
@@ -1412,6 +1454,10 @@
       "title": "Bevinding",
       "subtitle": "Bewerk de bevinding, wijs een verantwoordelijke en deadline toe en promoot deze.",
       "save": "Wijzigingen opslaan",
+      "tabs": {
+        "edit": "Bewerken",
+        "history": "Geschiedenis"
+      },
       "fields": {
         "title": "Titel",
         "description": "Omschrijving",
@@ -1465,7 +1511,22 @@
           "verified": "heeft de bevinding geverifieerd",
           "updated": "heeft de bevinding bijgewerkt",
           "deleted": "heeft de bevinding verwijderd"
-        }
+        },
+        "fields": {
+          "title": "Titel",
+          "description": "Omschrijving",
+          "severity": "Ernst",
+          "bblArticleRef": "Bbl-artikelverwijzing",
+          "assignee": "Verantwoordelijke",
+          "deadline": "Deadline",
+          "resolutionNote": "Toelichting oplossing",
+          "references": "Referentiedocumenten",
+          "photos": "Foto's",
+          "resolutionEvidence": "Bewijs van herstel"
+        },
+        "edited": "bewerkt",
+        "added": "toegevoegd",
+        "removed": "verwijderd"
       }
     },
     "photos": {
@@ -1595,9 +1656,20 @@
       "nextMonth": "Volgende maand",
       "prevYear": "Vorig jaar",
       "nextYear": "Volgend jaar",
+      "prevWeek": "Vorige week",
+      "nextWeek": "Volgende week",
+      "prevDay": "Vorige dag",
+      "nextDay": "Volgende dag",
       "empty": "Nog niets ingepland.",
+      "dayEmpty": "Niets op deze dag.",
       "unscheduled": "Niet ingepland",
+      "dropToUnschedule": "Sleep hierheen om de datum te verwijderen",
       "moreCount": "{count} meer",
+      "views": {
+        "month": "Maand",
+        "week": "Week",
+        "day": "Dag"
+      },
       "kinds": {
         "finding": "Bevindingen",
         "deadline": "Deadlines",
@@ -2839,16 +2911,7 @@
       "title": "Alle modellen",
       "empty": "Nog geen verwerkte modellen",
       "emptyHint": "Upload en verwerk IFC-modellen in dit project om ze samen te bekijken.",
-      "loadError": "Kan de modellen van het project niet laden.",
-      "layersTitle": "Lagen",
-      "kind": {
-        "architectural": "Architectuur",
-        "structural": "Constructief",
-        "mep": "Installaties",
-        "mixed": "Gemengd",
-        "none": "Overig",
-        "unknown": "Niet geclassificeerd"
-      }
+      "loadError": "Kan de modellen van het project niet laden."
     },
     "floorplan": {
       "title": "Plattegrond",

@@ -10,6 +10,7 @@ import { NotificationsBell } from '@/components/shared/header/NotificationsBell'
 import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
 import { useModels } from '@/features/models/useModels';
 import { ModelSwitcher } from '@/features/navigation/ModelSwitcher';
+import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useProject } from '@/features/projects/useProject';
 import { usePathname } from '@/i18n/navigation';
 
@@ -21,7 +22,7 @@ type RouteParams = {
 
 type CrumbT = ReturnType<typeof useTranslations>;
 
-const VIEWER_RE = /^\/projects\/[^/]+\/models\/[^/]+\/viewer\/[^/]+/;
+const VIEWER_RE = /^\/projects\/[^/]+\/viewer/;
 const REPORT_RE = /^\/projects\/[^/]+\/reports\/[^/]+/;
 const PROJECT_DETAIL_RE = /^\/projects\/[^/]+$/;
 const ADMIN_ORG_DETAIL_RE = /^\/admin\/organizations\/[^/]+$/;
@@ -91,7 +92,12 @@ export function AppHeaderRoute(): JSX.Element {
   const params = useParams<RouteParams>();
   const { setMobileOpen } = useSidebar();
   const projectId = params.projectId ?? '';
-  const modelId = params.modelId ?? '';
+  const isViewerRoute = VIEWER_RE.test(pathname);
+  // The model is no longer a URL segment — the viewer's active file lives in the
+  // selection store. Derive the single-mode model for the crumb + switcher;
+  // multi-model mode shows an "All models" crumb.
+  const target = useViewerTarget(projectId);
+  const modelId = target.kind === 'single' ? target.modelId : '';
 
   const projectQuery = useProject(projectId);
   const modelsQuery = useModels(projectId);
@@ -102,12 +108,13 @@ export function AppHeaderRoute(): JSX.Element {
     ? null
     : projectQuery.data.name;
   let modelName: string | null = null;
-  if (modelsQuery.data !== undefined) {
+  if (modelId.length > 0 && modelsQuery.data !== undefined) {
     const found = modelsQuery.data.find((m) => m.id === modelId);
     if (found !== undefined) modelName = found.name;
+  } else if (isViewerRoute) {
+    modelName = t('allModels');
   }
 
-  const isViewerRoute = VIEWER_RE.test(pathname);
   const crumbs = crumbsOverride
     ?? resolveCrumbs(pathname, { projectId, projectName, modelName }, t);
 
@@ -119,11 +126,10 @@ export function AppHeaderRoute(): JSX.Element {
       onMenuOpen={() => { setMobileOpen(true); }}
       rightSlot={
         <>
-          {isViewerRoute && modelId.length > 0 ? (
+          {isViewerRoute ? (
             <ModelSwitcher
               projectId={projectId}
-              currentModelId={modelId}
-              currentModelName={modelName ?? t('model')}
+              activeLabel={modelName ?? t('model')}
             />
           ) : null}
           <NotificationsBell />

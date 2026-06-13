@@ -99,6 +99,21 @@ export const MemberReadSchema = z.object({
 
 export type MemberRead = z.infer<typeof MemberReadSchema>;
 
+// Minimal member projection returned by
+// `GET /organizations/{org}/selectable-members` — the member-callable user
+// picker (the full `MemberRead` list is org-admin only). `is_org_admin` lets
+// the UI hide admins, who are auto-added as project editors on creation.
+export const SelectableMemberSchema = z.object({
+  user_id: z.string(),
+  email: z.string().email(),
+  full_name: z.union([z.string(), z.null()]),
+  is_org_admin: z.boolean(),
+});
+
+export type SelectableMember = z.infer<typeof SelectableMemberSchema>;
+
+export const SelectableMemberListSchema = z.array(SelectableMemberSchema);
+
 // Body for `DELETE /organizations/{org}/members/{user}` — supplied when
 // the target user owns one or more projects in the org. The API returns
 // `OWNS_ACTIVE_PROJECTS` with the list of project ids when this is

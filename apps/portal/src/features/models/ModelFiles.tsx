@@ -22,6 +22,7 @@ import {
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { FileDropZone } from '@/components/shared/FileDropZone';
+import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 
 import { ApiError } from '@/lib/api/client';
 import { getDownloadUrl } from '@/lib/api/projectFiles';
@@ -159,9 +160,10 @@ function FileRow({
       ) : null}
       {file.extraction_status === 'succeeded' || (file.file_type === 'pdf' && file.status === 'ready') ? (
         <Link
-          href={`/projects/${projectId}/models/${modelId}/viewer/${file.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`/projects/${projectId}/viewer`}
+          onClick={() => {
+            setViewerTarget(projectId, { kind: 'single', modelId, fileId: file.id });
+          }}
           aria-label={file.file_type === 'ifc'
             ? t('viewAria3d', { filename: file.original_filename })
             : t('viewAria', { filename: file.original_filename })}

@@ -28,6 +28,7 @@ export function visibilityPlugin(
   _options: VisibilityPluginOptions = {},
 ): Plugin & VisibilityPluginAPI {
   let ctxRef: ViewerContext | null = null;
+  let offModelLoaded: (() => void) | null = null;
   let enabled = true;
   let isolationActive = false;
   const isolatedSet = new Set<string>();
@@ -348,6 +349,22 @@ export function visibilityPlugin(
     install(ctx: ViewerContext) {
       ctxRef = ctx;
 
+      // A model whose fragments finish loading AFTER the persistent-hidden set
+      // was established (common race: the host sets it from small metadata long
+      // before the heavy fragments arrive) is not in `ctx.models()` at set time,
+      // so its persistent items were never hidden. Re-hide them once it loads —
+      // keeps the spaces toggle authoritative across late-loading federated models.
+      offModelLoaded = ctx.events.on('model:loaded', ({ modelId }) => {
+        if (persistentHidden.size === 0) return;
+        const ids: number[] = [];
+        for (const it of persistentHidden.values()) {
+          if (it.modelId === modelId) ids.push(it.localId);
+        }
+        if (ids.length === 0) return;
+        const model = ctx.models().get(modelId);
+        if (model) void model.setVisible(ids, false).catch(() => undefined);
+      });
+
       ctx.commands.register('visibility.isolate', () => isolate(), {
         title: 'Isolate selected elements',
         defaultShortcut: 'I',
@@ -418,6 +435,8 @@ export function visibilityPlugin(
     },
 
     uninstall() {
+      offModelLoaded?.();
+      offModelLoaded = null;
       if (ctxRef) {
         void showAll();
       }

@@ -17,6 +17,8 @@ export interface EntityMarker3D {
   id: string;
   type: EntityMarkerType;
   position: { x: number; y: number; z: number };
+  /** Viewer scene id of the model this anchor belongs to (`file-<fileId>`). */
+  modelId: string;
   label: string;
   entityId: string;
   /** Finding lifecycle status — drives the marker color. */

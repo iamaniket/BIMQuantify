@@ -19,7 +19,9 @@ type Props<T> = {
 
 /** Day-number colour: highlighted today, lightly muted for spill-over days. */
 function numberToneClass(cell: DayCell): string {
-  if (cell.isToday) return 'grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground';
+  if (cell.isToday) {
+    return 'grid h-5 w-5 place-items-center rounded-full bg-gradient-to-br from-primary to-primary-hover text-primary-foreground shadow-sm';
+  }
   if (cell.inMonth) return 'text-foreground-secondary';
   return 'text-foreground-tertiary';
 }

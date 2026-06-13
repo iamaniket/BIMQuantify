@@ -1,7 +1,7 @@
 'use client';
 
 import { Box } from '@bimstitch/ui/icons';
-import { useMemo, useState, type JSX } from 'react';
+import { useState, type JSX } from 'react';
 
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
@@ -12,9 +12,12 @@ import { ClassesTab } from './ClassesTab';
 import { ObjectsTab } from './ObjectsTab';
 import { PropertiesSubPanel } from './PropertiesSubPanel';
 import { StoriesTab } from './StoriesTab';
-import { pruneSpaceNodes } from './treeBuilders';
+import type { ExplorerModel } from './treeBuilders';
 
 type ModelExplorerProps = {
+  /** Loaded models for the tabs — one in single-file mode, many when federated. */
+  models: ExplorerModel[];
+  /** Active model's metadata, for the properties sub-panel + empty/loading state. */
   metadata: ModelMetadata | undefined;
   isLoading: boolean;
   properties: ModelProperties | undefined;
@@ -34,6 +37,7 @@ const TABS: TabDef<ExplorerTab>[] = [
 ];
 
 export function ModelExplorer({
+  models,
   metadata,
   isLoading,
   properties,
@@ -45,22 +49,11 @@ export function ModelExplorer({
 }: ModelExplorerProps): JSX.Element {
   const [tab, setTab] = useState<ExplorerTab>('objects');
 
-  // Spaces (IfcSpace) are excluded from every listing — their visibility is
-  // controlled only by the toolbar toggle.
-  const elementsNoSpaces = useMemo(
-    () => (metadata?.elements ?? []).filter((el) => el.type !== 'IfcSpace'),
-    [metadata?.elements],
-  );
-  const treeNoSpaces = useMemo(
-    () => (metadata?.spatialTree ? pruneSpaceNodes(metadata.spatialTree) : null),
-    [metadata?.spatialTree],
-  );
-
   if (isLoading) {
     return <PanelEmptyState message="Loading model data..." />;
   }
 
-  if (!metadata) {
+  if (models.length === 0) {
     return (
       <PanelEmptyState
         icon={Box}
@@ -75,23 +68,9 @@ export function ModelExplorer({
         <>
           <PanelTabs tabs={TABS} active={tab} onChange={setTab} />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {tab === 'objects' && (
-              <ObjectsTab
-                spatialTree={treeNoSpaces}
-                elements={elementsNoSpaces}
-              />
-            )}
-            {tab === 'classes' && (
-              <ClassesTab
-                elements={elementsNoSpaces}
-              />
-            )}
-            {tab === 'stories' && (
-              <StoriesTab
-                spatialTree={treeNoSpaces}
-                elements={elementsNoSpaces}
-              />
-            )}
+            {tab === 'objects' && <ObjectsTab models={models} />}
+            {tab === 'classes' && <ClassesTab models={models} />}
+            {tab === 'stories' && <StoriesTab models={models} />}
           </div>
         </>
       )}

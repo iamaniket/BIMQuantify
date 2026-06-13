@@ -1,6 +1,8 @@
 'use client';
 
-import { Eye, ShieldCheck, Upload, Trash2 } from '@bimstitch/ui/icons';
+import {
+  Eye, ShieldCheck, Upload, Trash2,
+} from '@bimstitch/ui/icons';
 import { Link } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -8,8 +10,9 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Badge, Button, IconButton, Spinner } from '@bimstitch/ui';
 import {
+  Badge, Button, IconButton, Spinner,
+
   DetailCard,
   DetailCardBody,
   DetailCardFooter,
@@ -26,6 +29,7 @@ import { useModelFiles } from '@/features/models/useModelFiles';
 import { useUploadModelFile } from '@/features/models/useUploadModelFile';
 import { UploadProgressItem, type UploadState } from '@/features/models/UploadProgressItem';
 import { viewerKeys } from '@/features/viewer/shared/queryKeys';
+import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 import { useAuth } from '@/providers/AuthProvider';
@@ -71,9 +75,23 @@ type Props = {
   prefetchedFiles: ProjectFile[] | undefined;
   isOpen: boolean;
   onToggle: () => void;
+  /** Whether this model can join a federated load (IFC + ready extraction). */
+  selectable?: boolean;
+  /** Whether this model is currently checked for "Load selected". */
+  selected?: boolean;
+  onSelectToggle?: () => void;
 };
 
-export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onToggle }: Props): JSX.Element {
+export function ModelsTableRow({
+  projectId,
+  model,
+  prefetchedFiles,
+  isOpen,
+  onToggle,
+  selectable = false,
+  selected = false,
+  onSelectToggle,
+}: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.models.row');
   const tFiles = useTranslations('projectDetail.tabs.models.files');
   const filesQuery = useModelFiles(projectId, model.id);
@@ -94,9 +112,16 @@ export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onTo
   const canCheckBbl = latestFile?.file_type === 'ifc' && latestFile.extraction_status === 'succeeded';
   const lockedFileType: FileTypeValue | null = model.primary_file_type ?? null;
 
-  const viewHref = latestFile !== undefined
-    ? `/projects/${projectId}/models/${model.id}/viewer/${latestFile.id}`
-    : '';
+  // Clean URL — the loaded file is carried in the selection store, not the URL.
+  const viewHref = `/projects/${projectId}/viewer`;
+  const selectThisModel = useCallback(() => {
+    if (latestFile === undefined) return;
+    setViewerTarget(projectId, {
+      kind: 'single',
+      modelId: model.id,
+      fileId: latestFile.id,
+    });
+  }, [projectId, model.id, latestFile]);
 
   const startUpload = useCallback((file: File): void => {
     if (!isAllowedFile(file, lockedFileType)) {
@@ -191,19 +216,33 @@ export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onTo
     <DetailCard expanded={isOpen} onToggle={onToggle}>
       <DetailCardRow
         media={
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-micro font-bold uppercase"
-            style={{ background: colors.bg, color: colors.fg }}
-          >
-            {model.discipline.slice(0, 4)}
-          </span>
+          <div className="flex items-center gap-2">
+            {selectable ? (
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => onSelectToggle?.()}
+                onClick={(e) => { e.stopPropagation(); }}
+                aria-label={t('selectAria', { name: model.name })}
+                className="h-3.5 w-3.5 shrink-0 accent-primary"
+              />
+            ) : (
+              <span className="w-3.5 shrink-0" aria-hidden />
+            )}
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-micro font-bold uppercase"
+              style={{ background: colors.bg, color: colors.fg }}
+            >
+              {model.discipline.slice(0, 4)}
+            </span>
+          </div>
         }
         actions={
           <>
             {isViewable && latestFile !== undefined ? (
               <Link
                 href={viewHref}
-                onClick={(e) => { e.stopPropagation(); }}
+                onClick={(e) => { e.stopPropagation(); selectThisModel(); }}
                 onMouseEnter={prewarmViewer}
                 onFocus={prewarmViewer}
                 title={t('viewFile')}
@@ -312,7 +351,7 @@ export function ModelsTableRow({ projectId, model, prefetchedFiles, isOpen, onTo
           {isViewable && latestFile !== undefined ? (
             <Link
               href={viewHref}
-              onClick={(e) => { e.stopPropagation(); }}
+              onClick={(e) => { e.stopPropagation(); selectThisModel(); }}
               onMouseEnter={prewarmViewer}
               onFocus={prewarmViewer}
             >

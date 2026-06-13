@@ -16,7 +16,7 @@ import {
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
-import { useOrgMembers } from '@/features/admin/members/useOrgMembers';
+import { useSelectableOrgMembers } from '@/features/admin/members/useSelectableOrgMembers';
 import type { ProjectMember, ProjectRole } from '@/lib/api/schemas';
 
 import { useAddProjectMember } from './useAddProjectMember';
@@ -49,7 +49,9 @@ export function AddProjectMemberDialog({
 }: Props): JSX.Element {
   const t = useTranslations('projectAccess.addDialog');
   const tRoles = useTranslations('projectAccess.table.roles');
-  const orgMembersQuery = useOrgMembers(organizationId, { status: 'active' });
+  // Member-callable picker source: works for non-admin project owners (the
+  // full org-member list is org-admin only) and already excludes guests.
+  const orgMembersQuery = useSelectableOrgMembers(organizationId);
   const addMutation = useAddProjectMember();
   const inviteMutation = useInviteToProject();
 

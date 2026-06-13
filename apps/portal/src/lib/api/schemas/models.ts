@@ -1,16 +1,10 @@
 import { z } from 'zod';
 
-import { FileTypeEnum, ProjectFileListSchema } from './files';
+import { FileTypeEnum, ModelDisciplineEnum } from './common';
+import { ProjectFileListSchema } from './files';
 
-export const ModelDisciplineEnum = z.enum([
-  'architectural',
-  'structural',
-  'mep',
-  'coordination',
-  'other',
-]);
-
-export type ModelDisciplineValue = z.infer<typeof ModelDisciplineEnum>;
+export { ModelDisciplineEnum };
+export type { ModelDisciplineValue } from './common';
 
 export const ModelStatusEnum = z.enum(['draft', 'active', 'archived']);
 

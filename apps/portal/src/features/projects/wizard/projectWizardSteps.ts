@@ -93,10 +93,14 @@ export const INSTRUMENT_OPTIONS: readonly {
   },
 ];
 
-/** Stable step identifiers — used for React keys and step lookup. */
-export type ProjectWizardStepId = 'basics' | 'address' | 'details';
+/** Stable step identifiers — used for React keys and step lookup. The
+ * `members` step is create-only (existing projects manage their team on the
+ * access page), so it never appears in edit mode. */
+export type ProjectWizardStepId = 'basics' | 'address' | 'details' | 'members';
 
-/** Field names per step, used to scope `form.trigger([...])` validation. */
+/** Field names per step, used to scope `form.trigger([...])` validation. The
+ * `members` step holds no RHF fields — its team list is lifted state in the
+ * dialog and gated separately (see `ProjectFormDialog`). */
 export const PROJECT_WIZARD_STEP_FIELDS: Record<
   ProjectWizardStepId,
   readonly (keyof ProjectFormValues)[]
@@ -123,9 +127,10 @@ export const PROJECT_WIZARD_STEP_FIELDS: Record<
     'delivery_date',
     'permit_number',
   ],
+  members: [],
 } as const;
 
-/** Ordered step list rendered in the wizard stepper. */
+/** Steps shown when editing an existing project (no team step). */
 export const PROJECT_WIZARD_STEPS: readonly (WizardStep & { id: ProjectWizardStepId })[] = [
   {
     id: 'basics',
@@ -144,6 +149,17 @@ export const PROJECT_WIZARD_STEPS: readonly (WizardStep & { id: ProjectWizardSte
   },
 ] as const;
 
+/** Steps shown when creating a project — the edit steps plus the Team step,
+ * where the creator adds at least one other org user / email invite. */
+export const PROJECT_CREATE_WIZARD_STEPS: readonly (WizardStep & { id: ProjectWizardStepId })[] = [
+  ...PROJECT_WIZARD_STEPS,
+  {
+    id: 'members',
+    title: 'Team',
+    description: 'Add people to the project',
+  },
+] as const;
+
 export const PROJECT_WIZARD_STEP_IDS: readonly ProjectWizardStepId[] = (
-  PROJECT_WIZARD_STEPS.map((s) => s.id)
+  PROJECT_CREATE_WIZARD_STEPS.map((s) => s.id)
 );

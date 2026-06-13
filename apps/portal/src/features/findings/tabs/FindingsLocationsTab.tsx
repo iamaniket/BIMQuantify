@@ -8,6 +8,7 @@ import { Badge } from '@bimstitch/ui';
 
 import { Link } from '@/i18n/navigation';
 import { useModels } from '@/features/models/useModels';
+import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { severityBadgeVariant, statusBadgeVariant } from '@/features/projects/detail/findingBadges';
 import type { Finding } from '@/lib/api/schemas';
@@ -105,7 +106,15 @@ export function FindingsLocationsTab({ projectId, findings }: Props): JSX.Elemen
                   </button>
                   {renderMeta(f)}
                   <Link
-                    href={`/projects/${projectId}/models/${f.linked_model_id!}/viewer/${f.linked_file_id!}?finding=${f.id}`}
+                    href={`/projects/${projectId}/viewer`}
+                    onClick={() => {
+                      setViewerTarget(projectId, {
+                        kind: 'single',
+                        modelId: f.linked_model_id!,
+                        fileId: f.linked_file_id!,
+                        findingId: f.id,
+                      });
+                    }}
                     className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-semibold text-foreground-secondary transition-colors hover:bg-background-hover hover:text-foreground"
                   >
                     {t('viewInModel')}

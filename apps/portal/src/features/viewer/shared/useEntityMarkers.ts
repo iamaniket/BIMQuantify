@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { useFileFindings } from '@/features/findings/useFindings';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
+import { federatedModelId } from '../3d/federation/federatedModelId';
 import type { EntityMarker2D, EntityMarker3D } from './entityMarkerTypes';
 
 export function usePageFindingMarkers(
@@ -54,6 +55,7 @@ export function useModelFindingMarkers(
         id: f.id,
         type: 'finding' as const,
         position: { x: f.anchor_x!, y: f.anchor_y!, z: f.anchor_z! },
+        modelId: federatedModelId(fileId ?? ''),
         label: f.title,
         entityId: f.id,
         status: f.status,

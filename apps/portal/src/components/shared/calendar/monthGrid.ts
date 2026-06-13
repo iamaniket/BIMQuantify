@@ -41,9 +41,39 @@ export function addYears(date: Date, delta: number): Date {
   return new Date(date.getFullYear() + delta, date.getMonth(), 1);
 }
 
+/** `date` shifted by `delta` whole days, at local midnight. */
+export function addDays(date: Date, delta: number): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + delta);
+}
+
+/** `date` shifted by `delta` weeks (7-day steps). */
+export function addWeeks(date: Date, delta: number): Date {
+  return addDays(date, delta * 7);
+}
+
+/** Monday of the week containing `date`, at local midnight. */
+export function startOfWeek(date: Date): Date {
+  const mondayOffset = (date.getDay() + 6) % 7; // getDay: 0=Sun..6=Sat
+  return addDays(new Date(date.getFullYear(), date.getMonth(), date.getDate()), -mondayOffset);
+}
+
 /** True when both dates fall in the same calendar month + year. */
 export function isSameMonth(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+/** True when both dates fall on the same calendar day. */
+export function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate()
+  );
+}
+
+/** True when both dates fall in the same Monday-first week. */
+export function isSameWeek(a: Date, b: Date): boolean {
+  return isSameDay(startOfWeek(a), startOfWeek(b));
 }
 
 /**
@@ -104,9 +134,42 @@ export function buildMonthMatrix(viewDate: Date, today: Date): DayCell[][] {
   return weeks;
 }
 
+/**
+ * Monday-first array of the 7 day cells for the week containing `viewDate`.
+ * `inMonth` is relative to `viewDate`'s month so a week straddling a month
+ * boundary lightly mutes the spill-over days, matching the month grid.
+ */
+export function buildWeekDays(viewDate: Date, today: Date): DayCell[] {
+  const monday = startOfWeek(viewDate);
+  const month = viewDate.getMonth();
+  const todayKey = isoDay(today);
+  return Array.from({ length: 7 }, (_, d) => {
+    const date = addDays(monday, d);
+    const iso = isoDay(date);
+    return {
+      date,
+      iso,
+      dayOfMonth: date.getDate(),
+      inMonth: date.getMonth() === month,
+      isToday: iso === todayKey,
+      isWeekend: d >= 5,
+    };
+  });
+}
+
 /** Localized `June 2026` header. */
 export function monthLabel(viewDate: Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(viewDate);
+}
+
+/** Localized week-range header for the toolbar, e.g. `9 – 15 Jun 2026`. */
+export function weekRangeLabel(viewDate: Date, locale: string): string {
+  const monday = startOfWeek(viewDate);
+  const sunday = addDays(monday, 6);
+  const fmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+  // `formatRange` collapses shared parts (e.g. `9 – 15 Jun 2026`) when available.
+  if (typeof fmt.formatRange === 'function') return fmt.formatRange(monday, sunday);
+  return `${fmt.format(monday)} – ${fmt.format(sunday)}`;
 }
 
 /** Localized Monday-first short weekday names (`Mon`…`Sun`). */
@@ -116,7 +179,19 @@ export function weekdayHeaders(locale: string): string[] {
   return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2024, 0, 1 + i)));
 }
 
+/** Localized short weekday for a single date, e.g. `Tue`. */
+export function weekdayShort(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date);
+}
+
 /** Localized day heading for the side panel, e.g. `Tue, Jun 16`. */
 export function dayHeading(date: Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
+}
+
+/** Localized full day heading for the day view, e.g. `Tuesday, 16 June 2026`. */
+export function fullDayHeading(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  }).format(date);
 }

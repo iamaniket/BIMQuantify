@@ -2,10 +2,12 @@ import { apiClient } from './client';
 import {
   MemberListSchema,
   MemberReadSchema,
+  SelectableMemberListSchema,
   type MemberDeleteInput,
   type MemberInviteInput,
   type MemberRead,
   type MemberUpdateInput,
+  type SelectableMember,
 } from './schemas';
 
 export type ListMembersParams = {
@@ -32,6 +34,19 @@ export async function listMembers(
   return apiClient.get<MemberRead[]>(
     `/organizations/${organizationId}/members${query}`,
     MemberListSchema,
+    accessToken,
+  );
+}
+
+/** Active, non-guest members of the org for "add member" pickers. Callable
+ * by any active member (unlike `listMembers`, which is org-admin only). */
+export async function listSelectableMembers(
+  accessToken: string,
+  organizationId: string,
+): Promise<SelectableMember[]> {
+  return apiClient.get<SelectableMember[]>(
+    `/organizations/${organizationId}/selectable-members`,
+    SelectableMemberListSchema,
     accessToken,
   );
 }

@@ -129,13 +129,29 @@ class FindingRead(FindingBase):
     updated_at: datetime
 
 
+class FindingHistoryChange(BaseModel):
+    """One field-level change within a finding history entry, diffed from the
+    audit `before`/`after` snapshots.
+
+    Values are stringified server-side; the portal maps `field` to a localized
+    label and renders `from_value` -> `to_value` (resolving ids, dates, counts
+    and enum values for display). `None` means the field was empty on that side.
+    """
+
+    field: str
+    from_value: str | None
+    to_value: str | None
+
+
 class FindingHistoryEntry(BaseModel):
     """One row of a finding's lifecycle timeline, derived from `audit_log`.
 
     `from_status`/`to_status` are pulled out of the audit `before`/`after`
     snapshots so the portal can render "open -> resolved" transitions without
-    re-deriving them client-side. Actor name/email are resolved from
-    `public.users` (null when the actor row was deleted).
+    re-deriving them client-side. `changes` carries the field-level diff (what
+    actually changed, e.g. deadline or photos) for the same entry. Actor
+    name/email are resolved from `public.users` (null when the actor row was
+    deleted).
     """
 
     id: UUID
@@ -145,4 +161,5 @@ class FindingHistoryEntry(BaseModel):
     actor_email: str | None
     from_status: str | None
     to_status: str | None
+    changes: list[FindingHistoryChange] = []
     created_at: datetime

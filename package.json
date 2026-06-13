@@ -22,5 +22,10 @@
     "node": ">=24",
     "pnpm": ">=9"
   },
+  "pnpm": {
+    "overrides": {
+      "@opentelemetry/instrumentation": "0.214.0"
+    }
+  },
   "packageManager": "pnpm@10.33.2"
 }

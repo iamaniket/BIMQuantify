@@ -445,3 +445,87 @@ async def test_list_members_pagination_and_total_count(
         headers=_auth(org_user["access_token"]),
     )
     assert too_big.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# GET /organizations/{org}/selectable-members  (member-callable user picker)
+# ---------------------------------------------------------------------------
+
+
+async def test_non_admin_member_can_list_selectable_members(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    """A regular (non-admin) org member can list selectable members — the
+    admin-only `GET /members` would 403 here. This is what lets a non-admin
+    project creator populate the wizard's team picker."""
+    resp = await client.get(
+        f"/organizations/{org_user['organization_id']}/selectable-members",
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    by_id = {m["user_id"]: m for m in body}
+    assert org_user["id"] in by_id
+    assert same_org_non_admin_user["id"] in by_id
+    # The admin flag is exposed so the portal can hide auto-added admins.
+    assert by_id[org_user["id"]]["is_org_admin"] is True
+    assert by_id[same_org_non_admin_user["id"]]["is_org_admin"] is False
+
+
+async def test_selectable_member_shape_is_minimal(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """Response carries only the picker fields — never the admin-only status
+    or capability flags from `MemberRead`."""
+    resp = await client.get(
+        f"/organizations/{org_user['organization_id']}/selectable-members",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    row = resp.json()[0]
+    assert set(row.keys()) == {"user_id", "email", "full_name", "is_org_admin"}
+
+
+async def test_selectable_members_excludes_guests(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    same_org_guest_user: dict[str, str],
+) -> None:
+    resp = await client.get(
+        f"/organizations/{org_user['organization_id']}/selectable-members",
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    ids = {m["user_id"] for m in resp.json()}
+    assert same_org_guest_user["id"] not in ids
+    assert org_user["id"] in ids
+
+
+async def test_guest_cannot_list_selectable_members(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_guest_user: dict[str, str],
+) -> None:
+    resp = await client.get(
+        f"/organizations/{org_user['organization_id']}/selectable-members",
+        headers=_auth(same_org_guest_user["access_token"]),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "NOT_ORG_MEMBER"
+
+
+async def test_non_member_cannot_list_selectable_members(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    other_org_user: dict[str, str],
+) -> None:
+    resp = await client.get(
+        f"/organizations/{org_user['organization_id']}/selectable-members",
+        headers=_auth(other_org_user["access_token"]),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "NOT_ORG_MEMBER"

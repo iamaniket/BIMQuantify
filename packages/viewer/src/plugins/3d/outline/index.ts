@@ -18,6 +18,7 @@ import * as THREE from 'three';
 
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 import { InstancedOutline } from '../shared/instanced-outline.js';
+import { getModelWorldMatrix } from '../shared/modelCoordination.js';
 import { OutlineCache } from '../shared/outline-cache.js';
 import { decodeOutline } from '../shared/outline-codec.js';
 import {
@@ -122,6 +123,15 @@ export function outlinePlugin(
     const model = cache.getModel(modelId);
     if (!model) return;
     const group = instanced.setModel(modelId, model, filterFor(modelId));
+    // The outline lives at scene identity, but ThatOpen translates each
+    // federated model's `model.object` to re-base it onto the first model's
+    // origin (autoCoordinate). Push that same transform onto the group so the
+    // edges land on the coordinated geometry instead of the model's local frame.
+    getModelWorldMatrix(ctxRef, modelId).decompose(
+      group.position,
+      group.quaternion,
+      group.scale,
+    );
     ctxRef.scene.add(group);
     groups.set(modelId, group);
     instanced.setClippingPlanes(currentPlanes);
@@ -235,6 +245,16 @@ export function outlinePlugin(
           updateVisibility();
         },
       );
+      // Incremental unload (federated remove): tear down the model's outline
+      // group + per-model bookkeeping so no ghost edges linger in the scene.
+      const offUnloaded = ctx.events.on('model:unloaded', ({ modelId }) => {
+        instanced?.disposeModel(modelId);
+        groups.delete(modelId);
+        hiddenByModel.delete(modelId);
+        isolatedByModel.delete(modelId);
+        hiddenModels.delete(modelId);
+        updateVisibility();
+      });
       const offSection = ctx.events.on('section:change', ({ planes }) => {
         syncClipping(planes);
       });
@@ -300,6 +320,7 @@ export function outlinePlugin(
         offVisibility();
         offXray();
         offModelVis();
+        offUnloaded();
         offSection();
         ro.disconnect();
       };

@@ -195,6 +195,22 @@ class MemberRead(BaseModel):
     can_suspend: bool = True
 
 
+class SelectableMemberRead(BaseModel):
+    """Minimal member projection for "add to project" pickers.
+
+    Unlike `MemberRead` (org-admin only, carries status + capability flags),
+    this is the member-callable shape returned by
+    `GET /organizations/{org}/selectable-members`: just enough to render a
+    user in a selection dropdown. `is_org_admin` lets the portal hide admins,
+    who are auto-added as project editors on creation.
+    """
+
+    user_id: UUID
+    email: EmailStr
+    full_name: str | None
+    is_org_admin: bool
+
+
 # ---------------------------------------------------------------------------
 # /admin/access-requests
 # ---------------------------------------------------------------------------

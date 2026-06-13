@@ -259,4 +259,32 @@ describe('ProjectCalendarTab', () => {
     expect(screen.getByText('Vandaag')).toBeInTheDocument();
     expect(screen.getByText(/juni/i)).toBeInTheDocument();
   });
+
+  it('scopes the week view to the Monday-first week of today', () => {
+    // today = Mon 15 Jun 2026 → week is 15–21 Jun.
+    const findings = setData({
+      findings: [makeFinding()], // 15 Jun — in week
+      deadlines: [makeDeadline()], // 20 Jun — in week
+      moments: [makeMoment()], // 25 Jun — next week
+    });
+
+    render(<IntlWrapper locale="en"><ProjectCalendarTab projectId="p1" findings={findings} /></IntlWrapper>);
+    fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+
+    expect(screen.getByText('Fire stop missing')).toBeInTheDocument();
+    expect(screen.getByText('Permit deadline')).toBeInTheDocument();
+    expect(screen.queryByText('Shell inspection')).not.toBeInTheDocument();
+  });
+
+  it('focuses a single day in the day view', () => {
+    const findings = setData({ findings: [makeFinding()] }); // 15 Jun = today
+
+    render(<IntlWrapper locale="en"><ProjectCalendarTab projectId="p1" findings={findings} /></IntlWrapper>);
+    fireEvent.click(screen.getByRole('button', { name: 'Day' }));
+
+    // The day header shows the focused-day count, and the agenda lists that
+    // day's single event.
+    expect(screen.getByText('1 item')).toBeInTheDocument();
+    expect(screen.getByText('Fire stop missing')).toBeInTheDocument();
+  });
 });

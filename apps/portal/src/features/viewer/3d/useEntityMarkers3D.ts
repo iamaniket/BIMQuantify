@@ -34,6 +34,9 @@ export function useEntityMarkers3D(
   fileId: string | null,
   viewerReady: boolean,
   metadata: ModelMetadata | undefined,
+  // Single-file mode only. When false (federated mode) this hook does not sync
+  // markers, so it never clobbers the federated marker source.
+  enabled: boolean,
 ): {
   clickedFinding: Finding | null;
   clearClicked: () => void;
@@ -118,13 +121,13 @@ export function useEntityMarkers3D(
   }, [findingMarkers, isolationActive, isolated, gidToLocal, isolatedBox, findingById]);
 
   useEffect(() => {
-    if (!handle || !viewerReady) return;
+    if (!handle || !viewerReady || !enabled) return;
     handle.commands.execute('entity-marker.sync', markers).catch((err: unknown) => {
       if (process.env.NODE_ENV === 'development') {
         console.warn('[EntityMarkers3D] sync failed:', err);
       }
     });
-  }, [handle, viewerReady, markers]);
+  }, [handle, viewerReady, enabled, markers]);
 
   const [clickedFinding, setClickedFinding] = useState<Finding | null>(null);
 

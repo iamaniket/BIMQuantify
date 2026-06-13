@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-import { ModelDisciplineEnum } from './models';
-
-export const FileTypeEnum = z.enum(['ifc', 'pdf', 'dxf', 'dwg']);
+import { FileTypeEnum, ModelDisciplineEnum } from './common';
 
 // Content-based discipline classification the extractor stamps on each IFC
 // file (see apps/processor/src/pipeline/classify.ts). Drives the discipline
@@ -18,7 +16,8 @@ export const DetectedKindEnum = z.enum([
 
 export type DetectedKindValue = z.infer<typeof DetectedKindEnum>;
 
-export type FileTypeValue = z.infer<typeof FileTypeEnum>;
+export { FileTypeEnum };
+export type { FileTypeValue } from './common';
 
 export const IfcSchemaEnum = z.enum(['IFC2X3', 'IFC4', 'IFC4X1', 'IFC4X3', 'unknown']);
 

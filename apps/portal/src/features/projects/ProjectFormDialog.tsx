@@ -8,6 +8,7 @@ import {
   type ChangeEvent, type JSX,
 } from 'react';
 import { FormProvider, useForm, type SubmitHandler } from 'react-hook-form';
+import { toast } from 'sonner';
 
 import {
   Button,
@@ -23,7 +24,8 @@ import {
 import { Wizard } from '@/components/shared/wizard/Wizard';
 
 import { ApiError } from '@/lib/api/client';
-import type { Project } from '@/lib/api/schemas';
+import type { Project, ProjectRole } from '@/lib/api/schemas';
+import { useAuth } from '@/providers/AuthProvider';
 
 import { formatAddress, isProjectArchived } from '@/lib/formatting/projects';
 import {
@@ -35,15 +37,21 @@ import {
   ProjectFormSchema,
   type ProjectFormValues,
 } from './projectFormSchema';
-import { useCreateProject } from './useCreateProject';
+import {
+  useCreateProject,
+  type PendingProjectInvite,
+  type PendingProjectMember,
+} from './useCreateProject';
 import { useUpdateProject } from './useUpdateProject';
 import {
+  PROJECT_CREATE_WIZARD_STEPS,
   PROJECT_WIZARD_STEP_FIELDS,
   PROJECT_WIZARD_STEPS,
 } from './wizard/projectWizardSteps';
 import { StepAddress } from './wizard/StepAddress';
 import { StepBasics } from './wizard/StepBasics';
 import { StepDetails } from './wizard/StepDetails';
+import { StepMembers, type PendingTeamEntry } from './wizard/StepMembers';
 
 type Props =
   | { mode: 'create'; open: boolean; onOpenChange: (open: boolean) => void }
@@ -103,14 +111,21 @@ function nullableTrim(value: string | undefined): string | null {
   return trimmed.length === 0 ? null : trimmed;
 }
 
-const LAST_STEP = PROJECT_WIZARD_STEPS.length - 1;
-
 export function ProjectFormDialog(props: Props): JSX.Element {
   const tWizard = useTranslations('projects.wizard');
   const { mode, open, onOpenChange } = props;
   const project = mode === 'edit' ? props.project : null;
   const isReadOnly = project !== null && isProjectArchived(project);
   const router = useRouter();
+  const { me, activeMembership } = useAuth();
+
+  // The Team step is create-only; existing projects manage members on the
+  // access page. Steps (and hence the last index) therefore depend on mode.
+  const steps = mode === 'create' ? PROJECT_CREATE_WIZARD_STEPS : PROJECT_WIZARD_STEPS;
+  const LAST_STEP = steps.length - 1;
+
+  const organizationId = activeMembership?.organization_id ?? null;
+  const currentUserId = me?.user.id ?? null;
 
   const [currentStep, setCurrentStep] = useState(0);
   const [highestVisited, setHighestVisited] = useState(
@@ -130,6 +145,11 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
   const [thumbnailRemoved, setThumbnailRemoved] = useState(false);
+
+  // Team members queued in the create-only "Team" step. Lifted here (like the
+  // thumbnail) so it survives navigating between wizard steps, and added after
+  // the project exists in `onSubmitImpl`.
+  const [pendingTeam, setPendingTeam] = useState<PendingTeamEntry[]>([]);
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(ProjectFormSchema),
@@ -164,9 +184,10 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     });
     setThumbnailError(null);
     setThumbnailRemoved(false);
+    setPendingTeam([]);
     setCurrentStep(0);
     setHighestVisited(mode === 'edit' ? LAST_STEP : 0);
-  }, [open, project, mode, resetForm, resetCreateMutation, resetUpdateMutation]);
+  }, [open, project, mode, LAST_STEP, resetForm, resetCreateMutation, resetUpdateMutation]);
 
   // When the active step changes, focus its first input — improves keyboard
   // flow and signals which step the user just landed on. RHF's
@@ -227,6 +248,18 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     setThumbnailRemoved(true);
   };
 
+  const handleAddTeam = useCallback((entry: PendingTeamEntry): void => {
+    setPendingTeam((prev) => [...prev, entry]);
+  }, []);
+
+  const handleRemoveTeam = useCallback((index: number): void => {
+    setPendingTeam((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleChangeTeamRole = useCallback((index: number, role: ProjectRole): void => {
+    setPendingTeam((prev) => prev.map((e, i) => (i === index ? { ...e, role } : e)));
+  }, []);
+
   const onSubmitImpl: SubmitHandler<ProjectFormValues> = (values) => {
     const description = nullableTrim(values.description);
 
@@ -252,17 +285,38 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     };
 
     if (mode === 'create') {
+      const members: PendingProjectMember[] = [];
+      const invites: PendingProjectInvite[] = [];
+      for (const entry of pendingTeam) {
+        if (entry.kind === 'org') {
+          members.push({ user_id: entry.userId, role: entry.role, label: entry.label });
+        } else {
+          invites.push({ email: entry.email, full_name: entry.fullName, role: entry.role });
+        }
+      }
+
       createMutation.mutate(
         {
           name: values.name,
           description,
           ...sharedFields,
           thumbnailFile: thumbnailFile ?? undefined,
+          members,
+          invites,
         },
         {
-          onSuccess: (createdProject) => {
+          onSuccess: (result) => {
             onOpenChange(false);
-            router.push(`/projects/${createdProject.id}`);
+            // The project was created; team adds/invites are best-effort, so
+            // surface any that failed rather than blocking navigation.
+            if (result.failures.length > 0) {
+              toast.error(
+                tWizard('members.partialFailure', {
+                  names: result.failures.map((f) => f.label).join(', '),
+                }),
+              );
+            }
+            router.push(`/projects/${result.project.id}`);
           },
           onError: (error) => {
             if (error instanceof ApiError && error.status === 409) {
@@ -300,7 +354,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   };
 
   const handleNext = useCallback(async (): Promise<void> => {
-    const stepDef = PROJECT_WIZARD_STEPS[currentStep];
+    const stepDef = steps[currentStep];
     if (stepDef === undefined) return;
     const fields = PROJECT_WIZARD_STEP_FIELDS[stepDef.id];
     const valid = await form.trigger([...fields], { shouldFocus: true });
@@ -308,7 +362,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     const next = Math.min(LAST_STEP, currentStep + 1);
     setCurrentStep(next);
     setHighestVisited((prev) => Math.max(prev, next));
-  }, [currentStep, form]);
+  }, [currentStep, form, steps, LAST_STEP]);
 
   const handleBack = useCallback((): void => {
     setCurrentStep((prev) => Math.max(0, prev - 1));
@@ -333,7 +387,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
     await form.handleSubmit(onSubmitImpl)();
   }, [form, isReadOnly, onOpenChange, onSubmitImpl]);
 
-  const wizardSteps = PROJECT_WIZARD_STEPS.map((step) => ({
+  const wizardSteps = steps.map((step) => ({
     ...step,
     title: tWizard(`steps.${step.id}.title`),
     description: tWizard(`steps.${step.id}.description`),
@@ -364,7 +418,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
       city: project.city,
     }) ?? undefined);
 
-  const activeStepDef = PROJECT_WIZARD_STEPS[currentStep];
+  const activeStepDef = steps[currentStep];
   const activeStepId = activeStepDef === undefined ? 'basics' : activeStepDef.id;
 
   return (
@@ -389,6 +443,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
               onBack={handleBack}
               onSubmit={handleSubmit}
               isSubmitting={isSubmitting}
+              submitDisabled={mode === 'create' && pendingTeam.length < 1}
               submitLabel={submitLabel}
               submitPendingLabel={submitPendingLabel}
               cancelSlot={(
@@ -421,6 +476,16 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                 )}
                 {activeStepId === 'address' && (
                   <StepAddress initialLookupLabel={initialAddressLabel} isReadOnly={isReadOnly} />
+                )}
+                {activeStepId === 'members' && (
+                  <StepMembers
+                    organizationId={organizationId}
+                    currentUserId={currentUserId}
+                    entries={pendingTeam}
+                    onAdd={handleAddTeam}
+                    onRemove={handleRemoveTeam}
+                    onChangeRole={handleChangeTeamRole}
+                  />
                 )}
               </div>
             </Wizard>

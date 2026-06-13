@@ -878,6 +878,75 @@ async def test_finding_history_non_member_404(
     assert resp.status_code == 404
 
 
+async def test_finding_history_records_field_level_changes(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    # A single PATCH that changes severity and deadline surfaces both as
+    # field-level changes on the update entry; the created entry carries none.
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings",
+            json=_payload(severity="medium"),
+            headers=_auth(token),
+        )
+    ).json()
+    patched = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"severity": "high", "deadline_date": "2026-09-01"},
+        headers=_auth(token),
+    )
+    assert patched.status_code == 200, patched.text
+
+    entries = (
+        await client.get(
+            f"/projects/{project['id']}/findings/{created['id']}/history",
+            headers=_auth(token),
+        )
+    ).json()
+    assert entries[0]["action"] == "finding.created"
+    assert entries[0]["changes"] == []
+    update = entries[-1]
+    assert update["action"] == "finding.updated"
+    changes = {c["field"]: c for c in update["changes"]}
+    assert changes["severity"]["from_value"] == "medium"
+    assert changes["severity"]["to_value"] == "high"
+    assert changes["deadline_date"]["from_value"] is None
+    assert changes["deadline_date"]["to_value"] == "2026-09-01"
+
+
+async def test_finding_history_records_photo_additions(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    # Adding a photo shows up as a photo_count change even though the audit
+    # snapshot never stores the attachment ids themselves.
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings", json=_payload(), headers=_auth(token)
+        )
+    ).json()
+    photo_id = await _create_attachment_row(project["id"])
+    patched = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={"photo_ids": [photo_id]},
+        headers=_auth(token),
+    )
+    assert patched.status_code == 200, patched.text
+
+    entries = (
+        await client.get(
+            f"/projects/{project['id']}/findings/{created['id']}/history",
+            headers=_auth(token),
+        )
+    ).json()
+    changes = {c["field"]: c for c in entries[-1]["changes"]}
+    assert changes["photo_count"]["from_value"] == "0"
+    assert changes["photo_count"]["to_value"] == "1"
+
+
 # ---------------------------------------------------------------------------
 # Delete (soft)
 # ---------------------------------------------------------------------------

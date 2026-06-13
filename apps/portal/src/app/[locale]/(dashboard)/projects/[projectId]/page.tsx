@@ -12,6 +12,7 @@ import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
+import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useFindings } from '@/features/findings/useFindings';
 import { useCertificates } from '@/features/certificates/useCertificates';
@@ -152,7 +153,10 @@ export default function ProjectDetailPage(): JSX.Element {
       </Button>
       {modelCount > 0 && (
         <Button variant="border" size="md" asChild>
-          <Link href={`/projects/${project.id}/viewer`}>
+          <Link
+            href={`/projects/${project.id}/viewer`}
+            onClick={() => { setViewerTarget(project.id, { kind: 'all' }); }}
+          >
             <Layers className="mr-1 h-3.5 w-3.5" /> {tHero('viewAllModels')}
           </Link>
         </Button>

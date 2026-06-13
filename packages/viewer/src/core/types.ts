@@ -37,6 +37,12 @@ export interface ViewerEvents {
   'viewer:mounted': { container: HTMLElement };
   'viewer:unmounted': undefined;
   'model:loaded': { modelId: string };
+  /**
+   * A single model was unloaded from a federated scene (incremental remove via
+   * the dropdown). Plugins that cache per-model state (outline groups, LOD
+   * material overrides, color-coding, …) MUST drop that model's entry here.
+   */
+  'model:unloaded': { modelId: string };
   'model:elementCount': { modelId: string; count: number };
   /**
    * Whole-model visibility toggled (federated viewer layer panel). Distinct

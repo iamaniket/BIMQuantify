@@ -14,13 +14,21 @@ import {
   CSS2DObject,
 } from '../shared/css2d-overlay.js';
 import type { Css2dOverlay } from '../shared/css2d-overlay.js';
+import { getModelWorldMatrix } from '../shared/modelCoordination.js';
 
 const NAME = 'entity-marker' as const;
 
 export interface EntityMarkerData {
   id: string;
   type: 'finding' | 'certificate' | 'attachment';
+  /**
+   * Anchor in the marker's model's LOCAL frame (the un-coordinated frame the
+   * finding was authored in). Re-based to the federated scene via the model's
+   * `autoCoordinate` transform at render time — see {@link getModelWorldMatrix}.
+   */
   position: Vec3;
+  /** Viewer scene id of the model this anchor belongs to (`file-<fileId>`). */
+  modelId: string;
   label: string;
   entityId: string;
   /** Finding lifecycle status — drives the circle color for findings. */
@@ -62,6 +70,7 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
   let overlay: Css2dOverlay | null = null;
   let css2dRafId: number | null = null;
   let globalVisible = true;
+  let offLoaded: (() => void) | null = null;
 
   const activeMarkers = new Map<
     string,
@@ -159,16 +168,24 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
     return { wrapper, circle };
   };
 
+  // Place the CSS2D object at the anchor re-based into the federated scene: the
+  // local anchor times the model's autoCoordinate transform. Identity (no shift)
+  // when the model is the coordinate base or not yet loaded.
+  const placeMarker = (obj: CSS2DObject, data: EntityMarkerData): void => {
+    const pos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
+    if (ctxRef) pos.applyMatrix4(getModelWorldMatrix(ctxRef, data.modelId));
+    obj.position.copy(pos);
+  };
+
   const addMarker = (data: EntityMarkerData): void => {
     if (!ctxRef || !overlay) return;
 
     const group = new THREE.Group();
     group.renderOrder = 998;
 
-    const pos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
     const { wrapper, circle } = createMarkerElement(data);
     const obj = new CSS2DObject(wrapper);
-    obj.position.copy(pos);
+    placeMarker(obj, data);
     obj.layers.set(LAYER_OVERLAY);
     group.add(obj);
 
@@ -258,6 +275,15 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
       ctxRef = ctx;
       overlay = acquireCss2dOverlay(ctx);
 
+      // A marker can sync before its model finishes loading (so its coordination
+      // transform is still identity). Re-place that model's markers once it
+      // loads and the autoCoordinate translation is final.
+      offLoaded = ctx.events.on('model:loaded', ({ modelId }) => {
+        for (const entry of activeMarkers.values()) {
+          if (entry.data.modelId === modelId) placeMarker(entry.obj, entry.data);
+        }
+      });
+
       ctx.commands.register('entity-marker.sync', (args: unknown) => {
         api.sync(args as EntityMarkerData[]);
       }, { title: 'Sync entity markers' });
@@ -273,6 +299,8 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
     },
 
     uninstall() {
+      offLoaded?.();
+      offLoaded = null;
       api.clear();
       releaseCss2dOverlay();
       overlay = null;

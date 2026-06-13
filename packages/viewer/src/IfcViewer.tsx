@@ -5,6 +5,7 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
   type ForwardedRef,
   type JSX,
 } from 'react';
@@ -48,6 +49,33 @@ import { bcfPlugin } from './plugins/3d/bcf/index.js';
 import { colorCodingPlugin } from './plugins/3d/color-coding/index.js';
 import { exploderPlugin } from './plugins/3d/exploder/index.js';
 import type { IfcViewerProps, ViewerBundle, ViewerHandle } from './types.js';
+
+/**
+ * Fetch (cache-first) + load one bundle into a viewer. The precomputed-outline
+ * fetch runs in parallel and never blocks the model load. `onProgress` is only
+ * passed for the primary bundle; federated extras load quietly.
+ */
+async function loadBundleInto(
+  viewer: Viewer,
+  b: ViewerBundle,
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<void> {
+  const precomputedOutline = b.outlineUrl
+    ? fetchOutlineArtifact(b.outlineUrl, b.cacheKey)
+    : null;
+  let bytes: Uint8Array | null = null;
+  if (b.cacheKey) bytes = await getCached(b.cacheKey);
+  if (bytes === null) {
+    bytes = await fetchFragments(b.fragmentsUrl, onProgress);
+    if (b.cacheKey && bytes.byteLength > 0) {
+      putCached(b.cacheKey, bytes).catch(() => undefined);
+    }
+  }
+  await viewer.loadFragments(bytes, {
+    ...(precomputedOutline ? { precomputedOutline } : {}),
+    ...(b.modelId ? { modelId: b.modelId } : {}),
+  });
+}
 
 /**
  * Headless React wrapper around `Viewer`. Renders a fullsize <div>; the
@@ -101,11 +129,18 @@ function IfcViewerImpl(
     return handle;
   }, []);
 
-  // Stable dependency for the mount effect — changes only when the SET of
+  // Stable dependency for the diff effect — changes only when the SET of
   // federated models changes, not when a layer's visibility toggles.
   const additionalBundlesKey = (props.additionalBundles ?? [])
-    .map((b) => b.fragmentsUrl)
+    .map((b) => b.modelId ?? b.fragmentsUrl)
     .join('|');
+
+  // Incremental federated load: the mount effect loads only the primary bundle;
+  // `mounted` gates the diff effect below, which loads/unloads the
+  // `additionalBundles` delta in place (no remount, no camera reset).
+  const [mounted, setMounted] = useState(false);
+  const loadedExtraIdsRef = useRef<Set<string>>(new Set());
+  const firstDiffRef = useRef(true);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -192,62 +227,17 @@ function IfcViewerImpl(
     let cancelled = false;
 
     (async () => {
-      // Fetch (cache-first) + load one bundle into the viewer. Only the
-      // primary bundle reports progress; federated extras load quietly.
-      const loadBundle = async (
-        b: ViewerBundle,
-        reportProgress: boolean,
-      ): Promise<void> => {
-        // Kick off the outline-artifact fetch in parallel with the fragments
-        // fetch. It never blocks or fails the model load — the promise
-        // resolves null on any error and the outline plugin falls back to
-        // client-side edge extraction.
-        const precomputedOutline = b.outlineUrl
-          ? fetchOutlineArtifact(b.outlineUrl, b.cacheKey)
-          : null;
-        let bytes: Uint8Array | null = null;
-        if (b.cacheKey) {
-          bytes = await getCached(b.cacheKey);
-        }
-        if (bytes === null) {
-          bytes = await fetchFragments(
-            b.fragmentsUrl,
-            reportProgress ? props.onProgress : undefined,
-          );
-          if (b.cacheKey && bytes.byteLength > 0) {
-            putCached(b.cacheKey, bytes).catch(() => undefined);
-          }
-        }
-        if (cancelled) return;
-        await viewer.loadFragments(bytes, {
-          ...(precomputedOutline ? { precomputedOutline } : {}),
-          ...(b.modelId ? { modelId: b.modelId } : {}),
-        });
-      };
-
       try {
         await viewer.mount(container);
         if (cancelled) return;
         props.onSceneReady?.();
-
-        await loadBundle(props.bundle, true);
+        // Load only the PRIMARY bundle here; the diff effect below loads the
+        // federated extras (and unloads removed ones) incrementally.
+        await loadBundleInto(viewer, props.bundle, props.onProgress);
         if (cancelled) return;
-
-        // Federated extras — load sequentially into the same scene, then
-        // re-frame the camera to encompass everything.
-        const extras = props.additionalBundles ?? [];
-        for (const extra of extras) {
-          await loadBundle(extra, false);
-          if (cancelled) return;
-        }
-        if (extras.length > 0) {
-          await viewer.commands
-            .execute('camera.zoomExtents')
-            .catch(() => undefined);
-        }
-
         const handle = handleRef.current;
         if (handle) props.onReady?.(handle);
+        setMounted(true);
       } catch (err) {
         if (cancelled) return;
         props.onError?.(err instanceof Error ? err : new Error(String(err)));
@@ -256,16 +246,61 @@ function IfcViewerImpl(
 
     return () => {
       cancelled = true;
+      setMounted(false);
+      loadedExtraIdsRef.current = new Set();
+      firstDiffRef.current = true;
       viewer.unmount().catch(() => undefined);
       viewerRef.current = null;
     };
-    // Bundle URLs are the only thing we re-mount for; everything else
-    // (callbacks, plugin lists, shortcuts) is read at mount time. The extras
-    // key is a stable join so toggling layer visibility (which doesn't change
-    // URLs) never remounts. Hosts swapping plugins at runtime use
-    // `handle.plugins.*`.
+    // Re-mount ONLY when the primary bundle changes (a different scene anchor).
+    // Adding/removing federated models keeps the same primary and is handled by
+    // the diff effect — no remount, no camera reset. Other props (callbacks,
+    // plugin lists) are read at mount time; hosts swap plugins via handle.plugins.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.bundle.fragmentsUrl, additionalBundlesKey]);
+  }, [props.bundle.fragmentsUrl]);
+
+  // Incremental federated load/unload: diff `additionalBundles` against what's
+  // loaded and apply only the delta — no remount, camera preserved.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (viewer === null || !mounted) return undefined;
+
+    const extras = (props.additionalBundles ?? []).filter((b) => b.modelId);
+    const desired = new Map(extras.map((b) => [b.modelId as string, b]));
+    const loaded = loadedExtraIdsRef.current;
+
+    let cancelled = false;
+    void (async () => {
+      // Unload models no longer in the set.
+      for (const id of [...loaded]) {
+        if (!desired.has(id)) {
+          await viewer.unloadModel(id).catch(() => undefined);
+          loaded.delete(id);
+          if (cancelled) return;
+        }
+      }
+      // Load newly-added models.
+      const added = [...desired.entries()].filter(([id]) => !loaded.has(id));
+      for (const [id, b] of added) {
+        await loadBundleInto(viewer, b);
+        if (cancelled) return;
+        loaded.add(id);
+      }
+      // Frame everything once on the initial multi-load; preserve the camera on
+      // every incremental add afterwards.
+      if (firstDiffRef.current) {
+        firstDiffRef.current = false;
+        if (added.length > 0) {
+          await viewer.commands.execute('camera.zoomExtents').catch(() => undefined);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, additionalBundlesKey]);
 
   return (
     <div

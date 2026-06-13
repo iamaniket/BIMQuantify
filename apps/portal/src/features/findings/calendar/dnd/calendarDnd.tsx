@@ -43,7 +43,11 @@ export function DroppableDay({ iso, children }: { iso: string; children: ReactNo
   return (
     <div
       ref={setNodeRef}
-      className={`h-full ${isOver ? 'bg-primary-lighter/40 ring-2 ring-inset ring-primary/60' : ''}`}
+      className={`h-full transition-colors ${
+        isOver
+          ? 'bg-gradient-to-br from-primary-light to-primary-lighter ring-2 ring-inset ring-primary'
+          : ''
+      }`}
     >
       {children}
     </div>

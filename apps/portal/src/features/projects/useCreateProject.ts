@@ -3,41 +3,97 @@
 import type { UseMutationResult } from '@tanstack/react-query';
 
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
-import {
-  createProject, createProjectWithThumbnail, updateProject,
-} from '@/lib/api/projects';
+import { ApiError } from '@/lib/api/client';
+import { addProjectMember, inviteToProject } from '@/lib/api/projectMembers';
+import { createProject, uploadProjectThumbnail } from '@/lib/api/projects';
 import type {
-  Project, ProjectCreateInput, ProjectUpdateInput,
+  Project, ProjectCreateInput, ProjectRole,
 } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { projectsKey } from './queryKeys';
 
-export type ProjectCreatePayload = ProjectCreateInput & {
-  thumbnailFile: File | undefined;
+/** An existing org user to add as a member once the project exists. `label`
+ * is for failure messaging only — it's stripped before the API call. */
+export type PendingProjectMember = { user_id: string; role: ProjectRole; label: string };
+
+/** A not-yet-registered person to invite by email once the project exists. */
+export type PendingProjectInvite = {
+  email: string;
+  full_name: string | null;
+  role: ProjectRole;
 };
 
-export function useCreateProject(): UseMutationResult<Project, Error, ProjectCreatePayload> {
+export type ProjectCreatePayload = ProjectCreateInput & {
+  thumbnailFile: File | undefined;
+  members?: PendingProjectMember[];
+  invites?: PendingProjectInvite[];
+};
+
+/** A team add/invite that failed after the project was already created. The
+ * project still exists, so we surface these rather than rolling back. */
+export type ProjectTeamFailure = { label: string; reason: string };
+
+export type ProjectCreateResult = {
+  project: Project;
+  failures: ProjectTeamFailure[];
+};
+
+function reasonOf(error: unknown): string {
+  return error instanceof ApiError ? error.detail : String(error);
+}
+
+export function useCreateProject(): UseMutationResult<
+  ProjectCreateResult,
+  Error,
+  ProjectCreatePayload
+> {
   return useAuthMutation({
-    mutationFn: async (accessToken, { thumbnailFile, ...input }) => {
-      if (thumbnailFile === undefined) {
-        return createProject(accessToken, input);
+    mutationFn: async (accessToken, {
+      thumbnailFile, members = [], invites = [], ...input
+    }) => {
+      const created = await createProject(accessToken, input);
+      const failures: ProjectTeamFailure[] = [];
+
+      // Add org members + email invites after creation (invites create
+      // accounts / send emails, so they can't be part of the atomic create).
+      // The creator is seeded as owner, so they're authorized for both.
+      // allSettled: one bad row (duplicate, etc.) must not abort the rest —
+      // the project already exists and team is editable on the access page.
+      const memberResults = await Promise.allSettled(
+        members.map((m) => addProjectMember(accessToken, created.id, {
+          user_id: m.user_id,
+          role: m.role,
+        })),
+      );
+      memberResults.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          failures.push({ label: members[i]?.label ?? '', reason: reasonOf(r.reason) });
+        }
+      });
+
+      const inviteResults = await Promise.allSettled(
+        invites.map((inv) => inviteToProject(accessToken, created.id, {
+          email: inv.email,
+          role: inv.role,
+          full_name: inv.full_name,
+        })),
+      );
+      inviteResults.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          failures.push({ label: invites[i]?.email ?? '', reason: reasonOf(r.reason) });
+        }
+      });
+
+      let project = created;
+      if (thumbnailFile !== undefined) {
+        project = await uploadProjectThumbnail(accessToken, created.id, thumbnailFile);
       }
-      const { name, description, ...rest } = input;
-      const created = await createProjectWithThumbnail(
-        accessToken,
-        { name, description },
-        thumbnailFile,
-      );
-      const extras: ProjectUpdateInput = rest;
-      const hasExtras = Object.values(extras).some(
-        (v) => v !== undefined && v !== '' && v !== null,
-      );
-      if (!hasExtras) return created;
-      return updateProject(accessToken, created.id, extras);
+
+      return { project, failures };
     },
     invalidateKeys: [projectsKey],
-    onSuccess: (project) => {
+    onSuccess: ({ project }) => {
       track(PORTAL_EVENTS.PROJECT_CREATED, {
         project_id: project.id,
         country: project.country,

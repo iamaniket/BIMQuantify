@@ -33,8 +33,9 @@ type Props<T> = {
 };
 
 // Heuristic cell geometry (px) for fitting chips to the measured row height.
+// CHIP_HEIGHT tracks CalendarEventChip's 22px height plus the 2px stack gap.
 const DAY_NUMBER_BAND = 20;
-const CHIP_HEIGHT = 18;
+const CHIP_HEIGHT = 24;
 const CELL_VPAD = 6;
 const MAX_CHIPS = 10;
 

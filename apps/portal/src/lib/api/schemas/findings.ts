@@ -125,6 +125,14 @@ export const FindingUpdateSchema = z.object({
 
 export type FindingUpdateInput = z.infer<typeof FindingUpdateSchema>;
 
+export const FindingHistoryChangeSchema = z.object({
+  field: z.string(),
+  from_value: z.union([z.string(), z.null()]),
+  to_value: z.union([z.string(), z.null()]),
+});
+
+export type FindingHistoryChange = z.infer<typeof FindingHistoryChangeSchema>;
+
 export const FindingHistoryEntrySchema = z.object({
   id: z.string().uuid(),
   action: z.string(),
@@ -133,6 +141,10 @@ export const FindingHistoryEntrySchema = z.object({
   actor_email: z.union([z.string(), z.null()]),
   from_status: z.union([z.string(), z.null()]),
   to_status: z.union([z.string(), z.null()]),
+  // Field-level diff for this entry (what changed, e.g. deadline/photos). The
+  // API always sends the key (default []), so no `.default()` is needed — the
+  // schema's input and output stay identical (apiClient round-trip rule).
+  changes: z.array(FindingHistoryChangeSchema),
   created_at: z.string(),
 });
 
