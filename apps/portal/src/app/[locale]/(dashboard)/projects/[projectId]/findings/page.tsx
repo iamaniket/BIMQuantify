@@ -11,7 +11,9 @@ import {
 } from '@bimstitch/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useMemo, useState, type JSX } from 'react';
+import {
+  useEffect, useMemo, useState, type JSX,
+} from 'react';
 
 import { Badge, Skeleton, TabsContent } from '@bimstitch/ui';
 
@@ -50,13 +52,26 @@ export default function FindingsBoardPage(): JSX.Element {
     () => (projectName === undefined
       ? null
       : [
-          { label: 'Projects', href: '/projects' },
-          { label: projectName, href: `/projects/${projectId}` },
-          { label: t('crumb'), href: undefined },
-        ]),
+        { label: 'Projects', href: '/projects' },
+        { label: projectName, href: `/projects/${projectId}` },
+        { label: t('crumb'), href: undefined },
+      ]),
     [projectName, projectId, t],
   );
   useHeaderCrumbsOverride(crumbs);
+
+  // Eagerly load every findings page so the Overview charts (and the calendar /
+  // locations / board tabs) aggregate over the full set, not just the first 50.
+  const {
+    hasNextPage: hasMoreFindings,
+    isFetchingNextPage: isFetchingMoreFindings,
+    fetchNextPage: fetchMoreFindings,
+  } = findingsQuery;
+  useEffect(() => {
+    if (hasMoreFindings && !isFetchingMoreFindings) {
+      void fetchMoreFindings();
+    }
+  }, [hasMoreFindings, isFetchingMoreFindings, fetchMoreFindings]);
 
   if (projectQuery.isLoading || findingsQuery.isLoading) {
     return (

@@ -31,7 +31,7 @@ vi.mock('@/i18n/navigation', () => ({
   Link: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
 }));
 
-vi.mock('@/features/projects/detail/FindingDetailModal', () => ({ FindingDetailModal: () => null }));
+vi.mock('@/features/projects/detail/FindingDetailPanel', () => ({ FindingDetailPanel: () => null }));
 vi.mock('@/features/projects/detail/deadlines/FilingDialog', () => ({ FilingDialog: () => null }));
 
 // Holiday fetch + project country + date mutations aren't under test here.

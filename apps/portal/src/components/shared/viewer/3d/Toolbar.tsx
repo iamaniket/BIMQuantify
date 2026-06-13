@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Columns3, Eraser, Home, LayoutGrid, MousePointer2, Move, Orbit, Settings, Square } from '@bimstitch/ui/icons';
+import { Box, Columns3, Eraser, Footprints, Home, LayoutGrid, MousePointer2, Orbit, Settings, Square } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -84,7 +84,7 @@ export function Toolbar({
       {
         type: 'button',
         id: 'first-person',
-        icon: Move,
+        icon: Footprints,
         label: t('firstPerson'),
         tooltip: `${t('flyTooltip')} (3)`,
         isActive: firstPerson,

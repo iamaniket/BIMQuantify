@@ -1,14 +1,10 @@
 'use client';
 
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import type { JSX } from 'react';
 
-import { Eyebrow } from '@bimstitch/ui';
+import { DonutChart, type DonutSegment } from './DonutChart';
 
-export type DonutSegment = {
-  value: number;
-  color: string;
-};
+export type { DonutSegment };
 
 type Props = {
   segments: DonutSegment[];
@@ -18,50 +14,8 @@ type Props = {
   size?: number;
 };
 
-export function ComplianceDonut({
-  segments,
-  centerValue,
-  centerLabel,
-  centerSub,
-  size = 200,
-}: Props): JSX.Element {
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={segments}
-            cx="50%"
-            cy="50%"
-            innerRadius="62%"
-            outerRadius="88%"
-            paddingAngle={2}
-            dataKey="value"
-            startAngle={90}
-            endAngle={-270}
-            stroke="none"
-          >
-            {segments.map((seg, i) => (
-              <Cell key={i} fill={seg.color} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-h4 font-semibold leading-none text-foreground">
-          {centerValue}
-        </span>
-        {centerLabel !== undefined && (
-          <Eyebrow size="xs" className="mt-1 font-normal text-foreground-tertiary">
-            {centerLabel}
-          </Eyebrow>
-        )}
-        {centerSub !== undefined && (
-          <span className="mt-0.5 text-caption text-foreground-tertiary">
-            {centerSub}
-          </span>
-        )}
-      </div>
-    </div>
-  );
+/** Compliance score ring. Thin wrapper over the generic SVG {@link DonutChart}
+ * (was recharts; now lib-free). Public API unchanged. */
+export function ComplianceDonut(props: Props): JSX.Element {
+  return <DonutChart {...props} />;
 }

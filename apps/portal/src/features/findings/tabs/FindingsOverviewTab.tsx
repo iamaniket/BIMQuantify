@@ -1,19 +1,30 @@
 'use client';
 
 import {
-  AlertTriangle, CalendarDays, Layers, UserRound,
+  Activity,
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle,
+  Clock,
+  Layers,
+  Plus,
+  UserRound,
 } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  useCallback, useMemo, useState, type JSX,
+  useCallback, useMemo, useState, type JSX, type ReactNode,
 } from 'react';
 
 import type { Locale } from '@bimstitch/i18n';
 import { Badge } from '@bimstitch/ui';
 
+import { BarChartMini } from '@/components/shared/charts/BarChartMini';
+import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
+import { StatCard } from '@/components/shared/charts/StatCard';
+import { TrendArea } from '@/components/shared/charts/TrendArea';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { severityBadgeVariant } from '@/features/projects/detail/findingBadges';
-import { formatDate } from '@/lib/formatting/dates';
+import { formatDate, formatMonthDay } from '@/lib/formatting/dates';
 import type {
   Finding,
   FindingSeverityValue,
@@ -21,22 +32,21 @@ import type {
   ProjectMember,
 } from '@/lib/api/schemas';
 
+// Status colors lean on primary (open / in-progress) with success reserved for
+// the "done" states and a neutral for drafts — see CLAUDE.md token rule.
 const STATUS_COLORS: Record<FindingStatusValue, string> = {
   draft: 'var(--foreground-tertiary)',
-  open: 'var(--info)',
-  in_progress: 'var(--primary)',
+  open: 'var(--primary)',
+  in_progress: 'var(--primary-hover)',
   resolved: 'var(--success)',
-  verified: 'var(--success)',
+  verified: 'var(--success-hover)',
 };
 
 const STATUS_ORDER: FindingStatusValue[] = ['draft', 'open', 'in_progress', 'resolved', 'verified'];
 const SEVERITY_ORDER: FindingSeverityValue[] = ['high', 'medium', 'low'];
 
-const SEVERITY_COLORS: Record<FindingSeverityValue, string> = {
-  high: 'var(--error)',
-  medium: 'var(--warning)',
-  low: 'var(--foreground-tertiary)',
-};
+const TREND_WEEKS = 8;
+const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 function isActive(f: Finding): boolean {
   return f.status !== 'resolved' && f.status !== 'verified';
@@ -51,12 +61,15 @@ type Props = {
 type SectionProps = {
   icon: JSX.Element;
   title: string;
-  children: JSX.Element;
+  className?: string;
+  children: ReactNode;
 };
 
-function Section({ icon, title, children }: SectionProps): JSX.Element {
+function Section({
+  icon, title, className, children,
+}: SectionProps): JSX.Element {
   return (
-    <div className="rounded-xl border border-border bg-surface-main p-4">
+    <div className={`rounded-xl border border-border bg-surface-main p-4 ${className ?? ''}`}>
       <div className="mb-3 flex items-center gap-2 text-caption font-bold uppercase tracking-widest text-foreground-tertiary">
         {icon}
         {title}
@@ -98,7 +111,7 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
   const total = findings.length;
 
   const statusCounts = useMemo(() => {
-    const counts = {
+    const counts: Record<FindingStatusValue, number> = {
       draft: 0, open: 0, in_progress: 0, resolved: 0, verified: 0,
     };
     for (const f of findings) counts[f.status] += 1;
@@ -106,7 +119,7 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
   }, [findings]);
 
   const severityCounts = useMemo(() => {
-    const counts = { high: 0, medium: 0, low: 0 };
+    const counts: Record<FindingSeverityValue, number> = { high: 0, medium: 0, low: 0 };
     for (const f of findings) counts[f.severity] += 1;
     return counts;
   }, [findings]);
@@ -115,7 +128,8 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
     (userId: string | null): string => {
       if (userId === null) return t('unassigned');
       const m = members.find((mm) => mm.user_id === userId);
-      return m?.full_name ?? m?.email ?? t('unassigned');
+      if (m === undefined) return t('unassigned');
+      return m.full_name ?? m.email;
     },
     [members, t],
   );
@@ -141,84 +155,205 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
     const today = new Date(new Date().toDateString());
     return findings
       .filter((f) => isActive(f) && f.deadline_date !== null && new Date(f.deadline_date) < today)
-      .sort((a, b) => (a.deadline_date! < b.deadline_date! ? -1 : 1));
+      .sort((a, b) => {
+        const da = a.deadline_date ?? '';
+        const db = b.deadline_date ?? '';
+        return da < db ? -1 : 1;
+      });
   }, [findings]);
+
+  // KPI tiles.
+  const kpis = useMemo(() => {
+    const today = new Date(new Date().toDateString());
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+    const weekAhead = new Date(today);
+    weekAhead.setDate(today.getDate() + 7);
+
+    let open = 0;
+    let dueSoon = 0;
+    let created7d = 0;
+    for (const f of findings) {
+      const active = isActive(f);
+      if (active) open += 1;
+      if (new Date(f.created_at) >= weekAgo) created7d += 1;
+      if (active && f.deadline_date !== null) {
+        const d = new Date(f.deadline_date);
+        if (d >= today && d <= weekAhead) dueSoon += 1;
+      }
+    }
+    const resolved = total - open;
+    return {
+      open,
+      dueSoon,
+      created7d,
+      resolvedPct: total > 0 ? Math.round((resolved / total) * 100) : 0,
+    };
+  }, [findings, total]);
+
+  // Findings created per week over the last TREND_WEEKS weeks.
+  const trend = useMemo(() => {
+    const today = new Date(new Date().toDateString());
+    const start = today.getTime() - (TREND_WEEKS - 1) * MS_WEEK;
+    const values = new Array<number>(TREND_WEEKS).fill(0);
+    for (const f of findings) {
+      const ts = new Date(f.created_at).getTime();
+      if (!Number.isNaN(ts)) {
+        let idx = Math.floor((ts - start) / MS_WEEK);
+        if (idx >= TREND_WEEKS) idx = TREND_WEEKS - 1; // clamp future-dated
+        if (idx >= 0) values[idx] = (values[idx] ?? 0) + 1;
+      }
+    }
+    const labels = values.map(
+      (_, i) => formatMonthDay(new Date(start + i * MS_WEEK).toISOString(), locale),
+    );
+    return { values, labels };
+  }, [findings, locale]);
+
+  const statusSegments = useMemo<DonutSegment[]>(
+    () => STATUS_ORDER.map((s) => ({
+      value: statusCounts[s],
+      color: STATUS_COLORS[s],
+      label: tStatus(s),
+    })),
+    [statusCounts, tStatus],
+  );
+
+  const severityCategories = useMemo(() => SEVERITY_ORDER.map((s) => tSeverity(s)), [tSeverity]);
+  const severityValues = useMemo(
+    () => SEVERITY_ORDER.map((s) => severityCounts[s]),
+    [severityCounts],
+  );
 
   const activeWorkloadTotal = workload.reduce((sum, w) => sum + w.count, 0);
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Section icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('statusTitle')}>
-        <div className="flex flex-col gap-2.5">
-          {STATUS_ORDER.map((s) => (
-            <BarRow
-              key={s}
-              label={tStatus(s)}
-              count={statusCounts[s]}
-              total={total}
-              color={STATUS_COLORS[s]}
-            />
-          ))}
-        </div>
-      </Section>
+    <div className="flex flex-col gap-4">
+      {/* KPI stat cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        <StatCard
+          label={t('kpiTotal')}
+          value={total}
+          icon={<Layers className="h-3.5 w-3.5" aria-hidden />}
+          accent="neutral"
+        />
+        <StatCard
+          label={t('kpiOpen')}
+          value={kpis.open}
+          sub={t('kpiOpenSub')}
+          icon={<Clock className="h-3.5 w-3.5" aria-hidden />}
+          accent="primary"
+        />
+        <StatCard
+          label={t('kpiOverdue')}
+          value={overdue.length}
+          sub={t('kpiOverdueSub')}
+          icon={<AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
+          accent="error"
+        />
+        <StatCard
+          label={t('kpiDueSoon')}
+          value={kpis.dueSoon}
+          sub={t('kpiDueSoonSub')}
+          icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />}
+          accent="warning"
+        />
+        <StatCard
+          label={t('kpiNew')}
+          value={kpis.created7d}
+          sub={t('kpiNewSub')}
+          icon={<Plus className="h-3.5 w-3.5" aria-hidden />}
+          accent="primary"
+        />
+        <StatCard
+          label={t('kpiResolved')}
+          value={`${String(kpis.resolvedPct)}%`}
+          sub={t('kpiResolvedSub')}
+          icon={<CheckCircle className="h-3.5 w-3.5" aria-hidden />}
+          accent="success"
+        />
+      </div>
 
-      <Section icon={<AlertTriangle className="h-3.5 w-3.5" aria-hidden />} title={t('severityTitle')}>
-        <div className="flex flex-col gap-2.5">
-          {SEVERITY_ORDER.map((s) => (
-            <BarRow
-              key={s}
-              label={tSeverity(s)}
-              count={severityCounts[s]}
-              total={total}
-              color={SEVERITY_COLORS[s]}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Status donut + legend */}
+        <Section icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('statusTitle')}>
+          <div className="flex flex-col items-center gap-5 sm:flex-row">
+            <DonutChart
+              segments={statusSegments}
+              centerValue={String(total)}
+              centerLabel={t('donutCenterLabel')}
+              size={180}
             />
-          ))}
-        </div>
-      </Section>
-
-      <Section icon={<UserRound className="h-3.5 w-3.5" aria-hidden />} title={t('assigneeTitle')}>
-        {workload.length === 0 ? (
-          <p className="py-2 text-body3 text-foreground-tertiary">{t('noActive')}</p>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {workload.map((w) => (
-              <BarRow
-                key={w.label}
-                label={w.label}
-                count={w.count}
-                total={activeWorkloadTotal}
-                color="var(--primary)"
-              />
-            ))}
+            <ul className="flex min-w-0 flex-1 flex-col gap-2">
+              {STATUS_ORDER.map((s) => (
+                <li key={s} className="flex items-center gap-2.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
+                  <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">{tStatus(s)}</span>
+                  <span className="shrink-0 text-body3 font-semibold tabular-nums text-foreground">{statusCounts[s]}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-        )}
-      </Section>
+        </Section>
 
-      <Section icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />} title={t('overdueTitle')}>
-        {overdue.length === 0 ? (
-          <p className="py-2 text-body3 text-foreground-tertiary">{t('noOverdue')}</p>
-        ) : (
-          <ul className="flex flex-col gap-1.5">
-            {overdue.map((f) => (
-              <li key={f.id}>
-                <button
-                  type="button"
-                  onClick={() => { setSelected(f); }}
-                  className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-background-hover"
-                >
-                  <span className="min-w-0 flex-1 truncate text-body3 font-medium text-foreground">{f.title}</span>
-                  <Badge variant={severityBadgeVariant(f.severity)} size="md" bordered>
-                    {tSeverity(f.severity)}
-                  </Badge>
-                  <span className="shrink-0 text-[11px] font-semibold tabular-nums text-error">
-                    {formatDate(f.deadline_date, locale)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+        {/* Severity bar chart */}
+        <Section icon={<AlertTriangle className="h-3.5 w-3.5" aria-hidden />} title={t('severityTitle')}>
+          <BarChartMini categories={severityCategories} values={severityValues} height={200} />
+        </Section>
+
+        {/* Created over time */}
+        <Section
+          icon={<Activity className="h-3.5 w-3.5" aria-hidden />}
+          title={t('trendTitle')}
+          className="lg:col-span-2"
+        >
+          {total === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('trendEmpty')}</p>
+          ) : (
+            <TrendArea values={trend.values} labels={trend.labels} height={200} />
+          )}
+        </Section>
+
+        {/* Assignee workload */}
+        <Section icon={<UserRound className="h-3.5 w-3.5" aria-hidden />} title={t('assigneeTitle')}>
+          {workload.length === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('noActive')}</p>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {workload.map((w) => (
+                <BarRow key={w.label} label={w.label} count={w.count} total={activeWorkloadTotal} color="var(--primary)" />
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Overdue items */}
+        <Section icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />} title={t('overdueTitle')}>
+          {overdue.length === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('noOverdue')}</p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {overdue.map((f) => (
+                <li key={f.id}>
+                  <button
+                    type="button"
+                    onClick={() => { setSelected(f); }}
+                    className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-background-hover"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-body3 font-medium text-foreground">{f.title}</span>
+                    <Badge variant={severityBadgeVariant(f.severity)} size="md" bordered>
+                      {tSeverity(f.severity)}
+                    </Badge>
+                    <span className="shrink-0 text-[11px] font-semibold tabular-nums text-error">
+                      {formatDate(f.deadline_date, locale)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      </div>
 
       <FindingDetailModal
         projectId={projectId}

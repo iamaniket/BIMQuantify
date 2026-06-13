@@ -762,7 +762,11 @@ export default function ViewerPage(): JSX.Element {
       viewMode === 'split' && !isMobile ? { width: `${(1 - splitRatio) * 100}%` } : undefined;
 
     canvas = (
-      <div ref={splitContainerRef} className="relative h-full w-full overflow-hidden">
+      <div
+        ref={splitContainerRef}
+        className="relative h-full w-full overflow-hidden"
+        {...(viewMode !== '2d' ? { 'data-viewer-shortcut-scope': '' } : {})}
+      >
         <div ref={threeDPaneRef} className={threeDPaneClass} style={threeDSplitStyle}>
           {ifcViewerEl}
           {hasFloorPlans && viewMode === '3d' && scope.planFloorPlansUrl ? (

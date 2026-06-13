@@ -1014,6 +1014,10 @@
         "filterOther": "Overig",
         "newModel": "Nieuw model",
         "loadSelected": "Geselecteerde laden ({count})",
+        "loadAll": "Alles laden",
+        "loadAll3d": "Alle 3D laden",
+        "loadAll2d": "Alle 2D laden",
+        "loadAllMenu": "Laadopties",
         "emptyState": "Nog geen modellen",
         "emptyDescription": "Upload IFC-bestanden om uw BIM-modellen te bekijken en beheren.",
         "newModelDialog": {
@@ -1454,6 +1458,7 @@
       "title": "Bevinding",
       "subtitle": "Bewerk de bevinding, wijs een verantwoordelijke en deadline toe en promoot deze.",
       "save": "Wijzigingen opslaan",
+      "close": "Sluiten",
       "tabs": {
         "edit": "Bewerken",
         "history": "Geschiedenis"
@@ -1604,6 +1609,11 @@
     "empty": "Geen bevindingen",
     "invalidDrop": "Kan hier niet naartoe",
     "logFinding": "Bevinding vastleggen",
+    "searchPlaceholder": "Bevindingen zoeken…",
+    "filter": {
+      "unassigned": "Niet toegewezen",
+      "assigneeTooltip": "Filter op {name}"
+    },
     "tabs": {
       "board": "Bord",
       "list": "Lijst",
@@ -1637,9 +1647,20 @@
       "filterInProgress": "In behandeling",
       "filterResolved": "Opgelost",
       "filterVerified": "Geverifieerd",
+      "filterAllPriorities": "Alle prioriteiten",
       "noResults": "Geen bevindingen komen overeen met je filters.",
       "emptyTitle": "Nog geen bevindingen",
-      "emptyDescription": "Leg een bevinding vast om kwaliteits- en complianceproblemen te volgen."
+      "emptyDescription": "Leg een bevinding vast om kwaliteits- en complianceproblemen te volgen.",
+      "table": {
+        "title": "Titel",
+        "status": "Status",
+        "assignee": "Toegewezene",
+        "deadline": "Deadline",
+        "ref": "Ref",
+        "created": "Aangemaakt",
+        "empty": "Nog geen bevindingen.",
+        "count": "Toont {count, plural, one {# bevinding} other {# bevindingen}}"
+      }
     },
     "overview": {
       "statusTitle": "Op status",
@@ -1648,7 +1669,21 @@
       "overdueTitle": "Te laat",
       "unassigned": "Niet toegewezen",
       "noActive": "Geen open bevindingen.",
-      "noOverdue": "Niets te laat."
+      "noOverdue": "Niets te laat.",
+      "trendTitle": "Aangemaakt na verloop van tijd",
+      "trendEmpty": "Nog geen bevindingen.",
+      "donutCenterLabel": "bevindingen",
+      "kpiTotal": "Totaal",
+      "kpiOpen": "Open",
+      "kpiOverdue": "Te laat",
+      "kpiDueSoon": "Bijna verlopen",
+      "kpiNew": "Nieuw",
+      "kpiResolved": "Opgelost",
+      "kpiOpenSub": "actief",
+      "kpiOverdueSub": "deadline verstreken",
+      "kpiDueSoonSub": "komende 7 dagen",
+      "kpiNewSub": "afgelopen 7 dagen",
+      "kpiResolvedSub": "opgelost + geverifieerd"
     },
     "calendar": {
       "today": "Vandaag",

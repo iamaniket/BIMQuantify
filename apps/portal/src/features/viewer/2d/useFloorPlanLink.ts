@@ -95,7 +95,8 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
           planY: ev.hereY,
           lookX: ev.lookX,
           lookY: ev.lookY,
-          elevation,
+          elevation, // fallback only
+          lockHeight: true, // pan horizontally; keep current 3D camera height
         })
         .catch(() => undefined);
     });

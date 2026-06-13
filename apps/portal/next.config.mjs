@@ -17,9 +17,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
   // ThatOpen ships ESM-only and pulls in three.js / web-ifc. Transpile both
   // so Next bundles them correctly for the client and avoids ESM/CJS warnings.
   transpilePackages: [

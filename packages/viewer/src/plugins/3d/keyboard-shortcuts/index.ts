@@ -115,9 +115,15 @@ export function keyboardShortcutsPlugin(
         const target = ev.target as HTMLElement | null;
         if (target && ignoreTags.has(target.tagName)) return;
         if (target?.isContentEditable) return;
-        // Only fire window-level shortcuts when the viewer's container is
-        // the most recently hovered/focused. Cheap heuristic: check :hover.
-        if (!ctx.container.matches(':hover') && document.activeElement !== ctx.container) {
+        // Fire window-level shortcuts only when THIS viewer is the active one. By
+        // default that means the viewer's own container is hovered/focused (so two
+        // viewers on one page don't double-fire). A host that lays the viewer out
+        // beside a sibling pane sharing the same shortcuts (e.g. the split 3D +
+        // floor-plan view) can opt a common ancestor in via `data-viewer-shortcut-scope`;
+        // hover/focus anywhere inside that ancestor then counts as active. Resolved
+        // per-keydown so it tracks the live DOM and the attribute being toggled.
+        const scope = ctx.container.closest('[data-viewer-shortcut-scope]') ?? ctx.container;
+        if (!scope.matches(':hover') && !scope.contains(document.activeElement)) {
           return;
         }
         onKey(ev);

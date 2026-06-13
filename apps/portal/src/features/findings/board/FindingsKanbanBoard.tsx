@@ -1,14 +1,16 @@
 'use client';
 
+import { Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 
-import { type KanbanColumnDef } from '@bimstitch/ui';
+import { Input, type KanbanColumnDef } from '@bimstitch/ui';
 import { KanbanBoard } from '@bimstitch/ui';
 
+import { AssigneeFilterChips, UNASSIGNED_FILTER } from '@/features/findings/AssigneeFilterChips';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { useProjectPermissions } from '@/features/permissions';
-import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
+import { FindingDetailPanel } from '@/features/projects/detail/FindingDetailPanel';
 import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 import type { ProjectMember } from '@/lib/api/schemas';
 
@@ -37,6 +39,8 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
   const updateMutation = useUpdateFinding(projectId);
   const { can, canVerifyFinding } = useProjectPermissions(projectId);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  const [search, setSearch] = useState('');
+  const [assigneeFilter, setAssigneeFilter] = useState<Set<string>>(new Set());
 
   const canUpdateFinding = can('finding', 'update');
 
@@ -48,6 +52,29 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
     },
     [members],
   );
+
+  const toggleAssignee = useCallback((id: string) => {
+    setAssigneeFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const filteredFindings = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return findings.filter((f) => {
+      if (assigneeFilter.size > 0 && !assigneeFilter.has(f.assignee_user_id ?? UNASSIGNED_FILTER)) {
+        return false;
+      }
+      if (q !== '') {
+        const hay = `${f.title} ${f.description} ${f.bbl_article_ref ?? ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [findings, assigneeFilter, search]);
 
   const columns: KanbanColumnDef[] = useMemo(
     () => STATUSES.map((s) => ({
@@ -106,29 +133,47 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-x-auto px-3.5 pb-3.5">
-        <KanbanBoard<Finding>
-          columns={columns}
-          items={findings}
-          getItemColumn={(f) => f.status}
-          getItemId={(f) => f.id}
-          renderCard={renderCard}
-          onMove={handleMove}
-          canDrop={canDrop}
-          emptyLabel={t('empty')}
-          isItemDisabled={isItemDisabled}
-          onCardClick={handleCardClick}
-          cardClassName="overflow-hidden rounded-xl bg-surface-main p-0"
-          className="h-full"
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 pb-2.5 pt-0.5">
+        <Input
+          inputSize="md"
+          type="text"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); }}
+          placeholder={t('searchPlaceholder')}
+          leading={<Search className="h-3.5 w-3.5" />}
+          className="w-full max-w-xs sm:w-56"
+        />
+        <AssigneeFilterChips
+          members={members}
+          selected={assigneeFilter}
+          onToggle={toggleAssignee}
         />
       </div>
 
-      <FindingDetailModal
-        projectId={projectId}
-        finding={selectedFinding}
-        open={selectedFinding !== null}
-        onOpenChange={(o) => { if (!o) setSelectedFinding(null); }}
-      />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-x-auto px-3.5 pb-3.5">
+          <KanbanBoard<Finding>
+            columns={columns}
+            items={filteredFindings}
+            getItemColumn={(f) => f.status}
+            getItemId={(f) => f.id}
+            renderCard={renderCard}
+            onMove={handleMove}
+            canDrop={canDrop}
+            emptyLabel={t('empty')}
+            isItemDisabled={isItemDisabled}
+            onCardClick={handleCardClick}
+            cardClassName="overflow-hidden rounded-xl bg-surface-main p-0"
+            className="h-full"
+          />
+        </div>
+
+        <FindingDetailPanel
+          projectId={projectId}
+          finding={selectedFinding}
+          onClose={() => { setSelectedFinding(null); }}
+        />
+      </div>
     </div>
   );
 }

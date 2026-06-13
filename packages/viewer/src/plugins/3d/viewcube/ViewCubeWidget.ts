@@ -698,8 +698,8 @@ export class ViewCubeWidget {
     s.zIndex = '10';
     s.filter = 'drop-shadow(0 8px 20px rgba(0,0,0,0.35))';
     s.userSelect = 'none';
-    s.top = '12px';
-    s.left = '12px';
+    s.top = '9px';
+    s.left = '9px';
   }
 
   private applyCanvasStyles(): void {

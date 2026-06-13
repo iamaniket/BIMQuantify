@@ -46,6 +46,7 @@
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "@types/three": "^0.184.0",
+    "happy-dom": "^20.9.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "rimraf": "^5.0.10",

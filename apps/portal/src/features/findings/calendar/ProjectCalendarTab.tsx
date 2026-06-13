@@ -57,7 +57,7 @@ import { useBorgingsplan } from '@/features/borgingsplan/useBorgingsplan';
 import { useUpdateMoment } from '@/features/borgingsplan/useMomentMutations';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { useHolidays } from '@/features/jurisdictions/useHolidays';
-import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
+import { FindingDetailPanel } from '@/features/projects/detail/FindingDetailPanel';
 import { FilingDialog } from '@/features/projects/detail/deadlines/FilingDialog';
 import { useProjectDeadlineSettings } from '@/features/projects/detail/deadlines/useDeadlineNotificationSettings';
 import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
@@ -593,7 +593,7 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
             )}
           </div>
 
-          {view === 'month' && selectedDay !== null && selectedDate !== null && (
+          {view === 'month' && selectedDay !== null && selectedDate !== null && selectedFinding === null && (
             <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-surface-main">
               <div className="flex items-center justify-between gap-2 border-b border-border bg-gradient-to-r from-primary-light to-primary-lighter px-4 py-3">
                 <div className="flex min-w-0 flex-col">
@@ -621,6 +621,12 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
               </div>
             </aside>
           )}
+
+          <FindingDetailPanel
+            projectId={projectId}
+            finding={selectedFinding}
+            onClose={() => { setSelectedFinding(null); }}
+          />
         </div>
 
         {/* Unscheduled: items with no date (mostly findings without a deadline).
@@ -675,13 +681,6 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
           )}
         </DragOverlay>
       </DndContext>
-
-      <FindingDetailModal
-        projectId={projectId}
-        finding={selectedFinding}
-        open={selectedFinding !== null}
-        onOpenChange={(open) => { if (!open) setSelectedFinding(null); }}
-      />
 
       {filingDeadline !== null && (
         <FilingDialog

@@ -80,6 +80,7 @@ export { ArrowsDownUp as FlipVertical } from '@phosphor-icons/react';
 export { FrameCorners } from '@phosphor-icons/react';
 export { Kanban as FolderKanban } from '@phosphor-icons/react';
 export { FolderOpen } from '@phosphor-icons/react';
+export { Footprints } from '@phosphor-icons/react';
 export { Funnel as ListFilter } from '@phosphor-icons/react';
 
 /* ── G ──────────────────────────────────────────────────────────── */

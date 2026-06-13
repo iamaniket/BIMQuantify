@@ -73,6 +73,8 @@ type PlaceCameraArgs = {
   lookX: number;
   lookY: number;
   elevation: number;
+  /** Keep the current 3D camera height (world Y) instead of snapping to floor + EYE_HEIGHT. */
+  lockHeight?: boolean;
   animate?: boolean;
 };
 
@@ -167,6 +169,18 @@ export function minimapPlugin(
     const h = args.elevation + EYE_HEIGHT;
     const eye = planToViewer(args.planX, args.planY, h, cal);
     const tgt = planToViewer(args.lookX, args.lookY, h, cal);
+    // Height lives on world Y (the IFC up-axis always lands on +Y — see planCoords).
+    // When panning from the 2D plan, freeze the eye height so the drag moves only
+    // horizontally instead of snapping to the storey floor.
+    if (args.lockHeight) {
+      const pose = await ctx.commands
+        .execute<undefined, CameraPose>('camera.getPose')
+        .catch(() => null);
+      if (pose) {
+        eye.y = pose.position.y;
+        tgt.y = pose.position.y; // keep the look level at the locked height
+      }
+    }
     await ctx.cameraControls
       .setLookAt(eye.x, eye.y, eye.z, tgt.x, tgt.y, tgt.z, args.animate ?? false)
       .catch(() => undefined);

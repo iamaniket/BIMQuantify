@@ -3,6 +3,8 @@
 import dynamic from 'next/dynamic';
 import {
   CaretDownIcon,
+  House,
+  Move,
   StackIcon,
 } from '@bimstitch/ui/icons';
 import {
@@ -13,7 +15,12 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import type { DocumentEvents, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type {
+  DocumentEvents,
+  FloorPlanActiveTool,
+  FloorPlanViewerHandle,
+  ViewerHandle,
+} from '@bimstitch/viewer';
 
 import {
   DropdownMenu,
@@ -77,6 +84,7 @@ export function FloorPlanPane({
   onRequestInspector,
 }: Props): ReactElement | null {
   const t = useTranslations('viewer.floorplan');
+  const tb = useTranslations('viewer.toolbar');
   const levelFallback = useCallback((n: number) => t('levelFallback', { n }), [t]);
   const {
     data,
@@ -88,6 +96,7 @@ export function FloorPlanPane({
 
   const [activeLevel, setActiveLevel] = useState(0);
   const [isolate, setIsolate] = useState(true);
+  const [activeTool, setActiveTool] = useState<FloorPlanActiveTool>('select');
   const [fpHandle, setFpHandle] = useState<FloorPlanViewerHandle | null>(null);
   const [planRendered, setPlanRendered] = useState(false);
 
@@ -227,6 +236,36 @@ export function FloorPlanPane({
           >
             <StackIcon className="h-4 w-4" />
           </ToolButton>
+          {viewMode === '2d' && (
+            <>
+              <ToolbarDivider />
+              {/* Home — reset the plan to its default framing */}
+              <ToolButton
+                onClick={() => {
+                  if (fpHandle) fpHandle.fitPage();
+                }}
+                disabled={!fpHandle}
+                aria-label={tb('homeView')}
+                title={tb('homeView')}
+                className="h-8 w-8"
+              >
+                <House className="h-4 w-4" />
+              </ToolButton>
+              {/* Pan — toggle left-drag panning (second click returns to select) */}
+              <ToolButton
+                isActive={activeTool === 'pan'}
+                onClick={() => {
+                  setActiveTool((cur) => (cur === 'pan' ? 'select' : 'pan'));
+                }}
+                aria-pressed={activeTool === 'pan'}
+                aria-label={tb('pan')}
+                title={tb('panTooltip')}
+                className="h-8 w-8"
+              >
+                <Move className="h-4 w-4" />
+              </ToolButton>
+            </>
+          )}
         </ToolbarGroup>
       </div>
       <FloorPlanViewer
@@ -234,6 +273,7 @@ export function FloorPlanPane({
         data={data}
         roomNames={roomNames}
         activeLevel={safeLevel}
+        activeTool={activeTool}
         colors={colors}
         className="absolute inset-0"
         onLevelRendered={() => {

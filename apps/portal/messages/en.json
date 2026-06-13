@@ -1014,6 +1014,10 @@
         "filterOther": "Other",
         "newModel": "New model",
         "loadSelected": "Load selected ({count})",
+        "loadAll": "Load all",
+        "loadAll3d": "Load all 3D",
+        "loadAll2d": "Load all 2D",
+        "loadAllMenu": "Load options",
         "emptyState": "No models yet",
         "emptyDescription": "Upload IFC files to view and manage your BIM models.",
         "newModelDialog": {
@@ -1454,6 +1458,7 @@
       "title": "Finding",
       "subtitle": "Edit the finding, assign an owner and a deadline, then promote it.",
       "save": "Save changes",
+      "close": "Close",
       "tabs": {
         "edit": "Edit",
         "history": "History"
@@ -1604,6 +1609,11 @@
     "empty": "No findings",
     "invalidDrop": "Cannot move here",
     "logFinding": "Log finding",
+    "searchPlaceholder": "Search findings…",
+    "filter": {
+      "unassigned": "Unassigned",
+      "assigneeTooltip": "Filter by {name}"
+    },
     "tabs": {
       "board": "Board",
       "list": "List",
@@ -1637,9 +1647,20 @@
       "filterInProgress": "In progress",
       "filterResolved": "Resolved",
       "filterVerified": "Verified",
+      "filterAllPriorities": "All priorities",
       "noResults": "No findings match your filters.",
       "emptyTitle": "No findings yet",
-      "emptyDescription": "Log a finding to start tracking quality and compliance issues."
+      "emptyDescription": "Log a finding to start tracking quality and compliance issues.",
+      "table": {
+        "title": "Title",
+        "status": "Status",
+        "assignee": "Assignee",
+        "deadline": "Deadline",
+        "ref": "Ref",
+        "created": "Created",
+        "empty": "No findings yet.",
+        "count": "Showing {count, plural, one {# finding} other {# findings}}"
+      }
     },
     "overview": {
       "statusTitle": "By status",
@@ -1648,7 +1669,21 @@
       "overdueTitle": "Overdue",
       "unassigned": "Unassigned",
       "noActive": "No open findings.",
-      "noOverdue": "Nothing overdue."
+      "noOverdue": "Nothing overdue.",
+      "trendTitle": "Created over time",
+      "trendEmpty": "No findings yet.",
+      "donutCenterLabel": "findings",
+      "kpiTotal": "Total",
+      "kpiOpen": "Open",
+      "kpiOverdue": "Overdue",
+      "kpiDueSoon": "Due soon",
+      "kpiNew": "New",
+      "kpiResolved": "Resolved",
+      "kpiOpenSub": "active",
+      "kpiOverdueSub": "past deadline",
+      "kpiDueSoonSub": "next 7 days",
+      "kpiNewSub": "last 7 days",
+      "kpiResolvedSub": "resolved + verified"
     },
     "calendar": {
       "today": "Today",
