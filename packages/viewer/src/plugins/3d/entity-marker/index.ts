@@ -68,7 +68,6 @@ const ringFor = (data: EntityMarkerData): string => {
 export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
   let ctxRef: ViewerContext | null = null;
   let overlay: Css2dOverlay | null = null;
-  let css2dRafId: number | null = null;
   let globalVisible = true;
   let offLoaded: (() => void) | null = null;
 
@@ -77,20 +76,16 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
     { data: EntityMarkerData; obj: CSS2DObject; group: THREE.Group; wrapper: HTMLDivElement; circle: HTMLDivElement }
   >();
 
+  // Markers only move on screen when the camera moves (handled by the shared
+  // overlay's own camera:change subscription) or when markers are added/
+  // removed/restyled — so we just nudge a one-shot repaint on change instead
+  // of running a perpetual rAF loop. Names kept so call sites stay untouched.
   const startCss2dLoop = (): void => {
-    if (css2dRafId !== null || !overlay) return;
-    const tick = (): void => {
-      overlay?.render();
-      css2dRafId = requestAnimationFrame(tick);
-    };
-    css2dRafId = requestAnimationFrame(tick);
+    overlay?.requestRender();
   };
 
   const stopCss2dLoop = (): void => {
-    if (css2dRafId !== null) {
-      cancelAnimationFrame(css2dRafId);
-      css2dRafId = null;
-    }
+    // no-op: overlay rendering is event-driven (camera:change + requestRender)
   };
 
   const createMarkerElement = (data: EntityMarkerData): { wrapper: HTMLDivElement; circle: HTMLDivElement } => {
@@ -264,11 +259,9 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
       for (const entry of activeMarkers.values()) {
         entry.group.visible = visible;
       }
-      if (visible && activeMarkers.size > 0) {
-        startCss2dLoop();
-      } else if (!visible) {
-        stopCss2dLoop();
-      }
+      // Repaint either way — CSS2DRenderer only hides/shows the label DOM on a
+      // render pass, so toggling group.visible needs one render to take effect.
+      overlay?.requestRender();
     },
 
     install(ctx: ViewerContext) {
@@ -282,6 +275,7 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
         for (const entry of activeMarkers.values()) {
           if (entry.data.modelId === modelId) placeMarker(entry.obj, entry.data);
         }
+        overlay?.requestRender();
       });
 
       ctx.commands.register('entity-marker.sync', (args: unknown) => {

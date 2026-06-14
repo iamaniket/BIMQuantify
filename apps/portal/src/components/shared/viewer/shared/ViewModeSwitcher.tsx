@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Columns3, Square } from '@bimstitch/ui/icons';
+import { Blueprint, Box, SquareSplitHorizontal } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -20,8 +20,8 @@ type Props = {
 
 const ICONS: Record<ViewMode, typeof Box> = {
   '3d': Box,
-  split: Columns3,
-  '2d': Square,
+  split: SquareSplitHorizontal,
+  '2d': Blueprint,
 };
 
 /**

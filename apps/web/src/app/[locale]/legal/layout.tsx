@@ -2,7 +2,6 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { JSX, ReactNode } from 'react';
 
 import { AuthShell } from '@bimstitch/brand';
-import { getLegalContent, type Locale } from '@bimstitch/i18n';
 
 import { MarketingBrandPanel } from '@/components/MarketingBrandPanel';
 import { Link } from '@/i18n/navigation';
@@ -16,7 +15,6 @@ export default async function LegalLayout({ children, params }: Props): Promise<
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: 'legalBrand' });
-  const legal = getLegalContent(locale as Locale);
 
   return (
     <AuthShell
@@ -30,14 +28,7 @@ export default async function LegalLayout({ children, params }: Props): Promise<
           {t('backToSite')}
         </Link>
       }
-      form={
-        <div className="flex flex-col gap-6 py-1">
-          <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-            {legal.meta.draftBanner}
-          </div>
-          {children}
-        </div>
-      }
+      form={<div className="flex flex-col gap-6 py-1">{children}</div>}
       formContentMaxWidth="640px"
       formContentAlign="start"
       brandSticky

@@ -406,11 +406,19 @@ export function cameraFlyPlugin(
     controls.getPosition(eye);
     controls.getTarget(lookTarget);
     const viewDir = lookTarget.clone().sub(eye);
+    // The RENDERED eye = the logical eye (target + spherical) PLUS any residual
+    // focalOffset left by pivot-rotate's setOrbitPoint or truck (pan).
+    // `getPosition` returns only the logical eye, so snapshot the three camera's
+    // world position instead — then clearing the offset below re-asserts the pose
+    // to exactly where the user sees the camera (no jump on enter). The offset
+    // doesn't affect orientation, so `viewDir`/`radius` stay logical.
+    const renderedEye = new THREE.Vector3();
+    ctx.camera.getWorldPosition(renderedEye);
     const pose =
       viewDir.lengthSq() < 1e-9
         ? null
         : {
-            pos: eye.clone(),
+            pos: renderedEye.clone(),
             radius: eye.distanceTo(lookTarget),
             dir: viewDir.normalize(),
           };
@@ -438,6 +446,15 @@ export function cameraFlyPlugin(
     // Dolly straight along the view axis (forward/back), not toward the cursor
     // point — predictable first-person "scroll to move".
     controls.dollyToCursor = false;
+
+    // Clear any residual focalOffset left by pivot-rotate's setOrbitPoint or
+    // truck (pan). setLookAt does NOT clear it (see framing.ts / bcf), and
+    // camera-controls re-applies it along the camera's LOCAL axes every frame —
+    // so in fly mode it swings the eye as the look direction rotates (the
+    // look-also-moves-position bug). Zeroing it makes look-in-place truly
+    // translation-free. The pose re-assert below uses the rendered eye, so this
+    // is jump-free even when the incoming offset was large.
+    controls.setFocalOffset(0, 0, 0, false);
 
     // Take over the left button: camera-controls' ROTATE orbits the eye around
     // the pinned target (translating the camera), not look-in-place. Disable it

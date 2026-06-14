@@ -163,13 +163,11 @@ export function effectsPlugin(
         if (wasActive && !xrayActive && isIdle) requestComposerFrame();
       });
 
-      let raf = 0;
-      const loop = (): void => {
-        raf = requestAnimationFrame(loop);
-        if (!opts.enabled || !isIdle || !composer || xrayActive) return;
-        renderCompositeFrame();
-      };
-      raf = requestAnimationFrame(loop);
+      // No perpetual rAF: the viewer renders on demand and parks the base
+      // renderer in MANUAL once `viewer:idle` fires, so a single composite on
+      // idle (and on x-ray clear / resize / setOptions) is enough — nothing
+      // overwrites it until the next motion. During motion the cheap base
+      // render runs and the composite is skipped (isIdle === false).
 
       const onResize = (): void => {
         if (!composer || !renderer) return;
@@ -180,12 +178,13 @@ export function effectsPlugin(
         composer.setSize(s.x, s.y);
         composer.setPixelRatio(r);
         if (fxaaPass) fxaaPass.setSize(nw, nh);
+        // Re-composite the resized frame if we're sitting idle.
+        if (isIdle) requestComposerFrame();
       };
       const ro = new ResizeObserver(onResize);
       ro.observe(ctx.canvas);
 
       cleanup = (): void => {
-        cancelAnimationFrame(raf);
         offCam();
         offIdle();
         offXray();

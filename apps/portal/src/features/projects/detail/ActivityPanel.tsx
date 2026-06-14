@@ -121,35 +121,29 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
           </div>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <div className="relative">
-            <Select
-              selectSize="md"
-              value={timeWindow}
-              onChange={(e) => { setTimeWindow(e.target.value as TimeWindow); }}
-              className="w-auto min-w-0 pr-7"
-            >
-              <option value="all">{t('timeAll')}</option>
-              <option value="1h">{t('timeLastHour')}</option>
-              <option value="24h">{t('timeLast24h')}</option>
-              <option value="7d">{t('timeLast7d')}</option>
-              <option value="30d">{t('timeLast30d')}</option>
-            </Select>
-            <svg className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 8 10 12 14 8" /></svg>
-          </div>
-          <div className="relative">
-            <Select
-              selectSize="md"
-              value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value as TypeFilter); }}
-              className="w-auto min-w-0 pr-7"
-            >
-              <option value="all">{t('typeAll')}</option>
-              <option value="upload">{t('typeUploads')}</option>
-              <option value="scan">{t('typeScans')}</option>
-              <option value="change">{t('typeChanges')}</option>
-            </Select>
-            <svg className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground-tertiary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 8 10 12 14 8" /></svg>
-          </div>
+          <Select
+            selectSize="md"
+            value={timeWindow}
+            onChange={(e) => { setTimeWindow(e.target.value as TimeWindow); }}
+            className="w-auto min-w-0"
+          >
+            <option value="all">{t('timeAll')}</option>
+            <option value="1h">{t('timeLastHour')}</option>
+            <option value="24h">{t('timeLast24h')}</option>
+            <option value="7d">{t('timeLast7d')}</option>
+            <option value="30d">{t('timeLast30d')}</option>
+          </Select>
+          <Select
+            selectSize="md"
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value as TypeFilter); }}
+            className="w-auto min-w-0"
+          >
+            <option value="all">{t('typeAll')}</option>
+            <option value="upload">{t('typeUploads')}</option>
+            <option value="scan">{t('typeScans')}</option>
+            <option value="change">{t('typeChanges')}</option>
+          </Select>
         </div>
       </div>
 

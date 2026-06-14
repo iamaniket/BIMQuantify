@@ -109,7 +109,6 @@ function createCssLabel(
 export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   let ctxRef: ViewerContext | null = null;
   let overlay: Css2dOverlay | null = null;
-  let css2dRafId: number | null = null;
   let currentMode: MeasurementMode | null = null;
   let pendingPoints: THREE.Vector3[] = [];
   let pendingDots: THREE.Mesh[] = [];
@@ -169,25 +168,22 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   const axisColor = (axis: string): number =>
     axis === 'X' ? config.xColor : axis === 'Y' ? config.yColor : config.zColor;
 
-  // ----- CSS2D render loop -----
+  // ----- CSS2D overlay rendering (event-driven, no perpetual loop) -----
+  // Labels track the camera via the shared overlay's own `camera:change`
+  // subscription, so there's nothing to render every frame. `startCss2dLoop`
+  // now just nudges a one-shot repaint when a measurement is added/changed;
+  // the live rubber-band preview pokes its own render on each pointer move
+  // (see handlePreviewMove). Names kept so the many call sites stay untouched.
 
   const needsCss2dLoop = (): boolean =>
     completed.size > 0 || currentMode !== null;
 
   const startCss2dLoop = (): void => {
-    if (css2dRafId !== null || !overlay) return;
-    const tick = (): void => {
-      overlay?.render();
-      css2dRafId = requestAnimationFrame(tick);
-    };
-    css2dRafId = requestAnimationFrame(tick);
+    overlay?.requestRender();
   };
 
   const stopCss2dLoop = (): void => {
-    if (css2dRafId !== null) {
-      cancelAnimationFrame(css2dRafId);
-      css2dRafId = null;
-    }
+    // no-op: overlay rendering is event-driven (camera:change + requestRender)
   };
 
   // ----- geometry helpers -----
@@ -1216,6 +1212,10 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       if (previewPendingClient) client = previewPendingClient;
     }
     previewInFlight = false;
+    // The rubber-band preview (3D line + CSS2D label) follows the cursor, not
+    // the camera — wake the on-demand renderer and repaint the label overlay.
+    ctxRef?.requestRender();
+    overlay?.requestRender();
   };
 
   // ---- end rubber-band preview ----

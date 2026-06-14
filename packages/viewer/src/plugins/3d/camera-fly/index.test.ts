@@ -45,6 +45,7 @@ class FakeControls {
   readonly _pos: THREE.Vector3;
   readonly _target: THREE.Vector3;
   readonly setLookAtCalls: RecordedLookAt[] = [];
+  readonly focalOffsetCalls: { x: number; y: number; z: number; transition: boolean }[] = [];
 
   constructor(pos: THREE.Vector3, target: THREE.Vector3) {
     this._pos = pos.clone();
@@ -67,6 +68,10 @@ class FakeControls {
       minAtCall: this.minDistance,
       maxAtCall: this.maxDistance,
     });
+    return Promise.resolve();
+  }
+  setFocalOffset(x: number, y: number, z: number, transition: boolean): Promise<void> {
+    this.focalOffsetCalls.push({ x, y, z, transition });
     return Promise.resolve();
   }
 }
@@ -111,7 +116,9 @@ function makeCtx(controls: FakeControls): {
   const ctx = {
     cameraControls: controls,
     obcCamera,
-    camera: {},
+    // enable() reads the rendered eye (logical eye + residual focalOffset) off the
+    // three camera; the fake has no offset, so the world position == controls._pos.
+    camera: { getWorldPosition: (out: THREE.Vector3) => out.copy(controls._pos) },
     canvas: noopTarget,
     container: noopTarget,
     models: () => new Map(),
@@ -189,5 +196,22 @@ describe('camera-fly pose-preserving switch', () => {
     // Controls still restored.
     expect(controls.minDistance).toBe(Number.EPSILON);
     expect(controls.maxDistance).toBe(Infinity);
+  });
+
+  it('clears the residual focalOffset on enter so look-around stays translation-free', async () => {
+    const controls = new FakeControls(
+      new THREE.Vector3(10, 5, 10),
+      new THREE.Vector3(0, 5, 0),
+    );
+    const { ctx, commands } = makeCtx(controls);
+    cameraFlyPlugin().install(ctx);
+
+    await commands.execute('cameraFly.enable');
+
+    // camera-controls re-applies a non-zero focalOffset (left by pivot-rotate /
+    // pan) along the camera's local axes every frame — without this reset,
+    // rotating the look in fly mode would swing the eye. enable() must zero it,
+    // with no transition.
+    expect(controls.focalOffsetCalls).toContainEqual({ x: 0, y: 0, z: 0, transition: false });
   });
 });

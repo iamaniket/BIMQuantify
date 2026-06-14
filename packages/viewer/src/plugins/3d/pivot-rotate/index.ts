@@ -256,6 +256,11 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         raf = 0;
         if (!sprite || !indicatorOpts) return;
 
+        // The indicator sprite (scale/position/opacity fade) animates without
+        // moving the camera, so request a frame — on-demand rendering won't
+        // otherwise repaint it.
+        ctx.requestRender();
+
         // Size: world units per pixel at the sprite's depth, for a
         // perspective camera. (Orthographic would need a different formula
         // — fine to skip; SimpleCamera is perspective.)

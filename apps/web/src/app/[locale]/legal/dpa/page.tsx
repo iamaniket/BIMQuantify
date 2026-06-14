@@ -14,5 +14,7 @@ export default async function DpaPage({ params }: Props): Promise<JSX.Element> {
   setRequestLocale(locale);
   const { dpa, meta } = getLegalContent(locale as Locale);
 
-  return <LegalArticle doc={dpa} lastUpdatedLabel={meta.lastUpdatedLabel} />;
+  return (
+    <LegalArticle doc={dpa} lastUpdatedLabel={meta.lastUpdatedLabel} draftBanner={meta.draftBanner} />
+  );
 }

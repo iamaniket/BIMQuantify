@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Columns3, Eraser, Footprints, Home, LayoutGrid, MousePointer2, Orbit, Settings, Square } from '@bimstitch/ui/icons';
+import { Blueprint, BoundingBox, Box, Eraser, Footprints, Home, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -128,12 +128,12 @@ export function Toolbar({
         onClick: () => { onViewModeChange('3d'); },
       },
       {
-        type: 'button', id: 'view-split', icon: Columns3, label: tVm('split'),
+        type: 'button', id: 'view-split', icon: SquareSplitHorizontal, label: tVm('split'),
         tooltip: tVm('splitTooltip'), isActive: viewMode === 'split',
         onClick: () => { onViewModeChange('split'); },
       },
       {
-        type: 'button', id: 'view-2d', icon: Square, label: tVm('plan'),
+        type: 'button', id: 'view-2d', icon: Blueprint, label: tVm('plan'),
         tooltip: tVm('planTooltip'), isActive: viewMode === '2d',
         onClick: () => { onViewModeChange('2d'); },
       },
@@ -147,7 +147,7 @@ export function Toolbar({
       {
         type: 'button',
         id: 'spaces',
-        icon: LayoutGrid,
+        icon: BoundingBox,
         label: t('spaces'),
         isActive: settings.spaces.show,
         onClick: () => {

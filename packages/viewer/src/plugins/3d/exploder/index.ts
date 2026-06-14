@@ -183,6 +183,9 @@ export function exploderPlugin(
     for (const mg of meshGroups) {
       mg.wrapper.position.copy(mg.offset).multiplyScalar(t * currentFactor);
     }
+    // Animation mutates mesh transforms without moving the camera, so the
+    // on-demand renderer won't otherwise repaint — request a frame each step.
+    ctxRef?.requestRender();
   };
 
   const doExplode = async (

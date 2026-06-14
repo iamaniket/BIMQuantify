@@ -447,6 +447,8 @@ export function sectionPlugin(
     const result = await pick(ctxRef, payload.ndc);
     if (!result) {
       clearPreview();
+      // Placement preview follows the cursor, not the camera — repaint it.
+      ctxRef.requestRender();
       return;
     }
 
@@ -485,6 +487,8 @@ export function sectionPlugin(
       previewHelper.quaternion.copy(quat);
       previewHelper.position.copy(point);
     }
+    // Placement preview follows the cursor, not the camera — repaint it.
+    ctxRef.requestRender();
   };
 
   const handlePlacementClick = async (payload: {

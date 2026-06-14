@@ -108,7 +108,14 @@ export const DEFAULT_CONTROLS: ControlsSettings = {
   wheel: 'dolly',
 };
 
-// Mirrors the plugin's defaults — every toggle off, sensible knob values.
+// Conservative motion-suppression profile, on by default. The two enabled
+// toggles are visually imperceptible — `dynamicPixelRatio` drops resolution
+// only while the camera is moving (crisp again on idle) and `pauseHover` skips
+// hover raycasts during motion — but together they noticeably smooth orbiting
+// on large/federated models. The heavier, more visible suppressions
+// (hideSmall / envelopeOnly / pixelSizeCull / flatShadeOverride) stay off; flip
+// them on per-deployment for very large scenes. Every key is overridable via
+// the settings dialog.
 export const DEFAULT_INTERACTIVE_PERFORMANCE: InteractivePerformanceSettings = {
   hideSmall: false,
   smallPercentile: 0.5,
@@ -125,12 +132,12 @@ export const DEFAULT_INTERACTIVE_PERFORMANCE: InteractivePerformanceSettings = {
   hideTransparent: false,
   pixelSizeCull: false,
   pixelSizeMin: 4,
-  dynamicPixelRatio: false,
+  dynamicPixelRatio: true,
   motionRatio: 0.5,
   tightenFarPlane: false,
   motionFarMultiplier: 1.5,
   flatShadeOverride: false,
-  pauseHover: false,
+  pauseHover: true,
   xrayMotionHideFills: true,
 };
 

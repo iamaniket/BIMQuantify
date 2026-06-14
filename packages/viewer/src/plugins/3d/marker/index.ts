@@ -38,7 +38,6 @@ let nextMarkerId = 0;
 export function markerPlugin(options: MarkerPluginOptions = {}): Plugin & MarkerPluginAPI {
   let ctxRef: ViewerContext | null = null;
   let overlay: Css2dOverlay | null = null;
-  let css2dRafId: number | null = null;
 
   const defaultColor = options.markerColor ?? 0xff5722;
   const markerSize = options.markerSize ?? 1;
@@ -49,20 +48,16 @@ export function markerPlugin(options: MarkerPluginOptions = {}): Plugin & Marker
 
   const DOT_GEO = new THREE.SphereGeometry(0.06 * markerSize, 12, 12);
 
+  // Markers only move on screen when the camera moves (handled by the shared
+  // overlay's camera:change subscription) or when a marker is added/removed/
+  // toggled — so nudge a one-shot repaint on change rather than a perpetual
+  // rAF loop. Names kept so call sites stay untouched.
   const startCss2dLoop = (): void => {
-    if (css2dRafId !== null || !overlay) return;
-    const tick = (): void => {
-      overlay?.render();
-      css2dRafId = requestAnimationFrame(tick);
-    };
-    css2dRafId = requestAnimationFrame(tick);
+    overlay?.requestRender();
   };
 
   const stopCss2dLoop = (): void => {
-    if (css2dRafId !== null) {
-      cancelAnimationFrame(css2dRafId);
-      css2dRafId = null;
-    }
+    // no-op: overlay rendering is event-driven (camera:change + requestRender)
   };
 
   const emitChange = (): void => {
@@ -183,6 +178,8 @@ export function markerPlugin(options: MarkerPluginOptions = {}): Plugin & Marker
       data.visible = visible;
       const obj = markerObjects.get(id);
       if (obj) obj.group.visible = visible;
+      // CSS2DRenderer only hides/shows the label DOM on a render pass.
+      overlay?.requestRender();
       emitChange();
     },
 

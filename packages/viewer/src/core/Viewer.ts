@@ -13,6 +13,7 @@ import {
   Components,
   FragmentsManager,
   OrthoPerspectiveCamera,
+  RendererMode,
   SimpleRenderer,
   SimpleScene,
   SimpleWorld,
@@ -102,8 +103,52 @@ export interface ViewerOptions {
   zoom?: ZoomOptions;
 }
 
-/** Camera idle window after which the `viewer:idle` event fires. */
-const IDLE_MS = 150;
+/**
+ * How long the renderer keeps drawing every frame after the last activity
+ * (camera move, selection, streamed change, …) before it parks itself in
+ * on-demand (MANUAL) mode and stops rendering. Must comfortably outlast the
+ * brief LOD-streaming tail that arrives just after the camera stops, so a late
+ * tile is never left undrawn. `viewer:idle` fires when this elapses, which is
+ * also the moment the effects composite + interactive-performance restore run.
+ */
+const ACTIVE_HOLD_MS = 250;
+/**
+ * Longer hold used while a model streams in (load / unload / whole-model
+ * visibility toggle): the initial tile stream can take a few seconds, during
+ * which we keep rendering every frame so geometry appears as it arrives rather
+ * than waiting for the next user interaction.
+ */
+const MODEL_STREAM_HOLD_MS = 4000;
+
+/**
+ * Visual-change events that should wake the renderer. `camera:change` is
+ * handled inline (it also clamps zoom + refits near/far), and the `model:*`
+ * events get a longer hold from their own methods — both are intentionally
+ * absent here. Anything a plugin emits that isn't covered can call
+ * `ctx.requestRender()` directly.
+ */
+const RENDER_DIRTY_EVENTS = [
+  'selection:change',
+  'hover:change',
+  'visibility:change',
+  'xray:change',
+  'section:change',
+  'section:select',
+  'outline:ready',
+  'outline:change',
+  'colorCoding:change',
+  'measurement:change',
+  'measurement:axisLock',
+  'classification:change',
+  'finder:results',
+  'wireframe:change',
+  'grid:change',
+  'exploder:change',
+  'navmode:change',
+  'marker:change',
+  'snapping:change',
+  'eraser:change',
+] as const;
 
 /**
  * X-ray fades items to near-zero opacity. Any material arriving below this
@@ -155,6 +200,10 @@ export class Viewer {
   /** Reused scratch vectors for the per-frame near/far fit (no per-call alloc). */
   private readonly forwardAxis = new THREE.Vector3();
   private readonly depthBoxSize = new THREE.Vector3();
+  /** Reused scratch vectors for the per-event camera-change handler. */
+  private readonly camTarget = new THREE.Vector3();
+  private readonly camClampedPos = new THREE.Vector3();
+  private readonly camDir = new THREE.Vector3();
   private readonly precomputedOutlines = new Map<
     string,
     Promise<Uint8Array | null>
@@ -170,6 +219,43 @@ export class Viewer {
   private readonly hiddenModelIds = new Set<string>();
 
   constructor(private readonly options: ViewerOptions = {}) {}
+
+  /**
+   * Mark the scene dirty: resume continuous rendering (renderer → AUTO) and
+   * (re)arm the idle countdown. When the countdown elapses with no further
+   * activity, `viewer:idle` fires and the renderer parks in MANUAL mode — at
+   * which point nothing repaints until the next `markActive()`. This is the
+   * single chokepoint that turns the viewer from "always rendering" into
+   * "render only when something changed": every visual-change source (camera,
+   * selection, streaming, animations) routes through here, and plugins reach
+   * it via `ctx.requestRender()`.
+   *
+   * Active periods are byte-for-byte the old behaviour (renderer in AUTO,
+   * drawing every frame); the only new behaviour is parking on idle.
+   */
+  private markActive(holdMs: number = ACTIVE_HOLD_MS): void {
+    const world = this.world;
+    if (world === null) return;
+    const renderer = world.renderer;
+    if (renderer && renderer.mode !== RendererMode.AUTO) {
+      renderer.mode = RendererMode.AUTO;
+    }
+    if (this.idleTimer !== null) clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = null;
+      // Final near/far fit for the resting viewpoint, emit idle (effects
+      // composites here, interactive-performance restores quality), then park.
+      this.updateDynamicNearFar();
+      this.events.emit('viewer:idle', undefined);
+      // A `viewer:idle` handler may have called markActive() (e.g. restoring
+      // motion-reduced DPR needs one more full-quality frame) — that re-arms
+      // the timer. Only park in MANUAL if nothing requested more rendering, so
+      // we never stop a frame a handler just asked for.
+      if (this.idleTimer === null && this.world?.renderer) {
+        this.world.renderer.mode = RendererMode.MANUAL;
+      }
+    }, holdMs);
+  }
 
   private updateDynamicNearFar(): void {
     const world = this.world;
@@ -422,6 +508,11 @@ export class Viewer {
         };
         material.needsUpdate = true;
       }
+
+      // A freshly-set material almost always means newly-streamed geometry —
+      // wake the renderer so the tile is drawn even if it lands after the
+      // camera/idle settle (on-demand rendering safety net for streaming).
+      this.markActive();
     });
 
     // FragmentsModels streams tile data from a worker. Drive `update()`
@@ -472,6 +563,7 @@ export class Viewer {
       models: () => fragmentsModels.models.list as unknown as Map<string, FRAGS.FragmentsModel>,
       getPrecomputedOutline: (modelId: string) =>
         this.precomputedOutlines.get(modelId),
+      requestRender: () => this.markActive(),
     };
 
     this.pluginManager = new PluginManager(ctx, this.commands, this.events);
@@ -482,17 +574,18 @@ export class Viewer {
     const camThree = world.camera.three;
     const onCamChange = (): void => {
       const pos = camThree.position;
-      const target = new THREE.Vector3();
-      camControls.getTarget(target);
+      const target = camControls.getTarget(this.camTarget);
 
       // Clamp zoom-out: with infinityDolly the target shifts, so measure
       // the actual camera-to-scene-origin distance instead of controls.distance.
       if (this.zoomOutLimit < Infinity) {
         const dist = pos.distanceTo(target);
         if (dist > this.zoomOutLimit) {
-          const dir = pos.clone().sub(target).normalize();
-          const clampedPos = target.clone().addScaledVector(dir, this.zoomOutLimit);
-          camControls.setPosition(clampedPos.x, clampedPos.y, clampedPos.z, false);
+          const dir = this.camDir.copy(pos).sub(target).normalize();
+          const clamped = this.camClampedPos
+            .copy(target)
+            .addScaledVector(dir, this.zoomOutLimit);
+          camControls.setPosition(clamped.x, clamped.y, clamped.z, false);
         }
       }
 
@@ -501,18 +594,11 @@ export class Viewer {
         target: { x: target.x, y: target.y, z: target.z },
       });
       this.updateDynamicNearFar();
-      // Reset the idle countdown — fires `viewer:idle` once the camera
-      // has been still for IDLE_MS so plugins (effects composer) can
-      // run their expensive frame.
-      if (this.idleTimer !== null) clearTimeout(this.idleTimer);
-      this.idleTimer = setTimeout(() => {
-        this.idleTimer = null;
-        this.events.emit('viewer:idle', undefined);
-        // Re-apply after plugins (e.g. interactive-performance) restore
-        // their saved far on idle — ensures correct values for the final
-        // camera position.
-        this.updateDynamicNearFar();
-      }, IDLE_MS);
+      // Keep rendering while the camera moves; park on idle. markActive() also
+      // (re)arms the countdown that emits `viewer:idle` once the camera has been
+      // still for ACTIVE_HOLD_MS, so the effects composite runs on the final
+      // frame and a final near/far fit is applied for the resting viewpoint.
+      this.markActive();
     };
     camControls.addEventListener('update', onCamChange);
     this.cameraChangeUnsub = () => {
@@ -535,11 +621,26 @@ export class Viewer {
       { title: 'Unload model' },
     );
 
+    // On-demand rendering: park the renderer in MANUAL and only resume on a
+    // visual change. Each event below means "something changed on screen" —
+    // route it through markActive() so a frame (and the idle composite) is
+    // produced, then the renderer settles back to MANUAL. Plugins with
+    // non-evented changes (animation ticks, etc.) call ctx.requestRender().
+    world.renderer!.mode = RendererMode.MANUAL;
+    for (const name of RENDER_DIRTY_EVENTS) {
+      this.events.on(name, () => this.markActive());
+    }
+    // A canvas resize needs a repaint too (MANUAL won't redraw on its own).
+    world.renderer!.onResize.add(() => this.markActive());
+
     this.events.emit('viewer:mounted', { container });
 
     for (const plugin of this.options.plugins ?? []) {
       await this.pluginManager.register(plugin);
     }
+
+    // Draw the initial frame(s), then settle to idle.
+    this.markActive();
   }
 
   async loadFragments(
@@ -592,8 +693,10 @@ export class Viewer {
     }
     // Position sun + size the blob shadow plane to the whole-scene footprint.
     this.fitLightsToScene();
-    // Trigger an immediate idle frame so post-processing kicks in.
-    this.events.emit('viewer:idle', undefined);
+    // Keep rendering every frame while the model streams in (a few seconds for
+    // large models); the trailing `viewer:idle` from this hold kicks the
+    // post-processing composite once streaming settles.
+    this.markActive(MODEL_STREAM_HOLD_MS);
 
     this.events.emit('model:loaded', { modelId });
     return modelId;
@@ -885,7 +988,8 @@ export class Viewer {
     else this.hiddenModelIds.add(modelId);
     await model.setVisible(undefined, visible).catch(() => undefined);
     this.events.emit('model:visibility', { modelId, visible });
-    this.events.emit('viewer:idle', undefined);
+    // Toggling a model re-streams its tiles — keep drawing while they arrive.
+    this.markActive(MODEL_STREAM_HOLD_MS);
   }
 
   /**
@@ -917,7 +1021,7 @@ export class Viewer {
     this.refreshSceneBounds();
     this.fitLightsToScene();
     this.events.emit('model:unloaded', { modelId });
-    this.events.emit('viewer:idle', undefined);
+    this.markActive(MODEL_STREAM_HOLD_MS);
   }
 
   async unmount(): Promise<void> {

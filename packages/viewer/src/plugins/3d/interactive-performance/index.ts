@@ -422,6 +422,19 @@ export function interactivePerformancePlugin(
     const camera = ctxRef.camera;
     const scene = ctxRef.scene;
 
+    // Did this burst suppress anything that changes the rendered image? If so we
+    // must repaint after restoring it: the viewer renders on demand and parks
+    // on `viewer:idle`, and the effects composite already ran (before us) at the
+    // suppressed quality — without a follow-up frame the restored DPR / far /
+    // material / re-shown geometry would never be drawn. Gated so a no-suppress
+    // burst costs nothing, and safe from looping (inMotion is already false, so
+    // the resulting idle re-entry no-ops).
+    const needsRepaint =
+      savedDpr !== null ||
+      savedFar !== null ||
+      overrideRestoreNeeded ||
+      hiddenByModel.size > 0;
+
     if (savedDpr !== null) {
       renderer.setPixelRatio(savedDpr);
       savedDpr = null;
@@ -453,6 +466,11 @@ export function interactivePerformancePlugin(
       }
       hiddenByModel.clear();
     }
+
+    // Repaint the restored, full-quality frame (and re-run the idle composite at
+    // full DPR). One extra short render burst, only when something was actually
+    // suppressed.
+    if (needsRepaint) ctxRef.requestRender();
   };
 
   const api: Plugin & InteractivePerformanceAPI = {

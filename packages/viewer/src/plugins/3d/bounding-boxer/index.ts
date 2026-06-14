@@ -31,22 +31,17 @@ export function boundingBoxerPlugin(): Plugin & BoundingBoxerPluginAPI {
   let overlay: Css2dOverlay | null = null;
   let boxHelper: THREE.Box3Helper | null = null;
   let dimLabels: THREE.Object3D[] = [];
-  let css2dRafId: number | null = null;
 
+  // The box + dimension labels only move on screen when the camera moves
+  // (handled by the shared overlay's camera:change subscription); we just
+  // nudge a one-shot repaint when the box is shown/cleared rather than a
+  // perpetual rAF loop. Names kept so call sites stay untouched.
   const startCss2dLoop = (): void => {
-    if (css2dRafId !== null || !overlay) return;
-    const tick = (): void => {
-      overlay?.render();
-      css2dRafId = requestAnimationFrame(tick);
-    };
-    css2dRafId = requestAnimationFrame(tick);
+    overlay?.requestRender();
   };
 
   const stopCss2dLoop = (): void => {
-    if (css2dRafId !== null) {
-      cancelAnimationFrame(css2dRafId);
-      css2dRafId = null;
-    }
+    // no-op: overlay rendering is event-driven (camera:change + requestRender)
   };
 
   const computeBox = (items?: ItemId[]): THREE.Box3 => {
@@ -89,6 +84,9 @@ export function boundingBoxerPlugin(): Plugin & BoundingBoxerPluginAPI {
     }
     dimLabels = [];
     stopCss2dLoop();
+    // The box helper is a 3D scene object — wake the on-demand renderer so its
+    // removal is drawn (no camera move / tracked event triggers this).
+    ctxRef?.requestRender();
   };
 
   const showBox = (items?: ItemId[]): void => {
@@ -126,6 +124,9 @@ export function boundingBoxerPlugin(): Plugin & BoundingBoxerPluginAPI {
     dimLabels.push(depthLabel);
 
     startCss2dLoop();
+    // The Box3Helper is a 3D scene object — wake the on-demand renderer so it's
+    // drawn even though showing the box isn't a camera move / tracked event.
+    ctxRef.requestRender();
   };
 
   const getDimensions = (items?: ItemId[]): BboxDimensions | null => {

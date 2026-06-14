@@ -26,7 +26,9 @@ export { Trophy as Award } from '@phosphor-icons/react';
 
 /* ── B ──────────────────────────────────────────────────────────── */
 export { Bell } from '@phosphor-icons/react';
+export { Blueprint } from '@phosphor-icons/react';
 export { BookOpenText as BookOpen } from '@phosphor-icons/react';
+export { BoundingBox } from '@phosphor-icons/react';
 export { Cube as Box } from '@phosphor-icons/react';
 export { Package as Boxes } from '@phosphor-icons/react';
 export { Buildings as Building2 } from '@phosphor-icons/react';
@@ -155,6 +157,7 @@ export { ShieldCheck } from '@phosphor-icons/react';
 export { SlidersHorizontal as SlidersHorizontal } from '@phosphor-icons/react';
 export { Sparkle as Sparkles } from '@phosphor-icons/react';
 export { Square } from '@phosphor-icons/react';
+export { SquareSplitHorizontal } from '@phosphor-icons/react';
 export { Sun } from '@phosphor-icons/react';
 
 /* ── T ──────────────────────────────────────────────────────────── */

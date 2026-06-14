@@ -5,14 +5,13 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 
 import { Button, Skeleton } from '@bimstitch/ui';
-import { Layers, Pencil, Settings, Share2 } from '@bimstitch/ui/icons';
+import { Pencil, Settings, Share2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { useModels } from '@/features/models/useModels';
 import { useProject } from '@/features/projects/useProject';
-import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useFindings } from '@/features/findings/useFindings';
 import { useCertificates } from '@/features/certificates/useCertificates';
@@ -148,19 +147,9 @@ export default function ProjectDetailPage(): JSX.Element {
       </Button>
       <Button variant="border" size="md" asChild>
         <Link href={`/projects/${project.id}/access`}>
-          <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('shareProject')}
+          <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('projectAccess')}
         </Link>
       </Button>
-      {modelCount > 0 && (
-        <Button variant="border" size="md" asChild>
-          <Link
-            href={`/projects/${project.id}/viewer`}
-            onClick={() => { setViewerTarget(project.id, { kind: 'all' }); }}
-          >
-            <Layers className="mr-1 h-3.5 w-3.5" /> {tHero('viewAllModels')}
-          </Link>
-        </Button>
-      )}
     </>
   );
 

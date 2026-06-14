@@ -75,7 +75,7 @@ export function RightColumnTabs({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto px-3 pb-3 pt-2">
+        <div className={`min-h-0 flex-1 px-3 pb-3 pt-2 ${topTab === 'models' ? 'overflow-hidden' : 'overflow-auto'}`}>
           {topTab === 'overzicht' && (
             <OverzichtTab projectId={projectId} />
           )}

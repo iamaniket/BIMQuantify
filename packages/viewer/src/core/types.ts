@@ -149,6 +149,15 @@ export interface ViewerContext {
   /** All currently loaded models, keyed by modelId. */
   models: () => Map<string, FRAGS.FragmentsModel>;
   /**
+   * Wake the renderer for a visual change the viewer can't observe through its
+   * own event bus — an animation tick, a direct scene mutation, a one-off
+   * screenshot. The viewer renders on-demand (it parks in MANUAL mode when
+   * idle), so a plugin that moves geometry or the camera outside a tracked
+   * event MUST call this or its change won't be drawn until the next
+   * interaction. Idempotent and cheap; safe to call every animation frame.
+   */
+  requestRender: () => void;
+  /**
    * Precomputed-outline supply handed to `loadFragments` for this model, if
    * any. Resolves to the compressed artifact bytes, or null when the fetch
    * failed — consumers (outline plugin) decode it and fall back to

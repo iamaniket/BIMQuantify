@@ -14,5 +14,7 @@ export default async function TermsPage({ params }: Props): Promise<JSX.Element>
   setRequestLocale(locale);
   const { terms, meta } = getLegalContent(locale as Locale);
 
-  return <LegalArticle doc={terms} lastUpdatedLabel={meta.lastUpdatedLabel} />;
+  return (
+    <LegalArticle doc={terms} lastUpdatedLabel={meta.lastUpdatedLabel} draftBanner={meta.draftBanner} />
+  );
 }
