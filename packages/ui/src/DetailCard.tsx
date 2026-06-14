@@ -100,7 +100,10 @@ export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
     const accentPad = accent === 'primary' ? 'pl-[9px]' : 'pl-[10px]';
 
     const gridTemplateColumns = [
-      media !== undefined ? '40px' : null,
+      // `auto` (not a fixed 40px) so a media slot wider than 40px — e.g. the
+      // Models row's checkbox + discipline badge — sizes to its content and
+      // left-aligns instead of overflowing a 40px box jammed against the edge.
+      media !== undefined ? 'auto' : null,
       '1fr',
       aside !== undefined ? 'auto' : null,
       'auto',
@@ -132,7 +135,7 @@ export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
         {...rest}
       >
         {media !== undefined && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+          <div className="flex h-10 min-w-[40px] shrink-0 items-center justify-center">
             {media}
           </div>
         )}

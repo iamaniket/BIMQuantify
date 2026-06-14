@@ -1,29 +1,23 @@
 'use client';
 
 import {
-  Box, Download, FileText, Layers, Plus, ShieldCheck, Trash2,
+  Box, FileText, Layers, Plus,
 } from '@bimstitch/ui/icons';
-import { useQueryClient } from '@tanstack/react-query';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
 import {
-  Button, Checkbox, ConfirmDialog, EmptyState, Select, SplitButton, type SplitButtonItem,
+  Button, EmptyState, Select, SplitButton, type SplitButtonItem,
 } from '@bimstitch/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
 import type { Model, ModelDisciplineValue, ProjectFile } from '@/lib/api/schemas';
 import { NewModelDialog } from '@/features/models/NewModelDialog';
-import { useDeleteModel } from '@/features/models/useDeleteModel';
 import { useModelsWithVersions } from '@/features/models/useModelsWithVersions';
 import { useProjectPermissions } from '@/features/permissions';
 import { setViewerTarget, type ViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
-import { triggerComplianceCheck } from '@/lib/api/compliance';
-import { getDownloadUrl } from '@/lib/api/projectFiles';
 import { useRouter } from '@/i18n/navigation';
-import { useAuth } from '@/providers/AuthProvider';
 
-import { ModelActionPill } from './ModelActionPill';
 import { ModelsTableRow } from './ModelsTableRow';
 
 type Props = {
@@ -47,17 +41,11 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
   const [disciplineFilter, setDisciplineFilter] = useState<ModelDisciplineValue | undefined>(undefined);
   const t = useTranslations('projectDetail.tabs.models');
   const router = useRouter();
-  const { tokens } = useAuth();
-  const queryClient = useQueryClient();
   const { can } = useProjectPermissions(projectId);
   const canCreateModel = can('model', 'create');
-  const canRemoveModel = can('model', 'delete');
-  const deleteMutation = useDeleteModel();
 
-  // Checkbox selection drives the bulk-action bar (federated load, check, …).
+  // Checkbox selection turns the "Load all" button into "Load selected".
   const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(new Set());
-  const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
-  const [bulkBusy, setBulkBusy] = useState<null | 'check' | 'download'>(null);
 
   // Fetch all models with their file versions in a single API call.
   const modelsWithVersionsQuery = useModelsWithVersions(projectId, true);
@@ -100,13 +88,6 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
       return next;
     });
   };
-  const clearSelection = (): void => { setSelectedModelIds(new Set()); };
-  const allSelected = models.length > 0 && selectedModelIds.size === models.length;
-  const someSelected = selectedModelIds.size > 0 && !allSelected;
-  const toggleAll = (): void => {
-    if (selectedModelIds.size > 0) clearSelection();
-    else setSelectedModelIds(new Set(models.map((m) => m.id)));
-  };
 
   const goViewer = (target: ViewerTarget): void => {
     setViewerTarget(projectId, target);
@@ -144,61 +125,12 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
   }
   const canLoadAll = canLoad3d || single2d !== null;
 
-  // Selection-derived subsets — each bulk action targets only the models it can act on.
-  const selectedModels = models.filter((m) => selectedModelIds.has(m.id));
-  const loadableSelected = selectedModels.filter((m) => isLoadable(m.id));
-  const checkableSelected = selectedModels.filter((m) => {
-    const f = latestFileOf(m.id);
-    return f?.file_type === 'ifc' && f.extraction_status === 'succeeded';
-  });
-  const downloadableSelected = selectedModels.filter((m) => latestFileOf(m.id) !== undefined);
+  // Only the loadable subset of the selection can join a federated scene.
+  const loadableSelected = models.filter((m) => selectedModelIds.has(m.id) && isLoadable(m.id));
 
   const loadSelected = (): void => {
     if (loadableSelected.length === 0) return;
     goViewer({ kind: 'models', modelIds: loadableSelected.map((m) => m.id) });
-  };
-
-  const bulkCheckBbl = (): void => {
-    if (tokens === null || checkableSelected.length === 0) return;
-    const accessToken = tokens.access_token;
-    const targets = checkableSelected
-      .map((m) => {
-        const f = latestFileOf(m.id);
-        return f === undefined ? null : { modelId: m.id, fileId: f.id };
-      })
-      .filter((x): x is { modelId: string; fileId: string } => x !== null);
-    setBulkBusy('check');
-    void Promise.allSettled(
-      targets.map((tg) => triggerComplianceCheck(accessToken, projectId, tg.modelId, tg.fileId)),
-    ).then(() => {
-      void queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'compliance'] });
-      setBulkBusy(null);
-    });
-  };
-
-  const bulkDownload = (): void => {
-    if (tokens === null || downloadableSelected.length === 0) return;
-    const accessToken = tokens.access_token;
-    setBulkBusy('download');
-    // One presigned download per file — the browser may throttle extra tabs.
-    void Promise.allSettled(
-      downloadableSelected.map(async (m) => {
-        const f = latestFileOf(m.id);
-        if (f === undefined) return;
-        const resp = await getDownloadUrl(accessToken, projectId, m.id, f.id);
-        window.open(resp.download_url, '_blank', 'noopener,noreferrer');
-      }),
-    ).then(() => { setBulkBusy(null); });
-  };
-
-  const bulkRemove = (): void => {
-    const ids = selectedModels.map((m) => m.id);
-    void Promise.allSettled(
-      ids.map((modelId) => deleteMutation.mutateAsync({ projectId, modelId })),
-    ).then(() => {
-      clearSelection();
-      setConfirmBulkRemove(false);
-    });
   };
 
   const filtered = models.filter((m) => {
@@ -227,7 +159,17 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
         )}
         actions={(
           <div className="flex items-center gap-2">
-            {canLoadAll ? (
+            {selectedModelIds.size > 0 ? (
+              <Button
+                variant="primary"
+                size="md"
+                disabled={loadableSelected.length === 0}
+                onClick={loadSelected}
+              >
+                <Layers className="mr-1.5 h-3.5 w-3.5" />
+                {t('loadSelected', { count: selectedModelIds.size })}
+              </Button>
+            ) : canLoadAll ? (
               <SplitButton
                 variant="primary"
                 size="md"
@@ -251,60 +193,6 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
           </div>
         )}
       />
-
-      {selectedModelIds.size > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-primary bg-primary-lighter px-3 py-2">
-          <Checkbox
-            checked={allSelected}
-            indeterminate={someSelected}
-            onChange={toggleAll}
-            aria-label={t('selectedCount', { count: selectedModelIds.size })}
-          />
-          <span className="text-body3 font-semibold text-primary">
-            {t('selectedCount', { count: selectedModelIds.size })}
-          </span>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button
-              variant="primary"
-              size="md"
-              disabled={loadableSelected.length === 0}
-              onClick={loadSelected}
-            >
-              <Layers className="mr-1.5 h-3.5 w-3.5" />
-              {t('loadSelected', { count: selectedModelIds.size })}
-            </Button>
-            <ModelActionPill
-              icon={<ShieldCheck className="h-3.5 w-3.5" />}
-              label={t('bulkCheckBbl')}
-              disabled={checkableSelected.length === 0 || bulkBusy !== null}
-              pending={bulkBusy === 'check'}
-              onClick={bulkCheckBbl}
-            />
-            <ModelActionPill
-              icon={<Download className="h-3.5 w-3.5" />}
-              label={t('bulkDownload')}
-              disabled={downloadableSelected.length === 0 || bulkBusy !== null}
-              pending={bulkBusy === 'download'}
-              onClick={bulkDownload}
-            />
-            {canRemoveModel && (
-              <ModelActionPill
-                tone="danger"
-                icon={<Trash2 className="h-3.5 w-3.5" />}
-                label={t('bulkRemove')}
-                onClick={() => { setConfirmBulkRemove(true); }}
-              />
-            )}
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="rounded-md px-2 py-1 text-body3 font-semibold text-foreground-tertiary transition-colors hover:text-foreground"
-            >
-              {t('clearSelection')}
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="min-h-0 flex-1 overflow-auto">
         <ResourceList
@@ -351,19 +239,6 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
         open={newModelOpen}
         onOpenChange={setNewModelOpen}
         projectId={projectId}
-      />
-
-      <ConfirmDialog
-        open={confirmBulkRemove}
-        onOpenChange={(open) => { if (!open) setConfirmBulkRemove(false); }}
-        title={t('bulkRemoveTitle', { count: selectedModelIds.size })}
-        description={t('bulkRemoveBody', { count: selectedModelIds.size })}
-        confirmLabel={t('bulkRemoveConfirm')}
-        cancelLabel={t('cancel')}
-        onConfirm={bulkRemove}
-        variant="destructive"
-        isPending={deleteMutation.isPending}
-        errorMessage={deleteMutation.error?.message ?? null}
       />
     </div>
   );

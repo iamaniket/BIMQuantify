@@ -380,7 +380,7 @@ export function ModelsTableRow({
 
           {files.length > 0 && (
             <>
-              <Eyebrow as="div" tone="tertiary" className="mb-2 mt-1 text-primary">
+              <Eyebrow as="div" tone="tertiary" className="mb-2 mt-1 text-primary text-[7px]">
                 {t('versionHistory', { count: files.length })}
               </Eyebrow>
               <VersionTimeline
