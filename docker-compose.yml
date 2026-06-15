@@ -75,6 +75,10 @@ services:
       # API is containerised.
       API_BASE_URL: http://host.docker.internal:8000
       PROCESSOR_SHARED_SECRET: ${PROCESSOR_SHARED_SECRET:-dev-shared-secret-change-me}
+      # Optional error tracking — no-op when SENTRY_DSN is unset (see src/sentry.ts).
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
     depends_on:
       redis:
         condition: service_healthy

@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Sentry from '@sentry/nextjs';
 import { useTranslations } from 'next-intl';
 import {
   useCallback,
@@ -143,35 +144,14 @@ export function BlogPostCreateDialog({ open, onOpenChange }: Props): JSX.Element
     const fileList = input.files;
     const file = fileList === null ? undefined : fileList[0];
     input.value = '';
-    // eslint-disable-next-line no-console
-    console.log('[blog-cover] handleCoverChange fired ' + JSON.stringify({
-      fileListLength: fileList === null ? null : fileList.length,
-      fileName: file?.name,
-      fileType: file?.type,
-      fileSize: file?.size,
-    }));
     if (file === undefined) {
-      // eslint-disable-next-line no-console
-      console.warn('[blog-cover] no file in the input — aborting (file === undefined)');
       return;
     }
     // Accept image/jpg as a synonym for image/jpeg — some Android/older Safari
     // builds report the non-standard short form.
     const normalizedType = file.type === 'image/jpg' ? 'image/jpeg' : file.type;
     const acceptedTypes = THUMBNAIL_ACCEPT.split(',');
-    // eslint-disable-next-line no-console
-    console.log('[blog-cover] type check ' + JSON.stringify({
-      rawType: file.type,
-      normalizedType,
-      acceptedTypes,
-      accepted: acceptedTypes.includes(normalizedType),
-    }));
     if (!acceptedTypes.includes(normalizedType)) {
-      // eslint-disable-next-line no-console
-      console.warn('[blog-cover] REJECTED on type — setting coverType error', {
-        rawType: file.type,
-        normalizedType,
-      });
       setCoverError(t('errors.coverType'));
       return;
     }
@@ -192,10 +172,6 @@ export function BlogPostCreateDialog({ open, onOpenChange }: Props): JSX.Element
     });
     setCoverFile(file);
     coverFileRef.current = file;
-    // eslint-disable-next-line no-console
-    console.log('[blog-cover] setCoverFile(original) called — cover should now be non-null ' + JSON.stringify({
-      fileName: file.name,
-    }));
     compressImage(file)
       .then((compressed) => {
         const preview = URL.createObjectURL(compressed);
@@ -205,19 +181,12 @@ export function BlogPostCreateDialog({ open, onOpenChange }: Props): JSX.Element
         });
         setCoverFile(compressed);
         coverFileRef.current = compressed;
-        // eslint-disable-next-line no-console
-        console.log('[blog-cover] compression OK — replaced with compressed file', {
-          originalSize: file.size,
-          compressedSize: compressed.size,
-          compressedType: compressed.type,
-        });
       })
       .catch((err: unknown) => {
         // Compression failed — keep the original file so the user can still
         // publish. Flag the error so they know the upload is bigger than
-        // expected.
-        // eslint-disable-next-line no-console
-        console.error('[blog-cover] compression FAILED — keeping original file', err);
+        // expected, and report it so the failure isn't silent.
+        Sentry.captureException(err, { tags: { feature: 'blog-cover-compress' } });
         setCoverError(t('errors.coverProcess'));
       });
   };
@@ -235,14 +204,7 @@ export function BlogPostCreateDialog({ open, onOpenChange }: Props): JSX.Element
     // Read from the ref so this closure always sees the LATEST cover file,
     // even though handleSubmit is memoised with [form] and never re-creates.
     const currentCover = coverFileRef.current;
-    // eslint-disable-next-line no-console
-    console.log('[blog-cover] onSubmitImpl (Publish) reached ' + JSON.stringify({
-      coverFileIsNull: currentCover === null,
-      coverFileName: currentCover?.name,
-    }));
     if (currentCover === null) {
-      // eslint-disable-next-line no-console
-      console.warn('[blog-cover] onSubmitImpl GATE: coverFile is null at Publish — jumping to step 0 with coverRequired error');
       setCoverError(t('errors.coverRequired'));
       setCurrentStep(0);
       return;
@@ -299,29 +261,13 @@ export function BlogPostCreateDialog({ open, onOpenChange }: Props): JSX.Element
   const handleNext = useCallback(async (): Promise<void> => {
     const stepDef = BLOG_WIZARD_STEPS[currentStep];
     if (stepDef === undefined) return;
-    // eslint-disable-next-line no-console
-    console.log('[blog-cover] handleNext ' + JSON.stringify({
-      currentStep,
-      stepId: stepDef.id,
-      coverFileIsNull: coverFile === null,
-      coverFileName: coverFile?.name,
-    }));
     // Cover is required to leave the meta step.
     if (stepDef.id === 'meta' && coverFile === null) {
-      // eslint-disable-next-line no-console
-      console.warn('[blog-cover] handleNext GATE: coverFile is null on meta step — blocking + coverRequired error');
       setCoverError(t('errors.coverRequired'));
       return;
     }
     const fields = BLOG_WIZARD_STEP_FIELDS[stepDef.id];
     const valid = await form.trigger([...fields], { shouldFocus: true });
-    // eslint-disable-next-line no-console
-    console.log('[blog-cover] handleNext form.trigger result ' + JSON.stringify({
-      stepId: stepDef.id,
-      fields,
-      valid,
-      errors: Object.keys(form.formState.errors),
-    }));
     if (!valid) return;
     const next = Math.min(LAST_STEP, currentStep + 1);
     setCurrentStep(next);

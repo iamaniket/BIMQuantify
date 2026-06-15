@@ -15,8 +15,10 @@ import { closeBrowser } from './pipeline/report/chromium.js';
 import { startActionWorker } from './queue/action-worker.js';
 import { closeQueue } from './queue/queue.js';
 import { startWorker } from './queue/worker.js';
+import { captureException, flushSentry, initSentry } from './sentry.js';
 
 async function main(): Promise<void> {
+  initSentry();
   const cfg = getConfig();
   const server = await buildServer();
   const worker = startWorker();
@@ -45,9 +47,21 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => {
     void shutdown('SIGINT');
   });
+
+  // The worker is unattended — a crash here would otherwise vanish into stdout.
+  process.on('unhandledRejection', (reason: unknown) => {
+    logger.error({ err: reason }, 'unhandled promise rejection');
+    captureException(reason, { kind: 'unhandledRejection' });
+  });
+  process.on('uncaughtException', (err: unknown) => {
+    logger.error({ err }, 'uncaught exception');
+    captureException(err, { kind: 'uncaughtException' });
+    void flushSentry().finally(() => process.exit(1));
+  });
 }
 
 main().catch((err: unknown) => {
   logger.error({ err }, 'fatal startup error');
-  process.exit(1);
+  captureException(err, { kind: 'startup' });
+  void flushSentry().finally(() => process.exit(1));
 });

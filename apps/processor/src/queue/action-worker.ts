@@ -9,6 +9,7 @@ import { Worker } from 'bullmq';
 import { ACTION_QUEUE_NAME, getConfig } from '../config.js';
 import { runSendEmail } from '../email/send.js';
 import { logger } from '../log.js';
+import { captureException } from '../sentry.js';
 import { getRedis, type WorkerJob } from './queue.js';
 
 export function startActionWorker(): Worker<WorkerJob> {
@@ -35,6 +36,7 @@ export function startActionWorker(): Worker<WorkerJob> {
 
   worker.on('failed', (job, err) => {
     logger.error({ jobId: job?.id, err }, 'action failed');
+    captureException(err, { jobId: job?.id, queue: 'actions' });
   });
 
   return worker;

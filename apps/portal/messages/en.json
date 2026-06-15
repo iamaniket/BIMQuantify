@@ -1,4 +1,9 @@
 {
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. You can try again — if it keeps happening, please contact support.",
+    "retry": "Try again"
+  },
   "org": {
     "switcher": {
       "label": "Switch organization",
