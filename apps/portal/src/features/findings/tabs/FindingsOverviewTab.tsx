@@ -134,22 +134,23 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
     [members, t],
   );
 
-  // Active (open) findings grouped by assignee, busiest first.
+  // Active (open) findings grouped by assignee, busiest first. Group by the
+  // resolved display label (not the raw user id) so that genuinely-unassigned
+  // findings and findings assigned to a non-member — both of which render as
+  // "Unassigned" — collapse into one bucket instead of producing duplicate rows
+  // (and duplicate React keys).
   const workload = useMemo(() => {
     const map = new Map<string, number>();
     for (const f of findings) {
       if (isActive(f)) {
-        const key = f.assignee_user_id ?? '__none__';
-        map.set(key, (map.get(key) ?? 0) + 1);
+        const label = assigneeName(f.assignee_user_id);
+        map.set(label, (map.get(label) ?? 0) + 1);
       }
     }
     return Array.from(map.entries())
-      .map(([key, count]) => ({
-        label: key === '__none__' ? t('unassigned') : assigneeName(key),
-        count,
-      }))
+      .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count);
-  }, [findings, assigneeName, t]);
+  }, [findings, assigneeName]);
 
   const overdue = useMemo(() => {
     const today = new Date(new Date().toDateString());

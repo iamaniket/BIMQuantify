@@ -30,7 +30,6 @@ import { FindingsOverviewTab } from '@/features/findings/tabs/FindingsOverviewTa
 import { FindingsPhotosTab } from '@/features/findings/tabs/FindingsPhotosTab';
 import { FindingsSettingsTab } from '@/features/findings/tabs/FindingsSettingsTab';
 import { useFindings } from '@/features/findings/useFindings';
-import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useProject } from '@/features/projects/useProject';
 import { ApiError } from '@/lib/api/client';
@@ -147,13 +146,6 @@ export default function FindingsBoardPage(): JSX.Element {
       activeTab={tab}
       onTabChange={setTab}
       panelHeading={panelHeading}
-      toolbar={
-        tab === 'board' ? (
-          <div className="flex justify-end px-5 pt-3">
-            <LogFindingButton projectId={projectId} variant="border" />
-          </div>
-        ) : undefined
-      }
     >
       <TabsContent value="board" className="mt-0 h-full">
         <div className="flex h-full min-h-0 flex-col">

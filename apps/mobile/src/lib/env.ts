@@ -14,7 +14,7 @@ const EnvSchema = z.object({
 });
 
 const parsed = EnvSchema.safeParse({
-  EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000',
+  EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.251:8000',
   EXPO_PUBLIC_VIEWER_EMBED_URL: process.env.EXPO_PUBLIC_VIEWER_EMBED_URL,
 });
 

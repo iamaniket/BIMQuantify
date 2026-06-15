@@ -1628,6 +1628,7 @@
     "invalidDrop": "Cannot move here",
     "logFinding": "Log finding",
     "searchPlaceholder": "Search findings…",
+    "filterAllPriorities": "All priorities",
     "filter": {
       "unassigned": "Unassigned",
       "assigneeTooltip": "Filter by {name}"

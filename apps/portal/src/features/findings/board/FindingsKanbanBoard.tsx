@@ -4,20 +4,24 @@ import { Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 
-import { Input, type KanbanColumnDef } from '@bimstitch/ui';
+import { Input, Select, type KanbanColumnDef } from '@bimstitch/ui';
 import { KanbanBoard } from '@bimstitch/ui';
 
 import { AssigneeFilterChips, UNASSIGNED_FILTER } from '@/features/findings/AssigneeFilterChips';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
+import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useProjectPermissions } from '@/features/permissions';
 import { FindingDetailPanel } from '@/features/projects/detail/FindingDetailPanel';
-import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
+import type { Finding, FindingSeverityValue, FindingStatusValue } from '@/lib/api/schemas';
 import type { ProjectMember } from '@/lib/api/schemas';
 
 import { FindingKanbanCard } from './FindingKanbanCard';
 import { isValidTransition, needsModal } from './kanbanTransitions';
 
 const STATUSES: FindingStatusValue[] = ['draft', 'open', 'in_progress', 'resolved', 'verified'];
+
+// Priority filter, ordered most-severe first.
+const SEVERITIES: FindingSeverityValue[] = ['high', 'medium', 'low'];
 
 const ACCENT_COLORS: Record<FindingStatusValue, string> = {
   draft: 'var(--foreground-tertiary)',
@@ -36,10 +40,12 @@ type Props = {
 export function FindingsKanbanBoard({ projectId, findings, members }: Props): JSX.Element {
   const t = useTranslations('findingsBoard');
   const tColumns = useTranslations('findingsBoard.columns');
+  const tSeverity = useTranslations('findings.severity');
   const updateMutation = useUpdateFinding(projectId);
   const { can, canVerifyFinding } = useProjectPermissions(projectId);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   const [search, setSearch] = useState('');
+  const [severityFilter, setSeverityFilter] = useState<FindingSeverityValue | undefined>(undefined);
   const [assigneeFilter, setAssigneeFilter] = useState<Set<string>>(new Set());
 
   const canUpdateFinding = can('finding', 'update');
@@ -65,6 +71,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
   const filteredFindings = useMemo(() => {
     const q = search.trim().toLowerCase();
     return findings.filter((f) => {
+      if (severityFilter && f.severity !== severityFilter) return false;
       if (assigneeFilter.size > 0 && !assigneeFilter.has(f.assignee_user_id ?? UNASSIGNED_FILTER)) {
         return false;
       }
@@ -74,7 +81,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
       }
       return true;
     });
-  }, [findings, assigneeFilter, search]);
+  }, [findings, assigneeFilter, severityFilter, search]);
 
   const columns: KanbanColumnDef[] = useMemo(
     () => STATUSES.map((s) => ({
@@ -133,7 +140,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 pb-2.5 pt-0.5">
+      <div className="flex flex-wrap items-center gap-2 px-3.5 pb-2.5 pt-0.5">
         <Input
           inputSize="md"
           type="text"
@@ -148,6 +155,20 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
           selected={assigneeFilter}
           onToggle={toggleAssignee}
         />
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          <Select
+            selectSize="md"
+            value={severityFilter ?? 'all'}
+            onChange={(e) => { setSeverityFilter(e.target.value === 'all' ? undefined : e.target.value as FindingSeverityValue); }}
+            className="w-auto min-w-[7.5rem]"
+          >
+            <option value="all">{t('filterAllPriorities')}</option>
+            {SEVERITIES.map((s) => (
+              <option key={s} value={s}>{tSeverity(s)}</option>
+            ))}
+          </Select>
+          <LogFindingButton projectId={projectId} size="lg" variant="primary" />
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

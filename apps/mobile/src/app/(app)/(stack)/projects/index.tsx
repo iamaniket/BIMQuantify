@@ -8,51 +8,28 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useProjects } from '@/features/projects/queries';
 import { humanize } from '@/lib/format';
 import { useAuth } from '@/providers/AuthProvider';
-
-const STATUS_COLORS: Record<string, string> = {
-  planning: '#6b7280',
-  design: '#208AEF',
-  permit_review: '#a855f7',
-  construction: '#f59e0b',
-  handover: '#10b981',
-  complete: '#16a34a',
-  on_hold: '#ef4444',
-};
-
-function statusColor(status: string): string {
-  return STATUS_COLORS[status] ?? '#6b7280';
-}
+import { colors, projectStatusColor, radii } from '@/theme';
 
 export default function ProjectsScreen() {
   const router = useRouter();
-  const { tokens, activeMembership, setTokens } = useAuth();
+  const { tokens } = useAuth();
   const { data, isLoading, isError, refetch, isRefetching } = useProjects();
 
   if (tokens === null) {
     return <Redirect href="/login" />;
   }
 
+  // Header (title + org + log out) now lives in the primary app-bar and sidebar.
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Projects</Text>
-          {activeMembership !== null ? (
-            <Text style={styles.org} numberOfLines={1}>{activeMembership.organization_name}</Text>
-          ) : null}
-        </View>
-        <Pressable onPress={() => { setTokens(null); }} hitSlop={8}>
-          <Text style={styles.logout}>Log out</Text>
-        </Pressable>
-      </View>
-
+    <View style={styles.flex}>
       {isLoading ? (
-        <View style={styles.centered}><ActivityIndicator /></View>
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
       ) : isError ? (
         <View style={styles.centered}>
           <Text style={styles.muted}>Couldn’t load projects.</Text>
@@ -89,7 +66,7 @@ export default function ProjectsScreen() {
                     <Text style={styles.rowSub} numberOfLines={1}>{subtitle}</Text>
                   ) : null}
                 </View>
-                <View style={[styles.chip, { backgroundColor: statusColor(item.status) }]}>
+                <View style={[styles.chip, { backgroundColor: projectStatusColor(item.status) }]}>
                   <Text style={styles.chipText}>{humanize(item.status)}</Text>
                 </View>
               </Pressable>
@@ -97,41 +74,31 @@ export default function ProjectsScreen() {
           }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  headerText: { flex: 1 },
-  title: { fontSize: 26, fontWeight: '700' },
-  org: { fontSize: 14, opacity: 0.6, marginTop: 2 },
-  logout: { color: '#208AEF', fontWeight: '600', fontSize: 15 },
+  flex: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
-  muted: { fontSize: 15, opacity: 0.6 },
-  retry: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#208AEF' },
-  retryText: { color: '#fff', fontWeight: '600' },
-  list: { paddingHorizontal: 16, paddingBottom: 24, gap: 10, maxWidth: 760, width: '100%', alignSelf: 'center' },
+  muted: { fontSize: 15, color: colors.textMuted },
+  retry: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: radii.sm, backgroundColor: colors.primary },
+  retryText: { color: colors.onPrimary, fontWeight: '600' },
+  list: { paddingHorizontal: 16, paddingVertical: 16, gap: 10, maxWidth: 760, width: '100%', alignSelf: 'center' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderWidth: 1,
-    borderColor: '#e1e5ea',
-    borderRadius: 12,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
     paddingHorizontal: 16,
     paddingVertical: 16,
+    backgroundColor: colors.surface,
   },
   rowText: { flex: 1 },
-  rowTitle: { fontSize: 17, fontWeight: '600' },
-  rowSub: { fontSize: 14, opacity: 0.6, marginTop: 2 },
-  chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  chipText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  rowTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
+  rowSub: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
+  chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill },
+  chipText: { color: colors.onPrimary, fontSize: 12, fontWeight: '600' },
 });

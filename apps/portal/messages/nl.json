@@ -1628,6 +1628,7 @@
     "invalidDrop": "Kan hier niet naartoe",
     "logFinding": "Bevinding vastleggen",
     "searchPlaceholder": "Bevindingen zoeken…",
+    "filterAllPriorities": "Alle prioriteiten",
     "filter": {
       "unassigned": "Niet toegewezen",
       "assigneeTooltip": "Filter op {name}"

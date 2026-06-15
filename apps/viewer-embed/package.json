@@ -7,7 +7,7 @@
     "predev": "node scripts/copy-wasm.mjs",
     "dev": "vite",
     "prebuild": "node scripts/copy-wasm.mjs",
-    "build": "vite build",
+    "build": "pnpm --filter=@bimstitch/viewer build && vite build",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

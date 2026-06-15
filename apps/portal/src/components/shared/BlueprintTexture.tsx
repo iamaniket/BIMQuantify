@@ -17,7 +17,7 @@ export function BlueprintTexture({
     <svg
       width="100%"
       height="100%"
-      className={`pointer-events-none absolute inset-0 opacity-[0.06] dark:opacity-10 ${className ?? ''}`}
+      className={`pointer-events-none absolute inset-0 opacity-[0.12] dark:opacity-10 ${className ?? ''}`}
       aria-hidden="true"
     >
       <defs>

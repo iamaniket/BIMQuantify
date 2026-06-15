@@ -11,6 +11,7 @@ import {
 import { resolveEmbedSource } from '@/features/viewer/embedSource';
 import { useViewerBundle } from '@/features/viewer/queries';
 import { useAuth } from '@/providers/AuthProvider';
+import { colors } from '@/theme';
 
 /**
  * Phase C: the embedded 3D viewer. A react-native-webview hosts the
@@ -89,7 +90,16 @@ export default function ViewerScreen() {
 
   return (
     <View style={styles.flex}>
-      <Stack.Screen options={{ headerShown: true, title: 'Viewer' }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'Viewer',
+          headerStyle: { backgroundColor: colors.primary },
+          headerTintColor: colors.onPrimary,
+          headerTitleStyle: { fontWeight: '700' },
+          headerShadowVisible: false,
+        }}
+      />
 
       {embedSource === null ? (
         <View style={styles.centered}>
@@ -131,7 +141,7 @@ export default function ViewerScreen() {
             </View>
           ) : showLoading ? (
             <View style={styles.overlay} pointerEvents="none">
-              <ActivityIndicator />
+              <ActivityIndicator color={colors.primary} />
               <Text style={styles.muted}>
                 {bundleQuery.isLoading ? 'Loading model…' : 'Rendering…'}
               </Text>
@@ -144,8 +154,8 @@ export default function ViewerScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  web: { flex: 1, backgroundColor: '#fff' },
+  flex: { flex: 1, backgroundColor: colors.background },
+  web: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   overlay: {
     position: 'absolute',
@@ -159,6 +169,6 @@ const styles = StyleSheet.create({
     padding: 24,
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
-  title: { fontSize: 18, fontWeight: '700' },
-  muted: { fontSize: 14, opacity: 0.6, textAlign: 'center' },
+  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  muted: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
 });

@@ -60,7 +60,7 @@ export function ComplianceByDomainCard({
         embedded ? 'bg-transparent' : 'rounded-xl bg-background shadow-sm'
       }`}
     >
-      <BlueprintTexture className="opacity-[0.04]" />
+      <BlueprintTexture className="opacity-[0.10]" />
 
       {/* Header */}
       <div className="relative mb-3 flex items-end justify-between">
