@@ -5,12 +5,19 @@ import { useEffect } from 'react';
 
 import { isLocale, localeStorageKey, type Locale } from '@bimstitch/i18n';
 
+import { setApiLocale } from '@/lib/api/client';
 import { usePathname, useRouter } from '@/i18n/navigation';
 
 export function LocaleMigrationShim(): null {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Keep the API client's Accept-Language in sync with the active UI locale so
+  // the server localizes error (and success) messages to the same language.
+  useEffect(() => {
+    setApiLocale(locale);
+  }, [locale]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

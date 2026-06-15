@@ -11,16 +11,27 @@ export class ApiError extends Error {
 
   public readonly detailObject: Record<string, unknown> | null;
 
+  // Stable SCREAMING_SNAKE code from the server envelope (for client logic).
+  public readonly code: string | null;
+
+  // Server-localized, display-ready message (already in the request's
+  // language). Named `localizedMessage` to avoid shadowing `Error.message`.
+  public readonly localizedMessage: string | null;
+
   public constructor(
     status: number,
     detail: string,
     detailObject: Record<string, unknown> | null = null,
+    code: string | null = null,
+    localizedMessage: string | null = null,
   ) {
     super(`API error ${String(status)}: ${detail}`);
     this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
     this.detailObject = detailObject;
+    this.code = code;
+    this.localizedMessage = localizedMessage;
   }
 }
 
@@ -44,6 +55,8 @@ type NoContentRequestOptions = {
 type ParsedErrorDetail = {
   text: string;
   object: Record<string, unknown> | null;
+  code: string | null;
+  message: string | null;
 };
 
 async function parseErrorDetail(response: Response): Promise<ParsedErrorDetail> {
@@ -51,16 +64,16 @@ async function parseErrorDetail(response: Response): Promise<ParsedErrorDetail> 
     const raw: unknown = await response.json();
     const parsed = ApiErrorBodySchema.safeParse(raw);
     if (parsed.success) {
-      const { detail } = parsed.data;
-      if (typeof detail === 'string') return { text: detail, object: null };
+      const { detail, code, message } = parsed.data;
+      const text = typeof detail === 'string' ? detail : JSON.stringify(detail);
       const object = (detail !== null && typeof detail === 'object' && !Array.isArray(detail))
         ? (detail as Record<string, unknown>)
         : null;
-      return { text: JSON.stringify(detail), object };
+      return { text, object, code: code ?? null, message: message ?? null };
     }
-    return { text: response.statusText, object: null };
+    return { text: response.statusText, object: null, code: null, message: null };
   } catch {
-    return { text: response.statusText, object: null };
+    return { text: response.statusText, object: null, code: null, message: null };
   }
 }
 
@@ -93,9 +106,20 @@ export function triggerBrowserDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+// Current UI locale, sent as Accept-Language so the API localizes error (and
+// success) messages to the active language. Defaults to the platform default
+// (nl) for any request before hydration; kept in sync with next-intl's
+// useLocale() by LocaleMigrationShim via setApiLocale().
+let apiLocale = 'nl';
+
+export function setApiLocale(locale: string): void {
+  apiLocale = locale;
+}
+
 function buildHeaders(accessToken: string | undefined): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    'Accept-Language': apiLocale,
   };
   if (accessToken !== undefined) {
     headers['Authorization'] = `Bearer ${accessToken}`;
@@ -127,7 +151,7 @@ async function request<TResponse, TBody>(
 
   if (!response.ok) {
     const detail = await parseErrorDetail(response);
-    throw new ApiError(response.status, detail.text, detail.object);
+    throw new ApiError(response.status, detail.text, detail.object, detail.code, detail.message);
   }
 
   const raw: unknown = await response.json();
@@ -153,7 +177,7 @@ async function requestNoContent(
 
   if (!response.ok) {
     const detail = await parseErrorDetail(response);
-    throw new ApiError(response.status, detail.text, detail.object);
+    throw new ApiError(response.status, detail.text, detail.object, detail.code, detail.message);
   }
 }
 
@@ -186,7 +210,7 @@ async function requestWithMeta<TResponse, TBody>(
 
   if (!response.ok) {
     const detail = await parseErrorDetail(response);
-    throw new ApiError(response.status, detail.text, detail.object);
+    throw new ApiError(response.status, detail.text, detail.object, detail.code, detail.message);
   }
 
   const rawCount = response.headers.get('X-Total-Count');
@@ -312,7 +336,7 @@ export const apiClient = {
     });
     if (!response.ok) {
       const detail = await parseErrorDetail(response);
-      throw new ApiError(response.status, detail.text, detail.object);
+      throw new ApiError(response.status, detail.text, detail.object, detail.code, detail.message);
     }
     const raw: unknown = await response.json();
     const parsed = responseSchema.safeParse(raw);
@@ -335,7 +359,7 @@ export const apiClient = {
     });
     if (!response.ok) {
       const detail = await parseErrorDetail(response);
-      throw new ApiError(response.status, detail.text, detail.object);
+      throw new ApiError(response.status, detail.text, detail.object, detail.code, detail.message);
     }
     return {
       blob: await response.blob(),

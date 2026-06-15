@@ -35,6 +35,14 @@ export function getErrorMessage(error: unknown): string {
     return 'An unexpected error occurred.';
   }
 
+  // Prefer the server-localized message: the API now returns a `message`
+  // already translated into the request's Accept-Language, covering every
+  // error code. The maps below are a fallback for legacy/edge responses that
+  // arrive without one.
+  if (error.localizedMessage !== null && error.localizedMessage.length > 0) {
+    return error.localizedMessage;
+  }
+
   // Structured detail objects ({ code, ... }) — e.g. PERMISSION_DENIED — carry
   // the SCREAMING_SNAKE code in `code`; map it before falling back to the raw
   // (JSON-stringified) detail text.

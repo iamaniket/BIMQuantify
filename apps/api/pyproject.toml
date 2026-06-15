@@ -52,6 +52,12 @@ select = [
 ]
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+# Translation catalogs are flat data dicts. UI sentences shouldn't be wrapped to
+# fit the 100-char line limit — it hurts readability and grep-ability of the
+# message text. Parity/coverage is enforced by the i18n tests instead.
+"src/bimstitch_api/i18n/messages/*.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

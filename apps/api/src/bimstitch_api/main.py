@@ -4,10 +4,12 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi_limiter import FastAPILimiter
 from sqlalchemy import text
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from bimstitch_api.admin.invitation_expiry import InvitationExpirySweeper
 from bimstitch_api.auth.routes import build_auth_router
@@ -16,6 +18,10 @@ from bimstitch_api.cache import close_redis, get_redis
 from bimstitch_api.config import get_settings, validate_production_config
 from bimstitch_api.db import get_engine
 from bimstitch_api.deadlines.reminder_engine import DeadlineReminderSweeper
+from bimstitch_api.i18n.http_errors import (
+    http_exception_handler,
+    validation_exception_handler,
+)
 from bimstitch_api.jobs.dispatcher import close_http_client
 from bimstitch_api.jobs.reconcile import JobReconcileSweeper
 from bimstitch_api.migrations_check import check_pending_migrations
@@ -239,8 +245,20 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["Content-Disposition", "X-Total-Count"],
+        expose_headers=[
+            "Content-Disposition",
+            "X-Total-Count",
+            "X-Message-Code",
+            "X-Message",
+        ],
     )
+
+    # Localize error responses: turn HTTPException codes (and 422 validation
+    # errors) into a { code, message<localized>, detail } envelope. Registered
+    # for the Starlette base so both FastAPI and Starlette HTTPExceptions (incl.
+    # unmatched-route 404s) flow through. `detail` is preserved unchanged.
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
     app.include_router(health_router)
     app.include_router(public_router)

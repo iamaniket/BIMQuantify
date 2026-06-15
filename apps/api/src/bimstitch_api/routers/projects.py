@@ -46,6 +46,7 @@ from bimstitch_api.email.invites import (
     send_project_added_notification,
     send_project_invite_notification,
 )
+from bimstitch_api.i18n.request import attach_notice
 from bimstitch_api.jurisdictions import find_instrument, supported_countries
 from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.models.contractor import Contractor
@@ -251,6 +252,7 @@ async def _seed_project_members(
 async def create_project(
     payload: ProjectCreate,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -304,6 +306,7 @@ async def create_project(
         actor_user_id=user.id,
         request=request,
     )
+    attach_notice(response, "PROJECT_CREATED", request, user)
     return await _project_to_read(project, storage, my_role=ProjectRole.owner)
 
 
@@ -516,6 +519,7 @@ async def update_project(
     project_id: UUID,
     payload: ProjectUpdate,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -572,6 +576,7 @@ async def update_project(
         actor_user_id=user.id,
         request=request,
     )
+    attach_notice(response, "PROJECT_UPDATED", request, user)
     return await _project_to_read(project, storage)
 
 
@@ -605,6 +610,7 @@ async def delete_project(
 async def archive_project(
     project_id: UUID,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -634,6 +640,7 @@ async def archive_project(
         actor_user_id=user.id,
         request=request,
     )
+    attach_notice(response, "PROJECT_ARCHIVED", request, user)
     return await _project_to_read(project, storage)
 
 
@@ -641,6 +648,7 @@ async def archive_project(
 async def reactivate_project(
     project_id: UUID,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -674,6 +682,7 @@ async def reactivate_project(
         actor_user_id=user.id,
         request=request,
     )
+    attach_notice(response, "PROJECT_REACTIVATED", request, user)
     return await _project_to_read(project, storage)
 
 

@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.i18n.request import attach_notice
 from bimstitch_api.models.org_template import OrgTemplate
 from bimstitch_api.models.report import ReportType
 from bimstitch_api.models.user import User
@@ -269,6 +270,7 @@ async def complete_template_asset_upload(
 async def create_org_template(
     payload: OrgTemplateCreate,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -306,6 +308,7 @@ async def create_org_template(
         actor_user_id=user.id,
         request=request,
     )
+    attach_notice(response, "TEMPLATE_SAVED", request, user)
     return await _load_template_or_404(session, template.id)
 
 
@@ -329,6 +332,7 @@ async def update_org_template(
     template_id: UUID,
     payload: OrgTemplateUpdate,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -358,6 +362,7 @@ async def update_org_template(
         actor_user_id=user.id,
         request=request,
     )
+    attach_notice(response, "TEMPLATE_SAVED", request, user)
     return await _load_template_or_404(session, template_id)
 
 
@@ -424,4 +429,6 @@ async def delete_org_template(
         actor_user_id=user.id,
         request=request,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    resp = Response(status_code=status.HTTP_204_NO_CONTENT)
+    attach_notice(resp, "TEMPLATE_DELETED", request, user)
+    return resp

@@ -207,7 +207,15 @@ Email policy:
 - **Single-locale via `resolve_org_locale(project.country)`**: project-scoped fan-out notifications (findings, deadline reminders, project-member invites). There's no single recipient to key off.
 - **Single-locale via `coerce_locale(report.locale)`**: report-pipeline emails and notifications (already locale-tagged at report-creation time).
 
-Error responses are unchanged: every `HTTPException(detail=...)` returns a SCREAMING_SNAKE code; the portal maps codes to translated strings via its `useTranslations()` catalog. The two free-text leaks in `auth/refresh.py` (`"refresh token revoked"` / `"user no longer active"`) were converted to `REFRESH_TOKEN_REVOKED` / `USER_NO_LONGER_ACTIVE` with matching portal keys under `auth.login.errors.*`.
+**Localized HTTP error + success responses** (server-side): the API localizes its own responses. Central handlers in `i18n/http_errors.py` (registered in `main.py` for `StarletteHTTPException` + `RequestValidationError`) turn every `HTTPException` into a `{ code, message, detail }` envelope where `message` is translated into the request's language. `detail` is preserved **exactly** as before (the bare string code, or the original dict), so existing clients/tests that read `detail` keep working — this is what makes the change non-breaking. 422 validation errors become `{ code: "VALIDATION_ERROR", message, detail: <field-error list> }`.
+
+The request locale is resolved by `i18n/request.py::resolve_request_locale`: **`Accept-Language` header → authenticated `User.locale` (stashed on `request.state` by the `current_*_user` wrappers in `auth/fastapi_users.py`) → `PLATFORM_DEFAULT_LOCALE` (`nl`)**. The portal sends `Accept-Language` from its active `useLocale()` (kept in sync via `setApiLocale` in `LocaleMigrationShim`) and prefers the server `message` in `lib/api/errorMessages.ts`, keeping its small code→string map only as a legacy fallback.
+
+Two new catalog namespaces in `i18n/messages/{en,nl}.py` (same bilingual parity rule as the rest):
+- `errors.<CODE>` — one entry per error code. Codes follow a `CODE` or `CODE:context` convention; the catalog key is the part **before** the first colon. **Hard rule**: every new error code raised via `HTTPException` needs an `errors.<CODE>` entry in BOTH catalogs — `tests/test_error_catalog.py` (AST-based, scans `HTTPException`/`_422` calls) fails CI otherwise. The handler falls back to the bare code (and logs) when a key is missing, so a miss degrades gracefully rather than 500s.
+- `messages.<CODE>` — success messages attached to 2xx responses via `i18n/request.py::attach_notice`, which sets `X-Message-Code` + a percent-encoded `X-Message` header (exposed cross-origin via CORS `expose_headers`). Additive only — never changes a `response_model`. The portal keeps its existing client-side success toasts; the headers serve any API consumer.
+
+The legacy `auth/refresh.py` codes `REFRESH_TOKEN_REVOKED` / `USER_NO_LONGER_ACTIVE` keep their portal keys under `auth.login.errors.*`.
 
 **Rate limiting**: Redis-backed via `fastapi-limiter`. Defaults in `config.py`: login 5/min, register 3/hour, refresh 10/min, forgot-password 3/hour. (The `register` limiter now guards the admin invite path — the public `/auth/register` route is gone — but the knob is unchanged.)
 

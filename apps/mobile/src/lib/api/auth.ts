@@ -1,0 +1,51 @@
+import { apiClient, ApiError } from '@/lib/api/client';
+import { env } from '@/lib/env';
+import {
+  AccessTokenResponseSchema,
+  AuthMeResponseSchema,
+  TokenPairSchema,
+  type AuthMeResponse,
+  type TokenPair,
+} from '@/lib/api/schemas/auth';
+
+/** POST /auth/jwt/login — form-encoded (OAuth2PasswordRequestForm). */
+export async function login(username: string, password: string): Promise<TokenPair> {
+  return apiClient.postForm('/auth/jwt/login', { username, password }, TokenPairSchema);
+}
+
+/** POST /auth/jwt/refresh — sends the refresh token in the body, no auth header
+ * (mirrors the portal: the expired access token must NOT be attached). */
+export async function refreshAccessToken(refreshToken: string): Promise<string> {
+  const response = await fetch(`${env.EXPO_PUBLIC_API_URL}/auth/jwt/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, 'refresh_failed');
+  }
+  const raw: unknown = await response.json();
+  const parsed = AccessTokenResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new ApiError(500, 'Invalid refresh response');
+  }
+  return parsed.data.access_token;
+}
+
+/** GET /auth/me — current user + memberships + active org. */
+export async function getAuthMe(accessToken: string): Promise<AuthMeResponse> {
+  return apiClient.get('/auth/me', AuthMeResponseSchema, accessToken);
+}
+
+/** POST /auth/switch-organization — re-mints BOTH tokens; replace the pair atomically. */
+export async function switchOrganization(
+  organizationId: string,
+  accessToken: string,
+): Promise<TokenPair> {
+  return apiClient.post(
+    '/auth/switch-organization',
+    { organization_id: organizationId },
+    TokenPairSchema,
+    accessToken,
+  );
+}
