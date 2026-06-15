@@ -14,6 +14,7 @@ import { runAssurancePlanReport } from '../pipeline/report/assurance-plan.js';
 import { runDossierReport } from '../pipeline/report/dossier.js';
 import { runComplianceReport } from '../pipeline/report/index.js';
 import { runCompletionDeclarationReport } from '../pipeline/report/verklaring.js';
+import { captureException } from '../sentry.js';
 import { getRedis, type ProgressReporter, type WorkerJob } from './queue.js';
 
 const pickStr = (payload: Record<string, unknown>, key: string): string =>
@@ -143,6 +144,9 @@ export function startWorker(): Worker<WorkerJob> {
     // Only act once retries are exhausted — otherwise BullMQ will run it again.
     const maxAttempts = job.opts.attempts ?? 1;
     if (job.attemptsMade < maxAttempts) return;
+    // Reached a terminal failure (retries exhausted) — report it, then make
+    // sure the API row also lands in a terminal state.
+    captureException(err, { jobId: job.id, jobType: job.data.job_type });
     void notifyTerminalFailure(job.data, err).catch((cbErr) => {
       logger.error({ jobId: job.id, err: cbErr }, 'terminal failure callback failed');
     });

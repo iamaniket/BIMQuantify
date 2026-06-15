@@ -68,6 +68,9 @@ export default tseslint.config(
       'src/app/**/apple-icon.tsx',
       'src/app/**/icon.tsx',
       'src/app/**/opengraph-image.tsx',
+      // Catastrophic fallback — replaces the root layout, so it can't reach the
+      // i18n provider and uses minimal hardcoded copy.
+      'src/app/**/global-error.tsx',
     ],
     rules: {
       'i18next/no-literal-string': 'off',

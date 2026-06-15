@@ -23,6 +23,18 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    get_membership as _get_membership,
+    is_org_admin as _is_org_admin,
+    load_project_or_404 as _load_project_or_404,
+    require_member_manager as _require_member_manager,
+    require_member_viewer as _require_member_viewer,
+    require_membership as _require_membership,
+    require_project_owner_or_admin as _require_project_owner_or_admin,
+    require_project_read_access as _require_project_read_access,
+    require_project_writable as _require_project_writable,
+    require_project_write_access as _require_project_write_access,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.guards import is_guest_member
 from bimstitch_api.auth.manager import UserManager, get_user_manager
@@ -173,164 +185,6 @@ async def _validate_contractor_exists(session: AsyncSession, contractor_id: UUID
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CONTRACTOR_NOT_FOUND")
 
 
-async def _load_project_or_404(session: AsyncSession, project_id: UUID) -> Project:
-    """Loads a project the current tenant can see (RLS-filtered). 404 if not."""
-    project = (
-        await session.execute(select(Project).where(Project.id == project_id))
-    ).scalar_one_or_none()
-    if project is None or project.lifecycle_state is ProjectLifecycleState.removed:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PROJECT_NOT_FOUND")
-    return project
-
-
-async def _get_membership(
-    session: AsyncSession, project_id: UUID, user_id: UUID
-) -> ProjectMember | None:
-    return (
-        await session.execute(
-            select(ProjectMember).where(
-                ProjectMember.project_id == project_id,
-                ProjectMember.user_id == user_id,
-            )
-        )
-    ).scalar_one_or_none()
-
-
-async def _require_membership(
-    session: AsyncSession, project_id: UUID, user_id: UUID
-) -> ProjectMember:
-    """Returns the caller's membership; raises 404 if not a member. The 404
-    keeps existence-leakage closed for same-org-non-member."""
-    membership = await _get_membership(session, project_id, user_id)
-    if membership is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PROJECT_NOT_FOUND")
-    return membership
-
-
-async def _is_org_admin(session: AsyncSession, user_id: UUID, organization_id: UUID) -> bool:
-    """True if the user has an active org-admin membership in the active org.
-
-    Safe inside a tenant session: `organization_members` lives in `public` and
-    falls through `search_path`; RLS is keyed off `app.current_org_id` which
-    `get_tenant_session` already set.
-    """
-    row = (
-        await session.execute(
-            select(OrganizationMember.id).where(
-                OrganizationMember.user_id == user_id,
-                OrganizationMember.organization_id == organization_id,
-                OrganizationMember.is_org_admin.is_(True),
-                OrganizationMember.status == OrganizationMemberStatus.active,
-            )
-        )
-    ).scalar_one_or_none()
-    return row is not None
-
-
-async def _require_member_manager(
-    session: AsyncSession,
-    project_id: UUID,
-    user: User,
-    organization_id: UUID,
-) -> None:
-    """Gate for project-member mutations (add/remove/update role).
-
-    Allowed: platform super-admin, org admin in the active org, or the
-    project owner. Anyone else → 403. Org admins get this power so a
-    departing project owner doesn't leave a project stranded, and so
-    onboarding/offboarding can be driven centrally.
-    """
-    if user.is_superuser:
-        return
-    if await _is_org_admin(session, user.id, organization_id):
-        return
-    membership = await _get_membership(session, project_id, user.id)
-    if membership is not None and membership.role is ProjectRole.owner:
-        return
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="INSUFFICIENT_PROJECT_ROLE")
-
-
-async def _require_project_read_access(
-    session: AsyncSession,
-    project_id: UUID,
-    user: User,
-    organization_id: UUID,
-) -> ProjectMember | None:
-    """Gate for reading project data (detail view, sub-resources).
-
-    Returns the ProjectMember row when the caller is a member, or None
-    when access is granted via an admin bypass (superuser or org admin).
-    Non-member non-admins get 404 to keep existence-leakage closed.
-    """
-    if user.is_superuser:
-        return None
-    if await _is_org_admin(session, user.id, organization_id):
-        return None
-    return await _require_membership(session, project_id, user.id)
-
-
-async def _require_project_write_access(
-    session: AsyncSession,
-    project_id: UUID,
-    user: User,
-    organization_id: UUID,
-) -> None:
-    """Gate for updating project data (PATCH).
-
-    Allowed: platform super-admin, org admin in the active org, or a
-    project member with owner/editor role.  Non-member non-admins get 404
-    to keep existence-leakage closed.
-    """
-    if user.is_superuser:
-        return
-    if await _is_org_admin(session, user.id, organization_id):
-        return
-    membership = await _require_membership(session, project_id, user.id)
-    require_permission(membership.role, Resource.project, Action.update)
-
-
-async def _require_project_owner_or_admin(
-    session: AsyncSession,
-    project_id: UUID,
-    user: User,
-    organization_id: UUID,
-    *,
-    action: Action = Action.delete,
-) -> None:
-    """Gate for destructive / lifecycle project mutations (delete, archive,
-    reactivate).
-
-    Allowed: platform super-admin, org admin in the active org, or the
-    project owner.  Editors are excluded — these are heavyweight actions.
-    Non-member non-admins get 404.
-    """
-    if user.is_superuser:
-        return
-    if await _is_org_admin(session, user.id, organization_id):
-        return
-    membership = await _require_membership(session, project_id, user.id)
-    require_permission(membership.role, Resource.project, action)
-
-
-async def _require_member_viewer(
-    session: AsyncSession,
-    project_id: UUID,
-    user: User,
-    organization_id: UUID,
-) -> None:
-    """Gate for reading the project member list.
-
-    Allowed: platform super-admin, org admin in the active org, or any
-    project member. Anyone else → 404 (mirrors `_require_membership` to
-    keep existence-leakage closed).
-    """
-    if user.is_superuser:
-        return
-    if await _is_org_admin(session, user.id, organization_id):
-        return
-    await _require_membership(session, project_id, user.id)
-
-
 async def _member_to_read(session: AsyncSession, member: ProjectMember) -> dict[str, object]:
     """Serialize a ProjectMember row with the user's email/full_name joined in
     from `public.users` so the portal can render the row without a second
@@ -385,14 +239,6 @@ async def _seed_project_members(
                 user_id=admin_user_id,
                 role=ProjectRole.editor,
             )
-        )
-
-
-def _require_project_writable(project: Project) -> None:
-    if project.lifecycle_state is ProjectLifecycleState.archived:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="PROJECT_ARCHIVED",
         )
 
 
@@ -451,7 +297,9 @@ async def create_project(
             "name": project.name,
             "country": project.country,
             "building_type": project.building_type.value if project.building_type else None,
-            "consequence_class": project.consequence_class.value if project.consequence_class else None,
+            "consequence_class": project.consequence_class.value
+            if project.consequence_class
+            else None,
         },
         actor_user_id=user.id,
         request=request,
