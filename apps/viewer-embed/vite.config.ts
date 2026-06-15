@@ -10,5 +10,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     target: 'esnext', // web-ifc / fragments use modern JS (incl. top-level await)
+    // A 3D IFC viewer (three + web-ifc) is inherently multi-MB; it ships once
+    // in-app, not per-session, so the size warning is just noise here.
+    chunkSizeWarningLimit: 8000,
   },
 });

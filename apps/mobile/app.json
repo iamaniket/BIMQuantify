@@ -37,7 +37,8 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "./plugins/withViewerEmbed"
     ],
     "experiments": {
       "typedRoutes": true,

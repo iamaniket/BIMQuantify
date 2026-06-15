@@ -79,6 +79,15 @@ export interface ViewerEvents {
   'inspect:request': { item: ItemId | null; view: 'properties' | 'findings' };
   'contextmenu:open': { position: { x: number; y: number }; item: ItemId | null; point: Vec3 | null };
   'contextmenu:close': undefined;
+  /**
+   * Placement plugin: a tap (left-click) while placement mode is active
+   * raycast-hit the model. `point` is the world-space hit (store it as the new
+   * anchor); `item` is the element under it, or null on an empty-space tap that
+   * still resolved a point. Hosts open their new-finding/anchor flow from this.
+   */
+  'point:picked': { point: Vec3; item: ItemId | null };
+  /** Placement plugin: the modal "drop a point" tool was entered / exited. */
+  'placement:change': { active: boolean };
   'xray:change': { xrayed: ItemId[]; opacityOverrides: Array<{ item: ItemId; opacity: number }> };
   'outline:ready': { modelId: string };
   'outline:change': { enabled: boolean };

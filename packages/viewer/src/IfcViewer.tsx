@@ -27,6 +27,7 @@ import { viewCubePlugin } from './plugins/3d/viewcube/index.js';
 import { visibilityPlugin } from './plugins/3d/visibility/index.js';
 import { inspectPlugin } from './plugins/3d/inspect/index.js';
 import { eraserPlugin } from './plugins/3d/eraser/index.js';
+import { placementPlugin } from './plugins/3d/placement/index.js';
 import { toolManagerPlugin } from './plugins/3d/tool-manager/index.js';
 import { contextMenuPlugin } from './plugins/3d/context-menu/index.js';
 import { xrayPlugin } from './plugins/3d/xray/index.js';
@@ -165,6 +166,9 @@ function IfcViewerImpl(
       // Navigate depends on mouse-bindings, so it registers after it.
       navigatePlugin(),
       eraserPlugin(),
+      // Point-placement tool — taps emit `point:picked` for new-anchor flows
+      // (mobile new-finding gesture). Depends on mouse-bindings + selection.
+      placementPlugin(),
       // Fly navigation — the first-person camera tool (WASD / D-pad + mouse-look).
       // Depends on camera + mouse-bindings (it suppresses selection/hover gestures
       // on enter), so it must register after mouse-bindings. Stays dormant until

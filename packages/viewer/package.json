@@ -11,6 +11,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./viewer-3d": {
+      "types": "./dist/viewer-3d.d.ts",
+      "import": "./dist/viewer-3d.js",
+      "default": "./dist/viewer-3d.js"
+    },
     "./wasm-path": {
       "types": "./dist/wasm.d.ts",
       "import": "./dist/wasm.js",

@@ -197,6 +197,8 @@ export type { GridPluginAPI, GridPluginOptions } from './plugins/3d/grid/index.j
 
 export type { EraserPluginAPI } from './plugins/3d/eraser/index.js';
 
+export type { PlacementPluginAPI, PlacementEnterArgs } from './plugins/3d/placement/index.js';
+
 export type { ScreenshotPluginAPI, ScreenshotPluginOptions, ScreenshotCaptureOptions, ScreenshotResult } from './plugins/3d/screenshot/index.js';
 
 export type { ColorCodingPluginAPI, ColorCodingOptions, ColorScheme, LegendEntry } from './plugins/3d/color-coding/index.js';

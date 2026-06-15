@@ -16,3 +16,19 @@ export type ProjectFile = z.infer<typeof ProjectFileSchema>;
 
 export const ProjectFileListSchema = z.array(ProjectFileSchema);
 export type ProjectFileList = z.infer<typeof ProjectFileListSchema>;
+
+// Drift-resistant subset of the portal's ViewerBundleResponse — only the IFC
+// artifact URLs the embedded viewer needs. Zod strips the fields mobile doesn't
+// use (geometry_url, floor_plans_url, file_url). URLs are plain strings (not
+// `.url()`) so an unexpected server value can't blank the whole response.
+export const ViewerBundleResponseSchema = z.object({
+  file_type: z.string(),
+  fragments_url: z.union([z.string(), z.null()]),
+  fragments_key: z.union([z.string(), z.null()]),
+  metadata_url: z.union([z.string(), z.null()]),
+  properties_url: z.union([z.string(), z.null()]),
+  outline_url: z.union([z.string(), z.null()]),
+  expires_in: z.number().int().positive(),
+});
+
+export type ViewerBundleResponse = z.infer<typeof ViewerBundleResponseSchema>;

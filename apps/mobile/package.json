@@ -8,12 +8,14 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "lint": "expo lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "eas-build-post-install": "pnpm --filter=viewer-embed build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.0",
     "expo": "~56.0.11",
     "expo-constants": "~56.0.18",
+    "expo-dev-client": "~56.0.20",
     "expo-device": "~56.0.4",
     "expo-font": "~56.0.6",
     "expo-image": "~56.0.11",
@@ -29,6 +31,7 @@
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
+    "react-native-webview": "13.16.0",
     "react-native-worklets": "0.8.3",
     "zod": "^3.24.1"
   },

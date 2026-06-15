@@ -2,3 +2,7 @@ node_modules/
 dist/
 .vite/
 *.tsbuildinfo
+
+# Generated at predev/prebuild by scripts/copy-wasm.mjs
+public/web-ifc/
+public/fragments/

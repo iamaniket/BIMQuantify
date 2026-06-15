@@ -84,6 +84,8 @@ export type {
   BcfPluginAPI,
   BcfViewpointData,
   BcfPluginOptions,
+  PlacementPluginAPI,
+  PlacementEnterArgs,
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
