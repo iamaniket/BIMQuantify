@@ -110,6 +110,7 @@ export function visibilityPlugin(
       isolatedItems.set(k, it);
     }
     isolationActive = true;
+    await reapplyPersistent();
     emitChange();
   };
 
@@ -236,10 +237,11 @@ export function visibilityPlugin(
 
     const byModel = new Map<string, number[]>();
     for (const it of items) {
+      const k = itemKey(it);
+      if (persistentHidden.has(k)) continue;
       let arr = byModel.get(it.modelId);
       if (!arr) { arr = []; byModel.set(it.modelId, arr); }
       arr.push(it.localId);
-      const k = itemKey(it);
       hiddenSet.delete(k);
       hiddenItemMap.delete(k);
     }
