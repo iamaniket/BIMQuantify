@@ -15,5 +15,9 @@ export {
   projectToNlSvg,
   NL_PROJECTION_CONFIG,
 } from './nl/index.js';
+// Raw province silhouette geometry — exposed so non-DOM consumers (e.g. the
+// React Native app, which renders with react-native-svg) can reuse the exact
+// same path data the web `NetherlandsMap` draws, instead of copying it.
+export { NL_PROVINCE_PATHS } from './nl/data/nl-province-paths.js';
 export type { MapMarker, GeoBounds, ScreenPoint } from './types.js';
 export type { ProjectionConfig } from './core/types.js';

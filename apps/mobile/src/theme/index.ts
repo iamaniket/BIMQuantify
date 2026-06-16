@@ -37,6 +37,34 @@ export const colors = {
 export const radii = { sm: 8, md: 10, lg: 14, pill: 999 } as const;
 
 /**
+ * Brand fonts. Only Fraunces (the display serif) is a real custom font —
+ * loaded at runtime in `_layout.tsx` via `@expo-google-fonts/fraunces`. It is
+ * reserved for the auth experience (wordmark, hero headline, "Welcome back.").
+ * Body / labels / "mono" stay on the platform system font, matching the portal
+ * (which aliases `--font-mono` to the system stack and only loads Fraunces).
+ */
+export const fonts = {
+  display: 'Fraunces_500Medium', // headlines, "Welcome back.", wordmark
+  displayItalic: 'Fraunces_500Medium_Italic', // headline accent words (models/issues/dossier)
+  displaySemibold: 'Fraunces_600SemiBold', // KPI values, "BD" mark
+  displayRegular: 'Fraunces_400Regular',
+} as const;
+
+/**
+ * Brand-canvas constants used only by the login hero (the blue pane). Kept
+ * separate from `colors` because they're gradient stops / accents specific to
+ * the marketing surface, not part of the app-wide token set.
+ */
+export const brand = {
+  // 168° linear gradient, stops at 0% / 60% / 100% (matches the web sign-in).
+  gradient: ['#2c5697', '#20437a', '#1b3a6b'] as const,
+  accentBlue: '#9bbce8', // italic headline accent words
+  mint: '#7fe0a8', // WKB pill + "STATUS Normal" value
+  surfacePage: colors.surfaceLow, // #f8f9fb — the light form-sheet surface
+  heroFg: '#ffffff',
+} as const;
+
+/**
  * Project-status accent colour, mapped onto the design tokens. Replaces the
  * ad-hoc hex map previously inlined in the projects list.
  */

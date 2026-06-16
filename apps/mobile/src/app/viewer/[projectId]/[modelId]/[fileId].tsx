@@ -1,7 +1,18 @@
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import type {
+  WebViewErrorEvent,
+  WebViewHttpErrorEvent,
+  WebViewMessageEvent,
+} from 'react-native-webview/lib/WebViewTypes';
 
 import {
   hostMessageToInjectedJs,
@@ -32,6 +43,7 @@ export default function ViewerScreen() {
   const [webReady, setWebReady] = useState(false);
   const [modelLoaded, setModelLoaded] = useState(false);
   const [viewerError, setViewerError] = useState<string | null>(null);
+  const [webCrashed, setWebCrashed] = useState(false);
   // loadModel is sent exactly once, after both the web bridge and the bundle
   // are ready (whichever order they arrive in).
   const sentLoadRef = useRef(false);
@@ -70,10 +82,44 @@ export default function ViewerScreen() {
       case 'pointPicked':
         // TODO(Phase D): open the new-finding form anchored at msg.point.
         break;
+      case 'log':
+        if (__DEV__) {
+          const tag = `[viewer-embed:${msg.level}]`;
+          const text = msg.args.join(' ');
+          if (msg.level === 'error') console.error(tag, text);
+          else if (msg.level === 'warn') console.warn(tag, text);
+          else console.log(tag, text);
+        }
+        break;
       case 'sceneReady':
       case 'progress':
         break;
     }
+  }, []);
+
+  const handleReload = useCallback(() => {
+    setWebReady(false);
+    setModelLoaded(false);
+    setViewerError(null);
+    setWebCrashed(false);
+    sentLoadRef.current = false;
+    webRef.current?.reload();
+  }, []);
+
+  const onWebViewError = useCallback((e: WebViewErrorEvent) => {
+    setViewerError(e.nativeEvent.description ?? 'WebView failed to load');
+  }, []);
+
+  const onHttpError = useCallback((e: WebViewHttpErrorEvent) => {
+    setViewerError(`Embed load failed: HTTP ${String(e.nativeEvent.statusCode)}`);
+  }, []);
+
+  const onRenderProcessGone = useCallback(() => {
+    setWebCrashed(true);
+  }, []);
+
+  const onContentProcessDidTerminate = useCallback(() => {
+    setWebCrashed(true);
   }, []);
 
   if (tokens === null) return <Redirect href="/login" />;
@@ -115,7 +161,12 @@ export default function ViewerScreen() {
             ref={webRef}
             source={embedSource}
             onMessage={onMessage}
+            onError={onWebViewError}
+            onHttpError={onHttpError}
+            onRenderProcessGone={onRenderProcessGone}
+            onContentProcessDidTerminate={onContentProcessDidTerminate}
             originWhitelist={['*']}
+            androidLayerType="hardware"
             javaScriptEnabled
             domStorageEnabled
             allowFileAccess
@@ -124,9 +175,19 @@ export default function ViewerScreen() {
             style={styles.web}
           />
 
-          {bundleQuery.isError ? (
+          {webCrashed ? (
             <View style={styles.overlay}>
-              <Text style={styles.title}>Couldn’t load the model</Text>
+              <Text style={styles.title}>Renderer crashed</Text>
+              <Text style={styles.muted}>
+                The 3D viewer ran out of memory or was terminated by the OS.
+              </Text>
+              <TouchableOpacity style={styles.reloadBtn} onPress={handleReload}>
+                <Text style={styles.reloadText}>Tap to reload</Text>
+              </TouchableOpacity>
+            </View>
+          ) : bundleQuery.isError ? (
+            <View style={styles.overlay}>
+              <Text style={styles.title}>Couldn't load the model</Text>
               <Text style={styles.muted}>{bundleQuery.error.message}</Text>
             </View>
           ) : bundleQuery.data === null && !bundleQuery.isLoading ? (
@@ -138,6 +199,9 @@ export default function ViewerScreen() {
             <View style={styles.overlay}>
               <Text style={styles.title}>Viewer error</Text>
               <Text style={styles.muted}>{viewerError}</Text>
+              <TouchableOpacity style={styles.reloadBtn} onPress={handleReload}>
+                <Text style={styles.reloadText}>Tap to retry</Text>
+              </TouchableOpacity>
             </View>
           ) : showLoading ? (
             <View style={styles.overlay} pointerEvents="none">
@@ -171,4 +235,12 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '700', color: colors.text },
   muted: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
+  reloadBtn: {
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+  },
+  reloadText: { color: colors.onPrimary, fontWeight: '600', fontSize: 14 },
 });

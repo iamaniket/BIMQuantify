@@ -136,6 +136,7 @@ export function App() {
     <IfcViewer
       bundle={bundle}
       additionalBundles={additionalBundles}
+      viewCube={{ size: 80 }}
       onReady={onReady}
       onSceneReady={() => bridgeRef.current?.send({ type: 'sceneReady' })}
       onProgress={(loaded, total) =>

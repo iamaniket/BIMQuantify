@@ -33,6 +33,7 @@ export type ClientMessage =
   | { type: 'modelLoaded' }
   | { type: 'progress'; loaded: number; total: number }
   | { type: 'error'; message: string }
+  | { type: 'log'; level: 'debug' | 'info' | 'warn' | 'error'; args: string[] }
   | {
       type: 'pinTapped';
       id: string;

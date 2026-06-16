@@ -11,11 +11,17 @@ const EnvSchema = z.object({
   // point it at a served build of apps/viewer-embed (e.g. your LAN IP + Vite
   // preview port). Production ships the bundle in-app and loads it from file://.
   EXPO_PUBLIC_VIEWER_EMBED_URL: z.string().url().optional(),
+  // Base URL of the web portal (apps/portal). The login screen opens its
+  // Forgot-password and Request-access pages here in the device browser — the
+  // mobile app has no such screens (sign-in is invite-only). Defaults to the
+  // dev portal; override with your LAN IP for a physical device (see API note).
+  EXPO_PUBLIC_WEB_URL: z.string().url(),
 });
 
 const parsed = EnvSchema.safeParse({
   EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.251:8000',
   EXPO_PUBLIC_VIEWER_EMBED_URL: process.env.EXPO_PUBLIC_VIEWER_EMBED_URL,
+  EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL ?? 'http://192.168.1.251:3001',
 });
 
 if (!parsed.success) {

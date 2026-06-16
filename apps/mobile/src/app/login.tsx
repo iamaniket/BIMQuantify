@@ -1,37 +1,45 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Linking, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GridTexture } from '@/components/GridTexture';
+import type { Kpi } from '@/features/auth/brandParts';
+import type { LoginFormProps } from '@/features/auth/LoginForm';
+import {
+  MobileLogin,
+  TabletLandscapeLogin,
+  TabletPortraitLogin,
+  type LoginLayoutProps,
+} from '@/features/auth/loginLayouts';
+import { useProjectsMap } from '@/features/auth/useProjectsMap';
+import { useSystemStatus } from '@/features/auth/useSystemStatus';
 import { login } from '@/lib/api/auth';
 import { ApiError } from '@/lib/api/client';
 import { env } from '@/lib/env';
 import { useAuth } from '@/providers/AuthProvider';
-import { colors, radii } from '@/theme';
+import { brand, colors } from '@/theme';
 
-const ICON = require('../../assets/images/icon.png');
+// Tablet-class when the shortest side is >= 600 dp; landscape when wider than
+// tall. Recomputes on rotation (useWindowDimensions), so the layout switches
+// live between the phone / tablet-portrait / tablet-landscape designs.
+const TABLET_MIN_SIDE = 600;
 
 export default function LoginScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const { setTokens } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [focused, setFocused] = useState<'email' | 'password' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Live brand-canvas data from the public (unauthenticated) login endpoints.
+  const projectsQuery = useProjectsMap();
+  const systemQuery = useSystemStatus();
 
   const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
 
@@ -55,158 +63,94 @@ export default function LoginScreen() {
     }
   }
 
+  // Live system status → KPI strip + status row, falling back to the design's
+  // static values when the endpoint is loading/unreachable.
+  const sys = systemQuery.data;
+  const status = sys?.status;
+  const wkb = sys?.wkb_version ?? '2026.1';
+  const kpiItems: Kpi[] = [
+    { label: 'WKB', value: wkb },
+    { label: 'BBL', value: sys?.bbl_version ?? 'v2026.04' },
+    { label: 'IFC', value: sys?.ifc_version ?? '4.3' },
+    {
+      label: 'STATUS',
+      value: status === 'degraded' ? 'Degraded' : status === 'down' ? 'Down' : 'Normal',
+      valueColor:
+        status === 'down' ? colors.error : status === 'degraded' ? colors.warning : brand.mint,
+    },
+  ];
+  const statusColor =
+    status === 'down' ? colors.error : status === 'degraded' ? colors.warning : colors.success;
+  const statusLabel =
+    status === 'down'
+      ? 'Service disruption'
+      : status === 'degraded'
+        ? 'Degraded performance'
+        : 'All systems normal';
+
+  // The mobile app has no forgot-password / request-access screens (sign-in is
+  // invite-only), so those links open the web portal. Routes are locale-prefixed.
+  const webBase = `${env.EXPO_PUBLIC_WEB_URL}/en`;
+
+  const form: LoginFormProps = {
+    email,
+    password,
+    onChangeEmail: setEmail,
+    onChangePassword: setPassword,
+    showPassword,
+    onToggleShow: () => setShowPassword((v) => !v),
+    submitting,
+    error,
+    canSubmit,
+    onSubmit: () => {
+      void onSubmit();
+    },
+    onForgot: () => {
+      void Linking.openURL(`${webBase}/forgot-password`);
+    },
+    onRequestAccess: () => {
+      void Linking.openURL(`${webBase}/request-access`);
+    },
+  };
+
+  const layoutProps: LoginLayoutProps = {
+    form,
+    markers: projectsQuery.data ?? [],
+    kpiItems,
+    statusColor,
+    statusLabel,
+    wkb,
+    webBaseUrl: webBase,
+    insets,
+  };
+
+  const isLandscape = width > height;
+  const isTablet = Math.min(width, height) >= TABLET_MIN_SIDE;
+
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* Primary blueprint grid — the brand texture, tinted for a light surface. */}
-      <GridTexture step={28} color="rgba(44,86,151,0.12)" />
-
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.container}>
-          <View style={styles.brand}>
-            <View style={styles.logoTile}>
-              <Image source={ICON} style={styles.logoImg} contentFit="cover" />
-            </View>
-            <Text style={styles.wordmark}>BimDossier</Text>
-            <Text style={styles.tagline}>Field snagging & BIM dossiers</Text>
-          </View>
-
-          <View style={styles.form}>
-            <View
-              style={[styles.inputRow, focused === 'email' && styles.inputRowFocused]}
-            >
-              <Ionicons name="mail-outline" size={20} color={colors.textMuted} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={colors.placeholder}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
-                keyboardType="email-address"
-                inputMode="email"
-                value={email}
-                onChangeText={setEmail}
-                onFocus={() => setFocused('email')}
-                onBlur={() => setFocused(null)}
-                editable={!submitting}
-              />
-            </View>
-
-            <View
-              style={[styles.inputRow, focused === 'password' && styles.inputRowFocused]}
-            >
-              <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={colors.placeholder}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoComplete="password"
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => setFocused('password')}
-                onBlur={() => setFocused(null)}
-                editable={!submitting}
-                onSubmitEditing={() => {
-                  void onSubmit();
-                }}
-              />
-              <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={colors.textMuted}
-                />
-              </Pressable>
-            </View>
-
-            {error !== null ? <Text style={styles.error}>{error}</Text> : null}
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.button,
-                pressed && canSubmit && styles.buttonPressed,
-                !canSubmit && styles.buttonDisabled,
-              ]}
-              onPress={() => {
-                void onSubmit();
-              }}
-              disabled={!canSubmit}
-            >
-              {submitting ? (
-                <ActivityIndicator color={colors.onPrimary} />
-              ) : (
-                <Text style={styles.buttonText}>Sign in</Text>
-              )}
-            </Pressable>
-          </View>
-
-          {__DEV__ ? <Text style={styles.debug}>API: {env.EXPO_PUBLIC_API_URL}</Text> : null}
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    <View style={{ flex: 1, backgroundColor: brand.surfacePage }}>
+      {/* White status-bar content — it sits over the dark-blue hero. */}
+      <StatusBar style="light" />
+      {isTablet && isLandscape ? (
+        <TabletLandscapeLogin {...layoutProps} />
+      ) : isTablet ? (
+        <TabletPortraitLogin {...layoutProps} />
+      ) : (
+        <MobileLogin {...layoutProps} />
+      )}
+      {__DEV__ ? (
+        <Text
+          style={{
+            position: 'absolute',
+            top: insets.top + 2,
+            right: 8,
+            fontSize: 9,
+            color: 'rgba(255,255,255,0.5)',
+          }}
+        >
+          API: {env.EXPO_PUBLIC_API_URL}
+        </Text>
+      ) : null}
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 28,
-    paddingHorizontal: 24,
-    maxWidth: 440,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  brand: { alignItems: 'center', gap: 12 },
-  logoTile: {
-    width: 88,
-    height: 88,
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: colors.primaryDark,
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  logoImg: { width: '100%', height: '100%' },
-  wordmark: {
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    color: colors.text,
-  },
-  tagline: { fontSize: 13, color: colors.textMuted },
-  form: { gap: 14 },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: 14,
-    backgroundColor: colors.surface,
-  },
-  inputRowFocused: { borderColor: colors.primary },
-  input: { flex: 1, paddingVertical: 13, fontSize: 16, color: colors.text },
-  error: { color: colors.error, fontSize: 14 },
-  button: {
-    marginTop: 4,
-    paddingVertical: 15,
-    borderRadius: radii.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-  },
-  buttonPressed: { backgroundColor: colors.primaryHover },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
-  debug: { fontSize: 11, color: colors.placeholder, textAlign: 'center' },
-});

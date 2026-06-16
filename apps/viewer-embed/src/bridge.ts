@@ -39,6 +39,7 @@ export type ClientMessage =
   | { type: 'modelLoaded' }
   | { type: 'progress'; loaded: number; total: number }
   | { type: 'error'; message: string }
+  | { type: 'log'; level: 'debug' | 'info' | 'warn' | 'error'; args: string[] }
   | {
       type: 'pinTapped';
       id: string;
@@ -107,9 +108,28 @@ export function createBridge(onMessage: (msg: HostMessage) => void): Bridge {
     console.debug('[viewer-embed → host]', json);
   };
 
+  // Forward console.* to the native shell so logs are visible in Metro/Logcat.
+  const LOG_LEVELS = ['debug', 'log', 'info', 'warn', 'error'] as const;
+  const origConsole: Record<string, (...a: unknown[]) => void> = {};
+  for (const level of LOG_LEVELS) {
+    origConsole[level] = console[level];
+    console[level] = (...args: unknown[]) => {
+      origConsole[level](...args);
+      const mapped: ClientMessage & { type: 'log' } = {
+        type: 'log',
+        level: level === 'log' ? 'info' : level,
+        args: args.map(String),
+      };
+      send(mapped);
+    };
+  }
+
   const dispose = (): void => {
     window.removeEventListener('message', onWindowMessage);
     delete window[RECEIVE_GLOBAL];
+    for (const level of LOG_LEVELS) {
+      console[level] = origConsole[level];
+    }
   };
 
   return { send, dispose };
