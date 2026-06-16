@@ -2,6 +2,7 @@ import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { Fraunces } from 'next/font/google';
 import { notFound } from 'next/navigation';
+import Script from 'next/script';
 import type { JSX, ReactNode } from 'react';
 import { Toaster } from 'sonner';
 
@@ -42,6 +43,20 @@ export default async function LocaleLayout({ children, params }: Props): Promise
 
   return (
     <html lang={locale} className={fraunces.variable} suppressHydrationWarning>
+      {/*
+        Theme init script — runs synchronously before hydration to set the correct
+        data-theme on <html> and prevent flash of wrong theme. This replaces the
+        inline <script> that next-themes would otherwise render inside the React
+        component tree (which triggers a React 19 warning).
+      */}
+      <Script id="theme-init" strategy="beforeInteractive">{`
+        (function(){
+          var e=document.documentElement;
+          function a(t){e.setAttribute('data-theme',t);if(t==='light'||t==='dark')e.style.colorScheme=t;}
+          function s(){return window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+          try{var v=localStorage.getItem('theme')||'system';a(v==='system'?s():v);}catch(_){}
+        })()
+      `}</Script>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <NextIntlClientProvider>
           <LocaleMigrationShim />

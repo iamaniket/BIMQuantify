@@ -25,6 +25,10 @@
   "pnpm": {
     "overrides": {
       "@opentelemetry/instrumentation": "0.214.0"
+    },
+    "patchedDependencies": {
+      "@phosphor-icons/react": "patches/@phosphor-icons__react.patch",
+      "next-themes@0.4.6": "patches/next-themes@0.4.6.patch"
     }
   },
   "packageManager": "pnpm@10.33.2"

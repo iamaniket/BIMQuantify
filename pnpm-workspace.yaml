@@ -6,3 +6,4 @@ allowBuilds:
   sharp: true
 patchedDependencies:
   '@phosphor-icons/react': patches/@phosphor-icons__react.patch
+  'next-themes@0.4.6': patches/next-themes@0.4.6.patch

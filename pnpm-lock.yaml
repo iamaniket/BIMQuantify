@@ -11,6 +11,9 @@ patchedDependencies:
   '@phosphor-icons/react':
     hash: 7fa3f1b224d96a064543f82fb5e757234d048cf7168051fe9da844ac179a7347
     path: patches/@phosphor-icons__react.patch
+  next-themes@0.4.6:
+    hash: da722f7e1861a364b90d9cdbdc7ce1a2a9ea31c2504ccc83ffc9d6e037fdcc3a
+    path: patches/next-themes@0.4.6.patch
 
 importers:
 
@@ -209,7 +212,7 @@ importers:
         version: 4.11.0(next@16.2.9(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
       next-themes:
         specifier: ^0.4.4
-        version: 0.4.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 0.4.6(patch_hash=da722f7e1861a364b90d9cdbdc7ce1a2a9ea31c2504ccc83ffc9d6e037fdcc3a)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       posthog-js:
         specifier: ^1.378.1
         version: 1.378.1
@@ -503,7 +506,7 @@ importers:
         version: 6.0.0(@types/react@19.2.14)(react@19.2.5)
       next-themes:
         specifier: ^0.4.4
-        version: 0.4.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 0.4.6(patch_hash=da722f7e1861a364b90d9cdbdc7ce1a2a9ea31c2504ccc83ffc9d6e037fdcc3a)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       posthog-js:
         specifier: ^1.378.1
         version: 1.378.1
@@ -712,7 +715,7 @@ importers:
         version: 19.2.3(@types/react@19.2.14)
       next-themes:
         specifier: ^0.4.4
-        version: 0.4.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 0.4.6(patch_hash=da722f7e1861a364b90d9cdbdc7ce1a2a9ea31c2504ccc83ffc9d6e037fdcc3a)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: ^19.0.0
         version: 19.2.5
@@ -12237,7 +12240,9 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.85.3': {}
 
@@ -16855,7 +16860,7 @@ snapshots:
       - '@types/react'
       - supports-color
 
-  next-themes@0.4.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+  next-themes@0.4.6(patch_hash=da722f7e1861a364b90d9cdbdc7ce1a2a9ea31c2504ccc83ffc9d6e037fdcc3a)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
