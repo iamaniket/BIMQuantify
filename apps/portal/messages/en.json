@@ -1983,6 +1983,100 @@
       "DEFAULT_TEMPLATE_CONFLICT": "Another default was set at the same time — try again."
     }
   },
+  "orgTemplates": {
+    "hero": {
+      "title": "Templates",
+      "totalLabel": "Templates",
+      "totalSub": "across all types",
+      "findingDefaultLabel": "Finding default",
+      "findingDefaultSub": "opens on Log finding",
+      "noDefault": "Standard form"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "templates": "Templates"
+    },
+    "panel": {
+      "overviewEyebrow": "Templates",
+      "overviewTitle": "Organisation templates",
+      "templatesEyebrow": "Library",
+      "templatesTitle": "{count} templates",
+      "showing": "Showing {count}"
+    },
+    "searchPlaceholder": "Search templates…",
+    "typeLabel": {
+      "findings": "Finding",
+      "compliance_report": "Report · Compliance",
+      "assurance_plan": "Report · Assurance plan",
+      "completion_declaration": "Report · Completion decl.",
+      "dossier": "Report · Dossier"
+    },
+    "typeFilter": {
+      "all": "All",
+      "findings": "Findings",
+      "compliance_report": "Compliance report",
+      "assurance_plan": "Assurance plan",
+      "completion_declaration": "Completion declaration",
+      "dossier": "Dossier"
+    },
+    "table": {
+      "name": "Name",
+      "type": "Type",
+      "default": "Default",
+      "updated": "Updated",
+      "defaultBadge": "Default",
+      "empty": "No templates yet"
+    },
+    "actions": {
+      "newButton": "New template",
+      "edit": "Edit",
+      "setDefault": "Set as default",
+      "remove": "Delete",
+      "removeSuccess": "Deleted \"{name}\"",
+      "setDefaultSuccess": "\"{name}\" is now the default",
+      "cannotDeleteDefault": "Set another template as default before deleting this one."
+    },
+    "chooser": {
+      "title": "New template",
+      "subtitle": "Choose the type of template to create.",
+      "findingOption": "Finding template",
+      "findingDesc": "Custom form for logging findings.",
+      "reportOption": "Report template",
+      "reportDesc": "Brand and configure how your reports look.",
+      "reportTypeLabel": "Report type",
+      "continue": "Continue",
+      "cancel": "Cancel"
+    },
+    "builder": {
+      "createTitle": "New template",
+      "editTitle": "Edit template",
+      "subtitle": "Configure your template step by step.",
+      "save": "Save",
+      "saving": "Saving…",
+      "next": "Next",
+      "back": "Back",
+      "cancel": "Cancel",
+      "steps": {
+        "type": { "title": "Template type", "description": "Choose the kind of template" },
+        "setup": { "title": "Setup", "description": "Name and basic settings" },
+        "fields": { "title": "Custom fields", "description": "Add your own fields" },
+        "branding": { "title": "Branding", "description": "Colours, logo and cover" },
+        "content": { "title": "Content", "description": "Sections and text blocks" }
+      }
+    },
+    "overview": {
+      "findingsSection": "Finding templates",
+      "reportsSection": "Report templates",
+      "totalFindingTemplates": "Finding templates",
+      "totalFields": "Custom fields",
+      "defaultTemplate": "Default template",
+      "noDefaultSet": "None set",
+      "fieldCount": "{count, plural, =0 {No custom fields} one {# custom field} other {# custom fields}}",
+      "totalReportTemplates": "Report templates",
+      "reportDefaults": "Defaults configured",
+      "noReportTemplates": "No report templates created yet."
+    }
+  },
   "auth": {
     "brand": {
       "tagline": "Quality Assurance in Construction Act  (Wkb)-compliant BIM platform"

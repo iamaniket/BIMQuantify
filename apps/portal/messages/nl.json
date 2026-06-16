@@ -1983,6 +1983,100 @@
       "DEFAULT_TEMPLATE_CONFLICT": "Er werd tegelijk een andere standaard ingesteld — probeer opnieuw."
     }
   },
+  "orgTemplates": {
+    "hero": {
+      "title": "Sjablonen",
+      "totalLabel": "Sjablonen",
+      "totalSub": "over alle typen",
+      "findingDefaultLabel": "Standaard bevinding",
+      "findingDefaultSub": "opent bij Bevinding loggen",
+      "noDefault": "Standaardformulier"
+    },
+    "tabs": {
+      "overview": "Overzicht",
+      "templates": "Sjablonen"
+    },
+    "panel": {
+      "overviewEyebrow": "Sjablonen",
+      "overviewTitle": "Organisatiesjablonen",
+      "templatesEyebrow": "Bibliotheek",
+      "templatesTitle": "{count} sjablonen",
+      "showing": "{count} weergegeven"
+    },
+    "searchPlaceholder": "Sjablonen zoeken…",
+    "typeLabel": {
+      "findings": "Bevinding",
+      "compliance_report": "Rapport · Nalevingsrapport",
+      "assurance_plan": "Rapport · Borgingsplan",
+      "completion_declaration": "Rapport · Verklaring kwaliteitsborger",
+      "dossier": "Rapport · Dossier bevoegd gezag"
+    },
+    "typeFilter": {
+      "all": "Alles",
+      "findings": "Bevindingen",
+      "compliance_report": "Nalevingsrapport",
+      "assurance_plan": "Borgingsplan",
+      "completion_declaration": "Verklaring kwaliteitsborger",
+      "dossier": "Dossier bevoegd gezag"
+    },
+    "table": {
+      "name": "Naam",
+      "type": "Type",
+      "default": "Standaard",
+      "updated": "Bijgewerkt",
+      "defaultBadge": "Standaard",
+      "empty": "Nog geen sjablonen"
+    },
+    "actions": {
+      "newButton": "Nieuw sjabloon",
+      "edit": "Bewerken",
+      "setDefault": "Als standaard instellen",
+      "remove": "Verwijderen",
+      "removeSuccess": "\"{name}\" verwijderd",
+      "setDefaultSuccess": "\"{name}\" is nu de standaard",
+      "cannotDeleteDefault": "Stel eerst een ander sjabloon als standaard in voordat je dit verwijdert."
+    },
+    "chooser": {
+      "title": "Nieuw sjabloon",
+      "subtitle": "Kies het type sjabloon dat je wilt maken.",
+      "findingOption": "Bevindingssjabloon",
+      "findingDesc": "Aangepast formulier voor het loggen van bevindingen.",
+      "reportOption": "Rapportsjabloon",
+      "reportDesc": "Huisstijl en indeling van je rapporten.",
+      "reportTypeLabel": "Rapporttype",
+      "continue": "Doorgaan",
+      "cancel": "Annuleren"
+    },
+    "builder": {
+      "createTitle": "Nieuw sjabloon",
+      "editTitle": "Sjabloon bewerken",
+      "subtitle": "Configureer je sjabloon stap voor stap.",
+      "save": "Opslaan",
+      "saving": "Opslaan…",
+      "next": "Volgende",
+      "back": "Terug",
+      "cancel": "Annuleren",
+      "steps": {
+        "type": { "title": "Sjabloontype", "description": "Kies het soort sjabloon" },
+        "setup": { "title": "Instellingen", "description": "Naam en basisinstellingen" },
+        "fields": { "title": "Aangepaste velden", "description": "Voeg eigen velden toe" },
+        "branding": { "title": "Huisstijl", "description": "Kleuren, logo en omslag" },
+        "content": { "title": "Inhoud", "description": "Secties en tekstblokken" }
+      }
+    },
+    "overview": {
+      "findingsSection": "Bevindingssjablonen",
+      "reportsSection": "Rapportsjablonen",
+      "totalFindingTemplates": "Bevindingssjablonen",
+      "totalFields": "Aangepaste velden",
+      "defaultTemplate": "Standaardsjabloon",
+      "noDefaultSet": "Niet ingesteld",
+      "fieldCount": "{count, plural, =0 {Geen aangepaste velden} one {# aangepast veld} other {# aangepaste velden}}",
+      "totalReportTemplates": "Rapportsjablonen",
+      "reportDefaults": "Standaarden ingesteld",
+      "noReportTemplates": "Nog geen rapportsjablonen aangemaakt."
+    }
+  },
   "auth": {
     "brand": {
       "tagline": "Wet kwaliteitsborging voor het bouwen (Wkb)-conform BIM-platform"
