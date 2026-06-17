@@ -342,6 +342,9 @@ export class InstancedOutline {
   // Expand the visible rows of low-fan-out templates to world space and merge
   // into a few LineSegmentsGeometry chunks — the proven non-instanced path.
   private rebuildCpu(m: ModelOutline, filter: OutlineFilter): void {
+    // Fully-instanced model: no CPU-merged templates exist, so there is nothing
+    // to clear or rebuild on a re-filter. Skip the work entirely.
+    if (m.cpuTemplates.length === 0) return;
     this.clearCpu(m);
     const slices: Float32Array[] = [];
     for (const { template, rows } of m.cpuTemplates) {

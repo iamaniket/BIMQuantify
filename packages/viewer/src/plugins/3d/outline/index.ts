@@ -138,10 +138,13 @@ export function outlinePlugin(
     syncResolution();
   };
 
-  // Re-filter every model's outline from the current visible set (idle only).
-  const applyFilters = (): void => {
+  // Re-filter outlines from the current visible set. Pass `only` to rebuild
+  // just the models whose resolved filter changed (the common case); omit it to
+  // rebuild every model (the idle safety net).
+  const applyFilters = (only?: Set<string>): void => {
     if (!instanced) return;
     for (const modelId of groups.keys()) {
+      if (only && !only.has(modelId)) continue;
       instanced.applyFilter(modelId, filterFor(modelId));
     }
     dirty = false;
@@ -217,18 +220,33 @@ export function outlinePlugin(
       const offVisibility = ctx.events.on(
         'visibility:change',
         ({ hidden, isolated, isolationActive: active }) => {
-          hiddenByModel.clear();
-          for (const [m, s] of indexByModel(hidden)) hiddenByModel.set(m, s);
-          isolatedByModel.clear();
-          for (const [m, s] of indexByModel(isolated)) isolatedByModel.set(m, s);
-          isolationActive = active;
-          dirty = true;
-          // Repaint immediately if already settled; otherwise the next idle
-          // frame picks it up.
-          if (isIdle) {
-            applyFilters();
-            updateVisibility();
+          const nextHidden = indexByModel(hidden);
+          const nextIsolated = indexByModel(isolated);
+
+          // Models whose resolved filter may have changed. When isolation
+          // toggles, every model's filter flips (isolated set ↔ hidden set), so
+          // rebuild them all; otherwise just the models touched before or after.
+          const changed = new Set<string>();
+          if (active !== isolationActive) {
+            for (const m of groups.keys()) changed.add(m);
+          } else {
+            for (const m of hiddenByModel.keys()) changed.add(m);
+            for (const m of isolatedByModel.keys()) changed.add(m);
+            for (const m of nextHidden.keys()) changed.add(m);
+            for (const m of nextIsolated.keys()) changed.add(m);
           }
+
+          hiddenByModel.clear();
+          for (const [m, s] of nextHidden) hiddenByModel.set(m, s);
+          isolatedByModel.clear();
+          for (const [m, s] of nextIsolated) isolatedByModel.set(m, s);
+          isolationActive = active;
+
+          // Filter immediately — regardless of idle — so the outline never lags
+          // the geometry (the lingering-edge bug). Group *visibility* stays gated
+          // on idle (updateVisibility) for the camera-motion perf contract.
+          applyFilters(changed);
+          updateVisibility();
         },
       );
       const offXray = ctx.events.on('xray:change', ({ xrayed }) => {

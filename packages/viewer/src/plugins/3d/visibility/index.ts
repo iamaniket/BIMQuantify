@@ -1,7 +1,26 @@
 /**
- * Visibility plugin. Provides isolate, hide, and show-all commands that
- * operate on the current selection. Uses the FragmentsModel v3 visibility
- * API (`setVisible` / `resetVisible`).
+ * Visibility plugin. Provides isolate, hide, and show-all commands that operate
+ * on the current selection, plus a type-based "exception list" (IfcSpaces by
+ * default), event emission, and command integration.
+ *
+ * Visibility operations run against the viewer's own `FRAGS.FragmentsModels`
+ * via `ctx.models()` (see `createModelHider`). We deliberately do NOT use OBC's
+ * `Hider` component: `Hider` reads `components.get(FragmentsManager).list`, but
+ * this viewer loads every model into its own FragmentsModels (`ctx.fragments`),
+ * never into the OBC FragmentsManager — so that list is always empty and every
+ * `Hider` call is a silent no-op (which is exactly what broke the spaces
+ * toggle). This helper mirrors Hider's API over the models the viewer owns.
+ *
+ * Lockstep with the outline plugin: each op mutates `setVisible` first, then
+ * `emitChange()` so the outline (and other consumers) re-filter synchronously,
+ * then exactly ONE `flush()` (`fragments.update(true)` + `requestRender()`).
+ * Requesting the render only after the filter is applied is what stops a hidden
+ * element's outline from lingering on screen during isolate/hide.
+ *
+ * Exception list (Part D): the plugin self-identifies the managed IFC types
+ * (`getItemsOfCategories`) per model at load, auto-hides them, and keeps them
+ * hidden through bulk show/hide. They are controlled ONLY by
+ * `visibility.setTypeVisible` — the toolbar spaces toggle calls that.
  *
  * Depends on the `selection` plugin for reading the current selection set.
  */
@@ -12,7 +31,12 @@ import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 const NAME = 'visibility' as const;
 
 export interface VisibilityPluginOptions {
-  // Reserved for future options.
+  /**
+   * IFC categories the plugin controls individually (the "exception list").
+   * They are auto-hidden at model load and never revealed by bulk show/hide —
+   * only by `visibility.setTypeVisible`. Default: `['IfcSpace']`.
+   */
+  exceptionTypes?: string[];
 }
 
 export interface VisibilityPluginAPI {
@@ -24,22 +48,160 @@ export interface VisibilityPluginAPI {
 
 const itemKey = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
+/** Normalize an IFC type to the upper-case category key fragments uses (`IFCSPACE`). */
+const normalizeType = (t: string): string => t.trim().toUpperCase();
+
+function toModelIdMap(items: ItemId[]): Record<string, Set<number>> {
+  const map: Record<string, Set<number>> = {};
+  for (const it of items) {
+    (map[it.modelId] ??= new Set()).add(it.localId);
+  }
+  return map;
+}
+
+/**
+ * A `Hider`-shaped facade over the viewer's own `ctx.models()`. `set` mutates
+ * visibility only — NO flush/render. Callers run exactly one `flush()` after
+ * they have emitted `visibility:change`, so geometry and outline change in the
+ * same painted frame.
+ */
+interface ModelHider {
+  set(visible: boolean, modelIdMap?: Record<string, Set<number>>): Promise<void>;
+  isolate(modelIdMap: Record<string, Set<number>>): Promise<void>;
+  getVisibilityMap(state: boolean): Promise<Record<string, number[]>>;
+  flush(): Promise<void>;
+}
+
+function createModelHider(ctx: ViewerContext): ModelHider {
+  const set = async (
+    visible: boolean,
+    modelIdMap?: Record<string, Set<number>>,
+  ): Promise<void> => {
+    const models = ctx.models();
+    if (modelIdMap) {
+      for (const [modelId, ids] of Object.entries(modelIdMap)) {
+        const model = models.get(modelId);
+        if (!model) continue;
+        await model.setVisible([...ids], visible).catch(() => undefined);
+      }
+    } else {
+      for (const model of models.values()) {
+        await model.setVisible(undefined, visible).catch(() => undefined);
+      }
+    }
+  };
+
+  return {
+    set,
+    // Hide everything, then re-show the kept set. Sequential (not Hider's
+    // parallel) so the kept items deterministically win and end up visible.
+    // No flush here — the caller flushes once after emitting the change.
+    async isolate(modelIdMap) {
+      await set(false);
+      await set(true, modelIdMap);
+    },
+    async getVisibilityMap(state) {
+      const out: Record<string, number[]> = {};
+      for (const [modelId, model] of ctx.models()) {
+        out[modelId] = await model.getItemsByVisibility(state).catch(() => []);
+      }
+      return out;
+    },
+    // Drain the accumulated visibility changes to the GPU and draw them once —
+    // the viewer renders on-demand, so a silent setVisible would otherwise not
+    // show until the next interaction.
+    async flush() {
+      await ctx.fragments.update(true).catch(() => undefined);
+      ctx.requestRender();
+    },
+  };
+}
+
 export function visibilityPlugin(
-  _options: VisibilityPluginOptions = {},
+  options: VisibilityPluginOptions = {},
 ): Plugin & VisibilityPluginAPI {
   let ctxRef: ViewerContext | null = null;
+  let hider: ModelHider | null = null;
   let offModelLoaded: (() => void) | null = null;
+  let offModelUnloaded: (() => void) | null = null;
   let enabled = true;
   let isolationActive = false;
   const isolatedSet = new Set<string>();
   const isolatedItems = new Map<string, ItemId>();
   const hiddenSet = new Set<string>();
   const hiddenItemMap = new Map<string, ItemId>();
-  // Items that must stay hidden across `showAll`/`resetVisible` until
-  // explicitly cleared. Driven by the portal for IfcSpaces, so the spaces
-  // toolbar toggle is the single source of truth for their visibility and
-  // "Show all" treats them as an exception.
+  // Generic "stays hidden through show-all" set, driven by the low-level
+  // `setPersistentHidden` command. Managed exception types are tracked
+  // separately below; both are folded together by `reapplyPersistent`.
   const persistentHidden = new Map<string, ItemId>();
+
+  // --- Exception list (Part D) -------------------------------------------
+  // IFC categories the plugin controls individually. Auto-hidden at load and
+  // kept hidden through bulk ops; flipped only via `visibility.setTypeVisible`.
+  const managedTypes = new Set<string>(
+    (options.exceptionTypes ?? ['IfcSpace']).map(normalizeType),
+  );
+  // type key -> currently hidden? Default: hidden, so spaces are off by default
+  // even before the host pushes a preference.
+  const typeHidden = new Map<string, boolean>();
+  for (const key of managedTypes) typeHidden.set(key, true);
+  // modelId -> (type key -> localIds), resolved from the model at load time.
+  const exceptionIdsByModel = new Map<string, Map<string, number[]>>();
+
+  const resolveCategory = async (
+    model: { getItemsOfCategories(c: RegExp[]): Promise<Record<string, number[]>> },
+    key: string,
+  ): Promise<number[]> => {
+    try {
+      const res = await model.getItemsOfCategories([new RegExp(`^${key}$`, 'i')]);
+      return Object.values(res).flat();
+    } catch {
+      return [];
+    }
+  };
+
+  // Resolve every managed type's localIds for one model (called on model load).
+  const resolveExceptionsForModel = async (modelId: string): Promise<void> => {
+    if (!ctxRef) return;
+    const model = ctxRef.models().get(modelId);
+    if (!model) return;
+    let perType = exceptionIdsByModel.get(modelId);
+    if (!perType) {
+      perType = new Map();
+      exceptionIdsByModel.set(modelId, perType);
+    }
+    for (const key of managedTypes) {
+      perType.set(key, await resolveCategory(model, key));
+    }
+  };
+
+  // All ItemIds of a managed type across loaded models (optionally one model).
+  const exceptionItems = (key: string, modelId?: string): ItemId[] => {
+    const out: ItemId[] = [];
+    for (const [mId, perType] of exceptionIdsByModel) {
+      if (modelId && mId !== modelId) continue;
+      for (const localId of perType.get(key) ?? []) out.push({ modelId: mId, localId });
+    }
+    return out;
+  };
+
+  // ItemIds for every managed type that is currently toggled hidden.
+  const managedHiddenItems = (): ItemId[] => {
+    const out: ItemId[] = [];
+    for (const key of managedTypes) {
+      if (typeHidden.get(key)) out.push(...exceptionItems(key));
+    }
+    return out;
+  };
+
+  // Keys that must never be revealed by bulk/element show ops — the generic
+  // persistent set plus every managed-hidden type's items.
+  const persistentKeys = (): Set<string> => {
+    const s = new Set(persistentHidden.keys());
+    for (const it of managedHiddenItems()) s.add(itemKey(it));
+    return s;
+  };
+  // -----------------------------------------------------------------------
 
   const emitChange = (): void => {
     if (!ctxRef) return;
@@ -59,48 +221,30 @@ export function visibilityPlugin(
     }
   };
 
-  // Isolation is "hide everything except these". It records every non-kept
-  // element in `hiddenSet`/`hiddenItemMap` so the emitted `hidden` set is
-  // authoritative — consumers (the portal's checkboxes/counts) can read
-  // visibility from `hidden` alone, without a separate isolation rule. The
-  // `isolated`/`isolationActive` fields are still emitted for plugins that
-  // treat isolation as a distinct concept (outline, viewpoints, perf).
-  const applyIsolation = async (items: ItemId[]): Promise<void> => {
-    if (!ctxRef) return;
-
-    const keepByModel = new Map<string, Set<number>>();
+  // Re-hide the generic persistent set + every managed-hidden type and fold
+  // them into the authoritative hidden maps. Mutate-only — the caller flushes.
+  const reapplyPersistent = async (): Promise<void> => {
+    if (!hider) return;
+    const items = [...persistentHidden.values(), ...managedHiddenItems()];
+    if (items.length === 0) return;
+    await hider.set(false, toModelIdMap(items)).catch(() => undefined);
     for (const it of items) {
-      let keep = keepByModel.get(it.modelId);
-      if (!keep) { keep = new Set(); keepByModel.set(it.modelId, keep); }
-      keep.add(it.localId);
+      const k = itemKey(it);
+      hiddenSet.add(k);
+      hiddenItemMap.set(k, it);
     }
+  };
 
-    hiddenSet.clear();
-    hiddenItemMap.clear();
+  // Isolation is "hide everything except these". Records every non-kept element
+  // in `hiddenSet`/`hiddenItemMap` so the emitted `hidden` set stays authoritative
+  // for consumers that need it (camera.frameVisible, bcf, the portal).
+  const applyIsolation = async (items: ItemId[]): Promise<void> => {
+    if (!ctxRef || !hider) return;
 
-    for (const [modelId, model] of ctxRef.models()) {
-      const keep = keepByModel.get(modelId) ?? new Set<number>();
-      await model.setVisible(undefined, false).catch(() => undefined);
-
-      let allIds: Iterable<number> | null = null;
-      try {
-        allIds = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
-      } catch {
-        allIds = null;
-      }
-      if (allIds) {
-        for (const localId of allIds) {
-          if (keep.has(localId)) continue;
-          const k = itemKey({ modelId, localId });
-          hiddenSet.add(k);
-          hiddenItemMap.set(k, { modelId, localId });
-        }
-      }
-
-      if (keep.size) {
-        await model.setVisible([...keep], true).catch(() => undefined);
-      }
-    }
+    const keepMap = toModelIdMap(items);
+    await hider.isolate(keepMap).catch(() => undefined);
+    // Keep managed-hidden types hidden even under isolation.
+    await reapplyPersistent();
 
     isolatedSet.clear();
     isolatedItems.clear();
@@ -110,8 +254,22 @@ export function visibilityPlugin(
       isolatedItems.set(k, it);
     }
     isolationActive = true;
-    await reapplyPersistent();
+
+    // Rebuild the authoritative hidden set from actual model state.
+    hiddenSet.clear();
+    hiddenItemMap.clear();
+    const hiddenMap = await hider.getVisibilityMap(false).catch(() => ({}));
+    for (const [modelId, ids] of Object.entries(hiddenMap)) {
+      if (!ids) continue;
+      for (const localId of ids) {
+        const k = itemKey({ modelId, localId });
+        hiddenSet.add(k);
+        hiddenItemMap.set(k, { modelId, localId });
+      }
+    }
+
     emitChange();
+    await hider.flush();
   };
 
   const isolate = async (): Promise<void> => {
@@ -121,77 +279,84 @@ export function visibilityPlugin(
     await applyIsolation(selected);
   };
 
+  // Drop items from the isolated set when they get individually hidden, so the
+  // outline (which reads the isolated set under isolation) stops drawing them.
+  const dropFromIsolated = (items: ItemId[]): void => {
+    if (!isolationActive) return;
+    for (const it of items) {
+      const k = itemKey(it);
+      isolatedSet.delete(k);
+      isolatedItems.delete(k);
+    }
+  };
+
   const hide = async (): Promise<void> => {
-    if (!ctxRef || !enabled) return;
+    if (!ctxRef || !hider || !enabled) return;
     const selected = await getSelection();
     if (!selected.length) return;
 
-    const byModel = new Map<string, number[]>();
+    // Clear selection first: its `selection:change` wake can then only paint the
+    // pre-hide (consistent) state, never a hidden-geometry/full-outline frame.
+    await ctxRef.commands.execute('selection.clear').catch(() => undefined);
+
+    await hider.set(false, toModelIdMap(selected)).catch(() => undefined);
     for (const it of selected) {
-      let arr = byModel.get(it.modelId);
-      if (!arr) {
-        arr = [];
-        byModel.set(it.modelId, arr);
-      }
-      arr.push(it.localId);
       const k = itemKey(it);
       hiddenSet.add(k);
       hiddenItemMap.set(k, it);
     }
+    dropFromIsolated(selected);
 
-    for (const [modelId, ids] of byModel) {
-      const model = ctxRef.models().get(modelId);
-      if (model) {
-        await model.setVisible(ids, false).catch(() => undefined);
-      }
-    }
-
-    await ctxRef.commands.execute('selection.clear').catch(() => undefined);
     emitChange();
+    await hider.flush();
   };
 
   const hideAll = async (): Promise<void> => {
-    if (!ctxRef || !enabled) return;
+    if (!ctxRef || !hider || !enabled) return;
 
-    for (const [modelId, model] of ctxRef.models()) {
-      let allIds: Iterable<number>;
-      try {
-        allIds = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
-      } catch {
-        continue;
-      }
-      for (const localId of allIds) {
+    await hider.set(false).catch(() => undefined);
+    // Managed types are controlled only by their toggle — re-show the shown ones
+    // (hide-all doesn't touch the exception list).
+    const toShow: ItemId[] = [];
+    for (const key of managedTypes) {
+      if (!typeHidden.get(key)) toShow.push(...exceptionItems(key));
+    }
+    if (toShow.length) {
+      await hider.set(true, toModelIdMap(toShow)).catch(() => undefined);
+    }
+
+    // Rebuild tracking from actual model state.
+    hiddenSet.clear();
+    hiddenItemMap.clear();
+    const hiddenMap = await hider.getVisibilityMap(false).catch(() => ({}));
+    for (const [modelId, ids] of Object.entries(hiddenMap)) {
+      if (!ids) continue;
+      for (const localId of ids) {
         const k = itemKey({ modelId, localId });
         hiddenSet.add(k);
         hiddenItemMap.set(k, { modelId, localId });
       }
-      await model.setVisible(undefined, false).catch(() => undefined);
     }
 
     emitChange();
+    await hider.flush();
   };
 
   const hideItem = async (args: unknown): Promise<void> => {
-    if (!ctxRef || !enabled) return;
+    if (!ctxRef || !hider || !enabled) return;
     const items = toItems(args);
     if (!items.length) return;
 
-    const byModel = new Map<string, number[]>();
+    await hider.set(false, toModelIdMap(items)).catch(() => undefined);
     for (const it of items) {
-      let arr = byModel.get(it.modelId);
-      if (!arr) { arr = []; byModel.set(it.modelId, arr); }
-      arr.push(it.localId);
       const k = itemKey(it);
       hiddenSet.add(k);
       hiddenItemMap.set(k, it);
     }
-
-    for (const [modelId, ids] of byModel) {
-      const model = ctxRef.models().get(modelId);
-      if (model) await model.setVisible(ids, false).catch(() => undefined);
-    }
+    dropFromIsolated(items);
 
     emitChange();
+    await hider.flush();
   };
 
   const isolateItem = async (args: unknown): Promise<void> => {
@@ -203,13 +368,9 @@ export function visibilityPlugin(
 
   // Double-click handler bound to `doubleclick:left` by default. Raycast
   // under the cursor and branch:
-  //   - hit, and that element is already the sole isolated one → show all
-  //     (toggle back to the full model);
+  //   - hit, and that element is already the sole isolated one → show all;
   //   - hit, otherwise → isolate that element;
   //   - miss (empty space) → leave isolation untouched.
-  // Either way we re-frame the camera to the resulting visible set, so a
-  // first hit zooms to the isolated element, a second hit on it fits the
-  // whole model, and a miss fits the current view.
   const isolateAtPointer = async (args: unknown): Promise<void> => {
     if (!ctxRef || !enabled) return;
     const ndc = ndcOf(args as PickArgs);
@@ -231,103 +392,125 @@ export function visibilityPlugin(
   };
 
   const showItem = async (args: unknown): Promise<void> => {
-    if (!ctxRef) return;
+    if (!ctxRef || !hider) return;
     const items = toItems(args);
     if (!items.length) return;
 
-    const byModel = new Map<string, number[]>();
+    const pk = persistentKeys();
+    const toShow: ItemId[] = [];
     for (const it of items) {
       const k = itemKey(it);
-      if (persistentHidden.has(k)) continue;
-      let arr = byModel.get(it.modelId);
-      if (!arr) { arr = []; byModel.set(it.modelId, arr); }
-      arr.push(it.localId);
+      if (pk.has(k)) continue; // managed-hidden / persistent stays hidden
+      toShow.push(it);
       hiddenSet.delete(k);
       hiddenItemMap.delete(k);
     }
 
-    for (const [modelId, ids] of byModel) {
-      const model = ctxRef.models().get(modelId);
-      if (model) await model.setVisible(ids, true).catch(() => undefined);
+    if (toShow.length) {
+      await hider.set(true, toModelIdMap(toShow)).catch(() => undefined);
     }
 
     emitChange();
+    await hider.flush();
   };
 
-  // Re-hide the persistent set (e.g. after a full `resetVisible`) and fold it
-  // back into the authoritative `hidden` maps. Does not emit on its own.
-  const reapplyPersistent = async (): Promise<void> => {
-    if (!ctxRef || persistentHidden.size === 0) return;
-    const byModel = new Map<string, number[]>();
-    for (const it of persistentHidden.values()) {
-      let arr = byModel.get(it.modelId);
-      if (!arr) { arr = []; byModel.set(it.modelId, arr); }
-      arr.push(it.localId);
-      const k = itemKey(it);
-      hiddenSet.add(k);
-      hiddenItemMap.set(k, it);
-    }
-    for (const [modelId, ids] of byModel) {
-      const model = ctxRef.models().get(modelId);
-      if (model) await model.setVisible(ids, false).catch(() => undefined);
-    }
-  };
-
-  // Replace the persistent-hidden set. Items dropped from it are made visible
-  // again; the new set is hidden immediately. Passing `[]` clears it.
+  // Low-level generic persistent-hidden set (item-based). Managed exception
+  // types are handled by `setTypeVisible`; this stays for any non-type use.
   const setPersistentHidden = async (args: unknown): Promise<void> => {
-    if (!ctxRef) return;
+    if (!ctxRef || !hider) return;
     const items = toItems(args);
     const nextKeys = new Set(items.map(itemKey));
+    const managedKeys = new Set(managedHiddenItems().map(itemKey));
 
-    // Show items that were persistent before but no longer are.
-    const toShow = new Map<string, number[]>();
+    // Show items that were generically persistent before but no longer are —
+    // unless still held hidden by a managed type.
+    const toShow: ItemId[] = [];
     for (const [k, it] of persistentHidden) {
       if (nextKeys.has(k)) continue;
+      if (managedKeys.has(k)) continue;
       hiddenSet.delete(k);
       hiddenItemMap.delete(k);
-      let arr = toShow.get(it.modelId);
-      if (!arr) { arr = []; toShow.set(it.modelId, arr); }
-      arr.push(it.localId);
+      toShow.push(it);
     }
 
     persistentHidden.clear();
     for (const it of items) persistentHidden.set(itemKey(it), it);
 
-    for (const [modelId, ids] of toShow) {
-      const model = ctxRef.models().get(modelId);
-      if (model) await model.setVisible(ids, true).catch(() => undefined);
+    if (toShow.length) {
+      await hider.set(true, toModelIdMap(toShow)).catch(() => undefined);
     }
 
     await reapplyPersistent();
     emitChange();
+    await hider.flush();
+  };
+
+  // Show/hide every element of a managed IFC type across all loaded models.
+  // The toolbar spaces toggle calls this. Adds the type to the managed set if
+  // new, so the host can control arbitrary types ("show these / hide these").
+  const setTypeVisible = async (arg: unknown): Promise<void> => {
+    if (!ctxRef || !hider) return;
+    const { type, visible } = (arg ?? {}) as { type?: string; visible?: boolean };
+    if (typeof type !== 'string' || typeof visible !== 'boolean') return;
+    const key = normalizeType(type);
+
+    managedTypes.add(key);
+    // Resolve the type's ids for any loaded model that hasn't been resolved yet.
+    for (const [modelId, model] of ctxRef.models()) {
+      let perType = exceptionIdsByModel.get(modelId);
+      if (!perType) {
+        perType = new Map();
+        exceptionIdsByModel.set(modelId, perType);
+      }
+      if (!perType.has(key)) perType.set(key, await resolveCategory(model, key));
+    }
+
+    typeHidden.set(key, !visible);
+
+    const items = exceptionItems(key);
+    if (items.length === 0) return; // nothing loaded yet; state tracked for later loads
+
+    if (visible) {
+      for (const it of items) {
+        const k = itemKey(it);
+        hiddenSet.delete(k);
+        hiddenItemMap.delete(k);
+      }
+      await hider.set(true, toModelIdMap(items)).catch(() => undefined);
+    } else {
+      for (const it of items) {
+        const k = itemKey(it);
+        hiddenSet.add(k);
+        hiddenItemMap.set(k, it);
+      }
+      await hider.set(false, toModelIdMap(items)).catch(() => undefined);
+    }
+
+    emitChange();
+    await hider.flush();
   };
 
   const showAll = async (): Promise<void> => {
-    if (!ctxRef) return;
+    if (!ctxRef || !hider) return;
 
-    for (const model of ctxRef.models().values()) {
-      await model.resetVisible().catch(() => undefined);
-    }
+    await hider.set(true).catch(() => undefined);
 
     isolatedSet.clear();
     isolatedItems.clear();
     hiddenSet.clear();
     hiddenItemMap.clear();
     isolationActive = false;
-    // Spaces (and any other persistent-hidden items) stay hidden through a
-    // full show-all — they are an exception, controlled only by their toggle.
+    // Managed-hidden types (and any generic persistent items) stay hidden through
+    // a full show-all — they are exceptions, controlled only by their toggle.
     await reapplyPersistent();
     emitChange();
+    await hider.flush();
   };
 
   const setEnabled = (next: boolean): void => {
     if (enabled === next) return;
     enabled = next;
     if (!enabled) {
-      // On disable: restore everything to fully visible. Keeps the
-      // viewer in a clean state regardless of accumulated hide/isolate
-      // history.
       void showAll();
     }
     ctxRef?.events.emit('feature:enabled', { name: NAME, enabled });
@@ -350,21 +533,39 @@ export function visibilityPlugin(
 
     install(ctx: ViewerContext) {
       ctxRef = ctx;
+      hider = createModelHider(ctx);
 
-      // A model whose fragments finish loading AFTER the persistent-hidden set
-      // was established (common race: the host sets it from small metadata long
-      // before the heavy fragments arrive) is not in `ctx.models()` at set time,
-      // so its persistent items were never hidden. Re-hide them once it loads —
-      // keeps the spaces toggle authoritative across late-loading federated models.
+      // On model load, resolve the managed types for the new model and apply the
+      // current toggle state (auto-hide the ones that should be hidden). This is
+      // what makes IfcSpaces hidden-by-default without the host pushing ids, and
+      // covers models that stream in after the toggle was already set.
       offModelLoaded = ctx.events.on('model:loaded', ({ modelId }) => {
-        if (persistentHidden.size === 0) return;
-        const ids: number[] = [];
-        for (const it of persistentHidden.values()) {
-          if (it.modelId === modelId) ids.push(it.localId);
+        void (async () => {
+          if (!hider) return;
+          await resolveExceptionsForModel(modelId);
+          // Fold this model's currently-hidden managed items into the persistent
+          // set and re-hide everything persistent (idempotent across models).
+          for (const key of managedTypes) {
+            if (!typeHidden.get(key)) continue;
+            for (const it of exceptionItems(key, modelId)) {
+              persistentHidden.set(itemKey(it), it);
+            }
+          }
+          const items = [...persistentHidden.values(), ...managedHiddenItems()];
+          if (items.length === 0) return;
+          await reapplyPersistent();
+          emitChange();
+          await hider.flush();
+        })();
+      });
+
+      // Drop a removed model's resolved exception ids + its generic persistent
+      // entries so they don't linger.
+      offModelUnloaded = ctx.events.on('model:unloaded', ({ modelId }) => {
+        exceptionIdsByModel.delete(modelId);
+        for (const k of [...persistentHidden.keys()]) {
+          if (k.startsWith(`${modelId}::`)) persistentHidden.delete(k);
         }
-        if (ids.length === 0) return;
-        const model = ctx.models().get(modelId);
-        if (model) void model.setVisible(ids, false).catch(() => undefined);
       });
 
       ctx.commands.register('visibility.isolate', () => isolate(), {
@@ -426,6 +627,25 @@ export function visibilityPlugin(
         { title: 'Clear the persistent-hidden set' },
       );
 
+      // Type-based exception control (the toolbar spaces toggle calls this).
+      ctx.commands.register(
+        'visibility.setTypeVisible',
+        (args: unknown) => setTypeVisible(args),
+        { title: 'Show/hide all elements of a managed IFC type' },
+      );
+      ctx.commands.register(
+        'visibility.getTypeVisible',
+        (args: unknown) => {
+          const type = typeof args === 'string' ? args : (args as { type?: string })?.type;
+          if (typeof type !== 'string') return undefined;
+          return !typeHidden.get(normalizeType(type));
+        },
+        { title: 'Get whether a managed IFC type is currently shown' },
+      );
+      ctx.commands.register('visibility.getManagedTypes', () => [...managedTypes], {
+        title: 'List managed (exception) IFC types',
+      });
+
       ctx.commands.register('visibility.setEnabled', (args: unknown) => {
         const on = typeof args === 'boolean' ? args : (args as { enabled?: boolean })?.enabled;
         if (typeof on === 'boolean') setEnabled(on);
@@ -439,9 +659,12 @@ export function visibilityPlugin(
     uninstall() {
       offModelLoaded?.();
       offModelLoaded = null;
+      offModelUnloaded?.();
+      offModelUnloaded = null;
       if (ctxRef) {
         void showAll();
       }
+      hider = null;
       ctxRef = null;
     },
   };

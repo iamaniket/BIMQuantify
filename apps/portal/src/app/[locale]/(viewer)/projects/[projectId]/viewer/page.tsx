@@ -310,7 +310,7 @@ export default function ViewerPage(): JSX.Element {
   useBcfGlobalIdMap(viewerHandleRef.current, metadata);
   // Spaces (IfcSpace) are hidden by default and controlled solely by the
   // toolbar toggle; this keeps the viewer in sync with `settings.spaces.show`.
-  useSpaceVisibility(viewerHandleRef.current, viewerReady, scope, metadata, settings.spaces.show);
+  useSpaceVisibility(viewerHandleRef.current, viewerReady, settings.spaces.show);
   const hasSelection = isAllSelected || partialSelectionCount > 0;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,
