@@ -1,10 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BlueGradient } from '@/components/BlueGradient';
+import { GridTexture } from '@/components/GridTexture';
+import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import type { Project } from '@/lib/api/schemas/projects';
 import { formatShortDate, humanize } from '@/lib/format';
 import { colors, projectStatusColor, radii } from '@/theme';
@@ -12,10 +15,40 @@ import { colors, projectStatusColor, radii } from '@/theme';
 const ON_STRONG = 'rgba(255,255,255,0.92)';
 const ON_SOFT = 'rgba(255,255,255,0.7)';
 
-/** Cover thumbnail: real thumbnail when present, else a building glyph. */
-function CoverThumb({ url }: { url?: string | null }) {
-  if (url != null && url !== '') {
-    return <Image source={{ uri: url }} style={styles.thumb} contentFit="cover" transition={120} />;
+/**
+ * Cover thumbnail: real thumbnail when present, else a PDOK aerial photo of the
+ * project location (NL only), else a building glyph — mirrors the portal card.
+ * `onError` falls back if a presigned thumbnail URL expires; the effects reset
+ * the failed flags when the source changes so a fresh URL after refetch loads.
+ */
+function CoverThumb({ thumbnailUrl, aerialUrl }: { thumbnailUrl?: string | null; aerialUrl: string | null }) {
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const [aerialFailed, setAerialFailed] = useState(false);
+  useEffect(() => { setThumbFailed(false); }, [thumbnailUrl]);
+  useEffect(() => { setAerialFailed(false); }, [aerialUrl]);
+
+  const showThumb = thumbnailUrl != null && thumbnailUrl !== '' && !thumbFailed;
+  if (showThumb) {
+    return (
+      <Image
+        source={{ uri: thumbnailUrl }}
+        style={styles.thumb}
+        contentFit="cover"
+        transition={120}
+        onError={() => setThumbFailed(true)}
+      />
+    );
+  }
+  if (aerialUrl != null && !aerialFailed) {
+    return (
+      <Image
+        source={{ uri: aerialUrl }}
+        style={styles.thumb}
+        contentFit="cover"
+        transition={120}
+        onError={() => setAerialFailed(true)}
+      />
+    );
   }
   return (
     <View style={[styles.thumb, styles.thumbIcon]}>
@@ -35,6 +68,15 @@ export function ProjectCard({ project }: { project: Project }) {
     .filter((x) => x != null && x !== '')
     .join(' · ');
 
+  const hasThumb = project.thumbnail_url != null && project.thumbnail_url !== '';
+  const aerialUrl =
+    !hasThumb
+    && project.latitude != null
+    && project.longitude != null
+    && isWithinNetherlands(project.latitude, project.longitude)
+      ? pdokAerialThumbnailUrl(project.latitude, project.longitude)
+      : null;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -48,7 +90,8 @@ export function ProjectCard({ project }: { project: Project }) {
       }
     >
       <BlueGradient style={styles.cardBg} />
-      <CoverThumb url={project.thumbnail_url} />
+      <GridTexture step={18} />
+      <CoverThumb thumbnailUrl={project.thumbnail_url} aerialUrl={aerialUrl} />
 
       <View style={styles.body}>
         <View style={styles.topRow}>
@@ -87,7 +130,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     gap: 12,
-    padding: 11,
+    padding: 8,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.14)',
@@ -95,7 +138,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   cardBg: { borderRadius: radii.lg },
-  thumb: { width: 78, aspectRatio: 6 / 4, borderRadius: radii.md, overflow: 'hidden', alignSelf: 'stretch' },
+  thumb: { aspectRatio: 6 / 4, borderRadius: radii.md, overflow: 'hidden', alignSelf: 'stretch' },
   thumbIcon: { backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, minWidth: 0, justifyContent: 'space-between', gap: 8 },
   topRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },

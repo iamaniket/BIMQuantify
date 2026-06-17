@@ -1,5 +1,5 @@
-import { useDrawerStatus } from '@react-navigation/drawer';
 import { Redirect, useNavigation } from 'expo-router';
+import { useDrawerStatus } from 'expo-router/drawer';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
 import {

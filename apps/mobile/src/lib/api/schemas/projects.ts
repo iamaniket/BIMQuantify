@@ -16,6 +16,10 @@ export const ProjectSchema = z.object({
   // so a missing field never blanks the list (the server already returns these on
   // ProjectRead). lifecycle_state drives the "N active · N archived" counts.
   thumbnail_url: z.union([z.string(), z.null()]).optional(),
+  // WGS84 coords power the aerial-photo fallback thumbnail (PDOK, NL only) when
+  // no thumbnail_url is set — mirrors the portal card.
+  latitude: z.union([z.number(), z.null()]).optional(),
+  longitude: z.union([z.number(), z.null()]).optional(),
   delivery_date: z.union([z.string(), z.null()]).optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),

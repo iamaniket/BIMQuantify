@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, initialsFrom } from '@/components/Avatar';
 import { BlueGradient } from '@/components/BlueGradient';
 import { BrandMark } from '@/components/BrandMark';
-import { GridTexture } from '@/components/GridTexture';
 import { useProjects } from '@/features/projects/queries';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, fonts, radii } from '@/theme';
@@ -91,7 +90,6 @@ export function AppSidebar(props: DrawerContentComponentProps) {
   return (
     <View style={styles.root}>
       <BlueGradient />
-      <GridTexture step={22} />
 
       {/* User + tenant (fixed top) */}
       <View style={{ paddingTop: insets.top + 14, paddingHorizontal: 14 }}>
@@ -102,7 +100,7 @@ export function AppSidebar(props: DrawerContentComponentProps) {
               {me?.user.full_name ?? me?.user.email ?? 'Signed in'}
             </Text>
             <Text style={styles.userRoleText} numberOfLines={1}>
-              {activeMembership?.is_org_admin ? 'Organization admin' : 'Member'}
+              {activeMembership?.is_org_admin ? 'Admin' : 'Member'}
             </Text>
           </View>
         </View>

@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { BlueGradient } from '@/components/BlueGradient';
+import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import type { Project } from '@/lib/api/schemas/projects';
 import { formatShortDate, humanize } from '@/lib/format';
 import { colors, projectStatusColor, radii } from '@/theme';
@@ -32,6 +34,24 @@ export function ProjectCoverCard({ project }: { project: Project }) {
   const router = useRouter();
   const hasCover = project.thumbnail_url != null && project.thumbnail_url !== '';
 
+  // Aerial-photo fallback (PDOK, NL only) when no thumbnail — mirrors the portal
+  // card. onError flags fall back if a presigned URL expires; effects reset them
+  // when the source changes so a fresh URL after refetch loads.
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const [aerialFailed, setAerialFailed] = useState(false);
+  useEffect(() => { setThumbFailed(false); }, [project.thumbnail_url]);
+  useEffect(() => { setAerialFailed(false); }, [project.latitude, project.longitude]);
+
+  const showThumb = hasCover && !thumbFailed;
+  const aerialUrl =
+    !showThumb
+    && project.latitude != null
+    && project.longitude != null
+    && isWithinNetherlands(project.latitude, project.longitude)
+    && !aerialFailed
+      ? pdokAerialThumbnailUrl(project.latitude, project.longitude, { width: 480, height: 264 })
+      : null;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -46,8 +66,22 @@ export function ProjectCoverCard({ project }: { project: Project }) {
     >
       {/* cover */}
       <View style={styles.cover}>
-        {hasCover ? (
-          <Image source={{ uri: project.thumbnail_url! }} style={StyleSheet.absoluteFill} contentFit="cover" transition={120} />
+        {showThumb ? (
+          <Image
+            source={{ uri: project.thumbnail_url! }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={120}
+            onError={() => setThumbFailed(true)}
+          />
+        ) : aerialUrl != null ? (
+          <Image
+            source={{ uri: aerialUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={120}
+            onError={() => setAerialFailed(true)}
+          />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.coverIcons]}>
             <Ionicons name="business-outline" size={34} color={colors.placeholder} />
