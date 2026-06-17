@@ -8,10 +8,10 @@
  * forward/back) instead of orbiting a distant pivot. While active it also
  * suppresses click-selection / hover and stands `pivot-rotate` down (which in
  * first-person would otherwise hijack the left-drag as an orbit-pivot grab).
- * On disable everything is restored to the pre-fly orbit state — including the
- * exact camera pose, re-asserted across the mode switch so ThatOpen's Orbit/
- * FirstPerson swaps (which relocate the orbit pivot and nudge the eye) can't
- * drift the view. It is toggled by the toolbar Orbit/Navigation buttons (via the
+ * On disable the orbit controls config is restored to its pre-fly state and the
+ * camera stays at its current FPN position/direction (with the pre-fly orbit
+ * radius), re-asserted across the mode switch so ThatOpen's Orbit/FirstPerson
+ * swaps (which relocate the orbit pivot and nudge the eye) can't drift the view. It is toggled by the toolbar Orbit/Navigation buttons (via the
  * tool-manager) and Esc; clicks and drags in the scene stay in fly mode.
  *
  * Direction scheme (camera height stays constant except for up/down):
@@ -143,12 +143,12 @@ interface FlySavedControls {
   mouseMiddle: number;
   mouseWheel: number;
   /**
-   * Pre-fly camera pose, re-asserted after each ThatOpen mode swap so the view
-   * never drifts on a mode change. `OrbitMode.activateOrbitControls` places the
-   * orbit pivot `|eyeFromOrigin|` away and `FirstPersonMode` nudges the eye ~1
-   * unit — re-aiming to this snapshot overrides both. `null` when the pre-fly
-   * offset was degenerate (eye ≈ target): skip the re-assert and let the mode
-   * default stand.
+   * Pre-fly camera pose. On entry the full snapshot (pos + dir) is re-asserted
+   * so `FirstPersonMode`'s ~1-unit eye nudge doesn't show as a jump. On exit
+   * only `radius` is used — the orbit distance for the new orbit target — while
+   * position and direction come from the current FPN state so the user stays
+   * where they walked to. `null` when the pre-fly offset was degenerate
+   * (eye ≈ target).
    */
   pose: { pos: THREE.Vector3; dir: THREE.Vector3; radius: number } | null;
 }
@@ -509,6 +509,17 @@ export function cameraFlyPlugin(
 
     const controls = ctx.cameraControls;
 
+    // Snapshot the CURRENT FPN camera pose BEFORE set('Orbit') mutates the rig.
+    // In FPN the focalOffset is zero (cleared on enter, not accumulated during
+    // FPN since pivot-rotate is disabled), so getPosition() == rendered eye.
+    const currentPos = new THREE.Vector3();
+    const currentTarget = new THREE.Vector3();
+    controls.getPosition(currentPos);
+    controls.getTarget(currentTarget);
+    const currentDir = currentTarget.clone().sub(currentPos);
+    const currentPoseValid = currentDir.lengthSq() >= 1e-9;
+    if (currentPoseValid) currentDir.normalize();
+
     // Re-enable pivot-rotate and rebind selection/hover.
     await ctx.commands.execute('pivotRotate.enable').catch(() => undefined);
     await restoreSelection?.();
@@ -529,21 +540,23 @@ export function cameraFlyPlugin(
       controls.mouseButtons.middle = savedControls.mouseMiddle as typeof controls.mouseButtons.middle;
       controls.mouseButtons.wheel = savedControls.mouseWheel as typeof controls.mouseButtons.wheel;
 
-      // Re-assert the pre-fly pose AFTER min/maxDistance are restored, so the
-      // orbit radius isn't clamped to ThatOpen's [1, 300]. This overrides
-      // OrbitMode.activateOrbitControls, which would otherwise place the orbit
-      // pivot |eyeFromOrigin| away and drift the view (and a far pivot can trip
-      // Viewer.onCamChange's zoomOutLimit clamp and move the eye too).
-      const { pose } = savedControls;
-      if (pose) {
-        const { pos, dir, radius } = pose;
+      // Re-assert the CURRENT camera pose (not the pre-fly snapshot) AFTER
+      // min/maxDistance are restored, so the orbit radius isn't clamped to
+      // ThatOpen's [1, 300]. This overrides OrbitMode.activateOrbitControls,
+      // which would otherwise place the orbit pivot |eyeFromOrigin| away and
+      // drift the view. The pre-fly orbit radius is reused so the scroll-zoom
+      // "feel" is preserved; position and direction come from the current FPN
+      // state so the user stays where they walked to.
+      if (currentPoseValid) {
+        const orbitRadius =
+          savedControls.pose?.radius ?? currentPos.distanceTo(currentTarget);
         void controls.setLookAt(
-          pos.x,
-          pos.y,
-          pos.z,
-          pos.x + dir.x * radius,
-          pos.y + dir.y * radius,
-          pos.z + dir.z * radius,
+          currentPos.x,
+          currentPos.y,
+          currentPos.z,
+          currentPos.x + currentDir.x * orbitRadius,
+          currentPos.y + currentDir.y * orbitRadius,
+          currentPos.z + currentDir.z * orbitRadius,
           false,
         );
       }

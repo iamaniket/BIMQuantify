@@ -68,6 +68,8 @@ class FakeControls {
       minAtCall: this.minDistance,
       maxAtCall: this.maxDistance,
     });
+    this._pos.set(px, py, pz);
+    this._target.set(tx, ty, tz);
     return Promise.resolve();
   }
   setFocalOffset(x: number, y: number, z: number, transition: boolean): Promise<void> {
@@ -196,6 +198,34 @@ describe('camera-fly pose-preserving switch', () => {
     // Controls still restored.
     expect(controls.minDistance).toBe(Number.EPSILON);
     expect(controls.maxDistance).toBe(Infinity);
+  });
+
+  it('uses the current FPN position on exit, not the pre-fly pose', async () => {
+    const controls = new FakeControls(
+      new THREE.Vector3(10, 5, 10),
+      new THREE.Vector3(0, 5, 0),
+    );
+    const { ctx, commands } = makeCtx(controls);
+    cameraFlyPlugin().install(ctx);
+
+    await commands.execute('cameraFly.enable');
+
+    // Simulate the user walking to a new position during FPN.
+    controls._pos.set(50, 10, 30);
+    controls._target.set(50, 10, 29); // looking along -Z, 1 unit ahead
+
+    await commands.execute('cameraFly.disable');
+
+    const preRadius = Math.sqrt(200); // pre-fly orbit radius
+    const exitCall = controls.setLookAtCalls[controls.setLookAtCalls.length - 1]!;
+    // Eye should be at the CURRENT position, not the pre-fly (10,5,10).
+    expect(exitCall.px).toBeCloseTo(50);
+    expect(exitCall.py).toBeCloseTo(10);
+    expect(exitCall.pz).toBeCloseTo(30);
+    // Target = current pos + current dir * pre-fly orbit radius.
+    expect(exitCall.tx).toBeCloseTo(50);
+    expect(exitCall.ty).toBeCloseTo(10);
+    expect(exitCall.tz).toBeCloseTo(30 + -1 * preRadius);
   });
 
   it('clears the residual focalOffset on enter so look-around stays translation-free', async () => {
