@@ -22,7 +22,6 @@ from bimstitch_api.models.organization_member import (
 from bimstitch_api.tenancy import schema_name_for
 
 if TYPE_CHECKING:
-    from uuid import UUID
 
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

@@ -15,7 +15,6 @@ from __future__ import annotations
 import datetime as dt
 from typing import TYPE_CHECKING
 
-import pytest
 from sqlalchemy import select, text
 
 from tests.conftest import _auth, _create_project
@@ -228,7 +227,7 @@ class TestReminderEngine:
 
         # Create project without dates → all deadlines not_applicable
         token = org_user["access_token"]
-        project = await _create_project(client, token, "No Dates")
+        await _create_project(client, token, "No Dates")
 
         await sweep_all_orgs()
         assert len(action_dispatch_calls) == 0

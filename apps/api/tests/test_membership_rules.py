@@ -11,10 +11,9 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-import pytest
 from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.models.organization import Organization, OrganizationStatus
