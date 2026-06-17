@@ -15,12 +15,13 @@ export default function AppStackLayout() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      {/* Stack root gets the hamburger; pushed screens keep the default back arrow. */}
+      {/* Projects renders its own blue gradient header + bottom nav (design CompactHeader). */}
+      <Stack.Screen name="projects/index" options={{ headerShown: false }} />
+      {/* Settings is reached from the drawer, so it keeps the hamburger to reopen it. */}
       <Stack.Screen
-        name="projects/index"
-        options={{ title: 'Projects', headerLeft: () => <HeaderMenuButton /> }}
+        name="settings"
+        options={{ title: 'Settings', headerLeft: () => <HeaderMenuButton /> }}
       />
-      <Stack.Screen name="settings" options={{ title: 'Settings' }} />
     </Stack>
   );
 }

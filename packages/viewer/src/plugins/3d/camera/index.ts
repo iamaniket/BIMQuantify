@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
 
 import { frameView } from '../../../core/framing.js';
+import { computeVisibleSolidBox } from '../../../core/visibleBox.js';
 import type { ItemId, Plugin, Vec3, ViewerContext } from '../../../core/types.js';
 
 const NAME = 'camera' as const;
@@ -198,7 +199,9 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
             await commands.execute('camera.zoomExtents');
             return;
           }
-          const box = await computeVisibleBox(ctx, hidden);
+          // Framing fits to everything that isn't hidden; ghosted/x-rayed
+          // items still frame, so no xray exclusion here.
+          const box = await computeVisibleSolidBox(ctx, { hidden, xrayed: [] });
           if (box.isEmpty()) return;
           await snapIsoAndFit(box);
         },
@@ -311,42 +314,6 @@ async function computeSelectionBox(
     if (!model) continue;
     try {
       const mb = await (model as FRAGS.FragmentsModel).getMergedBox(ids);
-      if (!mb.isEmpty()) out.union(mb);
-    } catch {
-      // ignore; some items may not have geometry
-    }
-  }
-  return out;
-}
-
-async function computeVisibleBox(
-  ctx: ViewerContext,
-  hidden: ItemId[],
-): Promise<THREE.Box3> {
-  const out = new THREE.Box3();
-  // Group hidden localIds by model for O(1) membership checks.
-  const hiddenByModel = new Map<string, Set<number>>();
-  for (const item of hidden) {
-    let set = hiddenByModel.get(item.modelId);
-    if (!set) { set = new Set(); hiddenByModel.set(item.modelId, set); }
-    set.add(item.localId);
-  }
-  for (const [modelId, model] of ctx.models()) {
-    let allIds: Iterable<number>;
-    try {
-      allIds = await (model as unknown as { getLocalIds(): Promise<Iterable<number>> }).getLocalIds();
-    } catch {
-      continue;
-    }
-    const hiddenSet = hiddenByModel.get(modelId);
-    const visibleIds: number[] = [];
-    for (const id of allIds) {
-      if (hiddenSet?.has(id)) continue;
-      visibleIds.push(id);
-    }
-    if (!visibleIds.length) continue;
-    try {
-      const mb = await (model as FRAGS.FragmentsModel).getMergedBox(visibleIds);
       if (!mb.isEmpty()) out.union(mb);
     } catch {
       // ignore; some items may not have geometry

@@ -1,6 +1,6 @@
 'use client';
 
-import { Crosshair, Eraser, Eye, EyeOff, FlipVertical, Trash2 } from '@bimstitch/ui/icons';
+import { Crosshair, Eraser, Eye, EyeOff, FlipVertical, Move, RotateCw, Trash2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useRef, useState, type JSX,
@@ -54,6 +54,7 @@ export function SectionPanel({ handle }: Props): JSX.Element {
   const t = useTranslations('viewer.section');
   const [planes, setPlanes] = useState<SectionPlane[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [gizmoMode, setGizmoMode] = useState<'translate' | 'rotate'>('translate');
   const [isPlacing, setIsPlacing] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [extents, setExtents] = useState<Map<string, PlaneExtent>>(new Map());
@@ -143,6 +144,12 @@ export function SectionPanel({ handle }: Props): JSX.Element {
     handle.commands.execute('section.select', { id: selectedId === id ? null : id }).catch(() => undefined);
   }, [handle, selectedId]);
 
+  const setGizmo = useCallback((mode: 'translate' | 'rotate') => {
+    if (!handle) return;
+    setGizmoMode(mode);
+    handle.commands.execute('section.setGizmoMode', { mode }).catch(() => undefined);
+  }, [handle]);
+
   const removePlane = useCallback((id: string) => {
     if (!handle) return;
     handle.commands.execute('section.remove', { id }).catch(() => undefined);
@@ -196,6 +203,26 @@ export function SectionPanel({ handle }: Props): JSX.Element {
             {t('place')}
           </PanelButton>
         </PanelButtonRow>
+        {selectedId && (
+          <PanelButtonRow>
+            <PanelButton
+              segmented
+              active={gizmoMode === 'translate'}
+              onClick={() => { setGizmo('translate'); }}
+              icon={<Move className="h-3.5 w-3.5" />}
+            >
+              {t('move')}
+            </PanelButton>
+            <PanelButton
+              segmented
+              active={gizmoMode === 'rotate'}
+              onClick={() => { setGizmo('rotate'); }}
+              icon={<RotateCw className="h-3.5 w-3.5" />}
+            >
+              {t('rotate')}
+            </PanelButton>
+          </PanelButtonRow>
+        )}
       </PanelToolbar>
 
       {/* Plane list */}

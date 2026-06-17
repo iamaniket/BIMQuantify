@@ -1,4 +1,7 @@
-import { Redirect, useRouter } from 'expo-router';
+import { useDrawerStatus } from '@react-navigation/drawer';
+import { Redirect, useNavigation } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -9,23 +12,94 @@ import {
   View,
 } from 'react-native';
 
+import { BottomNav } from '@/features/projects/BottomNav';
+import { ProjectCard } from '@/features/projects/ProjectCard';
+import { ProjectCoverCard } from '@/features/projects/ProjectCoverCard';
+import { ProjectsHeader } from '@/features/projects/ProjectsHeader';
+import { ProjectsToolbar } from '@/features/projects/ProjectsToolbar';
+import { StatStrip } from '@/features/projects/StatStrip';
+import { projectCounts } from '@/features/projects/projectStats';
 import { useProjects } from '@/features/projects/queries';
-import { humanize } from '@/lib/format';
+import { useLayoutKind } from '@/features/projects/useLayoutKind';
+import type { Project } from '@/lib/api/schemas/projects';
 import { useAuth } from '@/providers/AuthProvider';
-import { colors, projectStatusColor, radii } from '@/theme';
+import { colors } from '@/theme';
 
 export default function ProjectsScreen() {
-  const router = useRouter();
+  const navigation = useNavigation();
+  const layout = useLayoutKind();
+  const drawerStatus = useDrawerStatus();
   const { tokens } = useAuth();
   const { data, isLoading, isError, refetch, isRefetching } = useProjects();
+
+  const [query, setQuery] = useState('');
+  const [activeOnly, setActiveOnly] = useState(false);
+
+  const openDrawer = useCallback(() => {
+    navigation.dispatch({ type: 'OPEN_DRAWER' });
+  }, [navigation]);
+
+  const all = useMemo<Project[]>(() => data ?? [], [data]);
+  const counts = useMemo(() => projectCounts(all), [all]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return all.filter((p) => {
+      if (activeOnly && p.lifecycle_state === 'archived') return false;
+      if (q.length === 0) return true;
+      return [p.name, p.city, p.reference_code]
+        .filter((x): x is string => x != null && x !== '')
+        .some((x) => x.toLowerCase().includes(q));
+    });
+  }, [all, query, activeOnly]);
 
   if (tokens === null) {
     return <Redirect href="/login" />;
   }
 
-  // Header (title + org + log out) now lives in the primary app-bar and sidebar.
+  type Spacer = { id: string; spacer: true };
+  const isSpacer = (it: Project | Spacer): it is Spacer => 'spacer' in it;
+
+  const isPhone = layout === 'phone';
+  const numColumns = isPhone ? 1 : layout === 'tabletPortrait' ? 2 : 3;
+  const showBottomNav = layout !== 'tabletLandscape';
+  const showStats = layout !== 'phone';
+  const hPad = isPhone ? 16 : layout === 'tabletPortrait' ? 34 : 30;
+  const gap = isPhone ? 11 : 18;
+
+  // Pad the last grid row so a lone card keeps its column width instead of stretching.
+  const remainder = numColumns > 1 ? visible.length % numColumns : 0;
+  const gridData: (Project | Spacer)[] =
+    remainder === 0
+      ? visible
+      : [
+          ...visible,
+          ...Array.from({ length: numColumns - remainder }, (_, i): Spacer => ({ id: `spacer-${i}`, spacer: true })),
+        ];
+
+  const listHeader = (
+    <View style={{ gap: showStats ? 18 : 14, marginBottom: gap }}>
+      {showStats ? <StatStrip counts={counts} cols={4} /> : null}
+      <ProjectsToolbar
+        query={query}
+        onQueryChange={setQuery}
+        activeOnly={activeOnly}
+        onToggleActiveOnly={() => setActiveOnly((v) => !v)}
+        count={visible.length}
+      />
+    </View>
+  );
+
   return (
-    <View style={styles.flex}>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <ProjectsHeader
+        layout={layout}
+        activeCount={counts.active}
+        archivedCount={counts.archived}
+        onOpenDrawer={openDrawer}
+      />
+
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
@@ -39,66 +113,50 @@ export default function ProjectsScreen() {
         </View>
       ) : (
         <FlatList
-          data={data ?? []}
+          key={`cols-${numColumns}`}
+          data={gridData}
           keyExtractor={(p) => p.id}
-          contentContainerStyle={styles.list}
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? { gap } : undefined}
+          ItemSeparatorComponent={() => <View style={{ height: gap }} />}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={{ paddingHorizontal: hPad, paddingTop: 14, paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={() => { void refetch(); }} />
+            <RefreshControl refreshing={isRefetching} onRefresh={() => { void refetch(); }} tintColor={colors.primary} />
           }
           ListEmptyComponent={
-            <View style={styles.centered}><Text style={styles.muted}>No projects yet.</Text></View>
+            <View style={styles.empty}>
+              <Text style={styles.muted}>{query.length > 0 || activeOnly ? 'No matching projects.' : 'No projects yet.'}</Text>
+            </View>
           }
           renderItem={({ item }) => {
-            const subtitle = [item.reference_code, item.city]
-              .filter((x) => x != null && x !== '')
-              .join(' · ');
-            return (
-              <Pressable
-                style={styles.row}
-                onPress={() => router.push({
-                  pathname: '/projects/[projectId]',
-                  params: { projectId: item.id, name: item.name },
-                })}
-              >
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle} numberOfLines={1}>{item.name}</Text>
-                  {subtitle.length > 0 ? (
-                    <Text style={styles.rowSub} numberOfLines={1}>{subtitle}</Text>
-                  ) : null}
-                </View>
-                <View style={[styles.chip, { backgroundColor: projectStatusColor(item.status) }]}>
-                  <Text style={styles.chipText}>{humanize(item.status)}</Text>
-                </View>
-              </Pressable>
+            if (isSpacer(item)) return <View style={styles.gridCell} />;
+            return isPhone ? (
+              <ProjectCard project={item} />
+            ) : (
+              <View style={styles.gridCell}>
+                <ProjectCoverCard project={item} />
+              </View>
             );
           }}
         />
       )}
+
+      {showBottomNav ? (
+        <BottomNav onMenu={openDrawer} menuOpen={drawerStatus === 'open'} projectsCount={counts.active} />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
+  root: { flex: 1, backgroundColor: colors.surfaceLow },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
+  empty: { alignItems: 'center', justifyContent: 'center', padding: 48 },
   muted: { fontSize: 15, color: colors.textMuted },
-  retry: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: radii.sm, backgroundColor: colors.primary },
+  retry: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.primary },
   retryText: { color: colors.onPrimary, fontWeight: '600' },
-  list: { paddingHorizontal: 16, paddingVertical: 16, gap: 10, maxWidth: 760, width: '100%', alignSelf: 'center' },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: colors.surface,
-  },
-  rowText: { flex: 1 },
-  rowTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
-  rowSub: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
-  chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill },
-  chipText: { color: colors.onPrimary, fontSize: 12, fontWeight: '600' },
+  // Cover cards stretch to fill their grid column evenly.
+  gridCell: { flex: 1 },
 });

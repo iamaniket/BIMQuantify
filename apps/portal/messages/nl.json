@@ -3334,6 +3334,8 @@
     },
     "section": {
       "place": "Plaatsen",
+      "move": "Verplaatsen",
+      "rotate": "Draaien",
       "addPreset": "{axis}-vlak toevoegen",
       "statusPlanes": "{count, plural, one {# snijvlak} other {# snijvlakken}}",
       "clippingOn": "Snijden aan",

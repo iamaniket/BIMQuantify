@@ -27,7 +27,8 @@ import { PluginManager } from './PluginManager.js';
 import { frameView } from './framing.js';
 import { COPLANAR_BIAS_EPS, COPLANAR_BIAS_LEVELS } from './depth-bias.js';
 import { LAYER_OVERLAY } from './layers.js';
-import type { Plugin, ViewerContext, ViewerEvents } from './types.js';
+import { computeVisibleSolidBox } from './visibleBox.js';
+import type { ItemId, Plugin, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>;
 
@@ -182,10 +183,19 @@ export class Viewer {
   private updateRafId: number | null = null;
   private cameraChangeUnsub: (() => void) | null = null;
   private pluginManager: PluginManager | null = null;
+  /** The context handed to plugins — stashed so visibility-driven shadow refits can read `models()`. */
+  private ctx: ViewerContext | null = null;
   private sun: THREE.DirectionalLight | null = null;
   private shadowGround: THREE.Mesh | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private shadowsEnabled = true;
+  /** Latest-wins guard so a stale async visible-box result can't clobber the plane. */
+  private shadowRefitToken = 0;
+  /** Coalesces visibility/x-ray bursts into one refit. */
+  private shadowRefitScheduled = false;
+  /** Reused scratch vectors for the visible-set shadow refit (no per-event alloc). */
+  private readonly shadowCenter = new THREE.Vector3();
+  private readonly shadowSize = new THREE.Vector3();
   /** World-space AABB of all loaded models. */
   private sceneBox: THREE.Box3 | null = null;
   /**
@@ -565,6 +575,7 @@ export class Viewer {
         this.precomputedOutlines.get(modelId),
       requestRender: () => this.markActive(),
     };
+    this.ctx = ctx;
 
     this.pluginManager = new PluginManager(ctx, this.commands, this.events);
 
@@ -632,6 +643,14 @@ export class Viewer {
     }
     // A canvas resize needs a repaint too (MANUAL won't redraw on its own).
     world.renderer!.onResize.add(() => this.markActive());
+
+    // Dynamic blob shadow: re-fit the shadow plane to whatever is currently
+    // visible (all − hidden − x-rayed) on every isolation/visibility/x-ray
+    // change, and hide it when nothing solid remains. These events already wake
+    // the renderer above; the async refit lands a tick later and requests its
+    // own frame.
+    this.events.on('visibility:change', () => this.scheduleShadowRefit());
+    this.events.on('xray:change', () => this.scheduleShadowRefit());
 
     this.events.emit('viewer:mounted', { container });
 
@@ -920,17 +939,10 @@ export class Viewer {
 
     const ground = this.shadowGround;
     if (ground !== null) {
-      // Size the plane to match the model's XZ footprint independently,
-      // so the elliptical gradient stretches to fit a rectangular model.
-      // Pad by 3× so the soft falloff has plenty of room to fade out.
-      const padX = Math.max(size.x, 1) * 3.0;
-      const padZ = Math.max(size.z, 1) * 3.0;
-      // Plane is XY before rotation; after rotation -π/2 around X,
-      // local-X maps to world-X and local-Y maps to world-Z. So scale.x
-      // controls world-X span and scale.y controls world-Z span.
-      ground.scale.set(padX, padZ, 1);
-      ground.position.set(center.x, box.min.y - maxDim * 0.05, center.z);
-      ground.updateMatrixWorld();
+      // Fit the plane to the whole scene and make sure it's shown (a prior
+      // visibility refit may have hidden it before this model loaded).
+      this.fitShadowToBox(box);
+      ground.visible = true;
 
       // Fold the shadow plane's world AABB into the depth box so its far edge
       // never clips at the far plane (grazing/plan views). setFromObject reads
@@ -939,6 +951,85 @@ export class Viewer {
       this.depthBox = this.computeWorldSceneBox();
       this.depthBox.union(new THREE.Box3().setFromObject(ground));
     }
+  }
+
+  /**
+   * Scale + position the blob-shadow plane to fit `box` (a world-space AABB):
+   * an elliptical gradient ~3× the box's XZ footprint, sitting just under
+   * `box.min.y`. Used both for the whole-scene fit (load/unload) and the
+   * visible-set refit (isolation/x-ray) — the latter floats the shadow under
+   * whatever is currently visible.
+   */
+  private fitShadowToBox(box: THREE.Box3): void {
+    const ground = this.shadowGround;
+    if (ground === null || box.isEmpty()) return;
+    const center = box.getCenter(this.shadowCenter);
+    const size = box.getSize(this.shadowSize);
+    const maxDim = Math.max(size.x, size.y, size.z, 1);
+    // Size the plane to match the box's XZ footprint independently, so the
+    // elliptical gradient stretches to fit a rectangular model. Pad by 3× so
+    // the soft falloff has plenty of room to fade out.
+    const padX = Math.max(size.x, 1) * 3.0;
+    const padZ = Math.max(size.z, 1) * 3.0;
+    // Plane is XY before rotation; after rotation -π/2 around X, local-X maps
+    // to world-X and local-Y maps to world-Z. So scale.x controls world-X span
+    // and scale.y controls world-Z span.
+    ground.scale.set(padX, padZ, 1);
+    ground.position.set(center.x, box.min.y - maxDim * 0.05, center.z);
+    ground.updateMatrixWorld();
+  }
+
+  /** Coalesce visibility/x-ray bursts into a single async refit. */
+  private scheduleShadowRefit(): void {
+    if (this.shadowRefitScheduled) return;
+    this.shadowRefitScheduled = true;
+    queueMicrotask(() => {
+      this.shadowRefitScheduled = false;
+      void this.refitShadowForVisibility();
+    });
+  }
+
+  /**
+   * Re-fit the blob shadow to the currently *visible solid* set (every loaded
+   * item minus the hidden and x-rayed sets). Hides the plane when nothing solid
+   * remains (everything hidden, or full x-ray). Touches ONLY the plane — the
+   * sun and `depthBox` stay fitted to the whole scene, which always contains
+   * the visible box, so near/far never clips and never oscillates.
+   */
+  private async refitShadowForVisibility(): Promise<void> {
+    const ground = this.shadowGround;
+    const ctx = this.ctx;
+    if (!this.shadowsEnabled || ground === null || ctx === null) return;
+
+    const token = ++this.shadowRefitToken;
+
+    const hidden = this.commands.has('visibility.getHidden')
+      ? await this.commands
+          .execute<undefined, ItemId[]>('visibility.getHidden')
+          .catch(() => [] as ItemId[])
+      : [];
+    const xrayed =
+      this.pluginManager?.get<{ list(): ItemId[] }>('xray')?.list() ?? [];
+
+    let box: THREE.Box3;
+    if (hidden.length === 0 && xrayed.length === 0) {
+      // Nothing hidden or ghosted — cheap whole-scene fit (today's behaviour).
+      box = this.computeWorldSceneBox();
+    } else {
+      box = await computeVisibleSolidBox(ctx, { hidden, xrayed });
+    }
+
+    // A newer refit started while we awaited the visible-box walk — let it win.
+    if (token !== this.shadowRefitToken) return;
+
+    if (box.isEmpty()) {
+      // Everything hidden / full x-ray — no solid geometry, so no shadow.
+      ground.visible = false;
+    } else {
+      ground.visible = true;
+      this.fitShadowToBox(box);
+    }
+    this.markActive();
   }
 
   async registerPlugin(plugin: Plugin): Promise<void> {

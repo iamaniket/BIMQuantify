@@ -3334,6 +3334,8 @@
     },
     "section": {
       "place": "Place",
+      "move": "Move",
+      "rotate": "Rotate",
       "addPreset": "Add {axis} plane",
       "statusPlanes": "{count, plural, one {# section plane} other {# section planes}}",
       "clippingOn": "Clipping on",

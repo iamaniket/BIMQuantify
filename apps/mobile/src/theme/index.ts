@@ -37,6 +37,22 @@ export const colors = {
 export const radii = { sm: 8, md: 10, lg: 14, pill: 999 } as const;
 
 /**
+ * Brand gradients. `blue` is the design's `BLUE_GRAD`
+ * (`linear-gradient(150deg, #3a63a6 0%, #2c5697 55%, #21437a 100%)`) used for the
+ * Projects header, project cards, the drawer/docked sidebar, and the FAB. Rendered
+ * with `react-native-svg` (see `components/BlueGradient.tsx`) — no native dep added.
+ */
+export const gradients = {
+  blue: ['#3a63a6', '#2c5697', '#21437a'] as const,
+} as const;
+
+/**
+ * The design's gold initials avatar (Avatar default in `projects-responsive.jsx`).
+ * Used in the Projects header, project cards, and the drawer user row.
+ */
+export const avatar = { bg: '#e7c14e', fg: '#5a4410' } as const;
+
+/**
  * Brand fonts. Only Fraunces (the display serif) is a real custom font —
  * loaded at runtime in `_layout.tsx` via `@expo-google-fonts/fraunces`. It is
  * reserved for the auth experience (wordmark, hero headline, "Welcome back.").
