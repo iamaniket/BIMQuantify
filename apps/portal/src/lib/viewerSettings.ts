@@ -51,7 +51,7 @@ export type ViewerSettings = {
   controls: ControlsSettings;
   /** Drop expensive work while the camera is moving. */
   interactivePerformance: InteractivePerformanceSettings;
-  /** Min/max zoom distance limits (factors of model size). */
+  /** Zoom behaviour: speed, max zoom-out factor, and closest-approach factor. */
   zoom: Required<ZoomOptions>;
   /** Hover-highlight & click-to-select toggles and colors. */
   behavior: BehaviorSettings;
@@ -109,6 +109,8 @@ export const DEFAULT_MOUSE_BINDINGS_SETTINGS: MouseBindingMap = {
 export const DEFAULT_ZOOM: Required<ZoomOptions> = {
   maxFactor: 4,
   toCursor: true,
+  speed: 1,
+  minFactor: 0.04,
 };
 
 export const DEFAULT_BEHAVIOR: BehaviorSettings = {

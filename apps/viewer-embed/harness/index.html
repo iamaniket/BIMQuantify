@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>viewer-embed · local harness</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #1e293b;
+        --line: #334155;
+        --fg: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+        --ok: #4ade80;
+        --warn: #fbbf24;
+        --err: #f87171;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { display: flex; height: 100vh; background: var(--bg); color: var(--fg); }
+
+      #panel {
+        width: 380px;
+        flex: 0 0 380px;
+        border-right: 1px solid var(--line);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      #panel header { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+      #panel header h1 { font-size: 14px; margin: 0; }
+      #panel header p { font-size: 11px; color: var(--muted); margin: 4px 0 0; line-height: 1.4; }
+
+      .form { padding: 12px 14px; overflow-y: auto; border-bottom: 1px solid var(--line); }
+      .row { margin-bottom: 10px; }
+      label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+      input, select, button {
+        width: 100%;
+        font-size: 13px;
+        padding: 7px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: #0b1220;
+        color: var(--fg);
+      }
+      input:focus, select:focus { outline: 1px solid var(--accent); }
+      button {
+        cursor: pointer;
+        background: var(--accent);
+        color: #06202c;
+        font-weight: 600;
+        border: none;
+        margin-top: 4px;
+      }
+      button.secondary { background: #0b1220; color: var(--fg); border: 1px solid var(--line); font-weight: 500; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .inline { display: flex; gap: 8px; align-items: center; }
+      .inline input[type='checkbox'] { width: auto; }
+      .inline label { margin: 0; }
+
+      #log {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 10px;
+        font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .l { display: block; padding: 1px 0; }
+      .l.info { color: var(--fg); }
+      .l.muted { color: var(--muted); }
+      .l.ok { color: var(--ok); }
+      .l.warn { color: var(--warn); }
+      .l.err { color: var(--err); }
+      .l .t { color: #64748b; }
+
+      #stage { flex: 1; position: relative; background: #fff; }
+      #embed { width: 100%; height: 100%; border: none; display: block; }
+      #status {
+        position: absolute; top: 8px; right: 10px;
+        font-size: 11px; padding: 3px 8px; border-radius: 999px;
+        background: rgba(15,23,42,0.8); color: var(--fg); border: 1px solid var(--line);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="panel">
+      <header>
+        <h1>viewer-embed · local harness</h1>
+        <p>
+          Plays the native shell: logs into the API, fetches a real
+          <code>/viewer-bundle</code>, and drives the embed over the same
+          postMessage bridge the mobile app uses.
+        </p>
+      </header>
+
+      <div class="form">
+        <div class="row">
+          <label for="api">API base URL</label>
+          <input id="api" value="http://localhost:8000" />
+        </div>
+        <div class="row">
+          <label for="email">Email</label>
+          <input id="email" value="super@bimstitch.dev" autocomplete="username" />
+        </div>
+        <div class="row">
+          <label for="password">Password (SEED_SUPERADMIN_PASSWORD from apps/api/.env)</label>
+          <input id="password" type="password" autocomplete="current-password" />
+        </div>
+        <div class="row">
+          <button id="loginBtn" class="secondary">1 · Log in &amp; load projects</button>
+        </div>
+
+        <div class="row">
+          <label for="project">Project</label>
+          <select id="project" disabled></select>
+        </div>
+        <div class="row">
+          <label for="model">Model (file)</label>
+          <select id="model" disabled></select>
+        </div>
+        <div class="row inline">
+          <input id="federated" type="checkbox" />
+          <label for="federated">Load all models federated (extras as additionalBundles)</label>
+        </div>
+        <div class="row">
+          <button id="loadBtn" disabled>2 · Load model into viewer</button>
+        </div>
+        <div class="row">
+          <button id="reloadBtn" class="secondary">Reload embed</button>
+          <button id="clearBtn" class="secondary">Clear log</button>
+        </div>
+      </div>
+
+      <div id="log"></div>
+    </div>
+
+    <div id="stage">
+      <span id="status">embed: starting…</span>
+      <!-- Same-origin iframe (Vite serves the embed at /). The embed's bridge
+           talks to this parent window via window.parent.postMessage. -->
+      <iframe id="embed" src="/" title="viewer-embed"></iframe>
+    </div>
+
+    <script type="module">
+      const $ = (id) => document.getElementById(id);
+      const embed = $('embed');
+      const logEl = $('log');
+      const statusEl = $('status');
+
+      let token = null;
+      let manifest = []; // ProjectViewerModelEntry[] for the selected project
+      let embedReady = false;
+      let pendingLoad = null; // { bundle, additionalBundles } queued until embed ready
+
+      function log(msg, cls = 'info') {
+        const now = new Date().toISOString().slice(11, 23);
+        const line = document.createElement('span');
+        line.className = `l ${cls}`;
+        line.innerHTML = `<span class="t">${now}</span>  ${escapeHtml(msg)}`;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+      }
+      function setStatus(s) { statusEl.textContent = `embed: ${s}`; }
+
+      // --- bridge: messages coming up from the embed (window.parent.postMessage)
+      window.addEventListener('message', (ev) => {
+        if (ev.source !== embed.contentWindow) return;
+        const msg = ev.data;
+        if (!msg || typeof msg.type !== 'string') return;
+        switch (msg.type) {
+          case 'ready':
+            embedReady = true;
+            setStatus('ready');
+            log('← ready (embed bridge up)', 'muted');
+            if (pendingLoad) { doSend(pendingLoad); pendingLoad = null; }
+            break;
+          case 'sceneReady':
+            setStatus('scene ready');
+            log('← sceneReady', 'muted');
+            break;
+          case 'progress':
+            setStatus(`downloading ${fmtBytes(msg.loaded)}${msg.total ? ' / ' + fmtBytes(msg.total) : ''}`);
+            log(`← progress ${fmtBytes(msg.loaded)}${msg.total ? ' / ' + fmtBytes(msg.total) : ''}`, 'muted');
+            break;
+          case 'modelLoaded':
+            setStatus('model loaded ✓');
+            log('← modelLoaded ✓  model is in the scene', 'ok');
+            break;
+          case 'error':
+            setStatus('error ✗');
+            log(`← error: ${msg.message}`, 'err');
+            break;
+          case 'log': {
+            const cls = msg.level === 'error' ? 'err' : msg.level === 'warn' ? 'warn' : 'muted';
+            log(`  [console.${msg.level}] ${(msg.args || []).join(' ')}`, cls);
+            break;
+          }
+          case 'pinTapped':
+            log(`← pinTapped ${msg.entityId}`, 'info');
+            break;
+          case 'pointPicked':
+            log(`← pointPicked (${msg.point?.x?.toFixed?.(2)}, ${msg.point?.y?.toFixed?.(2)}, ${msg.point?.z?.toFixed?.(2)})`, 'info');
+            break;
+        }
+      });
+
+      function fmtBytes(n) {
+        if (!n && n !== 0) return '?';
+        if (n < 1024) return `${n} B`;
+        if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+        return `${(n / 1024 / 1024).toFixed(1)} MB`;
+      }
+
+      // --- API helpers
+      function apiBase() { return $('api').value.replace(/\/+$/, ''); }
+
+      async function login() {
+        const body = new URLSearchParams();
+        body.set('username', $('email').value);
+        body.set('password', $('password').value);
+        log(`POST ${apiBase()}/auth/jwt/login (${$('email').value})`, 'muted');
+        const res = await fetch(`${apiBase()}/auth/jwt/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        });
+        if (!res.ok) throw new Error(`login failed: HTTP ${res.status} ${await safeText(res)}`);
+        const json = await res.json();
+        token = json.access_token;
+        if (!token) throw new Error('login response had no access_token');
+        log('✓ logged in', 'ok');
+      }
+
+      async function authGet(path) {
+        const res = await fetch(`${apiBase()}${path}`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error(`GET ${path} → HTTP ${res.status} ${await safeText(res)}`);
+        return res.json();
+      }
+      async function safeText(res) { try { return await res.text(); } catch { return ''; } }
+
+      async function loadProjects() {
+        const projects = await authGet('/projects');
+        const sel = $('project');
+        sel.innerHTML = '';
+        for (const p of projects) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = `${p.name} · ${p.country ?? ''} (${p.id.slice(0, 8)})`;
+          sel.appendChild(opt);
+        }
+        sel.disabled = projects.length === 0;
+        log(`✓ ${projects.length} project(s)`, 'ok');
+        if (projects.length) await loadManifest(sel.value);
+      }
+
+      async function loadManifest(projectId) {
+        const data = await authGet(`/projects/${projectId}/viewer-bundle`);
+        manifest = (data.models || []).filter((m) => m.fragments_url);
+        const sel = $('model');
+        sel.innerHTML = '';
+        for (const m of manifest) {
+          const opt = document.createElement('option');
+          opt.value = m.file_id;
+          opt.textContent = `${m.model_name} · ${m.discipline}${m.detected_kind ? ' · ' + m.detected_kind : ''}`;
+          sel.appendChild(opt);
+        }
+        const ok = manifest.length > 0;
+        sel.disabled = !ok;
+        $('loadBtn').disabled = !ok;
+        log(ok ? `✓ ${manifest.length} viewable model(s)` : 'no ready IFC models in this project', ok ? 'ok' : 'warn');
+      }
+
+      // snake_case manifest entry → the camelCase ViewerBundle the embed consumes.
+      // Mirrors apps/mobile/src/lib/api/viewerBundle.ts toViewerBundle.
+      function toBundle(entry) {
+        const b = { fragmentsUrl: entry.fragments_url, modelId: `file-${entry.file_id}` };
+        if (entry.metadata_url) b.metadataUrl = entry.metadata_url;
+        if (entry.properties_url) b.propertiesUrl = entry.properties_url;
+        if (entry.outline_url) b.outlineUrl = entry.outline_url;
+        if (entry.fragments_key) b.cacheKey = entry.fragments_key;
+        return b;
+      }
+
+      function doSend(payload) {
+        embed.contentWindow.postMessage({ type: 'loadModel', ...payload }, '*');
+        log(`→ loadModel ${payload.bundle.modelId}${payload.additionalBundles?.length ? ` (+${payload.additionalBundles.length} federated)` : ''}`, 'info');
+      }
+
+      function sendLoad() {
+        const fileId = $('model').value;
+        const primary = manifest.find((m) => m.file_id === fileId);
+        if (!primary) { log('pick a model first', 'warn'); return; }
+        const payload = { bundle: toBundle(primary), additionalBundles: [] };
+        if ($('federated').checked) {
+          payload.additionalBundles = manifest.filter((m) => m.file_id !== fileId).map(toBundle);
+        }
+        setStatus('loading…');
+        if (embedReady) doSend(payload);
+        else { pendingLoad = payload; log('embed not ready yet — will send on ready', 'muted'); }
+      }
+
+      // --- wire up
+      async function guard(fn, btn) {
+        const prev = btn?.textContent;
+        if (btn) { btn.disabled = true; }
+        try { await fn(); }
+        catch (e) { log(`✗ ${e.message}`, 'err'); }
+        finally { if (btn) { btn.disabled = false; btn.textContent = prev; } }
+      }
+
+      $('loginBtn').addEventListener('click', () =>
+        guard(async () => { await login(); await loadProjects(); }, $('loginBtn')));
+      $('project').addEventListener('change', (e) => guard(() => loadManifest(e.target.value)));
+      $('loadBtn').addEventListener('click', sendLoad);
+      $('clearBtn').addEventListener('click', () => { logEl.innerHTML = ''; });
+      $('reloadBtn').addEventListener('click', () => {
+        embedReady = false; pendingLoad = null; setStatus('reloading…');
+        embed.src = embed.src; // force reload
+        log('reloading embed…', 'muted');
+      });
+
+      log('harness ready — fill the password and click "Log in".', 'muted');
+    </script>
+  </body>
+</html>

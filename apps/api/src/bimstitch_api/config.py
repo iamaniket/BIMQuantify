@@ -62,6 +62,12 @@ class Settings(BaseSettings):
 
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
     cors_origin_regex: str | None = Field(default=None, alias="CORS_ORIGIN_REGEX")
+    # CORS allow-list applied to the storage buckets (PutBucketCORS), decoupled
+    # from the API's own `cors_origins`. The IFC bucket holds only presigned,
+    # credential-less objects, so a permissive `*` here is safe and lets the mobile
+    # WebView / iOS origins fetch model bytes without widening the API allow-list.
+    # Falls back to `cors_origin_list` when unset.
+    s3_cors_origins: str | None = Field(default=None, alias="S3_CORS_ORIGINS")
 
     redis_url: str = Field(default="redis://localhost:6380/0", alias="REDIS_URL")
     test_redis_url: str | None = Field(default=None, alias="TEST_REDIS_URL")
@@ -87,6 +93,13 @@ class Settings(BaseSettings):
     )
 
     s3_endpoint_url: str = Field(default="http://localhost:9000", alias="S3_ENDPOINT_URL")
+    # The host baked into presigned URLs that *clients* must reach (browser, mobile
+    # WebView). Defaults to `s3_endpoint_url` when unset, so dev/CI are unchanged.
+    # Set this to a LAN IP or tunnel host when a phone must fetch model bytes that
+    # the API presigns against an otherwise-internal `localhost` MinIO. SigV4 signs
+    # the Host header, so the URL must be presigned against the host the client
+    # uses — it cannot be rewritten after signing.
+    s3_public_endpoint_url: str | None = Field(default=None, alias="S3_PUBLIC_ENDPOINT_URL")
     s3_region: str = Field(default="us-east-1", alias="S3_REGION")
     s3_access_key_id: str = Field(default="bimstitch", alias="S3_ACCESS_KEY_ID")
     s3_secret_access_key: str = Field(default="bimstitch-secret", alias="S3_SECRET_ACCESS_KEY")
@@ -135,6 +148,14 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def s3_cors_origin_list(self) -> list[str]:
+        """Origins for the storage-bucket CORS policy. Falls back to the API's
+        own allow-list when `S3_CORS_ORIGINS` is unset."""
+        if self.s3_cors_origins is None:
+            return self.cors_origin_list
+        return [origin.strip() for origin in self.s3_cors_origins.split(",") if origin.strip()]
 
 
 @lru_cache

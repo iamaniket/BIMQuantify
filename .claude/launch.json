@@ -44,6 +44,13 @@
       "runtimeArgs": ["--filter", "viewer-embed", "exec", "vite", "preview", "--port", "5180", "--strictPort"],
       "port": 5180,
       "autoPort": true
+    },
+    {
+      "name": "viewer-embed-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "viewer-embed", "dev"],
+      "port": 5173,
+      "autoPort": false
     }
   ]
 }

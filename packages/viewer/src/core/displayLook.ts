@@ -88,11 +88,18 @@ function injectViewNormal(shader: { vertexShader: string; fragmentShader: string
   return true;
 }
 
-/** Append a look's colour override after the final (dithering) fragment chunk. */
+/**
+ * Inject a look's colour override just BEFORE the colour-management chunk, so it
+ * writes a LINEAR colour that `<colorspace_fragment>` then encodes the same way
+ * in both render paths (the direct sRGB-canvas render during motion AND the
+ * linear half-float composite at rest). Injecting *after* colour management
+ * instead would write un-encoded values straight to the sRGB canvas, making the
+ * look pop darker during motion and only correct at idle.
+ */
 function injectFinalColor(shader: { fragmentShader: string }, body: string): void {
   shader.fragmentShader = shader.fragmentShader.replace(
-    '#include <dithering_fragment>',
-    `#include <dithering_fragment>\n\t{\n\t\t${body}\n\t}`,
+    '#include <colorspace_fragment>',
+    `\t{\n\t\t${body}\n\t}\n#include <colorspace_fragment>`,
   );
 }
 
@@ -136,14 +143,22 @@ export function applyLookToMaterial(
   const ud = material.userData as { dmBias?: string | null; dmLookApplied?: boolean };
   const bias = typeof ud.dmBias === 'string' ? ud.dmBias : null;
   const fn = buildOnBeforeCompile(bias, look);
+  // THREE keys the program cache on `onBeforeCompile.toString()` by default. Our
+  // closures all stringify identically (look/bias are captured, not in the source
+  // text), so distinct looks — and distinct bias literals — would collapse onto a
+  // single cached program and never recompile. Pin an explicit cache key per
+  // (look, bias) so each combination gets its own program.
+  const cacheKey = `dm|${look}|${bias ?? 'n'}`;
   if (fn) {
     material.onBeforeCompile = fn;
+    material.customProgramCacheKey = () => cacheKey;
     material.needsUpdate = true;
     ud.dmLookApplied = true;
   } else if (ud.dmLookApplied) {
     // Was previously injected (e.g. an IfcSpace overlay that had no bias but
     // got a look); restore the no-op so it renders exactly as before.
     material.onBeforeCompile = NOOP;
+    material.customProgramCacheKey = () => cacheKey;
     material.needsUpdate = true;
     ud.dmLookApplied = false;
   }

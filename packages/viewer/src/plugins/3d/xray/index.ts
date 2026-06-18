@@ -14,6 +14,7 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LAYER_OVERLAY } from '../../../core/layers.js';
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 import { EdgeOverlay } from '../shared/edge-overlay.js';
+import { getModelWorldMatrix } from '../shared/modelCoordination.js';
 
 const NAME = 'xray' as const;
 
@@ -150,12 +151,18 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
         continue;
       }
       if (!geos || !ctxRef) continue;
+      // The outline geometries are in model-local space; `autoCoordinate`
+      // translates federated models, so position each line with the model's
+      // world matrix or the edges render offset (same pattern as the outline
+      // plugin). Identity for a single/first model — a no-op there.
+      const worldMatrix = getModelWorldMatrix(ctxRef, modelId);
       for (const geo of geos) {
         const line = new LineSegments2(geo, mergedMat);
         line.layers.set(LAYER_OVERLAY);
         line.renderOrder = 999;
         line.frustumCulled = false;
         line.name = `xray-outline::${modelId}`;
+        worldMatrix.decompose(line.position, line.quaternion, line.scale);
         ctxRef.scene.add(line);
         mergedLines.push(line);
       }

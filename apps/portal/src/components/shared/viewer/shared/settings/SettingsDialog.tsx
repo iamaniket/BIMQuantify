@@ -95,7 +95,21 @@ function Viewer3DSection({
           </Select>
         </Field>
       </Section>
-      <Section title={t('zoomLimits')} note={undefined}>
+      <Section title={t('zoomLimits')} note={t('zoomHint')}>
+        <RangeField
+          label={t('zoomSpeed')}
+          value={settings.zoom.speed}
+          min={0.3}
+          max={3}
+          step={0.1}
+          format={(v) => `${v.toFixed(1)}x`}
+          onChange={(speed) => {
+            onChange({
+              ...settings,
+              zoom: { ...settings.zoom, speed },
+            });
+          }}
+        />
         <RangeField
           label={t('maxDistance')}
           value={settings.zoom.maxFactor}
@@ -107,6 +121,20 @@ function Viewer3DSection({
             onChange({
               ...settings,
               zoom: { ...settings.zoom, maxFactor },
+            });
+          }}
+        />
+        <RangeField
+          label={t('closestApproach')}
+          value={settings.zoom.minFactor}
+          min={0.01}
+          max={0.2}
+          step={0.01}
+          format={(v) => `${(v * 100).toFixed(0)}%`}
+          onChange={(minFactor) => {
+            onChange({
+              ...settings,
+              zoom: { ...settings.zoom, minFactor },
             });
           }}
         />

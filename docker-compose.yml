@@ -44,7 +44,11 @@ services:
     environment:
       MINIO_ROOT_USER: bimstitch
       MINIO_ROOT_PASSWORD: bimstitch-secret
-      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000,http://localhost:3001
+      # Dev-only: allow any origin so the viewer-embed local harness (:5173), an
+      # iOS LAN origin, and any preview port can fetch presigned model bytes.
+      # Presigned URLs are already signed, so a cross-origin GET grants nothing
+      # extra. Production sets an explicit allow-list via S3_CORS_ORIGINS.
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
     ports:
       - "9000:9000"
       - "9001:9001"

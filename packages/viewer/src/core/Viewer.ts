@@ -78,6 +78,19 @@ export interface ZoomOptions {
    * camera target, which makes it hard to zoom into off-centre objects.
    */
   toCursor?: boolean;
+  /**
+   * Wheel dolly sensitivity (camera-controls `dollySpeed`). Default: 1.
+   * Higher = faster zoom per wheel notch.
+   */
+  speed?: number;
+  /**
+   * Closest-approach distance as a fraction of model size — the orbit
+   * `minDistance`. Default: 0.04. With `infinityDolly` this is the threshold at
+   * which zoom-in starts pushing the orbit target forward (flying *through* the
+   * model) and the per-tick cruise step once inside. Must be non-zero or
+   * fly-through never engages and zoom-in stalls at the framed centre.
+   */
+  minFactor?: number;
 }
 
 export interface LoadFragmentsOptions {
@@ -132,6 +145,19 @@ const MODEL_STREAM_HOLD_MS = 4000;
  * painting (un-FXAA'd) over the idle composite for the full streaming hold.
  */
 const CULL_TOGGLE_HOLD_MS = 1000;
+
+/**
+ * Orbit `minDistance` used before any model is loaded (and the fallback when the
+ * scene box is degenerate). Non-zero so `infinityDolly` fly-through engages —
+ * see {@link ZoomOptions.minFactor}. Per-model value is `maxDim * minFactor`
+ * clamped to {@link ZOOM_IN_DISTANCE_FLOOR}/{@link ZOOM_IN_DISTANCE_CEIL}.
+ */
+const DEFAULT_MIN_DISTANCE = 1;
+/** Lower/upper bounds for the scale-aware orbit `minDistance` (world units). */
+const ZOOM_IN_DISTANCE_FLOOR = 0.3;
+const ZOOM_IN_DISTANCE_CEIL = 8;
+/** Default closest-approach fraction of model size when `zoom.minFactor` is unset. */
+const DEFAULT_ZOOM_MIN_FACTOR = 0.04;
 
 /**
  * Under `auto` culling, a single model starts frustum-culling once it exceeds
@@ -245,6 +271,12 @@ export class Viewer {
   private lastAppliedNear = 0.01;
   private lastAppliedFar = 2000;
   private zoomOutLimit = Infinity;
+  /**
+   * Orbit `minDistance` — the camera-controls fly-through threshold. Recomputed
+   * per scene-bounds refresh as a fraction of model size (see
+   * `refreshSceneBounds`); seeded non-zero so zoom-in works before a model loads.
+   */
+  private zoomInDistance = DEFAULT_MIN_DISTANCE;
   /** Reused scratch vectors for the per-frame near/far fit (no per-call alloc). */
   private readonly forwardAxis = new THREE.Vector3();
   private readonly depthBoxSize = new THREE.Vector3();
@@ -510,13 +542,26 @@ export class Viewer {
     // the 2D viewer and the pivot-rotate orbit behaviour. Configurable via
     // `zoom.toCursor` (default on).
     world.camera.controls.dollyToCursor = this.options.zoom?.toCursor ?? true;
+    world.camera.controls.dollySpeed = this.options.zoom?.speed ?? 1;
+
+    // infinityDolly is what lets the wheel push the orbit TARGET forward once
+    // the camera reaches `minDistance`, so you can zoom *through* into interiors
+    // instead of asymptotically crawling to a stop at the framed centre. Set it
+    // explicitly rather than relying on OrthoPerspectiveCamera's OrbitMode
+    // default. CRITICAL: it only engages while `minDistance` is non-zero (the
+    // library gates the target-push on `radius <= minDistance`); a zero/EPSILON
+    // minDistance is never reached by the multiplicative dolly, so fly-through
+    // never fires. `minDistance` is therefore set per scene size in
+    // refreshSceneBounds and seeded non-zero here for the pre-model state.
+    world.camera.controls.infinityDolly = true;
 
     // OrthoPerspectiveCamera's default OrbitMode clamps minDistance=1 /
     // maxDistance=300 (FirstPersonMode/OrbitMode swaps mutate these too).
     // SimpleCamera left them at camera-controls' defaults, and large models
     // need to dolly closer/farther than that — zoom-out is otherwise bounded
-    // by our own `zoomOutLimit` (see onCamChange). Restore the uncapped range.
-    world.camera.controls.minDistance = Number.EPSILON;
+    // by our own `zoomOutLimit` (see onCamChange). Keep the upper end uncapped;
+    // the lower end is the fly-through threshold (see infinityDolly above).
+    world.camera.controls.minDistance = this.zoomInDistance;
     world.camera.controls.maxDistance = Infinity;
 
     this.applyControls(world);
@@ -923,13 +968,10 @@ export class Viewer {
       false,
     );
 
-    const controls = world.camera.controls;
-    // ThatOpen sets infinityDolly=true and minDistance=6. Keep infinityDolly
-    // so the orbit target shifts forward on zoom-in (needed to go inside the
-    // model). Max zoom-out is enforced manually in the camera update handler.
-    controls.minDistance = 0;
-    // Cache the world-space scene AABB + depth range + zoom limit. Extracted so
-    // federated loads can extend the bounds without re-framing the camera.
+    // Cache the world-space scene AABB + depth range + zoom limits. Extracted so
+    // federated loads can extend the bounds without re-framing the camera. This
+    // also (re)applies the scale-aware orbit `minDistance` that drives
+    // infinityDolly fly-through; max zoom-out is enforced in the update handler.
     this.refreshSceneBounds();
   }
 
@@ -952,6 +994,18 @@ export class Viewer {
     const maxDim = Math.max(size.x, size.y, size.z, 1);
     const maxF = this.options.zoom?.maxFactor ?? 4;
     this.zoomOutLimit = maxDim * maxF;
+
+    // Scale-aware orbit minDistance: the infinityDolly fly-through threshold and
+    // the inside-the-model cruise step. Tiny models stay reachable (floor),
+    // huge sites get larger steps (ceil). Must be non-zero — see the camera
+    // setup block. Re-applied here on every model load / federated add.
+    const minF = this.options.zoom?.minFactor ?? DEFAULT_ZOOM_MIN_FACTOR;
+    this.zoomInDistance = THREE.MathUtils.clamp(
+      maxDim * minF,
+      ZOOM_IN_DISTANCE_FLOOR,
+      ZOOM_IN_DISTANCE_CEIL,
+    );
+    world.camera.controls.minDistance = this.zoomInDistance;
   }
 
   /**

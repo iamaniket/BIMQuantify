@@ -84,6 +84,14 @@ export function createBridge(onMessage: (msg: HostMessage) => void): Bridge {
     if (isHostMessage(parsed)) onMessage(parsed);
   };
 
+  // The real console.debug, captured before the wrapper below replaces it. The
+  // bridge's own diagnostic line (in `send`) must use this — routing it through
+  // the wrapped console would call `send` again and recurse infinitely in the
+  // browser/dev path (the device path returns early before it logs, so it never
+  // hit this). Without it, mounting in a plain browser floods until the stack
+  // overflows — which is exactly what breaks local PC testing of the embed.
+  const origDebug: (...args: unknown[]) => void = console.debug.bind(console);
+
   // Primary native → web channel (injectJavaScript calls this global).
   window[RECEIVE_GLOBAL] = handle;
 
@@ -104,17 +112,17 @@ export function createBridge(onMessage: (msg: HostMessage) => void): Bridge {
     if (window.parent !== window) {
       window.parent.postMessage(msg, '*');
     }
-    // eslint-disable-next-line no-console
-    console.debug('[viewer-embed → host]', json);
+    origDebug('[viewer-embed → host]', json);
   };
 
   // Forward console.* to the native shell so logs are visible in Metro/Logcat.
   const LOG_LEVELS = ['debug', 'log', 'info', 'warn', 'error'] as const;
   const origConsole: Record<string, (...a: unknown[]) => void> = {};
   for (const level of LOG_LEVELS) {
-    origConsole[level] = console[level];
+    const original = console[level];
+    origConsole[level] = original;
     console[level] = (...args: unknown[]) => {
-      origConsole[level](...args);
+      original(...args);
       const mapped: ClientMessage & { type: 'log' } = {
         type: 'log',
         level: level === 'log' ? 'info' : level,
@@ -128,7 +136,8 @@ export function createBridge(onMessage: (msg: HostMessage) => void): Bridge {
     window.removeEventListener('message', onWindowMessage);
     delete window[RECEIVE_GLOBAL];
     for (const level of LOG_LEVELS) {
-      console[level] = origConsole[level];
+      const original = origConsole[level];
+      if (original) console[level] = original;
     }
   };
 

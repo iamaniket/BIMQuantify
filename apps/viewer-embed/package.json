@@ -6,6 +6,8 @@
   "scripts": {
     "predev": "node scripts/copy-wasm.mjs",
     "dev": "vite",
+    "predev:harness": "node scripts/copy-wasm.mjs",
+    "dev:harness": "node -e \"console.log('\\n  Local viewer harness → http://localhost:5173/harness/\\n')\" && vite",
     "prebuild": "node scripts/copy-wasm.mjs",
     "build": "pnpm --filter=@bimstitch/viewer build && vite build",
     "type-check": "tsc --noEmit"

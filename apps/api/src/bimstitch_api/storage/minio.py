@@ -59,14 +59,22 @@ class S3Storage:
     def __init__(self, settings: Settings) -> None:
         self._session = aioboto3.Session()
         self._endpoint = settings.s3_endpoint_url
+        # Host the *client* must reach for presigned URLs (LAN/tunnel for phones).
+        # Falls back to the internal endpoint, so dev presigns against localhost.
+        self._public_endpoint = settings.s3_public_endpoint_url or settings.s3_endpoint_url
         self._region = settings.s3_region
         self._access = settings.s3_access_key_id
         self._secret = settings.s3_secret_access_key
         self._bucket = settings.s3_bucket_ifc
         self._ttl = settings.s3_presign_ttl_seconds
-        self._cors_origins = settings.cors_origin_list
+        self._cors_origins = settings.s3_cors_origin_list
         self._client_ctx: Any = None
         self._s3: Any = None
+        # A second client bound to the public endpoint, lazily built only when it
+        # differs from the internal one (SigV4 signs Host, so presigning against a
+        # client whose endpoint matches the URL the client uses is required).
+        self._presign_client_ctx: Any = None
+        self._presign_s3: Any = None
 
     @property
     def presign_ttl(self) -> int:
@@ -94,6 +102,25 @@ class S3Storage:
             self._s3 = await self._client_ctx.__aenter__()
         return self._s3
 
+    async def _get_presign_client(self) -> Any:
+        """Client used solely to generate presigned URLs. When the public endpoint
+        equals the internal one (the common/dev case) this reuses the internal
+        client; otherwise it lazily builds a separate client so URLs are signed
+        against the host the client will actually request."""
+        if self._public_endpoint == self._endpoint:
+            return await self._get_client()
+        if self._presign_s3 is None:
+            self._presign_client_ctx = self._session.client(
+                "s3",
+                endpoint_url=self._public_endpoint,
+                region_name=self._region,
+                aws_access_key_id=self._access,
+                aws_secret_access_key=self._secret,
+                config=self._client_config(),
+            )
+            self._presign_s3 = await self._presign_client_ctx.__aenter__()
+        return self._presign_s3
+
     async def close(self) -> None:
         if self._client_ctx is not None:
             try:
@@ -103,6 +130,14 @@ class S3Storage:
             finally:
                 self._s3 = None
                 self._client_ctx = None
+        if self._presign_client_ctx is not None:
+            try:
+                await self._presign_client_ctx.__aexit__(None, None, None)
+            except Exception:
+                logger.warning("Error closing S3 presign client", exc_info=True)
+            finally:
+                self._presign_s3 = None
+                self._presign_client_ctx = None
 
     def _resolve_bucket(self, bucket: str | None) -> str:
         return bucket if bucket is not None else self._bucket
@@ -110,7 +145,7 @@ class S3Storage:
     async def presigned_put_url(
         self, key: str, content_type: str, content_length: int, *, bucket: str | None = None
     ) -> str:
-        client = await self._get_client()
+        client = await self._get_presign_client()
         url: str = await client.generate_presigned_url(
             "put_object",
             Params={
@@ -126,7 +161,7 @@ class S3Storage:
     async def presigned_get_url(
         self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None
     ) -> str:
-        client = await self._get_client()
+        client = await self._get_presign_client()
         url: str = await client.generate_presigned_url(
             "get_object",
             Params={

@@ -22,6 +22,7 @@ import {
   buildClippingPlanes,
   type SectionPlaneData,
 } from './clipping.js';
+import { getModelWorldMatrix } from './modelCoordination.js';
 
 export interface EdgeOverlayOptions {
   lineWidth?: number;
@@ -119,6 +120,12 @@ export class EdgeOverlay {
 
       if (!cachedEdges || cachedEdges.size === 0) continue;
 
+      // Edge positions are model-local; `autoCoordinate` translates federated
+      // models, so position each line with the model's world matrix or the
+      // overlay renders offset (same pattern as the outline plugin). Computed
+      // once per model; identity for a single/first model — a no-op there.
+      const worldMatrix = getModelWorldMatrix(ctx, modelId);
+
       for (const item of modelItems) {
         const positions = cachedEdges.get(item.localId);
         if (!positions) continue;
@@ -130,6 +137,7 @@ export class EdgeOverlay {
         line.renderOrder = 999;
         line.layers.set(LAYER_OVERLAY);
         line.name = `edge-overlay::${k}`;
+        worldMatrix.decompose(line.position, line.quaternion, line.scale);
         ctx.scene.add(line);
         this.lines.set(k, [line]);
       }
