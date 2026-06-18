@@ -97,4 +97,38 @@ export const webEnMessages: WebMessages = {
   legalBrand: {
     backToSite: 'Back to site',
   },
+  snagShowcase: {
+    eyebrow: 'Quality assurance, live',
+    headline: 'Catch defects before they cost you.',
+    subtitle: 'Drag the model to inspect it. Hover a pin to read the snag — its severity, the Bbl article it touches, and where it sits in the Wkb borging loop.',
+    cta: 'Request access',
+    hintDrag: 'Drag to rotate',
+    hintHover: 'Hover a pin for details',
+    learnMoreBlog: 'Learn how Wkb borging works on the blog',
+    fallbackTitle: 'Interactive 3D snag inspection',
+    fallbackBody: 'Your browser cannot show the live 3D model, but here are the snags it carries:',
+    fallbackAlt: 'Interactive 3D building model with quality-assurance snags',
+    severity: { low: 'Low', medium: 'Medium', high: 'High' },
+    snags: {
+      wall: 'Party-wall fire rating not met',
+      cover: 'Concrete cover below minimum',
+      pipe: 'Pipe penetration not sealed',
+      airtight: 'Airtightness test outstanding',
+    },
+  },
+  metrics: {
+    eyebrow: 'By the numbers',
+    headline: 'Built for the borging loop',
+    caption: 'Illustrative figures.',
+    snagsResolved: 'Snags resolved',
+    compliancePassed: 'Compliance checks passed',
+    projects: 'Projects under borging',
+    avgDaysToClose: 'Avg. days to close a snag',
+  },
+  fromBlog: {
+    eyebrow: 'From the blog',
+    headline: 'Wkb insights & product updates',
+    readAll: 'Read all posts',
+    comingSoon: 'More articles coming soon.',
+  },
 };

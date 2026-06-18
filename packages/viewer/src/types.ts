@@ -60,6 +60,12 @@ export type ViewCubeOptions = {
 export type BackgroundOptions = {
   /** 0xRRGGBB. Default: 0xffffff. */
   color?: number;
+  /**
+   * Canvas clear-alpha, 0..1. Default 1 (opaque). Below 1 makes the WebGL
+   * canvas transparent so the page background shows through (used by the
+   * marketing-site 3D showcase). `scene.background` is left unset in that case.
+   */
+  alpha?: number;
 };
 
 export type ShadowOptions = {

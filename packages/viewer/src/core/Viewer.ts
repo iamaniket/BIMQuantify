@@ -50,6 +50,14 @@ export interface ShadowOptions {
 export interface BackgroundOptions {
   /** 0xRRGGBB. Default: 0xffffff. */
   color?: number;
+  /**
+   * Canvas clear-alpha, 0..1. Default 1 (opaque). Below 1 makes the WebGL
+   * canvas transparent so the page background shows through; `scene.background`
+   * is left unset in that case. The renderer is constructed with `alpha: true`
+   * automatically when this is < 1 (the WebGL alpha context attribute is
+   * creation-time only).
+   */
+  alpha?: number;
 }
 
 /**
@@ -521,9 +529,14 @@ export class Viewer {
     // stock line shader's chunks (kept intact); the shadow-ground shader adds
     // them explicitly (see applyLightingAndShadows). The post FX pipeline reads
     // no depth (RenderPass → FXAA → OutputPass), so it is unaffected.
+    // Transparent framebuffer for embeds (e.g. the marketing 3D showcase). The
+    // WebGL `alpha` context attribute is creation-time only, so it must be set
+    // here, not in applyBackground. Default path (alpha >= 1) is unchanged.
+    const wantAlpha = (this.options.background?.alpha ?? 1) < 1;
     world.renderer = new SimpleRenderer(components, container, {
       antialias: true,
       logarithmicDepthBuffer: true,
+      ...(wantAlpha ? { alpha: true } : {}),
     });
     world.renderer.showLogo = false;
     world.camera = new OrthoPerspectiveCamera(components);
@@ -1044,10 +1057,12 @@ export class Viewer {
 
   private applyBackground(world: World): void {
     const color = this.options.background?.color ?? 0xffffff;
+    const alpha = this.options.background?.alpha ?? 1;
     const sceneThree = threeScene(world.scene);
-    sceneThree.background = new THREE.Color(color);
+    // Transparent: leave scene.background unset so the clear-alpha shows through.
+    sceneThree.background = alpha < 1 ? null : new THREE.Color(color);
     const renderer = world.renderer!.three;
-    renderer.setClearColor(color, 1);
+    renderer.setClearColor(color, alpha);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
   }
 

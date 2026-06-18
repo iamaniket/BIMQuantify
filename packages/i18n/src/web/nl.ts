@@ -97,4 +97,38 @@ export const webNlMessages: WebMessages = {
   legalBrand: {
     backToSite: 'Terug naar site',
   },
+  snagShowcase: {
+    eyebrow: 'Kwaliteitsborging, live',
+    headline: 'Vang gebreken voordat ze geld kosten.',
+    subtitle: 'Sleep het model om het te inspecteren. Beweeg over een speld om de bevinding te lezen — de ernst, het Bbl-artikel dat het raakt, en waar het zit in de Wkb-borgingscyclus.',
+    cta: 'Toegang aanvragen',
+    hintDrag: 'Sleep om te draaien',
+    hintHover: 'Beweeg over een speld voor details',
+    learnMoreBlog: 'Lees hoe Wkb-borging werkt op de blog',
+    fallbackTitle: 'Interactieve 3D-bevindingsinspectie',
+    fallbackBody: 'Uw browser kan het live 3D-model niet tonen, maar dit zijn de bevindingen erin:',
+    fallbackAlt: 'Interactief 3D-gebouwmodel met kwaliteitsborgingsbevindingen',
+    severity: { low: 'Laag', medium: 'Middel', high: 'Hoog' },
+    snags: {
+      wall: 'Woningscheidende wand onvoldoende brandwerend',
+      cover: 'Betondekking beneden minimum',
+      pipe: 'Doorvoering leiding niet afgewerkt',
+      airtight: 'Luchtdichtheidsmeting uitgesteld',
+    },
+  },
+  metrics: {
+    eyebrow: 'In cijfers',
+    headline: 'Gebouwd voor de borgingscyclus',
+    caption: 'Illustratieve cijfers.',
+    snagsResolved: 'Bevindingen opgelost',
+    compliancePassed: 'Compliancecontroles geslaagd',
+    projects: 'Projecten in borging',
+    avgDaysToClose: 'Gem. dagen tot afhandeling',
+  },
+  fromBlog: {
+    eyebrow: 'Van de blog',
+    headline: 'Wkb-inzichten & productupdates',
+    readAll: 'Alle artikelen lezen',
+    comingSoon: 'Binnenkort meer artikelen.',
+  },
 };

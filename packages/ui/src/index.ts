@@ -102,8 +102,11 @@ export type { ProgressProps, ProgressVariant } from './Progress.js';
 export { SplitButton } from './SplitButton.js';
 export type { SplitButtonProps, SplitButtonItem } from './SplitButton.js';
 export {
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, SortableTableHead,
 } from './Table.js';
+export type { SortDirection, SortableTableHeadProps } from './Table.js';
+export { Pagination, paginationRange, DEFAULT_PAGE_SIZE_OPTIONS } from './Pagination.js';
+export type { PaginationProps, PaginationLabels } from './Pagination.js';
 export {
   DetailCard, DetailCardRow, DetailCardBody, DetailCardFooter,
 } from './DetailCard.js';
