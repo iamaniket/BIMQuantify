@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +42,13 @@ from bimstitch_api.models.organization_member import (
 )
 from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.user import User
+from bimstitch_api.pagination import (
+    SortParams,
+    apply_sort,
+    count_query,
+    set_total_count,
+    sort_params,
+)
 from bimstitch_api.schemas.admin import (
     AuditEntry,
     MemberDelete,
@@ -108,22 +115,36 @@ async def _load_org_or_404(session: AsyncSession, org_id: UUID) -> Organization:
 @router.get("/{organization_id}/members", response_model=list[MemberRead])
 async def list_members(
     organization_id: UUID,
+    response: Response,
     requester: User = Depends(require_org_admin),
     session: AsyncSession = Depends(get_async_session),
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
 ) -> list[MemberRead]:
-    stmt = (
+    base = (
         select(OrganizationMember, User)
         .join(User, User.id == OrganizationMember.user_id)
         .where(OrganizationMember.organization_id == organization_id)
-        .order_by(User.email.asc())
-        .limit(limit)
-        .offset(offset)
     )
     if status_filter:
-        stmt = stmt.where(OrganizationMember.status == OrganizationMemberStatus(status_filter))
+        base = base.where(OrganizationMember.status == OrganizationMemberStatus(status_filter))
+
+    set_total_count(response, await count_query(session, base))
+    stmt = apply_sort(
+        base,
+        sort,
+        {
+            "email": User.email,
+            "full_name": User.full_name,
+            "status": OrganizationMember.status,
+            "invited_at": OrganizationMember.invited_at,
+        },
+        default="email",
+        default_dir="asc",
+        tiebreaker=OrganizationMember.id,
+    ).limit(limit).offset(offset)
 
     result = await session.execute(stmt)
     rows = result.all()
@@ -700,6 +721,7 @@ async def resend_invite(
 )
 async def list_org_audit_log(
     organization_id: UUID,
+    response: Response,
     requester: User = Depends(require_org_admin),
     session: AsyncSession = Depends(get_async_session),
     action: str | None = None,
@@ -709,6 +731,7 @@ async def list_org_audit_log(
     until: datetime | None = None,
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
 ) -> list[AuditEntry]:
     # audit_log lives in this org's own schema now — point search_path at it
     # rather than filtering by organization_id. require_org_admin already
@@ -716,22 +739,32 @@ async def list_org_audit_log(
     schema = schema_name_for(organization_id)
     await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
 
-    stmt = (
-        select(AuditLog)
-        .order_by(AuditLog.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    base = select(AuditLog)
     if action:
-        stmt = stmt.where(AuditLog.action == action)
+        base = base.where(AuditLog.action == action)
     if resource_type:
-        stmt = stmt.where(AuditLog.resource_type == resource_type)
+        base = base.where(AuditLog.resource_type == resource_type)
     if user_id:
-        stmt = stmt.where(AuditLog.user_id == user_id)
+        base = base.where(AuditLog.user_id == user_id)
     if since:
-        stmt = stmt.where(AuditLog.created_at >= since)
+        base = base.where(AuditLog.created_at >= since)
     if until:
-        stmt = stmt.where(AuditLog.created_at < until)
+        base = base.where(AuditLog.created_at < until)
+
+    # Count + read must run while search_path still points at the org schema.
+    set_total_count(response, await count_query(session, base))
+    stmt = apply_sort(
+        base,
+        sort,
+        {
+            "created_at": AuditLog.created_at,
+            "action": AuditLog.action,
+            "resource_type": AuditLog.resource_type,
+        },
+        default="created_at",
+        default_dir="desc",
+        tiebreaker=AuditLog.id,
+    ).limit(limit).offset(offset)
     result = await session.execute(stmt)
     entries = [AuditEntry.model_validate(e, from_attributes=True) for e in result.scalars()]
     await session.execute(text("SET LOCAL search_path TO public"))

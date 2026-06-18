@@ -10,6 +10,7 @@ import {
   Card,
   CardBody,
   CardHeader,
+  cn,
   Input,
   Select,
   Skeleton,
@@ -21,13 +22,14 @@ import {
 
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
-import { PageTableContent } from '@/components/shared/PageTable';
 import { PanelHeading } from '@/components/shared/PanelHeading';
+import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';
 import { MembersTable } from '@/features/admin/members/MembersTable';
 import { DeadlineNotificationDefaults } from '@/features/admin/notifications/DeadlineNotificationDefaults';
+import { useClientPagination } from '@/lib/query/useTableQuery';
 import type { AuditEntry, MemberRead } from '@/lib/api/schemas';
 
 import type { OrgDetailViewProps } from './types';
@@ -46,6 +48,8 @@ function orgInitials(name: string): string {
 }
 
 const AUDIT_PAGE_SIZE = 50;
+// Pull a generous window from the server; the footer paginates it client-side.
+const AUDIT_FETCH_LIMIT = 500;
 
 function computeSince(filter: string): string | undefined {
   if (filter === 'all') return undefined;
@@ -632,16 +636,16 @@ export function OrgDetailView({
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Audit filter + pagination state
+  // Audit filters. The date filter drives the server fetch (`since`); the action
+  // filter is applied client-side; both feed the client-paginated footer below.
   const [dateFilter, setDateFilter] = useState('7');
   const [actionFilter, setActionFilter] = useState('all');
-  const [auditLimit, setAuditLimit] = useState(AUDIT_PAGE_SIZE);
 
   const auditSince = useMemo(() => computeSince(dateFilter), [dateFilter]);
 
   const internalAuditQuery = useOrgAuditLog(org.id, {
     since: auditSince,
-    limit: auditLimit,
+    limit: AUDIT_FETCH_LIMIT,
   });
 
   const internalAuditEntries = internalAuditQuery.data ?? [];
@@ -651,15 +655,8 @@ export function OrgDetailView({
     [internalAuditEntries, actionFilter],
   );
 
-  const hasMoreAudit = internalAuditEntries.length >= auditLimit;
-
   const handleDateFilterChange = useCallback((v: string) => {
     setDateFilter(v);
-    setAuditLimit(AUDIT_PAGE_SIZE);
-  }, []);
-
-  const handleLoadOlder = useCallback(() => {
-    setAuditLimit((prev) => Math.min(prev + AUDIT_PAGE_SIZE, 500));
   }, []);
 
   const handleExportCsv = useCallback(() => {
@@ -678,6 +675,29 @@ export function OrgDetailView({
     }
     return true;
   }), [members, roleFilter, statusFilter, query]);
+
+  const membersTable = useClientPagination(filteredMembers, {
+    sortAccessors: {
+      name: (m) => m.full_name ?? m.email,
+      status: (m) => m.status,
+      invited: (m) => m.invited_at,
+    },
+    initialSort: { key: 'name', dir: 'asc' },
+    isLoading: membersLoading,
+    isError: membersError,
+  });
+
+  const auditTable = useClientPagination(filteredAuditEntries, {
+    sortAccessors: {
+      created_at: (e) => e.created_at,
+      action: (e) => e.action,
+      resource_type: (e) => e.resource_type,
+    },
+    initialPageSize: AUDIT_PAGE_SIZE,
+    initialSort: { key: 'created_at', dir: 'desc' },
+    isLoading: internalAuditQuery.isLoading,
+    isError: internalAuditQuery.isError,
+  });
 
   const activeCount = members.filter((m) => m.status === 'active').length;
   const pendingCount = members.filter((m) => m.status === 'pending').length;
@@ -792,7 +812,14 @@ export function OrgDetailView({
           />
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div
+          className={cn(
+            'min-h-0 flex-1',
+            tab === 'members' || tab === 'audit'
+              ? 'flex flex-col overflow-hidden'
+              : 'overflow-y-auto p-5',
+          )}
+        >
           <TabsContent value="overview" className="mt-0">
             {membersLoading || auditLoading ? (
               <Skeleton className="h-64 w-full" />
@@ -809,37 +836,25 @@ export function OrgDetailView({
             )}
           </TabsContent>
 
-          <TabsContent value="members" className="mt-0">
-            <PageTableContent isLoading={membersLoading} isError={membersError} errorMessage={t('members.loadError')} countLabel={t('members.showing', { filtered: filteredMembers.length, total: members.length })}>
-              <MembersTable
-                organizationId={org.id}
-                members={filteredMembers}
-              />
-            </PageTableContent>
+          <TabsContent value="members" className="mt-0 flex min-h-0 flex-1 flex-col">
+            <MembersTable
+              organizationId={org.id}
+              table={membersTable}
+              allMembers={members}
+              loadError={t('members.loadError')}
+            />
+            <TablePaginationFooter
+              table={membersTable}
+              className="shrink-0 border-t border-border px-5 py-2.5"
+            />
           </TabsContent>
 
-          <TabsContent value="audit" className="mt-0">
-            {internalAuditQuery.isLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : internalAuditQuery.isError ? (
-              <p className="text-body3 text-error">{t('audit.loadError')}</p>
-            ) : (
-              <>
-                <AuditLogTable entries={filteredAuditEntries} />
-                <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-body3 text-foreground-tertiary">
-                  <span>{t('audit.eventCount', { count: filteredAuditEntries.length, period: t(`audit.period.${dateFilter}`) })}</span>
-                  {hasMoreAudit && auditLimit < 500 && (
-                    <button
-                      type="button"
-                      className="font-semibold text-primary hover:underline"
-                      onClick={handleLoadOlder}
-                    >
-                      {t('audit.loadOlder')} →
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
+          <TabsContent value="audit" className="mt-0 flex min-h-0 flex-1 flex-col">
+            <AuditLogTable table={auditTable} />
+            <TablePaginationFooter
+              table={auditTable}
+              className="shrink-0 border-t border-border px-5 py-2.5"
+            />
           </TabsContent>
 
           <TabsContent value="notifications" className="mt-0">

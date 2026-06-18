@@ -12,7 +12,7 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,6 +45,13 @@ from bimstitch_api.models.organization_member import (
     OrganizationMemberStatus,
 )
 from bimstitch_api.models.user import User
+from bimstitch_api.pagination import (
+    SortParams,
+    apply_sort,
+    count_query,
+    set_total_count,
+    sort_params,
+)
 from bimstitch_api.schemas.admin import (
     AccessRequestAdminRead,
     AccessRequestApproveInput,
@@ -208,6 +215,7 @@ async def create_organization(
 
 @router.get("/organizations", response_model=list[OrganizationRead])
 async def list_organizations(
+    response: Response,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
     storage: StorageBackend = Depends(get_storage),
@@ -216,15 +224,29 @@ async def list_organizations(
     include_deleted: bool = False,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
 ) -> list[OrganizationRead]:
-    stmt = select(Organization).order_by(Organization.created_at.desc())
+    base = select(Organization)
     if not include_deleted:
-        stmt = stmt.where(Organization.deleted_at.is_(None))
+        base = base.where(Organization.deleted_at.is_(None))
     if status_filter:
-        stmt = stmt.where(Organization.status == OrganizationStatus(status_filter))
+        base = base.where(Organization.status == OrganizationStatus(status_filter))
     if q:
-        stmt = stmt.where(func.lower(Organization.name).like(f"%{q.lower()}%"))
-    stmt = stmt.limit(limit).offset(offset)
+        base = base.where(func.lower(Organization.name).like(f"%{q.lower()}%"))
+
+    set_total_count(response, await count_query(session, base))
+    stmt = apply_sort(
+        base,
+        sort,
+        {
+            "name": Organization.name,
+            "status": Organization.status,
+            "created_at": Organization.created_at,
+        },
+        default="created_at",
+        default_dir="desc",
+        tiebreaker=Organization.id,
+    ).limit(limit).offset(offset)
     result = await session.execute(stmt)
     orgs = list(result.scalars())
     seats = await _seat_counts_for(session, [o.id for o in orgs])
@@ -400,18 +422,35 @@ async def delete_org(
 
 @router.get("/users", response_model=list[AdminUserRead])
 async def list_users(
+    response: Response,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
     q: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
 ) -> list[AdminUserRead]:
-    stmt = select(User).order_by(User.email.asc()).limit(limit).offset(offset)
+    base = select(User)
     if q:
         like = f"%{q.lower()}%"
-        stmt = stmt.where(
+        base = base.where(
             or_(func.lower(User.email).like(like), func.lower(User.full_name).like(like))
         )
+
+    set_total_count(response, await count_query(session, base))
+    stmt = apply_sort(
+        base,
+        sort,
+        {
+            "email": User.email,
+            "full_name": User.full_name,
+            "is_superuser": User.is_superuser,
+            "is_verified": User.is_verified,
+        },
+        default="email",
+        default_dir="asc",
+        tiebreaker=User.id,
+    ).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return [AdminUserRead.model_validate(u, from_attributes=True) for u in result.scalars()]
 
@@ -606,26 +645,43 @@ async def export_access_requests(
     response_model=list[AccessRequestAdminRead],
 )
 async def list_access_requests(
+    response: Response,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
     status_filter: str | None = Query(default=None, alias="status"),
     q: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
 ) -> list[AccessRequestAdminRead]:
-    stmt = select(AccessRequest).order_by(AccessRequest.created_at.desc())
+    base = select(AccessRequest)
     if status_filter:
-        stmt = stmt.where(AccessRequest.status == AccessRequestStatus(status_filter))
+        base = base.where(AccessRequest.status == AccessRequestStatus(status_filter))
     if q:
         like = f"%{q.lower()}%"
-        stmt = stmt.where(
+        base = base.where(
             or_(
                 func.lower(AccessRequest.name).like(like),
                 func.lower(AccessRequest.work_email).like(like),
                 func.lower(AccessRequest.company).like(like),
             )
         )
-    stmt = stmt.limit(limit).offset(offset)
+
+    set_total_count(response, await count_query(session, base))
+    stmt = apply_sort(
+        base,
+        sort,
+        {
+            "name": AccessRequest.name,
+            "work_email": AccessRequest.work_email,
+            "company": AccessRequest.company,
+            "status": AccessRequest.status,
+            "created_at": AccessRequest.created_at,
+        },
+        default="created_at",
+        default_dir="desc",
+        tiebreaker=AccessRequest.id,
+    ).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return [
         AccessRequestAdminRead.model_validate(r, from_attributes=True)
@@ -797,6 +853,7 @@ async def reject_access_request(
 
 @router.get("/audit-log", response_model=list[AuditEntry])
 async def list_audit_log(
+    response: Response,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
     action: str | None = None,
@@ -808,6 +865,7 @@ async def list_audit_log(
     until: datetime | None = None,
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
 ) -> list[AuditEntry]:
     # audit_log is a per-tenant table. With ?organization_id, read that org's
     # schema; without it, read the platform schema (super-admin / org-less
@@ -818,19 +876,34 @@ async def list_audit_log(
         schema = await resolve_platform_schema(session)
     await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
 
-    stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).offset(offset)
+    base = select(AuditLog)
     if action:
-        stmt = stmt.where(AuditLog.action == action)
+        base = base.where(AuditLog.action == action)
     if resource_type:
-        stmt = stmt.where(AuditLog.resource_type == resource_type)
+        base = base.where(AuditLog.resource_type == resource_type)
     if resource_id:
-        stmt = stmt.where(AuditLog.resource_id == resource_id)
+        base = base.where(AuditLog.resource_id == resource_id)
     if user_id:
-        stmt = stmt.where(AuditLog.user_id == user_id)
+        base = base.where(AuditLog.user_id == user_id)
     if since:
-        stmt = stmt.where(AuditLog.created_at >= since)
+        base = base.where(AuditLog.created_at >= since)
     if until:
-        stmt = stmt.where(AuditLog.created_at < until)
+        base = base.where(AuditLog.created_at < until)
+
+    # Count + read must run while search_path still points at the org schema.
+    set_total_count(response, await count_query(session, base))
+    stmt = apply_sort(
+        base,
+        sort,
+        {
+            "created_at": AuditLog.created_at,
+            "action": AuditLog.action,
+            "resource_type": AuditLog.resource_type,
+        },
+        default="created_at",
+        default_dir="desc",
+        tiebreaker=AuditLog.id,
+    ).limit(limit).offset(offset)
     result = await session.execute(stmt)
     entries = [AuditEntry.model_validate(e, from_attributes=True) for e in result.scalars()]
     await session.execute(text("SET LOCAL search_path TO public"))

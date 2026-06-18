@@ -1,5 +1,5 @@
 import { computeFileSha256 } from '../upload/sha256';
-import { apiClient } from './client';
+import { apiClient, type PaginatedResponse } from './client';
 import {
   CertificateSchema,
   type Certificate,
@@ -85,6 +85,39 @@ export async function listOrgCertificates(
   if (filters?.offset !== undefined) params.set('offset', String(filters.offset));
   const query = params.size === 0 ? '' : `?${params.toString()}`;
   return apiClient.get<OrgCertificateList>(
+    `/org-certificates${query}`,
+    OrgCertificateListSchema,
+    accessToken,
+  );
+}
+
+export type ListOrgCertificatesFilters = {
+  certificateType?: CertificateTypeValue | undefined;
+  search?: string | undefined;
+  expiringBefore?: string | undefined;
+  expired?: boolean | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+  order_by?: string | undefined;
+  order_dir?: 'asc' | 'desc' | undefined;
+};
+
+/** Paginated variant — returns the page items plus the total (X-Total-Count). */
+export async function listOrgCertificatesPage(
+  accessToken: string,
+  filters?: ListOrgCertificatesFilters,
+): Promise<PaginatedResponse<OrgCertificateList>> {
+  const params = new URLSearchParams();
+  if (filters?.certificateType !== undefined) params.set('certificate_type', filters.certificateType);
+  if (filters?.search !== undefined && filters.search.length > 0) params.set('search', filters.search);
+  if (filters?.expiringBefore !== undefined) params.set('expiring_before', filters.expiringBefore);
+  if (filters?.expired === true) params.set('expired', 'true');
+  if (filters?.limit !== undefined) params.set('limit', String(filters.limit));
+  if (filters?.offset !== undefined) params.set('offset', String(filters.offset));
+  if (filters?.order_by !== undefined) params.set('order_by', filters.order_by);
+  if (filters?.order_dir !== undefined) params.set('order_dir', filters.order_dir);
+  const query = params.size === 0 ? '' : `?${params.toString()}`;
+  return apiClient.getWithMeta<OrgCertificateList>(
     `/org-certificates${query}`,
     OrgCertificateListSchema,
     accessToken,

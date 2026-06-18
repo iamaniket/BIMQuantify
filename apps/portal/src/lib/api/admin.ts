@@ -1,4 +1,4 @@
-import { apiClient, triggerBrowserDownload } from './client';
+import { apiClient, triggerBrowserDownload, type PaginatedResponse } from './client';
 import {
   AccessRequestApproveResponseSchema,
   AccessRequestListSchema,
@@ -26,13 +26,19 @@ export type AuditEntryList = AuditEntry[];
 // Organizations
 // ----------------------------------------------------------------------------
 
+/** Shared server-side sort params for paginated list endpoints. */
+export type SortQueryParams = {
+  order_by?: string | undefined;
+  order_dir?: 'asc' | 'desc' | undefined;
+};
+
 export type ListOrganizationsParams = {
   status?: string | undefined;
   q?: string | undefined;
   include_deleted?: boolean | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
-};
+} & SortQueryParams;
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
   const parts: string[] = [];
@@ -49,6 +55,19 @@ export async function listOrganizations(
 ): Promise<OrganizationRead[]> {
   const query = buildQuery(params);
   return apiClient.get<OrganizationRead[]>(
+    `/admin/organizations${query}`,
+    OrganizationListSchema,
+    accessToken,
+  );
+}
+
+/** Paginated variant — returns the page items plus the total (X-Total-Count). */
+export async function listOrganizationsPage(
+  accessToken: string,
+  params: ListOrganizationsParams = {},
+): Promise<PaginatedResponse<OrganizationRead[]>> {
+  const query = buildQuery(params);
+  return apiClient.getWithMeta<OrganizationRead[]>(
     `/admin/organizations${query}`,
     OrganizationListSchema,
     accessToken,
@@ -106,7 +125,7 @@ export type ListAdminUsersParams = {
   q?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
-};
+} & SortQueryParams;
 
 export async function listAdminUsers(
   accessToken: string,
@@ -114,6 +133,19 @@ export async function listAdminUsers(
 ): Promise<AdminUserList> {
   const query = buildQuery(params);
   return apiClient.get<AdminUserList>(
+    `/admin/users${query}`,
+    AdminUserListSchema,
+    accessToken,
+  );
+}
+
+/** Paginated variant — returns the page items plus the total (X-Total-Count). */
+export async function listAdminUsersPage(
+  accessToken: string,
+  params: ListAdminUsersParams = {},
+): Promise<PaginatedResponse<AdminUserList>> {
+  const query = buildQuery(params);
+  return apiClient.getWithMeta<AdminUserList>(
     `/admin/users${query}`,
     AdminUserListSchema,
     accessToken,
@@ -195,7 +227,7 @@ export type ListAccessRequestsParams = {
   q?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
-};
+} & SortQueryParams;
 
 export async function listAccessRequests(
   accessToken: string,
@@ -203,6 +235,19 @@ export async function listAccessRequests(
 ): Promise<AccessRequestRead[]> {
   const query = buildQuery(params);
   return apiClient.get<AccessRequestRead[]>(
+    `/admin/access-requests${query}`,
+    AccessRequestListSchema,
+    accessToken,
+  );
+}
+
+/** Paginated variant — returns the page items plus the total (X-Total-Count). */
+export async function listAccessRequestsPage(
+  accessToken: string,
+  params: ListAccessRequestsParams = {},
+): Promise<PaginatedResponse<AccessRequestRead[]>> {
+  const query = buildQuery(params);
+  return apiClient.getWithMeta<AccessRequestRead[]>(
     `/admin/access-requests${query}`,
     AccessRequestListSchema,
     accessToken,
@@ -260,7 +305,7 @@ export type ListAuditLogParams = {
   until?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
-};
+} & SortQueryParams;
 
 export async function listGlobalAuditLog(
   accessToken: string,
@@ -274,6 +319,19 @@ export async function listGlobalAuditLog(
   );
 }
 
+/** Paginated variant — returns the page items plus the total (X-Total-Count). */
+export async function listGlobalAuditLogPage(
+  accessToken: string,
+  params: ListAuditLogParams = {},
+): Promise<PaginatedResponse<AuditEntryList>> {
+  const query = buildQuery(params);
+  return apiClient.getWithMeta<AuditEntryList>(
+    `/admin/audit-log${query}`,
+    AuditEntryListSchema,
+    accessToken,
+  );
+}
+
 export async function listOrgAuditLog(
   accessToken: string,
   organizationId: string,
@@ -281,6 +339,20 @@ export async function listOrgAuditLog(
 ): Promise<AuditEntryList> {
   const query = buildQuery(params);
   return apiClient.get<AuditEntryList>(
+    `/organizations/${organizationId}/audit-log${query}`,
+    AuditEntryListSchema,
+    accessToken,
+  );
+}
+
+/** Paginated variant — returns the page items plus the total (X-Total-Count). */
+export async function listOrgAuditLogPage(
+  accessToken: string,
+  organizationId: string,
+  params: Omit<ListAuditLogParams, 'organization_id'> = {},
+): Promise<PaginatedResponse<AuditEntryList>> {
+  const query = buildQuery(params);
+  return apiClient.getWithMeta<AuditEntryList>(
     `/organizations/${organizationId}/audit-log${query}`,
     AuditEntryListSchema,
     accessToken,

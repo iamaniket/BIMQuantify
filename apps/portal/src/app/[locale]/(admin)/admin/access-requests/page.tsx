@@ -15,13 +15,16 @@ import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderCon
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
-import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
 import { PanelHeading } from '@/components/shared/PanelHeading';
+import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { AccessRequestApproveDialog } from '@/features/admin/access-requests/AccessRequestApproveDialog';
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
+import { adminAccessRequestsListKey } from '@/features/admin/access-requests/queryKeys';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
 import { useRejectAccessRequest } from '@/features/admin/access-requests/useAccessRequestActions';
-import { exportAccessRequests } from '@/lib/api/admin';
+import { exportAccessRequests, listAccessRequestsPage } from '@/lib/api/admin';
+import { useTableQuery } from '@/lib/query/useTableQuery';
 import type { AccessRequestRead } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -35,12 +38,21 @@ export default function AdminAccessRequestsPage(): JSX.Element {
   const { tokens } = useAuth();
   const rejectMutation = useRejectAccessRequest();
 
-  const params = {
+  const reqFilters = {
     q: search === '' ? undefined : search,
     status: statusFilter === 'all' ? undefined : statusFilter,
   };
-  const query = useAccessRequests(params);
-  const allRequests = query.data ?? [];
+  const reqTable = useTableQuery<AccessRequestRead, typeof reqFilters>({
+    filters: reqFilters,
+    queryKey: (p) => adminAccessRequestsListKey(p),
+    queryFn: (token, p) => listAccessRequestsPage(token, p),
+    initialSort: { key: 'created_at', dir: 'desc' },
+  });
+
+  // Hero status breakdown reads a global (unfiltered) list so the KPIs reflect
+  // the whole queue, not just the current page/filter.
+  const statsQuery = useAccessRequests({});
+  const statsRows = statsQuery.data ?? [];
 
   const tBreadcrumbs = useTranslations('breadcrumbs');
 
@@ -52,9 +64,9 @@ export default function AdminAccessRequestsPage(): JSX.Element {
   );
   useHeaderCrumbsOverride(crumbs);
 
-  const newCount = allRequests.filter((r) => r.status === 'new').length;
-  const approvedCount = allRequests.filter((r) => r.status === 'approved').length;
-  const rejectedCount = allRequests.filter((r) => r.status === 'rejected').length;
+  const newCount = statsRows.filter((r) => r.status === 'new').length;
+  const approvedCount = statsRows.filter((r) => r.status === 'approved').length;
+  const rejectedCount = statsRows.filter((r) => r.status === 'rejected').length;
 
   const handleApprove = useCallback((req: AccessRequestRead) => {
     setApproveTarget(req);
@@ -74,11 +86,11 @@ export default function AdminAccessRequestsPage(): JSX.Element {
     const accessToken = tokens?.access_token;
     if (accessToken === undefined) return;
     try {
-      await exportAccessRequests(accessToken, params);
+      await exportAccessRequests(accessToken, reqFilters);
     } catch {
       toast.error(t('exportError'));
     }
-  }, [tokens, params, t]);
+  }, [tokens, reqFilters, t]);
 
   return (
     <PageShell
@@ -95,7 +107,7 @@ export default function AdminAccessRequestsPage(): JSX.Element {
           kpis={[
             {
               label: t('hero.totalLabel'),
-              value: String(allRequests.length),
+              value: String(reqTable.total),
               sub: t('hero.totalSub'),
             },
             {
@@ -142,18 +154,17 @@ export default function AdminAccessRequestsPage(): JSX.Element {
         </Select>
       </TableToolbar>
 
-      <PanelHeading eyebrow={t('panel.eyebrow')} title={t('panel.title', { count: allRequests.length })} />
+      <PanelHeading eyebrow={t('panel.eyebrow')} title={t('panel.title', { count: reqTable.total })} />
 
-      {/* Content */}
-      <div className="min-h-0 flex-1 overflow-y-auto p-5">
-        <PageTableContent isLoading={query.isLoading} isError={query.isError} errorMessage={t('loadError')} countLabel={t('showing', { count: allRequests.length })}>
-          <AccessRequestsTable
-            requests={allRequests}
-            onApprove={handleApprove}
-            onReject={handleReject}
-          />
-        </PageTableContent>
-      </div>
+      <AccessRequestsTable
+        table={reqTable}
+        onApprove={handleApprove}
+        onReject={handleReject}
+      />
+      <TablePaginationFooter
+        table={reqTable}
+        className="shrink-0 border-t border-border px-5 py-2.5"
+      />
 
       <AccessRequestApproveDialog
         request={approveTarget}

@@ -7,13 +7,15 @@ import type { JSX } from 'react';
 import { Badge } from '@bimstitch/ui';
 import type { Locale } from '@bimstitch/i18n';
 
-import { PageTable, type Column } from '@/components/shared/PageTable';
+import { DataTable } from '@/components/shared/DataTable';
+import type { Column } from '@/components/shared/PageTable';
 import { formatDate } from '@/lib/formatting/dates';
+import type { TablePagination } from '@/lib/query/useTableQuery';
 
 import type { UnifiedTemplateRow } from './useAllTemplates';
 
 type Props = {
-  templates: UnifiedTemplateRow[];
+  table: TablePagination<UnifiedTemplateRow>;
   canManage: boolean;
   onEdit: (row: UnifiedTemplateRow) => void;
   onSetDefault: (row: UnifiedTemplateRow) => void;
@@ -24,7 +26,7 @@ const ACTION_BTN =
   'inline-grid h-7 w-7 place-items-center rounded text-foreground-tertiary transition-colors hover:bg-background-hover hover:text-foreground';
 
 export function OrgTemplatesTable({
-  templates,
+  table,
   canManage,
   onEdit,
   onSetDefault,
@@ -36,6 +38,7 @@ export function OrgTemplatesTable({
   const columns: Column<UnifiedTemplateRow>[] = [
     {
       header: t('table.name'),
+      sortKey: 'name',
       cell: (row) => (
         <>
           <span className="font-medium text-foreground">{row.data.name}</span>
@@ -49,6 +52,7 @@ export function OrgTemplatesTable({
     },
     {
       header: t('table.type'),
+      sortKey: 'type',
       cell: (row) => (
         <span className="font-sans text-body3 text-foreground-secondary">
           {t(`typeLabel.${row.data.template_type}` as Parameters<typeof t>[0])}
@@ -57,6 +61,7 @@ export function OrgTemplatesTable({
     },
     {
       header: t('table.default'),
+      sortKey: 'default',
       cell: (row) =>
         row.data.is_default ? (
           <Badge variant="success" size="md" bordered>
@@ -69,6 +74,7 @@ export function OrgTemplatesTable({
     },
     {
       header: t('table.updated'),
+      sortKey: 'updated',
       className: 'text-foreground-secondary tabular-nums',
       cell: (row) => formatDate(row.data.updated_at, locale),
     },
@@ -111,11 +117,18 @@ export function OrgTemplatesTable({
   ];
 
   return (
-    <PageTable
+    <DataTable
       columns={columns}
-      data={templates}
+      data={table.rows}
       rowKey={(row) => row.data.id}
       emptyMessage={t('table.empty')}
+      sort={table.sort}
+      onToggleSort={table.toggleSort}
+      isLoading={table.isLoading}
+      isFetching={table.isFetching}
+      isError={table.isError}
+      errorMessage={t('table.empty')}
+      rowClassName="hover:bg-background-hover"
     />
   );
 }

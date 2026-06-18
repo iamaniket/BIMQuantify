@@ -4,9 +4,8 @@ import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { HeroGrid } from '@bimstitch/brand';
-import { Button, ThemeToggle } from '@bimstitch/ui';
+import { Button } from '@bimstitch/ui';
 
-import { LanguageToggle } from '@/components/LanguageToggle';
 import { Link } from '@/i18n/navigation';
 
 export function HeroSection(): JSX.Element {
@@ -41,11 +40,6 @@ export function HeroSection(): JSX.Element {
               {t('ctaPrimary')}
             </Button>
           </Link>
-        </div>
-
-        <div className="absolute bottom-6 right-6 flex items-center gap-2">
-          <LanguageToggle className="text-white hover:text-white hover:bg-white/10" />
-          <ThemeToggle className="text-white hover:text-white hover:bg-white/10" />
         </div>
       </div>
     </section>

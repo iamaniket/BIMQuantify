@@ -39,6 +39,22 @@
       "download": "Downloaden"
     },
     "loadMore": "Meer laden",
+    "pagination": {
+      "rowsPerPage": "Rijen per pagina",
+      "range": "{from}–{to} van {total}",
+      "empty": "Geen resultaten",
+      "goToPage": "Ga naar pagina {page}",
+      "first": "Eerste pagina",
+      "previous": "Vorige pagina",
+      "next": "Volgende pagina",
+      "last": "Laatste pagina"
+    },
+    "table": {
+      "actions": "Acties",
+      "searchPlaceholder": "Zoeken…",
+      "empty": "Nog niets hier",
+      "noResults": "Geen resultaten voor je filters"
+    },
     "errors": {
       "permissionDenied": "Je hebt geen toestemming voor deze actie."
     }
@@ -708,6 +724,7 @@
     }
   },
   "orgCertificates": {
+    "filterAll": "Alle types",
     "hero": {
       "title": "Certificatenbibliotheek",
       "badge": "Organisatie",
@@ -2029,10 +2046,8 @@
     "typeFilter": {
       "all": "Alles",
       "findings": "Bevindingen",
-      "compliance_report": "Nalevingsrapport",
-      "assurance_plan": "Borgingsplan",
-      "completion_declaration": "Verklaring kwaliteitsborger",
-      "dossier": "Dossier bevoegd gezag"
+      "reports": "Rapporten",
+      "aria": "Filter sjablonen op type"
     },
     "table": {
       "name": "Naam",

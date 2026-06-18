@@ -29,6 +29,11 @@ from bimstitch_api.models.org_certificate import (
 )
 from bimstitch_api.models.org_certificate_tag import OrgCertificateTag
 from bimstitch_api.models.user import User
+from bimstitch_api.pagination import (
+    SortParams,
+    apply_sort,
+    sort_params,
+)
 from bimstitch_api.schemas.org_certificate import (
     OrgCertificateDownloadResponse,
     OrgCertificateInitiateRequest,
@@ -303,6 +308,7 @@ async def list_org_certificates(
     tag: Annotated[list[str] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    sort: SortParams = Depends(sort_params),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -352,9 +358,28 @@ async def list_org_certificates(
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
     response.headers["X-Total-Count"] = str(total)
 
+    if sort.order_by is not None:
+        ordered = apply_sort(
+            base,
+            sort,
+            {
+                "product_name": OrgCertificate.product_name,
+                "certificate_type": OrgCertificate.certificate_type,
+                "supplier_name": OrgCertificate.supplier_name,
+                "issuer": OrgCertificate.issuer,
+                "valid_until": OrgCertificate.valid_until,
+                "created_at": OrgCertificate.created_at,
+            },
+            default="valid_until",
+            tiebreaker=OrgCertificate.id,
+        )
+    else:
+        # Default view: soonest-expiring first (nulls last), newest as tiebreaker.
+        ordered = base.order_by(
+            OrgCertificate.valid_until.asc().nulls_last(), OrgCertificate.created_at.desc()
+        )
     stmt = (
-        base.options(selectinload(OrgCertificate.uploaded_by_user))
-        .order_by(OrgCertificate.valid_until.asc().nulls_last(), OrgCertificate.created_at.desc())
+        ordered.options(selectinload(OrgCertificate.uploaded_by_user))
         .limit(limit)
         .offset(offset)
     )

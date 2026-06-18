@@ -7,8 +7,10 @@ import type { JSX } from 'react';
 import { Badge, type BadgeVariant } from '@bimstitch/ui';
 import type { Locale } from '@bimstitch/i18n';
 
-import { PageTable, type Column } from '@/components/shared/PageTable';
+import { DataTable } from '@/components/shared/DataTable';
+import type { Column } from '@/components/shared/PageTable';
 import { formatDate } from '@/lib/formatting/dates';
+import type { TablePagination } from '@/lib/query/useTableQuery';
 import type { OrgCertificate } from '@/lib/api/schemas';
 import {
   getCertificateExpiryState,
@@ -16,7 +18,7 @@ import {
 } from '@/features/certificates/expiry';
 
 type Props = {
-  certificates: OrgCertificate[];
+  table: TablePagination<OrgCertificate>;
   onDownload: (cert: OrgCertificate) => void;
   onDelete: (cert: OrgCertificate) => void;
   onView: (cert: OrgCertificate) => void;
@@ -29,13 +31,14 @@ const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
   expired: 'error',
 };
 
-export function OrgCertificatesTable({ certificates, onDownload, onDelete, onView }: Props): JSX.Element {
+export function OrgCertificatesTable({ table, onDownload, onDelete, onView }: Props): JSX.Element {
   const t = useTranslations('orgCertificates');
   const locale = useLocale() as Locale;
 
   const columns: Column<OrgCertificate>[] = [
     {
       header: t('table.product'),
+      sortKey: 'product_name',
       cell: (cert) => (
         <>
           <span className="font-medium text-foreground">
@@ -53,6 +56,7 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
     },
     {
       header: t('table.type'),
+      sortKey: 'certificate_type',
       cell: (cert) => (
         <Badge variant="default" size="md" bordered>
           {t(`type.${cert.certificate_type}`)}
@@ -61,16 +65,19 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
     },
     {
       header: t('table.supplier'),
+      sortKey: 'supplier_name',
       className: 'text-foreground-secondary',
       cell: (cert) => cert.supplier_name ?? '—',
     },
     {
       header: t('table.issuer'),
+      sortKey: 'issuer',
       className: 'text-foreground-secondary',
       cell: (cert) => cert.issuer ?? '—',
     },
     {
       header: t('table.validUntil'),
+      sortKey: 'valid_until',
       cell: (cert) => {
         const expiryState = getCertificateExpiryState(cert.valid_until);
         return (
@@ -136,11 +143,18 @@ export function OrgCertificatesTable({ certificates, onDownload, onDelete, onVie
   ];
 
   return (
-    <PageTable
+    <DataTable
       columns={columns}
-      data={certificates}
+      data={table.rows}
       rowKey={(c) => c.id}
       emptyMessage={t('list.emptyTitle')}
+      sort={table.sort}
+      onToggleSort={table.toggleSort}
+      isLoading={table.isLoading}
+      isFetching={table.isFetching}
+      isError={table.isError}
+      errorMessage={t('list.downloadError')}
+      rowClassName="hover:bg-background-hover"
     />
   );
 }

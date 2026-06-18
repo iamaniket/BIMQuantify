@@ -23,8 +23,10 @@ import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
+import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { ApiError } from '@/lib/api/client';
+import { useClientPagination } from '@/lib/query/useTableQuery';
 import type { ProjectMember } from '@/lib/api/schemas';
 import { useProject } from '@/features/projects/useProject';
 import { AddProjectMemberDialog } from '@/features/projects/members/AddProjectMemberDialog';
@@ -286,6 +288,7 @@ function MembersToolbar({
 
 export default function ProjectAccessPage(): JSX.Element {
   const t = useTranslations('projectAccess');
+  const tTable = useTranslations('common.table');
   const params = useParams();
   const rawProjectId = params['projectId'];
   const projectId = typeof rawProjectId === 'string' ? rawProjectId : '';
@@ -328,6 +331,17 @@ export default function ProjectAccessPage(): JSX.Element {
     }
     return true;
   }), [members, roleFilter, query]);
+
+  const membersTable = useClientPagination(filteredMembers, {
+    sortAccessors: {
+      name: (m) => m.full_name ?? m.email,
+      role: (m) => m.role,
+      added: (m) => m.created_at,
+    },
+    initialSort: { key: 'name', dir: 'asc' },
+    isLoading: membersQuery.isLoading,
+    isError: membersQuery.isError,
+  });
 
   if (projectQuery.isLoading || membersQuery.isLoading) {
     return (
@@ -381,36 +395,41 @@ export default function ProjectAccessPage(): JSX.Element {
   let membersContent: JSX.Element;
   if (membersQuery.isError) {
     membersContent = (
-      <ErrorBanner message={t('errors.membersLoadFailed')} tone="soft" />
+      <div className="p-5">
+        <ErrorBanner message={t('errors.membersLoadFailed')} tone="soft" />
+      </div>
     );
   } else if (members.length === 0) {
     membersContent = (
-      <EmptyState
-        icon={UserPlus}
-        title={t('emptyState.title')}
-        description={t('emptyState.description')}
-        action={canManage ? (
-          <Button onClick={() => { setAddOpen(true); }}>
-            <UserPlus className="mr-1.5 h-4 w-4" />
-            {t('addMember')}
-          </Button>
-        ) : undefined}
-        className={undefined}
-      />
+      <div className="grid min-h-0 flex-1 place-items-center p-5">
+        <EmptyState
+          icon={UserPlus}
+          title={t('emptyState.title')}
+          description={t('emptyState.description')}
+          action={canManage ? (
+            <Button onClick={() => { setAddOpen(true); }}>
+              <UserPlus className="mr-1.5 h-4 w-4" />
+              {t('addMember')}
+            </Button>
+          ) : undefined}
+          className={undefined}
+        />
+      </div>
     );
   } else {
     membersContent = (
       <>
         <ProjectMembersList
           projectId={projectId}
-          members={filteredMembers}
+          table={membersTable}
           canManage={canManage}
+          emptyMessage={tTable('noResults')}
+          loadError={t('errors.membersLoadFailed')}
         />
-        <div className="mt-3 flex items-center justify-between text-body3 text-foreground-tertiary">
-          <span>
-            {t('panel.showingOf', { filtered: filteredMembers.length, total: members.length })}
-          </span>
-        </div>
+        <TablePaginationFooter
+          table={membersTable}
+          className="shrink-0 border-t border-border px-5 py-2.5"
+        />
       </>
     );
   }
@@ -435,6 +454,7 @@ export default function ProjectAccessPage(): JSX.Element {
       activeTab={tab}
       onTabChange={setTab}
       panelHeading={panelHeading}
+      fillContent={tab === 'members'}
       toolbar={
         tab === 'members' ? (
           <MembersToolbar
@@ -469,7 +489,7 @@ export default function ProjectAccessPage(): JSX.Element {
         />
       </TabsContent>
 
-      <TabsContent value="members" className="mt-0">
+      <TabsContent value="members" className="mt-0 flex min-h-0 flex-1 flex-col">
         {membersContent}
       </TabsContent>
     </TabbedPageShell>

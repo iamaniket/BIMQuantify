@@ -19,7 +19,9 @@ import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderCon
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
-import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
+import { useTableQuery } from '@/lib/query/useTableQuery';
 import { AccessRequestApproveDialog } from '@/features/admin/access-requests/AccessRequestApproveDialog';
 import { AccessRequestsTable } from '@/features/admin/access-requests/AccessRequestsTable';
 import { useAccessRequests } from '@/features/admin/access-requests/useAccessRequests';
@@ -31,8 +33,16 @@ import { useDeleteBlogPost } from '@/features/admin/blog/useDeleteBlogPost';
 import { useUpdateBlogPost } from '@/features/admin/blog/useUpdateBlogPost';
 import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
+import { adminOrganizationsListKey } from '@/features/admin/organizations/queryKeys';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
-import { exportAccessRequests } from '@/lib/api/admin';
+import {
+  exportAccessRequests,
+  listAccessRequestsPage,
+  listOrganizationsPage,
+} from '@/lib/api/admin';
+import { listBlogPostsPage } from '@/lib/api/blog';
+import { adminAccessRequestsListKey } from '@/features/admin/access-requests/queryKeys';
+import { adminBlogListKey } from '@/features/admin/blog/queryKeys';
 import { formatDate } from '@/lib/formatting/dates';
 import type {
   AccessRequestRead,
@@ -309,27 +319,51 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const { tokens } = useAuth();
   const rejectMutation = useRejectAccessRequest();
 
-  const params = {
+  // Hero + Overview show org-wide aggregates → global (unfiltered) list.
+  const query = useAdminOrganizations({});
+  const allOrgs = query.data ?? [];
+
+  // The Organizations tab table is server-paginated + sortable, filtered by the
+  // toolbar's search + status. `total` drives the panel heading / tab badge.
+  const orgFilters = {
     q: search === '' ? undefined : search,
     status: statusFilter === 'all' ? undefined : statusFilter,
   };
-  const query = useAdminOrganizations(params);
-  const allOrgs = query.data ?? [];
+  const orgTable = useTableQuery<OrganizationRead, typeof orgFilters>({
+    filters: orgFilters,
+    queryKey: (p) => adminOrganizationsListKey(p),
+    queryFn: (token, p) => listOrganizationsPage(token, p),
+    initialSort: { key: 'created_at', dir: 'desc' },
+  });
 
-  const reqParams = {
+  // Pending-request count for the Hero KPI + tab badge — a global "new" count,
+  // independent of the table's own filters.
+  const reqPendingQuery = useAccessRequests({ status: 'new' });
+  const pendingRequestCount = reqPendingQuery.data?.length ?? 0;
+
+  // Access-requests tab table — server-paginated + sortable.
+  const reqFilters = {
     q: reqSearch === '' ? undefined : reqSearch,
     status: reqStatusFilter === 'all' ? undefined : reqStatusFilter,
   };
-  const reqQuery = useAccessRequests(reqParams);
-  const allRequests = reqQuery.data ?? [];
-  const pendingRequestCount = allRequests.filter((r) => r.status === 'new').length;
+  const reqTable = useTableQuery<AccessRequestRead, typeof reqFilters>({
+    filters: reqFilters,
+    queryKey: (p) => adminAccessRequestsListKey(p),
+    queryFn: (token, p) => listAccessRequestsPage(token, p),
+    initialSort: { key: 'created_at', dir: 'desc' },
+  });
 
-  const blogParams = {
+  // Blog tab table — server-paginated + sortable.
+  const blogFilters = {
     locale: blogLocale === 'all' ? undefined : (blogLocale as 'en' | 'nl'),
     status: blogStatus === 'all' ? undefined : (blogStatus as 'draft' | 'published'),
   };
-  const blogQuery = useAdminBlogPosts(blogParams);
-  const blogPosts = blogQuery.data ?? [];
+  const blogTable = useTableQuery<BlogPostRead, typeof blogFilters>({
+    filters: blogFilters,
+    queryKey: (p) => adminBlogListKey(p),
+    queryFn: (token, p) => listBlogPostsPage(token, p),
+    initialSort: { key: 'published_at', dir: 'desc' },
+  });
   const deleteBlogMutation = useDeleteBlogPost();
   const updateBlogMutation = useUpdateBlogPost();
 
@@ -412,16 +446,16 @@ export default function AdminOrganizationsPage(): JSX.Element {
     const accessToken = tokens?.access_token;
     if (accessToken === undefined) return;
     try {
-      await exportAccessRequests(accessToken, reqParams);
+      await exportAccessRequests(accessToken, reqFilters);
     } catch {
       toast.error(tReq('exportError'));
     }
-  }, [tokens, reqParams, tReq]);
+  }, [tokens, reqFilters, tReq]);
 
   const panelHeading = {
     organizations: {
       eyebrow: t('panel.orgsEyebrow'),
-      title: t('panel.orgsTitle', { count: allOrgs.length }),
+      title: t('panel.orgsTitle', { count: orgTable.total }),
       sub: '',
     },
     overview: {
@@ -431,12 +465,12 @@ export default function AdminOrganizationsPage(): JSX.Element {
     },
     requests: {
       eyebrow: t('panel.requestsEyebrow'),
-      title: t('panel.requestsTitle', { count: allRequests.length }),
+      title: t('panel.requestsTitle', { count: reqTable.total }),
       sub: '',
     },
     blog: {
       eyebrow: tBlog('panel.eyebrow'),
-      title: tBlog('panel.title', { count: blogPosts.length }),
+      title: tBlog('panel.title', { count: blogTable.total }),
       sub: '',
     },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
@@ -502,14 +536,15 @@ export default function AdminOrganizationsPage(): JSX.Element {
       hero={<AdminOrgsHero organizations={allOrgs} pendingRequests={pendingRequestCount} />}
       tabs={[
         { value: 'overview', label: t('tabs.overview'), icon: <LayoutGrid className="h-4 w-4" /> },
-        { value: 'organizations', label: t('tabs.organizations'), icon: <Table2 className="h-4 w-4" />, badge: <Badge variant="primary" size="md" bordered={false}>{allOrgs.length}</Badge> },
+        { value: 'organizations', label: t('tabs.organizations'), icon: <Table2 className="h-4 w-4" />, badge: <Badge variant="primary" size="md" bordered={false}>{orgTable.total}</Badge> },
         { value: 'requests', label: t('tabs.requests'), icon: <Inbox className="h-4 w-4" />, badge: pendingRequestCount > 0 ? <Badge variant="primary" size="md" bordered={false}>{pendingRequestCount}</Badge> : undefined },
-        { value: 'blog', label: tBlog('tab'), icon: <BookOpen className="h-4 w-4" />, badge: <Badge variant="default" size="md" bordered={false}>{blogPosts.length}</Badge> },
+        { value: 'blog', label: tBlog('tab'), icon: <BookOpen className="h-4 w-4" />, badge: <Badge variant="default" size="md" bordered={false}>{blogTable.total}</Badge> },
       ]}
       activeTab={tab}
       onTabChange={setTab}
       panelHeading={panelHeading}
       toolbar={toolbar}
+      fillContent={tab === 'organizations' || tab === 'requests' || tab === 'blog'}
       afterTabs={
         <>
           <OrgCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
@@ -518,10 +553,12 @@ export default function AdminOrganizationsPage(): JSX.Element {
         </>
       }
     >
-      <TabsContent value="organizations" className="mt-0">
-        <PageTableContent isLoading={query.isLoading} isError={query.isError} errorMessage={t('loadError')} countLabel={t('showing', { count: allOrgs.length })}>
-          <OrgTable organizations={allOrgs} />
-        </PageTableContent>
+      <TabsContent value="organizations" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <OrgTable table={orgTable} />
+        <TablePaginationFooter
+          table={orgTable}
+          className="shrink-0 border-t border-border px-5 py-2.5"
+        />
       </TabsContent>
 
       <TabsContent value="overview" className="mt-0">
@@ -532,26 +569,30 @@ export default function AdminOrganizationsPage(): JSX.Element {
         )}
       </TabsContent>
 
-      <TabsContent value="blog" className="mt-0">
-        <PageTableContent isLoading={blogQuery.isLoading} isError={blogQuery.isError} errorMessage={tBlog('loadError')}>
-          <BlogPostsTable
-            posts={blogPosts}
-            onDelete={handleBlogDelete}
-            onToggleStatus={handleBlogToggleStatus}
-            deletingId={blogDeletingId}
-            togglingId={blogTogglingId}
-          />
-        </PageTableContent>
+      <TabsContent value="blog" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <BlogPostsTable
+          table={blogTable}
+          onDelete={handleBlogDelete}
+          onToggleStatus={handleBlogToggleStatus}
+          deletingId={blogDeletingId}
+          togglingId={blogTogglingId}
+        />
+        <TablePaginationFooter
+          table={blogTable}
+          className="shrink-0 border-t border-border px-5 py-2.5"
+        />
       </TabsContent>
 
-      <TabsContent value="requests" className="mt-0">
-        <PageTableContent isLoading={reqQuery.isLoading} isError={reqQuery.isError} errorMessage={tReq('loadError')} countLabel={tReq('showing', { count: allRequests.length })}>
-          <AccessRequestsTable
-            requests={allRequests}
-            onApprove={handleApprove}
-            onReject={handleReject}
-          />
-        </PageTableContent>
+      <TabsContent value="requests" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <AccessRequestsTable
+          table={reqTable}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
+        <TablePaginationFooter
+          table={reqTable}
+          className="shrink-0 border-t border-border px-5 py-2.5"
+        />
       </TabsContent>
     </TabbedPageShell>
   );

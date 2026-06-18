@@ -7,12 +7,14 @@ import type { JSX } from 'react';
 import { Badge, Button } from '@bimstitch/ui';
 import type { Locale } from '@bimstitch/i18n';
 
-import { PageTable, type Column } from '@/components/shared/PageTable';
+import { DataTable } from '@/components/shared/DataTable';
+import type { Column } from '@/components/shared/PageTable';
 import { formatDate } from '@/lib/formatting/dates';
+import type { TablePagination } from '@/lib/query/useTableQuery';
 import type { BlogPostRead } from '@/lib/api/schemas';
 
 type Props = {
-  posts: BlogPostRead[];
+  table: TablePagination<BlogPostRead>;
   onDelete: (post: BlogPostRead) => void;
   onToggleStatus: (post: BlogPostRead) => void;
   deletingId: string | null;
@@ -20,18 +22,20 @@ type Props = {
 };
 
 export function BlogPostsTable({
-  posts,
+  table,
   onDelete,
   onToggleStatus,
   deletingId,
   togglingId,
 }: Props): JSX.Element {
   const t = useTranslations('admin.blog.table');
+  const tBlog = useTranslations('admin.blog');
   const locale = useLocale() as Locale;
 
   const columns: Column<BlogPostRead>[] = [
     {
       header: t('title'),
+      sortKey: 'title',
       cell: (post) => (
         <>
           <div className="font-medium text-foreground">{post.title}</div>
@@ -41,6 +45,7 @@ export function BlogPostsTable({
     },
     {
       header: t('locale'),
+      sortKey: 'locale',
       cell: (post) => (
         <Badge variant="default" size="md">
           {post.locale.toUpperCase()}
@@ -49,6 +54,7 @@ export function BlogPostsTable({
     },
     {
       header: t('status'),
+      sortKey: 'status',
       cell: (post) => (
         <Badge variant={post.status === 'published' ? 'success' : 'default'} size="md">
           {t(`statusLabel.${post.status as 'draft' | 'published'}`)}
@@ -57,6 +63,7 @@ export function BlogPostsTable({
     },
     {
       header: t('published'),
+      sortKey: 'published_at',
       className: 'text-foreground-tertiary',
       cell: (post) => formatDate(post.published_at, locale),
     },
@@ -98,11 +105,17 @@ export function BlogPostsTable({
   ];
 
   return (
-    <PageTable
+    <DataTable
       columns={columns}
-      data={posts}
+      data={table.rows}
       rowKey={(p) => p.id}
       emptyMessage={t('empty')}
+      sort={table.sort}
+      onToggleSort={table.toggleSort}
+      isLoading={table.isLoading}
+      isFetching={table.isFetching}
+      isError={table.isError}
+      errorMessage={tBlog('loadError')}
     />
   );
 }

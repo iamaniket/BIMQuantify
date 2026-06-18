@@ -65,33 +65,4 @@ export type WebMessages = {
   legalBrand: {
     backToSite: string;
   };
-  snagShowcase: {
-    eyebrow: string;
-    headline: string;
-    subtitle: string;
-    cta: string;
-    hintDrag: string;
-    hintHover: string;
-    learnMoreBlog: string;
-    fallbackTitle: string;
-    fallbackBody: string;
-    fallbackAlt: string;
-    severity: { low: string; medium: string; high: string };
-    snags: { wall: string; cover: string; pipe: string; airtight: string };
-  };
-  metrics: {
-    eyebrow: string;
-    headline: string;
-    caption: string;
-    snagsResolved: string;
-    compliancePassed: string;
-    projects: string;
-    avgDaysToClose: string;
-  };
-  fromBlog: {
-    eyebrow: string;
-    headline: string;
-    readAll: string;
-    comingSoon: string;
-  };
 };

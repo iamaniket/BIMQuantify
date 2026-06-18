@@ -148,6 +148,7 @@ en_messages: Catalog = {
     "errors.ERROR": "Something went wrong. Please try again.",
     "errors.INTERNAL_ERROR": "Something went wrong on our end. Please try again later.",
     "errors.VALIDATION_ERROR": "Some of the submitted data is invalid. Please check your input and try again.",
+    "errors.INVALID_SORT_KEY": "That column can't be sorted.",
 
     # --- auth / session ---
     "errors.UNAUTHORIZED": "You need to sign in to continue.",

@@ -6,6 +6,8 @@ import type { JSX, ReactNode } from 'react';
 
 import { Eyebrow } from '@bimstitch/ui';
 
+import { Reveal } from '@/components/shared/Reveal';
+
 type StepKey = 'step1' | 'step2' | 'step3' | 'step4';
 
 const stepIcons: Record<StepKey, ReactNode> = {
@@ -21,7 +23,7 @@ export function HowItWorksSection(): JSX.Element {
   const t = useTranslations('howItWorks');
 
   return (
-    <section className="bg-surface-low">
+    <section id="how-it-works" className="bg-surface-low">
       <div className="mx-auto w-full max-w-6xl px-6 py-20">
         <div className="mb-12 flex flex-col items-center gap-3 text-center">
           <Eyebrow size="md">{t('eyebrow')}</Eyebrow>
@@ -34,7 +36,7 @@ export function HowItWorksSection(): JSX.Element {
           {stepKeys.map((key, i) => {
             const number = String(i + 1).padStart(2, '0');
             return (
-              <div key={key} className="relative flex flex-col gap-4">
+              <Reveal key={key} delay={i * 100} className="relative flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                   <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-body3 font-bold text-primary-foreground">
                     {number}
@@ -52,7 +54,7 @@ export function HowItWorksSection(): JSX.Element {
                 <p className="text-body2 text-foreground-secondary">
                   {t(`${key}.body`)}
                 </p>
-              </div>
+              </Reveal>
             );
           })}
         </div>

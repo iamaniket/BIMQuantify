@@ -6,6 +6,8 @@ import type { JSX, ReactNode } from 'react';
 
 import { Card, CardBody, Eyebrow } from '@bimstitch/ui';
 
+import { Reveal } from '@/components/shared/Reveal';
+
 type FeatureKey =
   | 'deadlines'
   | 'dossier'
@@ -48,22 +50,24 @@ export function FeaturesSection(): JSX.Element {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {featureKeys.map((key) => (
-          <Card key={key} className="group transition-shadow hover:shadow-lg">
-            <CardBody className="gap-4">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary-lighter text-primary">
-                {featureIcons[key]}
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-title3 font-semibold text-foreground">
-                  {t(`${key}.title`)}
-                </h3>
-                <p className="text-body2 text-foreground-secondary">
-                  {t(`${key}.body`)}
-                </p>
-              </div>
-            </CardBody>
-          </Card>
+        {featureKeys.map((key, i) => (
+          <Reveal key={key} delay={i * 80} className="h-full">
+            <Card className="group h-full transition-shadow hover:shadow-lg">
+              <CardBody className="gap-4">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary-lighter text-primary">
+                  {featureIcons[key]}
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-title3 font-semibold text-foreground">
+                    {t(`${key}.title`)}
+                  </h3>
+                  <p className="text-body2 text-foreground-secondary">
+                    {t(`${key}.body`)}
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+          </Reveal>
         ))}
       </div>
     </section>

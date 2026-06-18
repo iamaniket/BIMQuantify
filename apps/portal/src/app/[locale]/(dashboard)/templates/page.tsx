@@ -5,10 +5,12 @@ import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Badge, Button, Skeleton, TabsContent } from '@bimstitch/ui';
+import { Badge, Button, Select, Skeleton, TabsContent } from '@bimstitch/ui';
 
-import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
+import { useClientPagination } from '@/lib/query/useTableQuery';
 
 import { useDeleteFindingTemplate } from '@/features/findingTemplates/useDeleteFindingTemplate';
 import { useSetDefaultFindingTemplate } from '@/features/findingTemplates/useSetDefaultFindingTemplate';
@@ -25,15 +27,8 @@ import { useAllTemplates, type UnifiedTemplateRow } from '@/features/orgTemplate
 
 import { useAuth } from '@/providers/AuthProvider';
 
-const ALL_TYPE_FILTERS = [
-  'all',
-  'findings',
-  'compliance_report',
-  'assurance_plan',
-  'completion_declaration',
-  'dossier',
-] as const;
-type TypeFilterValue = (typeof ALL_TYPE_FILTERS)[number];
+const TYPE_FILTERS = ['all', 'findings', 'reports'] as const;
+type TypeFilterValue = (typeof TYPE_FILTERS)[number];
 
 export default function TemplatesPage(): JSX.Element {
   const t = useTranslations('orgTemplates');
@@ -82,19 +77,26 @@ export default function TemplatesPage(): JSX.Element {
   // Filter + search
   const filtered = useMemo(() => {
     let rows = templates;
-    if (typeFilter !== 'all') {
-      rows = rows.filter((row) =>
-        typeFilter === 'findings'
-          ? row.kind === 'finding'
-          : row.data.template_type === typeFilter,
-      );
-    }
+    if (typeFilter === 'findings') rows = rows.filter((row) => row.kind === 'finding');
+    else if (typeFilter === 'reports') rows = rows.filter((row) => row.kind === 'report');
     if (search.trim() !== '') {
       const q = search.trim().toLowerCase();
       rows = rows.filter((row) => row.data.name.toLowerCase().includes(q));
     }
     return rows;
   }, [templates, typeFilter, search]);
+
+  // Templates are merged client-side from multiple endpoints → client paging.
+  const templatesTable = useClientPagination(filtered, {
+    sortAccessors: {
+      name: (row) => row.data.name,
+      type: (row) => row.data.template_type,
+      default: (row) => row.data.is_default,
+      updated: (row) => row.data.updated_at,
+    },
+    initialSort: { key: 'name', dir: 'asc' },
+    isLoading,
+  });
 
   // Handlers
   const handleNew = (): void => {
@@ -142,7 +144,7 @@ export default function TemplatesPage(): JSX.Element {
     overview: { eyebrow: t('panel.overviewEyebrow'), title: t('panel.overviewTitle') },
     templates: {
       eyebrow: t('panel.templatesEyebrow'),
-      title: t('panel.templatesTitle', { count: filtered.length }),
+      title: t('panel.templatesTitle', { count: templatesTable.total }),
     },
   }[tab] ?? { eyebrow: '', title: '' };
 
@@ -165,6 +167,7 @@ export default function TemplatesPage(): JSX.Element {
       activeTab={tab}
       onTabChange={setTab}
       panelHeading={panelHeading}
+      fillContent={tab === 'templates'}
       toolbar={
         tab === 'templates' ? (
           <TableToolbar
@@ -178,22 +181,16 @@ export default function TemplatesPage(): JSX.Element {
             }
           >
             <SearchInput placeholder={t('searchPlaceholder')} value={search} onChange={setSearch} />
-            <div className="flex flex-wrap gap-1.5">
-              {ALL_TYPE_FILTERS.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => { setTypeFilter(filter); }}
-                  className={
-                    filter === typeFilter
-                      ? 'rounded-md border border-primary bg-primary-lighter px-2.5 py-1 font-sans text-caption font-medium text-primary'
-                      : 'rounded-md border border-border bg-background px-2.5 py-1 font-sans text-caption text-foreground-secondary transition-colors hover:bg-background-hover'
-                  }
-                >
-                  {t(`typeFilter.${filter}` as Parameters<typeof t>[0])}
-                </button>
-              ))}
-            </div>
+            <Select
+              selectSize="md"
+              value={typeFilter}
+              onChange={(e) => { setTypeFilter(e.target.value as TypeFilterValue); }}
+              aria-label={t('typeFilter.aria')}
+            >
+              <option value="all">{t('typeFilter.all')}</option>
+              <option value="findings">{t('typeFilter.findings')}</option>
+              <option value="reports">{t('typeFilter.reports')}</option>
+            </Select>
           </TableToolbar>
         ) : undefined
       }
@@ -219,21 +216,18 @@ export default function TemplatesPage(): JSX.Element {
         )}
       </TabsContent>
 
-      <TabsContent value="templates" className="mt-0">
-        <PageTableContent
-          isLoading={isLoading}
-          isError={false}
-          errorMessage=""
-          countLabel={t('panel.showing', { count: filtered.length })}
-        >
-          <OrgTemplatesTable
-            templates={filtered}
-            canManage={canManage}
-            onEdit={handleEdit}
-            onSetDefault={handleSetDefault}
-            onDelete={handleDelete}
-          />
-        </PageTableContent>
+      <TabsContent value="templates" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <OrgTemplatesTable
+          table={templatesTable}
+          canManage={canManage}
+          onEdit={handleEdit}
+          onSetDefault={handleSetDefault}
+          onDelete={handleDelete}
+        />
+        <TablePaginationFooter
+          table={templatesTable}
+          className="shrink-0 border-t border-border px-5 py-2.5"
+        />
       </TabsContent>
     </TabbedPageShell>
   );

@@ -20,6 +20,9 @@ export type Column<T> = {
   className?: string;
   headerClassName?: string;
   cell: (item: T, index: number) => ReactNode;
+  /** When set, the column header is clickable and sorts by this server key
+   * (or `sortAccessors` key for client-paginated tables). Used by `DataTable`. */
+  sortKey?: string;
 };
 
 export type PageTableProps<T> = {

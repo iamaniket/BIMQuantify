@@ -3,51 +3,64 @@
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Input, PageHeader } from '@bimstitch/ui';
+import { PageHeader } from '@bimstitch/ui';
 
-import { PageTableContent } from '@/components/shared/PageTable';
+import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { AuditLogTable } from '@/features/admin/audit/AuditLogTable';
-import { useGlobalAuditLog } from '@/features/admin/audit/useAuditLog';
+import { listGlobalAuditLogPage } from '@/lib/api/admin';
+import { useTableQuery } from '@/lib/query/useTableQuery';
+import type { AuditEntry } from '@/lib/api/schemas';
 
 export default function AdminAuditLogPage(): JSX.Element {
   const t = useTranslations('admin.audit');
   const [actionFilter, setActionFilter] = useState('');
   const [resourceFilter, setResourceFilter] = useState('');
-  const query = useGlobalAuditLog({
+
+  const filters = {
     action: actionFilter === '' ? undefined : actionFilter,
     resource_type: resourceFilter === '' ? undefined : resourceFilter,
-    limit: 100,
+  };
+  const table = useTableQuery<AuditEntry, typeof filters>({
+    filters,
+    queryKey: (p) => ['admin', 'audit-log', 'global', p] as const,
+    queryFn: (token, p) => listGlobalAuditLogPage(token, p),
+    initialPageSize: 50,
+    initialSort: { key: 'created_at', dir: 'desc' },
   });
 
   return (
-    <main className="w-full px-4 py-6 sm:px-6 lg:px-8">
-      <PageHeader
-        title={t('pageTitle')}
-        subtitle={t('pageSubtitle')}
-        actions={undefined}
-        className={undefined}
-      />
-
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Input
-          placeholder={t('filterActionPlaceholder')}
-          value={actionFilter}
-          onChange={(e) => { setActionFilter(e.target.value); }}
-          className="w-64"
-          aria-label={t('filterActionAria')}
-        />
-        <Input
-          placeholder={t('filterResourcePlaceholder')}
-          value={resourceFilter}
-          onChange={(e) => { setResourceFilter(e.target.value); }}
-          className="w-64"
-          aria-label={t('filterResourceAria')}
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="shrink-0 px-4 pt-6 sm:px-6 lg:px-8">
+        <PageHeader
+          title={t('pageTitle')}
+          subtitle={t('pageSubtitle')}
+          actions={undefined}
+          className={undefined}
         />
       </div>
 
-      <PageTableContent isLoading={query.isLoading} isError={query.isError} errorMessage={t('loadError')} skeletonRows={1}>
-        <AuditLogTable entries={query.data ?? []} />
-      </PageTableContent>
-    </main>
+      <TableToolbar>
+        <SearchInput
+          placeholder={t('filterActionPlaceholder')}
+          value={actionFilter}
+          onChange={setActionFilter}
+          aria-label={t('filterActionAria')}
+        />
+        <SearchInput
+          placeholder={t('filterResourcePlaceholder')}
+          value={resourceFilter}
+          onChange={setResourceFilter}
+          aria-label={t('filterResourceAria')}
+        />
+      </TableToolbar>
+
+      <AuditLogTable table={table} />
+
+      <TablePaginationFooter
+        table={table}
+        className="shrink-0 border-t border-border px-5 py-2.5"
+      />
+    </div>
   );
 }

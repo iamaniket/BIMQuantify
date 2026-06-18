@@ -6,21 +6,29 @@ import type { JSX } from 'react';
 
 import type { Locale } from '@bimstitch/i18n';
 
-import { PageTable, type Column } from '@/components/shared/PageTable';
+import { DataTable } from '@/components/shared/DataTable';
+import type { Column } from '@/components/shared/PageTable';
 import { formatDate } from '@/lib/formatting/dates';
+import type { TablePagination } from '@/lib/query/useTableQuery';
 import type { OrganizationRead } from '@/lib/api/schemas';
 
 import { OrgStatusBadge } from './OrgStatusBadge';
 import { SeatUsage } from './SeatUsage';
 import { StorageUsage } from './StorageUsage';
 
-export function OrgTable({ organizations }: { organizations: OrganizationRead[] }): JSX.Element {
+export function OrgTable({
+  table,
+}: {
+  table: TablePagination<OrganizationRead>;
+}): JSX.Element {
   const t = useTranslations('admin.organizations.table');
+  const tOrg = useTranslations('admin.organizations');
   const locale = useLocale() as Locale;
 
   const columns: Column<OrganizationRead>[] = [
     {
       header: t('name'),
+      sortKey: 'name',
       cell: (org) => (
         <>
           <Link
@@ -37,6 +45,7 @@ export function OrgTable({ organizations }: { organizations: OrganizationRead[] 
     },
     {
       header: t('status'),
+      sortKey: 'status',
       cell: (org) => <OrgStatusBadge status={org.status} />,
     },
     {
@@ -53,17 +62,24 @@ export function OrgTable({ organizations }: { organizations: OrganizationRead[] 
     },
     {
       header: t('created'),
+      sortKey: 'created_at',
       className: 'text-foreground-tertiary',
       cell: (org) => formatDate(org.created_at, locale),
     },
   ];
 
   return (
-    <PageTable
+    <DataTable
       columns={columns}
-      data={organizations}
+      data={table.rows}
       rowKey={(o) => o.id}
       emptyMessage={t('empty')}
+      sort={table.sort}
+      onToggleSort={table.toggleSort}
+      isLoading={table.isLoading}
+      isFetching={table.isFetching}
+      isError={table.isError}
+      errorMessage={tOrg('loadError')}
     />
   );
 }

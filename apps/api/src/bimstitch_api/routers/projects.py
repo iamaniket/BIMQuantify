@@ -62,6 +62,11 @@ from bimstitch_api.models.project import (
 )
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
 from bimstitch_api.models.user import User
+from bimstitch_api.pagination import (
+    SortParams,
+    apply_sort,
+    sort_params,
+)
 from bimstitch_api.schemas.project import (
     ProjectCreate,
     ProjectInvitationCreate,
@@ -697,6 +702,7 @@ async def list_members(
     response: Response,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -716,14 +722,24 @@ async def list_members(
     ) or 0
     response.headers["X-Total-Count"] = str(total)
 
-    stmt = (
+    base = (
         select(ProjectMember, User.email, User.full_name)
         .join(User, User.id == ProjectMember.user_id)
         .where(ProjectMember.project_id == project.id)
-        .order_by(ProjectMember.created_at)
-        .limit(limit)
-        .offset(offset)
     )
+    stmt = apply_sort(
+        base,
+        sort,
+        {
+            "email": User.email,
+            "full_name": User.full_name,
+            "role": ProjectMember.role,
+            "created_at": ProjectMember.created_at,
+        },
+        default="created_at",
+        default_dir="asc",
+        tiebreaker=ProjectMember.user_id,
+    ).limit(limit).offset(offset)
     rows = (await session.execute(stmt)).all()
     return [
         {

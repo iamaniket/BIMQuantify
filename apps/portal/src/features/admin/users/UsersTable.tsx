@@ -5,19 +5,22 @@ import type { JSX } from 'react';
 
 import { Badge, Button } from '@bimstitch/ui';
 
-import { PageTable, type Column } from '@/components/shared/PageTable';
+import { DataTable } from '@/components/shared/DataTable';
+import type { Column } from '@/components/shared/PageTable';
+import type { TablePagination } from '@/lib/query/useTableQuery';
 import type { AdminUserRead } from '@/lib/api/schemas';
 
 import { useToggleActivateUser } from './useActivateUser';
 import { useTogglePromoteUser } from './usePromoteUser';
 
 type Props = {
-  users: AdminUserRead[];
+  table: TablePagination<AdminUserRead>;
   currentUserId: string | undefined;
 };
 
-export function UsersTable({ users, currentUserId }: Props): JSX.Element {
+export function UsersTable({ table, currentUserId }: Props): JSX.Element {
   const t = useTranslations('admin.users.table');
+  const tUsers = useTranslations('admin.users');
   const mutation = useTogglePromoteUser();
   const activeMutation = useToggleActivateUser();
   const pending = mutation.isPending || activeMutation.isPending;
@@ -25,6 +28,7 @@ export function UsersTable({ users, currentUserId }: Props): JSX.Element {
   const columns: Column<AdminUserRead>[] = [
     {
       header: t('user'),
+      sortKey: 'email',
       cell: (u) => (
         <>
           <div className="font-medium">{u.full_name ?? u.email}</div>
@@ -44,6 +48,7 @@ export function UsersTable({ users, currentUserId }: Props): JSX.Element {
     },
     {
       header: t('verified'),
+      sortKey: 'is_verified',
       cell: (u) => (
         <Badge variant={u.is_verified ? 'success' : 'warning'}>
           {u.is_verified ? t('verifiedYes') : t('verifiedNo')}
@@ -52,6 +57,7 @@ export function UsersTable({ users, currentUserId }: Props): JSX.Element {
     },
     {
       header: t('superuser'),
+      sortKey: 'is_superuser',
       cell: (u) => (
         <Badge variant={u.is_superuser ? 'info' : 'default'}>
           {u.is_superuser ? t('superuserYes') : t('superuserNo')}
@@ -94,12 +100,18 @@ export function UsersTable({ users, currentUserId }: Props): JSX.Element {
   ];
 
   return (
-    <PageTable
+    <DataTable
       columns={columns}
-      data={users}
+      data={table.rows}
       rowKey={(u) => u.id}
       emptyMessage={t('empty')}
-      rowClassName=""
+      sort={table.sort}
+      onToggleSort={table.toggleSort}
+      isLoading={table.isLoading}
+      isFetching={table.isFetching}
+      isError={table.isError}
+      errorMessage={tUsers('loadError')}
+      rowClassName="hover:bg-background-hover"
     />
   );
 }

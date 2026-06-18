@@ -39,6 +39,22 @@
       "download": "Download"
     },
     "loadMore": "Load more",
+    "pagination": {
+      "rowsPerPage": "Rows per page",
+      "range": "Showing {from}–{to} of {total}",
+      "empty": "No results",
+      "goToPage": "Go to page {page}",
+      "first": "First page",
+      "previous": "Previous page",
+      "next": "Next page",
+      "last": "Last page"
+    },
+    "table": {
+      "actions": "Actions",
+      "searchPlaceholder": "Search…",
+      "empty": "Nothing here yet",
+      "noResults": "No results match your filters"
+    },
     "errors": {
       "permissionDenied": "You don't have permission to perform this action."
     }
@@ -708,6 +724,7 @@
     }
   },
   "orgCertificates": {
+    "filterAll": "All types",
     "hero": {
       "title": "Certificate Library",
       "badge": "Organisation",
@@ -2029,10 +2046,8 @@
     "typeFilter": {
       "all": "All",
       "findings": "Findings",
-      "compliance_report": "Compliance report",
-      "assurance_plan": "Assurance plan",
-      "completion_declaration": "Completion declaration",
-      "dossier": "Dossier"
+      "reports": "Reports",
+      "aria": "Filter templates by type"
     },
     "table": {
       "name": "Name",

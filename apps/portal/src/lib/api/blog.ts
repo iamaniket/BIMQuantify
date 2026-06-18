@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, type PaginatedResponse } from './client';
 import { env } from '@/lib/env';
 import {
   BlogPostBilingualResponseSchema,
@@ -18,6 +18,8 @@ export type ListBlogPostsParams = {
   include_deleted?: boolean | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
+  order_by?: string | undefined;
+  order_dir?: 'asc' | 'desc' | undefined;
 };
 
 function buildQuery(
@@ -37,6 +39,19 @@ export async function listBlogPosts(
 ): Promise<BlogPostRead[]> {
   const query = buildQuery(params);
   return apiClient.get<BlogPostRead[]>(
+    `/admin/blog/posts${query}`,
+    BlogPostListSchema,
+    accessToken,
+  );
+}
+
+/** Paginated variant — returns the page items plus the total (X-Total-Count). */
+export async function listBlogPostsPage(
+  accessToken: string,
+  params: ListBlogPostsParams = {},
+): Promise<PaginatedResponse<BlogPostRead[]>> {
+  const query = buildQuery(params);
+  return apiClient.getWithMeta<BlogPostRead[]>(
     `/admin/blog/posts${query}`,
     BlogPostListSchema,
     accessToken,

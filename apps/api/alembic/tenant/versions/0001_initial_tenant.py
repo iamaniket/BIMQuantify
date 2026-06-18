@@ -29,6 +29,10 @@ bcf_viewpoints.xray/measurements; deadlines.reference_number/filing_notes/
 filed_at; project_files.outline_storage_key; project_files.detected_kind
 (content-based discipline classification: architectural/structural/mep/mixed/
 none); bcf_topics.linked_file_id/is_2d)
+and flattened the bcf_viewpoints camera vectors from three JSONB columns
+(camera_view_point/camera_direction/camera_up_vector) into nine dedicated Float
+columns (camera_vp_x/y/z, camera_dir_x/y/z, camera_up_x/y/z) — same fixed-shape
+{x,y,z} JSONB removal as the anchor flattening above.
 and dropped model anchoring from attachments and certificates: `project_files`
 (role='attachment') and `certificates` no longer carry the
 `linked_element_global_id` / `linked_model_id` / `linked_file_id` /

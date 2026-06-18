@@ -15,10 +15,12 @@ import {
   DropdownMenuTrigger,
 } from '@bimstitch/ui';
 
+import { DataTable } from '@/components/shared/DataTable';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
-import { PageTable, type Column } from '@/components/shared/PageTable';
+import type { Column } from '@/components/shared/PageTable';
 import { formatDate } from '@/lib/formatting/dates';
 import { ApiError } from '@/lib/api/client';
+import type { TablePagination } from '@/lib/query/useTableQuery';
 import type { MemberRead } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -30,7 +32,12 @@ import { useUpdateMember } from './useUpdateMember';
 
 type Props = {
   organizationId: string;
-  members: MemberRead[];
+  /** Current page of members to display (client-paginated by the parent). */
+  table: TablePagination<MemberRead>;
+  /** Full member list (unpaginated) — needed to pick a reassignment owner. */
+  allMembers: MemberRead[];
+  /** Localized message shown when the member list fails to load. */
+  loadError: string;
 };
 
 const ERROR_CODE_TO_KEY: Record<string, string> = {
@@ -43,7 +50,7 @@ const ERROR_CODE_TO_KEY: Record<string, string> = {
   REASSIGN_TARGET_NOT_ELIGIBLE: 'reassignTargetNotEligible',
 };
 
-export function MembersTable({ organizationId, members }: Props): JSX.Element {
+export function MembersTable({ organizationId, table, allMembers, loadError }: Props): JSX.Element {
   const t = useTranslations('admin.members.table');
   const locale = useLocale() as Locale;
   const { me } = useAuth();
@@ -155,13 +162,14 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
 
   const reassignCandidates = reassignFor === null
     ? []
-    : members.filter(
+    : allMembers.filter(
       (m) => m.user_id !== reassignFor.userId && m.status === 'active',
     );
 
   const columns: Column<MemberRead>[] = [
     {
       header: t('user'),
+      sortKey: 'name',
       cell: (m) => (
         <>
           <div className="font-medium">{m.full_name ?? m.email}</div>
@@ -186,6 +194,7 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
     },
     {
       header: t('status'),
+      sortKey: 'status',
       cell: (m) => (
         <Badge
           variant={
@@ -204,6 +213,7 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
     },
     {
       header: t('invited'),
+      sortKey: 'invited',
       className: 'text-foreground-tertiary',
       cell: (m) => formatDate(m.invited_at, locale),
     },
@@ -359,24 +369,32 @@ export function MembersTable({ organizationId, members }: Props): JSX.Element {
   ];
 
   return (
-    <PageTable
-      columns={columns}
-      data={members}
-      rowKey={(m) => m.user_id}
-      emptyMessage={t('empty')}
-      rowClassName=""
-      renderBefore={<ErrorBanner message={errorMessage} className="mb-3" />}
-      renderAfter={
-        reassignFor !== null ? (
-          <ReassignOwnerDialog
-            open
-            projectIds={reassignFor.projectIds}
-            candidates={reassignCandidates}
-            onConfirm={onReassignConfirm}
-            onCancel={() => { setReassignFor(null); }}
-          />
-        ) : undefined
-      }
-    />
+    <>
+      {errorMessage !== null && (
+        <ErrorBanner message={errorMessage} className="mx-5 mt-3 shrink-0" />
+      )}
+      <DataTable
+        columns={columns}
+        data={table.rows}
+        rowKey={(m) => m.user_id}
+        emptyMessage={t('empty')}
+        sort={table.sort}
+        onToggleSort={table.toggleSort}
+        isLoading={table.isLoading}
+        isFetching={table.isFetching}
+        isError={table.isError}
+        errorMessage={loadError}
+        rowClassName="hover:bg-background-hover"
+      />
+      {reassignFor !== null && (
+        <ReassignOwnerDialog
+          open
+          projectIds={reassignFor.projectIds}
+          candidates={reassignCandidates}
+          onConfirm={onReassignConfirm}
+          onCancel={() => { setReassignFor(null); }}
+        />
+      )}
+    </>
   );
 }

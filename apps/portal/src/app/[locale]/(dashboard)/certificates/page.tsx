@@ -13,11 +13,16 @@ import {
   TabsContent,
 } from '@bimstitch/ui';
 
-import { PageTableContent, SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
+import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 
-import { getOrgCertificateDownloadUrl } from '@/lib/api/orgCertificates';
+import {
+  getOrgCertificateDownloadUrl,
+  listOrgCertificatesPage,
+} from '@/lib/api/orgCertificates';
 import type { CertificateTypeValue, OrgCertificate } from '@/lib/api/schemas';
+import { useTableQuery } from '@/lib/query/useTableQuery';
 import { OrgCertificatesHero } from '@/features/orgCertificates/OrgCertificatesHero';
 import { OrgCertificatesTable } from '@/features/orgCertificates/OrgCertificatesTable';
 import { OrgCertificatesOverview } from '@/features/orgCertificates/OrgCertificatesOverview';
@@ -46,9 +51,23 @@ export default function CertificatesPage(): JSX.Element {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewingCert, setViewingCert] = useState<OrgCertificate | null>(null);
 
-  const certsQuery = useOrgCertificates(typeFilter, search);
+  // Overview reads the org-wide (unfiltered) library for its aggregates.
+  const certsQuery = useOrgCertificates();
+  const allCerts = certsQuery.data ?? [];
+
+  // Certificates tab table — server-paginated + sortable.
+  const certFilters = {
+    certificateType: typeFilter,
+    search: search === '' ? undefined : search,
+  };
+  const certsTable = useTableQuery<OrgCertificate, typeof certFilters>({
+    filters: certFilters,
+    queryKey: (p) => ['org-certificates', 'list', p] as const,
+    queryFn: (token, p) => listOrgCertificatesPage(token, p),
+    initialSort: { key: 'valid_until', dir: 'asc' },
+  });
+
   const deleteMutation = useDeleteOrgCertificate();
-  const certificates = certsQuery.data ?? [];
 
   const handleDownload = useCallback(
     async (cert: OrgCertificate) => {
@@ -81,7 +100,7 @@ export default function CertificatesPage(): JSX.Element {
     },
     certificates: {
       eyebrow: t('panel.certificatesEyebrow'),
-      title: t('panel.certificatesTitle', { count: certificates.length }),
+      title: t('panel.certificatesTitle', { count: certsTable.total }),
     },
   }[tab] ?? { eyebrow: '', title: '' };
 
@@ -94,12 +113,13 @@ export default function CertificatesPage(): JSX.Element {
           value: 'certificates',
           label: t('tabs.certificates'),
           icon: <Table2 className="h-4 w-4" />,
-          badge: <Badge variant="primary" size="md" bordered={false}>{certificates.length}</Badge>,
+          badge: <Badge variant="primary" size="md" bordered={false}>{certsTable.total}</Badge>,
         },
       ]}
       activeTab={tab}
       onTabChange={setTab}
       panelHeading={panelHeading}
+      fillContent={tab === 'certificates'}
       toolbar={
         tab === 'certificates' ? (
           <TableToolbar
@@ -117,7 +137,7 @@ export default function CertificatesPage(): JSX.Element {
               onChange={(e) => { setTypeFilter(e.target.value === 'all' ? undefined : e.target.value as CertificateTypeValue); }}
             >
               {TYPE_OPTIONS.map(({ value, key }) => (
-                <option key={value} value={value}>{(key)}</option>
+                <option key={value} value={value}>{t(key)}</option>
               ))}
             </Select>
           </TableToolbar>
@@ -138,19 +158,21 @@ export default function CertificatesPage(): JSX.Element {
         {certsQuery.isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : (
-          <OrgCertificatesOverview certificates={certificates} />
+          <OrgCertificatesOverview certificates={allCerts} />
         )}
       </TabsContent>
 
-      <TabsContent value="certificates" className="mt-0">
-        <PageTableContent isLoading={certsQuery.isLoading} isError={false} errorMessage="" countLabel={t('panel.showing', { count: certificates.length })}>
-          <OrgCertificatesTable
-            certificates={certificates}
-            onDownload={(cert) => { void handleDownload(cert); }}
-            onDelete={handleDelete}
-            onView={setViewingCert}
-          />
-        </PageTableContent>
+      <TabsContent value="certificates" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <OrgCertificatesTable
+          table={certsTable}
+          onDownload={(cert) => { void handleDownload(cert); }}
+          onDelete={handleDelete}
+          onView={setViewingCert}
+        />
+        <TablePaginationFooter
+          table={certsTable}
+          className="shrink-0 border-t border-border px-5 py-2.5"
+        />
       </TabsContent>
     </TabbedPageShell>
   );

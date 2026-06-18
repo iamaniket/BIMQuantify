@@ -35,6 +35,7 @@ from fastapi import (
     HTTPException,
     Query,
     Request,
+    Response,
     UploadFile,
     status,
 )
@@ -48,6 +49,13 @@ from bimstitch_api.db import get_async_session
 from bimstitch_api.models.blog_post import BlogPost, BlogPostStatus
 from bimstitch_api.models.blog_post_tag import BlogPostTag
 from bimstitch_api.models.user import User
+from bimstitch_api.pagination import (
+    SortParams,
+    apply_sort,
+    count_query,
+    set_total_count,
+    sort_params,
+)
 from bimstitch_api.schemas.blog import (
     BLOG_LOCALES,
     BLOG_STATUSES,
@@ -257,6 +265,7 @@ async def _serialize(
 
 @router.get("/posts", response_model=list[BlogPostRead])
 async def list_blog_posts(
+    response: Response,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
     storage: StorageBackend = Depends(get_storage),
@@ -267,18 +276,19 @@ async def list_blog_posts(
     include_deleted: bool = False,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
 ) -> list[BlogPostRead]:
-    stmt = select(BlogPost).order_by(BlogPost.published_at.desc())
+    base = select(BlogPost)
     if not include_deleted:
-        stmt = stmt.where(BlogPost.deleted_at.is_(None))
+        base = base.where(BlogPost.deleted_at.is_(None))
     if locale is not None:
         _validate_locale(locale)
-        stmt = stmt.where(BlogPost.locale == locale)
+        base = base.where(BlogPost.locale == locale)
     if status_filter is not None:
-        stmt = stmt.where(BlogPost.status == _validate_status(status_filter))
+        base = base.where(BlogPost.status == _validate_status(status_filter))
     if q:
         like = f"%{q.lower()}%"
-        stmt = stmt.where(
+        base = base.where(
             or_(
                 func.lower(BlogPost.title).like(like),
                 func.lower(BlogPost.slug).like(like),
@@ -287,7 +297,7 @@ async def list_blog_posts(
     # Tag filter: each requested tag must be present (AND narrows the list).
     if tag:
         for tag_name in tag:
-            stmt = stmt.where(
+            base = base.where(
                 select(BlogPostTag.id)
                 .where(
                     BlogPostTag.post_id == BlogPost.id,
@@ -295,7 +305,21 @@ async def list_blog_posts(
                 )
                 .exists()
             )
-    stmt = stmt.limit(limit).offset(offset)
+
+    set_total_count(response, await count_query(session, base))
+    stmt = apply_sort(
+        base,
+        sort,
+        {
+            "title": BlogPost.title,
+            "status": BlogPost.status,
+            "locale": BlogPost.locale,
+            "published_at": BlogPost.published_at,
+        },
+        default="published_at",
+        default_dir="desc",
+        tiebreaker=BlogPost.id,
+    ).limit(limit).offset(offset)
     result = await session.execute(stmt)
     posts = list(result.scalars())
     return [await _serialize(p, storage, include_content=False) for p in posts]

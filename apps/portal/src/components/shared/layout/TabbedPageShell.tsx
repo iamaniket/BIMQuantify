@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 
 import {
+  cn,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -30,6 +31,13 @@ type Props = {
   toolbar?: ReactNode;
   /** Rendered after the Tabs (e.g. dialogs). */
   afterTabs?: ReactNode;
+  /**
+   * When true the content area becomes a non-scrolling, padding-free flex column
+   * so a child (e.g. `DataTable` + pinned `TablePaginationFooter`) can own the
+   * scroll and fill the full height. Compute it per active tab — `true` for a
+   * full-height table tab, `false` (default) for padded, page-scrolling content.
+   */
+  fillContent?: boolean;
   /** TabsContent blocks. */
   children: ReactNode;
 };
@@ -42,6 +50,7 @@ export function TabbedPageShell({
   panelHeading,
   toolbar,
   afterTabs,
+  fillContent = false,
   children,
 }: Props): ReactNode {
   return (
@@ -69,7 +78,12 @@ export function TabbedPageShell({
 
         {toolbar}
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div
+          className={cn(
+            'min-h-0 flex-1',
+            fillContent ? 'flex flex-col overflow-hidden' : 'overflow-y-auto p-5',
+          )}
+        >
           {children}
         </div>
       </Tabs>

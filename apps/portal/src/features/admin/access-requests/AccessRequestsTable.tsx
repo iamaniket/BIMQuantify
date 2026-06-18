@@ -7,12 +7,14 @@ import { useState, type JSX } from 'react';
 import { Badge, Button, TableCell, TableRow } from '@bimstitch/ui';
 import type { Locale } from '@bimstitch/i18n';
 
-import { PageTable, type Column } from '@/components/shared/PageTable';
+import { DataTable } from '@/components/shared/DataTable';
+import type { Column } from '@/components/shared/PageTable';
 import { formatDate, formatDateTime } from '@/lib/formatting/dates';
+import type { TablePagination } from '@/lib/query/useTableQuery';
 import type { AccessRequestRead } from '@/lib/api/schemas';
 
 type Props = {
-  requests: AccessRequestRead[];
+  table: TablePagination<AccessRequestRead>;
   onApprove: (request: AccessRequestRead) => void;
   onReject: (request: AccessRequestRead) => void;
 };
@@ -23,8 +25,9 @@ function statusVariant(s: string): 'default' | 'success' | 'error' {
   return 'default';
 }
 
-export function AccessRequestsTable({ requests, onApprove, onReject }: Props): JSX.Element {
+export function AccessRequestsTable({ table, onApprove, onReject }: Props): JSX.Element {
   const t = useTranslations('admin.accessRequests.table');
+  const tReq = useTranslations('admin.accessRequests');
   const locale = useLocale() as Locale;
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -48,18 +51,20 @@ export function AccessRequestsTable({ requests, onApprove, onReject }: Props): J
         );
       },
     },
-    { header: t('name'), className: 'font-medium', cell: (req) => req.name },
-    { header: t('email'), className: 'text-foreground-secondary', cell: (req) => req.work_email },
-    { header: t('company'), cell: (req) => req.company },
+    { header: t('name'), sortKey: 'name', className: 'font-medium', cell: (req) => req.name },
+    { header: t('email'), sortKey: 'work_email', className: 'text-foreground-secondary', cell: (req) => req.work_email },
+    { header: t('company'), sortKey: 'company', cell: (req) => req.company },
     { header: t('role'), className: 'text-foreground-secondary', cell: (req) => req.role },
     { header: t('companySize'), className: 'text-foreground-tertiary', cell: (req) => req.company_size },
     { header: t('country'), className: 'text-foreground-tertiary', cell: (req) => req.country },
     {
       header: t('status'),
+      sortKey: 'status',
       cell: (req) => <Badge variant={statusVariant(req.status)}>{req.status}</Badge>,
     },
     {
       header: t('submitted'),
+      sortKey: 'created_at',
       className: 'text-foreground-tertiary',
       cell: (req) => formatDate(req.created_at, locale),
     },
@@ -80,12 +85,18 @@ export function AccessRequestsTable({ requests, onApprove, onReject }: Props): J
   ];
 
   return (
-    <PageTable
+    <DataTable
       columns={columns}
-      data={requests}
+      data={table.rows}
       rowKey={(r) => r.id}
       emptyMessage={t('empty')}
-      rowClassName="group"
+      sort={table.sort}
+      onToggleSort={table.toggleSort}
+      isLoading={table.isLoading}
+      isFetching={table.isFetching}
+      isError={table.isError}
+      errorMessage={tReq('loadError')}
+      rowClassName="group hover:bg-background-hover"
       renderAfterRow={(req) =>
         expandedId === req.id ? (
           <TableRow>

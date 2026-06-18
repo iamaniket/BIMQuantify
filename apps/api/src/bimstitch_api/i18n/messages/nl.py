@@ -116,6 +116,7 @@ nl_messages: Catalog = {
     "errors.ERROR": "Er is iets misgegaan. Probeer het opnieuw.",
     "errors.INTERNAL_ERROR": "Er is aan onze kant iets misgegaan. Probeer het later opnieuw.",
     "errors.VALIDATION_ERROR": "Een deel van de ingevoerde gegevens is ongeldig. Controleer uw invoer en probeer het opnieuw.",
+    "errors.INVALID_SORT_KEY": "Op die kolom kan niet worden gesorteerd.",
 
     # --- authenticatie / sessie ---
     "errors.UNAUTHORIZED": "U moet inloggen om door te gaan.",
