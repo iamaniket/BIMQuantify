@@ -2,13 +2,16 @@
 
 import { Unlink } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import type { JSX } from 'react';
+import { useCallback, type JSX } from 'react';
 
 import { Button, Input, Select, Textarea } from '@bimstitch/ui';
 
-import { Field } from '@/components/shared/forms/Field';
-import type { Finding } from '@/lib/api/schemas';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
+import { Field } from '@/components/shared/forms/Field';
+import type { Finding, LinkedFileTypeValue } from '@/lib/api/schemas';
+
+import { FindingPinButton, type AnchorState } from './FindingPinButton';
 import { FindingPhotos } from './FindingPhotos';
 import { ReferenceDocumentPicker } from './ReferenceDocumentPicker';
 import { FINDING_SEVERITIES, type FindingDetailFormApi } from './useFindingDetailForm';
@@ -17,6 +20,9 @@ type Props = {
   projectId: string;
   finding: Finding;
   api: FindingDetailFormApi;
+  documentHandle?: DocumentViewerHandle | null | undefined;
+  viewerHandle?: ViewerHandle | null | undefined;
+  activeFileType?: LinkedFileTypeValue | null | undefined;
 };
 
 /**
@@ -24,13 +30,49 @@ type Props = {
  * resolve and verify sections. Pure presentation over {@link FindingDetailFormApi};
  * Save/Delete chrome is owned by the host (dialog footer or in-panel action row).
  */
-export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Element {
+export function FindingDetailFields({
+  projectId,
+  finding,
+  api,
+  documentHandle,
+  viewerHandle,
+  activeFileType,
+}: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const tSeverity = useTranslations('findings.severity');
   const { form, fields, isPending, canEdit } = api;
-  // No write permission (viewer/client) → form is a read-only view: inputs
-  // disabled, write actions hidden. The API would 403 these anyway.
   const fieldsDisabled = isPending || !canEdit;
+
+  const pinFileType = activeFileType ?? api.anchorFileType;
+  const la = api.localAnchor;
+  const currentPinAnchor: AnchorState | null = la != null
+    ? {
+        linked_file_type: la.linked_file_type,
+        anchor_x: la.anchor_x,
+        anchor_y: la.anchor_y,
+        anchor_z: la.anchor_z,
+        anchor_page: la.anchor_page,
+        linkedElementGlobalId: la.linked_element_global_id,
+      }
+    : null;
+
+  const handlePinChange = useCallback(
+    (anchor: AnchorState | null) => {
+      if (anchor == null) {
+        api.removeAnchor();
+      } else if (anchor.linked_file_type != null) {
+        api.updateAnchor({
+          linked_file_type: anchor.linked_file_type,
+          anchor_x: anchor.anchor_x,
+          anchor_y: anchor.anchor_y,
+          anchor_z: anchor.anchor_z,
+          anchor_page: anchor.anchor_page,
+          linked_element_global_id: anchor.linkedElementGlobalId,
+        });
+      }
+    },
+    [api],
+  );
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -86,7 +128,18 @@ export function FindingDetailFields({ projectId, finding, api }: Props): JSX.Ele
         />
       </div>
 
-      {api.isLinked && (
+      <div className="col-span-2">
+        <FindingPinButton
+          fileType={pinFileType ?? null}
+          currentAnchor={currentPinAnchor}
+          onAnchorChange={handlePinChange}
+          documentHandle={documentHandle}
+          viewerHandle={viewerHandle}
+          disabled={fieldsDisabled}
+        />
+      </div>
+
+      {api.isLinked && !api.isPinned && (
         <div className="col-span-2 flex items-start justify-between gap-2 rounded-md border border-border bg-surface-low p-3">
           <div className="min-w-0">
             <div className="text-label2 font-medium text-foreground">

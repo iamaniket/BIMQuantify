@@ -6,7 +6,9 @@ import type { JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';
 
-import type { Finding } from '@/lib/api/schemas';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+
+import type { Finding, LinkedFileTypeValue } from '@/lib/api/schemas';
 
 import { FindingDetailFields } from './FindingDetailFields';
 import { useFindingDetailForm } from './useFindingDetailForm';
@@ -18,6 +20,9 @@ type Props = {
   onSaved?: () => void;
   /** Fired after a successful delete. */
   onDeleted?: () => void;
+  documentHandle?: DocumentViewerHandle | null | undefined;
+  viewerHandle?: ViewerHandle | null | undefined;
+  activeFileType?: LinkedFileTypeValue | null | undefined;
 };
 
 /**
@@ -30,6 +35,9 @@ export function FindingDetailForm({
   finding,
   onSaved,
   onDeleted,
+  documentHandle,
+  viewerHandle,
+  activeFileType,
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const api = useFindingDetailForm(projectId, finding, { onSaved, onDeleted });
@@ -37,7 +45,14 @@ export function FindingDetailForm({
 
   return (
     <div className="flex flex-col gap-3 py-1">
-      <FindingDetailFields projectId={projectId} finding={finding} api={api} />
+      <FindingDetailFields
+        projectId={projectId}
+        finding={finding}
+        api={api}
+        documentHandle={documentHandle}
+        viewerHandle={viewerHandle}
+        activeFileType={activeFileType}
+      />
 
       {(canEdit || canDelete) && (
         <div className="flex items-center justify-between gap-2 border-t border-border pt-3">

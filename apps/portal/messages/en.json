@@ -1522,6 +1522,21 @@
         "description": "This finding is linked to a BIM element in the model.",
         "unlink": "Unlink element"
       },
+      "pin": {
+        "pinToDrawing": "Pin to drawing",
+        "pinToModel": "Pin to model",
+        "updatePin": "Update pin",
+        "removePin": "Remove pin",
+        "pinned": "Pinned",
+        "notPinned": "Not pinned to a location",
+        "page": "Page {page}",
+        "element": "Element: {name}",
+        "coords3d": "Position: ({x}, {y}, {z})",
+        "coords2d": "({x}, {y})",
+        "placementHintPdf": "Click on the drawing to place the pin",
+        "placementHintIfc": "Click on the model to place the pin",
+        "placing": "Placing…"
+      },
       "history": {
         "title": "History",
         "empty": "No history yet.",

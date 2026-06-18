@@ -33,9 +33,15 @@ class BcfViewpoint(TimestampMixin, TenantBase):
     index_in_topic: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     camera_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    camera_view_point: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    camera_direction: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    camera_up_vector: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    camera_vp_x: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    camera_vp_y: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    camera_vp_z: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    camera_dir_x: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    camera_dir_y: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    camera_dir_z: Mapped[float] = mapped_column(Float, nullable=False, default=-1.0)
+    camera_up_x: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    camera_up_y: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    camera_up_z: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     field_of_view: Mapped[float | None] = mapped_column(Float, nullable=True)
     field_of_height: Mapped[float | None] = mapped_column(Float, nullable=True)
 

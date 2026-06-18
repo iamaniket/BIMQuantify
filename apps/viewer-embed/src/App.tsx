@@ -38,6 +38,7 @@ export function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('3d');
   const [activeLevel, setActiveLevel] = useState(0);
   const [splitRatio, setSplitRatio] = useState(0.5);
+  const [viewerReady, setViewerReady] = useState(false);
 
   const handleRef = useRef<ViewerHandle | null>(null);
   const bridgeRef = useRef<Bridge | null>(null);
@@ -68,6 +69,7 @@ export function App() {
     (msg: HostMessage): void => {
       switch (msg.type) {
         case 'loadModel':
+          setViewerReady(false);
           setBundle(msg.bundle);
           setAdditionalBundles(msg.additionalBundles ?? []);
           setActiveLevel(0);
@@ -137,8 +139,37 @@ export function App() {
     };
   }, [viewMode]);
 
+  // Storey isolation: when in 2D/Split mode, isolate the active level's
+  // elements in 3D so only that floor is visible. Restore on mode switch.
+  useEffect(() => {
+    if (!viewerReady || !bundle) return undefined;
+    const handle = handleRef.current;
+    if (!handle) return undefined;
+
+    const levels = floorPlan.levels;
+    const membership = floorPlan.storeyMembership;
+    const lvl = levels[activeLevel];
+    const shouldIsolate = viewMode !== '3d' && lvl != null;
+
+    if (shouldIsolate) {
+      const localIds = membership.get(lvl.storeyExpressID) ?? [];
+      if (localIds.length > 0) {
+        const modelId = bundle.modelId;
+        const items = localIds.map((localId) => ({ modelId, localId }));
+        handle.commands.execute('visibility.isolateItem', items).catch(() => undefined);
+      }
+    } else {
+      handle.commands.execute('visibility.showAll').catch(() => undefined);
+    }
+
+    return () => {
+      handle.commands.execute('visibility.showAll').catch(() => undefined);
+    };
+  }, [viewerReady, activeLevel, viewMode, bundle, floorPlan.levels, floorPlan.storeyMembership]);
+
   const onReady = useCallback((handle: ViewerHandle): void => {
     handleRef.current = handle;
+    setViewerReady(true);
     const bridge = bridgeRef.current;
 
     // Re-mounts create a fresh event bus — drop any prior subscriptions first.

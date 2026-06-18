@@ -28,6 +28,8 @@ export type FloorPlanDataResult = {
   levels: FloorPlanLevelInfo[];
   /** spaceId → room label, joined from the model metadata (empty when absent). */
   roomNames: Map<number, string>;
+  /** storeyExpressID → element express ids on that storey (for 3D isolation). */
+  storeyMembership: Map<number, number[]>;
   status: FloorPlanStatus;
 };
 
@@ -35,6 +37,7 @@ const EMPTY: FloorPlanDataResult = {
   data: null,
   levels: [],
   roomNames: new Map(),
+  storeyMembership: new Map(),
   status: 'idle',
 };
 
@@ -44,6 +47,11 @@ type SpatialNodeLite = {
   type: string;
   name: string | null;
   children?: SpatialNodeLite[];
+};
+
+type ElementEntryLite = {
+  expressID: number;
+  containedIn: number | null;
 };
 
 /** Walk the spatial tree collecting storey + space display names by expressID. */
@@ -56,6 +64,43 @@ function collectNames(
   if (node.type === 'IfcBuildingStorey' && node.name) storeys.set(node.expressID, node.name);
   if (node.type === 'IfcSpace' && node.name) spaces.set(node.expressID, node.name);
   for (const c of node.children ?? []) collectNames(c, storeys, spaces);
+}
+
+/**
+ * Map each storey express id → the express ids of every element on that storey.
+ * Walks the spatial tree to find IfcBuildingStorey nodes, marks every descendant
+ * container, then buckets elements by their `containedIn` container. Express id
+ * == fragments local id, so these feed `visibility.isolateItem` directly.
+ */
+function buildStoreyMembership(
+  tree: SpatialNodeLite | null | undefined,
+  elements: ElementEntryLite[] | undefined,
+): Map<number, number[]> {
+  const out = new Map<number, number[]>();
+  if (!elements || !tree) return out;
+  const storeyOfContainer = new Map<number, number>();
+  const mark = (node: SpatialNodeLite, storeyId: number): void => {
+    storeyOfContainer.set(node.expressID, storeyId);
+    for (const c of node.children ?? []) mark(c, storeyId);
+  };
+  const findStoreys = (node: SpatialNodeLite | null | undefined): void => {
+    if (!node) return;
+    if (node.type === 'IfcBuildingStorey') {
+      mark(node, node.expressID);
+      return;
+    }
+    for (const c of node.children ?? []) findStoreys(c);
+  };
+  findStoreys(tree);
+  for (const e of elements) {
+    if (e.containedIn == null) continue;
+    const sid = storeyOfContainer.get(e.containedIn);
+    if (sid == null) continue;
+    const arr = out.get(sid);
+    if (arr) arr.push(e.expressID);
+    else out.set(sid, [e.expressID]);
+  }
+  return out;
 }
 
 /**
@@ -94,12 +139,17 @@ export function useFloorPlanData(
 
         const storeyNames = new Map<number, string>();
         const spaceNames = new Map<number, string>();
+        let membership = new Map<number, number[]>();
         if (metadataUrl) {
           try {
             const metaRes = await fetch(metadataUrl);
             if (metaRes.ok) {
-              const json = (await metaRes.json()) as { spatialTree?: SpatialNodeLite | null };
+              const json = (await metaRes.json()) as {
+                spatialTree?: SpatialNodeLite | null;
+                elements?: ElementEntryLite[];
+              };
               collectNames(json.spatialTree ?? null, storeyNames, spaceNames);
+              membership = buildStoreyMembership(json.spatialTree, json.elements);
             }
           } catch {
             // Names are optional — fall back to generated "Level N".
@@ -119,7 +169,7 @@ export function useFloorPlanData(
           elevation: lv.elevation,
           name: storeyNames.get(lv.storeyExpressID) ?? `Level ${String(i)}`,
         }));
-        setResult({ data, levels, roomNames: spaceNames, status: 'ready' });
+        setResult({ data, levels, roomNames: spaceNames, storeyMembership: membership, status: 'ready' });
       } catch {
         if (!cancelled) setResult({ ...EMPTY, status: 'error' });
       }

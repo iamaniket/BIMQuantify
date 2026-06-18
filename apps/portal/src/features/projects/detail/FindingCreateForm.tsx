@@ -8,12 +8,15 @@ import { z } from 'zod';
 
 import { Button, Input, Label, Select, Textarea } from '@bimstitch/ui';
 
+import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+
 import { Field } from '@/components/shared/forms/Field';
 import { renderFieldInput } from '@/features/findingTemplates/fieldTypes';
 import { useCreateFinding } from '@/features/findings/useCreateFinding';
 import { useRegisterField } from '@/hooks/useRegisterField';
 import type { FindingTemplate, LinkedFileTypeValue } from '@/lib/api/schemas';
 
+import { FindingPinButton, type AnchorState } from './FindingPinButton';
 import { FindingPhotos } from './FindingPhotos';
 import { ReferenceDocumentPicker } from './ReferenceDocumentPicker';
 import { buildFindingCreatePayload } from './findingCreatePayload';
@@ -44,9 +47,27 @@ type Props = {
   linkedElementGlobalId?: string | null;
   linkedPoint?: Record<string, number> | null;
   linkedFileType?: LinkedFileTypeValue | null;
+  documentHandle?: DocumentViewerHandle | null | undefined;
+  viewerHandle?: ViewerHandle | null | undefined;
   onCreated: (findingId: string) => void;
-  onCancel?: () => void;
+  onCancel?: (() => void) | undefined;
 };
+
+function anchorStateFromProps(
+  linkedFileType: LinkedFileTypeValue | null | undefined,
+  linkedPoint: Record<string, number> | null | undefined,
+  linkedElementGlobalId: string | null | undefined,
+): AnchorState | null {
+  if (linkedPoint == null || linkedFileType == null) return null;
+  return {
+    linked_file_type: linkedFileType,
+    anchor_x: linkedPoint['x'],
+    anchor_y: linkedPoint['y'],
+    anchor_z: linkedPoint['z'],
+    anchor_page: linkedPoint['page'],
+    linkedElementGlobalId: linkedElementGlobalId ?? null,
+  };
+}
 
 /**
  * Inline finding create form — the dialog-free counterpart to `FindingFormDialog`,
@@ -62,6 +83,8 @@ export function FindingCreateForm({
   linkedElementGlobalId,
   linkedPoint,
   linkedFileType,
+  documentHandle,
+  viewerHandle,
   onCreated,
   onCancel,
 }: Props): JSX.Element {
@@ -72,6 +95,9 @@ export function FindingCreateForm({
   const [referenceAttachmentIds, setReferenceAttachmentIds] = useState<string[]>([]);
   const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
   const [extraError, setExtraError] = useState<string | null>(null);
+  const [pinAnchor, setPinAnchor] = useState<AnchorState | null>(
+    () => anchorStateFromProps(linkedFileType, linkedPoint, linkedElementGlobalId),
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -91,10 +117,24 @@ export function FindingCreateForm({
   const customFields = template?.fields ?? [];
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
+    const anchorPoint: Record<string, number> | null = pinAnchor != null
+      ? {
+          ...(pinAnchor.anchor_x != null ? { x: pinAnchor.anchor_x } : {}),
+          ...(pinAnchor.anchor_y != null ? { y: pinAnchor.anchor_y } : {}),
+          ...(pinAnchor.anchor_z != null ? { z: pinAnchor.anchor_z } : {}),
+          ...(pinAnchor.anchor_page != null ? { page: pinAnchor.anchor_page } : {}),
+        }
+      : linkedPoint ?? null;
     const result = buildFindingCreatePayload(
       values,
       { photoIds, referenceAttachmentIds, customValues, template },
-      { linkedModelId, linkedFileId, linkedElementGlobalId, linkedPoint, linkedFileType },
+      {
+        linkedModelId,
+        linkedFileId,
+        linkedElementGlobalId: pinAnchor?.linkedElementGlobalId ?? linkedElementGlobalId,
+        linkedPoint: anchorPoint,
+        linkedFileType: pinAnchor?.linked_file_type ?? linkedFileType,
+      },
     );
     if (!result.ok) {
       setExtraError(t('requiredError'));
@@ -163,6 +203,14 @@ export function FindingCreateForm({
           )}
         </div>
       ))}
+
+      <FindingPinButton
+        fileType={linkedFileType ?? null}
+        currentAnchor={pinAnchor}
+        onAnchorChange={setPinAnchor}
+        documentHandle={documentHandle}
+        viewerHandle={viewerHandle}
+      />
 
       {showPhotos && (
         <FindingPhotos

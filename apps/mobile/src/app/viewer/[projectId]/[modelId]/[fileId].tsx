@@ -1,4 +1,4 @@
-import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
+import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,6 +34,7 @@ import { colors } from '@/theme';
  * wired to the (Phase D) finding flows where the TODOs are.
  */
 export default function ViewerScreen() {
+  const router = useRouter();
   const { tokens } = useAuth();
   const { projectId, modelId, fileId } = useLocalSearchParams<{
     projectId: string;
@@ -94,10 +95,24 @@ export default function ViewerScreen() {
         setViewerError(msg.message);
         break;
       case 'pinTapped':
-        // TODO(Phase D): open the finding detail for msg.entityId.
+        router.push({
+          pathname: '/projects/[projectId]/findings/[findingId]',
+          params: { projectId: projectId!, findingId: msg.entityId },
+        });
         break;
       case 'pointPicked':
-        // TODO(Phase D): open the new-finding form anchored at msg.point.
+        router.push({
+          pathname: '/projects/[projectId]/findings/create',
+          params: {
+            projectId: projectId!,
+            modelId: modelId!,
+            fileId: fileId!,
+            fileType: 'ifc',
+            anchorX: String(msg.point.x),
+            anchorY: String(msg.point.y),
+            anchorZ: String(msg.point.z),
+          },
+        });
         break;
       case 'log':
         if (__DEV__) {
@@ -112,7 +127,7 @@ export default function ViewerScreen() {
       case 'progress':
         break;
     }
-  }, []);
+  }, [router, projectId, modelId, fileId]);
 
   const handleReload = useCallback(() => {
     setWebReady(false);

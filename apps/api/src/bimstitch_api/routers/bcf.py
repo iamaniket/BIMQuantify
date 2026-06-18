@@ -250,9 +250,9 @@ async def _topic_to_read(
             "guid": vp.guid,
             "index_in_topic": vp.index_in_topic,
             "camera_type": vp.camera_type,
-            "camera_view_point": vp.camera_view_point,
-            "camera_direction": vp.camera_direction,
-            "camera_up_vector": vp.camera_up_vector,
+            "camera_view_point": {"x": vp.camera_vp_x, "y": vp.camera_vp_y, "z": vp.camera_vp_z},
+            "camera_direction": {"x": vp.camera_dir_x, "y": vp.camera_dir_y, "z": vp.camera_dir_z},
+            "camera_up_vector": {"x": vp.camera_up_x, "y": vp.camera_up_y, "z": vp.camera_up_z},
             "field_of_view": vp.field_of_view,
             "field_of_height": vp.field_of_height,
             "components": vp.components,
@@ -291,9 +291,15 @@ def _build_viewpoint(payload: BcfViewpointCreate, topic_id: UUID) -> BcfViewpoin
         guid=vp_guid,
         index_in_topic=payload.index_in_topic,
         camera_type=payload.camera_type,
-        camera_view_point=payload.camera_view_point.model_dump(),
-        camera_direction=payload.camera_direction.model_dump(),
-        camera_up_vector=payload.camera_up_vector.model_dump(),
+        camera_vp_x=payload.camera_view_point.x,
+        camera_vp_y=payload.camera_view_point.y,
+        camera_vp_z=payload.camera_view_point.z,
+        camera_dir_x=payload.camera_direction.x,
+        camera_dir_y=payload.camera_direction.y,
+        camera_dir_z=payload.camera_direction.z,
+        camera_up_x=payload.camera_up_vector.x,
+        camera_up_y=payload.camera_up_vector.y,
+        camera_up_z=payload.camera_up_vector.z,
         field_of_view=payload.field_of_view,
         field_of_height=payload.field_of_height,
         components=payload.components.model_dump() if payload.components else None,
@@ -604,17 +610,20 @@ async def import_bcf(
             session.add(BcfTopicLabel(topic_id=topic.id, name=label[:64], position=i))
 
         for j, pv in enumerate(pt.viewpoints or []):
-            cam_vp = pv.camera_view_point
-            cam_dir = pv.camera_direction
-            cam_up = pv.camera_up_vector
             vp = BcfViewpoint(
                 topic_id=topic.id,
                 guid=pv.guid or str(uuid4()),
                 index_in_topic=j,
                 camera_type=pv.camera_type or "perspective",
-                camera_view_point={"x": cam_vp.x, "y": cam_vp.y, "z": cam_vp.z},
-                camera_direction={"x": cam_dir.x, "y": cam_dir.y, "z": cam_dir.z},
-                camera_up_vector={"x": cam_up.x, "y": cam_up.y, "z": cam_up.z},
+                camera_vp_x=pv.camera_view_point.x,
+                camera_vp_y=pv.camera_view_point.y,
+                camera_vp_z=pv.camera_view_point.z,
+                camera_dir_x=pv.camera_direction.x,
+                camera_dir_y=pv.camera_direction.y,
+                camera_dir_z=pv.camera_direction.z,
+                camera_up_x=pv.camera_up_vector.x,
+                camera_up_y=pv.camera_up_vector.y,
+                camera_up_z=pv.camera_up_vector.z,
                 field_of_view=pv.field_of_view,
                 field_of_height=pv.field_of_height,
                 components={
@@ -724,15 +733,12 @@ async def export_bcf(
                 except Exception:
                     pass
 
-            cam_vp = vp.camera_view_point or {}
-            cam_dir = vp.camera_direction or {}
-            cam_up = vp.camera_up_vector or {}
             pv = ParsedViewpoint(
                 guid=vp.guid,
                 camera_type=vp.camera_type,
-                camera_view_point=Vec3(x=cam_vp.get("x", 0), y=cam_vp.get("y", 0), z=cam_vp.get("z", 0)),
-                camera_direction=Vec3(x=cam_dir.get("x", 0), y=cam_dir.get("y", 0), z=cam_dir.get("z", 0)),
-                camera_up_vector=Vec3(x=cam_up.get("x", 0), y=cam_up.get("y", 0), z=cam_up.get("z", 0)),
+                camera_view_point=Vec3(x=vp.camera_vp_x, y=vp.camera_vp_y, z=vp.camera_vp_z),
+                camera_direction=Vec3(x=vp.camera_dir_x, y=vp.camera_dir_y, z=vp.camera_dir_z),
+                camera_up_vector=Vec3(x=vp.camera_up_x, y=vp.camera_up_y, z=vp.camera_up_z),
                 field_of_view=vp.field_of_view,
                 field_of_height=vp.field_of_height,
                 components=BcfComponents(
@@ -1148,9 +1154,9 @@ async def add_viewpoint(
         guid=vp.guid,
         index_in_topic=vp.index_in_topic,
         camera_type=vp.camera_type,
-        camera_view_point=vp.camera_view_point,
-        camera_direction=vp.camera_direction,
-        camera_up_vector=vp.camera_up_vector,
+        camera_view_point={"x": vp.camera_vp_x, "y": vp.camera_vp_y, "z": vp.camera_vp_z},
+        camera_direction={"x": vp.camera_dir_x, "y": vp.camera_dir_y, "z": vp.camera_dir_z},
+        camera_up_vector={"x": vp.camera_up_x, "y": vp.camera_up_y, "z": vp.camera_up_z},
         field_of_view=vp.field_of_view,
         field_of_height=vp.field_of_height,
         components=vp.components,

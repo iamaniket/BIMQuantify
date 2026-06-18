@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'rea
 import { Badge, Button, Input, SplitButton, type SplitButtonItem } from '@bimstitch/ui';
 import { DetailCard, DetailCardBody, DetailCardRow } from '@bimstitch/ui';
 
+import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
 import { useFindingTemplates } from '@/features/findingTemplates/useFindingTemplates';
@@ -19,7 +21,7 @@ import {
   severityBadgeVariant,
   statusBadgeVariant,
 } from '@/features/projects/detail/findingBadges';
-import type { FindingTemplate } from '@/lib/api/schemas';
+import type { FindingTemplate, LinkedFileTypeValue } from '@/lib/api/schemas';
 import { formatDate } from '@/lib/formatting/dates';
 import type { Locale } from '@bimstitch/i18n';
 
@@ -59,6 +61,10 @@ type EntityFindingsBodyProps = {
   /** Expand this finding's row when `openFindingNonce` changes (marker click). */
   openFindingId?: string | undefined;
   openFindingNonce?: number | undefined;
+  documentHandle?: DocumentViewerHandle | null | undefined;
+  viewerHandle?: ViewerHandle | null | undefined;
+  activeFileType?: LinkedFileTypeValue | null | undefined;
+  onNavigateToPage?: ((page: number) => void) | undefined;
 };
 
 export function EntityFindingsBody({
@@ -68,6 +74,10 @@ export function EntityFindingsBody({
   onAutoOpenConsumed,
   openFindingId,
   openFindingNonce,
+  documentHandle,
+  viewerHandle,
+  activeFileType,
+  onNavigateToPage,
 }: EntityFindingsBodyProps): JSX.Element {
   const t = useTranslations('viewerFindings');
   const tSeverity = useTranslations('findings.severity');
@@ -213,6 +223,8 @@ export function EntityFindingsBody({
               linkedElementGlobalId={scope.kind === 'element' ? scope.globalId : null}
               linkedPoint={pendingPoint}
               linkedFileType={LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
+              documentHandle={documentHandle}
+              viewerHandle={viewerHandle}
               onCreated={(id) => {
                 setCreateExpanded(false);
                 setPendingPoint(null);
@@ -253,6 +265,9 @@ export function EntityFindingsBody({
                   onToggle={() => {
                     setCreateExpanded(false);
                     setExpandedId(isExpanded ? null : finding.id);
+                    if (!isExpanded && finding.anchor_page != null && onNavigateToPage) {
+                      onNavigateToPage(finding.anchor_page);
+                    }
                   }}
                 >
                   <DetailCardRow
@@ -286,6 +301,9 @@ export function EntityFindingsBody({
                       projectId={projectId}
                       finding={finding}
                       onDeleted={() => { setExpandedId(null); }}
+                      documentHandle={documentHandle}
+                      viewerHandle={viewerHandle}
+                      activeFileType={activeFileType ?? LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
                     />
                   </DetailCardBody>
                 </DetailCard>

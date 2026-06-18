@@ -1522,6 +1522,21 @@
         "description": "Deze bevinding is gekoppeld aan een BIM-element in het model.",
         "unlink": "Element ontkoppelen"
       },
+      "pin": {
+        "pinToDrawing": "Vastpinnen op tekening",
+        "pinToModel": "Vastpinnen op model",
+        "updatePin": "Pin bijwerken",
+        "removePin": "Pin verwijderen",
+        "pinned": "Vastgepind",
+        "notPinned": "Niet vastgepind op een locatie",
+        "page": "Pagina {page}",
+        "element": "Element: {name}",
+        "coords3d": "Positie: ({x}, {y}, {z})",
+        "coords2d": "({x}, {y})",
+        "placementHintPdf": "Klik op de tekening om de pin te plaatsen",
+        "placementHintIfc": "Klik op het model om de pin te plaatsen",
+        "placing": "Plaatsen…"
+      },
       "history": {
         "title": "Geschiedenis",
         "empty": "Nog geen geschiedenis.",

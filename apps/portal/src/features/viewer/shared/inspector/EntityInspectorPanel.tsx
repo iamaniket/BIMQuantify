@@ -4,6 +4,8 @@ import { Info } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
+import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+
 import { ContextLine } from '@/components/shared/viewer/shared/ContextLine';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { ElementHeader } from '@/features/viewer/3d/properties/ElementHeader';
@@ -35,6 +37,9 @@ type EntityInspectorPanelProps = {
    * selection still takes precedence (element scope).
    */
   floorPlan?: boolean;
+  documentHandle?: DocumentViewerHandle | null | undefined;
+  viewerHandle?: ViewerHandle | null | undefined;
+  onNavigateToPage?: ((page: number) => void) | undefined;
 };
 
 /**
@@ -57,6 +62,9 @@ export function EntityInspectorPanel({
   isPdf,
   pdfCurrentPage,
   floorPlan,
+  documentHandle,
+  viewerHandle,
+  onNavigateToPage,
 }: EntityInspectorPanelProps): JSX.Element {
   const t = useTranslations('viewerInspector');
   const tAttachments = useTranslations('viewerAttachments');
@@ -117,6 +125,10 @@ export function EntityInspectorPanel({
         scope={{ kind: 'file', fileId }}
         autoOpenNonce={autoOpenNonce}
         onAutoOpenConsumed={handleAutoOpenConsumed}
+        documentHandle={documentHandle}
+        viewerHandle={viewerHandle}
+        activeFileType="pdf"
+        onNavigateToPage={onNavigateToPage}
       />
     );
   } else if (isFloorPlanMode) {
@@ -132,6 +144,8 @@ export function EntityInspectorPanel({
         scope={{ kind: 'floorplanIfc', modelId, fileId }}
         autoOpenNonce={autoOpenNonce}
         onAutoOpenConsumed={handleAutoOpenConsumed}
+        viewerHandle={viewerHandle}
+        activeFileType="ifc"
       />
     );
   } else if (isProjectMode) {
@@ -147,6 +161,8 @@ export function EntityInspectorPanel({
         scope={{ kind: 'project' }}
         autoOpenNonce={autoOpenNonce}
         onAutoOpenConsumed={handleAutoOpenConsumed}
+        viewerHandle={viewerHandle}
+        activeFileType="ifc"
       />
     );
   } else if (element !== null) {
@@ -163,6 +179,8 @@ export function EntityInspectorPanel({
           onAutoOpenConsumed={handleAutoOpenConsumed}
           openFindingId={openFindingId}
           openFindingNonce={openFindingNonce}
+          viewerHandle={viewerHandle}
+          activeFileType="ifc"
         />
       );
   } else {

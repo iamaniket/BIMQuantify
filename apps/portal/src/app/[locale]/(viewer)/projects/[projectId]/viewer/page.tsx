@@ -879,6 +879,9 @@ export default function ViewerPage(): JSX.Element {
                   openFindingId={openFinding?.id}
                   openFindingNonce={openFinding?.nonce}
                   floorPlan={inspectorRequest?.surface === 'floorplan' && viewMode !== '3d'}
+                  documentHandle={documentHandle}
+                  viewerHandle={viewerHandleRef.current}
+                  onNavigateToPage={isPdf ? setPdfCurrentPage : undefined}
                   {...(isPdf ? {
                     isPdf: true,
                     pdfCurrentPage,

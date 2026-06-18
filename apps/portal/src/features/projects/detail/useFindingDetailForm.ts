@@ -20,6 +20,7 @@ import type {
   Finding,
   FindingStatusValue,
   FindingUpdateInput,
+  LinkedFileTypeValue,
   ProjectMemberList,
 } from '@/lib/api/schemas';
 
@@ -82,6 +83,16 @@ function buildPatch(
 /** `useRegisterField` returns a register bound to the whole field-name union. */
 type FindingFieldRegister = UseFormRegisterReturn<Path<FindingDetailFormValues>>;
 
+/** Local anchor state tracked by the form (saved on Submit, not immediately). */
+export type LocalAnchor = {
+  linked_file_type: LinkedFileTypeValue;
+  anchor_x?: number | null | undefined;
+  anchor_y?: number | null | undefined;
+  anchor_z?: number | null | undefined;
+  anchor_page?: number | null | undefined;
+  linked_element_global_id?: string | null | undefined;
+} | null;
+
 export type FindingDetailFormApi = {
   form: UseFormReturn<FindingDetailFormValues>;
   fields: {
@@ -115,6 +126,22 @@ export type FindingDetailFormApi = {
   /** May delete the finding (Resource.finding delete). */
   canDelete: boolean;
   isLinked: boolean;
+  isPinned: boolean;
+  /** The finding's current file type anchor, if any. */
+  anchorFileType: LinkedFileTypeValue | null;
+  /** Current local anchor (may differ from saved — committed on Save). */
+  localAnchor: LocalAnchor;
+  /** Stage a new/updated anchor locally (committed on Save, not immediately). */
+  updateAnchor: (anchor: {
+    linked_file_type: LinkedFileTypeValue;
+    anchor_x?: number | null | undefined;
+    anchor_y?: number | null | undefined;
+    anchor_z?: number | null | undefined;
+    anchor_page?: number | null | undefined;
+    linked_element_global_id?: string | null | undefined;
+  }) => void;
+  /** Stage anchor removal locally (committed on Save, not immediately). */
+  removeAnchor: () => void;
   /** form.handleSubmit(onSubmit) — persists edits without changing status. */
   save: () => void;
   /** Promote a draft to `open` (requires assignee + deadline). */
@@ -151,6 +178,10 @@ export function useFindingDetailForm(
   const [referenceAttachmentIds, setReferenceAttachmentIds] = useState<string[]>([]);
   const [resolutionNote, setResolutionNote] = useState('');
   const [resolutionEvidenceIds, setResolutionEvidenceIds] = useState<string[]>([]);
+  // `undefined` = no local change (use finding's saved anchor); `null` = user
+  // removed the anchor; `{...}` = user placed/updated the anchor. Committed to
+  // the server only when the form is saved, so the panel stays open.
+  const [pendingAnchor, setPendingAnchor] = useState<LocalAnchor | undefined>(undefined);
 
   const form = useForm<FindingDetailFormValues>({ resolver: zodResolver(FindingDetailFormSchema) });
   const { reset: resetForm } = form;
@@ -183,6 +214,7 @@ export function useFindingDetailForm(
     setResolutionNote(finding.resolution_note ?? '');
     setResolutionEvidenceIds(finding.resolution_evidence_ids ?? []);
     setConfirmDelete(false);
+    setPendingAnchor(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finding?.id, finding?.updated_at, resetForm]);
 
@@ -205,6 +237,24 @@ export function useFindingDetailForm(
   const isResolved = status === 'resolved' || status === 'verified';
   const showResolve = status === 'open' || status === 'in_progress';
   const isLinked = finding?.linked_element_global_id != null;
+  // When pendingAnchor is `undefined` there's no local change — read from the
+  // saved finding. When it's `null` the user staged a removal. Otherwise it
+  // holds the locally-placed anchor that will be committed on Save.
+  const effectiveAnchor: LocalAnchor | undefined =
+    pendingAnchor !== undefined ? pendingAnchor : (
+      finding?.anchor_x != null && finding.linked_file_type != null
+        ? {
+            linked_file_type: finding.linked_file_type,
+            anchor_x: finding.anchor_x,
+            anchor_y: finding.anchor_y,
+            anchor_z: finding.anchor_z,
+            anchor_page: finding.anchor_page,
+            linked_element_global_id: finding.linked_element_global_id,
+          }
+        : null
+    );
+  const isPinned = effectiveAnchor != null && effectiveAnchor.anchor_x != null;
+  const anchorFileType = effectiveAnchor?.linked_file_type ?? finding?.linked_file_type ?? null;
 
   const mutateWithSaved = (input: FindingUpdateInput): void => {
     if (finding === null) return;
@@ -214,19 +264,45 @@ export function useFindingDetailForm(
     );
   };
 
+  const applyPendingAnchor = (patch: FindingUpdateInput): FindingUpdateInput => {
+    if (pendingAnchor === undefined) return patch;
+    if (pendingAnchor === null) {
+      return {
+        ...patch,
+        linked_file_type: null,
+        anchor_x: null,
+        anchor_y: null,
+        anchor_z: null,
+        anchor_page: null,
+        linked_model_id: null,
+        linked_file_id: null,
+        linked_element_global_id: null,
+      };
+    }
+    return {
+      ...patch,
+      linked_file_type: pendingAnchor.linked_file_type,
+      anchor_x: pendingAnchor.anchor_x ?? null,
+      anchor_y: pendingAnchor.anchor_y ?? null,
+      anchor_z: pendingAnchor.anchor_z ?? null,
+      anchor_page: pendingAnchor.anchor_page ?? null,
+      linked_element_global_id: pendingAnchor.linked_element_global_id ?? null,
+    };
+  };
+
   const onSubmit: SubmitHandler<FindingDetailFormValues> = (values) => {
-    mutateWithSaved(buildPatch(values, photoIds, referenceAttachmentIds));
+    mutateWithSaved(applyPendingAnchor(buildPatch(values, photoIds, referenceAttachmentIds)));
   };
   const onPromoteSubmit: SubmitHandler<FindingDetailFormValues> = (values) => {
-    mutateWithSaved(buildPatch(values, photoIds, referenceAttachmentIds, { status: 'open' }));
+    mutateWithSaved(applyPendingAnchor(buildPatch(values, photoIds, referenceAttachmentIds, { status: 'open' })));
   };
   const onResolveSubmit: SubmitHandler<FindingDetailFormValues> = (values) => {
     mutateWithSaved(
-      buildPatch(values, photoIds, referenceAttachmentIds, {
+      applyPendingAnchor(buildPatch(values, photoIds, referenceAttachmentIds, {
         status: 'resolved',
         resolutionNote: resolutionNote.trim(),
         resolutionEvidenceIds,
-      }),
+      })),
     );
   };
 
@@ -254,6 +330,11 @@ export function useFindingDetailForm(
     canEdit,
     canDelete,
     isLinked,
+    isPinned,
+    anchorFileType,
+    localAnchor: effectiveAnchor ?? null,
+    updateAnchor: (anchor) => { setPendingAnchor(anchor); },
+    removeAnchor: () => { setPendingAnchor(null); },
     save: form.handleSubmit(onSubmit),
     promote: form.handleSubmit(onPromoteSubmit),
     resolve: form.handleSubmit(onResolveSubmit),
