@@ -18,6 +18,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { LAYER_DEFAULT, LAYER_OVERLAY } from '../../../core/layers.js';
+import { diag } from '../../../core/diagResolution.js'; // DIAG: remove after debugging
 import type { Plugin, ViewerContext } from '../../../core/types.js';
 import { CustomFXAAPass } from './fxaa.js';
 import type { EffectsOptions, EffectsQuality } from './types.js';
@@ -32,6 +33,15 @@ const DEFAULTS: Required<EffectsOptions> = {
 export interface EffectsPluginAPI {
   setOptions(next: EffectsOptions): void;
   getOptions(): Required<EffectsOptions>;
+  /**
+   * Paint exactly one idle-quality composite immediately, WITHOUT waking the
+   * base renderer (no `markActive`). Returns `true` if it composited, `false`
+   * if the composite path is unavailable (effects disabled, x-ray active, or
+   * not yet built) — in which case the caller should fall back to a base
+   * render. Lets the motion→idle and post-shadow-bake transitions be a single
+   * clean frame instead of a base-render burst painted over the composite.
+   */
+  recomposite(): boolean;
 }
 
 export function effectsPlugin(
@@ -71,6 +81,11 @@ export function effectsPlugin(
   const renderCompositeFrame = (): void => {
     if (!composer || !ctxRef) return;
     const { camera, renderer, scene } = ctxRef;
+    // DIAG: composite frames — base DPR + actual backing-store size on screen.
+    diag(
+      `composite baseDPR=${renderer.getPixelRatio().toFixed(3)} ` +
+        `buf=${renderer.domElement.width}x${renderer.domElement.height}`,
+    );
     const savedMask = camera.layers.mask;
 
     camera.layers.set(LAYER_DEFAULT);
@@ -95,9 +110,16 @@ export function effectsPlugin(
     camera.layers.mask = savedMask;
   };
 
-  const requestComposerFrame = (): void => {
-    if (!composer || !opts.enabled || xrayActive) return;
+  // Paint one composite now if the composite path is live. Returns whether it
+  // actually painted, so callers can fall back to a base render when it didn't.
+  const composeNow = (): boolean => {
+    if (!composer || !opts.enabled || xrayActive) return false;
     renderCompositeFrame();
+    return true;
+  };
+
+  const requestComposerFrame = (): void => {
+    composeNow();
   };
 
   const api: Plugin & EffectsPluginAPI = {
@@ -113,6 +135,10 @@ export function effectsPlugin(
       requestComposerFrame();
     },
 
+    recomposite() {
+      return composeNow();
+    },
+
     install(ctx: ViewerContext) {
       ctxRef = ctx;
 
@@ -121,7 +147,11 @@ export function effectsPlugin(
       const camera = ctx.camera;
 
       const size = renderer.getSize(new THREE.Vector2());
-      const dpr = renderer.getPixelRatio();
+      // Size the composite to the stable full-quality DPR, never the live
+      // renderer.getPixelRatio() — interactive-performance lowers that during
+      // motion, and the composite only ever runs on idle (full quality). Reading
+      // the live value here latches the lowered ratio after a mid-motion resize.
+      const dpr = ctx.getBasePixelRatio();
       const w = Math.round(size.x * dpr);
       const h = Math.round(size.y * dpr);
 
@@ -172,7 +202,8 @@ export function effectsPlugin(
       const onResize = (): void => {
         if (!composer || !renderer) return;
         const s = renderer.getSize(new THREE.Vector2());
-        const r = renderer.getPixelRatio();
+        // Stable base DPR, not the live (possibly motion-lowered) value.
+        const r = ctx.getBasePixelRatio();
         const nw = Math.round(s.x * r);
         const nh = Math.round(s.y * r);
         composer.setSize(s.x, s.y);
@@ -209,6 +240,11 @@ export function effectsPlugin(
       );
       ctx.commands.register('effects.get', () => api.getOptions(), {
         title: 'Get visual effects state',
+      });
+      // Paint one idle-quality composite without waking the base renderer.
+      // Returns whether it painted (false when suppressed / unavailable).
+      ctx.commands.register('effects.recomposite', () => api.recomposite(), {
+        title: 'Repaint the idle composite once',
       });
 
       requestComposerFrame();

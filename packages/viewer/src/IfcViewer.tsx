@@ -32,6 +32,7 @@ import { placementPlugin } from './plugins/3d/placement/index.js';
 import { toolManagerPlugin } from './plugins/3d/tool-manager/index.js';
 import { contextMenuPlugin } from './plugins/3d/context-menu/index.js';
 import { xrayPlugin } from './plugins/3d/xray/index.js';
+import { displayModePlugin } from './plugins/3d/display-mode/index.js';
 import { outlinePlugin } from './plugins/3d/outline/index.js';
 import { modePlugin } from './plugins/3d/mode/index.js';
 import { sectionPlugin } from './plugins/3d/section/index.js';
@@ -202,6 +203,9 @@ function IfcViewerImpl(
       ...(props.section !== false ? [sectionPlugin(typeof props.section === 'object' ? props.section : {})] : []),
       measurementPlugin(),
       wireframePlugin(),
+      // Unified display-mode menu (normal / x-ray / monochrome / clay / matcap).
+      // Registers after xrayPlugin (its delegate) — see its `dependencies`.
+      displayModePlugin(),
       classifierPlugin(),
       // Minimap depends on classifier + visibility (both registered above) for
       // storey isolation; it owns the floor-plan↔model interaction surface.

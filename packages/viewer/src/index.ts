@@ -25,6 +25,7 @@ export type {
   ViewerContext,
   ViewerEvents,
   CullingMode,
+  MaterialLook,
   ItemId,
   Vec3,
   ShortcutMap,
@@ -207,6 +208,9 @@ export { toolManagerPlugin } from './plugins/3d/tool-manager/index.js';
 export type { NavMode, ActionMode, ToolManagerPluginAPI } from './plugins/3d/tool-manager/index.js';
 export { contextMenuPlugin } from './plugins/3d/context-menu/index.js';
 export { xrayPlugin } from './plugins/3d/xray/index.js';
+export { displayModePlugin } from './plugins/3d/display-mode/index.js';
+export type { DisplayModePluginAPI } from './plugins/3d/display-mode/index.js';
+export type { DisplayMode } from './plugins/3d/display-mode/types.js';
 export { outlinePlugin } from './plugins/3d/outline/index.js';
 export type {
   OutlinePluginOptions,

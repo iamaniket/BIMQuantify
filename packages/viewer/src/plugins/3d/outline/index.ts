@@ -108,7 +108,9 @@ export function outlinePlugin(
   const syncResolution = (): void => {
     if (!instanced || !ctxRef) return;
     const s = ctxRef.renderer.getSize(new THREE.Vector2());
-    const r = ctxRef.renderer.getPixelRatio();
+    // Stable base DPR so edge line widths stay aligned to the full-quality
+    // backing store, not the transient motion-lowered live ratio.
+    const r = ctxRef.getBasePixelRatio();
     instanced.setResolution(s.x * r, s.y * r);
   };
 

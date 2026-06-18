@@ -21,6 +21,7 @@
 import * as THREE from 'three';
 import * as FRAGS from '@thatopen/fragments';
 
+import { diag } from '../../../core/diagResolution.js'; // DIAG: remove after debugging
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 
 const NAME = 'interactive-performance' as const;
@@ -112,6 +113,11 @@ interface HoverPluginShape {
 interface XrayPluginShape {
   isEnabled(): boolean;
   list(): ItemId[];
+}
+
+interface EffectsPluginShape {
+  /** Paint one idle composite now; returns false if the path is unavailable. */
+  recomposite(): boolean;
 }
 
 const itemKey = (modelId: string, localId: number): string => `${modelId}::${String(localId)}`;
@@ -325,6 +331,10 @@ export function interactivePerformancePlugin(
       savedDpr = renderer.getPixelRatio();
       const target = (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1) *
         opts.motionRatio;
+      diag(
+        `enterMotion dynamicPixelRatio savedDpr=${savedDpr.toFixed(3)} ` +
+          `target=${Math.max(target, 0.1).toFixed(3)}`,
+      ); // DIAG
       renderer.setPixelRatio(Math.max(target, 0.1));
     }
 
@@ -417,6 +427,7 @@ export function interactivePerformancePlugin(
   const exitMotion = (): void => {
     if (!ctxRef || !inMotion) return;
     inMotion = false;
+    diag(`exitMotion savedDpr=${savedDpr === null ? 'null' : savedDpr.toFixed(3)}`); // DIAG
 
     const renderer = ctxRef.renderer;
     const camera = ctxRef.camera;
@@ -434,6 +445,10 @@ export function interactivePerformancePlugin(
       savedFar !== null ||
       overrideRestoreNeeded ||
       hiddenByModel.size > 0;
+    // Did this burst hide geometry that we're now re-showing? Re-shown tiles
+    // must stream back in (needs the base renderer's AUTO window). Captured
+    // before the re-show loop clears `hiddenByModel` below.
+    const reshowedGeometry = hiddenByModel.size > 0;
 
     if (savedDpr !== null) {
       renderer.setPixelRatio(savedDpr);
@@ -467,15 +482,32 @@ export function interactivePerformancePlugin(
       hiddenByModel.clear();
     }
 
-    // Repaint the restored, full-quality frame (and re-run the idle composite at
-    // full DPR). One extra short render burst, only when something was actually
-    // suppressed.
-    if (needsRepaint) ctxRef.requestRender();
+    // Repaint the restored, full-quality frame, only when something was actually
+    // suppressed. For a DPR / material / far-plane-only restore, paint a single
+    // idle composite directly instead of calling requestRender() — the latter
+    // wakes the base renderer (no FXAA) for ACTIVE_HOLD_MS, painting un-FXAA'd
+    // frames over the composite, which is the post-stop "resolution stepping".
+    // When geometry was re-shown its tiles must stream (needs the base AUTO
+    // window), and when the composite path is unavailable (effects off / x-ray)
+    // we fall back to a base render.
+    if (needsRepaint) {
+      const effects = ctxRef.plugins.get<EffectsPluginShape>('effects');
+      if (reshowedGeometry) {
+        diag('exitMotion repaint: requestRender (geometry reshown)'); // DIAG
+        ctxRef.requestRender();
+      } else {
+        const composited = effects?.recomposite() ?? false;
+        diag(
+          `exitMotion repaint: ${composited ? 'recomposite' : 'requestRender (no composite path)'}`,
+        ); // DIAG
+        if (!composited) ctxRef.requestRender();
+      }
+    }
   };
 
   const api: Plugin & InteractivePerformanceAPI = {
     name: NAME,
-    optionalDependencies: ['visibility', 'xray', 'hover-highlight'],
+    optionalDependencies: ['visibility', 'xray', 'hover-highlight', 'effects'],
 
     getOptions() {
       return { ...opts };

@@ -212,6 +212,7 @@ export type {
   ViewerContext,
   ViewerEvents,
   CullingMode,
+  MaterialLook,
   ItemId,
   Vec3,
   ShortcutMap,

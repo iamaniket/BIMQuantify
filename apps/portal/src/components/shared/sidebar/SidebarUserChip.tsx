@@ -40,7 +40,7 @@ export function SidebarUserChip(): JSX.Element {
     <Link
       href="/account"
       aria-label={t('account')}
-      className={`relative flex h-[52px] items-center gap-2.5 border-b border-white/12 transition-colors hover:bg-white/10 ${
+      className={`relative flex h-[46px] items-center gap-2.5 border-b border-white/12 transition-colors hover:bg-white/10 ${
         collapsed ? 'justify-center px-0' : 'px-4'
       }`}
     >

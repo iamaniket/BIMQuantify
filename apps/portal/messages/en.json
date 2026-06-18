@@ -3272,6 +3272,14 @@
       "currentPage": "Current page",
       "toggleTheme": "Toggle theme"
     },
+    "displayMode": {
+      "label": "Display mode",
+      "normal": "Normal",
+      "xray": "X-Ray",
+      "monochrome": "Monochrome",
+      "clay": "White clay",
+      "matcap": "MatCap"
+    },
     "flyNav": {
       "title": "Fly navigation",
       "moveForward": "Move forward (W)",

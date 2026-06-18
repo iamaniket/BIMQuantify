@@ -43,6 +43,17 @@ export interface Vec3 {
 export type CullingMode = 'auto' | 'on' | 'off';
 
 /**
+ * Whole-model "look" applied at the material level (see {@link ViewerContext.setActiveLook}).
+ *  - `'normal'`     — untouched materials.
+ *  - `'monochrome'` — desaturate the final shaded colour (keeps value, drops hue).
+ *  - `'clay'`       — uniform light albedo; lighting + shadows still read the form.
+ *  - `'matcap'`     — texture-free clay/ceramic shading from the view-space normal.
+ * X-ray is NOT a material look — it's per-item opacity, owned by the `xray`
+ * plugin and surfaced alongside these in the `display-mode` plugin's `mode`.
+ */
+export type MaterialLook = 'normal' | 'monochrome' | 'clay' | 'matcap';
+
+/**
  * Built-in event map. Plugins MAY emit additional events on the same bus
  * by augmenting this map via TypeScript module augmentation.
  */
@@ -112,6 +123,12 @@ export interface ViewerEvents {
   'measurement:complete': { id: string; type: string; value: number };
   'measurement:axisLock': { active: boolean; axis: 'x' | 'y' | 'z' | null };
   'wireframe:change': { active: boolean };
+  /**
+   * Display-mode plugin: the single mutually-exclusive viewer mode changed.
+   * `xray` is delegated to the `xray` plugin; the rest map to a
+   * {@link MaterialLook} applied via {@link ViewerContext.setActiveLook}.
+   */
+  'display:change': { mode: 'normal' | 'xray' | 'monochrome' | 'clay' | 'matcap' };
   'snapping:change': { enabled: boolean; snap: { point: Vec3; type: string } | null };
   'classification:change': { groups: Record<string, ItemId[]> };
   'finder:results': { query: Record<string, unknown>; results: ItemId[]; count: number };
@@ -200,6 +217,25 @@ export interface ViewerContext {
   setCullingMode: (mode: CullingMode) => Promise<void>;
   /** The current culling policy (not the resolved per-model `LodMode`). */
   getCullingMode: () => CullingMode;
+  /**
+   * Set the whole-model material look (`normal` / `monochrome` / `clay` /
+   * `matcap`) and re-apply it to every loaded material, composing it with each
+   * material's coplanar depth bias. Streamed-in materials inherit the active
+   * look via the central material hook. Driven by the `display-mode` plugin.
+   */
+  setActiveLook: (look: MaterialLook) => void;
+  /** The current whole-model material look. */
+  getActiveLook: () => MaterialLook;
+  /**
+   * The full-quality device-pixel-ratio the idle composite and screen-space
+   * overlays should size to. This is the *stable* base ratio
+   * (`min(window.devicePixelRatio, 2)`, matching the base renderer), NOT the
+   * live `renderer.getPixelRatio()` — the `interactive-performance` plugin
+   * transiently lowers the live value during camera motion, and any render
+   * target that latches that lowered value renders blurry until the next
+   * resize. Use this anywhere a render target must stay at full quality.
+   */
+  getBasePixelRatio: () => number;
 }
 
 export type { PluginRegistryView };

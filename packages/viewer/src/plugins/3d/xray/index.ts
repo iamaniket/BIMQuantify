@@ -124,7 +124,8 @@ export function xrayPlugin(options: XrayPluginOptions = {}): Plugin & XrayPlugin
   const addMergedOutline = async (): Promise<void> => {
     if (!ctxRef) return;
     const size = ctxRef.renderer.getSize(new THREE.Vector2());
-    const dpr = ctxRef.renderer.getPixelRatio();
+    // Stable base DPR, not the motion-lowered live ratio (see getBasePixelRatio).
+    const dpr = ctxRef.getBasePixelRatio();
     if (!mergedMat) {
       mergedMat = new LineMaterial({
         color: edgeColor.getHex(),

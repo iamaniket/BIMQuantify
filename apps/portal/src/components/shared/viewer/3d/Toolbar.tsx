@@ -1,10 +1,10 @@
 'use client';
 
-import { Blueprint, BoundingBox, Box, Eraser, Footprints, Home, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimstitch/ui/icons';
+import { Blueprint, BoundingBox, Box, Eraser, Eye, Footprints, Home, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
-import type { ActionMode, NavMode, ViewerHandle } from '@bimstitch/viewer';
+import type { ActionMode, DisplayMode, NavMode, ViewerHandle } from '@bimstitch/viewer';
 
 import type { ViewerSettings } from '@/lib/viewerSettings';
 
@@ -12,6 +12,7 @@ import { type ToolGroup, UnifiedToolbar } from '@/components/shared/viewer/share
 import { SettingsDialog } from '@/components/shared/viewer/shared/settings/SettingsDialog';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { CameraFlyPopover } from '@/components/shared/viewer/3d/CameraFlyPopover';
+import { DisplayModePopover } from '@/components/shared/viewer/3d/DisplayModePopover';
 
 type Props = {
   handle: ViewerHandle | null;
@@ -34,7 +35,13 @@ export function Toolbar({
 }: Props): JSX.Element {
   const t = useTranslations('viewer.toolbar');
   const tVm = useTranslations('viewer.viewMode');
+  const tMode = useTranslations('viewer.displayMode');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [modeOpen, setModeOpen] = useState(false);
+  // Live active display mode, mirrored from the viewer's `display:change` event so
+  // the toolbar highlight stays correct even when x-ray is toggled via the X
+  // shortcut or context menu (the display-mode plugin reflects that back).
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('normal');
   // Two INDEPENDENT axes, both owned by the tool-manager plugin and driven by
   // its `navmode:change` / `action:change` events:
   //   navMode — orbit ↔ first-person (one always active)
@@ -47,7 +54,8 @@ export function Toolbar({
     if (!handle) return;
     const offNav = handle.events.on('navmode:change', ({ mode }) => { setNavMode(mode); });
     const offAction = handle.events.on('action:change', ({ action: a }) => { setAction(a); });
-    return () => { offNav(); offAction(); };
+    const offMode = handle.events.on('display:change', ({ mode }) => { setDisplayMode(mode); });
+    return () => { offNav(); offAction(); offMode(); };
   }, [handle]);
 
   const run = (cmd: string, args?: unknown): void => {
@@ -146,6 +154,14 @@ export function Toolbar({
     tools: [
       {
         type: 'button',
+        id: 'display-mode',
+        icon: Eye,
+        label: tMode('label'),
+        isActive: modeOpen || displayMode !== 'normal',
+        onClick: () => { setModeOpen((v) => !v); },
+      },
+      {
+        type: 'button',
         id: 'spaces',
         icon: BoundingBox,
         label: t('spaces'),
@@ -176,6 +192,19 @@ export function Toolbar({
     <UnifiedToolbar groups={groups} testId="viewer-toolbar" testIdPrefix="viewer">
       {firstPerson ? (
         <CameraFlyPopover handle={handle} onClose={() => { run('tool.orbit'); }} />
+      ) : null}
+      {modeOpen ? (
+        <DisplayModePopover
+          handle={handle}
+          activeMode={displayMode}
+          onSelect={(m) => {
+            run('display.set', m);
+            // Persist the look only — x-ray is session-only, so store `normal`.
+            onSettingsChange({ ...settings, displayMode: { mode: m === 'xray' ? 'normal' : m } });
+            setModeOpen(false);
+          }}
+          onClose={() => { setModeOpen(false); }}
+        />
       ) : null}
       <SettingsDialog
         mode="3d"

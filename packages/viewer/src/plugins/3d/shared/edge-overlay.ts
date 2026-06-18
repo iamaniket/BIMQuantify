@@ -76,7 +76,8 @@ export class EdgeOverlay {
   ): Promise<void> {
     this.ensureSectionSync(ctx);
     const size = ctx.renderer.getSize(new THREE.Vector2());
-    const dpr = ctx.renderer.getPixelRatio();
+    // Stable base DPR, not the motion-lowered live ratio (see getBasePixelRatio).
+    const dpr = ctx.getBasePixelRatio();
 
     const mat = new LineMaterial({
       color: color.getHex(),

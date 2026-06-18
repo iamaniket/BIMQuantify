@@ -2,6 +2,7 @@ import type {
   CameraAction,
   ControlsOptions,
   CullingMode,
+  DisplayMode,
   EffectsOptions,
   EffectsQuality,
   InteractivePerformanceOptions,
@@ -60,9 +61,20 @@ export type ViewerSettings = {
   spaces: SpacesSettings;
   /** Native frustum-culling policy for large/federated scenes. `auto` by default. */
   performance: PerformanceSettings;
+  /** Persisted whole-model look. X-ray is session-only, so it's never stored here. */
+  displayMode: DisplayModeSettings;
 };
 
 export type SpacesSettings = { show: boolean };
+
+/**
+ * Whole-model display look persisted across reloads. Stores only the material
+ * looks (`normal` / `monochrome` / `clay` / `matcap`); x-ray is session-only
+ * and never written here (selecting it persists `normal`).
+ */
+export type DisplayModeSettings = { mode: DisplayMode };
+
+export const DEFAULT_DISPLAY_MODE: DisplayModeSettings = { mode: 'normal' };
 
 export const DEFAULT_SPACES: SpacesSettings = { show: false };
 
@@ -170,6 +182,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   cameraFly: DEFAULT_CAMERA_FLY,
   spaces: DEFAULT_SPACES,
   performance: DEFAULT_PERFORMANCE,
+  displayMode: DEFAULT_DISPLAY_MODE,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
@@ -195,6 +208,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
     cameraFly: { ...d.cameraFly, ...(p.cameraFly ?? {}) },
     spaces: { ...d.spaces, ...(p.spaces ?? {}) },
     performance: { ...d.performance, ...(p.performance ?? {}) },
+    displayMode: { ...d.displayMode, ...(p.displayMode ?? {}) },
   };
 }
 

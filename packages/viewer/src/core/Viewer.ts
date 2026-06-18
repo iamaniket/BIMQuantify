@@ -30,7 +30,9 @@ import { LAYER_OVERLAY } from './layers.js';
 import { computeVisibleSolidBox } from './visibleBox.js';
 import { ContactShadowBaker } from './contactShadow.js';
 import type { ContactShadowRect } from './contactShadow.js';
-import type { CullingMode, ItemId, Plugin, ViewerContext, ViewerEvents } from './types.js';
+import { applyLookToMaterial } from './displayLook.js';
+import { diag, patchPixelRatio, makeBufferWatcher } from './diagResolution.js'; // DIAG: remove after debugging
+import type { CullingMode, ItemId, MaterialLook, Plugin, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>;
 
@@ -122,6 +124,14 @@ const ACTIVE_HOLD_MS = 250;
  * than waiting for the next user interaction.
  */
 const MODEL_STREAM_HOLD_MS = 4000;
+/**
+ * Hold used when re-applying culling for a settings-driven policy *toggle*
+ * (not an initial load): only the models whose resolved `LodMode` changed
+ * re-stream their newly-resident tiles, so a short window suffices. Kept well
+ * under MODEL_STREAM_HOLD_MS so the toggle doesn't leave the base renderer
+ * painting (un-FXAA'd) over the idle composite for the full streaming hold.
+ */
+const CULL_TOGGLE_HOLD_MS = 1000;
 
 /**
  * Under `auto` culling, a single model starts frustum-culling once it exceeds
@@ -198,6 +208,13 @@ export class Viewer {
   private sun: THREE.DirectionalLight | null = null;
   private shadowGround: THREE.Mesh | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Set when a tile streams in (new material / LOD view update) while the
+   * renderer is parked at rest. Consumed by the rAF tick, which paints exactly
+   * one idle composite for it and stays parked — see {@link onStreamedChange}.
+   * Coalesces a whole batch of streamed changes into a single repaint per frame.
+   */
+  private streamRepaintPending = false;
   private shadowsEnabled = true;
   /** Bakes the silhouette mask the ground plane samples (contact-shadow mode). */
   private shadowBaker: ContactShadowBaker | null = null;
@@ -207,6 +224,8 @@ export class Viewer {
   private shadowBakeToken = 0;
   /** Frustum-culling policy (see {@link setCullingMode}). Default `auto`. */
   private cullingMode: CullingMode = 'auto';
+  /** Whole-model material look (see {@link setActiveLook}). Default `normal`. */
+  private activeLook: MaterialLook = 'normal';
   /** Per-model element count (from `model:elementCount`) feeding the `auto` heuristic. */
   private readonly elementCounts = new Map<string, number>();
   /** Per-model `LodMode` currently applied, so re-resolves skip no-op `setLodMode` calls. */
@@ -266,11 +285,19 @@ export class Viewer {
     // While the contact-shadow bake temporarily un-culls geometry, keep the
     // renderer parked so the transient full-geometry pass never reaches the
     // main canvas (no flash). bakeShadow issues one explicit repaint when done.
-    if (this.shadowBaking) return;
+    if (this.shadowBaking) {
+      diag('markActive SUPPRESSED (shadowBaking)'); // DIAG
+      return;
+    }
     const world = this.world;
     if (world === null) return;
     const renderer = world.renderer;
     if (renderer && renderer.mode !== RendererMode.AUTO) {
+      // DIAG: capture WHO woke the renderer (caller stack frames).
+      diag(
+        `markActive -> AUTO (holdMs=${holdMs})`,
+        new Error().stack?.split('\n').slice(2, 6).map((s) => s.trim()).join(' << '),
+      );
       renderer.mode = RendererMode.AUTO;
     }
     if (this.idleTimer !== null) clearTimeout(this.idleTimer);
@@ -279,15 +306,52 @@ export class Viewer {
       // Final near/far fit for the resting viewpoint, emit idle (effects
       // composites here, interactive-performance restores quality), then park.
       this.updateDynamicNearFar();
+      diag('viewer:idle EMIT'); // DIAG
       this.events.emit('viewer:idle', undefined);
       // A `viewer:idle` handler may have called markActive() (e.g. restoring
       // motion-reduced DPR needs one more full-quality frame) — that re-arms
       // the timer. Only park in MANUAL if nothing requested more rendering, so
       // we never stop a frame a handler just asked for.
       if (this.idleTimer === null && this.world?.renderer) {
+        diag('park -> MANUAL'); // DIAG
         this.world.renderer.mode = RendererMode.MANUAL;
+      } else {
+        diag('idle re-armed (stays AUTO)'); // DIAG
       }
     }, holdMs);
+  }
+
+  /**
+   * A tile streamed in (new material via `onItemSet`) or the LOD view updated
+   * (`onViewUpdated`). Two regimes:
+   *
+   * - **Active** (camera moving, or within the post-load / interaction hold —
+   *   renderer in AUTO with the idle countdown armed): keep the renderer awake
+   *   so streaming geometry paints progressively. Identical to the old
+   *   unconditional `markActive()`.
+   * - **At rest** (renderer parked in MANUAL, idle already settled): a late tile
+   *   from the streaming tail arrived. Flag a single coalesced composite repaint
+   *   for the next rAF tick and STAY parked. Flipping to AUTO here would re-run
+   *   the whole idle cycle (near/far refit + `viewer:idle` fan-out + composite +
+   *   park) per tile batch, and the long streaming tail (graphicsQuality=2 /
+   *   maxUpdateRate=0) would churn it forever — the never-settling loop.
+   */
+  private onStreamedChange(): void {
+    // While the contact-shadow bake temporarily un-culls geometry, drop the
+    // wake entirely (matches markActive's guard) — bakeShadow issues its own
+    // repaint when done, so a stray streamed-change repaint here would flash the
+    // transient full-geometry pass.
+    if (this.shadowBaking) return;
+    const renderer = this.world?.renderer;
+    const parked =
+      renderer != null &&
+      renderer.mode === RendererMode.MANUAL &&
+      this.idleTimer === null;
+    if (parked) {
+      this.streamRepaintPending = true; // painted once on the next tick
+      return;
+    }
+    this.markActive();
   }
 
   private updateDynamicNearFar(): void {
@@ -422,6 +486,7 @@ export class Viewer {
       logarithmicDepthBuffer: true,
     });
     world.renderer.showLogo = false;
+    patchPixelRatio(world.renderer.three); // DIAG: log every devicePixelRatio change + caller
     world.camera = new OrthoPerspectiveCamera(components);
     world.scene.setup();
 
@@ -528,24 +593,23 @@ export class Viewer {
         const bias = (level + 1) * COPLANAR_BIAS_EPS;
         // Bake the bias as a GLSL literal so distinct values produce distinct
         // programs automatically — a custom uniform would be shared across
-        // materials that share a program and leak the wrong value.
-        const biasLiteral = bias.toFixed(8);
-        material.onBeforeCompile = (shader): void => {
-          shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <logdepthbuf_fragment>',
-            `#include <logdepthbuf_fragment>
-#if defined( USE_LOGARITHMIC_DEPTH_BUFFER )
-\tgl_FragDepth -= ${biasLiteral};
-#endif`,
-          );
-        };
-        material.needsUpdate = true;
+        // materials that share a program and leak the wrong value. Stored on the
+        // material so the active display-mode look can re-compose with it.
+        material.userData.dmBias = bias.toFixed(8);
+      } else {
+        material.userData.dmBias = null;
       }
 
+      // Compose the depth bias with the active whole-model look (monochrome /
+      // clay / matcap) into a single onBeforeCompile, and flip needsUpdate.
+      // Newly-streamed geometry therefore inherits the current look for free.
+      applyLookToMaterial(material, this.activeLook);
+
       // A freshly-set material almost always means newly-streamed geometry —
-      // wake the renderer so the tile is drawn even if it lands after the
-      // camera/idle settle (on-demand rendering safety net for streaming).
-      this.markActive();
+      // get the tile drawn even if it lands after the camera/idle settle. While
+      // active this wakes the renderer; at rest it paints one composite and
+      // stays parked instead of churning the idle cycle (see onStreamedChange).
+      this.onStreamedChange();
     });
 
     // FragmentsModels streams tile data from a worker. Drive `update()`
@@ -553,8 +617,32 @@ export class Viewer {
     // appear on the next frame instead of waiting for a slow timer.
     // `force=false` (default) means we only drain completed batches —
     // no per-frame stall waiting on pending worker work.
+    const watchBuffer = makeBufferWatcher(); // DIAG: log backing-store size changes
     const tick = (): void => {
       fragmentsModels.update().catch(() => undefined);
+      // At-rest streaming tail: if a late tile streamed in while parked, paint
+      // exactly one idle composite for it this frame (coalescing a whole batch
+      // into a single repaint) and stay parked — never flip to AUTO. Re-check
+      // the parked state: a real wake between the flag being set and now means
+      // the normal AUTO path already covers the repaint, so drop the flag.
+      if (this.streamRepaintPending) {
+        this.streamRepaintPending = false;
+        const renderer = world.renderer;
+        if (
+          renderer &&
+          renderer.mode === RendererMode.MANUAL &&
+          this.idleTimer === null &&
+          !this.shadowBaking
+        ) {
+          const effects = this.pluginManager?.get<{ recomposite(): boolean }>(
+            'effects',
+          );
+          // Fall back to a single base-render wake only when the composite path
+          // is unavailable (effects disabled / x-ray active).
+          if (!(effects?.recomposite() ?? false)) this.markActive();
+        }
+      }
+      watchBuffer(world.renderer!.three); // DIAG
       this.updateRafId = requestAnimationFrame(tick);
     };
     this.updateRafId = requestAnimationFrame(tick);
@@ -599,6 +687,15 @@ export class Viewer {
       requestRender: () => this.markActive(),
       setCullingMode: (mode: CullingMode) => this.setCullingMode(mode),
       getCullingMode: () => this.cullingMode,
+      setActiveLook: (look: MaterialLook) => this.setActiveLook(look),
+      getActiveLook: () => this.activeLook,
+      // Stable full-quality DPR for the idle composite + screen-space overlays.
+      // Matches the base SimpleRenderer's clamp (min(dpr, 2)) and is deliberately
+      // independent of the live renderer.getPixelRatio(), which interactive-
+      // performance lowers during motion — sizing a render target off the live
+      // value latches the lowered ratio and renders blurry until the next resize.
+      getBasePixelRatio: () =>
+        typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
     };
     this.ctx = ctx;
 
@@ -667,7 +764,10 @@ export class Viewer {
       this.events.on(name, () => this.markActive());
     }
     // A canvas resize needs a repaint too (MANUAL won't redraw on its own).
-    world.renderer!.onResize.add(() => this.markActive());
+    world.renderer!.onResize.add((size?: THREE.Vector2) => {
+      diag(`renderer.onResize ${size ? `${size.x}x${size.y}` : ''}`); // DIAG
+      this.markActive();
+    });
 
     // Silhouette contact shadow: mark the mask dirty on every geometry /
     // isolation / visibility / x-ray change; the next idle frame re-bakes it
@@ -677,10 +777,17 @@ export class Viewer {
     const markShadowDirty = (): void => {
       this.shadowDirty = true;
     };
-    this.events.on('visibility:change', markShadowDirty);
-    this.events.on('xray:change', markShadowDirty);
+    this.events.on('visibility:change', () => {
+      diag('shadowDirty=true (visibility:change)'); // DIAG
+      markShadowDirty();
+    });
+    this.events.on('xray:change', () => {
+      diag('shadowDirty=true (xray:change)'); // DIAG
+      markShadowDirty();
+    });
     this.events.on('viewer:idle', () => {
       if (this.shadowsEnabled && this.shadowDirty && this.shadowGround !== null) {
+        diag('bakeShadow TRIGGERED on idle (shadowDirty was true)'); // DIAG
         this.shadowDirty = false;
         void this.bakeShadow();
       }
@@ -691,6 +798,7 @@ export class Viewer {
     // crosses the threshold here. Cheap: applyCulling no-ops when nothing
     // changed. `model:elementCount` is emitted by the selection plugin on load.
     this.events.on('model:elementCount', ({ modelId, count }) => {
+      diag(`model:elementCount ${modelId} count=${count}`); // DIAG
       this.elementCounts.set(modelId, count);
       if (this.cullingMode === 'auto') void this.applyCulling();
     });
@@ -748,11 +856,12 @@ export class Viewer {
     await model.setLodMode(initialLod).catch(() => undefined);
 
     // With native frustum culling on (ALL_GEOMETRY), tiles stream in/out as the
-    // camera turns. `onViewUpdated` fires after each view-update cycle — wake the
-    // on-demand renderer so re-shown tiles get drawn instead of the renderer
-    // parking with holes. (The material `onItemSet` hook covers brand-new tiles;
-    // this covers existing tiles re-entering the frustum.)
-    const onViewUpdated = (): void => this.markActive();
+    // camera turns. `onViewUpdated` fires after each view-update cycle — get the
+    // re-shown tiles drawn instead of the renderer parking with holes. (The
+    // material `onItemSet` hook covers brand-new tiles; this covers existing
+    // tiles re-entering the frustum.) Routed through onStreamedChange so the
+    // streaming tail repaints once at rest rather than re-arming AUTO forever.
+    const onViewUpdated = (): void => this.onStreamedChange();
     model.onViewUpdated.add(onViewUpdated);
     this.viewUpdatedUnsubs.set(modelId, () =>
       model.onViewUpdated.remove(onViewUpdated),
@@ -1146,9 +1255,16 @@ export class Viewer {
         await fragments.update(true).catch(() => undefined);
         this.shadowBaking = false;
       }
-      // Wake the renderer so the idle composite repaints with the fresh mask
-      // and the restored (culled) geometry.
-      this.markActive();
+      // Repaint the fresh shadow mask + restored geometry with one idle-quality
+      // composite instead of waking the base renderer — markActive() would put
+      // the renderer back in AUTO and paint un-FXAA'd frames during the settle
+      // (the post-stop "resolution stepping"). The forced fragments.update above
+      // already drained the restored geometry, so a single composite is enough.
+      // Fall back to markActive when the composite path is unavailable.
+      const effects = this.pluginManager?.get<{ recomposite(): boolean }>('effects');
+      const composited = effects?.recomposite() ?? false;
+      diag(`bakeShadow repaint: ${composited ? 'recomposite' : 'markActive'}`); // DIAG
+      if (!composited) this.markActive();
     }
   }
 
@@ -1232,7 +1348,7 @@ export class Viewer {
    * actually changed. Marks the contact shadow dirty so it re-bakes for the new
    * resident-geometry footprint on the next idle.
    */
-  private async applyCulling(): Promise<void> {
+  private async applyCulling(holdMs: number = MODEL_STREAM_HOLD_MS): Promise<void> {
     const fragments = this.fragmentsModels;
     if (fragments === null) return;
     const models = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
@@ -1245,9 +1361,10 @@ export class Viewer {
       changed = true;
     }
     if (!changed) return;
+    diag(`applyCulling CHANGED -> shadowDirty=true, markActive(${holdMs})`); // DIAG
     await fragments.update(true).catch(() => undefined);
     this.shadowDirty = true;
-    this.markActive(MODEL_STREAM_HOLD_MS);
+    this.markActive(holdMs);
   }
 
   /**
@@ -1259,7 +1376,45 @@ export class Viewer {
     if (this.cullingMode === mode) return;
     this.cullingMode = mode;
     this.events.emit('culling:change', { mode });
-    await this.applyCulling();
+    // A settings toggle only re-streams the models whose LodMode changed — use
+    // the short hold so the base renderer doesn't paint over the idle composite
+    // for the full multi-second streaming window.
+    await this.applyCulling(CULL_TOGGLE_HOLD_MS);
+  }
+
+  /**
+   * Set the whole-model material look and re-apply it across every loaded
+   * material (composed with each material's coplanar depth bias). Streamed-in
+   * materials inherit the look via the `materials.list.onItemSet` hook, so this
+   * only needs to walk what's already resolved. The `display-mode` plugin drives
+   * this via `ctx.setActiveLook`; x-ray is a separate (opacity) axis. */
+  setActiveLook(look: MaterialLook): void {
+    if (this.activeLook === look) return;
+    this.activeLook = look;
+    const fragments = this.fragmentsModels;
+    if (fragments !== null) {
+      const modelsList = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
+      const seen = new Set<THREE.Material>();
+      for (const model of modelsList.values()) {
+        (model as unknown as { object?: THREE.Object3D }).object?.traverse((obj) => {
+          const mesh = obj as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          for (const mat of mats) {
+            if (mat && !seen.has(mat)) {
+              seen.add(mat);
+              applyLookToMaterial(mat, look);
+            }
+          }
+        });
+      }
+    }
+    this.markActive();
+  }
+
+  /** The current whole-model material look. */
+  getActiveLook(): MaterialLook {
+    return this.activeLook;
   }
 
   /**

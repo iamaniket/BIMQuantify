@@ -69,6 +69,7 @@ import { useViewerSelectionHydrated } from '@/features/viewer/shared/viewerSelec
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
 import { usePerformanceCulling } from '@/features/viewer/3d/performanceCulling';
+import { useDisplayMode } from '@/features/viewer/3d/displayMode';
 import { useViewerMode } from '@/features/viewer/3d/useViewerMode';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
@@ -319,6 +320,9 @@ export default function ViewerPage(): JSX.Element {
     viewerReady,
     settings.performance.culling,
   );
+  // Re-apply the persisted whole-model look (monochrome/clay/matcap) on
+  // (re)mount; the toolbar drives live changes directly via `display.set`.
+  useDisplayMode(viewerHandleRef.current, viewerReady, settings.displayMode.mode);
   const hasSelection = isAllSelected || partialSelectionCount > 0;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,

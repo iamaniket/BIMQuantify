@@ -3272,6 +3272,14 @@
       "currentPage": "Huidige pagina",
       "toggleTheme": "Thema wisselen"
     },
+    "displayMode": {
+      "label": "Weergavemodus",
+      "normal": "Normaal",
+      "xray": "Röntgen",
+      "monochrome": "Monochroom",
+      "clay": "Wit klei",
+      "matcap": "MatCap"
+    },
     "flyNav": {
       "title": "Vliegnavigatie",
       "moveForward": "Vooruit (W)",
