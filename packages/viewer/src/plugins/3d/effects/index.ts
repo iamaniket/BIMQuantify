@@ -18,7 +18,6 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { LAYER_DEFAULT, LAYER_OVERLAY } from '../../../core/layers.js';
-import { diag } from '../../../core/diagResolution.js'; // DIAG: remove after debugging
 import type { Plugin, ViewerContext } from '../../../core/types.js';
 import { CustomFXAAPass } from './fxaa.js';
 import type { EffectsOptions, EffectsQuality } from './types.js';
@@ -81,11 +80,6 @@ export function effectsPlugin(
   const renderCompositeFrame = (): void => {
     if (!composer || !ctxRef) return;
     const { camera, renderer, scene } = ctxRef;
-    // DIAG: composite frames — base DPR + actual backing-store size on screen.
-    diag(
-      `composite baseDPR=${renderer.getPixelRatio().toFixed(3)} ` +
-        `buf=${renderer.domElement.width}x${renderer.domElement.height}`,
-    );
     const savedMask = camera.layers.mask;
 
     camera.layers.set(LAYER_DEFAULT);

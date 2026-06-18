@@ -84,7 +84,11 @@ export function scenePlugin(
     const w = el.clientWidth;
     const h = el.clientHeight;
     if (w === 0 || h === 0) return;
-    const dpr = window.devicePixelRatio || 1;
+    // Cap the backing-store DPR at 2 to match the 3D renderer
+    // (core/Viewer.ts getBasePixelRatio). This is a full-viewport WebGL surface,
+    // so on a DPR-3 phone an uncapped ratio renders ~2.25× the fragments for no
+    // perceptible gain — the dominant fill cost of the 2D/Split view on mobile.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     renderer.setPixelRatio(dpr);
     renderer.setSize(w, h, true);
     dirty = true;

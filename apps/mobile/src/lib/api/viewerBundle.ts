@@ -33,6 +33,8 @@ export type EmbedViewerBundle = {
   propertiesUrl?: string;
   outlineUrl?: string;
   cacheKey?: string;
+  /** Floor-plan artifact for the embed's 2D / Split views (absent when none). */
+  floorPlansUrl?: string;
 };
 
 /**
@@ -61,5 +63,6 @@ export function toViewerBundle(
   if (resp.properties_url !== null) out.propertiesUrl = resp.properties_url;
   if (resp.outline_url !== null) out.outlineUrl = resp.outline_url;
   if (resp.fragments_key !== null) out.cacheKey = resp.fragments_key;
+  if (resp.floor_plans_url !== null) out.floorPlansUrl = resp.floor_plans_url;
   return out;
 }

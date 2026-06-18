@@ -130,6 +130,14 @@
           <button id="loadBtn" disabled>2 · Load model into viewer</button>
         </div>
         <div class="row">
+          <label>View (sends setViewMode to the embed)</label>
+          <div class="inline">
+            <button id="view3dBtn" class="secondary" disabled>3D</button>
+            <button id="view2dBtn" class="secondary" disabled>2D</button>
+            <button id="viewSplitBtn" class="secondary" disabled>Split</button>
+          </div>
+        </div>
+        <div class="row">
           <button id="reloadBtn" class="secondary">Reload embed</button>
           <button id="clearBtn" class="secondary">Clear log</button>
         </div>
@@ -287,12 +295,23 @@
         if (entry.properties_url) b.propertiesUrl = entry.properties_url;
         if (entry.outline_url) b.outlineUrl = entry.outline_url;
         if (entry.fragments_key) b.cacheKey = entry.fragments_key;
+        if (entry.floor_plans_url) b.floorPlansUrl = entry.floor_plans_url;
         return b;
       }
 
       function doSend(payload) {
         embed.contentWindow.postMessage({ type: 'loadModel', ...payload }, '*');
-        log(`→ loadModel ${payload.bundle.modelId}${payload.additionalBundles?.length ? ` (+${payload.additionalBundles.length} federated)` : ''}`, 'info');
+        const hasPlan = payload.bundle.floorPlansUrl != null;
+        log(`→ loadModel ${payload.bundle.modelId}${payload.additionalBundles?.length ? ` (+${payload.additionalBundles.length} federated)` : ''}${hasPlan ? ' · has floor plan' : ' · no floor plan'}`, 'info');
+        // The embed defaults to 2D when a plan exists; mirror the native gating.
+        $('view3dBtn').disabled = false;
+        $('view2dBtn').disabled = !hasPlan;
+        $('viewSplitBtn').disabled = !hasPlan;
+      }
+
+      function setView(mode) {
+        embed.contentWindow.postMessage({ type: 'setViewMode', mode }, '*');
+        log(`→ setViewMode ${mode}`, 'info');
       }
 
       function sendLoad() {
@@ -321,9 +340,13 @@
         guard(async () => { await login(); await loadProjects(); }, $('loginBtn')));
       $('project').addEventListener('change', (e) => guard(() => loadManifest(e.target.value)));
       $('loadBtn').addEventListener('click', sendLoad);
+      $('view3dBtn').addEventListener('click', () => setView('3d'));
+      $('view2dBtn').addEventListener('click', () => setView('2d'));
+      $('viewSplitBtn').addEventListener('click', () => setView('split'));
       $('clearBtn').addEventListener('click', () => { logEl.innerHTML = ''; });
       $('reloadBtn').addEventListener('click', () => {
         embedReady = false; pendingLoad = null; setStatus('reloading…');
+        $('view3dBtn').disabled = $('view2dBtn').disabled = $('viewSplitBtn').disabled = true;
         embed.src = embed.src; // force reload
         log('reloading embed…', 'muted');
       });

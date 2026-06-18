@@ -54,6 +54,34 @@ import { exploderPlugin } from './plugins/3d/exploder/index.js';
 import type { IfcViewerProps, ViewerBundle, ViewerHandle } from './types.js';
 
 /**
+ * Plugin names kept under the `'minimal'` preset — the mobile snagging flow
+ * (orbit + tap-select/hover + finding pins + tap-to-place). Chosen to be
+ * dependency-CLOSED so filtering the dependency-ordered built-in array by this
+ * set never drops a hard dependency:
+ *   - selection ← hover-highlight (opt), visibility, placement
+ *   - mouse-bindings ← placement
+ *   - camera ← viewcube
+ *   - visibility/hover-highlight ← interactive-performance (opt)
+ * Everything else (measurement, snapping, section, classifier, minimap, bcf,
+ * outline, x-ray, exploder, grid, …) is intentionally excluded — the embed
+ * never drives those commands, and the edge-overlay/effects paths degrade
+ * gracefully when their plugins are absent.
+ */
+const MINIMAL_BUILTIN_PLUGINS = new Set<string>([
+  'camera',
+  'mouse-bindings',
+  'selection',
+  'hover-highlight',
+  'visibility',
+  'placement',
+  'pivot-rotate',
+  'viewcube',
+  'interactive-performance',
+  'performance-culling',
+  'entity-marker',
+]);
+
+/**
  * Fetch (cache-first) + load one bundle into a viewer. The precomputed-outline
  * fetch runs in parallel and never blocks the model load. `onProgress` is only
  * passed for the primary bundle; federated extras load quietly.
@@ -227,12 +255,35 @@ function IfcViewerImpl(
       keyboardShortcutsPlugin(shortcuts ? { overrides: shortcuts } : {}),
     ];
 
+    // Plugin preset. 'full' (default) keeps every built-in — the portal's
+    // experience is unchanged. 'minimal' is the snagging-only set (orbit +
+    // tap-select + pins + tap-to-place) for the mobile embed: it filters the
+    // ALREADY dependency-ordered `builtIns` by an allowlist, so the surviving
+    // plugins keep their proven install order and every hard dependency is still
+    // satisfied (see MINIMAL_BUILTIN_PLUGINS). This skips the install-time work
+    // (event subscriptions, command registration, caches) and per-frame event
+    // fan-out of ~16 unused plugins. NOTE: the dropped factories are still
+    // statically imported above, so this is a runtime/memory win, not yet a
+    // bundle-size win — that needs the full-only factories behind dynamic
+    // imports (deliberately deferred).
+    const preset = props.builtInPlugins ?? 'full';
+    const selectedBuiltIns =
+      preset === 'minimal'
+        ? builtIns.filter((p) => MINIMAL_BUILTIN_PLUGINS.has(p.name))
+        : builtIns;
+
     const viewer = new Viewer({
-      plugins: [...builtIns, ...userPlugins],
+      plugins: [...selectedBuiltIns, ...userPlugins],
       ...(props.background ? { background: props.background } : {}),
       ...(props.shadows ? { shadows: props.shadows } : {}),
       ...(props.controls ? { controls: props.controls } : {}),
       ...(props.zoom ? { zoom: props.zoom } : {}),
+      ...(props.graphicsQuality !== undefined
+        ? { graphicsQuality: props.graphicsQuality }
+        : {}),
+      ...(props.autoCullElementThreshold !== undefined
+        ? { autoCullElementThreshold: props.autoCullElementThreshold }
+        : {}),
     });
     viewerRef.current = viewer;
 

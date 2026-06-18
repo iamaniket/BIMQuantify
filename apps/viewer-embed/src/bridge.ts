@@ -23,9 +23,19 @@ import type {
   ViewerBundle,
 } from '@bimstitch/viewer';
 
+/** The viewer layout the host can request. */
+export type ViewMode = '3d' | '2d' | 'split';
+
 /** Messages the native shell sends down to the viewer. */
 export type HostMessage =
-  | { type: 'loadModel'; bundle: ViewerBundle; additionalBundles?: ViewerBundle[] }
+  | {
+      type: 'loadModel';
+      bundle: ViewerBundle;
+      additionalBundles?: ViewerBundle[];
+      /** Initial layout. Defaults to '2d' when the bundle has floor plans, else '3d'. */
+      viewMode?: ViewMode;
+    }
+  | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'syncMarkers'; markers: EntityMarkerData[] }
   | { type: 'clearMarkers' }
   | { type: 'setMarkersVisible'; visible: boolean }

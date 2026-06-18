@@ -19,8 +19,18 @@ export type EmbedMarker = {
   dimmed?: boolean;
 };
 
+/** The viewer layout the native shell can request (mirrors the embed's ViewMode). */
+export type ViewMode = '3d' | '2d' | 'split';
+
 export type HostMessage =
-  | { type: 'loadModel'; bundle: EmbedViewerBundle; additionalBundles?: EmbedViewerBundle[] }
+  | {
+      type: 'loadModel';
+      bundle: EmbedViewerBundle;
+      additionalBundles?: EmbedViewerBundle[];
+      /** Initial layout. Defaults to '2d' when the bundle has floor plans, else '3d'. */
+      viewMode?: ViewMode;
+    }
+  | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'syncMarkers'; markers: EmbedMarker[] }
   | { type: 'clearMarkers' }
   | { type: 'setMarkersVisible'; visible: boolean }

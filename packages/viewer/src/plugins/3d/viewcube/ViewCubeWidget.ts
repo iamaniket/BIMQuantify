@@ -141,7 +141,10 @@ export class ViewCubeWidget {
       alpha: true,
       antialias: true,
     });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    // Cap at 2 to match the main 3D renderer (core/Viewer.ts getBasePixelRatio):
+    // this is a second, always-present WebGL context, so there's no reason to
+    // render the small cube at a phone's full 3× ratio.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setSize(options.size, options.size, false);
     this.renderer.setClearColor(0x000000, 0);
 

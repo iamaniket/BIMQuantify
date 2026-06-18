@@ -36,6 +36,13 @@ export type ViewerBundle = {
    * deterministic. Omit for the single-file path (a timestamp id is used).
    */
   modelId?: string;
+  /**
+   * Precomputed floor-plan artifact (`.floorplans.bin`) for the 2D / Split
+   * views. `IfcViewer` ignores it — it's consumed by the embed host
+   * (apps/viewer-embed) which fetches + `decodeFloorPlans`-decodes it to drive
+   * `FloorPlanViewer`. Absent when the model has no generated floor plans.
+   */
+  floorPlansUrl?: string;
 };
 
 export type ViewCubeOptions = {
@@ -57,6 +64,13 @@ export type BackgroundOptions = {
 
 export type ShadowOptions = {
   enabled?: boolean;
+  /**
+   * Square resolution (px) of the baked contact-shadow render target. Default
+   * 1024. Lower (e.g. 512) trades a little shadow-edge softness for cheaper
+   * bake + sampling on memory/fill-constrained mobile devices. Does NOT affect
+   * model rendering quality.
+   */
+  resolution?: number;
 };
 
 /**
@@ -97,6 +111,15 @@ export type IfcViewerProps = {
   onProgress?: (loaded: number, total: number) => void;
   /** Extra plugins registered after built-ins. */
   plugins?: Plugin[];
+  /**
+   * Which built-in plugin set to register. `'full'` (default) registers every
+   * built-in — the portal's complete feature set. `'minimal'` registers only
+   * the snagging-essential subset (orbit + tap-select/hover + finding pins +
+   * tap-to-place), for the mobile embed: it skips the install-time work and
+   * per-frame event fan-out of the ~16 plugins a phone never uses. `props.plugins`
+   * are still appended on top of whichever preset is chosen.
+   */
+  builtInPlugins?: 'full' | 'minimal';
   /** Override default keyboard combos: `{ "camera.zoomExtents": "Space" }`. */
   shortcuts?: ShortcutMap;
   /**
@@ -138,6 +161,18 @@ export type IfcViewerProps = {
   section?: SectionPluginOptions | false;
   /** Min/max zoom (dolly) distance limits. Auto-computed from model size when omitted. */
   zoom?: ZoomOptions;
+  /**
+   * EXPERIMENTAL, off by default. Fragments LOD detail tier (0–2, default 2).
+   * Lowering to 1 cuts tessellation/streaming on low-end devices but can
+   * visibly coarsen geometry — profile before shipping a non-default value.
+   */
+  graphicsQuality?: number;
+  /**
+   * EXPERIMENTAL, off by default. Element count above which a single model
+   * starts frustum-culling under `auto` culling (default 50_000). Lower it so
+   * large models cull sooner on low-end devices — profile before using.
+   */
+  autoCullElementThreshold?: number;
   ref?: Ref<ViewerHandle>;
 };
 

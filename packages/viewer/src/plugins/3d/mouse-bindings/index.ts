@@ -120,38 +120,40 @@ export function mouseBindingsPlugin(
       let lastClickX = 0;
       let lastClickY = 0;
 
-      // rAF-coalesce move dispatch — pointermove can fire >100Hz and the
-      // bound command (typically `hover.pick`) is async.
-      let pendingMoveNdc: { x: number; y: number } | null = null;
+      // rAF-coalesce move dispatch — pointermove can fire >100Hz. We emit a
+      // SINGLE `pointer:move` per frame (in flushMove) instead of one per raw
+      // event: every subscriber (hover, snapping, measurement preview/magnifier,
+      // pivot-rotate) then does its work at most once per frame. The coalesced
+      // event carries the LATEST real client coords — the magnifier needs them,
+      // and the old design emitted them as NaN on the coalesced pass (a latent
+      // bug) while double-emitting at raw rate on the synchronous pass.
+      let pendingMove: { ndc: { x: number; y: number }; clientX: number; clientY: number } | null = null;
       let raf = 0;
       const flushMove = (): void => {
         raf = 0;
-        const ndc = pendingMoveNdc;
-        if (!ndc) return;
-        pendingMoveNdc = null;
-        const cmd = bindings.get('move');
-        if (!cmd) return;
+        const m = pendingMove;
+        if (!m) return;
+        pendingMove = null;
         ctx.events.emit('pointer:move', {
-          ndc,
-          clientX: NaN,
-          clientY: NaN,
+          ndc: m.ndc,
+          clientX: m.clientX,
+          clientY: m.clientY,
         });
-        runCommand(ctx, cmd, { ndc });
+        const cmd = bindings.get('move');
+        if (cmd) runCommand(ctx, cmd, { ndc: m.ndc });
       };
 
       const onMove = (ev: PointerEvent): void => {
-        const ndc = clientToNdc(canvas, ev.clientX, ev.clientY);
-        pendingMoveNdc = ndc;
-        ctx.events.emit('pointer:move', {
-          ndc,
+        pendingMove = {
+          ndc: clientToNdc(canvas, ev.clientX, ev.clientY),
           clientX: ev.clientX,
           clientY: ev.clientY,
-        });
+        };
         if (!raf) raf = requestAnimationFrame(flushMove);
       };
 
       const onLeave = (): void => {
-        pendingMoveNdc = null;
+        pendingMove = null;
         const cmd = bindings.get('move:leave');
         if (cmd) runCommand(ctx, cmd, { ndc: null });
       };
@@ -272,7 +274,7 @@ export function mouseBindingsPlugin(
         canvas.removeEventListener('contextmenu', onContextMenu);
         if (raf) cancelAnimationFrame(raf);
         raf = 0;
-        pendingMoveNdc = null;
+        pendingMove = null;
       };
     },
 

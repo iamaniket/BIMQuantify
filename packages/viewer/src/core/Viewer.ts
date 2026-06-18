@@ -31,13 +31,19 @@ import { computeVisibleSolidBox } from './visibleBox.js';
 import { ContactShadowBaker } from './contactShadow.js';
 import type { ContactShadowRect } from './contactShadow.js';
 import { applyLookToMaterial } from './displayLook.js';
-import { diag, patchPixelRatio, makeBufferWatcher } from './diagResolution.js'; // DIAG: remove after debugging
 import type { CullingMode, ItemId, MaterialLook, Plugin, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>;
 
 export interface ShadowOptions {
   enabled?: boolean;
+  /**
+   * Square resolution (px) of the baked contact-shadow render target. Default
+   * 1024. Lower (e.g. 512) trades a little shadow-edge softness for cheaper
+   * bake + sampling — a sensible choice on memory/fill-constrained mobile
+   * devices. Does NOT affect model rendering quality.
+   */
+  resolution?: number;
 }
 
 export interface BackgroundOptions {
@@ -119,6 +125,19 @@ export interface ViewerOptions {
   controls?: ControlsOptions;
   /** Min/max zoom (dolly) distance limits. */
   zoom?: ZoomOptions;
+  /**
+   * EXPERIMENTAL, off by default. Fragments LOD detail tier (0–2). Default 2
+   * (render every tier). Lowering to 1 reduces tessellation/streaming work on
+   * low-end devices but can visibly coarsen geometry — profile before using.
+   */
+  graphicsQuality?: number;
+  /**
+   * EXPERIMENTAL, off by default. Element count above which a single model
+   * starts frustum-culling under `auto` culling. Default 50_000. Lowering it
+   * makes large models cull sooner on low-end devices (fewer resident tiles)
+   * at the cost of more streaming as the camera turns — profile before using.
+   */
+  autoCullElementThreshold?: number;
 }
 
 /**
@@ -317,19 +336,11 @@ export class Viewer {
     // While the contact-shadow bake temporarily un-culls geometry, keep the
     // renderer parked so the transient full-geometry pass never reaches the
     // main canvas (no flash). bakeShadow issues one explicit repaint when done.
-    if (this.shadowBaking) {
-      diag('markActive SUPPRESSED (shadowBaking)'); // DIAG
-      return;
-    }
+    if (this.shadowBaking) return;
     const world = this.world;
     if (world === null) return;
     const renderer = world.renderer;
     if (renderer && renderer.mode !== RendererMode.AUTO) {
-      // DIAG: capture WHO woke the renderer (caller stack frames).
-      diag(
-        `markActive -> AUTO (holdMs=${holdMs})`,
-        new Error().stack?.split('\n').slice(2, 6).map((s) => s.trim()).join(' << '),
-      );
       renderer.mode = RendererMode.AUTO;
     }
     if (this.idleTimer !== null) clearTimeout(this.idleTimer);
@@ -338,17 +349,13 @@ export class Viewer {
       // Final near/far fit for the resting viewpoint, emit idle (effects
       // composites here, interactive-performance restores quality), then park.
       this.updateDynamicNearFar();
-      diag('viewer:idle EMIT'); // DIAG
       this.events.emit('viewer:idle', undefined);
       // A `viewer:idle` handler may have called markActive() (e.g. restoring
       // motion-reduced DPR needs one more full-quality frame) — that re-arms
       // the timer. Only park in MANUAL if nothing requested more rendering, so
       // we never stop a frame a handler just asked for.
       if (this.idleTimer === null && this.world?.renderer) {
-        diag('park -> MANUAL'); // DIAG
         this.world.renderer.mode = RendererMode.MANUAL;
-      } else {
-        diag('idle re-armed (stays AUTO)'); // DIAG
       }
     }, holdMs);
   }
@@ -518,7 +525,6 @@ export class Viewer {
       logarithmicDepthBuffer: true,
     });
     world.renderer.showLogo = false;
-    patchPixelRatio(world.renderer.three); // DIAG: log every devicePixelRatio change + caller
     world.camera = new OrthoPerspectiveCamera(components);
     world.scene.setup();
 
@@ -572,7 +578,9 @@ export class Viewer {
 
     // Render all LOD tiers so every element (furniture, fittings, etc.)
     // is visible from the start, not just the coarsest structural shell.
-    fragmentsModels.settings.graphicsQuality = 2;
+    // Overridable (EXPERIMENTAL) via options.graphicsQuality; defaults to 2 so
+    // existing behaviour is byte-for-byte unchanged.
+    fragmentsModels.settings.graphicsQuality = this.options.graphicsQuality ?? 2;
 
     // Default maxUpdateRate is 100ms — way too slow for selection/highlight
     // changes. Lowering to 0 lets every rAF tick drain pending tile updates.
@@ -662,7 +670,6 @@ export class Viewer {
     // appear on the next frame instead of waiting for a slow timer.
     // `force=false` (default) means we only drain completed batches —
     // no per-frame stall waiting on pending worker work.
-    const watchBuffer = makeBufferWatcher(); // DIAG: log backing-store size changes
     const tick = (): void => {
       fragmentsModels.update().catch(() => undefined);
       // At-rest streaming tail: if a late tile streamed in while parked, paint
@@ -687,7 +694,6 @@ export class Viewer {
           if (!(effects?.recomposite() ?? false)) this.markActive();
         }
       }
-      watchBuffer(world.renderer!.three); // DIAG
       this.updateRafId = requestAnimationFrame(tick);
     };
     this.updateRafId = requestAnimationFrame(tick);
@@ -809,8 +815,7 @@ export class Viewer {
       this.events.on(name, () => this.markActive());
     }
     // A canvas resize needs a repaint too (MANUAL won't redraw on its own).
-    world.renderer!.onResize.add((size?: THREE.Vector2) => {
-      diag(`renderer.onResize ${size ? `${size.x}x${size.y}` : ''}`); // DIAG
+    world.renderer!.onResize.add(() => {
       this.markActive();
     });
 
@@ -822,17 +827,10 @@ export class Viewer {
     const markShadowDirty = (): void => {
       this.shadowDirty = true;
     };
-    this.events.on('visibility:change', () => {
-      diag('shadowDirty=true (visibility:change)'); // DIAG
-      markShadowDirty();
-    });
-    this.events.on('xray:change', () => {
-      diag('shadowDirty=true (xray:change)'); // DIAG
-      markShadowDirty();
-    });
+    this.events.on('visibility:change', markShadowDirty);
+    this.events.on('xray:change', markShadowDirty);
     this.events.on('viewer:idle', () => {
       if (this.shadowsEnabled && this.shadowDirty && this.shadowGround !== null) {
-        diag('bakeShadow TRIGGERED on idle (shadowDirty was true)'); // DIAG
         this.shadowDirty = false;
         void this.bakeShadow();
       }
@@ -843,7 +841,6 @@ export class Viewer {
     // crosses the threshold here. Cheap: applyCulling no-ops when nothing
     // changed. `model:elementCount` is emitted by the selection plugin on load.
     this.events.on('model:elementCount', ({ modelId, count }) => {
-      diag(`model:elementCount ${modelId} count=${count}`); // DIAG
       this.elementCounts.set(modelId, count);
       if (this.cullingMode === 'auto') void this.applyCulling();
     });
@@ -1083,7 +1080,11 @@ export class Viewer {
     // and follows the true geometry instead of an ellipse. No shadow-map cost,
     // no dependence on streamed/LOD mesh castShadow flags.
     if (this.shadowsEnabled) {
-      const baker = new ContactShadowBaker();
+      const baker = new ContactShadowBaker(
+        this.options.shadows?.resolution !== undefined
+          ? { resolution: this.options.shadows.resolution }
+          : {},
+      );
       this.shadowBaker = baker;
 
       const groundMat = new THREE.ShaderMaterial({
@@ -1317,7 +1318,6 @@ export class Viewer {
       // Fall back to markActive when the composite path is unavailable.
       const effects = this.pluginManager?.get<{ recomposite(): boolean }>('effects');
       const composited = effects?.recomposite() ?? false;
-      diag(`bakeShadow repaint: ${composited ? 'recomposite' : 'markActive'}`); // DIAG
       if (!composited) this.markActive();
     }
   }
@@ -1389,7 +1389,9 @@ export class Viewer {
         ?.size ?? 0;
     if (modelCount > 1) return FRAGS.LodMode.ALL_GEOMETRY;
     const count = this.elementCounts.get(modelId);
-    if (count !== undefined && count > AUTO_CULL_ELEMENT_THRESHOLD) {
+    const cullThreshold =
+      this.options.autoCullElementThreshold ?? AUTO_CULL_ELEMENT_THRESHOLD;
+    if (count !== undefined && count > cullThreshold) {
       return FRAGS.LodMode.ALL_GEOMETRY;
     }
     return FRAGS.LodMode.ALL_VISIBLE;
@@ -1415,7 +1417,6 @@ export class Viewer {
       changed = true;
     }
     if (!changed) return;
-    diag(`applyCulling CHANGED -> shadowDirty=true, markActive(${holdMs})`); // DIAG
     await fragments.update(true).catch(() => undefined);
     this.shadowDirty = true;
     this.markActive(holdMs);

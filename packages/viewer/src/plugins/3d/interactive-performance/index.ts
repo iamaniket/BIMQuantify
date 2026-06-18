@@ -21,7 +21,6 @@
 import * as THREE from 'three';
 import * as FRAGS from '@thatopen/fragments';
 
-import { diag } from '../../../core/diagResolution.js'; // DIAG: remove after debugging
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 
 const NAME = 'interactive-performance' as const;
@@ -331,10 +330,6 @@ export function interactivePerformancePlugin(
       savedDpr = renderer.getPixelRatio();
       const target = (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1) *
         opts.motionRatio;
-      diag(
-        `enterMotion dynamicPixelRatio savedDpr=${savedDpr.toFixed(3)} ` +
-          `target=${Math.max(target, 0.1).toFixed(3)}`,
-      ); // DIAG
       renderer.setPixelRatio(Math.max(target, 0.1));
     }
 
@@ -427,7 +422,6 @@ export function interactivePerformancePlugin(
   const exitMotion = (): void => {
     if (!ctxRef || !inMotion) return;
     inMotion = false;
-    diag(`exitMotion savedDpr=${savedDpr === null ? 'null' : savedDpr.toFixed(3)}`); // DIAG
 
     const renderer = ctxRef.renderer;
     const camera = ctxRef.camera;
@@ -493,13 +487,9 @@ export function interactivePerformancePlugin(
     if (needsRepaint) {
       const effects = ctxRef.plugins.get<EffectsPluginShape>('effects');
       if (reshowedGeometry) {
-        diag('exitMotion repaint: requestRender (geometry reshown)'); // DIAG
         ctxRef.requestRender();
       } else {
         const composited = effects?.recomposite() ?? false;
-        diag(
-          `exitMotion repaint: ${composited ? 'recomposite' : 'requestRender (no composite path)'}`,
-        ); // DIAG
         if (!composited) ctxRef.requestRender();
       }
     }

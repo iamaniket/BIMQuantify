@@ -18,8 +18,10 @@ import {
   hostMessageToInjectedJs,
   parseClientMessage,
   type HostMessage,
+  type ViewMode,
 } from '@/features/viewer/embedBridge';
 import { resolveEmbedSource } from '@/features/viewer/embedSource';
+import { ViewModeMenu } from '@/features/viewer/ViewModeMenu';
 import { useViewerBundle } from '@/features/viewer/queries';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
@@ -44,12 +46,16 @@ export default function ViewerScreen() {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [webCrashed, setWebCrashed] = useState(false);
+  // The viewer layout (3D / 2D / Split). Defaults to 2D when the model has a
+  // floor plan, else 3D — set when loadModel is sent.
+  const [viewMode, setViewMode] = useState<ViewMode>('3d');
   // loadModel is sent exactly once, after both the web bridge and the bundle
   // are ready (whichever order they arrive in).
   const sentLoadRef = useRef(false);
 
   const bundleQuery = useViewerBundle(projectId ?? '', modelId ?? '', fileId ?? '');
   const embedSource = resolveEmbedSource();
+  const floorPlansAvailable = bundleQuery.data?.floorPlansUrl != null;
 
   const send = useCallback((msg: HostMessage): void => {
     webRef.current?.injectJavaScript(hostMessageToInjectedJs(msg));
@@ -59,9 +65,20 @@ export default function ViewerScreen() {
     if (!webReady || sentLoadRef.current) return;
     const bundle = bundleQuery.data;
     if (!bundle) return; // still loading, errored, or non-IFC
-    send({ type: 'loadModel', bundle });
+    // Default to the 2D plan when the model has one (mobile snags on plans).
+    const initialMode: ViewMode = bundle.floorPlansUrl != null ? '2d' : '3d';
+    send({ type: 'loadModel', bundle, viewMode: initialMode });
+    setViewMode(initialMode);
     sentLoadRef.current = true;
   }, [webReady, bundleQuery.data, send]);
+
+  const onViewModeChange = useCallback(
+    (mode: ViewMode): void => {
+      setViewMode(mode);
+      send({ type: 'setViewMode', mode });
+    },
+    [send],
+  );
 
   const onMessage = useCallback((e: WebViewMessageEvent): void => {
     const msg = parseClientMessage(e.nativeEvent.data);
@@ -144,6 +161,15 @@ export default function ViewerScreen() {
           headerTintColor: colors.onPrimary,
           headerTitleStyle: { fontWeight: '700' },
           headerShadowVisible: false,
+          headerRight: bundleQuery.data
+            ? () => (
+                <ViewModeMenu
+                  mode={viewMode}
+                  floorPlansAvailable={floorPlansAvailable}
+                  onChange={onViewModeChange}
+                />
+              )
+            : undefined,
         }}
       />
 

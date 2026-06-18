@@ -160,6 +160,11 @@ export function worldToScreen(
   };
 }
 
+// Reused across the projection loop in findBestSnap so a dense item doesn't
+// allocate a Vector3 per snap point. Safe because findBestSnap is synchronous
+// and called one move at a time.
+const _projScratch = new THREE.Vector3();
+
 function screenDistSq(
   a: { x: number; y: number },
   b: { x: number; y: number },
@@ -202,11 +207,26 @@ export function findBestSnap(
   let best: SnapCandidate | null = null;
   let bestDistSq = threshSq;
 
+  // Hoist the layout reads OUT of the per-snap-point loop: worldToScreen used to
+  // read canvas.clientWidth/clientHeight on every projection, so a dense item
+  // forced one layout read per vertex/edge/midpoint on every pointer-move. Read
+  // them once and project through a shared scratch vector (no per-point alloc).
+  // Numerics are identical to worldToScreen.
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const sa = { x: 0, y: 0 };
+  const sb = { x: 0, y: 0 };
+  const toScreen = (point: THREE.Vector3, out: { x: number; y: number }): { x: number; y: number } => {
+    _projScratch.copy(point).project(camera);
+    out.x = ((_projScratch.x + 1) / 2) * w;
+    out.y = ((1 - _projScratch.y) / 2) * h;
+    return out;
+  };
+
   // Priority 1: vertices
   if (allowedTypes.includes('vertex')) {
     for (const v of snapData.vertices) {
-      const vs = worldToScreen(v, camera, canvas);
-      const dSq = screenDistSq(cursorScreen, vs);
+      const dSq = screenDistSq(cursorScreen, toScreen(v, sa));
       if (dSq < bestDistSq) {
         bestDistSq = dSq;
         best = { point: v, type: 'vertex' };
@@ -217,8 +237,7 @@ export function findBestSnap(
   // Priority 2: intersections
   if (allowedTypes.includes('intersection')) {
     for (const ip of snapData.intersections) {
-      const is = worldToScreen(ip, camera, canvas);
-      const dSq = screenDistSq(cursorScreen, is);
+      const dSq = screenDistSq(cursorScreen, toScreen(ip, sa));
       if (dSq < bestDistSq && (best === null || best.type !== 'vertex')) {
         bestDistSq = dSq;
         best = { point: ip, type: 'intersection' };
@@ -230,8 +249,7 @@ export function findBestSnap(
   if (allowedTypes.includes('midpoint')) {
     for (let i = 0; i < snapData.midpoints.length; i++) {
       const mp = snapData.midpoints[i]!;
-      const ms = worldToScreen(mp, camera, canvas);
-      const dSq = screenDistSq(cursorScreen, ms);
+      const dSq = screenDistSq(cursorScreen, toScreen(mp, sa));
       if (dSq < bestDistSq && (best === null || (best.type !== 'vertex' && best.type !== 'intersection'))) {
         bestDistSq = dSq;
         const edge = snapData.edges[i]!;
@@ -243,8 +261,8 @@ export function findBestSnap(
   // Priority 4: nearest point on edge
   if (allowedTypes.includes('edge')) {
     for (const edge of snapData.edges) {
-      const aScreen = worldToScreen(edge[0], camera, canvas);
-      const bScreen = worldToScreen(edge[1], camera, canvas);
+      const aScreen = toScreen(edge[0], sa);
+      const bScreen = toScreen(edge[1], sb);
       const { t, distSq } = closestPointOnSegmentScreen(cursorScreen, aScreen, bScreen);
 
       if (distSq < bestDistSq && (best === null || best.type === 'edge')) {

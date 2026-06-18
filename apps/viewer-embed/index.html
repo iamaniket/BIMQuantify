@@ -17,6 +17,13 @@
         overflow: hidden;
         background: #ffffff;
       }
+      /* FloorPlanViewer's shell must be positioned + filled so its absolute
+         canvas/overlay children fill the pane (the portal uses Tailwind's
+         `absolute inset-0`; the embed has no Tailwind). */
+      .viewer-pane-fill {
+        position: absolute;
+        inset: 0;
+      }
     </style>
   </head>
   <body>

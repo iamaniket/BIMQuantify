@@ -1,0 +1,134 @@
+import { useEffect, useState } from 'react';
+
+// Runtime value from the no-pdfjs entry; the type is erased so it's free from
+// the barrel.
+import { decodeFloorPlans } from '@bimstitch/viewer/viewer-3d';
+import type { DecodedFloorPlans } from '@bimstitch/viewer';
+
+/** One storey for the level picker (display name + isolation key). */
+export type FloorPlanLevelInfo = {
+  storeyExpressID: number;
+  elevation: number;
+  /** Display name with a "Level N" fallback when metadata has no storey name. */
+  name: string;
+};
+
+/**
+ * `idle` (no url) → `loading` → `ready` | `error`. A dedicated enum (rather than
+ * a `loading` boolean) is what lets the host fall back to 3D ONLY after a real
+ * failed attempt — a boolean races the first render, where it's still `false`
+ * before the fetch effect runs, and would trip an immediate false fallback.
+ */
+export type FloorPlanStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+export type FloorPlanDataResult = {
+  /** Decoded plan, levels sorted ASCENDING by elevation (index 0 = lowest). */
+  data: DecodedFloorPlans | null;
+  /** Display levels in the same order as `data.levels`. */
+  levels: FloorPlanLevelInfo[];
+  /** spaceId → room label, joined from the model metadata (empty when absent). */
+  roomNames: Map<number, string>;
+  status: FloorPlanStatus;
+};
+
+const EMPTY: FloorPlanDataResult = {
+  data: null,
+  levels: [],
+  roomNames: new Map(),
+  status: 'idle',
+};
+
+/** Minimal view of the spatial tree node we need for name joins. */
+type SpatialNodeLite = {
+  expressID: number;
+  type: string;
+  name: string | null;
+  children?: SpatialNodeLite[];
+};
+
+/** Walk the spatial tree collecting storey + space display names by expressID. */
+function collectNames(
+  node: SpatialNodeLite | null | undefined,
+  storeys: Map<number, string>,
+  spaces: Map<number, string>,
+): void {
+  if (!node) return;
+  if (node.type === 'IfcBuildingStorey' && node.name) storeys.set(node.expressID, node.name);
+  if (node.type === 'IfcSpace' && node.name) spaces.set(node.expressID, node.name);
+  for (const c of node.children ?? []) collectNames(c, storeys, spaces);
+}
+
+/**
+ * Fetch + decode the processor's `.floorplans.bin` artifact and (optionally)
+ * join storey/room names from the model metadata. Levels are sorted ASCENDING
+ * by elevation so index 0 is the lowest storey ("level zero"). No React Query
+ * here — the embed holds no query client, so a plain effect with cancellation
+ * is enough. Names are a nice-to-have: any failure falls back to "Level N".
+ */
+export function useFloorPlanData(
+  floorPlansUrl: string | undefined,
+  metadataUrl: string | undefined,
+): FloorPlanDataResult {
+  const [result, setResult] = useState<FloorPlanDataResult>(EMPTY);
+
+  useEffect(() => {
+    if (!floorPlansUrl) {
+      setResult(EMPTY);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setResult({ ...EMPTY, status: 'loading' });
+
+    void (async () => {
+      try {
+        const res = await fetch(floorPlansUrl);
+        if (!res.ok) throw new Error(`floor plans HTTP ${String(res.status)}`);
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const decoded = await decodeFloorPlans(bytes);
+        if (cancelled) return;
+        if (decoded === null || decoded.levels.length === 0) {
+          setResult({ ...EMPTY, status: 'error' });
+          return;
+        }
+
+        const storeyNames = new Map<number, string>();
+        const spaceNames = new Map<number, string>();
+        if (metadataUrl) {
+          try {
+            const metaRes = await fetch(metadataUrl);
+            if (metaRes.ok) {
+              const json = (await metaRes.json()) as { spatialTree?: SpatialNodeLite | null };
+              collectNames(json.spatialTree ?? null, storeyNames, spaceNames);
+            }
+          } catch {
+            // Names are optional — fall back to generated "Level N".
+          }
+          if (cancelled) return;
+        }
+
+        // Ascending elevation: index 0 == ground == "level zero".
+        const sorted = [...decoded.levels].sort((a, b) => a.elevation - b.elevation);
+        const data: DecodedFloorPlans = {
+          planAxisX: decoded.planAxisX,
+          planAxisY: decoded.planAxisY,
+          levels: sorted,
+        };
+        const levels = sorted.map((lv, i): FloorPlanLevelInfo => ({
+          storeyExpressID: lv.storeyExpressID,
+          elevation: lv.elevation,
+          name: storeyNames.get(lv.storeyExpressID) ?? `Level ${String(i)}`,
+        }));
+        setResult({ data, levels, roomNames: spaceNames, status: 'ready' });
+      } catch {
+        if (!cancelled) setResult({ ...EMPTY, status: 'error' });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [floorPlansUrl, metadataUrl]);
+
+  return result;
+}
