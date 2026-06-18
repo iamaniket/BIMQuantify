@@ -28,7 +28,9 @@ import { frameView } from './framing.js';
 import { COPLANAR_BIAS_EPS, COPLANAR_BIAS_LEVELS } from './depth-bias.js';
 import { LAYER_OVERLAY } from './layers.js';
 import { computeVisibleSolidBox } from './visibleBox.js';
-import type { ItemId, Plugin, ViewerContext, ViewerEvents } from './types.js';
+import { ContactShadowBaker } from './contactShadow.js';
+import type { ContactShadowRect } from './contactShadow.js';
+import type { CullingMode, ItemId, Plugin, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>;
 
@@ -122,6 +124,14 @@ const ACTIVE_HOLD_MS = 250;
 const MODEL_STREAM_HOLD_MS = 4000;
 
 /**
+ * Under `auto` culling, a single model starts frustum-culling once it exceeds
+ * this many elements. Federated scenes (more than one model) always cull under
+ * `auto`, regardless of per-model size. Tunable; sized so typical small models
+ * keep the always-everything-visible behaviour.
+ */
+const AUTO_CULL_ELEMENT_THRESHOLD = 50_000;
+
+/**
  * Visual-change events that should wake the renderer. `camera:change` is
  * handled inline (it also clamps zoom + refits near/far), and the `model:*`
  * events get a longer hold from their own methods — both are intentionally
@@ -189,13 +199,22 @@ export class Viewer {
   private shadowGround: THREE.Mesh | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private shadowsEnabled = true;
-  /** Latest-wins guard so a stale async visible-box result can't clobber the plane. */
-  private shadowRefitToken = 0;
-  /** Coalesces visibility/x-ray bursts into one refit. */
-  private shadowRefitScheduled = false;
-  /** Reused scratch vectors for the visible-set shadow refit (no per-event alloc). */
-  private readonly shadowCenter = new THREE.Vector3();
-  private readonly shadowSize = new THREE.Vector3();
+  /** Bakes the silhouette mask the ground plane samples (contact-shadow mode). */
+  private shadowBaker: ContactShadowBaker | null = null;
+  /** Set when geometry/visibility changed; the next idle frame re-bakes once. */
+  private shadowDirty = false;
+  /** Latest-wins guard so a stale async visible-box result can't clobber the bake. */
+  private shadowBakeToken = 0;
+  /** Frustum-culling policy (see {@link setCullingMode}). Default `auto`. */
+  private cullingMode: CullingMode = 'auto';
+  /** Per-model element count (from `model:elementCount`) feeding the `auto` heuristic. */
+  private readonly elementCounts = new Map<string, number>();
+  /** Per-model `LodMode` currently applied, so re-resolves skip no-op `setLodMode` calls. */
+  private readonly appliedLodMode = new Map<string, FRAGS.LodMode>();
+  /** Per-model `onViewUpdated` unsubscribe — wakes the on-demand renderer as tiles stream. */
+  private readonly viewUpdatedUnsubs = new Map<string, () => void>();
+  /** True while {@link bakeShadow} temporarily un-culls; suppresses renderer wake to avoid a flash. */
+  private shadowBaking = false;
   /** World-space AABB of all loaded models. */
   private sceneBox: THREE.Box3 | null = null;
   /**
@@ -244,6 +263,10 @@ export class Viewer {
    * drawing every frame); the only new behaviour is parking on idle.
    */
   private markActive(holdMs: number = ACTIVE_HOLD_MS): void {
+    // While the contact-shadow bake temporarily un-culls geometry, keep the
+    // renderer parked so the transient full-geometry pass never reaches the
+    // main canvas (no flash). bakeShadow issues one explicit repaint when done.
+    if (this.shadowBaking) return;
     const world = this.world;
     if (world === null) return;
     const renderer = world.renderer;
@@ -574,6 +597,8 @@ export class Viewer {
       getPrecomputedOutline: (modelId: string) =>
         this.precomputedOutlines.get(modelId),
       requestRender: () => this.markActive(),
+      setCullingMode: (mode: CullingMode) => this.setCullingMode(mode),
+      getCullingMode: () => this.cullingMode,
     };
     this.ctx = ctx;
 
@@ -644,13 +669,31 @@ export class Viewer {
     // A canvas resize needs a repaint too (MANUAL won't redraw on its own).
     world.renderer!.onResize.add(() => this.markActive());
 
-    // Dynamic blob shadow: re-fit the shadow plane to whatever is currently
-    // visible (all − hidden − x-rayed) on every isolation/visibility/x-ray
-    // change, and hide it when nothing solid remains. These events already wake
-    // the renderer above; the async refit lands a tick later and requests its
-    // own frame.
-    this.events.on('visibility:change', () => this.scheduleShadowRefit());
-    this.events.on('xray:change', () => this.scheduleShadowRefit());
+    // Silhouette contact shadow: mark the mask dirty on every geometry /
+    // isolation / visibility / x-ray change; the next idle frame re-bakes it
+    // once (never per frame — the top-down bake is camera-independent). These
+    // events already wake the renderer above, so an idle is guaranteed to
+    // follow and drive the bake.
+    const markShadowDirty = (): void => {
+      this.shadowDirty = true;
+    };
+    this.events.on('visibility:change', markShadowDirty);
+    this.events.on('xray:change', markShadowDirty);
+    this.events.on('viewer:idle', () => {
+      if (this.shadowsEnabled && this.shadowDirty && this.shadowGround !== null) {
+        this.shadowDirty = false;
+        void this.bakeShadow();
+      }
+    });
+
+    // Feed the `auto` culling heuristic: cache each model's element count and
+    // (under `auto`) re-resolve every model's LodMode — a large single model
+    // crosses the threshold here. Cheap: applyCulling no-ops when nothing
+    // changed. `model:elementCount` is emitted by the selection plugin on load.
+    this.events.on('model:elementCount', ({ modelId, count }) => {
+      this.elementCounts.set(modelId, count);
+      if (this.cullingMode === 'auto') void this.applyCulling();
+    });
 
     this.events.emit('viewer:mounted', { container });
 
@@ -691,14 +734,29 @@ export class Viewer {
     }
     const model = await fragments.load(buffer as ArrayBuffer, { modelId });
 
-    // Connect camera so the LOD streaming system knows the viewpoint and
-    // can stream ALL tile detail levels, not just the coarsest shell.
+    // Connect camera so the LOD streaming system knows the viewpoint, can
+    // stream ALL tile detail levels (not just the coarsest shell), and — when
+    // culling is on — knows which frustum to cull against.
     model.useCamera(world.camera.three);
 
-    // Default LodMode culls items outside the camera frustum, making
-    // elements behind the initial viewpoint invisible. ALL_VISIBLE
-    // forces every item to render as full geometry regardless of view.
-    await model.setLodMode(FRAGS.LodMode.ALL_VISIBLE);
+    // Apply the current culling policy. Under `auto`, a brand-new single model
+    // resolves to ALL_VISIBLE (its element count isn't known yet — first-paint
+    // safety so the initial stream never shows holes); the `model:elementCount`
+    // and federation re-resolves upgrade it to ALL_GEOMETRY when warranted.
+    const initialLod = this.resolveLodMode(modelId);
+    this.appliedLodMode.set(modelId, initialLod);
+    await model.setLodMode(initialLod).catch(() => undefined);
+
+    // With native frustum culling on (ALL_GEOMETRY), tiles stream in/out as the
+    // camera turns. `onViewUpdated` fires after each view-update cycle — wake the
+    // on-demand renderer so re-shown tiles get drawn instead of the renderer
+    // parking with holes. (The material `onItemSet` hook covers brand-new tiles;
+    // this covers existing tiles re-entering the frustum.)
+    const onViewUpdated = (): void => this.markActive();
+    model.onViewUpdated.add(onViewUpdated);
+    this.viewUpdatedUnsubs.set(modelId, () =>
+      model.onViewUpdated.remove(onViewUpdated),
+    );
 
     const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
     sceneThree.add(model.object);
@@ -718,6 +776,11 @@ export class Viewer {
     this.markActive(MODEL_STREAM_HOLD_MS);
 
     this.events.emit('model:loaded', { modelId });
+
+    // This model may have flipped the scene to federated. Under `auto`,
+    // re-resolve every model's LodMode now (no-op for a lone small model).
+    if (this.cullingMode === 'auto') void this.applyCulling();
+
     return modelId;
   }
 
@@ -849,21 +912,24 @@ export class Viewer {
     sceneThree.add(sun.target);
     this.sun = sun;
 
-    // Custom-shader "blob shadow" ground plane. A soft elliptical dark
-    // gradient below the model — always visible, no shadow-map cost,
+    // Silhouette contact-shadow ground plane. A `ContactShadowBaker` renders
+    // the model's footprint top-down into a blurred alpha mask (RT + blur,
+    // borrowed from three.js' contact-shadow technique); this plane samples it.
+    // The bake is re-driven on the idle frame after a load / isolation / x-ray
+    // change — never per frame — so it costs nothing while the camera moves
+    // and follows the true geometry instead of an ellipse. No shadow-map cost,
     // no dependence on streamed/LOD mesh castShadow flags.
-    //
-    // Layout (in plane-local UV space, 0..1):
-    //   r=0..coreRadius          → full shadow opacity
-    //   r=coreRadius..1          → smooth falloff to transparent
     if (this.shadowsEnabled) {
+      const baker = new ContactShadowBaker();
+      this.shadowBaker = baker;
+
       const groundMat = new THREE.ShaderMaterial({
         transparent: true,
         depthWrite: false,
         uniforms: {
+          tShadow: { value: baker.texture },
           color: { value: new THREE.Color(0x000000) },
-          opacity: { value: 0.3 },
-          coreRadius: { value: 0.35 },
+          opacity: { value: 0.45 },
           uLinearBlend: { value: 0.0 },
         },
         // The <logdepthbuf_*> chunks make this hand-written shader write its
@@ -884,18 +950,15 @@ export class Viewer {
         `,
         fragmentShader: /* glsl */ `
           #include <logdepthbuf_pars_fragment>
+          uniform sampler2D tShadow;
           uniform vec3 color;
           uniform float opacity;
-          uniform float coreRadius;
           uniform float uLinearBlend;
           varying vec2 vUv;
           void main() {
             #include <logdepthbuf_fragment>
-            vec2 d = vUv - 0.5;
-            float r = length(d) * 2.0;
-            float a = 1.0 - smoothstep(coreRadius, 1.0, r);
-            a = a * a;
-            float rawA = a * opacity;
+            float rawA = texture2D(tShadow, vUv).a * opacity;
+            if (rawA <= 0.001) discard;
             // When the EffectComposer renders to a linear target, alpha
             // blending produces a lighter shadow than the sRGB canvas
             // path. Compensate by boosting alpha so the perceptual result
@@ -910,21 +973,24 @@ export class Viewer {
       ground.name = 'shadow-ground';
       // Render before opaque geometry so the model itself draws over us.
       ground.renderOrder = -1;
+      // Hidden until the first bake produces a mask (avoids a black square).
+      ground.visible = false;
       sceneThree.add(ground);
       this.shadowGround = ground;
     }
   }
 
   /**
-   * Position the sun and the blob-shadow plane based on the model's bbox.
-   * The blob plane is sized to roughly 2.5× the model footprint so the
-   * gradient extends well beyond the model's edges.
+   * Position the sun to the model's bbox and flag the contact shadow for a
+   * re-bake on the next idle frame. The silhouette mask itself is rendered by
+   * `bakeShadow()` (top-down RT + blur) once streaming/visibility settles —
+   * never synchronously here, so a mid-stream load never stalls.
    */
   private fitLightsToScene(): void {
     const sun = this.sun;
     if (sun === null) return;
-    // Whole-scene footprint (union of all loaded models) so the sun + blob
-    // shadow cover the entire federation, not just the last-loaded model.
+    // Whole-scene footprint (union of all loaded models) so the sun + shadow
+    // cover the entire federation, not just the last-loaded model.
     const box = this.computeWorldSceneBox();
     if (box.isEmpty()) return;
     const center = box.getCenter(new THREE.Vector3());
@@ -937,99 +1003,153 @@ export class Viewer {
     sun.target.position.copy(center);
     sun.target.updateMatrixWorld();
 
-    const ground = this.shadowGround;
-    if (ground !== null) {
-      // Fit the plane to the whole scene and make sure it's shown (a prior
-      // visibility refit may have hidden it before this model loaded).
-      this.fitShadowToBox(box);
-      ground.visible = true;
-
-      // Fold the shadow plane's world AABB into the depth box so its far edge
-      // never clips at the far plane (grazing/plan views). setFromObject reads
-      // the transform just applied above, so the box can't drift from the
-      // shadow geometry. Re-derive from the model union to stay idempotent.
+    if (this.shadowGround !== null) {
+      // Geometry changed — re-bake the silhouette on the next idle.
+      this.shadowDirty = true;
+      // Coarsely fold the eventual shadow-plane footprint into the depth box so
+      // its far edge never clips in grazing/plan views, even before the first
+      // bake lands. `bakeShadow` re-folds the exact plane AABB afterwards.
       this.depthBox = this.computeWorldSceneBox();
-      this.depthBox.union(new THREE.Box3().setFromObject(ground));
+      this.depthBox.union(this.estimateShadowBox(box));
     }
   }
 
+  /** Square world AABB the baked shadow plane will roughly occupy under `box`. */
+  private estimateShadowBox(box: THREE.Box3): THREE.Box3 {
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    // Over-estimate the baker's padded square footprint (pad ≈ 0.15 → 1.3×).
+    const half = (Math.max(size.x, size.z, 1) * 1.5) / 2;
+    return new THREE.Box3(
+      new THREE.Vector3(center.x - half, box.min.y - 1, center.z - half),
+      new THREE.Vector3(center.x + half, box.min.y, center.z + half),
+    );
+  }
+
   /**
-   * Scale + position the blob-shadow plane to fit `box` (a world-space AABB):
-   * an elliptical gradient ~3× the box's XZ footprint, sitting just under
-   * `box.min.y`. Used both for the whole-scene fit (load/unload) and the
-   * visible-set refit (isolation/x-ray) — the latter floats the shadow under
-   * whatever is currently visible.
+   * Scale + position the shadow plane to the baked region `rect`: a square the
+   * width of the (padded) footprint, floating just under the visible floor. The
+   * baked texture maps 1:1 onto this square (see `ContactShadowBaker`).
    */
-  private fitShadowToBox(box: THREE.Box3): void {
+  private fitPlaneToRect(rect: ContactShadowRect): void {
     const ground = this.shadowGround;
-    if (ground === null || box.isEmpty()) return;
-    const center = box.getCenter(this.shadowCenter);
-    const size = box.getSize(this.shadowSize);
-    const maxDim = Math.max(size.x, size.y, size.z, 1);
-    // Size the plane to match the box's XZ footprint independently, so the
-    // elliptical gradient stretches to fit a rectangular model. Pad by 3× so
-    // the soft falloff has plenty of room to fade out.
-    const padX = Math.max(size.x, 1) * 3.0;
-    const padZ = Math.max(size.z, 1) * 3.0;
+    if (ground === null) return;
     // Plane is XY before rotation; after rotation -π/2 around X, local-X maps
-    // to world-X and local-Y maps to world-Z. So scale.x controls world-X span
-    // and scale.y controls world-Z span.
-    ground.scale.set(padX, padZ, 1);
-    ground.position.set(center.x, box.min.y - maxDim * 0.05, center.z);
+    // to world-X and local-Y to world-Z, matching the bake camera's UV mapping.
+    ground.scale.set(rect.side, rect.side, 1);
+    // Float just under the floor so it never z-fights the slab above it.
+    const drop = Math.max(rect.side * 0.0005, 0.002);
+    ground.position.set(rect.cx, rect.groundY - drop, rect.cz);
     ground.updateMatrixWorld();
   }
 
-  /** Coalesce visibility/x-ray bursts into a single async refit. */
-  private scheduleShadowRefit(): void {
-    if (this.shadowRefitScheduled) return;
-    this.shadowRefitScheduled = true;
-    queueMicrotask(() => {
-      this.shadowRefitScheduled = false;
-      void this.refitShadowForVisibility();
-    });
-  }
-
   /**
-   * Re-fit the blob shadow to the currently *visible solid* set (every loaded
-   * item minus the hidden and x-rayed sets). Hides the plane when nothing solid
-   * remains (everything hidden, or full x-ray). Touches ONLY the plane — the
-   * sun and `depthBox` stay fitted to the whole scene, which always contains
-   * the visible box, so near/far never clips and never oscillates.
+   * Re-bake the silhouette contact shadow for the currently *visible solid* set
+   * (every loaded item minus the hidden and x-rayed sets). Hides the plane when
+   * nothing solid remains (everything hidden, or full x-ray). Driven once on the
+   * idle frame when `shadowDirty` — never per frame, since the top-down bake is
+   * independent of the user's camera.
    */
-  private async refitShadowForVisibility(): Promise<void> {
+  private async bakeShadow(): Promise<void> {
     const ground = this.shadowGround;
     const ctx = this.ctx;
-    if (!this.shadowsEnabled || ground === null || ctx === null) return;
-
-    const token = ++this.shadowRefitToken;
-
-    const hidden = this.commands.has('visibility.getHidden')
-      ? await this.commands
-          .execute<undefined, ItemId[]>('visibility.getHidden')
-          .catch(() => [] as ItemId[])
-      : [];
-    const xrayed =
-      this.pluginManager?.get<{ list(): ItemId[] }>('xray')?.list() ?? [];
-
-    let box: THREE.Box3;
-    if (hidden.length === 0 && xrayed.length === 0) {
-      // Nothing hidden or ghosted — cheap whole-scene fit (today's behaviour).
-      box = this.computeWorldSceneBox();
-    } else {
-      box = await computeVisibleSolidBox(ctx, { hidden, xrayed });
+    const baker = this.shadowBaker;
+    const renderer = this.world?.renderer?.three;
+    if (
+      !this.shadowsEnabled ||
+      ground === null ||
+      ctx === null ||
+      baker === null ||
+      !renderer
+    ) {
+      return;
     }
 
-    // A newer refit started while we awaited the visible-box walk — let it win.
-    if (token !== this.shadowRefitToken) return;
+    const token = ++this.shadowBakeToken;
 
-    if (box.isEmpty()) {
-      // Everything hidden / full x-ray — no solid geometry, so no shadow.
-      ground.visible = false;
-    } else {
+    // Native frustum culling (ALL_GEOMETRY) leaves only the user-camera frustum
+    // resident in `model.object`, but the silhouette bakes the whole footprint
+    // from a fixed top-down camera. Temporarily un-cull every culled model so
+    // the bake sees all geometry, then restore in `finally`. `shadowBaking`
+    // parks the renderer for the duration so the transient full-geometry pass
+    // never flashes onto the main canvas (markActive is a no-op while it's set).
+    const fragments = this.fragmentsModels;
+    const unculled =
+      fragments === null
+        ? []
+        : [
+            ...(fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>),
+          ].filter(([id]) => this.appliedLodMode.get(id) === FRAGS.LodMode.ALL_GEOMETRY);
+    if (unculled.length > 0 && fragments !== null) {
+      this.shadowBaking = true;
+      for (const [, model] of unculled) {
+        await model.setLodMode(FRAGS.LodMode.ALL_VISIBLE).catch(() => undefined);
+      }
+      await fragments.update(true).catch(() => undefined);
+    }
+
+    try {
+      const hidden = this.commands.has('visibility.getHidden')
+        ? await this.commands
+            .execute<undefined, ItemId[]>('visibility.getHidden')
+            .catch(() => [] as ItemId[])
+        : [];
+      const xrayed =
+        this.pluginManager?.get<{ list(): ItemId[] }>('xray')?.list() ?? [];
+
+      let box: THREE.Box3;
+      if (hidden.length === 0 && xrayed.length === 0) {
+        // Nothing hidden or ghosted — cheap whole-scene box.
+        box = this.computeWorldSceneBox();
+      } else {
+        box = await computeVisibleSolidBox(ctx, { hidden, xrayed });
+      }
+
+      // A newer bake started while we awaited the visible-box walk — let it win.
+      if (token !== this.shadowBakeToken) return;
+
+      if (box.isEmpty()) {
+        // Everything hidden / full x-ray — no solid geometry, so no shadow.
+        ground.visible = false;
+        return;
+      }
+
+      // Only building geometry should cast: collect the model roots so the baker
+      // can hide the ground plane, grid, overlays, etc. for the silhouette pass.
+      const modelRoots = new Set<THREE.Object3D>();
+      for (const model of ctx.models().values()) {
+        const obj = (model as unknown as { object?: THREE.Object3D }).object;
+        if (obj) modelRoots.add(obj);
+      }
+
+      const rect = baker.bake(renderer, ctx.scene, modelRoots, box);
+      if (rect === null) {
+        ground.visible = false;
+        return;
+      }
+
+      this.fitPlaneToRect(rect);
       ground.visible = true;
-      this.fitShadowToBox(box);
+
+      // Fold the exact plane AABB into the depth box so its far edge never clips.
+      this.depthBox = this.computeWorldSceneBox();
+      this.depthBox.union(new THREE.Box3().setFromObject(ground));
+    } finally {
+      // Restore culling for every model we temporarily un-culled — to whatever
+      // the policy now resolves (it may have changed mid-bake).
+      if (unculled.length > 0 && fragments !== null) {
+        for (const [id, model] of unculled) {
+          const want = this.resolveLodMode(id);
+          await model.setLodMode(want).catch(() => undefined);
+          this.appliedLodMode.set(id, want);
+        }
+        await fragments.update(true).catch(() => undefined);
+        this.shadowBaking = false;
+      }
+      // Wake the renderer so the idle composite repaints with the fresh mask
+      // and the restored (culled) geometry.
+      this.markActive();
     }
-    this.markActive();
   }
 
   async registerPlugin(plugin: Plugin): Promise<void> {
@@ -1084,6 +1204,65 @@ export class Viewer {
   }
 
   /**
+   * Resolve the effective native `LodMode` for one model under the current
+   * policy. `off` → ALL_VISIBLE (draw everything); `on` → ALL_GEOMETRY
+   * (frustum-cull off-screen, full detail in view); `auto` → cull when the
+   * scene is federated (more than one model) or this model is large, else leave
+   * it unculled. An unknown element count resolves to ALL_VISIBLE so the initial
+   * stream never shows holes — `model:elementCount` upgrades it later.
+   */
+  private resolveLodMode(modelId: string): FRAGS.LodMode {
+    if (this.cullingMode === 'off') return FRAGS.LodMode.ALL_VISIBLE;
+    if (this.cullingMode === 'on') return FRAGS.LodMode.ALL_GEOMETRY;
+    const modelCount =
+      (this.fragmentsModels?.models.list as unknown as Map<string, unknown> | undefined)
+        ?.size ?? 0;
+    if (modelCount > 1) return FRAGS.LodMode.ALL_GEOMETRY;
+    const count = this.elementCounts.get(modelId);
+    if (count !== undefined && count > AUTO_CULL_ELEMENT_THRESHOLD) {
+      return FRAGS.LodMode.ALL_GEOMETRY;
+    }
+    return FRAGS.LodMode.ALL_VISIBLE;
+  }
+
+  /**
+   * Re-resolve and apply the per-model `LodMode` across every loaded model.
+   * Skips models whose resolved mode is unchanged (so repeated calls during a
+   * federated load stay cheap) and only flushes + repaints when something
+   * actually changed. Marks the contact shadow dirty so it re-bakes for the new
+   * resident-geometry footprint on the next idle.
+   */
+  private async applyCulling(): Promise<void> {
+    const fragments = this.fragmentsModels;
+    if (fragments === null) return;
+    const models = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
+    let changed = false;
+    for (const [id, model] of models) {
+      const want = this.resolveLodMode(id);
+      if (this.appliedLodMode.get(id) === want) continue;
+      await model.setLodMode(want).catch(() => undefined);
+      this.appliedLodMode.set(id, want);
+      changed = true;
+    }
+    if (!changed) return;
+    await fragments.update(true).catch(() => undefined);
+    this.shadowDirty = true;
+    this.markActive(MODEL_STREAM_HOLD_MS);
+  }
+
+  /**
+   * Set the viewer's frustum-culling policy and re-apply it to every loaded
+   * model. Driven by the portal's viewer settings via the `performance.setCulling`
+   * command (see the performance-culling plugin).
+   */
+  async setCullingMode(mode: CullingMode): Promise<void> {
+    if (this.cullingMode === mode) return;
+    this.cullingMode = mode;
+    this.events.emit('culling:change', { mode });
+    await this.applyCulling();
+  }
+
+  /**
    * Unload a single model from a federated scene WITHOUT remounting the viewer
    * or moving the camera. Mirror of the per-model load path: removes the model
    * from the scene, disposes it in the fragments runtime, drops its
@@ -1104,6 +1283,10 @@ export class Viewer {
 
     this.hiddenModelIds.delete(modelId);
     this.precomputedOutlines.delete(modelId);
+    this.elementCounts.delete(modelId);
+    this.appliedLodMode.delete(modelId);
+    this.viewUpdatedUnsubs.get(modelId)?.();
+    this.viewUpdatedUnsubs.delete(modelId);
     if (this.modelId === modelId) {
       this.modelId = this.getModelIds()[0] ?? null;
     }
@@ -1130,12 +1313,20 @@ export class Viewer {
       cancelAnimationFrame(this.updateRafId);
       this.updateRafId = null;
     }
+    for (const unsub of this.viewUpdatedUnsubs.values()) unsub();
+    this.viewUpdatedUnsubs.clear();
+    this.appliedLodMode.clear();
+    this.elementCounts.clear();
     this.fragmentsModels?.dispose().catch(() => undefined);
     this.fragmentsModels = null;
     if (this.shadowGround !== null) {
       (this.shadowGround.geometry as THREE.BufferGeometry).dispose();
       (this.shadowGround.material as THREE.Material).dispose();
       this.shadowGround = null;
+    }
+    if (this.shadowBaker !== null) {
+      this.shadowBaker.dispose();
+      this.shadowBaker = null;
     }
     this.sun = null;
     if (this.components !== null) {

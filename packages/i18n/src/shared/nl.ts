@@ -8,7 +8,7 @@ export const sharedNlMessages: SharedMessages = {
       'Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier voor Nederlandse aannemers.',
     productDescription:
       'Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier voor Nederlandse aannemers. Houd deadlines bij, beheer documenten, los bevindingen op en dien op tijd in.',
-    demoHeading: 'Vraag uw BimDossier-demo aan.',
+    pilotHeading: 'Doe mee aan de BimDossier-pilot.',
   },
   legal: {
     privacy: 'Privacy',

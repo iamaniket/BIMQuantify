@@ -4,7 +4,7 @@ export type SharedMessages = {
     legalEntity: string;
     tagline: string;
     productDescription: string;
-    demoHeading: string;
+    pilotHeading: string;
   };
   legal: {
     privacy: string;

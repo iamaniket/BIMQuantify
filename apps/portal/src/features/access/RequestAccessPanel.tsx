@@ -3,6 +3,7 @@
 import {
   RequestAccessForm,
   RequestAccessSuccess,
+  composeAccessRequestNotes,
   type RequestAccessValues,
 } from '@bimstitch/brand';
 import { useTranslations } from 'next-intl';
@@ -40,7 +41,7 @@ export function RequestAccessPanel(): JSX.Element {
         role: values.role,
         company_size: values.company_size,
         country: values.country,
-        notes: values.notes === '' ? undefined : values.notes,
+        notes: composeAccessRequestNotes(values),
         terms_accepted: values.terms_accepted,
       });
       setSubmitted({ name: values.name, email: values.work_email, company: values.company });
@@ -78,7 +79,7 @@ export function RequestAccessPanel(): JSX.Element {
     <>
       <AuthFormIntro
         eyebrow={tIntro('eyebrow')}
-        heading={tBrand('demoHeading')}
+        heading={tBrand('pilotHeading')}
         subtitle={tIntro('subtitle')}
       />
       <RequestAccessForm

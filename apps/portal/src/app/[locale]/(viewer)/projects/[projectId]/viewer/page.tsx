@@ -68,6 +68,7 @@ import { useViewerScope } from '@/features/viewer/shared/useViewerScope';
 import { useViewerSelectionHydrated } from '@/features/viewer/shared/viewerSelectionStore';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
+import { usePerformanceCulling } from '@/features/viewer/3d/performanceCulling';
 import { useViewerMode } from '@/features/viewer/3d/useViewerMode';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
@@ -311,6 +312,13 @@ export default function ViewerPage(): JSX.Element {
   // Spaces (IfcSpace) are hidden by default and controlled solely by the
   // toolbar toggle; this keeps the viewer in sync with `settings.spaces.show`.
   useSpaceVisibility(viewerHandleRef.current, viewerReady, settings.spaces.show);
+  // Native frustum-culling policy (auto/on/off) for large/federated scenes;
+  // keeps the viewer in sync with `settings.performance.culling`.
+  usePerformanceCulling(
+    viewerHandleRef.current,
+    viewerReady,
+    settings.performance.culling,
+  );
   const hasSelection = isAllSelected || partialSelectionCount > 0;
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,

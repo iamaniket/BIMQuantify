@@ -4,6 +4,7 @@ import {
   AuthShell,
   RequestAccessForm,
   RequestAccessSuccess,
+  composeAccessRequestNotes,
   type RequestAccessValues,
 } from '@bimstitch/brand';
 import { useTranslations } from 'next-intl';
@@ -40,7 +41,7 @@ export function RequestAccessClient(): JSX.Element {
         role: values.role,
         company_size: values.company_size,
         country: values.country,
-        notes: values.notes === '' ? undefined : values.notes,
+        notes: composeAccessRequestNotes(values),
         terms_accepted: values.terms_accepted,
       });
       setSubmitted({ name: values.name, email: values.work_email, company: values.company });
@@ -48,6 +49,7 @@ export function RequestAccessClient(): JSX.Element {
         company_size: values.company_size,
         country: values.country,
         role: values.role,
+        budget: values.budget,
       });
     } catch (err) {
       if (err instanceof WebApiError) {
@@ -87,7 +89,7 @@ export function RequestAccessClient(): JSX.Element {
                 {tIntro('eyebrow')}
               </div>
               <h2 className="m-0 font-display text-[30px] font-medium leading-tight tracking-tight text-foreground">
-                {tBrand('demoHeading')}
+                {tBrand('pilotHeading')}
               </h2>
               <p className="mt-2 text-[13px] leading-snug text-foreground-tertiary">
                 {tIntro('subtitle')}
