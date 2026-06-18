@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import _auth, _create_project
+from tests.conftest import _auth
 
 if TYPE_CHECKING:
     from httpx import AsyncClient

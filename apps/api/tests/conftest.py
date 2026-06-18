@@ -7,7 +7,7 @@ from urllib.parse import urlparse, urlunparse
 import pytest
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis, from_url
-from sqlalchemy import bindparam, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,

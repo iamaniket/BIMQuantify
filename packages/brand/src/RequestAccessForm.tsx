@@ -44,6 +44,38 @@ const COUNTRIES: ReadonlyArray<readonly [string, string]> = [
   ['OT', 'Other / EU'],
 ];
 
+/**
+ * Optional pilot-qualification questions. Each entry carries the UI `label`
+ * and a short `notesLabel` used when folding the answer into the access
+ * request's free-text `notes` (see `composeAccessRequestNotes`).
+ */
+const BUDGET_OPTIONS = [
+  { value: 'free', label: 'Free', notesLabel: 'Free' },
+  { value: '49', label: '€49 / month', notesLabel: '€49/month' },
+  { value: '149', label: '€149 / month', notesLabel: '€149/month' },
+  { value: '199', label: '€199 / month', notesLabel: '€199/month' },
+] as const;
+
+const TIMELINE_OPTIONS = [
+  { value: 'asap', label: 'As soon as possible', notesLabel: 'As soon as possible' },
+  { value: '1-3m', label: 'Within 1–3 months', notesLabel: 'Within 1–3 months' },
+  { value: '3-6m', label: 'In 3–6 months', notesLabel: 'In 3–6 months' },
+  { value: 'exploring', label: 'Just exploring', notesLabel: 'Just exploring' },
+] as const;
+
+const VOLUME_OPTIONS = [
+  { value: '1-5', label: '1–5', notesLabel: '1–5' },
+  { value: '6-20', label: '6–20', notesLabel: '6–20' },
+  { value: '21-50', label: '21–50', notesLabel: '21–50' },
+  { value: '50+', label: '50+', notesLabel: '50+' },
+] as const;
+
+const COMMITMENT_OPTIONS = [
+  { value: 'yes', label: 'Yes, ready to go', notesLabel: 'Yes, ready to go' },
+  { value: 'maybe', label: 'Maybe', notesLabel: 'Maybe' },
+  { value: 'no', label: 'Not yet', notesLabel: 'Not yet' },
+] as const;
+
 export interface RequestAccessValues {
   name: string;
   work_email: string;
@@ -51,8 +83,46 @@ export interface RequestAccessValues {
   role: string;
   company_size: string;
   country: string;
+  /** Monthly subscription willingness to pay — optional. */
+  budget: string;
+  /** When they'd want to start the pilot — optional. */
+  timeline: string;
+  /** Projects per year — optional. */
+  project_volume: string;
+  /** Whether a live project is ready for the pilot — optional. */
+  live_commitment: string;
   notes: string;
   terms_accepted: boolean;
+}
+
+/**
+ * Folds the optional pilot answers and the free-text goal into a single
+ * `notes` blob for the access-request API — storage is unstructured by
+ * design (no dedicated columns). Returns `undefined` when nothing was filled
+ * in, preserving the prior "empty notes → omit" behaviour.
+ */
+export function composeAccessRequestNotes(
+  values: RequestAccessValues,
+): string | undefined {
+  const labelFor = (
+    opts: ReadonlyArray<{ value: string; notesLabel: string }>,
+    selected: string,
+  ): string | undefined => opts.find((o) => o.value === selected)?.notesLabel;
+
+  const lines: string[] = [];
+  const budget = labelFor(BUDGET_OPTIONS, values.budget);
+  if (budget !== undefined) lines.push(`Budget: ${budget}`);
+  const timeline = labelFor(TIMELINE_OPTIONS, values.timeline);
+  if (timeline !== undefined) lines.push(`Start: ${timeline}`);
+  const volume = labelFor(VOLUME_OPTIONS, values.project_volume);
+  if (volume !== undefined) lines.push(`Projects/year: ${volume}`);
+  const commitment = labelFor(COMMITMENT_OPTIONS, values.live_commitment);
+  if (commitment !== undefined) lines.push(`Live project: ${commitment}`);
+
+  const goal = values.notes.trim();
+  const structured = lines.length > 0 ? `— Pilot questions —\n${lines.join('\n')}` : '';
+  const composed = [structured, goal].filter((s) => s !== '').join('\n\n');
+  return composed === '' ? undefined : composed;
 }
 
 export interface RequestAccessFormProps {
@@ -101,6 +171,10 @@ const INITIAL: RequestAccessValues = {
   role: '',
   company_size: '',
   country: 'NL',
+  budget: '',
+  timeline: '',
+  project_volume: '',
+  live_commitment: '',
   notes: '',
   terms_accepted: false,
 };
@@ -163,7 +237,7 @@ export function RequestAccessForm({
           required
           error={errFor('work_email')}
           hint={errFor('work_email') === undefined
-            ? 'We send the demo link here. Free providers (gmail, hotmail, …) are blocked.'
+            ? 'We send your pilot invite here. Free providers (gmail, hotmail, …) are blocked.'
             : undefined}
           className="col-span-2"
         >
@@ -238,15 +312,72 @@ export function RequestAccessForm({
           </Select>
         </FormField>
 
+        <div className="col-span-2 mt-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-foreground-tertiary">
+          A few quick questions{' '}
+          <span className="font-medium normal-case tracking-normal text-foreground-disabled">
+            (optional)
+          </span>
+        </div>
+
+        <FormField label="Monthly budget" hint="What you'd pay per month after the pilot.">
+          <Select value={values.budget} onChange={(e) => update('budget', e.target.value)}>
+            <option value="">No preference</option>
+            {BUDGET_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField label="When would you start?">
+          <Select value={values.timeline} onChange={(e) => update('timeline', e.target.value)}>
+            <option value="">Select…</option>
+            {TIMELINE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField label="Projects per year">
+          <Select
+            value={values.project_volume}
+            onChange={(e) => update('project_volume', e.target.value)}
+          >
+            <option value="">Select…</option>
+            {VOLUME_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField label="A live project for the pilot?">
+          <Select
+            value={values.live_commitment}
+            onChange={(e) => update('live_commitment', e.target.value)}
+          >
+            <option value="">Select…</option>
+            {COMMITMENT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
         <FormField
-          label="What would you like to see in the demo?"
+          label="What do you want to get out of the pilot?"
           className="col-span-2"
-          hint="Optional — projects, Wet kwaliteitsborging voor het bouwen (Wkb) workflow, BBL checks, IFC review, etc."
+          hint="Optional — your biggest Wet kwaliteitsborging voor het bouwen (Wkb) challenge, what success looks like, etc."
         >
           <Textarea
             value={values.notes}
             onChange={(e: ChangeEvent<HTMLTextAreaElement>) => update('notes', e.target.value)}
-            placeholder="e.g. We're a contractor running 40 Wet kwaliteitsborging voor het bouwen (Wkb)-1 projects/yr — show us federated IFC review and the dossier export."
+            placeholder="e.g. We run ~40 Wet kwaliteitsborging voor het bouwen (Wkb)-1 projects/yr and want faster federated IFC review and a clean dossier export."
             rows={3}
           />
         </FormField>
@@ -260,7 +391,7 @@ export function RequestAccessForm({
           className="mt-0.5"
         />
         <span className="text-[12px] leading-snug text-foreground-secondary">
-          I agree that BimDossier may contact me about this demo, and I accept the{' '}
+          I agree that BimDossier may contact me about the pilot, and I accept the{' '}
           <a href="/legal/privacy" className="font-semibold text-primary no-underline">
             Privacy notice
           </a>{' '}
@@ -284,7 +415,7 @@ export function RequestAccessForm({
       ) : null}
 
       <Button type="submit" variant="primary" size="md" disabled={submitting} className="mt-1">
-        {submitting ? 'Sending your request…' : 'Request demo access'}
+        {submitting ? 'Submitting your application…' : 'Apply to join the pilot'}
       </Button>
 
       <div className="mt-1 text-center text-[11.5px] text-foreground-tertiary">

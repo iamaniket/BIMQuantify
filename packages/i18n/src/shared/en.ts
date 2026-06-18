@@ -8,7 +8,7 @@ export const sharedEnMessages: SharedMessages = {
       'Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors.',
     productDescription:
       'Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time.',
-    demoHeading: 'Get your BimDossier demo.',
+    pilotHeading: 'Join the BimDossier pilot.',
   },
   legal: {
     privacy: 'Privacy',

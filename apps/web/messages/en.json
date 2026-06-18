@@ -110,8 +110,8 @@
   "requestAccessPage": {
     "backToHome": "Back to home",
     "intro": {
-      "eyebrow": "Request access",
-      "subtitle": "Fill in the form with your work details — we'll review your request and send a personalised invite shortly."
+      "eyebrow": "Pilot program",
+      "subtitle": "We're opening a limited pilot to a small group of Dutch contractors. Tell us about your team — if it's a fit, we'll be in touch."
     },
     "errors": {
       "pendingDuplicate": "We've already received your request. Give us a day to review — we'll email you.",

@@ -13,7 +13,7 @@ from tests.conftest import _auth, _create_project
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
-    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 # ---------------------------------------------------------------------------

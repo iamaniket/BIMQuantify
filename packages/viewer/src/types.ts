@@ -211,6 +211,7 @@ export type {
   Plugin,
   ViewerContext,
   ViewerEvents,
+  CullingMode,
   ItemId,
   Vec3,
   ShortcutMap,

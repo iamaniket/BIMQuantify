@@ -9,7 +9,6 @@ import xml.etree.ElementTree as ET
 import zipfile
 from datetime import datetime, timezone
 
-import pytest
 
 from bimstitch_api.bcf.generator import generate_bcf_archive, generate_single_topic_archive
 from bimstitch_api.bcf.json_utils import (

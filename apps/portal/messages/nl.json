@@ -45,8 +45,8 @@
   },
   "requestAccess": {
     "intro": {
-      "eyebrow": "Toegang aanvragen",
-      "subtitle": "Vul het formulier in met uw werkgegevens — we beoordelen uw aanvraag en sturen u zo snel mogelijk een persoonlijke uitnodiging."
+      "eyebrow": "Pilotprogramma",
+      "subtitle": "We openen een beperkte pilot voor een kleine groep Nederlandse aannemers. Vertel ons over uw team — als het past, nemen we contact op."
     },
     "errors": {
       "pendingDuplicate": "We hebben je aanvraag al ontvangen. Geef ons een dag om hem te beoordelen — we sturen je een e-mail.",
@@ -3395,6 +3395,12 @@
       "noDocumentSettings": "Nog geen aanvullende documentspecifieke instellingen.",
       "performanceDuringNav": "Prestaties tijdens navigatie",
       "performanceDescription": "Werk overslaan terwijl de camera beweegt. Hersteld in rust.",
+      "cullingTitle": "Geometrie-culling",
+      "cullingDescription": "Geometrie buiten het camerabeeld niet tekenen — de grootste winst bij grote of gefedereerde modellen. Geometrie buiten beeld wordt opnieuw geladen zodra je ernaartoe draait.",
+      "cullingMode": "Culling",
+      "cullingAuto": "Automatisch (grote / gefedereerde scènes)",
+      "cullingOn": "Altijd aan",
+      "cullingOff": "Uit (alles tekenen)",
       "hideSmall": "Kleine items verbergen",
       "envelopeOnly": "Alleen schil (wanden/vloeren/dak/deuren/ramen)",
       "hideTransparent": "Transparante items verbergen",

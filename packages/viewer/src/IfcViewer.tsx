@@ -18,6 +18,7 @@ import { cameraFlyPlugin } from './plugins/3d/camera-fly/index.js';
 import { effectsPlugin } from './plugins/3d/effects/index.js';
 import { hoverHighlightPlugin } from './plugins/3d/hover-highlight/index.js';
 import { interactivePerformancePlugin } from './plugins/3d/interactive-performance/index.js';
+import { performanceCullingPlugin } from './plugins/3d/performance-culling/index.js';
 import { keyboardShortcutsPlugin } from './plugins/3d/keyboard-shortcuts/index.js';
 import { mouseBindingsPlugin } from './plugins/3d/mouse-bindings/index.js';
 import { navigatePlugin } from './plugins/3d/navigate/index.js';
@@ -195,6 +196,9 @@ function IfcViewerImpl(
         : [pivotRotatePlugin(props.pivotRotate ?? {})]),
       effectsPlugin(props.effects ?? {}),
       interactivePerformancePlugin(props.interactivePerformance ?? {}),
+      // Native frustum culling policy (auto/on/off). Registers the
+      // `performance.setCulling` command the portal's settings drive.
+      performanceCullingPlugin(),
       ...(props.section !== false ? [sectionPlugin(typeof props.section === 'object' ? props.section : {})] : []),
       measurementPlugin(),
       wireframePlugin(),

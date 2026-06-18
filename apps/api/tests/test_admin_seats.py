@@ -11,7 +11,7 @@ and the PATCH/list endpoints — none of which need a real tenant schema.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from fastapi_users.password import PasswordHelper
@@ -181,7 +181,7 @@ async def test_list_orgs_includes_seat_fields(
 ) -> None:
     a = await _make_org(session, name="ListA", seat_limit=5)
     await _add_member(session, org=a, email="alice@lista.example")
-    b = await _make_org(session, name="ListB", seat_limit=None)
+    await _make_org(session, name="ListB", seat_limit=None)
 
     response = await client.get(
         "/admin/organizations", headers=_auth(superadmin["token"])

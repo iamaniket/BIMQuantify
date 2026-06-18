@@ -1,6 +1,7 @@
 import type {
   CameraAction,
   ControlsOptions,
+  CullingMode,
   EffectsOptions,
   EffectsQuality,
   InteractivePerformanceOptions,
@@ -57,11 +58,22 @@ export type ViewerSettings = {
   cameraFly: CameraFlySettings;
   /** IfcSpace visibility — off by default; the toolbar toggle is the only control. */
   spaces: SpacesSettings;
+  /** Native frustum-culling policy for large/federated scenes. `auto` by default. */
+  performance: PerformanceSettings;
 };
 
 export type SpacesSettings = { show: boolean };
 
 export const DEFAULT_SPACES: SpacesSettings = { show: false };
+
+/**
+ * Frustum-culling policy. `auto` culls federated/large scenes only (small
+ * single models stay fully visible); `on` always culls; `off` draws everything
+ * (the legacy behaviour). Mirrors `CullingMode` in the viewer.
+ */
+export type PerformanceSettings = { culling: CullingMode };
+
+export const DEFAULT_PERFORMANCE: PerformanceSettings = { culling: 'auto' };
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
   enabled: true,
@@ -157,6 +169,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   behavior: DEFAULT_BEHAVIOR,
   cameraFly: DEFAULT_CAMERA_FLY,
   spaces: DEFAULT_SPACES,
+  performance: DEFAULT_PERFORMANCE,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
@@ -181,6 +194,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
     },
     cameraFly: { ...d.cameraFly, ...(p.cameraFly ?? {}) },
     spaces: { ...d.spaces, ...(p.spaces ?? {}) },
+    performance: { ...d.performance, ...(p.performance ?? {}) },
   };
 }
 

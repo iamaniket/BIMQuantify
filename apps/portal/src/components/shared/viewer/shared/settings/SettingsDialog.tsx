@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import {
   AppDialog, Select, Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@bimstitch/ui';
-import type { CameraFlyPluginOptions, ViewerHandle } from '@bimstitch/viewer';
+import type { CameraFlyPluginOptions, CullingMode, ViewerHandle } from '@bimstitch/viewer';
 
 import {
   DEFAULT_VIEWER_SETTINGS,
@@ -292,7 +292,28 @@ function PerformanceTab({
   };
 
   return (
-    <div>
+    <div className="space-y-4">
+      <Section title={t('cullingTitle')} note={undefined}>
+        <p className="text-body3 text-foreground-secondary">
+          {t('cullingDescription')}
+        </p>
+        <Field label={t('cullingMode')}>
+          <Select
+            selectSize="md"
+            value={settings.performance.culling}
+            onChange={(e) => {
+              onChange({
+                ...settings,
+                performance: { culling: e.target.value as CullingMode },
+              });
+            }}
+          >
+            <option value="auto">{t('cullingAuto')}</option>
+            <option value="on">{t('cullingOn')}</option>
+            <option value="off">{t('cullingOff')}</option>
+          </Select>
+        </Field>
+      </Section>
       <Section
         title={t('performanceDuringNav')}
         note={undefined}

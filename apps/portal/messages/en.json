@@ -45,8 +45,8 @@
   },
   "requestAccess": {
     "intro": {
-      "eyebrow": "Request access",
-      "subtitle": "Fill in the form with your work details — we'll review your request and send a personalised invite shortly."
+      "eyebrow": "Pilot program",
+      "subtitle": "We're opening a limited pilot to a small group of Dutch contractors. Tell us about your team — if it's a fit, we'll be in touch."
     },
     "errors": {
       "pendingDuplicate": "We've already received your request. Give us a day to review — we'll email you.",
@@ -3395,6 +3395,12 @@
       "noDocumentSettings": "No additional document-specific settings yet.",
       "performanceDuringNav": "Performance during navigation",
       "performanceDescription": "Skip work while the camera is moving. Restored on idle.",
+      "cullingTitle": "Geometry culling",
+      "cullingDescription": "Skip drawing geometry outside the camera view — the biggest win on large or federated models. Off-screen geometry streams back as you turn toward it.",
+      "cullingMode": "Culling",
+      "cullingAuto": "Auto (large / federated scenes)",
+      "cullingOn": "Always on",
+      "cullingOff": "Off (draw everything)",
       "hideSmall": "Hide small items",
       "envelopeOnly": "Envelope only (walls/slabs/roof/doors/windows)",
       "hideTransparent": "Hide transparent items",

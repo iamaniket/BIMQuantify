@@ -30,6 +30,19 @@ export interface Vec3 {
 }
 
 /**
+ * Frustum-culling policy for the viewer.
+ *  - `'off'`  — draw every element of every model every frame (native
+ *               `LodMode.ALL_VISIBLE`). Heaviest; the legacy behaviour.
+ *  - `'on'`   — frustum-cull off-screen geometry, full detail in view (native
+ *               `LodMode.ALL_GEOMETRY`). Off-screen tiles stream back when the
+ *               camera turns toward them.
+ *  - `'auto'` — `'on'` for federated (more than one model) or large single
+ *               models; `'off'` for small single models. The default.
+ * See {@link ViewerContext.setCullingMode}.
+ */
+export type CullingMode = 'auto' | 'on' | 'off';
+
+/**
  * Built-in event map. Plugins MAY emit additional events on the same bus
  * by augmenting this map via TypeScript module augmentation.
  */
@@ -70,6 +83,8 @@ export interface ViewerEvents {
   };
   'camera:change': { position: Vec3; target: Vec3 };
   'viewer:idle': undefined;
+  /** The frustum-culling policy changed (see {@link ViewerContext.setCullingMode}). */
+  'culling:change': { mode: CullingMode };
   'visibility:change': { hidden: ItemId[]; isolated: ItemId[]; isolationActive: boolean };
   /**
    * Request from a viewer command (or the context menu) to open the host's
@@ -175,6 +190,16 @@ export interface ViewerContext {
   getPrecomputedOutline: (
     modelId: string,
   ) => Promise<Uint8Array | null> | undefined;
+  /**
+   * Set the viewer's frustum-culling policy and re-apply the resolved native
+   * `LodMode` to every loaded model. `'auto'` (default) culls only federated or
+   * large single models; `'on'` always culls; `'off'` draws everything. The
+   * portal drives this from its viewer settings via the `performance.setCulling`
+   * command. Idempotent per resolved per-model mode.
+   */
+  setCullingMode: (mode: CullingMode) => Promise<void>;
+  /** The current culling policy (not the resolved per-model `LodMode`). */
+  getCullingMode: () => CullingMode;
 }
 
 export type { PluginRegistryView };
