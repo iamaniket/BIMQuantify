@@ -19,6 +19,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    get_membership,
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.attachment_links import replace_attachment_links
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
@@ -32,13 +39,6 @@ from bimstitch_api.models.org_template import OrgTemplate
 from bimstitch_api.models.project_member import ProjectRole
 from bimstitch_api.models.user import User
 from bimstitch_api.notifications.service import create_notification
-from bimstitch_api.routers.projects import (
-    _get_membership,
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.finding import (
     FindingCreate,
     FindingHistoryChange,
@@ -158,8 +158,8 @@ async def create_finding(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Finding:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.finding, Action.create)
     except HTTPException:
@@ -171,7 +171,7 @@ async def create_finding(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     data = payload.model_dump()
     photo_ids = data.pop("photo_ids", None)
@@ -255,8 +255,8 @@ async def list_findings(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[Finding]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     stmt = select(Finding).where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
     if status_filter is not None:
@@ -290,8 +290,8 @@ async def get_finding(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Finding:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     return await _load_finding_or_404(session, project.id, finding_id)
 
 
@@ -375,8 +375,8 @@ async def get_finding_history(
     permission. `from_status`/`to_status` come from each entry's before/after
     snapshot; the actor is resolved from `public.users`.
     """
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     # 404 if the finding doesn't exist or belongs to a sibling project.
     await _load_finding_or_404(session, project.id, finding_id)
 
@@ -421,8 +421,8 @@ async def update_finding(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Finding:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.finding, Action.update)
     except HTTPException:
@@ -435,7 +435,7 @@ async def update_finding(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     finding = await _load_finding_or_404(session, project.id, finding_id)
     before = _finding_snapshot(finding)
@@ -474,7 +474,7 @@ async def update_finding(
     # Validate a chosen assignee actually belongs to the project so an invalid
     # id surfaces as a clean 422 rather than an FK IntegrityError 500.
     if finding.assignee_user_id is not None and "assignee_user_id" in updates:
-        assignee_membership = await _get_membership(session, project.id, finding.assignee_user_id)
+        assignee_membership = await get_membership(session, project.id, finding.assignee_user_id)
         if assignee_membership is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -580,8 +580,8 @@ async def delete_finding(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.finding, Action.delete)
     except HTTPException:
@@ -594,7 +594,7 @@ async def delete_finding(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     finding = await _load_finding_or_404(session, project.id, finding_id)
     before = _finding_snapshot(finding)

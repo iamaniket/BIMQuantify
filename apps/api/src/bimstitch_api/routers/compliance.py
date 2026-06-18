@@ -16,6 +16,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.auth.ratelimit import COMPLIANCE_CHECK_LIMITER
@@ -27,12 +33,6 @@ from bimstitch_api.models.model import Model
 from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.models import _load_model_or_404
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.compliance import (
     ComplianceCheckRequest,
     ComplianceCheckResponse,
@@ -79,10 +79,10 @@ async def check_compliance(
     The file must have extraction_status=succeeded with metadata and properties
     storage keys available.
     """
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.compliance, Action.create)
-    _require_project_writable(project)
+    require_project_writable(project)
     await _load_model_or_404(session, project.id, model_id)
 
     pf = (
@@ -246,8 +246,8 @@ async def get_latest_compliance(
     active_org_id: UUID = Depends(require_active_organization),
 ) -> ComplianceCheckResponse:
     """Get the most recent compliance check results for a file, including per-element details."""
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     job = await _load_latest_compliance_job(session, file_id, framework)
     result = job.result or {}
@@ -294,8 +294,8 @@ async def export_compliance_csv(
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
     """Stream the latest compliance results for a file as CSV (one row per detail item)."""
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     job = await _load_latest_compliance_job(session, file_id, framework)
     details = (job.result or {}).get("details", []) or []
@@ -350,8 +350,8 @@ async def export_compliance_rules_csv(
     One row per rule with pass/warn/fail/skip/error counts — useful for
     portfolio-level reporting where individual element failures are too noisy.
     """
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     job = await _load_latest_compliance_job(session, file_id, framework)
     rules = (job.result or {}).get("rules_summary", []) or []
@@ -386,8 +386,8 @@ async def list_project_reports(
     active_org_id: UUID = Depends(require_active_organization),
 ) -> ProjectComplianceReportList:
     """List the latest succeeded compliance report per (file, framework) for a project."""
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     stmt = (
         select(Job, ProjectFile, Model)

@@ -264,7 +264,7 @@ def require_permission(role: ProjectRole, resource: Resource, action: Action) ->
     """Raise HTTPException(403) if the role lacks the permission.
 
     Thin wrapper around `has_permission` for use as the last line of a
-    router endpoint after `_require_membership(...)`. New code should prefer
+    router endpoint after `require_membership(...)`. New code should prefer
     this over scattering `_require_role(membership, ProjectRole.x, ...)`
     calls so the matrix in this module stays the single source of truth.
     """

@@ -31,6 +31,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.auth.ratelimit import REPORT_GEN_LIMITER
@@ -58,12 +64,6 @@ from bimstitch_api.models.report import Report, ReportStatus, ReportType
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
 from bimstitch_api.notifications.service import publish_notification, upsert_job_notification
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.report import (
     ReportCreateRequest,
     ReportListResponse,
@@ -640,9 +640,9 @@ async def create_report(
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> ReportResponse:
-    project = await _load_project_or_404(session, project_id)
-    _require_project_writable(project)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    require_project_writable(project)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.report, Action.create)
 
     # Eager-load contractor for the render snapshot (project.contractor is a
@@ -805,8 +805,8 @@ async def list_reports(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> ReportListResponse:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     base = select(Report).where(Report.project_id == project.id)
     if report_type is not None:
@@ -834,8 +834,8 @@ async def get_report(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> ReportResponse:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     report = (
         await session.execute(
@@ -868,9 +868,9 @@ async def sign_report(
     Action.sign on completion_declaration). Locks the report (signed_at set),
     embeds an audit-id hash, and re-renders the stamped PDF over the same key.
     Idempotency-guarded: a second sign returns 409."""
-    project = await _load_project_or_404(session, project_id)
-    _require_project_writable(project)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    require_project_writable(project)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.completion_declaration, Action.sign)
 
     report = (

@@ -24,16 +24,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
 from bimstitch_api.access import (
-    get_membership as _get_membership,
-    is_org_admin as _is_org_admin,
-    load_project_or_404 as _load_project_or_404,
-    require_member_manager as _require_member_manager,
-    require_member_viewer as _require_member_viewer,
-    require_membership as _require_membership,
-    require_project_owner_or_admin as _require_project_owner_or_admin,
-    require_project_read_access as _require_project_read_access,
-    require_project_writable as _require_project_writable,
-    require_project_write_access as _require_project_write_access,
+    get_membership,
+    is_org_admin,
+    load_project_or_404,
+    require_member_manager,
+    require_member_viewer,
+    require_membership,
+    require_project_owner_or_admin,
+    require_project_read_access,
+    require_project_writable,
+    require_project_write_access,
 )
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.guards import is_guest_member
@@ -401,9 +401,9 @@ async def update_project_thumbnail(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, object]:
     """Upload or replace a project's thumbnail image (multipart/form-data)."""
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_write_access(session, project.id, user, active_org_id)
-    _require_project_writable(project)
+    project = await load_project_or_404(session, project_id)
+    await require_project_write_access(session, project.id, user, active_org_id)
+    require_project_writable(project)
 
     allowed_types = [t.strip() for t in settings.thumbnail_allowed_content_types.split(",")]
     content_type = thumbnail.content_type or ""
@@ -457,7 +457,7 @@ async def list_projects(
     base = select(Project).where(
         Project.lifecycle_state.in_([ProjectLifecycleState.active, ProjectLifecycleState.archived])
     )
-    if not user.is_superuser and not await _is_org_admin(session, user.id, active_org_id):
+    if not user.is_superuser and not await is_org_admin(session, user.id, active_org_id):
         base = base.join(ProjectMember, ProjectMember.project_id == Project.id).where(
             ProjectMember.user_id == user.id
         )
@@ -500,14 +500,14 @@ async def get_project(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     # `my_role` is the caller's *actual* membership role, fetched independently of
     # the read gate above: an org-admin/superuser reaches the project via the
     # bypass (which returns no membership), yet may still hold a real role here
     # (e.g. the creating org-admin is the owner). Writes are gated on the real
     # role, so this must reflect the row, not the bypass.
-    my_membership = await _get_membership(session, project.id, user.id)
+    my_membership = await get_membership(session, project.id, user.id)
     cache_response(response, CACHE_TTL_PROJECT_DETAIL)
     return await _project_to_read(
         project, storage, my_role=my_membership.role if my_membership is not None else None
@@ -525,9 +525,9 @@ async def update_project(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_write_access(session, project.id, user, active_org_id)
-    _require_project_writable(project)
+    project = await load_project_or_404(session, project_id)
+    await require_project_write_access(session, project.id, user, active_org_id)
+    require_project_writable(project)
 
     updates = payload.model_dump(exclude_unset=True)
     if "country" in updates:
@@ -588,8 +588,8 @@ async def delete_project(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_owner_or_admin(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_owner_or_admin(session, project.id, user, active_org_id)
 
     before = {"name": project.name, "lifecycle_state": project.lifecycle_state.value}
     project.lifecycle_state = ProjectLifecycleState.removed
@@ -616,8 +616,8 @@ async def archive_project(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_owner_or_admin(
+    project = await load_project_or_404(session, project_id)
+    await require_project_owner_or_admin(
         session, project.id, user, active_org_id, action=Action.archive
     )
 
@@ -654,8 +654,8 @@ async def reactivate_project(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, object]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_owner_or_admin(
+    project = await load_project_or_404(session, project_id)
+    await require_project_owner_or_admin(
         session, project.id, user, active_org_id, action=Action.archive
     )
 
@@ -704,8 +704,8 @@ async def list_members(
     """List members of a project. Visible to project members, org admins, and
     super-admins. Non-member non-admins get a 404 to keep existence-leakage
     closed."""
-    project = await _load_project_or_404(session, project_id)
-    await _require_member_viewer(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_member_viewer(session, project.id, user, active_org_id)
 
     total = (
         await session.scalar(
@@ -751,9 +751,9 @@ async def add_member(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> dict[str, object]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_member_manager(session, project.id, user, active_org_id)
-    _require_project_writable(project)
+    project = await load_project_or_404(session, project_id)
+    await require_member_manager(session, project.id, user, active_org_id)
+    require_project_writable(project)
 
     if payload.role is ProjectRole.owner:
         # No second-owner. The partial unique index would also catch this, but
@@ -811,11 +811,11 @@ async def remove_member(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    await _require_member_manager(session, project.id, user, active_org_id)
-    _require_project_writable(project)
+    project = await load_project_or_404(session, project_id)
+    await require_member_manager(session, project.id, user, active_org_id)
+    require_project_writable(project)
 
-    target = await _get_membership(session, project.id, user_id)
+    target = await get_membership(session, project.id, user_id)
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MEMBER_NOT_FOUND")
     if target.role is ProjectRole.owner:
@@ -846,11 +846,11 @@ async def update_member_role(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> dict[str, object]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_member_manager(session, project.id, user, active_org_id)
-    _require_project_writable(project)
+    project = await load_project_or_404(session, project_id)
+    await require_member_manager(session, project.id, user, active_org_id)
+    require_project_writable(project)
 
-    target = await _get_membership(session, project.id, user_id)
+    target = await get_membership(session, project.id, user_id)
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MEMBER_NOT_FOUND")
 
@@ -900,9 +900,9 @@ async def invite_to_project(
     active_org_id: UUID = Depends(require_active_organization),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> ProjectInvitationResponse:
-    project = await _load_project_or_404(session, project_id)
-    await _require_member_manager(session, project.id, user, active_org_id)
-    _require_project_writable(project)
+    project = await load_project_or_404(session, project_id)
+    await require_member_manager(session, project.id, user, active_org_id)
+    require_project_writable(project)
 
     if payload.role is ProjectRole.owner:
         raise HTTPException(

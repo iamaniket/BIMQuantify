@@ -246,7 +246,7 @@ Tests stub the dispatcher via `set_job_dispatcher()` in `jobs/dispatcher.py`. Th
 
 ## Architecture — Portal (`apps/portal`)
 
-Next.js 15 with App Router, React 19, Tailwind CSS, port 3001.
+Next.js 16 with App Router, React 19, Tailwind CSS, port 3001.
 
 **Route groups**: `(dashboard)` for project CRUD with sidebar layout, `(viewer)` for immersive 3D viewer. Both enforce auth — redirect to `/login` if no tokens.
 
@@ -264,7 +264,7 @@ Next.js 15 with App Router, React 19, Tailwind CSS, port 3001.
 
 Hard rules:
 - **Never invent CSS-variable names.** Only the long names defined in `tokens.css` exist (`--foreground`, `--foreground-secondary`, `--foreground-tertiary`, `--foreground-disabled`, `--background-hover`, `--surface-low/main/...`, `--primary*`, `--success`, `--border`, …). Short aliases like `--mono`, `--sans`, `--fg`, `--fg-2`, `--fg-3`, `--bg-hover` **do not exist** — referencing them in `var(...)` silently resolves to invalid and inherits the wrong font/color. Prefer the Tailwind class (`font-sans`, `text-foreground-tertiary`, `bg-background-hover`); if you must use `var()`, use the full token name.
-- **No raw hex / rgb / font-family literals** in `.tsx` for themed UI. If a tone isn't in the tokens, add it to the token layer first. Exception: OG/icon routes (`app/apple-icon.tsx`) where Satori needs a literal `system-ui`. Skeuomorphic art (`components/shared/viewer/settings/VisualKeyboard.tsx`, `MouseDiagram.tsx`) may keep raw *color* hexes for the photoreal look, but its fonts must still use the system sans stack (`var(--font-sans)`).
+- **No raw hex / rgb / font-family literals** in `.tsx` for themed UI. If a tone isn't in the tokens, add it to the token layer first. Exception: OG/icon routes (`app/apple-icon.tsx`) where Satori needs a literal `system-ui`. Skeuomorphic art (`components/shared/viewer/shared/settings/VisualKeyboard.tsx`, `MouseDiagram.tsx`) may keep raw *color* hexes for the photoreal look, but its fonts must still use the system sans stack (`var(--font-sans)`).
 - **One text font — system sans-serif.** The whole app uses the platform's native sans-serif via `font-sans` (`ui-sans-serif, system-ui, -apple-system, sans-serif`). There is no custom webfont for body text. The `font-mono` utility and `--font-mono` var still exist but are **aliased to the same system sans stack** — do not write new `font-mono`; use `font-sans` (pair with `tabular-nums` when you need aligned figures). Fraunces (the display serif, `font-display` → `--font-display`) is the **only** other family and is **reserved for the login/auth experience** (`features/auth/*`, plus the brand pieces rendered there — `packages/brand/KpiStrip`, `RequestAccessSuccess`). Do **not** use `font-display` in dashboard/viewer/marketing chrome — use `font-sans`. Never hardcode any other family name (no `"Saira Condensed"`, `"DM Sans"`, etc.). For unavoidable inline/SVG `style` font references, use `var(--font-sans)` (defined in each app's `globals.css`); the short aliases `--mono` / `--sans` / `--fg*` still do not exist.
 - **`style={{}}` is only for genuinely dynamic values** the class system can't express — runtime grid templates, transforms, per-row colors from data, virtualized-row geometry. Everything static is a class.
 - **Recurring style clusters become shared primitives** in `@bimstitch/ui` (e.g. `Eyebrow` = uppercase section label, `CountChip` = tabular numeric pill, `Badge`). Extract once a cluster repeats across ≥3 files; one-offs stay as inline classes. Off-scale sizes snap to the nearest token (`text-caption` 10 / `text-body3` 12 / `text-[13px]` only when no token fits).
@@ -295,7 +295,7 @@ Shared base: `packages/tsconfig/base.json` — `module: NodeNext`, `strict`, `no
 
 ## TDD rule
 
-Every new auth/API endpoint lands with a failing test first. The test files in `apps/api/tests/` are the spec; extend them (or add new ones) before implementing. `uv run pytest` must stay green on every commit (currently 253 tests).
+Every new auth/API endpoint lands with a failing test first. The test files in `apps/api/tests/` are the spec; extend them (or add new ones) before implementing. `uv run pytest` must stay green on every commit.
 
 ## Environment variables
 

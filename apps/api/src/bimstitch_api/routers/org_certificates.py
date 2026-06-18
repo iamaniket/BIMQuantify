@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
+from bimstitch_api.access import is_org_admin
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.models.certificate import CertificateStatus, CertificateType
@@ -28,7 +29,6 @@ from bimstitch_api.models.org_certificate import (
 )
 from bimstitch_api.models.org_certificate_tag import OrgCertificateTag
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import _is_org_admin
 from bimstitch_api.schemas.org_certificate import (
     OrgCertificateDownloadResponse,
     OrgCertificateInitiateRequest,
@@ -50,7 +50,7 @@ router = APIRouter(prefix="/org-certificates", tags=["org-certificates"])
 async def _require_org_admin(session: AsyncSession, user: User, organization_id: UUID) -> None:
     if user.is_superuser:
         return
-    if await _is_org_admin(session, user.id, organization_id):
+    if await is_org_admin(session, user.id, organization_id):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,

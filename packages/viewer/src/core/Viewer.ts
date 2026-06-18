@@ -31,6 +31,7 @@ import { computeVisibleSolidBox } from './visibleBox.js';
 import { ContactShadowBaker } from './contactShadow.js';
 import type { ContactShadowRect } from './contactShadow.js';
 import { applyLookToMaterial } from './displayLook.js';
+import { modelMap, threeScene } from './fragmentsCompat.js';
 import type { CullingMode, ItemId, MaterialLook, Plugin, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>;
@@ -481,7 +482,7 @@ export class Viewer {
     const box = new THREE.Box3();
     const fragments = this.fragmentsModels;
     if (!fragments) return box;
-    const models = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
+    const models = modelMap(fragments);
     for (const model of models.values()) {
       let mb = model.box;
       if (!mb || mb.isEmpty()) {
@@ -705,7 +706,7 @@ export class Viewer {
     // Build the context once; it's shared by every plugin.
     const ctx: ViewerContext = {
       get scene() {
-        return (world.scene as unknown as { three: THREE.Scene }).three;
+        return threeScene(world.scene);
       },
       get camera() {
         return world.camera!.three;
@@ -732,7 +733,7 @@ export class Viewer {
           this.pluginManager?.get<T>(name) ?? null,
         has: (name: string) => this.pluginManager?.has(name) ?? false,
       },
-      models: () => fragmentsModels.models.list as unknown as Map<string, FRAGS.FragmentsModel>,
+      models: () => modelMap(fragmentsModels),
       getPrecomputedOutline: (modelId: string) =>
         this.precomputedOutlines.get(modelId),
       requestRender: () => this.markActive(),
@@ -874,7 +875,7 @@ export class Viewer {
     // the host re-frames once via `camera.zoomExtents` after all loads, so a
     // late-arriving model never yanks the camera off what the user is viewing.
     const isFirstModel =
-      (fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>).size === 0;
+      modelMap(fragments).size === 0;
     const modelId = opts.modelId ?? `model-${String(Date.now())}`;
     this.modelId = modelId;
     // Stash before `model:loaded` fires so the outline plugin's handler
@@ -909,7 +910,7 @@ export class Viewer {
       model.onViewUpdated.remove(onViewUpdated),
     );
 
-    const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
+    const sceneThree = threeScene(world.scene);
     sceneThree.add(model.object);
 
     if (isFirstModel) {
@@ -1043,7 +1044,7 @@ export class Viewer {
 
   private applyBackground(world: World): void {
     const color = this.options.background?.color ?? 0xffffff;
-    const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
+    const sceneThree = threeScene(world.scene);
     sceneThree.background = new THREE.Color(color);
     const renderer = world.renderer!.three;
     renderer.setClearColor(color, 1);
@@ -1053,7 +1054,7 @@ export class Viewer {
   private applyLightingAndShadows(world: World): void {
     const opts = this.options.shadows ?? {};
     this.shadowsEnabled = opts.enabled ?? true;
-    const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
+    const sceneThree = threeScene(world.scene);
 
     // Forge-style neutral studio lighting: a hemisphere ambient + a soft
     // directional sun. SimpleScene.setup() may have already added its own
@@ -1242,7 +1243,7 @@ export class Viewer {
       fragments === null
         ? []
         : [
-            ...(fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>),
+            ...modelMap(fragments),
           ].filter(([id]) => this.appliedLodMode.get(id) === FRAGS.LodMode.ALL_GEOMETRY);
     if (unculled.length > 0 && fragments !== null) {
       this.shadowBaking = true;
@@ -1341,7 +1342,7 @@ export class Viewer {
     const fragments = this.fragmentsModels;
     if (fragments === null) return [];
     return [
-      ...(fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>).keys(),
+      ...modelMap(fragments).keys(),
     ];
   }
 
@@ -1361,9 +1362,7 @@ export class Viewer {
   async setModelVisible(modelId: string, visible: boolean): Promise<void> {
     const fragments = this.fragmentsModels;
     if (fragments === null) return;
-    const model = (
-      fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>
-    ).get(modelId);
+    const model = modelMap(fragments).get(modelId);
     if (!model) return;
     if (visible) this.hiddenModelIds.delete(modelId);
     else this.hiddenModelIds.add(modelId);
@@ -1407,7 +1406,7 @@ export class Viewer {
   private async applyCulling(holdMs: number = MODEL_STREAM_HOLD_MS): Promise<void> {
     const fragments = this.fragmentsModels;
     if (fragments === null) return;
-    const models = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
+    const models = modelMap(fragments);
     let changed = false;
     for (const [id, model] of models) {
       const want = this.resolveLodMode(id);
@@ -1448,7 +1447,7 @@ export class Viewer {
     this.activeLook = look;
     const fragments = this.fragmentsModels;
     if (fragments !== null) {
-      const modelsList = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
+      const modelsList = modelMap(fragments);
       const seen = new Set<THREE.Material>();
       for (const model of modelsList.values()) {
         (model as unknown as { object?: THREE.Object3D }).object?.traverse((obj) => {
@@ -1483,11 +1482,11 @@ export class Viewer {
     const fragments = this.fragmentsModels;
     const world = this.world;
     if (fragments === null || world === null) return;
-    const modelsList = fragments.models.list as unknown as Map<string, FRAGS.FragmentsModel>;
+    const modelsList = modelMap(fragments);
     const model = modelsList.get(modelId);
     if (model === undefined) return;
 
-    const sceneThree = (world.scene as unknown as { three: THREE.Scene }).three;
+    const sceneThree = threeScene(world.scene);
     sceneThree.remove(model.object);
     await fragments.disposeModel(modelId).catch(() => undefined);
 

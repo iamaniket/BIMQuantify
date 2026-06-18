@@ -15,13 +15,13 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_project_read_access,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_project_read_access,
-)
 from bimstitch_api.schemas.activity import ProjectActivityEntry
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
@@ -63,8 +63,8 @@ async def list_project_activity(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[ProjectActivityEntry]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     base = (
         select(AuditLog.id)

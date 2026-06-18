@@ -21,6 +21,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    require_membership,
+    require_project_writable,
+)
 from bimstitch_api.attachment_links import replace_attachment_links
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
@@ -37,10 +41,6 @@ from bimstitch_api.models.user import User
 from bimstitch_api.routers.borgingsplan import (
     _load_moment_by_id_or_404,
     _walk_to_project_via_moment,
-)
-from bimstitch_api.routers.projects import (
-    _require_membership,
-    _require_project_writable,
 )
 from bimstitch_api.schemas.borgingsplan import BorgingsmomentRead
 from bimstitch_api.schemas.inspection import (
@@ -64,8 +64,8 @@ async def _require_moment_writable(
 ) -> tuple[Borgingsmoment, UUID]:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, _plan = await _walk_to_project_via_moment(session, moment)
-    _require_project_writable(project)
-    membership = await _require_membership(session, project.id, user.id)
+    require_project_writable(project)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.inspection, Action.update)
     return moment, project.id
 
@@ -75,7 +75,7 @@ async def _require_moment_readable(
 ) -> tuple[Borgingsmoment, UUID]:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, _plan = await _walk_to_project_via_moment(session, moment)
-    await _require_membership(session, project.id, user.id)
+    await require_membership(session, project.id, user.id)
     return moment, project.id
 
 

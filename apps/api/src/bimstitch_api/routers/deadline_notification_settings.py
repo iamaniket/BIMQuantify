@@ -18,6 +18,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimstitch_api.access import (
+    is_org_admin,
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.deadlines.settings import (
@@ -29,12 +35,6 @@ from bimstitch_api.models.deadline_notification_settings import (
     DeadlineNotificationSettings,
 )
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _is_org_admin,
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-)
 from bimstitch_api.schemas.deadline_notification_settings import (
     DeadlineNotificationSettingsUpdate,
     EffectiveDeadlineNotificationSettings,
@@ -55,7 +55,7 @@ async def _require_org_admin(session: AsyncSession, user: User, organization_id:
     """Raise 403 if the caller is neither a superuser nor an org admin."""
     if user.is_superuser:
         return
-    if await _is_org_admin(session, user.id, organization_id):
+    if await is_org_admin(session, user.id, organization_id):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -176,8 +176,8 @@ async def list_project_settings(
     Merges: project override -> org default -> jurisdiction default.
     Requires project read access.
     """
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     return await get_all_effective_settings(session, project.id, project.country, locale)
 
 
@@ -195,8 +195,8 @@ async def upsert_project_setting(
     locale: str = Query("en", max_length=10),
 ) -> EffectiveDeadlineNotificationSettings:
     """Create or replace a project-level override for a deadline type."""
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.deadline, Action.update)
 
     rules = get_deadline_rules(project.country)
@@ -253,8 +253,8 @@ async def delete_project_setting(
     active_org_id: UUID = Depends(require_active_organization),
 ) -> None:
     """Remove the project-level override, reverting to org/jurisdiction defaults."""
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.deadline, Action.update)
 
     existing = (

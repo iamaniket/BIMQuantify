@@ -21,6 +21,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.jurisdictions import get_deadline_rules, get_dossier_requirements, pick_label
@@ -30,11 +35,6 @@ from bimstitch_api.models.finding import Finding, FindingStatus
 from bimstitch_api.models.model import Model
 from bimstitch_api.models.project_file import ProjectFile, ProjectFileRole, ProjectFileStatus
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-)
 from bimstitch_api.schemas.deadline import DeadlineFileMet, DeadlineRead
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
@@ -95,8 +95,8 @@ async def list_deadlines(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[DeadlineRead]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     base = select(Deadline).where(Deadline.project_id == project.id)
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
@@ -116,8 +116,8 @@ async def get_deadline(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> DeadlineRead:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     dl = await _load_deadline_or_404(session, project.id, deadline_id)
     return _serialize_deadline(dl)
 
@@ -265,8 +265,8 @@ async def get_deadline_readiness(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> DeadlineReadiness:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     dl = await _load_deadline_or_404(session, project.id, deadline_id)
 
     rules = get_deadline_rules(project.country)
@@ -341,8 +341,8 @@ async def mark_deadline_met(
     Rejects not_applicable deadlines (there's nothing to mark).
     Accepts optional filing metadata (reference number, notes).
     """
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.deadline, Action.update)
 
     dl = await _load_deadline_or_404(session, project.id, deadline_id)

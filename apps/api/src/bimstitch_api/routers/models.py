@@ -18,18 +18,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.cache import CACHE_TTL_MODEL_DETAIL, CACHE_TTL_MODELS_LIST, cache_response
 from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.project_file import ProjectFile
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.model import (
     ModelCreate,
     ModelRead,
@@ -66,10 +66,10 @@ async def create_model(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Model:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.model, Action.create)
-    _require_project_writable(project)
+    require_project_writable(project)
 
     model = Model(
         project_id=project.id,
@@ -118,8 +118,8 @@ async def list_models(
     offset: int = Query(default=0, ge=0),
     include: str | None = Query(default=None),
 ) -> list[dict[str, object]]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     stmt = select(Model).where(Model.project_id == project.id)
     if status_filter is not None:
@@ -168,8 +168,8 @@ async def get_model(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> dict[str, object]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     model = (
         await session.execute(
@@ -210,10 +210,10 @@ async def update_model(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Model:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.model, Action.update)
-    _require_project_writable(project)
+    require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
 
@@ -259,10 +259,10 @@ async def delete_model(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.model, Action.delete)
-    _require_project_writable(project)
+    require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
     before = {

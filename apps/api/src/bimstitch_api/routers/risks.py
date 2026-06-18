@@ -14,16 +14,16 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.risk import RiskCreate, RiskRead, RiskUpdate
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
@@ -61,8 +61,8 @@ async def create_risk(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Risk:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.risk, Action.create)
     except HTTPException:
@@ -74,7 +74,7 @@ async def create_risk(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     risk = Risk(project_id=project.id, **payload.model_dump())
     session.add(risk)
@@ -105,8 +105,8 @@ async def list_risks(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[Risk]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     base = select(Risk).where(Risk.project_id == project.id)
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
@@ -126,8 +126,8 @@ async def get_risk(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Risk:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     return await _load_risk_or_404(session, project.id, risk_id)
 
 
@@ -141,8 +141,8 @@ async def update_risk(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Risk:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.risk, Action.update)
     except HTTPException:
@@ -155,7 +155,7 @@ async def update_risk(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     risk = await _load_risk_or_404(session, project.id, risk_id)
     before = _risk_snapshot(risk)
@@ -186,8 +186,8 @@ async def delete_risk(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.risk, Action.delete)
     except HTTPException:
@@ -200,7 +200,7 @@ async def delete_risk(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     risk = await _load_risk_or_404(session, project.id, risk_id)
     before = _risk_snapshot(risk)

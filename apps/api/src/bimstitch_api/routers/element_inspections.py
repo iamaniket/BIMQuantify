@@ -21,12 +21,12 @@ from bimstitch_api.models.checklist_item import ChecklistItem
 
 if TYPE_CHECKING:
     from bimstitch_api.models.borgingsmoment import Borgingsmoment
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_project_read_access,
+)
 from bimstitch_api.models.checklist_item_result import ChecklistItemResult
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_project_read_access,
-)
 from bimstitch_api.schemas.element_inspections import (
     ElementInspectionItem,
     ElementInspectionsResponse,
@@ -51,8 +51,8 @@ async def get_element_inspections(
     """Return all checklist items linked to a specific IFC element."""
 
     # Verify project exists + caller has read access.
-    await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project_id, user, active_org_id)
+    await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project_id, user, active_org_id)
 
     # Query checklist items linked to this element, eager-loading their
     # moment for context. Left-join results so uninspected items surface

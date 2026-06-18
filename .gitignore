@@ -10,6 +10,9 @@ samples/*
 !samples/IfcOpenHouse2x3.ifc
 !samples/IfcOpenHouse4.ifc
 
+# Throwaway local diagnostic scripts (scratch harnesses, not committed)
+scripts/_diag_*.py
+
 # Playwright
 playwright-report/
 test-results/

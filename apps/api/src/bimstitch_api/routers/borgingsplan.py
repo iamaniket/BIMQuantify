@@ -29,6 +29,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.jurisdictions import pick_label
@@ -39,12 +45,6 @@ from bimstitch_api.models.checklist_item import ChecklistItem, ChecklistItemType
 from bimstitch_api.models.project import Project
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.borgingsplan import (
     BorgingsmomentCreate,
     BorgingsmomentRead,
@@ -229,14 +229,14 @@ async def _walk_to_project_via_moment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="BORGINGSPLAN_NOT_FOUND"
         )
-    project = await _load_project_or_404(session, plan.project_id)
+    project = await load_project_or_404(session, plan.project_id)
     return project, plan
 
 
 async def _walk_to_project_via_plan(
     session: AsyncSession, plan: Borgingsplan
 ) -> Project:
-    return await _load_project_or_404(session, plan.project_id)
+    return await load_project_or_404(session, plan.project_id)
 
 
 async def _project_risks(
@@ -442,8 +442,8 @@ async def get_active_borgingsplan(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     return await _load_active_plan_or_404(session, project.id)
 
 
@@ -457,8 +457,8 @@ async def list_borgingsplan_versions(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[Borgingsplan]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     result = await session.execute(
         select(Borgingsplan)
         .where(Borgingsplan.project_id == project.id)
@@ -480,8 +480,8 @@ async def generate_borgingsplan(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.create)
     except HTTPException:
@@ -494,7 +494,7 @@ async def generate_borgingsplan(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     opts = payload or GenerateOptions()
 
     # Resolve existing active plan, if any.
@@ -556,8 +556,8 @@ async def update_borgingsplan(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.update)
     except HTTPException:
@@ -570,7 +570,7 @@ async def update_borgingsplan(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     plan = await _load_active_plan_or_404(session, project.id)
     _require_plan_draft(plan)
@@ -603,8 +603,8 @@ async def publish_borgingsplan(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.publish)
     except HTTPException:
@@ -617,7 +617,7 @@ async def publish_borgingsplan(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     plan = await _load_active_plan_or_404(session, project.id)
     if plan.status is not BorgingsplanStatus.draft:
@@ -653,8 +653,8 @@ async def new_borgingsplan_version(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.create)
     except HTTPException:
@@ -667,7 +667,7 @@ async def new_borgingsplan_version(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     source = await _load_active_plan_or_404(session, project.id)
     if source.status is not BorgingsplanStatus.published:
@@ -720,8 +720,8 @@ async def reset_borgingsplan_to_template(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsplan:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.update)
     except HTTPException:
@@ -734,7 +734,7 @@ async def reset_borgingsplan_to_template(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     plan = await _load_plan_in_project_or_404(session, project.id, plan_id)
     _require_plan_draft(plan)
@@ -789,7 +789,7 @@ async def create_moment(
             status_code=status.HTTP_404_NOT_FOUND, detail="BORGINGSPLAN_NOT_FOUND"
         )
     project = await _walk_to_project_via_plan(session, plan)
-    membership = await _require_membership(session, project.id, user.id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.create)
     except HTTPException:
@@ -802,7 +802,7 @@ async def create_moment(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     _require_plan_draft(plan)
 
     seq = payload.sequence_in_phase
@@ -857,7 +857,7 @@ async def update_moment(
 ) -> Borgingsmoment:
     moment = await _load_moment_in_plan_or_404(session, plan_id, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
-    membership = await _require_membership(session, project.id, user.id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.update)
     except HTTPException:
@@ -870,7 +870,7 @@ async def update_moment(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     _require_plan_draft(plan)
 
     updates = payload.model_dump(exclude_unset=True)
@@ -908,7 +908,7 @@ async def delete_moment(
 ) -> Response:
     moment = await _load_moment_in_plan_or_404(session, plan_id, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
-    membership = await _require_membership(session, project.id, user.id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.delete)
     except HTTPException:
@@ -921,7 +921,7 @@ async def delete_moment(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     _require_plan_draft(plan)
 
     before = {"phase": moment.phase.value, "sequence_in_phase": moment.sequence_in_phase}
@@ -959,7 +959,7 @@ async def reorder_moments(
             status_code=status.HTTP_404_NOT_FOUND, detail="BORGINGSPLAN_NOT_FOUND"
         )
     project = await _walk_to_project_via_plan(session, plan)
-    membership = await _require_membership(session, project.id, user.id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.update)
     except HTTPException:
@@ -972,7 +972,7 @@ async def reorder_moments(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     _require_plan_draft(plan)
 
     existing = (
@@ -1040,7 +1040,7 @@ async def create_checklist_item(
 ) -> ChecklistItem:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
-    membership = await _require_membership(session, project.id, user.id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.create)
     except HTTPException:
@@ -1053,7 +1053,7 @@ async def create_checklist_item(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     _require_plan_draft(plan)
 
     seq = payload.sequence
@@ -1109,7 +1109,7 @@ async def update_checklist_item(
 ) -> ChecklistItem:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
-    membership = await _require_membership(session, project.id, user.id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.update)
     except HTTPException:
@@ -1122,7 +1122,7 @@ async def update_checklist_item(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     _require_plan_draft(plan)
 
     item = await _load_item_in_moment_or_404(session, moment.id, item_id)
@@ -1160,7 +1160,7 @@ async def delete_checklist_item(
 ) -> Response:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
-    membership = await _require_membership(session, project.id, user.id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.delete)
     except HTTPException:
@@ -1173,7 +1173,7 @@ async def delete_checklist_item(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     _require_plan_draft(plan)
 
     item = await _load_item_in_moment_or_404(session, moment.id, item_id)
@@ -1206,7 +1206,7 @@ async def reorder_checklist_items(
 ) -> list[ChecklistItem]:
     moment = await _load_moment_by_id_or_404(session, moment_id)
     project, plan = await _walk_to_project_via_moment(session, moment)
-    membership = await _require_membership(session, project.id, user.id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.assurance_plan, Action.update)
     except HTTPException:
@@ -1219,7 +1219,7 @@ async def reorder_checklist_items(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
     _require_plan_draft(plan)
 
     existing = (

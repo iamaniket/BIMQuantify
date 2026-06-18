@@ -37,11 +37,11 @@ from bimstitch_api.models.project_file import (
 from bimstitch_api.models.user import User
 
 logger = logging.getLogger(__name__)
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
 )
 from bimstitch_api.schemas.attachment import (
     AttachmentDownloadResponse,
@@ -136,8 +136,8 @@ async def initiate_attachment_upload(
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> AttachmentInitiateResponse:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.attachment, Action.create)
     except HTTPException:
@@ -149,7 +149,7 @@ async def initiate_attachment_upload(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     ext = upload_service.parse_extension(payload.filename)
     upload_service.ensure_allowed_extension(ext, ATTACHMENT_ALLOWED_EXTENSIONS)
@@ -264,8 +264,8 @@ async def complete_attachment_upload(
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> ProjectFile:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.attachment, Action.create)
     except HTTPException:
@@ -366,8 +366,8 @@ async def list_attachments(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[ProjectFile]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     base = select(ProjectFile).where(
         ProjectFile.project_id == project.id,
@@ -423,8 +423,8 @@ async def get_attachment(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> ProjectFile:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     return await _load_attachment_or_404(session, project.id, attachment_id)
 
 
@@ -441,8 +441,8 @@ async def list_attachment_versions(
     `attachment_id` may be any version in the group — the root is resolved and
     every non-deleted sibling returned. The first element is the current head.
     """
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     anchor = await _load_attachment_or_404(session, project.id, attachment_id)
     root_id = anchor.parent_file_id or anchor.id
 
@@ -471,8 +471,8 @@ async def download_attachment(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> AttachmentDownloadResponse:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     att = await _load_attachment_or_404(session, project.id, attachment_id)
 
     if att.status != ProjectFileStatus.ready:
@@ -498,8 +498,8 @@ async def update_attachment(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> ProjectFile:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.attachment, Action.update)
     except HTTPException:
@@ -545,8 +545,8 @@ async def delete_attachment(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.attachment, Action.delete)
     except HTTPException:

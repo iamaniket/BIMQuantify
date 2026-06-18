@@ -22,6 +22,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.bcf.generator import generate_bcf_archive
@@ -42,12 +48,6 @@ from bimstitch_api.models.bcf_topic_label import BcfTopicLabel
 from bimstitch_api.models.bcf_viewpoint import BcfViewpoint
 from bimstitch_api.models.project_file import ProjectFile, ProjectFileRole
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.bcf import (
     BcfCommentCreate,
     BcfCommentRead,
@@ -336,8 +336,8 @@ async def create_topic(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.bcf_topic, Action.create)
     except HTTPException:
@@ -349,7 +349,7 @@ async def create_topic(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     now = datetime.now(UTC)
     author = _user_display_name(user)
@@ -439,8 +439,8 @@ async def list_topics(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     base = select(BcfTopic).where(
         BcfTopic.project_id == project.id,
@@ -525,8 +525,8 @@ async def import_bcf(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.bcf_topic, Action.create)
     except HTTPException:
@@ -538,7 +538,7 @@ async def import_bcf(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     data = await file.read()
     try:
@@ -688,8 +688,8 @@ async def export_bcf(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> StreamingResponse:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     stmt = (
         select(BcfTopic)
@@ -821,8 +821,8 @@ async def list_markup_2d(
 
     Placed before ``/{topic_id}`` so "markup-2d" is not parsed as a UUID.
     """
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     stmt = (
         select(BcfTopic, BcfViewpoint)
@@ -860,8 +860,8 @@ async def get_topic(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     topic = await _load_topic_or_404(session, project.id, topic_id, eager=True)
     storage = get_storage()
     return await _topic_to_read(topic, storage)
@@ -877,8 +877,8 @@ async def update_topic(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.bcf_topic, Action.update)
     except HTTPException:
@@ -891,7 +891,7 @@ async def update_topic(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     topic = await _load_topic_or_404(session, project.id, topic_id, eager=True)
     before = _topic_snapshot(topic)
@@ -938,8 +938,8 @@ async def delete_topic(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.bcf_topic, Action.delete)
     except HTTPException:
@@ -952,7 +952,7 @@ async def delete_topic(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     topic = await _load_topic_or_404(session, project.id, topic_id)
     before = _topic_snapshot(topic)
@@ -985,8 +985,8 @@ async def add_comment(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.bcf_topic, Action.create)
     except HTTPException:
@@ -1040,8 +1040,8 @@ async def update_comment(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.bcf_topic, Action.update)
     except HTTPException:
@@ -1079,8 +1079,8 @@ async def delete_comment(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.bcf_topic, Action.delete)
     except HTTPException:
@@ -1120,8 +1120,8 @@ async def add_viewpoint(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.bcf_topic, Action.update)
     except HTTPException:
@@ -1195,8 +1195,8 @@ async def initiate_snapshot_upload(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Any:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.bcf_topic, Action.update)
 
     topic = await _load_topic_or_404(session, project.id, topic_id, eager=True)
@@ -1227,8 +1227,8 @@ async def complete_snapshot_upload(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> dict[str, str]:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.bcf_topic, Action.update)
 
     topic = await _load_topic_or_404(session, project.id, topic_id, eager=True)

@@ -20,6 +20,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER
@@ -46,12 +52,6 @@ from bimstitch_api.models.project_file import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.models import _load_model_or_404
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.project_file import (
     InitiateUploadRequest,
     InitiateUploadResponse,
@@ -117,10 +117,10 @@ async def initiate_upload(
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> InitiateUploadResponse:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.project_file, Action.create)
-    _require_project_writable(project)
+    require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
 
@@ -267,10 +267,10 @@ async def complete_upload(
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> ProjectFile:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.project_file, Action.create)
-    _require_project_writable(project)
+    require_project_writable(project)
 
     model = await _load_model_or_404(session, project.id, model_id)
     row = await _load_file_or_404(session, model.id, file_id)
@@ -602,8 +602,8 @@ async def list_files(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[ProjectFile]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     model = await _load_model_or_404(session, project.id, model_id)
 
     base = select(ProjectFile).where(ProjectFile.model_id == model.id)
@@ -627,8 +627,8 @@ async def get_download_url(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectFileDownloadResponse:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)
@@ -656,10 +656,10 @@ async def retry_extraction(
     worker; the same DISPATCH_FAILED guard applies if the worker is
     unreachable.
     """
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.project_file, Action.update)
-    _require_project_writable(project)
+    require_project_writable(project)
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)
@@ -738,8 +738,8 @@ async def get_viewer_bundle(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> ViewerBundleResponse:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)
@@ -817,10 +817,10 @@ async def delete_file(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.project_file, Action.delete)
-    _require_project_writable(project)
+    require_project_writable(project)
     model = await _load_model_or_404(session, project.id, model_id)
 
     row = await _load_file_or_404(session, model.id, file_id)
@@ -880,8 +880,8 @@ async def get_project_viewer_bundle(
     `detected_kind == 'architectural'` entry. Models with no ready IFC file are
     omitted.
     """
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     # Two sequential reads (AsyncSession forbids concurrent queries), then a
     # single concurrent presign fan-out (storage calls only, no DB).

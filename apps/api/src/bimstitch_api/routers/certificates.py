@@ -21,6 +21,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_read_access,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
@@ -32,12 +38,6 @@ from bimstitch_api.models.certificate import (
 )
 from bimstitch_api.models.org_certificate import OrgCertificate
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_read_access,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.certificate import (
     CertificateDownloadResponse,
     CertificateInitiateRequest,
@@ -135,8 +135,8 @@ async def initiate_certificate_upload(
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> CertificateInitiateResponse:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.certificate, Action.create)
     except HTTPException:
@@ -148,7 +148,7 @@ async def initiate_certificate_upload(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     ext = upload_service.parse_extension(payload.filename)
     upload_service.ensure_allowed_extension(ext, CERTIFICATE_ALLOWED_EXTENSIONS)
@@ -222,8 +222,8 @@ async def complete_certificate_upload(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> Certificate:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.certificate, Action.create)
     except HTTPException:
@@ -301,8 +301,8 @@ async def list_certificates(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[Certificate]:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
 
     base = select(Certificate).where(
         Certificate.project_id == project.id,
@@ -360,8 +360,8 @@ async def get_certificate(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Certificate:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     return await _load_certificate_or_404(session, project.id, certificate_id)
 
 
@@ -378,8 +378,8 @@ async def list_certificate_versions(
     `certificate_id` may be any version in the group; the first element returned
     is the current head.
     """
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     anchor = await _load_certificate_or_404(session, project.id, certificate_id)
     root_id = anchor.parent_certificate_id or anchor.id
 
@@ -407,8 +407,8 @@ async def download_certificate(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> CertificateDownloadResponse:
-    project = await _load_project_or_404(session, project_id)
-    await _require_project_read_access(session, project.id, user, active_org_id)
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
     cert = await _load_certificate_or_404(session, project.id, certificate_id)
 
     if cert.status != CertificateStatus.ready:
@@ -434,8 +434,8 @@ async def update_certificate(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Certificate:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.certificate, Action.update)
     except HTTPException:
@@ -481,8 +481,8 @@ async def delete_certificate(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.certificate, Action.delete)
     except HTTPException:
@@ -528,8 +528,8 @@ async def link_from_library(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> Certificate:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.certificate, Action.create)
     except HTTPException:
@@ -541,7 +541,7 @@ async def link_from_library(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     org_cert = (
         await session.execute(

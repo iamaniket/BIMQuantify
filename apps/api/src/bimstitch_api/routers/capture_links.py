@@ -16,16 +16,16 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.models.capture_link import CaptureLink
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.capture_link import (
     CaptureLinkRead,
     CreateCaptureLinkRequest,
@@ -56,8 +56,8 @@ async def create_capture_link(
     active_org_id: UUID = Depends(require_active_organization),
     settings: Settings = Depends(get_settings),
 ) -> CreateCaptureLinkResponse:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.capture_link, Action.create)
     except HTTPException:
@@ -69,7 +69,7 @@ async def create_capture_link(
             request=request,
         )
         raise
-    _require_project_writable(project)
+    require_project_writable(project)
 
     ttl_hours = min(payload.ttl_hours, settings.capture_link_max_ttl_hours)
     token = secrets.token_hex(32)
@@ -120,8 +120,8 @@ async def list_capture_links(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[CaptureLink]:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.capture_link, Action.read)
 
     base = select(CaptureLink).where(CaptureLink.project_id == project.id)
@@ -142,8 +142,8 @@ async def revoke_capture_link(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Response:
-    project = await _load_project_or_404(session, project_id)
-    membership = await _require_membership(session, project.id, user.id)
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
     try:
         require_permission(membership.role, Resource.capture_link, Action.delete)
     except HTTPException:

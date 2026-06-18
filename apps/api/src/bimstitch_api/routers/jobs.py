@@ -11,6 +11,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
+from bimstitch_api.access import (
+    load_project_or_404,
+    require_membership,
+    require_project_writable,
+)
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
@@ -18,11 +23,6 @@ from bimstitch_api.jobs import DispatchJobError
 from bimstitch_api.jobs.lifecycle import cancel_job, retry_job
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.user import User
-from bimstitch_api.routers.projects import (
-    _load_project_or_404,
-    _require_membership,
-    _require_project_writable,
-)
 from bimstitch_api.schemas.job import JobListResponse, JobRead
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
@@ -52,9 +52,9 @@ async def _authorize_job_mutation(session: AsyncSession, job: Job, user: User) -
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="JOB_TYPE_NOT_RETRYABLE"
         )
-    project = await _load_project_or_404(session, job.project_id)
-    _require_project_writable(project)
-    membership = await _require_membership(session, job.project_id, user.id)
+    project = await load_project_or_404(session, job.project_id)
+    require_project_writable(project)
+    membership = await require_membership(session, job.project_id, user.id)
     require_permission(membership.role, perm[0], perm[1])
 
 
