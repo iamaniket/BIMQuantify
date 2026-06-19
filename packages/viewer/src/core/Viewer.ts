@@ -295,6 +295,15 @@ export class Viewer {
   private readonly viewUpdatedUnsubs = new Map<string, () => void>();
   /** True while {@link bakeShadow} temporarily un-culls; suppresses renderer wake to avoid a flash. */
   private shadowBaking = false;
+  /**
+   * Reentrancy guard for {@link bakeShadow}. Two overlapping bakes would
+   * concurrently un-cull/re-cull the same models and fire two
+   * `fragments.update(true)` calls, racing the fragments worker — which both
+   * flashes and can leave {@link shadowBaking} stuck `true` (renderer parked →
+   * frozen canvas). Overlapping bakes coalesce: the in-flight one re-dirties so
+   * the next idle re-bakes once.
+   */
+  private shadowBakeInFlight = false;
   /** World-space AABB of all loaded models. */
   private sceneBox: THREE.Box3 | null = null;
   /**
@@ -922,71 +931,103 @@ export class Viewer {
     const isFirstModel =
       modelMap(fragments).size === 0;
     const modelId = opts.modelId ?? `model-${String(Date.now())}`;
-    this.modelId = modelId;
-    // Stash before `model:loaded` fires so the outline plugin's handler
-    // sees the supply via ctx.getPrecomputedOutline.
-    if (opts.precomputedOutline) {
-      this.precomputedOutlines.set(modelId, opts.precomputedOutline);
-    }
-    const model = await fragments.load(buffer as ArrayBuffer, { modelId });
-
-    // Connect camera so the LOD streaming system knows the viewpoint, can
-    // stream ALL tile detail levels (not just the coarsest shell), and — when
-    // culling is on — knows which frustum to cull against.
-    model.useCamera(world.camera.three);
-
-    // Apply the current culling policy. Under `auto`, a brand-new single model
-    // resolves to ALL_VISIBLE (its element count isn't known yet — first-paint
-    // safety so the initial stream never shows holes); the `model:elementCount`
-    // and federation re-resolves upgrade it to ALL_GEOMETRY when warranted.
-    const initialLod = this.resolveLodMode(modelId);
-    this.appliedLodMode.set(modelId, initialLod);
-    await model.setLodMode(initialLod).catch(() => undefined);
-
-    // With native frustum culling on (ALL_GEOMETRY), tiles stream in/out as the
-    // camera turns. `onViewUpdated` fires after each view-update cycle — get the
-    // re-shown tiles drawn instead of the renderer parking with holes. (The
-    // material `onItemSet` hook covers brand-new tiles; this covers existing
-    // tiles re-entering the frustum.) Routed through onStreamedChange so the
-    // streaming tail repaints once at rest rather than re-arming AUTO forever.
-    const onViewUpdated = (): void => this.onStreamedChange();
-    model.onViewUpdated.add(onViewUpdated);
-    this.viewUpdatedUnsubs.set(modelId, () =>
-      model.onViewUpdated.remove(onViewUpdated),
-    );
-
     const sceneThree = threeScene(world.scene);
-    sceneThree.add(model.object);
 
-    if (isFirstModel) {
-      await this.frameModel(model);
-    } else {
-      // Extend the scene/depth bounds + zoom limit to include the new model
-      // without moving the camera.
-      this.refreshSceneBounds();
+    // `loadFragments` is failure-ATOMIC. A single bad federated model must never
+    // blank the whole scene: if `fragments.load` (or any post-load wiring) fails,
+    // it can leave a half-registered main-thread entry whose WORKER model never
+    // materialized — then a later op (`applyCulling`→`setLodMode`,
+    // `onViewUpdated`→`fragments.update`, visibility, …) hits
+    // `FragmentsThread.getModel("<id>")` → "Model not found" → render teardown.
+    // So `this.modelId`/`precomputedOutlines` are committed only AFTER a
+    // successful load, and the catch disposes + unwinds every per-id trace and
+    // rethrows so the caller (IfcViewer's federated loop) skips just this model.
+    let loaded: FRAGS.FragmentsModel | null = null;
+    try {
+      const model = await fragments.load(buffer as ArrayBuffer, { modelId });
+      loaded = model;
+
+      // Model is now real on BOTH threads — commit the active id and any stashed
+      // precomputed outline. The outline must be set before `model:loaded` fires
+      // so the outline plugin's handler sees it via ctx.getPrecomputedOutline.
+      this.modelId = modelId;
+      if (opts.precomputedOutline) {
+        this.precomputedOutlines.set(modelId, opts.precomputedOutline);
+      }
+
+      // Connect camera so the LOD streaming system knows the viewpoint, can
+      // stream ALL tile detail levels (not just the coarsest shell), and — when
+      // culling is on — knows which frustum to cull against.
+      model.useCamera(world.camera.three);
+
+      // Apply the current culling policy. Under `auto`, a brand-new single model
+      // resolves to ALL_VISIBLE (its element count isn't known yet — first-paint
+      // safety so the initial stream never shows holes); the `model:elementCount`
+      // and federation re-resolves upgrade it to ALL_GEOMETRY when warranted.
+      const initialLod = this.resolveLodMode(modelId);
+      this.appliedLodMode.set(modelId, initialLod);
+      await model.setLodMode(initialLod).catch(() => undefined);
+
+      // With native frustum culling on (ALL_GEOMETRY), tiles stream in/out as the
+      // camera turns. `onViewUpdated` fires after each view-update cycle — get the
+      // re-shown tiles drawn instead of the renderer parking with holes. (The
+      // material `onItemSet` hook covers brand-new tiles; this covers existing
+      // tiles re-entering the frustum.) Routed through onStreamedChange so the
+      // streaming tail repaints once at rest rather than re-arming AUTO forever.
+      const onViewUpdated = (): void => this.onStreamedChange();
+      model.onViewUpdated.add(onViewUpdated);
+      this.viewUpdatedUnsubs.set(modelId, () =>
+        model.onViewUpdated.remove(onViewUpdated),
+      );
+
+      sceneThree.add(model.object);
+
+      if (isFirstModel) {
+        await this.frameModel(model);
+      } else {
+        // Extend the scene/depth bounds + zoom limit to include the new model
+        // without moving the camera.
+        this.refreshSceneBounds();
+      }
+      // Position sun + size the blob shadow plane to the whole-scene footprint.
+      this.fitLightsToScene();
+      vlog('load', `model "${modelId}" loaded`, {
+        isFirstModel,
+        bytes: bytes.byteLength,
+        lod: lodName(initialLod),
+        modelBox: boxSummary(model.box),
+        sceneBox: boxSummary(this.sceneBox),
+        totalModels: modelMap(fragments).size,
+      });
+      // Keep rendering every frame while the model streams in (a few seconds for
+      // large models); the trailing `viewer:idle` from this hold kicks the
+      // post-processing composite once streaming settles.
+      this.markActive(MODEL_STREAM_HOLD_MS);
+
+      this.events.emit('model:loaded', { modelId });
+
+      // This model may have flipped the scene to federated. Under `auto`,
+      // re-resolve every model's LodMode now (no-op for a lone small model).
+      if (this.cullingMode === 'auto') void this.applyCulling();
+
+      return modelId;
+    } catch (err) {
+      // Unwind everything for this model so it leaves ZERO main-thread/worker
+      // desync (the half-registered entry is what makes later `getModel` blow up
+      // and blank the scene). `model:loaded` hasn't fired on this path, so no
+      // balancing `model:unloaded` is emitted.
+      if (loaded !== null) sceneThree.remove(loaded.object);
+      this.viewUpdatedUnsubs.get(modelId)?.();
+      this.viewUpdatedUnsubs.delete(modelId);
+      this.precomputedOutlines.delete(modelId);
+      this.appliedLodMode.delete(modelId);
+      this.elementCounts.delete(modelId);
+      await fragments.disposeModel(modelId).catch(() => undefined);
+      if (this.modelId === modelId) {
+        this.modelId = this.getModelIds()[0] ?? null;
+      }
+      throw err;
     }
-    // Position sun + size the blob shadow plane to the whole-scene footprint.
-    this.fitLightsToScene();
-    vlog('load', `model "${modelId}" loaded`, {
-      isFirstModel,
-      bytes: bytes.byteLength,
-      lod: lodName(initialLod),
-      modelBox: boxSummary(model.box),
-      sceneBox: boxSummary(this.sceneBox),
-      totalModels: modelMap(fragments).size,
-    });
-    // Keep rendering every frame while the model streams in (a few seconds for
-    // large models); the trailing `viewer:idle` from this hold kicks the
-    // post-processing composite once streaming settles.
-    this.markActive(MODEL_STREAM_HOLD_MS);
-
-    this.events.emit('model:loaded', { modelId });
-
-    // This model may have flipped the scene to federated. Under `auto`,
-    // re-resolve every model's LodMode now (no-op for a lone small model).
-    if (this.cullingMode === 'auto') void this.applyCulling();
-
-    return modelId;
   }
 
   /**
@@ -1378,6 +1419,18 @@ export class Viewer {
       return;
     }
 
+    // Never run two bakes at once (see `shadowBakeInFlight`): concurrent
+    // un-cull/re-cull + double `fragments.update` on the same models races the
+    // worker and can wedge the renderer in the parked `shadowBaking` state.
+    // Coalesce — re-dirty so the trailing idle re-bakes after this one settles.
+    if (this.shadowBakeInFlight) {
+      this.shadowDirty = true;
+      vlog('shadow', 'bake already in flight — coalescing (re-dirty for next idle)');
+      return;
+    }
+    this.shadowBakeInFlight = true;
+    vlog('shadow', 'bake start');
+
     const token = ++this.shadowBakeToken;
 
     // Native frustum culling (ALL_GEOMETRY) leaves only the user-camera frustum
@@ -1457,8 +1510,14 @@ export class Viewer {
           this.appliedLodMode.set(id, want);
         }
         await fragments.update(true).catch(() => undefined);
-        this.shadowBaking = false;
       }
+      // Always clear the park/guard flags — even on an early return or a thrown
+      // bake — so this method can never leave the renderer permanently parked
+      // (the "frozen a few frames after load" failure). markActive() below is a
+      // no-op while shadowBaking is true, so it MUST be cleared first.
+      this.shadowBaking = false;
+      this.shadowBakeInFlight = false;
+      vlog('shadow', 'bake done');
       // Repaint the fresh shadow mask + restored geometry with one idle-quality
       // composite instead of waking the base renderer — markActive() would put
       // the renderer back in AUTO and paint un-FXAA'd frames during the settle

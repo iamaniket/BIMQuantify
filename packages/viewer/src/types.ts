@@ -114,6 +114,13 @@ export type IfcViewerProps = {
   onSceneReady?: () => void;
   onReady?: (handle: ViewerHandle) => void;
   onError?: (err: Error) => void;
+  /**
+   * A single federated `additionalBundles` model failed to load. The rest of
+   * the scene still renders — this is a non-fatal, per-model signal (vs the
+   * fatal `onError`, which fires when the PRIMARY bundle can't load). Hosts can
+   * surface a "this model couldn't be loaded" notice.
+   */
+  onModelLoadError?: (modelId: string, err: Error) => void;
   onProgress?: (loaded: number, total: number) => void;
   /** Extra plugins registered after built-ins. */
   plugins?: Plugin[];

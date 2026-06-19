@@ -20,26 +20,55 @@ declare global {
   var __viewerDebug: boolean | undefined;
 }
 
+// `process.env.NODE_ENV` is statically replaced by the bundler (Next/Turbopack/
+// webpack) at build time, so in the browser it resolves to a literal string —
+// we must reference it DIRECTLY (not via `globalThis.process`, which the
+// replacement can't see and which is undefined in the browser, the bug that
+// kept dev auto-on silently off). `declare const` satisfies the viewer's
+// tsconfig (no @types/node); `devModeOn()` try/catches the case of a bundler
+// that leaves the reference intact where `process` is genuinely undefined.
+declare const process: { env: { NODE_ENV?: string } };
+
+function devModeOn(): boolean {
+  try {
+    return process.env.NODE_ENV === 'development';
+  } catch {
+    return false;
+  }
+}
+
 let cachedEnabled: boolean | null = null;
 let firstTs = 0;
 
 function computeEnabled(): boolean {
-  // URL opt-in (works in any build). Also latch the global so subsequent calls
-  // and other viewer instances on the page stay enabled without re-parsing.
   if (typeof window !== 'undefined') {
+    // URL opt-in/out (works in any build). Latch the global so subsequent calls
+    // and other viewer instances on the page stay in sync without re-parsing.
     try {
-      if (new URLSearchParams(window.location.search).get('viewerDebug') === '1') {
+      const v = new URLSearchParams(window.location.search).get('viewerDebug');
+      if (v === '1') {
         globalThis.__viewerDebug = true;
         return true;
+      }
+      if (v === '0') {
+        globalThis.__viewerDebug = false;
+        return false;
       }
     } catch {
       /* malformed URL — ignore */
     }
+    // Auto-on on local dev hosts. This is deliberately NOT gated on
+    // `process.env.NODE_ENV`: a transpiled workspace package can't always rely
+    // on the bundler replacing that literal, and the whole point is that the
+    // logs "just appear" while developing. Set `window.__viewerDebug = false`
+    // (or `?viewerDebug=0`) to silence them on a local prod build.
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.endsWith('.local')) {
+      return true;
+    }
   }
-  // Auto-on in development. Reach `process` via globalThis so this module needs
-  // no @types/node (the viewer package's tsconfig doesn't pull it in).
-  const proc = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
-  if (proc?.env?.NODE_ENV === 'development') return true;
+  // Auto-on in development (SSR / non-browser builds).
+  if (devModeOn()) return true;
   return false;
 }
 
@@ -76,6 +105,17 @@ export function vwarn(cat: string, msg: string, data?: unknown): void {
   if (!isViewerDebug()) return;
   if (data !== undefined) console.warn(`[viewer:${cat}] ${stamp()} ${msg}`, data);
   else console.warn(`[viewer:${cat}] ${stamp()} ${msg}`);
+}
+
+/**
+ * Always-on error log — ignores the debug gate. Reserved for genuine failures
+ * (e.g. a model that fails to load) that a user/developer must see by default,
+ * unlike the chatty per-frame `vlog`/`vwarn` lifecycle telemetry. Never put hot-
+ * path logging through this.
+ */
+export function verror(cat: string, msg: string, data?: unknown): void {
+  if (data !== undefined) console.warn(`[viewer:${cat}] ${msg}`, data);
+  else console.warn(`[viewer:${cat}] ${msg}`);
 }
 
 /**

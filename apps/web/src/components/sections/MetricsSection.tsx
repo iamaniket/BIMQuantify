@@ -22,7 +22,7 @@ export function MetricsSection(): JSX.Element {
 
   return (
     <section className="bg-surface-low">
-      <div className="mx-auto w-full max-w-6xl px-6 py-16">
+      <div className="mx-auto w-full max-w-8xl px-6 py-16">
         <div className="mb-10 flex flex-col items-center gap-3 text-center">
           <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
           <h2 className="text-h3 font-semibold text-foreground">{t('headline')}</h2>

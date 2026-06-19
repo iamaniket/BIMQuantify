@@ -51,7 +51,7 @@ export function HeroShell({
 
       <div
         className={cn(
-          'relative mx-auto flex w-full max-w-6xl flex-col justify-center px-6',
+          'relative mx-auto flex w-full max-w-8xl flex-col justify-center px-6',
           SIZE_CLASSES[size],
           align === 'center' && 'items-center text-center',
           className,

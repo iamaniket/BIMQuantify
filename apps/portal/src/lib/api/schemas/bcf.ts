@@ -35,10 +35,14 @@ export const BcfMeasurementSchema = z.object({
 });
 
 // 2D PDF markup annotation — mirrors the viewer's `Annotation2D` type. Stored
-// inside a 2D viewpoint's `view_state_2d.annotations`.
+// inside a 2D viewpoint's `view_state_2d.annotations`. The tool union is the
+// wide `MarkupTool` (single source of truth in `@bimstitch/annotation`): the
+// PDF tools implement only `rect|arrow|cloud|freehand|text`, but the forward-
+// compatible `ellipse|line|blur` must round-trip (an unimplemented tool renders
+// nothing rather than erroring) — keep in sync with that union.
 export const Annotation2DSchema = z.object({
   id: z.string(),
-  tool: z.enum(['rect', 'arrow', 'cloud', 'freehand', 'text']),
+  tool: z.enum(['rect', 'arrow', 'cloud', 'freehand', 'text', 'ellipse', 'line', 'blur']),
   points: z.array(z.tuple([z.number(), z.number()])),
   text: z.string().optional(),
   color: z.string(),

@@ -29,7 +29,7 @@ export function FeatureImages({ featureKey }: { featureKey: string }): JSX.Eleme
   const captions = t.raw(`${featureKey}.detail.images`) as Array<{ caption: string }>;
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-6 py-12">
+    <section className="mx-auto w-full max-w-8xl px-6 py-12">
       <div className="mb-6 flex flex-col gap-2">
         <Eyebrow as="div" size="sm" tone="tertiary">
           {tDetail('imagesHeading')}

@@ -25,7 +25,7 @@ export async function FromTheBlogSection({ locale }: Props): Promise<JSX.Element
 
   return (
     <section id="from-blog" className="bg-surface-main">
-      <div className="mx-auto w-full max-w-6xl px-6 py-20">
+      <div className="mx-auto w-full max-w-8xl px-6 py-20">
         <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-3">
             <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>

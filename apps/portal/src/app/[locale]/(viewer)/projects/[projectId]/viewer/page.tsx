@@ -125,6 +125,10 @@ export default function ViewerPage(): JSX.Element {
   const bundle = scope.activeBundle;
   const error: string | null = scope.errorMessage;
   const [viewerError, setViewerError] = useState<string | null>(null);
+  // Federated models that failed to load (non-fatal — the rest of the scene
+  // still renders). Reset whenever the scene anchor changes (a new IfcViewer).
+  const [failedModelIds, setFailedModelIds] = useState<string[]>([]);
+  useEffect(() => { setFailedModelIds([]); }, [scope.sceneKey]);
   const viewerHandleRef = useRef<ViewerHandle | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const partialSelectionCount = useViewerEntityStore((s) => s.selected.size);
@@ -744,6 +748,9 @@ export default function ViewerPage(): JSX.Element {
         onError={(err) => {
           setViewerError(err.message);
         }}
+        onModelLoadError={(modelId) => {
+          setFailedModelIds((prev) => (prev.includes(modelId) ? prev : [...prev, modelId]));
+        }}
       />
     );
     // Split / 2D layout. Panes are ABSOLUTELY positioned so the WebGL/plan
@@ -1010,6 +1017,15 @@ export default function ViewerPage(): JSX.Element {
             className="pointer-events-none absolute left-4 top-2 z-40 rounded-md bg-error-lighter px-2 py-1 text-caption text-error shadow-sm"
           >
             {viewerError}
+          </div>
+        ) : null}
+
+        {failedModelIds.length > 0 ? (
+          <div
+            role="alert"
+            className="pointer-events-none absolute left-4 top-9 z-40 rounded-md bg-warning-lighter px-2 py-1 text-caption text-warning shadow-sm"
+          >
+            {tFed('modelLoadFailed', { count: failedModelIds.length })}
           </div>
         ) : null}
       </div>

@@ -14,7 +14,7 @@ export function FeaturesSection(): JSX.Element {
   const t = useTranslations('features');
 
   return (
-    <section id="features" className="mx-auto w-full max-w-6xl px-6 py-20">
+    <section id="features" className="mx-auto w-full max-w-8xl px-6 py-20">
       <div className="mb-12 flex flex-col items-center gap-3 text-center">
         <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
         <h2 className="max-w-2xl text-h3 font-semibold text-foreground">

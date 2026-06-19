@@ -21,7 +21,7 @@ export function FeatureBody({ featureKey }: { featureKey: string }): JSX.Element
   const solution = t.raw(`${featureKey}.detail.solution`) as string[];
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-6 py-12 lg:grid-cols-2">
+    <div className="mx-auto grid w-full max-w-8xl grid-cols-1 gap-10 px-6 py-12 lg:grid-cols-2">
       <Reveal className="flex flex-col gap-3">
         <Eyebrow as="div" size="sm" tone="tertiary">
           {tDetail('problemHeading')}

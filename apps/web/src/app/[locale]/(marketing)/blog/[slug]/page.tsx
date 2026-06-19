@@ -87,11 +87,11 @@ export default async function BlogPostPage({
       />
       <BlogPostHero meta={post.meta} />
       {post.meta.image ? (
-        <div className="mx-auto w-full max-w-6xl px-6 pt-12">
+        <div className="mx-auto w-full max-w-8xl px-6 pt-12">
           <BlogPostCoverImage image={post.meta.image} title={post.meta.title} />
         </div>
       ) : null}
-      <div className="mx-auto w-full max-w-6xl px-6 pb-12 pt-8">
+      <div className="mx-auto w-full max-w-8xl px-6 pb-12 pt-8">
         <article className="prose prose-neutral max-w-none dark:prose-invert [&>h2]:mt-10 [&>h2]:text-h4 [&>h2]:font-semibold [&>h3]:mt-8 [&>h3]:text-title2 [&>h3]:font-semibold [&>p]:text-body1 [&>p]:text-foreground-secondary [&>p]:leading-relaxed [&>ul]:text-body1 [&>ul]:text-foreground-secondary [&>ol]:text-body1 [&>ol]:text-foreground-secondary">
           {mdxContent}
         </article>

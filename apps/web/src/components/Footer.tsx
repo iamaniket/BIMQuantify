@@ -79,7 +79,7 @@ export function Footer(): JSX.Element {
 
   return (
     <footer className="border-t border-border bg-surface-low">
-      <div className="mx-auto w-full max-w-6xl px-6 py-12">
+      <div className="mx-auto w-full max-w-8xl px-6 py-12">
         <div
           className={`grid grid-cols-2 gap-8 ${
             connectLinks.length > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'

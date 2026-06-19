@@ -262,8 +262,12 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     mode: 'multi',
     isLoading: ready && manifestQuery.isLoading,
     isError: manifestQuery.isError,
-    errorMessage: null,
-    isEmpty: !manifestQuery.isLoading && entries.length === 0,
+    // Surface manifest failures (was hardcoded null, which rendered the silent
+    // empty-state — a failed federated load looked identical to "no models").
+    errorMessage: bundleErrorMessage(manifestQuery.error),
+    // "Empty" means loaded-OK-but-zero-models, NOT errored — else an error would
+    // show the empty-state instead of the error banner.
+    isEmpty: !manifestQuery.isLoading && !manifestQuery.isError && entries.length === 0,
     primaryBundle: primary !== null ? entryToBundle(primary) : null,
     additionalBundles: entries
       .filter((_, i) => i !== primaryIndex)

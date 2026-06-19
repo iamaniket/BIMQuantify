@@ -3125,7 +3125,8 @@
       "title": "All models",
       "empty": "No processed models yet",
       "emptyHint": "Upload and process IFC models in this project to view them together.",
-      "loadError": "Failed to load the project's models."
+      "loadError": "Failed to load the project's models.",
+      "modelLoadFailed": "{count, plural, =1 {1 model couldn't be loaded and was skipped} other {# models couldn't be loaded and were skipped}}"
     },
     "floorplan": {
       "title": "Floor plan",

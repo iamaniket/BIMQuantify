@@ -44,13 +44,17 @@ export function useFileFindings(
   projectId: string,
   fileId: string | null,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
+  // An empty string is NOT a valid file id. In multi-model mode
+  // `scope.activeFileId` is `''` until the manifest resolves; `'' !== null` is
+  // true, so without this guard the query fires with `linked_file_id=` and 422s.
+  const hasFile = fileId !== null && fileId !== '';
   return useAuthInfiniteQuery({
     queryKey: [...findingsKey(projectId), 'file', fileId ?? ''] as const,
     queryFn: (accessToken, offset, limit) => {
-      if (fileId === null) throw new Error('Missing fileId');
+      if (fileId === null || fileId === '') throw new Error('Missing fileId');
       return listFindings(accessToken, projectId, { linkedFileId: fileId, limit, offset });
     },
-    enabled: fileId !== null,
+    enabled: hasFile,
   });
 }
 

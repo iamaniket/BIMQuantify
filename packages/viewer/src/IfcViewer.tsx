@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 import { Viewer } from './core/Viewer.js';
-import { vlog, vwarn } from './core/debugLog.js';
+import { vlog, vwarn, verror } from './core/debugLog.js';
 import { getCached, putCached } from './fragmentCache.js';
 import { fetchFragments } from './loadFragments.js';
 import { cameraPlugin } from './plugins/3d/camera/index.js';
@@ -310,6 +310,9 @@ function IfcViewerImpl(
         setMounted(true);
       } catch (err) {
         if (cancelled) return;
+        // Always-on (ungated): the primary model failed to load — the scene
+        // can't render without it. Distinct from the chatty `vlog`/`vwarn`.
+        verror('load', `primary model "${props.bundle.modelId ?? props.bundle.fragmentsUrl}" failed to load`, err);
         props.onError?.(err instanceof Error ? err : new Error(String(err)));
       }
     })();
@@ -379,11 +382,11 @@ function IfcViewerImpl(
           anySucceeded = true;
           vlog('federate', `loaded "${id}" (${since(t0)})`);
         } catch (err) {
-          vwarn(
-            'federate',
-            `loadBundleInto("${id}") failed — skipping this model, continuing with the rest`,
-            err,
-          );
+          // Always-on (ungated): a federated model failed to load. We skip it
+          // and keep the rest of the scene — but the failure must be visible by
+          // default (not hidden behind the viewer-debug gate like `vwarn`).
+          verror('load', `model "${id}" failed to load — skipping`, err);
+          props.onModelLoadError?.(id, err instanceof Error ? err : new Error(String(err)));
         }
         if (cancelled) return;
       }

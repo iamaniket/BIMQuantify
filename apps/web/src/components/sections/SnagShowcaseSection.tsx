@@ -123,7 +123,7 @@ export function SnagShowcaseSection(): JSX.Element {
         {/* TEXT OVERLAY — click-through except the buttons, so dragging the whole
             canvas still orbits. Aligned to the page content width. */}
         <div className="pointer-events-none order-1 lg:order-none lg:absolute lg:inset-0 lg:z-10">
-          <div className="mx-auto flex h-full max-w-7xl items-center px-6 pt-16 pb-10 lg:py-0">
+          <div className="mx-auto flex h-full max-w-8xl items-center px-6 pt-16 pb-10 lg:py-0">
             <div className="flex max-w-md flex-col gap-4">
               <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
               <h2 className="text-h3 font-semibold text-foreground">{t('headline')}</h2>
