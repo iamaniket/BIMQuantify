@@ -24,54 +24,266 @@
     "eyebrow": "Mogelijkheden",
     "headline": "Alles wat een aannemer nodig heeft voor Wet kwaliteitsborging voor het bouwen (Wkb)-compliance",
     "subtitle": "Van projectstart tot gereedmelding — één platform voor uw hele Wet kwaliteitsborging voor het bouwen (Wkb)-dossier.",
+    "readMore": "Lees meer",
     "deadlines": {
       "title": "Deadlines bijhouden",
-      "body": "Automatische berekening van bouwmelding-, informatieplicht- en gereedmeldingsdeadlines. E-mailherinneringen op T-30, T-14, T-7 en T-1 dagen zodat u geen indienmoment mist."
+      "body": "Automatische berekening van bouwmelding-, informatieplicht- en gereedmeldingsdeadlines. E-mailherinneringen op T-30, T-14, T-7 en T-1 dagen zodat u geen indienmoment mist.",
+      "detail": {
+        "tagline": "Mis nooit meer een Wkb-indiening",
+        "intro": "BimDossier berekent elke wettelijke deadline voor u en herinnert uw team op tijd — zodat de bouwmelding, informatieplicht en gereedmelding altijd op tijd de deur uit gaan.",
+        "problemTitle": "Gemiste deadlines hebben echte gevolgen",
+        "problem": "De Wkb koppelt de bouw aan harde wettelijke data: de bouwmelding vier weken vóór aanvang, informatieplichtmomenten tijdens de bouw en de gereedmelding twee weken vóór oplevering. Ze handmatig bijhouden over meerdere projecten betekent dat één gemiste indiening het werk kan stilleggen of de oplevering kan vertragen.",
+        "solutionTitle": "Deadlines automatisch berekend en bewaakt",
+        "solution": [
+          "Elke deadline wordt afgeleid van de start- en opleverdatum van uw project zodra u het aanmaakt — geen handmatig rekenwerk.",
+          "E-mailherinneringen worden verstuurd op T-30, T-14, T-7 en T-1 dagen, zodat het hele team ziet wat er aankomt.",
+          "Eén kalenderweergave toont elke indiening over al uw projecten in één oogopslag."
+        ],
+        "images": [
+          { "caption": "Deadline-tijdlijn per project" },
+          { "caption": "E-mailherinnering op T-7" },
+          { "caption": "Alle indieningen op één kalender" }
+        ]
+      }
     },
     "dossier": {
       "title": "Dossiercompleetheid",
-      "body": "Sjabloon-gebaseerde checklist per gebouwtype die precies laat zien welke documenten nog nodig zijn voor uw gereedmelding. Voortgangsbalk wordt bijgewerkt bij elke upload."
+      "body": "Sjabloon-gebaseerde checklist per gebouwtype die precies laat zien welke documenten nog nodig zijn voor uw gereedmelding. Voortgangsbalk wordt bijgewerkt bij elke upload.",
+      "detail": {
+        "tagline": "Weet precies wat uw dossier nog nodig heeft",
+        "intro": "Een live checklist per gebouwtype laat zien welke documenten ontbreken voor uw gereedmelding, met een voortgangsbalk die stijgt naarmate u uploadt.",
+        "problemTitle": "Een dossier is zo goed als wat er ontbreekt",
+        "problem": "Het gereedmeldingsdossier moet compleet zijn vóór oplevering, maar de eisen verschillen per gebouwtype en het is makkelijk om een gat pas op de deadline te ontdekken — als er geen tijd meer is om het op te lossen.",
+        "solutionTitle": "Een sjabloon-gestuurde checklist die zichzelf bijhoudt",
+        "solution": [
+          "Elk gebouwtype laadt een checklist met precies de documenten die het bevoegd gezag verwacht.",
+          "Upload een document en het bijbehorende item wordt automatisch afgevinkt — de voortgangsbalk weerspiegelt de echte compleetheid.",
+          "Openstaande items blijven zichtbaar, zodat niets als verrassing opduikt bij de indiening."
+        ],
+        "images": [
+          { "caption": "Compleetheidschecklist per gebouwtype" },
+          { "caption": "Voortgangsbalk bij uploaden" },
+          { "caption": "Openstaande documenten uitgelicht" }
+        ]
+      }
     },
     "findings": {
       "title": "Bevindingen beheren",
-      "body": "Registreer inspectiebevindingen van uw kwaliteitsborger, wijs oplossingen toe en upload bewijsfoto's. Volg elke bevinding van open tot geverifieerd."
+      "body": "Registreer inspectiebevindingen van uw kwaliteitsborger, wijs oplossingen toe en upload bewijsfoto's. Volg elke bevinding van open tot geverifieerd.",
+      "detail": {
+        "tagline": "Elke inspectiebevinding, van open tot geverifieerd",
+        "intro": "Registreer wat uw kwaliteitsborger vindt, wijs toe wie het oplost, voeg het bewijs toe en volg elke bevinding tot aan geverifieerd.",
+        "problemTitle": "Bevindingen gaan verloren tussen bouwplaats en dossier",
+        "problem": "Kwaliteitsborgers melden bevindingen tijdens inspecties, maar als die in e-mailthreads en spreadsheets leven, stokt de afhandeling en is er geen verdedigbaar bewijs dat elk punt daadwerkelijk is afgesloten.",
+        "solutionTitle": "Eén controleerbare levenscyclus voor elke bevinding",
+        "solution": [
+          "Elke bevinding bevat de locatie, urgentie, toegewezen persoon en bewijsfoto's op één plek.",
+          "De status doorloopt een duidelijke flow — open, in behandeling, opgelost, geverifieerd — die voor iedereen zichtbaar is.",
+          "Een volledige audittrail legt vast wie wat wanneer wijzigde, klaar voor het bevoegd gezag."
+        ],
+        "images": [
+          { "caption": "Bevindingsdetail met bewijs" },
+          { "caption": "Statusflow van open tot geverifieerd" },
+          { "caption": "Audithistorie op veldniveau" }
+        ]
+      }
     },
     "certificates": {
       "title": "Certificatenbibliotheek",
-      "body": "Upload getypeerde certificaten — CE/DoP-verklaringen, testrapporten, garanties — met vervaldatumbewaking. Ontvang automatische waarschuwingen voordat certificaten verlopen."
+      "body": "Upload getypeerde certificaten — CE/DoP-verklaringen, testrapporten, garanties — met vervaldatumbewaking. Ontvang automatische waarschuwingen voordat certificaten verlopen.",
+      "detail": {
+        "tagline": "Certificaten, georganiseerd en nooit verlopen",
+        "intro": "Upload getypeerde certificaten — CE/DoP-verklaringen, testrapporten, garanties — met vervaldatumbewaking en automatische waarschuwingen voordat ze verlopen.",
+        "problemTitle": "Verlopen certificaten ondermijnen het dossier",
+        "problem": "Certificaten komen van veel leveranciers in veel formaten, elk met een eigen vervaldatum. Ze handmatig bijhouden betekent dat een verouderde verklaring uw compliancepakket ongemerkt kan verzwakken.",
+        "solutionTitle": "Een getypeerde bibliotheek die de vervaldatum voor u bewaakt",
+        "solution": [
+          "Upload elk certificaat bij zijn type — CE/DoP, testrapport, garantie en meer.",
+          "Vervaldata worden centraal bijgehouden, zodat de hele bibliotheek actueel blijft.",
+          "Automatische waarschuwingen geven u tijd om te vernieuwen voordat iets verloopt."
+        ],
+        "images": [
+          { "caption": "Getypeerde certificatenbibliotheek" },
+          { "caption": "Vervalwaarschuwing vóór verloop" },
+          { "caption": "Certificaatdetail met metadata" }
+        ]
+      }
     },
     "viewer": {
       "title": "3D- + 2D-modelviewer",
-      "body": "Bekijk gefedereerde IFC-modellen in de browser — geen desktopsoftware. Maak doorsnedes, meet, wissel tussen verdiepingen en plattegronden, en klik op elk element voor de eigenschappen."
+      "body": "Bekijk gefedereerde IFC-modellen in de browser — geen desktopsoftware. Maak doorsnedes, meet, wissel tussen verdiepingen en plattegronden, en klik op elk element voor de eigenschappen.",
+      "detail": {
+        "tagline": "Uw IFC-modellen, direct in de browser",
+        "intro": "Bekijk gefedereerde IFC-modellen zonder desktopsoftware. Maak doorsnedes, meet, wissel tussen verdiepingen en plattegronden en klik op elk element voor de eigenschappen.",
+        "problemTitle": "Zware desktoptools horen geen snelle blik te blokkeren",
+        "problem": "Een model bekijken betekent meestal een gelicentieerde desktopapplicatie en een krachtige machine. Daardoor is het model onbereikbaar voor bouwteams, opdrachtgevers en iedereen die er alleen even naar wil kijken.",
+        "solutionTitle": "Een volledige viewer die overal draait",
+        "solution": [
+          "Open gefedereerde IFC-modellen in elke moderne browser — niets te installeren.",
+          "Maak doorsnedevlakken, meet afstanden en wissel tussen verdiepingen en 2D-plattegronden.",
+          "Klik op elk element om de eigenschappen te lezen en naar gekoppelde bevindingen te springen."
+        ],
+        "images": [
+          { "caption": "Gefedereerd model in de browser" },
+          { "caption": "Doorsnede en meting" },
+          { "caption": "Eigenschappenpaneel van element" }
+        ]
+      }
     },
     "reports": {
       "title": "Compliancerapporten",
-      "body": "Genereer audit-ready PDF-rapporten: borgingsplan, verklaring kwaliteitsborger en het volledige dossier bevoegd gezag-pakket."
+      "body": "Genereer audit-ready PDF-rapporten: borgingsplan, verklaring kwaliteitsborger en het volledige dossier bevoegd gezag-pakket.",
+      "detail": {
+        "tagline": "Audit-ready rapporten met één klik",
+        "intro": "Genereer het borgingsplan, de verklaring kwaliteitsborger en het volledige dossier bevoegd gezag-pakket als verzorgde PDF's.",
+        "problemTitle": "Rapporten handmatig samenstellen kost dagen",
+        "problem": "De Wkb-deliverables — borgingsplan, verklaring kwaliteitsborger en het volledige dossier — zijn bewerkelijk om handmatig samen te stellen, en een handmatig document raakt uit de pas met het project zodra er iets verandert.",
+        "solutionTitle": "Rapporten gegenereerd uit live projectdata",
+        "solution": [
+          "Maak elk vereist document direct vanuit uw actuele projectdata.",
+          "Rapporten zijn opgemaakt volgens een consistent, audit-ready PDF-sjabloon.",
+          "Genereer op elk moment opnieuw, zodat het pakket altijd de laatste stand weerspiegelt."
+        ],
+        "images": [
+          { "caption": "Gegenereerd borgingsplan (PDF)" },
+          { "caption": "Verklaring kwaliteitsborger" },
+          { "caption": "Volledig dossierpakket" }
+        ]
+      }
     },
     "snagging": {
       "title": "Bevindingen op tekening & in 3D",
-      "body": "Plaats bevindingen direct op uw PDF-plattegronden of 3D-model. Elke bevinding bevat de locatie, foto's en Bbl-verwijzing."
+      "body": "Plaats bevindingen direct op uw PDF-plattegronden of 3D-model. Elke bevinding bevat de locatie, foto's en Bbl-verwijzing.",
+      "detail": {
+        "tagline": "Plaats bevindingen precies waar ze horen",
+        "intro": "Zet een bevinding direct op uw PDF-plattegrond of 3D-model. Elke pin bevat de locatie, foto's en Bbl-verwijzing.",
+        "problemTitle": "\"Ergens op de tweede verdieping\" is niet genoeg",
+        "problem": "Een in woorden beschreven bevinding is op de bouwplaats moeilijk terug te vinden. Zonder exacte positie wordt het verkeerde element hersteld, of moet het punt opnieuw worden geïnspecteerd.",
+        "solutionTitle": "Locatie-verankerde bevindingen op tekening en model",
+        "solution": [
+          "Klik de exacte plek op een PDF-plattegrond of in het gefedereerde 3D-model om een pin te plaatsen.",
+          "De pin bewaart de coördinaten, zodat iedereen later naar de precieze locatie kan terugspringen.",
+          "Elke bevinding koppelt de foto's en het relevante Bbl-artikel naast de positie."
+        ],
+        "images": [
+          { "caption": "Pin op een PDF-plattegrond" },
+          { "caption": "Bevinding verankerd in het 3D-model" },
+          { "caption": "Bevinding met foto's en Bbl-verwijzing" }
+        ]
+      }
     },
     "board": {
       "title": "Bevindingenbord & kalender",
-      "body": "Volg elke bevinding op een Kanban-bord, een deadlinekalender en overzichtsdashboards — filter op toegewezen persoon, status of urgentie."
+      "body": "Volg elke bevinding op een Kanban-bord, een deadlinekalender en overzichtsdashboards — filter op toegewezen persoon, status of urgentie.",
+      "detail": {
+        "tagline": "Bekijk uw bevindingen zoals u werkt",
+        "intro": "Volg elke bevinding op een Kanban-bord, een deadlinekalender en overzichtsdashboards — gefilterd op toegewezen persoon, status of urgentie.",
+        "problemTitle": "Een platte lijst verbergt wat nu telt",
+        "problem": "Als bevindingen zich opstapelen in één lange lijst, is moeilijk te zien wat te laat is, wie overbelast is, of welke urgenties eerst aandacht nodig hebben.",
+        "solutionTitle": "Meerdere weergaven over dezelfde bevindingen",
+        "solution": [
+          "Een Kanban-bord groepeert bevindingen op status, zodat voortgang in één oogopslag zichtbaar is.",
+          "Een kalender toont de vervaldata, zodat niets voorbij zijn deadline glipt.",
+          "Dashboards en filters splitsen op toegewezen persoon, status of urgentie met één klik."
+        ],
+        "images": [
+          { "caption": "Kanban-bord op status" },
+          { "caption": "Bevindingen op de deadlinekalender" },
+          { "caption": "Gefilterd overzichtsdashboard" }
+        ]
+      }
     },
     "photos": {
       "title": "Fotobewijs & annotatie",
-      "body": "Maak foto's op de bouwplaats, markeer ze met pijlen en notities en koppel ze als oplosbewijs aan bevindingen."
+      "body": "Maak foto's op de bouwplaats, markeer ze met pijlen en notities en koppel ze als oplosbewijs aan bevindingen.",
+      "detail": {
+        "tagline": "Oplosbewijs, ter plekke gemarkeerd",
+        "intro": "Maak foto's op de bouwplaats, annoteer ze met pijlen en notities en koppel ze als bewijs aan bevindingen.",
+        "problemTitle": "Een foto zonder context bewijst weinig",
+        "problem": "Bouwplaatsfoto's verspreid over telefoons en chat-apps verliezen hun betekenis — niemand weet nog bij welke bevinding ze horen of wat ze moesten aantonen.",
+        "solutionTitle": "Geannoteerde foto's gekoppeld aan de bevinding",
+        "solution": [
+          "Maak foto's direct bij een bevinding, zodat ze altijd in context staan.",
+          "Markeer pijlen en notities om precies aan te wijzen wat er veranderd is.",
+          "Voor-en-na-bewijs blijft gekoppeld als het bewijs van oplossing."
+        ],
+        "images": [
+          { "caption": "Foto maken bij een bevinding" },
+          { "caption": "Annotatie met pijl en notitie" },
+          { "caption": "Voor / na-bewijspaar" }
+        ]
+      }
     },
     "mobile": {
       "title": "Mobiel inspecteren, ook offline",
-      "body": "Een native app voor inspecties op locatie. Plaats bevindingen, maak foto's en werk door zonder bereik — het synchroniseert zodra u weer online bent."
+      "body": "Een native app voor inspecties op locatie. Plaats bevindingen, maak foto's en werk door zonder bereik — het synchroniseert zodra u weer online bent.",
+      "detail": {
+        "tagline": "Inspecteer op locatie, met of zonder bereik",
+        "intro": "Een native app voor inspecties op locatie: plaats bevindingen, maak foto's en werk door zonder verbinding — het synchroniseert zodra u weer online bent.",
+        "problemTitle": "Bouwplaatsen hebben geen betrouwbaar bereik",
+        "problem": "Inspecties vinden plaats in kelders, ruwbouw en afgelegen locaties waar mobiel bereik wegvalt. Een app die een verbinding nodig heeft, dwingt inspecteurs notities op papier te maken om later over te typen.",
+        "solutionTitle": "Offline-first inspecties die synchroniseren",
+        "solution": [
+          "Plaats bevindingen en maak foto's zonder verbinding — alles wordt lokaal opgeslagen.",
+          "Het werk gaat ononderbroken door terwijl u door het gebouw loopt.",
+          "Zodra u weer online bent, synchroniseert uw werk automatisch met het project."
+        ],
+        "images": [
+          { "caption": "Bevindingen plaatsen in de mobiele app" },
+          { "caption": "Offline-indicator tijdens werken" },
+          { "caption": "Automatische synchronisatie bij herverbinding" }
+        ]
+      }
     },
     "bcf": {
       "title": "Open BCF-uitwisseling",
-      "body": "Importeer en exporteer bevindingen als BCF om issues uit te wisselen met Solibri, BIMcollab, Revit en de tools van uw kwaliteitsborger."
+      "body": "Importeer en exporteer bevindingen als BCF om issues uit te wisselen met Solibri, BIMcollab, Revit en de tools van uw kwaliteitsborger.",
+      "detail": {
+        "tagline": "Wissel bevindingen uit met elke BIM-tool",
+        "intro": "Importeer en exporteer bevindingen als BCF om issues uit te wisselen met Solibri, BIMcollab, Revit en de tools van uw kwaliteitsborger.",
+        "problemTitle": "Bevindingen raken opgesloten in één tool",
+        "problem": "Elke partij werkt in andere software, en bevindingen tussen tools overtypen is traag en foutgevoelig. Zonder een gedeeld formaat raken issues binnen het team uit de pas.",
+        "solutionTitle": "BCF als gemeenschappelijke taal",
+        "solution": [
+          "Exporteer bevindingen als standaard-BCF om te delen met elke compatibele tool.",
+          "Importeer BCF van uw kwaliteitsborger, zodat externe issues in uw project landen.",
+          "Heen-en-weer uitwisselen houdt iedereen op dezelfde set issues."
+        ],
+        "images": [
+          { "caption": "Bevindingen exporteren naar BCF" },
+          { "caption": "Een BCF importeren uit Solibri" },
+          { "caption": "Gesynchroniseerde issues tussen tools" }
+        ]
+      }
     },
     "collaboration": {
       "title": "Teamrollen & audittrail",
-      "body": "Nodig uw team uit met de juiste rechten (eigenaar, bewerker, lezer, inspecteur). Elke wijziging wordt vastgelegd voor een audit-ready historie."
+      "body": "Nodig uw team uit met de juiste rechten (eigenaar, bewerker, lezer, inspecteur). Elke wijziging wordt vastgelegd voor een audit-ready historie.",
+      "detail": {
+        "tagline": "De juiste toegang, met een volledige audittrail",
+        "intro": "Nodig uw team uit met precieze rechten — eigenaar, bewerker, lezer, inspecteur — en leg elke wijziging vast voor een audit-ready historie.",
+        "problemTitle": "Open toegang zonder registratie is een risico",
+        "problem": "Zonder rolgebaseerde toegang kan iedereen alles wijzigen; zonder logboek kunt u niet aantonen wie wat deed. Beide zijn een probleem als een dossier de toets moet doorstaan.",
+        "solutionTitle": "Rolgebaseerde toegang plus een volledig logboek",
+        "solution": [
+          "Wijs elk lid een rol toe — eigenaar, bewerker, lezer of inspecteur — die bij hun taak past.",
+          "Rechten bepalen wat elke persoon kan zien en wijzigen binnen het project.",
+          "Elke wijziging wordt vastgelegd in een audittrail die u aan het bevoegd gezag kunt overhandigen."
+        ],
+        "images": [
+          { "caption": "Teamleden en rollen" },
+          { "caption": "Rechteninstellingen per rol" },
+          { "caption": "Projectbrede audittrail" }
+        ]
+      }
     }
+  },
+  "featureDetail": {
+    "backToFeatures": "Terug naar functies",
+    "problemHeading": "De uitdaging",
+    "solutionHeading": "Onze aanpak",
+    "imagesHeading": "Zie het in actie",
+    "imagesNote": "Meer schermafbeeldingen en korte video's volgen binnenkort."
   },
   "roadmap": {
     "eyebrow": "Op de roadmap",

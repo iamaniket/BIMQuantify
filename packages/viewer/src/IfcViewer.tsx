@@ -29,6 +29,7 @@ import { visibilityPlugin } from './plugins/3d/visibility/index.js';
 import { inspectPlugin } from './plugins/3d/inspect/index.js';
 import { eraserPlugin } from './plugins/3d/eraser/index.js';
 import { placementPlugin } from './plugins/3d/placement/index.js';
+import { interactionPlugin } from './plugins/3d/interaction/index.js';
 import { toolManagerPlugin } from './plugins/3d/tool-manager/index.js';
 import { contextMenuPlugin } from './plugins/3d/context-menu/index.js';
 import { xrayPlugin } from './plugins/3d/xray/index.js';
@@ -60,6 +61,7 @@ import type { IfcViewerProps, ViewerBundle, ViewerHandle } from './types.js';
  * set never drops a hard dependency:
  *   - selection ← hover-highlight (opt), visibility, placement
  *   - mouse-bindings ← placement
+ *   - placement ← interaction (guided-pick overlay)
  *   - camera ← viewcube
  *   - visibility/hover-highlight ← interactive-performance (opt)
  * Everything else (measurement, snapping, section, classifier, minimap, bcf,
@@ -74,6 +76,7 @@ const MINIMAL_BUILTIN_PLUGINS = new Set<string>([
   'hover-highlight',
   'visibility',
   'placement',
+  'interaction',
   'pivot-rotate',
   'viewcube',
   'interactive-performance',
@@ -199,6 +202,9 @@ function IfcViewerImpl(
       // Point-placement tool — taps emit `point:picked` for new-anchor flows
       // (mobile new-finding gesture). Depends on mouse-bindings + selection.
       placementPlugin(),
+      // Guided-pick overlay (dimming scrim + instruction banner) on top of
+      // placement — hosts arm it via `interaction.request`. Depends on placement.
+      interactionPlugin(),
       // Fly navigation — the first-person camera tool (WASD / D-pad + mouse-look).
       // Depends on camera + mouse-bindings (it suppresses selection/hover gestures
       // on enter), so it must register after mouse-bindings. Stays dormant until

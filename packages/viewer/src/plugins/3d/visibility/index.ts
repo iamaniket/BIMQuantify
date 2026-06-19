@@ -492,8 +492,13 @@ export function visibilityPlugin(
 
   const showAll = async (): Promise<void> => {
     if (!ctxRef || !hider) return;
+    // Capture the hider locally: `showAll` is fired-and-forgotten from
+    // `uninstall()` and `setEnabled(false)`, both of which can null the closure
+    // `hider` while we're awaiting below. Holding the reference here lets the
+    // restore-all-visibility flush complete instead of throwing on a null.
+    const h = hider;
 
-    await hider.set(true).catch(() => undefined);
+    await h.set(true).catch(() => undefined);
 
     isolatedSet.clear();
     isolatedItems.clear();
@@ -504,7 +509,7 @@ export function visibilityPlugin(
     // a full show-all — they are exceptions, controlled only by their toggle.
     await reapplyPersistent();
     emitChange();
-    await hider.flush();
+    await h.flush();
   };
 
   const setEnabled = (next: boolean): void => {
@@ -656,13 +661,19 @@ export function visibilityPlugin(
       });
     },
 
-    uninstall() {
+    async uninstall() {
       offModelLoaded?.();
       offModelLoaded = null;
       offModelUnloaded?.();
       offModelUnloaded = null;
-      if (ctxRef) {
-        void showAll();
+      // Restore visibility synchronously-awaited so `disposeAll()` (which awaits
+      // this) sequences it BEFORE `Viewer.unmount()` disposes the fragments
+      // worker. Firing it fire-and-forget (the old `void showAll()`) let the
+      // flush race the worker disposal — `ctx.fragments.update()` then hit a
+      // torn-down worker ("handler is not a function") and `hider` could be
+      // nulled mid-flight ("Cannot read properties of null (reading 'flush')").
+      if (ctxRef && hider) {
+        await showAll().catch(() => undefined);
       }
       hider = null;
       ctxRef = null;

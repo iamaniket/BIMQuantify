@@ -24,54 +24,266 @@
     "eyebrow": "Capabilities",
     "headline": "Everything a contractor needs for Quality Assurance in Construction Act (Wkb) compliance",
     "subtitle": "From project kickoff to gereedmelding — one platform for your entire Quality Assurance in Construction Act (Wkb) dossier.",
+    "readMore": "Read more",
     "deadlines": {
       "title": "Deadline tracking",
-      "body": "Automatic computation of bouwmelding, informatieplicht, and gereedmelding deadlines. Email reminders at T-30, T-14, T-7, and T-1 days so you never miss a filing."
+      "body": "Automatic computation of bouwmelding, informatieplicht, and gereedmelding deadlines. Email reminders at T-30, T-14, T-7, and T-1 days so you never miss a filing.",
+      "detail": {
+        "tagline": "Never miss a Wkb filing again",
+        "intro": "BimDossier computes every statutory deadline for you and reminds your team before each one — so the bouwmelding, informatieplicht, and gereedmelding always go out on time.",
+        "problemTitle": "Missed deadlines carry real consequences",
+        "problem": "The Wkb ties construction to hard statutory dates: the bouwmelding four weeks before you start, informatieplicht moments during the build, and the gereedmelding two weeks before handover. Tracking them by hand across projects means one missed filing can halt work or delay occupancy.",
+        "solutionTitle": "Deadlines computed and watched automatically",
+        "solution": [
+          "Every deadline is derived from your project's start and handover dates the moment you create it — no manual date math.",
+          "Email reminders fire at T-30, T-14, T-7, and T-1 days, so the whole team sees what's due next.",
+          "A single calendar view shows every filing across all your projects at a glance."
+        ],
+        "images": [
+          { "caption": "Per-project deadline timeline" },
+          { "caption": "Email reminder at T-7" },
+          { "caption": "All filings on one calendar" }
+        ]
+      }
     },
     "dossier": {
       "title": "Dossier completeness",
-      "body": "Template-based checklist per building type showing exactly which documents are still needed for your gereedmelding. Progress bar updates as you upload."
+      "body": "Template-based checklist per building type showing exactly which documents are still needed for your gereedmelding. Progress bar updates as you upload.",
+      "detail": {
+        "tagline": "Know exactly what your dossier still needs",
+        "intro": "A live checklist per building type shows which documents are missing for your gereedmelding, with a progress bar that climbs as you upload.",
+        "problemTitle": "A dossier is only as good as what's missing",
+        "problem": "The gereedmelding dossier must be complete before handover, but requirements vary by building type and it's easy to discover a gap only at the deadline — when there's no time left to fix it.",
+        "solutionTitle": "A template-driven checklist that tracks itself",
+        "solution": [
+          "Each building type loads a checklist of exactly the documents the bevoegd gezag expects.",
+          "Upload a document and the matching item ticks off automatically — the progress bar reflects real completeness.",
+          "Outstanding items stay visible, so nothing surfaces as a surprise at filing time."
+        ],
+        "images": [
+          { "caption": "Completeness checklist per building type" },
+          { "caption": "Progress bar updating on upload" },
+          { "caption": "Outstanding documents highlighted" }
+        ]
+      }
     },
     "findings": {
       "title": "Finding management",
-      "body": "Log inspection findings from your kwaliteitsborger, assign resolution, and upload evidence photos. Track every finding from open to verified."
+      "body": "Log inspection findings from your kwaliteitsborger, assign resolution, and upload evidence photos. Track every finding from open to verified.",
+      "detail": {
+        "tagline": "Every inspection finding, from open to verified",
+        "intro": "Log what your kwaliteitsborger finds, assign who fixes it, attach the evidence, and follow each finding all the way to verified.",
+        "problemTitle": "Findings get lost between site and dossier",
+        "problem": "Kwaliteitsborgers raise findings during inspections, but when those live in email threads and spreadsheets, resolution stalls and there's no defensible record that each issue was actually closed.",
+        "solutionTitle": "A single, auditable lifecycle for every finding",
+        "solution": [
+          "Each finding carries its location, severity, assignee, and evidence photos in one place.",
+          "Status moves through a clear flow — open, in progress, resolved, verified — that everyone can see.",
+          "A full audit trail records who changed what and when, ready for the bevoegd gezag."
+        ],
+        "images": [
+          { "caption": "Finding detail with evidence" },
+          { "caption": "Status flow from open to verified" },
+          { "caption": "Field-level audit history" }
+        ]
+      }
     },
     "certificates": {
       "title": "Certificate library",
-      "body": "Upload typed certificates — CE/DoP declarations, test reports, warranties — with expiry tracking. Get automatic warnings before certificates expire."
+      "body": "Upload typed certificates — CE/DoP declarations, test reports, warranties — with expiry tracking. Get automatic warnings before certificates expire.",
+      "detail": {
+        "tagline": "Certificates, organised and never expired",
+        "intro": "Upload typed certificates — CE/DoP declarations, test reports, warranties — with expiry tracking and automatic warnings before they lapse.",
+        "problemTitle": "Expired certificates undermine the dossier",
+        "problem": "Certificates arrive from many suppliers in many formats, each with its own expiry. Tracking them by hand means an out-of-date declaration can quietly weaken your compliance package.",
+        "solutionTitle": "A typed library that watches expiry for you",
+        "solution": [
+          "Upload each certificate against its type — CE/DoP, test report, warranty, and more.",
+          "Expiry dates are tracked centrally so the whole library stays current.",
+          "Automatic warnings give you time to renew before anything lapses."
+        ],
+        "images": [
+          { "caption": "Typed certificate library" },
+          { "caption": "Expiry warning before lapse" },
+          { "caption": "Certificate detail with metadata" }
+        ]
+      }
     },
     "viewer": {
       "title": "3D + 2D model viewer",
-      "body": "View federated IFC models in the browser — no desktop software. Cut sections, measure, switch storeys and floor plans, and click any element for its properties."
+      "body": "View federated IFC models in the browser — no desktop software. Cut sections, measure, switch storeys and floor plans, and click any element for its properties.",
+      "detail": {
+        "tagline": "Your IFC models, right in the browser",
+        "intro": "View federated IFC models with no desktop software. Cut sections, measure, switch storeys and floor plans, and click any element for its properties.",
+        "problemTitle": "Heavy desktop tools shouldn't gate a quick look",
+        "problem": "Checking a model usually means a licensed desktop application and a powerful machine. That puts the model out of reach for site teams, clients, and anyone who just needs a quick look.",
+        "solutionTitle": "A full viewer that runs anywhere",
+        "solution": [
+          "Open federated IFC models in any modern browser — nothing to install.",
+          "Cut section planes, measure distances, and switch between storeys and 2D floor plans.",
+          "Click any element to read its properties and jump to linked findings."
+        ],
+        "images": [
+          { "caption": "Federated model in the browser" },
+          { "caption": "Section cut and measurement" },
+          { "caption": "Element properties panel" }
+        ]
+      }
     },
     "reports": {
       "title": "Compliance reports",
-      "body": "Generate audit-ready PDF reports: borgingsplan, verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package."
+      "body": "Generate audit-ready PDF reports: borgingsplan, verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package.",
+      "detail": {
+        "tagline": "Audit-ready reports in a click",
+        "intro": "Generate the borgingsplan, the verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package as polished PDFs.",
+        "problemTitle": "Assembling reports by hand burns days",
+        "problem": "The Wkb deliverables — borgingsplan, verklaring kwaliteitsborger, and the full dossier — are tedious to assemble by hand, and a manual document drifts out of sync with the project the moment something changes.",
+        "solutionTitle": "Reports generated from live project data",
+        "solution": [
+          "Produce each required document straight from your current project data.",
+          "Reports are formatted to a consistent, audit-ready PDF template.",
+          "Regenerate at any time so the package always reflects the latest state."
+        ],
+        "images": [
+          { "caption": "Generated borgingsplan PDF" },
+          { "caption": "Verklaring kwaliteitsborger" },
+          { "caption": "Complete dossier package" }
+        ]
+      }
     },
     "snagging": {
       "title": "Snag on drawings & in 3D",
-      "body": "Pin findings directly onto your PDF floor plans or 3D model. Every snag carries its location, photos, and Bbl reference."
+      "body": "Pin findings directly onto your PDF floor plans or 3D model. Every snag carries its location, photos, and Bbl reference.",
+      "detail": {
+        "tagline": "Pin findings exactly where they belong",
+        "intro": "Drop a snag straight onto your PDF floor plan or 3D model. Every pin carries its location, photos, and Bbl reference.",
+        "problemTitle": "\"Somewhere on the second floor\" isn't good enough",
+        "problem": "A finding described in words is hard to locate again on site. Without a precise position, the wrong element gets fixed, or the issue is re-inspected from scratch.",
+        "solutionTitle": "Location-anchored findings on plan and model",
+        "solution": [
+          "Click the exact spot on a PDF floor plan or in the federated 3D model to place a pin.",
+          "The pin stores its coordinates, so anyone can jump back to the precise location later.",
+          "Each snag links its photos and the relevant Bbl article alongside the position."
+        ],
+        "images": [
+          { "caption": "Pin placed on a PDF floor plan" },
+          { "caption": "Finding anchored in the 3D model" },
+          { "caption": "Snag with photos and Bbl reference" }
+        ]
+      }
     },
     "board": {
       "title": "Findings board & calendar",
-      "body": "Track every finding on a Kanban board, a deadline calendar, and overview dashboards — filter by assignee, status, or severity."
+      "body": "Track every finding on a Kanban board, a deadline calendar, and overview dashboards — filter by assignee, status, or severity.",
+      "detail": {
+        "tagline": "See your findings the way you work",
+        "intro": "Track every finding on a Kanban board, a deadline calendar, and overview dashboards — filtered by assignee, status, or severity.",
+        "problemTitle": "A flat list hides what matters now",
+        "problem": "When findings pile up in one long list, it's hard to see what's overdue, who's overloaded, or which severities need attention first.",
+        "solutionTitle": "Multiple views over the same findings",
+        "solution": [
+          "A Kanban board groups findings by status so progress is visible at a glance.",
+          "A calendar surfaces due dates so nothing slips past its deadline.",
+          "Dashboards and filters slice by assignee, status, or severity in one click."
+        ],
+        "images": [
+          { "caption": "Kanban board by status" },
+          { "caption": "Findings on the deadline calendar" },
+          { "caption": "Filtered overview dashboard" }
+        ]
+      }
     },
     "photos": {
       "title": "Photo evidence & annotation",
-      "body": "Capture photos on site, mark them up with arrows and notes, and attach them to findings as proof of resolution."
+      "body": "Capture photos on site, mark them up with arrows and notes, and attach them to findings as proof of resolution.",
+      "detail": {
+        "tagline": "Proof of resolution, marked up on the spot",
+        "intro": "Capture photos on site, annotate them with arrows and notes, and attach them to findings as evidence.",
+        "problemTitle": "A photo without context proves little",
+        "problem": "Site photos scattered across phones and chat apps lose their meaning — no one remembers which finding they belong to or what they were meant to show.",
+        "solutionTitle": "Annotated photos tied to the finding",
+        "solution": [
+          "Shoot photos directly against a finding so they're always in context.",
+          "Mark up arrows and notes to point out exactly what changed.",
+          "Before-and-after evidence stays attached as the proof of resolution."
+        ],
+        "images": [
+          { "caption": "Photo capture against a finding" },
+          { "caption": "Arrow-and-note annotation" },
+          { "caption": "Before / after evidence pair" }
+        ]
+      }
     },
     "mobile": {
       "title": "Mobile inspections, even offline",
-      "body": "A native app for on-site snagging. Place findings, shoot photos, and keep working with no signal — it syncs when you're back online."
+      "body": "A native app for on-site snagging. Place findings, shoot photos, and keep working with no signal — it syncs when you're back online.",
+      "detail": {
+        "tagline": "Inspect on site, signal or not",
+        "intro": "A native app for on-site snagging: place findings, shoot photos, and keep working with no connection — it syncs when you're back online.",
+        "problemTitle": "Construction sites don't have reliable signal",
+        "problem": "Inspections happen in basements, shells, and remote sites where mobile coverage drops. An app that needs a connection leaves inspectors writing notes on paper to re-enter later.",
+        "solutionTitle": "Offline-first inspections that sync",
+        "solution": [
+          "Place findings and capture photos with no connection — everything is stored locally.",
+          "Work continues uninterrupted as you move through the building.",
+          "The moment you're back online, your work syncs to the project automatically."
+        ],
+        "images": [
+          { "caption": "Snagging on the mobile app" },
+          { "caption": "Working-offline indicator" },
+          { "caption": "Automatic sync on reconnect" }
+        ]
+      }
     },
     "bcf": {
       "title": "Open BCF interoperability",
-      "body": "Import and export findings as BCF to round-trip issues with Solibri, BIMcollab, Revit, and your kwaliteitsborger's tools."
+      "body": "Import and export findings as BCF to round-trip issues with Solibri, BIMcollab, Revit, and your kwaliteitsborger's tools.",
+      "detail": {
+        "tagline": "Round-trip findings with any BIM tool",
+        "intro": "Import and export findings as BCF to exchange issues with Solibri, BIMcollab, Revit, and your kwaliteitsborger's tools.",
+        "problemTitle": "Findings get trapped in one tool",
+        "problem": "Every party works in different software, and re-typing findings between tools is slow and error-prone. Without a shared format, issues drift out of sync across the team.",
+        "solutionTitle": "BCF as the common language",
+        "solution": [
+          "Export findings as standard BCF to share with any compatible tool.",
+          "Import BCF from your kwaliteitsborger so external issues land in your project.",
+          "Round-trip changes keep everyone working from the same set of issues."
+        ],
+        "images": [
+          { "caption": "Exporting findings to BCF" },
+          { "caption": "Importing a BCF from Solibri" },
+          { "caption": "Synced issues across tools" }
+        ]
+      }
     },
     "collaboration": {
       "title": "Team roles & audit trail",
-      "body": "Invite your team with the right permissions (owner, editor, viewer, inspector). Every change is logged for an audit-ready history."
+      "body": "Invite your team with the right permissions (owner, editor, viewer, inspector). Every change is logged for an audit-ready history.",
+      "detail": {
+        "tagline": "The right access, with a full audit trail",
+        "intro": "Invite your team with precise permissions — owner, editor, viewer, inspector — and log every change for an audit-ready history.",
+        "problemTitle": "Open access and no record is a liability",
+        "problem": "Without role-based access, anyone can change anything; without a log, you can't show who did what. Both are a problem when a dossier has to stand up to scrutiny.",
+        "solutionTitle": "Role-based access plus a complete log",
+        "solution": [
+          "Assign each member a role — owner, editor, viewer, or inspector — that fits their job.",
+          "Permissions gate what each person can see and change across the project.",
+          "Every change is recorded in an audit trail you can hand to the bevoegd gezag."
+        ],
+        "images": [
+          { "caption": "Team members and roles" },
+          { "caption": "Permission settings per role" },
+          { "caption": "Project-wide audit trail" }
+        ]
+      }
     }
+  },
+  "featureDetail": {
+    "backToFeatures": "Back to features",
+    "problemHeading": "The challenge",
+    "solutionHeading": "Our approach",
+    "imagesHeading": "See it in action",
+    "imagesNote": "More screenshots and short videos coming soon."
   },
   "roadmap": {
     "eyebrow": "On the roadmap",

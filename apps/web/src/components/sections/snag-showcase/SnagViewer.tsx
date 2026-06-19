@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState, type JSX } from 'react';
 
 import { autoRotatePlugin } from './autoRotatePlugin';
+import { cameraDebugPlugin } from './cameraDebugPlugin';
 import { cameraZoomPlugin } from './cameraZoomPlugin';
 import { DEMO_MODEL_ID, DEMO_SNAGS } from './demoSnags';
 import { monochromeLookPlugin } from './monochromeLookPlugin';
@@ -61,9 +62,19 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
     handleRef.current?.commands.execute('auto-rotate.setPaused', { paused }).catch(() => undefined);
   };
 
+  // Camera-tuning debug gate: on in dev, or on any build via `?camdebug`. Adds
+  // the interaction-only `[snag-cam]` logger and enables wheel-zoom so you can
+  // dolly the model to find `cameraZoomPlugin` knob values. Off → zero change
+  // for real visitors (production keeps wheel disabled, no logger). SnagViewer
+  // is `ssr:false`, so reading `window` here can't cause a hydration mismatch.
+  const camDebug =
+    process.env.NODE_ENV !== 'production' ||
+    (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('camdebug'));
+
   const plugins = reducedMotion
     ? [monochromeLookPlugin(), cameraZoomPlugin({ animate: false })]
     : [monochromeLookPlugin(), cameraZoomPlugin(), autoRotatePlugin()];
+  if (camDebug) plugins.push(cameraDebugPlugin());
 
   // Dismiss the title card on Escape; tear down the marker-click subscription
   // on unmount.
@@ -84,7 +95,11 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
 
   return (
     <div
-      className="relative h-full w-full"
+      // Desktop only: pad the WebGL canvas 500px on the left so the model renders
+      // toward the right (clearing the text overlaid on the left). Gated to `lg`
+      // so it never pushes the model off a narrow phone screen — mobile stays
+      // centered. The model itself is camera-centered (no focal offset).
+      className="relative h-full w-full lg:[&_canvas]:pl-[500px]"
       // Pause the idle spin while the pointer is over the model so pin tooltips
       // stay readable; resume on leave. No-op under reduced motion.
       onPointerEnter={reducedMotion ? undefined : () => setPaused(true)}
@@ -97,24 +112,31 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
         background={{ alpha: 0 }}
         shadows={{ enabled: false }}
         viewCube={{ enabled: false }}
-        // Disable wheel/scroll zoom (felt glitchy + would trap page scroll over
-        // this full-bleed hero). camera-controls bails on ACTION.NONE before
-        // preventDefault, so the page scrolls normally. Rotate/hover/pin-click
-        // stay live; the initial framing is set once by `showcase.zoomIn`.
-        controls={{ wheel: 'none' }}
+        // Rotate-only turntable: drag rotates, panning + zoom are disabled. With
+        // pan off the orbit target can never be knocked off the model center, so
+        // the idle auto-rotate always spins around the building's center. wheel
+        // 'none' keeps page scroll working over this full-bleed hero (camera-
+        // controls bails on ACTION.NONE before preventDefault). Touch is locked
+        // to rotate-only inside cameraZoomPlugin (the prop can't reach touch).
+        controls={{ left: 'rotate', middle: 'none', right: 'none', wheel: 'none' }}
         plugins={plugins}
         onReady={(handle) => {
           handleRef.current = handle;
+          // Debug gate: expose the handle so you can re-run framing or read the
+          // camera/model state from the console after editing knobs, e.g.
+          // `__snagViewer.commands.execute('showcase.debug.snapshot')`.
+          if (camDebug && typeof window !== 'undefined') {
+            (window as unknown as { __snagViewer?: ViewerHandle }).__snagViewer = handle;
+          }
           // Look, don't edit: disable model-element selection + hover highlight
           // so clicking/hovering the building paints nothing. Orbit/drag and the
           // idle auto-rotate are independent and stay live.
           void handle.commands.execute('selection.setEnabled', false).catch(() => undefined);
           void handle.commands.execute('hover.setEnabled', false).catch(() => undefined);
-          // Frame the model, then dolly closer so it fills the canvas.
-          void handle.commands
-            .execute('camera.zoomExtents')
-            .then(() => handle.commands.execute('showcase.zoomIn'))
-            .catch(() => undefined);
+          // Frame the model in one self-contained move (center pivot + tilt +
+          // zoom + right-shift). Computes from the model box itself, so it does
+          // NOT depend on an animated `camera.zoomExtents` settling first.
+          void handle.commands.execute('showcase.zoomIn').catch(() => undefined);
           void handle.commands.execute('entity-marker.sync', markers).catch(() => undefined);
           // Clicking a pin toggles its title card (same id → dismiss).
           offClickRef.current = handle.events.on('entity-marker:click', (ev) => {

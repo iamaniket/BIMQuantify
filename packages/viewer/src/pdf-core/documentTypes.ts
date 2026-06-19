@@ -101,6 +101,14 @@ export interface DocumentEvents extends PluginLifecycleEvents {
   };
   /** A pending marker placement was committed at a normalized page point. */
   'entity-marker:place': { x: number; y: number; page: number };
+  /**
+   * Interaction plugin: a guided pick (dimming overlay + instruction banner)
+   * resolved with a normalized page point. `kind` discriminates this from the
+   * 3D variant (`{ kind: 'point', ... }` on the viewer bus).
+   */
+  'interaction:resolved': { kind: 'page'; x: number; y: number; page: number };
+  /** Interaction plugin: a guided pick was cancelled (Esc / × / external exit). */
+  'interaction:cancelled': undefined;
 }
 
 /**

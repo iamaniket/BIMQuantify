@@ -21,6 +21,7 @@ import type { CameraControlsConfig } from './plugins/2d/camera/index.js';
 import { cameraPlugin } from './plugins/2d/camera/index.js';
 import { contextMenuPlugin } from './plugins/2d/context-menu/index.js';
 import { entityMarker2DPlugin } from './plugins/2d/entity-marker/index.js';
+import { interaction2DPlugin } from './plugins/2d/interaction/index.js';
 import {
   floorPlanPlugin,
   type FloorPlanColors,
@@ -118,6 +119,8 @@ function FloorPlanViewerInner(
       mouseBindings2DPlugin({ overrides: { 'click:left': 'floorplan.pick' } }),
       measurePlugin(),
       entityMarker2DPlugin(),
+      // Guided-pick overlay on top of entity-marker placement (interaction.request).
+      interaction2DPlugin(),
       contextMenuPlugin(),
       floorPlanPlugin({
         data,

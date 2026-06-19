@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 
 import { defaultLocale, supportedLocales } from '@bimstitch/i18n';
 
+import { FEATURE_SLUGS } from '@/components/features/featureContent';
 import { getAllPosts } from '@/lib/blog/mdx';
 
 const siteUrl = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://bimdossier.nl';
@@ -37,9 +38,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...localizedEntry('/request-access', now, 'monthly', 0.7),
   ];
 
+  const featurePages: MetadataRoute.Sitemap = FEATURE_SLUGS.flatMap((slug) =>
+    localizedEntry(`/features/${slug}`, now, 'monthly', 0.7),
+  );
+
   const blogPages: MetadataRoute.Sitemap = getAllPosts(defaultLocale).flatMap((post) =>
     localizedEntry(`/blog/${post.slug}`, new Date(post.date), 'monthly', 0.6),
   );
 
-  return [...staticPages, ...blogPages];
+  return [...staticPages, ...featurePages, ...blogPages];
 }

@@ -1,0 +1,3 @@
+# Real feature screenshots go here, namespaced per feature: features/<key>/01.png …
+# Until they exist, FeatureImages renders styled placeholder tiles
+# (featureContent.ts `hasAssets: false`). Flip the flag per feature once assets land.
