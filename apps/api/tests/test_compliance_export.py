@@ -532,3 +532,68 @@ async def test_compliance_export_allowed_when_project_archived(
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Cross-project IDOR: the compliance job must be bound to the project in the
+# request path. A file_id from a sibling project (same org schema) passed via
+# another project's path must NOT leak that sibling's compliance results.
+# ---------------------------------------------------------------------------
+
+
+async def test_latest_does_not_leak_sibling_project_file(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = fake_storage_client
+    a_pid, a_mid, _a_fid = await _ready_file(client, fake, org_user, name="idor-a.ifc")
+    b_pid, b_mid, b_fid = await _ready_file(client, fake, org_user, name="idor-b.ifc")
+    await _seed_compliance_job(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(b_pid),
+        UUID(b_fid),
+        details=[_detail()],
+    )
+
+    # Project A's path + project B's file_id → must not surface B's results.
+    leaked = await client.get(
+        f"/projects/{a_pid}/models/{a_mid}/files/{b_fid}/compliance/latest",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert leaked.status_code == 404, leaked.text
+    assert leaked.json()["detail"] == "NO_COMPLIANCE_RESULTS"
+
+    # Sanity: the correct project B path still returns the results.
+    ok = await client.get(
+        f"/projects/{b_pid}/models/{b_mid}/files/{b_fid}/compliance/latest",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert ok.status_code == 200, ok.text
+
+
+async def test_export_csv_does_not_leak_sibling_project_file(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = fake_storage_client
+    a_pid, a_mid, _a_fid = await _ready_file(client, fake, org_user, name="idor-csv-a.ifc")
+    b_pid, _b_mid, b_fid = await _ready_file(client, fake, org_user, name="idor-csv-b.ifc")
+    await _seed_compliance_job(
+        session_maker,
+        UUID(org_user["organization_id"]),
+        UUID(b_pid),
+        UUID(b_fid),
+        details=[_detail()],
+    )
+
+    leaked = await client.get(
+        f"/projects/{a_pid}/models/{a_mid}/files/{b_fid}/compliance/export.csv",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert leaked.status_code == 404, leaked.text
+    assert leaked.json()["detail"] == "NO_COMPLIANCE_RESULTS"

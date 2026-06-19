@@ -35,6 +35,14 @@ async function launch(): Promise<Browser> {
 }
 
 export async function getBrowser(): Promise<Browser> {
+  // Drop a cached browser that has died/disconnected (crash, OOM, lost pipe)
+  // before handing it out — otherwise the staleness only surfaces as a failed
+  // newPage() on the next render, cascading avoidable job failures.
+  if (cached !== null && !cached.connected) {
+    logger.warn('cached chromium is disconnected — relaunching');
+    cached = null;
+    renderCount = 0;
+  }
   if (cached === null) {
     cached = await launch();
     renderCount = 0;

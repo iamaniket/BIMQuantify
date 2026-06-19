@@ -9,6 +9,7 @@ import {
   encodeFloorPlans,
   type FloorPlanElement,
   metresPerUnit,
+  scanModelGeometry,
   sliceTriangleAtAxis,
 } from '../src/pipeline/floorplans.js';
 
@@ -193,5 +194,48 @@ describe('buildFloorPlans up-axis detection', () => {
       StreamAllMeshes: () => undefined,
     }) as never;
     expect(buildFloorPlans(api, 0, 'METRE', []).levels).toHaveLength(0);
+  });
+});
+
+describe('scanModelGeometry', () => {
+  const elements: FloorPlanElement[] = [
+    { expressID: 10, containedIn: 1 },
+    { expressID: 11, containedIn: 1 },
+  ];
+
+  it('computes the world bbox, up-axis and cut planes in one sweep', () => {
+    const geoms: Record<number, Geom> = {
+      500: quad([0, 0, 0], [10, 0, 0], [10, 10, 0], [0, 10, 0]), // floor at z=0
+      510: quad([3, 5, 0], [7, 5, 0], [7, 5, 3], [3, 5, 3]), // wall up to z=3
+    };
+    const api = makeApi(
+      geoms,
+      [
+        { expressID: 10, geomId: 500 },
+        { expressID: 11, geomId: 510 },
+      ],
+      [],
+    );
+    const scan = scanModelGeometry(api, 0, 'METRE', elements);
+    // bbox spans every vertex across both meshes (matches the old computeBoundingBox).
+    expect(scan.bbox).not.toBeNull();
+    expect([...scan.bbox!.min]).toEqual([0, 0, 0]);
+    expect([...scan.bbox!.max]).toEqual([10, 10, 3]);
+    // Big horizontal floor → Z is up; horizontal axes are X,Y.
+    expect(scan.upAxis).toBe(2);
+    expect([scan.planAxisX, scan.planAxisY]).toEqual([0, 1]);
+    expect(scan.storeys).toHaveLength(1);
+    expect(scan.storeys[0]!.cut).toBeCloseTo(1.2, 5); // floor (z=0) + 1.2 m
+  });
+
+  it('returns a null bbox and no storeys for an empty model', () => {
+    const api = {
+      GetLineIDsWithType: () => vec<number>([]),
+      GetLine: () => ({}),
+      StreamAllMeshes: () => undefined,
+    } as never;
+    const scan = scanModelGeometry(api, 0, 'METRE', []);
+    expect(scan.bbox).toBeNull();
+    expect(scan.storeys).toHaveLength(0);
   });
 });

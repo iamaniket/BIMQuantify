@@ -40,6 +40,7 @@ function att(overrides: Partial<Attachment> = {}): Attachment {
     dossier_slot: null,
     capture_metadata: null,
     server_metadata: null,
+    annotation_state: null,
     version_number: 1,
     parent_file_id: null,
     created_at: '2026-01-01T00:00:00Z',

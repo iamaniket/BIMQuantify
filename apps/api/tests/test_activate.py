@@ -164,36 +164,47 @@ async def test_activate_rejects_reset_password_token(
     assert response.json()["detail"] == "ACTIVATION_BAD_TOKEN"
 
 
-async def test_activate_already_verified_still_sets_password(
+async def test_activate_replay_is_noop_password_unchanged(
     client: AsyncClient,
     session_maker: async_sessionmaker[AsyncSession],
     email_transport: InMemoryEmailTransport,
 ) -> None:
-    """Replay click: same token used twice still lets the user set a password.
+    """Replay click: the activation token sets the password EXACTLY ONCE.
 
-    If the first click succeeds and the user immediately clicks again with
-    the same email link (or their browser/extension prefetched the URL),
-    /auth/activate should treat the second call as "already verified, just
-    set the password" rather than erroring. Setting the password is the
-    user-meaningful outcome of the flow.
+    The first call verifies the user and sets the password. A replay (same
+    token, already-verified user) is an idempotent no-op — it returns 204 so a
+    double-click/prefetch never errors, but it MUST NOT reset the password.
+    This closes the account-takeover window where anyone observing the one-time
+    invite link could POST a new password to a live account (F1). The first
+    password keeps working; a replayed second password is ignored.
     """
     email = "activate-replay@example.com"
+    first_password = "first-password-abc"
     await make_test_user(session_maker, email=email, is_verified=False)
     token = await _request_verify_token(client, email, email_transport)
 
     first = await client.post(
-        "/auth/activate", json={"token": token, "password": "first-password-abc"}
+        "/auth/activate", json={"token": token, "password": first_password}
     )
     assert first.status_code == 204, first.text
 
+    # Replay with a DIFFERENT password — succeeds (idempotent) but is a no-op.
     second = await client.post(
         "/auth/activate", json={"token": token, "password": NEW_PASSWORD}
     )
     assert second.status_code == 204, second.text
 
-    login = await client.post(
+    # The replayed password must NOT have taken effect.
+    rejected = await client.post(
         "/auth/jwt/login",
         data={"username": email, "password": NEW_PASSWORD},
+    )
+    assert rejected.status_code == 400, rejected.text
+
+    # The original (first) password still works.
+    login = await client.post(
+        "/auth/jwt/login",
+        data={"username": email, "password": first_password},
     )
     assert login.status_code == 200, login.text
 

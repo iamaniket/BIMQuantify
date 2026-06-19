@@ -12,8 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
 from bimstitch_api.access import (
+    is_org_admin,
     load_project_or_404,
     require_membership,
+    require_project_read_access,
     require_project_writable,
 )
 from bimstitch_api.auth.fastapi_users import current_verified_user
@@ -22,6 +24,7 @@ from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.jobs import DispatchJobError
 from bimstitch_api.jobs.lifecycle import cancel_job, retry_job
 from bimstitch_api.models.job import Job, JobStatus, JobType
+from bimstitch_api.models.project_member import ProjectMember
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.job import JobListResponse, JobRead
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
@@ -67,10 +70,22 @@ async def list_jobs(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> JobListResponse:
     stmt = select(Job)
     if project_id is not None:
+        # Reading a specific project's jobs requires read access to THAT
+        # project — not merely org membership. Non-members get 404.
+        await require_project_read_access(session, project_id, user, active_org_id)
         stmt = stmt.where(Job.project_id == project_id)
+    elif not (user.is_superuser or await is_org_admin(session, user.id, active_org_id)):
+        # Without a project filter, a non-admin only sees jobs for projects
+        # they belong to — never the whole org's jobs. Org-level jobs (no
+        # project) are admin-only and excluded here by the membership join.
+        member_projects = select(ProjectMember.project_id).where(
+            ProjectMember.user_id == user.id
+        )
+        stmt = stmt.where(Job.project_id.in_(member_projects))
     if job_status is not None:
         stmt = stmt.where(Job.status == job_status)
     if job_type is not None:
@@ -90,12 +105,18 @@ async def get_job(
     job_id: UUID,
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
 ) -> Job:
-    row = (
-        await session.execute(select(Job).where(Job.id == job_id))
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="JOB_NOT_FOUND")
+    row = await _load_job_or_404(session, job_id)
+    # JobRead exposes the full payload (storage keys, file ids) and result
+    # (compliance findings), so org-scoping alone is not enough — gate on
+    # read access to the job's project. Org-level jobs (no project) are
+    # admin-only. Mirrors the mutation gate in `_authorize_job_mutation`.
+    if row.project_id is None:
+        if not (user.is_superuser or await is_org_admin(session, user.id, active_org_id)):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="JOB_NOT_FOUND")
+    else:
+        await require_project_read_access(session, row.project_id, user, active_org_id)
     return row
 
 

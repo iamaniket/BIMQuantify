@@ -91,6 +91,7 @@ class AttachmentRead(BaseModel):
     dossier_slot: DossierSlot | None
     capture_metadata: dict[str, Any] | None
     server_metadata: dict[str, Any] | None
+    annotation_state: dict[str, Any] | None
     version_number: int
     parent_file_id: UUID | None
     created_at: datetime
@@ -100,6 +101,9 @@ class AttachmentRead(BaseModel):
 class AttachmentUpdateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     dossier_slot: DossierSlot | None = None
+    # Vector annotation document (Annotation2D[] + schema/source-version). Stored
+    # verbatim; `exclude_unset` in the router means omitting it leaves it untouched.
+    annotation_state: dict[str, Any] | None = None
 
 
 class AttachmentCallbackRequest(BaseModel):

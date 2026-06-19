@@ -29,19 +29,47 @@ if TYPE_CHECKING:
     from fastapi import Request
 
 
+def _client_ip(request: Request) -> str:
+    """The caller's source IP for rate-limit bucketing.
+
+    Defaults to the immediate peer (`request.client.host`). `X-Forwarded-For`
+    is honored ONLY when the immediate peer is a configured trusted proxy
+    (`TRUSTED_PROXY_IPS`), in which case the right-most hop — the address the
+    trusted proxy actually observed — is used. A direct attacker is not a
+    trusted proxy, so a spoofed XFF header is ignored and cannot be used to
+    mint a fresh rate-limit bucket per request.
+    """
+    peer = request.client.host if request.client is not None else "unknown"
+    trusted = get_settings().trusted_proxy_ip_set
+    if trusted and peer in trusted:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+            if hops:
+                return hops[-1]
+    return peer
+
+
 def _who(request: Request) -> str:
     """Identify the caller: authenticated user id when present, else client IP."""
     decoded = getattr(request.state, "decoded_token", None)
     if decoded is not None:
         return f"user:{decoded.user_id}"
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        ip = forwarded.split(",", 1)[0].strip()
-    elif request.client is not None:
-        ip = request.client.host
-    else:
-        ip = "unknown"
-    return f"ip:{ip}"
+    return f"ip:{_client_ip(request)}"
+
+
+async def default_rate_limit_identifier(request: Request) -> str:
+    """Trusted-proxy-aware default identifier for `FastAPILimiter.init`.
+
+    fastapi-limiter's built-in default keys on the raw, client-supplied
+    `X-Forwarded-For` header, so an attacker rotates it to get a fresh bucket
+    per request — defeating the login / forgot-password / refresh throttles.
+    This keys on the real peer IP (honoring XFF only behind a trusted proxy)
+    plus the request path, preserving the library's per-path bucketing for the
+    auth limiters that rely on the default identifier.
+    """
+    path = request.scope.get("path", "")
+    return f"{_client_ip(request)}:{path}"
 
 
 def make_identifier(label: str) -> Callable[[Request], Awaitable[str]]:

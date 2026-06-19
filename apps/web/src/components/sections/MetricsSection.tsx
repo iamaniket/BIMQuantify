@@ -5,18 +5,17 @@ import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Reveal } from '@/components/shared/Reveal';
-import { StatCounter } from '@/components/shared/StatCounter';
 
-type Metric = { value: number; suffix?: string; labelKey: string };
-
-// Illustrative figures — labelled as such via the `caption` string. Numbers
-// live here (locale-formatted at runtime); only the labels are translated.
-const METRICS: Metric[] = [
-  { value: 12000, suffix: '+', labelKey: 'snagsResolved' },
-  { value: 98, suffix: '%', labelKey: 'compliancePassed' },
-  { value: 150, suffix: '+', labelKey: 'projects' },
-  { value: 9, suffix: ' d', labelKey: 'avgDaysToClose' },
-];
+// These are the metrics we will report once the early-access pilots produce real
+// numbers. Until then we show the labels with a muted placeholder rather than
+// invented figures — see the `metrics.caption` string. When real data exists,
+// restore the numbers via `components/shared/StatCounter` and flip the caption.
+const METRIC_LABELS = [
+  'snagsResolved',
+  'compliancePassed',
+  'projects',
+  'avgDaysToClose',
+] as const;
 
 export function MetricsSection(): JSX.Element {
   const t = useTranslations('metrics');
@@ -30,13 +29,16 @@ export function MetricsSection(): JSX.Element {
         </div>
         <Reveal>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-            {METRICS.map((metric) => (
-              <StatCounter
-                key={metric.labelKey}
-                value={metric.value}
-                label={t(metric.labelKey)}
-                {...(metric.suffix ? { suffix: metric.suffix } : {})}
-              />
+            {METRIC_LABELS.map((labelKey) => (
+              <div key={labelKey} className="flex flex-col items-center gap-1 text-center">
+                <span
+                  className="text-h3 font-semibold tabular-nums text-foreground-disabled"
+                  aria-hidden
+                >
+                  —
+                </span>
+                <span className="text-body3 text-foreground-secondary">{t(labelKey)}</span>
+              </div>
             ))}
           </div>
         </Reveal>

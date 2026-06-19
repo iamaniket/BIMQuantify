@@ -91,6 +91,12 @@ export async function buildMetadata(
   modelID: number,
   schema: SupportedSchema,
   logger?: Logger,
+  // The extraction worker runs a single unified geometry sweep
+  // (scanModelGeometry in floorplans.ts) that also yields the bbox, then injects
+  // it — so it passes `true` here to skip this otherwise-redundant
+  // StreamAllMeshes pass. Standalone callers (and tests) leave it false and get
+  // the bbox computed inline via computeBoundingBox.
+  skipBbox = false,
 ): Promise<Metadata> {
   // Per-sub-step timing + GetLine-crossing deltas. The walk is synchronous (no
   // awaits below), so reading the global counter before/after each call yields
@@ -113,7 +119,7 @@ export async function buildMetadata(
   const elementCounts = countElements(api, modelID);
   tick('countElements');
   const canonicalElementCounts = buildCanonicalCounts(elementCounts);
-  const bbox = computeBoundingBox(api, modelID);
+  const bbox = skipBbox ? null : computeBoundingBox(api, modelID);
   tick('bbox');
 
   const labels = ['project', 'spatialTree', 'zones', 'collectElements', 'countElements', 'bbox'];
@@ -242,6 +248,10 @@ function isSpatialType(type: string): boolean {
 // be split across multiple relationship lines, so we merge by zone expressID.
 function buildZones(api: IfcAPI, modelID: number): ZoneNode[] {
   const byZone = new Map<number, ZoneNode>();
+  // Per-zone space-id set for O(1) dedup — a single zone can be split across
+  // several IfcRelAssignsToGroup lines, so the same space can recur. Kept beside
+  // ZoneNode (not on it) so the returned shape stays clean.
+  const seenSpaces = new Map<number, Set<number>>();
   const relIds = api.GetLineIDsWithType(modelID, IFCRELASSIGNSTOGROUP);
   for (let i = 0; i < relIds.size(); i += 1) {
     // `flatten: false` — RelatingGroup/RelatedObjects come back as bare
@@ -267,7 +277,9 @@ function buildZones(api: IfcAPI, modelID: number): ZoneNode[] {
         spaces: [],
       };
       byZone.set(zoneID, zone);
+      seenSpaces.set(zoneID, new Set<number>());
     }
+    const spaceSet = seenSpaces.get(zoneID)!;
 
     const related = rel['RelatedObjects'];
     if (!Array.isArray(related)) continue;
@@ -275,7 +287,8 @@ function buildZones(api: IfcAPI, modelID: number): ZoneNode[] {
       const spaceID = numberValue(obj);
       if (spaceID === null) continue;
       if (api.GetLineType(modelID, spaceID) !== IFCSPACE) continue;
-      if (zone.spaces.some((s) => s.expressID === spaceID)) continue;
+      if (spaceSet.has(spaceID)) continue;
+      spaceSet.add(spaceID);
       const spaceLine = api.GetLine(modelID, spaceID, false) as Record<string, unknown>;
       zone.spaces.push({
         expressID: spaceID,
@@ -404,16 +417,43 @@ function collectElements(api: IfcAPI, modelID: number): ElementEntry[] {
   return elements;
 }
 
-// Count elements per known IFC type. The old approach walked *every line* in
-// the model (GetAllLines → GetLineType + GetNameFromTypeCode per line — order
-// of a million calls on a large model) just to bucket the ~bounded set of
-// types we care about. Instead, ask web-ifc directly how many instances exist
-// of each known type: one GetLineIDsWithType per entry in
-// IFC_UPPERCASE_TO_PASCAL. `includeInherited` defaults to false, so this counts
-// exact-type instances — identical buckets to the old per-line GetLineType
-// counting.
+// Count elements per known IFC type. `includeInherited` defaults to false on
+// GetLineIDsWithType, so this counts exact-type instances — identical buckets
+// to the old per-line GetLineType counting.
+//
+// Fast path: GetAllTypesOfModel tells us which types the model *actually*
+// contains, so we probe GetLineIDsWithType only for the (canonical-mapped) ones
+// present — a typical model carries ~10-15 of our ~28 known types, so the rest
+// were previously pointless WASM crossings. Fallback (older web-ifc builds, or
+// when enumeration throws): probe every known type by name, as before. Both
+// paths yield identical buckets.
 function countElements(api: IfcAPI, modelID: number): Record<string, number> {
   const counts: Record<string, number> = {};
+
+  const addCount = (pascal: string, code: number): void => {
+    if (!Number.isInteger(code) || code <= 0) return;
+    const n = api.GetLineIDsWithType(modelID, code).size();
+    if (n > 0) counts[pascal] = (counts[pascal] ?? 0) + n;
+  };
+
+  const getAllTypes = (
+    api as unknown as { GetAllTypesOfModel?: (m: number) => { typeID: number; typeName: string }[] }
+  ).GetAllTypesOfModel?.bind(api);
+  if (getAllTypes !== undefined) {
+    try {
+      for (const { typeID, typeName } of getAllTypes(modelID)) {
+        const pascal =
+          typeof typeName === 'string'
+            ? IFC_UPPERCASE_TO_PASCAL.get(typeName.toUpperCase())
+            : undefined;
+        if (pascal !== undefined) addCount(pascal, typeID);
+      }
+      return counts;
+    } catch {
+      // Enumeration unsupported/failed — fall through to the name-probe path.
+    }
+  }
+
   // GetTypeCodeFromName is accessed defensively (mirrors the existing cautious
   // GetNameFromTypeCode access); if a build lacks it we return empty counts
   // rather than crash.
@@ -429,9 +469,7 @@ function countElements(api: IfcAPI, modelID: number): Record<string, number> {
     } catch {
       continue; // name not recognised by this web-ifc build/schema
     }
-    if (!Number.isInteger(code) || code <= 0) continue;
-    const n = api.GetLineIDsWithType(modelID, code).size();
-    if (n > 0) counts[pascal] = (counts[pascal] ?? 0) + n;
+    addCount(pascal, code);
   }
   return counts;
 }

@@ -1,4 +1,37 @@
 {
+  "imageAnnotator": {
+    "title": "Foto annoteren",
+    "subtitle": "Teken pijlen, vormen, tekst of vervaging over de foto. Het origineel blijft altijd bewaard.",
+    "loading": "Foto laden…",
+    "loadError": "Kon de foto niet laden om te annoteren.",
+    "saving": "Opslaan…",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "saved": "Annotaties opgeslagen",
+    "saveError": "Kon annotaties niet opslaan",
+    "hint": "Tip: gebruik het cursorgereedschap om een vorm te selecteren, verplaatsen of vergroten.",
+    "redactWarning": "Vervaagde gebieden worden permanent onleesbaar gemaakt in de opgeslagen afbeelding; de originele foto blijft bewaard.",
+    "color": "Kleur",
+    "strokeWidth": "Lijndikte",
+    "thin": "Dun",
+    "medium": "Gemiddeld",
+    "thick": "Dik",
+    "undo": "Ongedaan maken",
+    "redo": "Opnieuw",
+    "delete": "Selectie verwijderen",
+    "clear": "Alles wissen",
+    "tools": {
+      "select": "Selecteren",
+      "rectangle": "Rechthoek",
+      "ellipse": "Ellips",
+      "line": "Lijn",
+      "arrow": "Pijl",
+      "cloud": "Revisiewolk",
+      "freehand": "Vrije hand",
+      "text": "Tekst",
+      "blur": "Vervagen / onleesbaar maken"
+    }
+  },
   "errorBoundary": {
     "title": "Er is iets misgegaan",
     "description": "Er is een onverwachte fout opgetreden. Probeer het opnieuw — als het probleem zich blijft voordoen, neem dan contact op met support.",
@@ -1259,6 +1292,8 @@
         "downloadError": "Downloadlink kon niet worden aangemaakt",
         "deleteSuccess": "{name} verwijderd",
         "download": "Downloaden",
+        "annotate": "Annoteren",
+        "editAnnotations": "Annotaties bewerken",
         "delete": "Verwijderen",
         "viaCapture": "Opname",
         "linked": "Gekoppeld",
@@ -1588,7 +1623,8 @@
       "label": "Foto's",
       "add": "Toevoegen",
       "remove": "Foto verwijderen",
-      "uploadError": "Kon {name} niet uploaden"
+      "uploadError": "Kon {name} niet uploaden",
+      "annotate": "Annoteren"
     },
     "referenceDocuments": {
       "label": "Referentiedocumenten",

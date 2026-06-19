@@ -100,6 +100,7 @@ def _attachment_snapshot(att: ProjectFile) -> dict[str, object]:
         "dossier_slot": att.dossier_slot.value if att.dossier_slot else None,
         "capture_link_id": str(att.capture_link_id) if att.capture_link_id else None,
         "has_capture_metadata": att.capture_metadata is not None,
+        "has_annotation_state": att.annotation_state is not None,
         "version_number": att.version_number,
         "parent_file_id": (str(att.parent_file_id) if att.parent_file_id else None),
     }

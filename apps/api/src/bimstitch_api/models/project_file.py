@@ -271,6 +271,13 @@ class ProjectFile(
     )
     capture_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     server_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Editable vector annotation document for image attachments — the
+    # `Annotation2D[]` drawn over the photo plus the source-version pointer. The
+    # *displayed* bytes are the flattened (burned-in) raster uploaded as a new
+    # version; this keeps the markup re-editable. Free-form JSON (no PG enum), so
+    # the shape can evolve without a tenant-fan-out migration. NULL for
+    # un-annotated files and all non-image roles.
+    annotation_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     # Version-group anchor for attachment rows (self-FK; root has NULL parent).
     # model_source rows leave this NULL and version by (model_id, version_number).

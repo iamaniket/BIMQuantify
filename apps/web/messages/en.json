@@ -41,12 +41,60 @@
       "body": "Upload typed certificates — CE/DoP declarations, test reports, warranties — with expiry tracking. Get automatic warnings before certificates expire."
     },
     "viewer": {
-      "title": "IFC model viewer",
-      "body": "View and navigate 3D BIM models directly in the browser. Click elements, inspect properties, and link inspections to specific building components."
+      "title": "3D + 2D model viewer",
+      "body": "View federated IFC models in the browser — no desktop software. Cut sections, measure, switch storeys and floor plans, and click any element for its properties."
     },
     "reports": {
       "title": "Compliance reports",
       "body": "Generate audit-ready PDF reports: borgingsplan, verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package."
+    },
+    "snagging": {
+      "title": "Snag on drawings & in 3D",
+      "body": "Pin findings directly onto your PDF floor plans or 3D model. Every snag carries its location, photos, and Bbl reference."
+    },
+    "board": {
+      "title": "Findings board & calendar",
+      "body": "Track every finding on a Kanban board, a deadline calendar, and overview dashboards — filter by assignee, status, or severity."
+    },
+    "photos": {
+      "title": "Photo evidence & annotation",
+      "body": "Capture photos on site, mark them up with arrows and notes, and attach them to findings as proof of resolution."
+    },
+    "mobile": {
+      "title": "Mobile inspections, even offline",
+      "body": "A native app for on-site snagging. Place findings, shoot photos, and keep working with no signal — it syncs when you're back online."
+    },
+    "bcf": {
+      "title": "Open BCF interoperability",
+      "body": "Import and export findings as BCF to round-trip issues with Solibri, BIMcollab, Revit, and your kwaliteitsborger's tools."
+    },
+    "collaboration": {
+      "title": "Team roles & audit trail",
+      "body": "Invite your team with the right permissions (owner, editor, viewer, inspector). Every change is logged for an audit-ready history."
+    }
+  },
+  "roadmap": {
+    "eyebrow": "On the roadmap",
+    "headline": "What we're building next",
+    "subtitle": "Already in design or in progress — not available yet.",
+    "badge": "Coming soon",
+    "items": {
+      "comments": {
+        "title": "Finding discussions",
+        "body": "Comment threads on each finding so your team and kwaliteitsborger can resolve issues in context."
+      },
+      "handover": {
+        "title": "Consumentendossier & oplevering",
+        "body": "Client handover sign-off and proces-verbaal, separate from the dossier bevoegd gezag."
+      },
+      "ai": {
+        "title": "AI dossier assistant",
+        "body": "Ask questions across your documents and drawings. Self-hosted and privacy-first — your data never leaves our EU infrastructure."
+      },
+      "push": {
+        "title": "Mobile push reminders",
+        "body": "Deadline and finding alerts pushed straight to your phone."
+      }
     }
   },
   "howItWorks": {
@@ -124,10 +172,11 @@
   "snagShowcase": {
     "eyebrow": "Quality assurance, live",
     "headline": "Catch defects before they cost you.",
-    "subtitle": "Drag the model to inspect it. Hover a pin to read the snag — its severity, the Bbl article it touches, and where it sits in the Wkb borging loop.",
+    "subtitle": "Drag to rotate the model. Click a pin to see the snag it flags.",
     "cta": "Request access",
     "hintDrag": "Drag to rotate",
-    "hintHover": "Hover a pin for details",
+    "hintClick": "Click a pin to see the snag",
+    "dismissSnag": "Dismiss",
     "learnMoreBlog": "Learn how Wkb borging works on the blog",
     "fallbackTitle": "Interactive 3D snag inspection",
     "fallbackBody": "Your browser cannot show the live 3D model, but here are the snags it carries:",
@@ -143,7 +192,7 @@
   "metrics": {
     "eyebrow": "By the numbers",
     "headline": "Built for the borging loop",
-    "caption": "Illustrative figures.",
+    "caption": "We're in early access — real figures will appear here as our pilot projects file their first gereedmelding.",
     "snagsResolved": "Snags resolved",
     "compliancePassed": "Compliance checks passed",
     "projects": "Projects under borging",

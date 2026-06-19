@@ -13,9 +13,17 @@ RUN npm run build
 # (Dutch diacritics in WKB rule titles fall back to tofu).
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
+# NODE_OPTIONS / UV_THREADPOOL_SIZE are tuned for the worst case — a 2 GiB IFC
+# (JOB_MAX_FILE_BYTES) processed at JOB_CONCURRENCY=2, each job spawning two
+# extraction worker threads. The default ~1.7 GiB old-space heap risks an OOM
+# (which classifies retriable and re-runs the whole job); a roomier heap + a
+# larger libuv pool (S3 I/O + crypto hashing) keeps throughput stable. Both are
+# plain ENV so a deployment can override them for its container size.
 ENV NODE_ENV=production \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
-    PUPPETEER_SKIP_DOWNLOAD=true
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    NODE_OPTIONS=--max-old-space-size=4096 \
+    UV_THREADPOOL_SIZE=32
 
 # System deps:
 #  * chromium             — headless browser for HTML→PDF

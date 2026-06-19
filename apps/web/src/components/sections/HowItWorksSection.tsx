@@ -26,7 +26,7 @@ export function HowItWorksSection(): JSX.Element {
     <section id="how-it-works" className="bg-surface-low">
       <div className="mx-auto w-full max-w-6xl px-6 py-20">
         <div className="mb-12 flex flex-col items-center gap-3 text-center">
-          <Eyebrow size="md">{t('eyebrow')}</Eyebrow>
+          <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
           <h2 className="max-w-2xl text-h3 font-semibold text-foreground">
             {t('headline')}
           </h2>

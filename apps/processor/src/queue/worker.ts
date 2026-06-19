@@ -1,4 +1,4 @@
-import { type Job, Worker } from 'bullmq';
+import { type Job, UnrecoverableError, Worker } from 'bullmq';
 
 import { postAttachmentCallback } from '../api/attachmentCallback.js';
 import { postCallback } from '../api/callback.js';
@@ -89,6 +89,42 @@ async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void>
   }
 }
 
+/**
+ * Map a pipeline error onto the error we hand back to BullMQ.
+ *
+ * A permanently-bad input (corrupt/unsupported model, malformed payload, hash
+ * mismatch) can never succeed on a retry, so re-running just burns the full
+ * download + re-mesh + walk again — up to `attempts` times. Surface those as
+ * BullMQ's `UnrecoverableError` so the job fails after a single attempt.
+ * Retriable failures (network/S3/OOM/timeout, and the unknown default) pass
+ * through unchanged so BullMQ still retries them. The original message is
+ * preserved so the terminal backstop's `classifyError` keeps the right kind.
+ */
+export function toBullError(err: unknown): Error {
+  if (classifyError(err).retriable) {
+    return err instanceof Error ? err : new Error(String(err));
+  }
+  if (err instanceof UnrecoverableError) return err;
+  return new UnrecoverableError(err instanceof Error ? err.message : String(err));
+}
+
+/**
+ * Whether a failed job has reached a terminal state (BullMQ will not retry it):
+ * either retries are exhausted, or it failed with an `UnrecoverableError`. The
+ * latter check matters because an unrecoverable failure leaves `attemptsMade`
+ * at 1 — the exhaustion test alone would skip the terminal backstop and strand
+ * a throw-before-pipeline error (e.g. a malformed payload) in a non-terminal
+ * API state.
+ */
+export function isTerminalFailure(
+  attemptsMade: number,
+  maxAttempts: number,
+  err: Error,
+): boolean {
+  if (err instanceof UnrecoverableError || err.name === 'UnrecoverableError') return true;
+  return attemptsMade >= maxAttempts;
+}
+
 export function startWorker(): Worker<WorkerJob> {
   const cfg = getConfig();
   const worker = new Worker<WorkerJob>(
@@ -96,38 +132,43 @@ export function startWorker(): Worker<WorkerJob> {
     async (job) => {
       logger.info({ jobId: job.id, jobType: job.data.job_type }, 'job started');
       const onProgress: ProgressReporter = (pct) => job.updateProgress(pct);
-      switch (job.data.job_type) {
-        case 'ifc_extraction':
-          await runExtraction(job.data, onProgress);
-          break;
-        case 'pdf_extraction':
-          await runPdfExtraction(job.data, onProgress);
-          break;
-        case 'dxf_extraction':
-          await runDxfExtraction(job.data, onProgress);
-          break;
-        case 'image_metadata_extraction':
-          await runImageMetadataExtraction(job.data, onProgress);
-          break;
-        case 'compliance_report':
-          await runComplianceReport(job.data, onProgress);
-          break;
-        case 'assurance_plan_report':
-          await runAssurancePlanReport(job.data, onProgress);
-          break;
-        case 'completion_declaration_report':
-          await runCompletionDeclarationReport(job.data, onProgress);
-          break;
-        case 'dossier_report':
-          await runDossierReport(job.data, onProgress);
-          break;
-        case 'send_email':
-          // Handled by the action worker on the "actions" queue.
-          break;
-        default: {
-          const _exhaustive: never = job.data.job_type;
-          throw new Error(`unknown job_type: ${String(_exhaustive)}`);
+      try {
+        switch (job.data.job_type) {
+          case 'ifc_extraction':
+            await runExtraction(job.data, onProgress);
+            break;
+          case 'pdf_extraction':
+            await runPdfExtraction(job.data, onProgress);
+            break;
+          case 'dxf_extraction':
+            await runDxfExtraction(job.data, onProgress);
+            break;
+          case 'image_metadata_extraction':
+            await runImageMetadataExtraction(job.data, onProgress);
+            break;
+          case 'compliance_report':
+            await runComplianceReport(job.data, onProgress);
+            break;
+          case 'assurance_plan_report':
+            await runAssurancePlanReport(job.data, onProgress);
+            break;
+          case 'completion_declaration_report':
+            await runCompletionDeclarationReport(job.data, onProgress);
+            break;
+          case 'dossier_report':
+            await runDossierReport(job.data, onProgress);
+            break;
+          case 'send_email':
+            // Handled by the action worker on the "actions" queue.
+            break;
+          default: {
+            const _exhaustive: never = job.data.job_type;
+            throw new Error(`unknown job_type: ${String(_exhaustive)}`);
+          }
         }
+      } catch (err) {
+        // Stop BullMQ retrying inputs that can never succeed (see toBullError).
+        throw toBullError(err);
       }
       logger.info({ jobId: job.id }, 'job finished');
     },
@@ -141,11 +182,11 @@ export function startWorker(): Worker<WorkerJob> {
   worker.on('failed', (job: Job<WorkerJob> | undefined, err: Error) => {
     logger.error({ jobId: job?.id, attemptsMade: job?.attemptsMade, err }, 'job failed');
     if (!job) return;
-    // Only act once retries are exhausted — otherwise BullMQ will run it again.
-    const maxAttempts = job.opts.attempts ?? 1;
-    if (job.attemptsMade < maxAttempts) return;
-    // Reached a terminal failure (retries exhausted) — report it, then make
-    // sure the API row also lands in a terminal state.
+    // Only act once the job is terminal — retries exhausted, or an
+    // UnrecoverableError BullMQ won't retry. Otherwise BullMQ will run it again.
+    if (!isTerminalFailure(job.attemptsMade, job.opts.attempts ?? 1, err)) return;
+    // Reached a terminal failure — report it, then make sure the API row also
+    // lands in a terminal state.
     captureException(err, { jobId: job.id, jobType: job.data.job_type });
     void notifyTerminalFailure(job.data, err).catch((cbErr) => {
       logger.error({ jobId: job.id, err: cbErr }, 'terminal failure callback failed');

@@ -262,6 +262,75 @@ describe('buildMetadata countElements integration', () => {
     expect(metadata.totalElements).toBe(4);
   });
 
+  it('fast path: counts only present, canonical-mapped types via GetAllTypesOfModel', async () => {
+    const { buildMetadata } = await import('../src/pipeline/metadata.js');
+
+    const getLineIds = vi.fn().mockImplementation((_m: number, code: number) => {
+      if (code === 1001) return idList([1, 2]); // IfcWall
+      if (code === 1002) return idList([10, 11, 12]); // IfcWallStandardCase
+      return idList([]);
+    });
+    const getTypeCode = vi.fn(); // must NOT be consulted on the fast path
+    const mockApi = {
+      GetAllTypesOfModel: vi.fn().mockReturnValue([
+        { typeID: 1001, typeName: 'IFCWALL' },
+        { typeID: 1002, typeName: 'IFCWALLSTANDARDCASE' },
+        { typeID: 9999, typeName: 'IFCPROPERTYSINGLEVALUE' }, // not in the map
+      ]),
+      GetTypeCodeFromName: getTypeCode,
+      GetLineIDsWithType: getLineIds,
+      GetLine: vi.fn().mockReturnValue({}),
+      StreamAllMeshes: vi.fn(),
+    } as never;
+
+    const metadata = await buildMetadata(mockApi, 0, 'IFC4');
+    expect(metadata.elementCounts['IfcWall']).toBe(2);
+    expect(metadata.elementCounts['IfcWallStandardCase']).toBe(3);
+    expect(metadata.canonicalElementCounts['wall']).toBe(5);
+    expect(metadata.totalElements).toBe(5);
+
+    // The unmapped type is never probed — the whole point of the fast path.
+    const probedCodes = getLineIds.mock.calls.map((c) => c[1] as number);
+    expect(probedCodes).toContain(1001);
+    expect(probedCodes).toContain(1002);
+    expect(probedCodes).not.toContain(9999);
+    // Fast path short-circuits the per-name fallback loop.
+    expect(getTypeCode).not.toHaveBeenCalled();
+  });
+
+  it('dedupes a space that recurs across split IfcRelAssignsToGroup lines', async () => {
+    const { buildMetadata } = await import('../src/pipeline/metadata.js');
+    const { IFCRELASSIGNSTOGROUP, IFCZONE, IFCSPACE } = await import('web-ifc');
+
+    const typeByID: Record<number, number> = { 10: IFCZONE, 11: IFCSPACE, 12: IFCSPACE };
+    // Space 11 appears in BOTH rels for zone 10 — must collapse to one entry.
+    const rels: Record<number, { group: number; members: number[] }> = {
+      100: { group: 10, members: [11, 12] },
+      101: { group: 10, members: [11] },
+    };
+    const mockApi = {
+      GetLineType: vi.fn().mockImplementation((_: number, id: number) => typeByID[id] ?? 0),
+      GetLineIDsWithType: vi.fn().mockImplementation((_: number, code: number) =>
+        code === IFCRELASSIGNSTOGROUP ? idList([100, 101]) : idList([]),
+      ),
+      GetLine: vi.fn().mockImplementation((_: number, id: number) => {
+        const rel = rels[id];
+        if (rel) {
+          return {
+            RelatingGroup: { type: 5, value: rel.group },
+            RelatedObjects: rel.members.map((m) => ({ type: 5, value: m })),
+          };
+        }
+        return { GlobalId: `guid-${String(id)}`, Name: `name-${String(id)}` };
+      }),
+      StreamAllMeshes: vi.fn(),
+    } as never;
+
+    const metadata = await buildMetadata(mockApi, 0, 'IFC4');
+    expect(metadata.zones).toHaveLength(1);
+    expect(metadata.zones[0]?.spaces.map((s) => s.expressID)).toEqual([11, 12]);
+  });
+
   it('falls back to empty counts when GetTypeCodeFromName is unavailable', async () => {
     const { buildMetadata } = await import('../src/pipeline/metadata.js');
     const mockApi = {

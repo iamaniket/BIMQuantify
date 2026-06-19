@@ -3,6 +3,14 @@
  * import them directly (they describe what is persisted in a BCF 2D viewpoint's
  * `view_state_2d` JSONB). No three.js / DOM imports here.
  *
+ * The shape model ({@link Annotation2D} / {@link MarkupTool} / {@link MarkupStyle})
+ * is the SINGLE source of truth in `@bimstitch/annotation` and re-exported here
+ * so the PDF/3D viewer, the image annotator and future mobile all speak one
+ * model. The viewer's PDF tools implement only `rect|arrow|cloud|freehand|text`;
+ * the wider union (incl. `ellipse|line|blur`) is forward-compatible — the markup
+ * core's tool registry simply has no entry for tools it doesn't implement, so
+ * receiving one renders nothing rather than erroring.
+ *
  * Coordinate convention for {@link Annotation2D.points}: NORMALIZED to the
  * page box, range `0..1`, **top-left origin, Y-down** — identical to how
  * findings persist `anchor_x` / `anchor_y` (see the portal's
@@ -10,28 +18,9 @@
  * resolution-, scale- and rotation-independent.
  */
 
-/** The five markup tools. Each is implemented by its own plugin. */
-export type MarkupTool = 'rect' | 'arrow' | 'cloud' | 'freehand' | 'text';
+import type { Annotation2D, MarkupTool } from '@bimstitch/annotation';
 
-/** Visual style applied to a markup shape. */
-export interface MarkupStyle {
-  /** CSS hex colour, e.g. `#ef4444`. */
-  color: string;
-  /** Stroke width in px at scale = 1 (render hint; geometry itself is scale-free). */
-  strokeWidth: number;
-}
-
-/** One persisted markup shape. */
-export interface Annotation2D {
-  id: string;
-  tool: MarkupTool;
-  /** Normalized 0..1, top-left origin, Y-down. Point count depends on `tool`. */
-  points: [number, number][];
-  /** Present only for `tool === 'text'`. */
-  text?: string;
-  color: string;
-  strokeWidth: number;
-}
+export type { Annotation2D, MarkupStyle, MarkupTool } from '@bimstitch/annotation';
 
 /**
  * The whole markup payload for one topic's 2D viewpoint. Stored verbatim in the

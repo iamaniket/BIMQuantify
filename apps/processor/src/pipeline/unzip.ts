@@ -7,12 +7,14 @@
  * actual IFC parsing to here. We decompress the first `*.ifc` entry and hand
  * those bytes to `openModel`, which still gates on a supported schema.
  *
- * fflate's `unzipSync` is synchronous and dependency-free; the `filter` hook
- * lets us skip decompressing non-IFC siblings (notes, thumbnails, macOS
- * resource forks) entirely.
+ * fflate's async `unzip` runs the inflate off the main thread (its own worker),
+ * so a multi-GiB ifcZIP doesn't block the worker's event loop for seconds —
+ * which would otherwise starve Redis polling and the inter-thread messaging of
+ * any concurrent job. The `filter` hook still skips decompressing non-IFC
+ * siblings (notes, thumbnails, macOS resource forks) entirely.
  */
 
-import { unzipSync, type UnzipFileInfo } from 'fflate';
+import { unzip, type Unzipped, type UnzipFileInfo } from 'fflate';
 
 export class NoIfcInZipError extends Error {
   constructor() {
@@ -21,9 +23,13 @@ export class NoIfcInZipError extends Error {
   }
 }
 
-export function extractIfcFromZip(bytes: Uint8Array): Uint8Array {
-  const entries = unzipSync(bytes, {
-    filter: (file: UnzipFileInfo) => file.name.toLowerCase().endsWith('.ifc'),
+export async function extractIfcFromZip(bytes: Uint8Array): Promise<Uint8Array> {
+  const entries = await new Promise<Unzipped>((resolve, reject) => {
+    unzip(
+      bytes,
+      { filter: (file: UnzipFileInfo) => file.name.toLowerCase().endsWith('.ifc') },
+      (err, data) => (err ? reject(err) : resolve(data)),
+    );
   });
   // First `.ifc` in archive order. `noUncheckedIndexedAccess` makes the lookup
   // `Uint8Array | undefined`, so guard before returning.

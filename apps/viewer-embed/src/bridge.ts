@@ -17,6 +17,7 @@
  */
 
 import type {
+  Annotation2D,
   EntityMarkerData,
   ItemId,
   Vec3,
@@ -40,7 +41,10 @@ export type HostMessage =
   | { type: 'clearMarkers' }
   | { type: 'setMarkersVisible'; visible: boolean }
   | { type: 'enterPlaceMode'; oneShot?: boolean }
-  | { type: 'exitPlaceMode' };
+  | { type: 'exitPlaceMode' }
+  // Image annotation (groundwork for the mobile annotator — not yet handled by
+  // the embed; the native shell owns image upload, the WebView edits + reports).
+  | { type: 'loadAnnotations'; imageUrl: string; annotations: Annotation2D[]; readOnly?: boolean };
 
 /** Messages the viewer reports up to the native shell. */
 export type ClientMessage =
@@ -57,7 +61,10 @@ export type ClientMessage =
       entityId: string;
       position: Vec3;
     }
-  | { type: 'pointPicked'; point: Vec3; item: ItemId | null };
+  | { type: 'pointPicked'; point: Vec3; item: ItemId | null }
+  // Image annotation results reported back to the native shell (groundwork).
+  | { type: 'annotationsChanged'; annotations: Annotation2D[] }
+  | { type: 'annotationExport'; dataUrl: string };
 
 const RECEIVE_GLOBAL = '__bimstitchViewerReceive';
 

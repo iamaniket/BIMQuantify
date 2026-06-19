@@ -11,6 +11,7 @@ import {
   PermanentError,
   RetriableError,
 } from '../src/pipeline/errors.js';
+import { NoIfcInZipError } from '../src/pipeline/unzip.js';
 
 describe('classifyError', () => {
   it('honours an explicit PermanentError', () => {
@@ -31,6 +32,7 @@ describe('classifyError', () => {
     ['UNSUPPORTED_SCHEMA: IFC4X9', 'unsupported_schema'],
     ['INVALID_IFC_PAYLOAD: missing file_id', 'payload'],
     ['NO_IFC_IN_ZIP', 'parse'],
+    ['NO_IFC_ENTRY_IN_ZIP', 'parse'],
     ['file is corrupt', 'parse'],
     ['payload failed validation', 'validation'],
     ['sha256 hash mismatch', 'hash_mismatch'],
@@ -53,6 +55,14 @@ describe('classifyError', () => {
     expect(classifyError(new Error(message))).toEqual({
       retriable: true,
       error_kind: kind,
+    });
+  });
+
+  it('classifies the real NoIfcInZipError instance as permanent', () => {
+    // Pin to the actual thrown message so the regex can never drift away from it.
+    expect(classifyError(new NoIfcInZipError())).toEqual({
+      retriable: false,
+      error_kind: 'parse',
     });
   });
 

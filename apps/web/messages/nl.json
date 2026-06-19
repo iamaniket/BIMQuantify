@@ -41,12 +41,60 @@
       "body": "Upload getypeerde certificaten — CE/DoP-verklaringen, testrapporten, garanties — met vervaldatumbewaking. Ontvang automatische waarschuwingen voordat certificaten verlopen."
     },
     "viewer": {
-      "title": "IFC-modelviewer",
-      "body": "Bekijk en navigeer 3D BIM-modellen direct in de browser. Klik op elementen, bekijk eigenschappen en koppel inspecties aan specifieke bouwcomponenten."
+      "title": "3D- + 2D-modelviewer",
+      "body": "Bekijk gefedereerde IFC-modellen in de browser — geen desktopsoftware. Maak doorsnedes, meet, wissel tussen verdiepingen en plattegronden, en klik op elk element voor de eigenschappen."
     },
     "reports": {
       "title": "Compliancerapporten",
       "body": "Genereer audit-ready PDF-rapporten: borgingsplan, verklaring kwaliteitsborger en het volledige dossier bevoegd gezag-pakket."
+    },
+    "snagging": {
+      "title": "Bevindingen op tekening & in 3D",
+      "body": "Plaats bevindingen direct op uw PDF-plattegronden of 3D-model. Elke bevinding bevat de locatie, foto's en Bbl-verwijzing."
+    },
+    "board": {
+      "title": "Bevindingenbord & kalender",
+      "body": "Volg elke bevinding op een Kanban-bord, een deadlinekalender en overzichtsdashboards — filter op toegewezen persoon, status of urgentie."
+    },
+    "photos": {
+      "title": "Fotobewijs & annotatie",
+      "body": "Maak foto's op de bouwplaats, markeer ze met pijlen en notities en koppel ze als oplosbewijs aan bevindingen."
+    },
+    "mobile": {
+      "title": "Mobiel inspecteren, ook offline",
+      "body": "Een native app voor inspecties op locatie. Plaats bevindingen, maak foto's en werk door zonder bereik — het synchroniseert zodra u weer online bent."
+    },
+    "bcf": {
+      "title": "Open BCF-uitwisseling",
+      "body": "Importeer en exporteer bevindingen als BCF om issues uit te wisselen met Solibri, BIMcollab, Revit en de tools van uw kwaliteitsborger."
+    },
+    "collaboration": {
+      "title": "Teamrollen & audittrail",
+      "body": "Nodig uw team uit met de juiste rechten (eigenaar, bewerker, lezer, inspecteur). Elke wijziging wordt vastgelegd voor een audit-ready historie."
+    }
+  },
+  "roadmap": {
+    "eyebrow": "Op de roadmap",
+    "headline": "Wat we hierna bouwen",
+    "subtitle": "Al in ontwerp of in ontwikkeling — nog niet beschikbaar.",
+    "badge": "Binnenkort",
+    "items": {
+      "comments": {
+        "title": "Bevindingsdiscussies",
+        "body": "Reactiethreads op elke bevinding zodat uw team en kwaliteitsborger problemen in context oplossen."
+      },
+      "handover": {
+        "title": "Consumentendossier & oplevering",
+        "body": "Opleveringsakkoord voor de klant en proces-verbaal, los van het dossier bevoegd gezag."
+      },
+      "ai": {
+        "title": "AI-dossierassistent",
+        "body": "Stel vragen over al uw documenten en tekeningen. Zelf-gehost en privacy-first — uw data verlaat onze EU-infrastructuur nooit."
+      },
+      "push": {
+        "title": "Mobiele push-herinneringen",
+        "body": "Deadline- en bevindingsmeldingen direct op uw telefoon."
+      }
     }
   },
   "howItWorks": {
@@ -124,10 +172,11 @@
   "snagShowcase": {
     "eyebrow": "Kwaliteitsborging, live",
     "headline": "Vang gebreken voordat ze geld kosten.",
-    "subtitle": "Sleep het model om het te inspecteren. Beweeg over een speld om de bevinding te lezen — de ernst, het Bbl-artikel dat het raakt, en waar het zit in de Wkb-borgingscyclus.",
+    "subtitle": "Sleep om het model te draaien. Klik op een speld om de bevinding te zien.",
     "cta": "Toegang aanvragen",
     "hintDrag": "Sleep om te draaien",
-    "hintHover": "Beweeg over een speld voor details",
+    "hintClick": "Klik op een speld om de bevinding te zien",
+    "dismissSnag": "Sluiten",
     "learnMoreBlog": "Lees hoe Wkb-borging werkt op de blog",
     "fallbackTitle": "Interactieve 3D-bevindingsinspectie",
     "fallbackBody": "Uw browser kan het live 3D-model niet tonen, maar dit zijn de bevindingen erin:",
@@ -143,7 +192,7 @@
   "metrics": {
     "eyebrow": "In cijfers",
     "headline": "Gebouwd voor de borgingscyclus",
-    "caption": "Illustratieve cijfers.",
+    "caption": "We zitten in early access — echte cijfers verschijnen hier zodra onze pilotprojecten hun eerste gereedmelding indienen.",
     "snagsResolved": "Bevindingen opgelost",
     "compliancePassed": "Compliancecontroles geslaagd",
     "projects": "Projecten in borging",

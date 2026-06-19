@@ -12,10 +12,15 @@ from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from bimstitch_api.admin.invitation_expiry import InvitationExpirySweeper
+from bimstitch_api.auth.ratelimit import default_rate_limit_identifier
 from bimstitch_api.auth.routes import build_auth_router
 from bimstitch_api.auth.tokens import TokenError, decode_token_full
 from bimstitch_api.cache import close_redis, get_redis
-from bimstitch_api.config import get_settings, validate_production_config
+from bimstitch_api.config import (
+    get_settings,
+    log_secret_sources,
+    validate_production_config,
+)
 from bimstitch_api.db import get_engine
 from bimstitch_api.deadlines.reminder_engine import DeadlineReminderSweeper
 from bimstitch_api.i18n.http_errors import (
@@ -138,16 +143,19 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         _startup_fatal("cannot reach required services", errors)
 
     # --- Production config guard ---
-    # Outside dev, refuse to boot with known dev-default secrets / wildcard CORS
-    # so a forgotten env var fails loudly instead of silently shipping a public
-    # credential. No-op in dev (deploy_region == "dev").
+    # Production is the default posture: refuse to boot with known dev-default
+    # secrets / wildcard CORS unless DEPLOY_REGION is *explicitly* "dev", so a
+    # forgotten env var fails loudly instead of silently shipping a public
+    # credential. log_secret_sources first records env-vs-default per secret and
+    # warns loudly if the guard is in dev-skip mode.
+    log_secret_sources(settings)
     insecure = validate_production_config(settings)
     if insecure:
         _startup_fatal("insecure production configuration", insecure)
 
     # --- Rate limiter ---
     try:
-        await FastAPILimiter.init(redis)
+        await FastAPILimiter.init(redis, identifier=default_rate_limit_identifier)
     except Exception:
         logger.warning("Rate limiter init failed; rate limiting disabled", exc_info=True)
 

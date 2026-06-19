@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, Download, FileAudio, FileText, FileVideo, Image, Info, LinkIcon } from '@bimstitch/ui/icons';
+import { Camera, Download, FileAudio, FileText, FileVideo, Image, Info, LinkIcon, Pencil } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
 import type { Locale } from '@bimstitch/i18n';
@@ -29,6 +29,8 @@ import {
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
+
+import { ImageAnnotatorDialog } from './ImageAnnotatorDialog';
 
 import {
   extractExifMeta,
@@ -266,6 +268,7 @@ export function AttachmentViewerDialog({
   const t = useTranslations('projectDetail.tabs.attachments');
   const locale = useLocale() as Locale;
   const { tokens } = useAuth();
+  const [annotating, setAnnotating] = useState(false);
 
   const viewUrlQuery = useAttachmentViewUrl(
     projectId,
@@ -369,6 +372,7 @@ export function AttachmentViewerDialog({
     ?? (attachment.capture_link_id !== null ? t('viaCapture') : '—');
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="flex h-[620px] max-h-[calc(100vh-48px)] w-[880px] max-w-[calc(100vw-48px)] flex-col overflow-hidden p-0"
@@ -426,6 +430,17 @@ export function AttachmentViewerDialog({
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {attachment.attachment_category === 'image' && (
+              <Button
+                type="button"
+                variant="border"
+                size="md"
+                onClick={() => { setAnnotating(true); }}
+              >
+                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                {attachment.annotation_state !== null ? t('editAnnotations') : t('annotate')}
+              </Button>
+            )}
             <Button
               type="button"
               variant="border"
@@ -449,5 +464,16 @@ export function AttachmentViewerDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <ImageAnnotatorDialog
+      projectId={projectId}
+      attachmentId={annotating ? attachment.id : null}
+      open={annotating}
+      onOpenChange={setAnnotating}
+      onAnnotated={() => {
+        setAnnotating(false);
+        onOpenChange(false);
+      }}
+    />
+    </>
   );
 }

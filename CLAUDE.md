@@ -345,6 +345,8 @@ Lifecycle: `docker compose -f docker-compose.test.yml up -d --wait` / `down -v`.
 
 **Coordinate system is Y-up**: this codebase uses Y-up coordinate models. Do not assume Z-up when writing section cuts, camera logic, or geometry transforms. A Z-up assumption breaks on every real model.
 
+**Fragment geometry threshold is config, not code**: the processor's IfcImporter tessellation threshold is `JOB_GEOMETRY_THRESHOLD` (`apps/processor/src/config.ts`), default `1` so every element (incl. small furniture/fixtures) stays visible/clickable. Raising it shrinks `.frag` size + meshing time but drops small-element geometry — change the default only after measuring, and keep the visibility regression test (`apps/processor/test/fragments-threshold.test.ts`) green.
+
 **Alembic revision ID length**: Alembic revision IDs must fit within `VARCHAR(32)`. Keep generated IDs short; long IDs (e.g. 38-char slugs) exceed the column limit and cause rollback failures on upgrade.
 
 **Sibling model bug sweep**: when fixing a bug in one Pydantic request/response model (e.g. a missing field, wrong type, bad validator), immediately grep for the identical pattern across all sibling models in the same router/module and fix them all in the same commit. Isolated fixes leave identical bugs in adjacent models that will surface as 422s later.

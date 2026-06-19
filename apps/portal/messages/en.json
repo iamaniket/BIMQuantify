@@ -1,4 +1,37 @@
 {
+  "imageAnnotator": {
+    "title": "Annotate photo",
+    "subtitle": "Draw arrows, shapes, text or blur over the photo. The original is always kept.",
+    "loading": "Loading photo…",
+    "loadError": "Could not load the photo to annotate.",
+    "saving": "Saving…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Annotations saved",
+    "saveError": "Could not save annotations",
+    "hint": "Tip: use the cursor tool to select, move or resize a shape.",
+    "redactWarning": "Blurred areas are permanently obscured in the saved image; the original photo is kept.",
+    "color": "Colour",
+    "strokeWidth": "Line width",
+    "thin": "Thin",
+    "medium": "Medium",
+    "thick": "Thick",
+    "undo": "Undo",
+    "redo": "Redo",
+    "delete": "Delete selected",
+    "clear": "Clear all",
+    "tools": {
+      "select": "Select",
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse",
+      "line": "Line",
+      "arrow": "Arrow",
+      "cloud": "Revision cloud",
+      "freehand": "Freehand",
+      "text": "Text",
+      "blur": "Blur / redact"
+    }
+  },
   "errorBoundary": {
     "title": "Something went wrong",
     "description": "An unexpected error occurred. You can try again — if it keeps happening, please contact support.",
@@ -1259,6 +1292,8 @@
         "downloadError": "Could not generate download link",
         "deleteSuccess": "{name} deleted",
         "download": "Download",
+        "annotate": "Annotate",
+        "editAnnotations": "Edit annotations",
         "delete": "Delete",
         "viaCapture": "Capture",
         "linked": "Linked",
@@ -1588,7 +1623,8 @@
       "label": "Photos",
       "add": "Add",
       "remove": "Remove photo",
-      "uploadError": "Could not upload {name}"
+      "uploadError": "Could not upload {name}",
+      "annotate": "Annotate"
     },
     "referenceDocuments": {
       "label": "Reference documents",

@@ -44,7 +44,11 @@ export class RetriableError extends Error {
 const PERMANENT_PATTERNS: ReadonlyArray<[RegExp, string]> = [
   [/unsupported[_\s]?schema/i, 'unsupported_schema'],
   [/invalid[_\s]?\w*[_\s]?payload/i, 'payload'],
-  [/no[_\s]?ifc[_\s]?in[_\s]?zip/i, 'parse'],
+  // Matches the real NoIfcInZipError message (NO_IFC_ENTRY_IN_ZIP) as well as
+  // the shorter NO_IFC_IN_ZIP form — the `[_\w\s]*?` spans the optional ENTRY
+  // token, which the old fixed `in` pattern silently missed (→ misclassified
+  // retriable).
+  [/no[_\s]?ifc[_\w\s]*?zip/i, 'parse'],
   [/parse|malformed|corrupt|invalid/i, 'parse'],
   [/validation/i, 'validation'],
   [/hash[_\s]?mismatch|sha256/i, 'hash_mismatch'],

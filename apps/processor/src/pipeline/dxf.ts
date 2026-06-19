@@ -16,6 +16,7 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -136,6 +137,16 @@ export async function runDxfExtraction(
   try {
     logger.info({ payload }, 'downloading CAD file');
     const { bytes, sha256 } = await downloadObjectWithHash(payload.storage_key);
+    // Backstop the upload-time size check: an oversized CAD file would balloon
+    // into a multi-hundred-MB string + parse tree. Permanent — re-running an
+    // over-limit file never helps.
+    const maxBytes = getConfig().JOB_MAX_FILE_BYTES;
+    if (bytes.length > maxBytes) {
+      throw new PermanentError(
+        `DXF_TOO_LARGE: ${bytes.length} bytes exceeds the ${maxBytes}-byte limit`,
+        'validation',
+      );
+    }
     await reportProgress(20);
 
     let dxfText: string;
@@ -148,9 +159,17 @@ export async function runDxfExtraction(
     await reportProgress(45);
 
     logger.info({ sha256: sha256.slice(0, 16) }, 'parsing DXF');
-    const dxf = new DxfParser().parseSync(dxfText);
-    if (dxf === null) {
-      throw new PermanentError('DXF_PARSE_FAILED: parser returned null', 'parse');
+    // parseStream over parseSync: lets dxf-parser tokenise incrementally instead
+    // of holding the whole DXF in one parser pass; it rejects (vs returning null)
+    // on malformed input, which we map to a permanent parse failure.
+    let dxf;
+    try {
+      dxf = await new DxfParser().parseStream(Readable.from(dxfText));
+    } catch (err) {
+      throw new PermanentError(
+        `DXF_PARSE_FAILED: ${err instanceof Error ? err.message : String(err)}`,
+        'parse',
+      );
     }
 
     const geometry = buildGeometry(dxf);

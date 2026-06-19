@@ -29,6 +29,11 @@ os.environ["DATABASE_URL"] = _TEST_DB_URL
 os.environ.setdefault("JWT_SECRET", "test-secret")
 os.environ.setdefault("SMTP_HOST", "localhost")
 os.environ.setdefault("SMTP_PORT", "1025")
+# These credential fields have no code default (fail-closed in prod), so the test
+# process must supply them like the dev .env / docker-compose do. FakeStorage
+# overrides real S3 calls, so the values only need to exist, not be valid.
+os.environ.setdefault("S3_ACCESS_KEY_ID", "bimstitch")
+os.environ.setdefault("S3_SECRET_ACCESS_KEY", "bimstitch-secret")
 
 _TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6380/1")
 os.environ["REDIS_URL"] = _TEST_REDIS_URL

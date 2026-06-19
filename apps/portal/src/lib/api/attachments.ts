@@ -175,6 +175,7 @@ export async function updateAttachment(
     anchor_z?: number | null;
     anchor_page?: number | null;
     linked_file_id?: string | null;
+    annotation_state?: Record<string, unknown> | null;
   },
 ): Promise<Attachment> {
   return apiClient.patch<Attachment>(

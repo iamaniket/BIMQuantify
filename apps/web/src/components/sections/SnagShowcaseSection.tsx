@@ -35,7 +35,9 @@ function hasWebGL(): boolean {
 }
 
 function ShowcaseSkeleton(): JSX.Element {
-  return <div className="absolute inset-0 animate-pulse bg-surface-medium" aria-hidden />;
+  // Match the section's bg so the transparent viewer canvas blends seamlessly —
+  // surface-medium showed through the alpha:0 canvas as an off-color rectangle.
+  return <div className="absolute inset-0 animate-pulse bg-surface-low" aria-hidden />;
 }
 
 function ShowcaseFallback(): JSX.Element {
@@ -85,55 +87,71 @@ export function SnagShowcaseSection(): JSX.Element {
 
   return (
     <section id="showcase" className="bg-surface-low">
-      <div className="mx-auto w-full max-w-6xl px-6 py-20">
-        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-5">
-          <div className="flex flex-col gap-4 lg:col-span-2">
-            <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
-            <h2 className="text-h3 font-semibold text-foreground">{t('headline')}</h2>
-            <p className="text-body1 text-foreground-secondary">{t('subtitle')}</p>
-            <ul className="flex flex-col gap-2 text-body2 text-foreground-secondary">
-              <li className="flex items-center gap-2">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {t('hintDrag')}
-              </li>
-              <li className="flex items-center gap-2">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {t('hintHover')}
-              </li>
-            </ul>
-            <div className="mt-2 flex flex-wrap items-center gap-4">
-              <Link href="/request-access">
-                <Button variant="primary" size="lg">
-                  {t('cta')}
-                </Button>
-              </Link>
-              <Link
-                href="/blog"
-                className="text-body2 font-medium text-primary hover:underline"
-              >
-                {t('learnMoreBlog')}
-              </Link>
-            </div>
-          </div>
+      {/* Full-bleed hero: the <section> already spans the viewport, so the canvas
+          just drops the max-w constraint. Mobile stacks (text above a shorter
+          canvas); lg turns the canvas into a full-height backdrop with the text
+          overlaid on the left. */}
+      <div className="relative flex flex-col lg:block lg:h-[75vh] lg:min-h-[640px] lg:max-h-[860px]">
+        {/* CANVAS LAYER */}
+        <div
+          ref={ref}
+          className="relative order-2 h-[55vh] min-h-[340px] w-full lg:order-none lg:absolute lg:inset-0 lg:h-full"
+        >
+          {!webgl || failed ? (
+            <ShowcaseFallback />
+          ) : !inView ? (
+            <ShowcaseSkeleton />
+          ) : (
+            <>
+              {!loaded && <ShowcaseSkeleton />}
+              <SnagViewer
+                reducedMotion={reducedMotion}
+                onError={() => setFailed(true)}
+                onLoaded={() => setLoaded(true)}
+              />
+            </>
+          )}
+        </div>
 
-          <div
-            ref={ref}
-            className="relative aspect-[4/3] w-full lg:col-span-3 lg:aspect-[3/2]"
-          >
-            {!webgl || failed ? (
-              <ShowcaseFallback />
-            ) : !inView ? (
-              <ShowcaseSkeleton />
-            ) : (
-              <>
-                {!loaded && <ShowcaseSkeleton />}
-                <SnagViewer
-                  reducedMotion={reducedMotion}
-                  onError={() => setFailed(true)}
-                  onLoaded={() => setLoaded(true)}
-                />
-              </>
-            )}
+        {/* SCRIM — desktop only, left half, keeps the overlaid text legible over
+            the canvas. from-token → transparent (no opacity-modifier needed). */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-surface-low to-transparent lg:block lg:w-1/2"
+        />
+
+        {/* TEXT OVERLAY — click-through except the buttons, so dragging the whole
+            canvas still orbits. Aligned to the page content width. */}
+        <div className="pointer-events-none order-1 lg:order-none lg:absolute lg:inset-0 lg:z-10">
+          <div className="mx-auto flex h-full max-w-7xl items-center px-6 pt-16 pb-10 lg:py-0">
+            <div className="flex max-w-md flex-col gap-4">
+              <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
+              <h2 className="text-h3 font-semibold text-foreground">{t('headline')}</h2>
+              <p className="text-body1 text-foreground-secondary">{t('subtitle')}</p>
+              <ul className="flex flex-col gap-2 text-body2 text-foreground-secondary">
+                <li className="flex items-center gap-2">
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  {t('hintDrag')}
+                </li>
+                <li className="flex items-center gap-2">
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  {t('hintClick')}
+                </li>
+              </ul>
+              <div className="pointer-events-auto mt-2 flex flex-wrap items-center gap-4">
+                <Link href="/request-access">
+                  <Button variant="primary" size="lg">
+                    {t('cta')}
+                  </Button>
+                </Link>
+                <Link
+                  href="/blog"
+                  className="text-body2 font-medium text-primary hover:underline"
+                >
+                  {t('learnMoreBlog')}
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
