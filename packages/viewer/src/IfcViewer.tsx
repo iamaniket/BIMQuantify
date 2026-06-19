@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { Viewer } from './core/Viewer.js';
+import { vlog, vwarn } from './core/debugLog.js';
 import { getCached, putCached } from './fragmentCache.js';
 import { fetchFragments } from './loadFragments.js';
 import { cameraPlugin } from './plugins/3d/camera/index.js';
@@ -340,27 +341,65 @@ function IfcViewerImpl(
 
     let cancelled = false;
     void (async () => {
-      // Unload models no longer in the set.
-      for (const id of [...loaded]) {
-        if (!desired.has(id)) {
-          await viewer.unloadModel(id).catch(() => undefined);
-          loaded.delete(id);
-          if (cancelled) return;
-        }
-      }
-      // Load newly-added models.
+      const mark = (): number => (typeof performance !== 'undefined' ? performance.now() : 0);
+      const since = (t0: number): string => `${Math.round(mark() - t0)}ms`;
+
+      const removed = [...loaded].filter((id) => !desired.has(id));
       const added = [...desired.entries()].filter(([id]) => !loaded.has(id));
-      for (const [id, b] of added) {
-        await loadBundleInto(viewer, b);
+      vlog('federate', 'diff additionalBundles', {
+        desired: [...desired.keys()],
+        loaded: [...loaded],
+        added: added.map(([id]) => id),
+        removed,
+      });
+
+      // Unload models no longer in the set. A failure must not wedge the model
+      // in `loaded` (it would retry forever) — drop it and log.
+      for (const id of removed) {
+        const t0 = mark();
+        try {
+          await viewer.unloadModel(id);
+          vlog('federate', `unloaded "${id}" (${since(t0)})`);
+        } catch (err) {
+          vwarn('federate', `unloadModel("${id}") failed`, err);
+        }
+        loaded.delete(id);
         if (cancelled) return;
-        loaded.add(id);
       }
-      // Frame everything once on the initial multi-load; preserve the camera on
-      // every incremental add afterwards.
+
+      // Load newly-added models. CRITICAL: each load is isolated so ONE failing
+      // model can't reject the whole batch — previously a single bad bundle
+      // aborted the remaining loads AND the framing below, blanking the scene.
+      let anySucceeded = false;
+      for (const [id, b] of added) {
+        const t0 = mark();
+        try {
+          await loadBundleInto(viewer, b);
+          loaded.add(id);
+          anySucceeded = true;
+          vlog('federate', `loaded "${id}" (${since(t0)})`);
+        } catch (err) {
+          vwarn(
+            'federate',
+            `loadBundleInto("${id}") failed — skipping this model, continuing with the rest`,
+            err,
+          );
+        }
+        if (cancelled) return;
+      }
+
+      // Frame everything once on the initial multi-load — even if some models
+      // failed — so a single bad model can never leave the scene unframed/blank.
+      // Preserve the camera on every incremental add afterwards.
       if (firstDiffRef.current) {
         firstDiffRef.current = false;
-        if (added.length > 0) {
-          await viewer.commands.execute('camera.zoomExtents').catch(() => undefined);
+        if (anySucceeded) {
+          try {
+            await viewer.commands.execute('camera.zoomExtents');
+            vlog('federate', 'framed scene (camera.zoomExtents)');
+          } catch (err) {
+            vwarn('federate', 'camera.zoomExtents failed', err);
+          }
         }
       }
     })();

@@ -106,6 +106,7 @@ const preset = {
         md: '6px',
         lg: '8px',
         xl: '12px',
+        '2xl': '16px',
       },
       spacing: {
         xxs: '2px',

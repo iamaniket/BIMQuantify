@@ -15,11 +15,15 @@ type FeatureCardProps = {
 };
 
 /**
- * Capabilities-grid card. The whole card is a single link to the feature's
- * detail page, with a visible "Read more →" cue. Portal-aligned look: a faint
- * blueprint texture, a primary top accent bar, a primary icon tile that fills
- * on hover, and a lift + primary glow on hover. Every class is a theme token,
- * so dark mode flips automatically — no `dark:` overrides.
+ * Capabilities-grid card — a token-faithful port of the Claude Design
+ * "Feature Card" mockup. The whole card is a single link to the feature's
+ * detail page, with a visible "Read more →" cue. A white icon tile pops out of
+ * the left edge, a faint blueprint grid washes the surface, and on hover the
+ * whole card fills with primary blue: title/body/CTA flip to white, the card
+ * lifts, the icon scales up, and the grid lines turn faint white. Every class
+ * is a theme token, so dark mode flips automatically — no `dark:` overrides.
+ * (`bg-primary-foreground` is the project's constant-white token, matching the
+ * mockup's white icon tile in both themes.)
  */
 export function FeatureCard({ featureKey, icon: Icon }: FeatureCardProps): JSX.Element {
   const t = useTranslations('features');
@@ -27,29 +31,36 @@ export function FeatureCard({ featureKey, icon: Icon }: FeatureCardProps): JSX.E
   return (
     <Link
       href={`/features/${featureKey}`}
-      className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-low text-foreground outline-none transition-all duration-200 hover:-translate-y-1 hover:border-primary hover:shadow-xl hover:shadow-primary/15 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group relative isolate flex h-full min-h-[13rem] flex-col justify-center overflow-visible rounded-2xl border border-border bg-surface-main py-8 pl-14 pr-6 text-foreground shadow-md outline-none transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-primary-dark hover:bg-primary hover:shadow-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <div className="absolute inset-x-0 top-0 h-1 bg-primary" aria-hidden />
-      <BlueprintTexture className="opacity-[0.06]" toneClassName="text-primary" />
+      {/* Blueprint grid — clipped to the rounded card despite the card's
+          `overflow-visible` (needed so the icon can pop out). Faint grey
+          normally; faint white over the blue fill on hover. */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-[inherit]">
+        <BlueprintTexture
+          className="opacity-50 transition-opacity duration-300 group-hover:opacity-20"
+          toneClassName="text-border group-hover:text-primary-foreground"
+        />
+      </div>
 
-      <div className="relative flex flex-1 flex-col gap-4 px-5 pb-5 pt-6">
-        <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary-lighter text-primary transition-colors duration-200 group-hover:bg-primary group-hover:text-primary-foreground">
-          <Icon className="h-6 w-6" aria-hidden />
-        </div>
+      {/* Icon tile — pops out of the left edge (−24px = the section's px-6,
+          so the first column never clips). White tile, primary glyph. */}
+      <span className="absolute -left-6 top-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground text-primary shadow-lg transition-transform duration-300 ease-out group-hover:scale-110">
+        <Icon className="h-7 w-7" aria-hidden />
+      </span>
 
-        <div className="space-y-2">
-          <h3 className="text-title3 font-semibold text-foreground transition-colors group-hover:text-primary">
-            {t(`${featureKey}.title`)}
-          </h3>
-          <p className="text-body2 text-foreground-secondary">
-            {t(`${featureKey}.body`)}
-          </p>
-        </div>
+      <div className="flex flex-col gap-3">
+        <h3 className="text-title2 font-bold text-foreground transition-colors duration-300 group-hover:text-primary-foreground">
+          {t(`${featureKey}.title`)}
+        </h3>
+        <p className="text-body2 text-foreground-tertiary transition-colors duration-300 group-hover:text-primary-foreground">
+          {t(`${featureKey}.body`)}
+        </p>
 
-        <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-body3 font-semibold text-primary">
+        <span className="mt-1 inline-flex items-center gap-1.5 text-body3 font-semibold text-primary transition-colors duration-300 group-hover:text-primary-foreground">
           {t('readMore')}
           <ArrowRight
-            className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
+            className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
             aria-hidden
           />
         </span>

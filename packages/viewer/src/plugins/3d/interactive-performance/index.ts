@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import * as FRAGS from '@thatopen/fragments';
 
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
+import { vlog, vwarn } from '../../../core/debugLog.js';
 
 const NAME = 'interactive-performance' as const;
 
@@ -373,6 +374,7 @@ export function interactivePerformancePlugin(
         addHidden(modelId, ids);
         const model = ctxRef.models().get(modelId);
         if (model) void model.setVisible(ids, false).catch(() => undefined);
+        vlog('motion', `xray: hide ${ids.length} faded fills in "${modelId}" during drag`);
       }
     }
 
@@ -411,9 +413,17 @@ export function interactivePerformancePlugin(
           }
           if (!toHide.length) return;
           // Bail out if a viewer:idle already raced ahead of us.
-          if (!inMotion) return;
+          if (!inMotion) {
+            // The async cache built after the drag ended — exitMotion already
+            // restored, so hiding now would leave items stuck hidden. Skipping
+            // is correct; surfaced here because it's a real "stuff disappeared
+            // and never came back" suspect when the option is on.
+            vwarn('motion', `suppression for "${modelId}" raced past idle — skipping hide (would have hidden ${toHide.length})`);
+            return;
+          }
           addHidden(modelId, toHide);
           await model.setVisible(toHide, false).catch(() => undefined);
+          vlog('motion', `hide ${toHide.length} items in "${modelId}" during drag`);
         })();
       }
     }
@@ -468,11 +478,14 @@ export function interactivePerformancePlugin(
 
     if (hiddenByModel.size) {
       const ctx = ctxRef;
+      let restored = 0;
       for (const [modelId, ids] of hiddenByModel) {
         const model = ctx.models().get(modelId);
         if (!model) continue;
         void model.setVisible(ids, true).catch(() => undefined);
+        restored += ids.length;
       }
+      vlog('motion', `idle: re-show ${restored} items across ${hiddenByModel.size} model(s)`);
       hiddenByModel.clear();
     }
 
