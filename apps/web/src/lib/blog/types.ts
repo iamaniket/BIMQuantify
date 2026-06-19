@@ -6,5 +6,5 @@ export type PostMeta = {
   author: string;
   slug: string;
   readingTime: string;
-  image?: string;
+  image?: string | undefined;
 };

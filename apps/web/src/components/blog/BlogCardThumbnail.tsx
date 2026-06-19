@@ -5,7 +5,7 @@ import { HeroGrid } from '@bimstitch/brand';
 
 type BlogCardThumbnailProps = {
   slug: string;
-  image?: string;
+  image?: string | undefined;
   title: string;
 };
 

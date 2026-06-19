@@ -32,10 +32,12 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   const post = await getPostBySlugMerged(slug, locale as Locale);
   if (post === null) {
-    return { title: 'Post not found — BimDossier' };
+    // Bare title — the [locale]/layout.tsx `%s — BimDossier` template appends
+    // the suffix, so adding it here would double it.
+    return { title: 'Post not found' };
   }
   return {
-    title: `${post.meta.title} — BimDossier`,
+    title: post.meta.title,
     description: post.meta.description,
     openGraph: {
       title: post.meta.title,
