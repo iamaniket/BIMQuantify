@@ -16,9 +16,12 @@ import type { TablePagination } from '@/lib/query/useTableQuery';
 export function TablePaginationFooter<T>({
   table,
   className,
+  pageSizeOptions,
 }: {
   table: TablePagination<T>;
   className?: string;
+  /** Override the page-size choices (default `[10, 25, 50, 100]`). */
+  pageSizeOptions?: readonly number[];
 }): ReactNode {
   const t = useTranslations('common.pagination');
 
@@ -27,6 +30,7 @@ export function TablePaginationFooter<T>({
       page={table.page}
       pageCount={table.pageCount}
       pageSize={table.pageSize}
+      {...(pageSizeOptions !== undefined ? { pageSizeOptions } : {})}
       onPageChange={table.setPage}
       onPageSizeChange={table.setPageSize}
       disabled={table.isLoading}

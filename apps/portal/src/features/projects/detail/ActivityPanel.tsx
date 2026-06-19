@@ -1,18 +1,25 @@
 'use client';
 
 import { useMemo, useState, type JSX } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
+import type { Locale } from '@bimstitch/i18n';
 import { Select } from '@bimstitch/ui';
-import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
-import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
-import type { ActivityCategory, ProjectActivityEntry } from '@/lib/api/schemas/activity';
-import { flattenPages, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
-import { useProjectActivity } from './useProjectActivity';
+import { DataTable } from '@/components/shared/DataTable';
+import type { Column } from '@/components/shared/PageTable';
+import { UserAvatar } from '@/components/shared/UserAvatar';
+import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
+import { listProjectActivityPage } from '@/lib/api/activity';
+import type { ActivityCategory, ProjectActivityEntry } from '@/lib/api/schemas/activity';
+import { formatDateTime } from '@/lib/formatting/dates';
+import { useTableQuery } from '@/lib/query/useTableQuery';
+import { projectActivityKey } from '@/features/projects/queryKeys';
 
 type TimeWindow = 'all' | '1h' | '24h' | '7d' | '30d';
 type TypeFilter = 'all' | ActivityCategory;
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
 
 const TIME_DURATIONS: Record<Exclude<TimeWindow, 'all'>, number> = {
   '1h': 3_600_000,
@@ -35,16 +42,11 @@ function categoryStyle(category: string): { bg: string; fg: string; glyph: strin
   }
 }
 
-function formatRelativeTime(iso: string): string {
-  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${String(m)} min`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${String(h)}h`;
-  const d = Math.floor(h / 24);
-  return `${String(d)}d`;
-}
+const CATEGORY_LABEL_KEY: Record<ActivityCategory, string> = {
+  upload: 'typeUploads',
+  scan: 'typeScans',
+  change: 'typeChanges',
+};
 
 const ACTION_I18N_KEY: Record<string, string> = {
   'model.created': 'modelCreated',
@@ -89,6 +91,11 @@ function detailText(entry: ProjectActivityEntry): string {
   return parts.join(' · ');
 }
 
+type ActivityFilters = {
+  category: ActivityCategory | undefined;
+  since: string | undefined;
+};
+
 type ActivityPanelProps = {
   projectId: string;
 };
@@ -97,26 +104,97 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const t = useTranslations('activity');
+  const locale = useLocale() as Locale;
 
-  const category = typeFilter === 'all' ? undefined : typeFilter;
   const since = useMemo(() => computeSince(timeWindow), [timeWindow]);
-  const query = useProjectActivity(projectId, category, since);
-  const entries = flattenPages(query.data);
-  const count = totalFromPages(query.data);
+  const filters = useMemo<ActivityFilters>(
+    () => ({ category: typeFilter === 'all' ? undefined : typeFilter, since }),
+    [typeFilter, since],
+  );
+
+  const table = useTableQuery<ProjectActivityEntry, ActivityFilters>({
+    filters,
+    queryKey: (params) => projectActivityKey(projectId, params),
+    queryFn: (token, params) => listProjectActivityPage(token, projectId, params),
+    initialPageSize: PAGE_SIZE_OPTIONS[0],
+    initialSort: { key: 'created_at', dir: 'desc' },
+    enabled: projectId.length > 0,
+  });
+
+  const columns: Column<ProjectActivityEntry>[] = [
+    {
+      header: t('colWhen'),
+      sortKey: 'created_at',
+      className: 'whitespace-nowrap font-sans text-caption text-foreground-tertiary',
+      cell: (entry) => formatDateTime(entry.created_at, locale),
+    },
+    {
+      header: t('colActor'),
+      // Tight column: just the avatar. Full name shows on hover via UserAvatar's title.
+      className: 'w-[1%] whitespace-nowrap',
+      cell: (entry) => <UserAvatar name={entry.actor_name ?? t('systemActor')} size="sm" />,
+    },
+    {
+      header: t('colType'),
+      sortKey: 'action',
+      className: 'font-sans text-body3',
+      cell: (entry) => {
+        const s = categoryStyle(entry.category);
+        return (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span
+              className="grid h-5 w-5 shrink-0 place-items-center rounded-[5px] text-[11px] font-bold"
+              style={{ background: s.bg, color: s.fg }}
+            >
+              {s.glyph}
+            </span>
+            <span className="text-foreground-secondary">{t(CATEGORY_LABEL_KEY[entry.category])}</span>
+          </span>
+        );
+      },
+    },
+    {
+      header: t('colActivity'),
+      className: 'font-sans text-body3',
+      // Cap the width so long file names stay on one line and ellipsize;
+      // the full text is available on hover via title.
+      cell: (entry) => {
+        const i18nKey = ACTION_I18N_KEY[entry.action];
+        const description = i18nKey !== undefined ? t(i18nKey, descriptionParams(entry)) : entry.action;
+        return (
+          <div className="max-w-[240px] truncate text-foreground" title={description}>
+            {description}
+          </div>
+        );
+      },
+    },
+    {
+      header: t('colDetails'),
+      className: 'font-sans text-body3 text-foreground-tertiary',
+      // Resource metadata pulled from the audit row's `after` JSONB snapshot —
+      // sparse and event-type-dependent, so one Details column rather than many.
+      cell: (entry) => {
+        const detail = detailText(entry);
+        return detail.length > 0 ? (
+          <div className="max-w-[180px] truncate" title={detail}>{detail}</div>
+        ) : (
+          <span className="text-foreground-disabled">—</span>
+        );
+      },
+    },
+  ];
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-      <BlueprintTexture />
-
-      {/* Header — eyebrow/title left, two dropdowns right */}
-      <div className="relative flex shrink-0 items-center gap-2.5 px-4 pb-2.5 pt-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+      {/* Header — eyebrow/title + count left, two dropdowns right */}
+      <div className="flex shrink-0 items-center gap-2.5 px-4 pb-2.5 pt-4">
         <div className="min-w-0">
           <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
             {t('title')}
           </div>
           <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
-            <span className="font-sans text-[17px] font-bold leading-tight tracking-tight text-foreground">
-              {t('events', { count })}
+            <span className="font-sans text-[17px] font-bold leading-tight tracking-tight text-foreground tabular-nums">
+              {t('events', { count: table.total })}
             </span>
           </div>
         </div>
@@ -147,68 +225,25 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
         </div>
       </div>
 
-      {/* Feed */}
-      <div className="relative flex-1 overflow-auto px-4 pb-3">
-        {query.isLoading ? (
-          <div className="space-y-3 py-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex gap-3 animate-pulse">
-                <div className="h-7 w-7 shrink-0 rounded-[7px] bg-surface-high" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-3/4 rounded bg-surface-high" />
-                  <div className="h-2.5 w-1/2 rounded bg-surface-high" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : entries.length === 0 ? (
-          <div className="px-2 py-6 text-center text-body3 text-foreground-tertiary">
-            {t('noActivity')}
-          </div>
-        ) : (
-          <>
-            {entries.map((entry) => {
-              const s = categoryStyle(entry.category);
-              const i18nKey = ACTION_I18N_KEY[entry.action];
-              const description = i18nKey !== undefined
-                ? t(i18nKey, descriptionParams(entry))
-                : entry.action;
-              const detail = detailText(entry);
+      <DataTable
+        columns={columns}
+        data={table.rows}
+        rowKey={(e) => e.id}
+        emptyMessage={t('noActivity')}
+        sort={table.sort}
+        onToggleSort={table.toggleSort}
+        isLoading={table.isLoading}
+        isFetching={table.isFetching}
+        isError={table.isError}
+        errorMessage={t('loadError')}
+        rowClassName="hover:bg-background-hover"
+      />
 
-              return (
-                <div
-                  key={entry.id}
-                  className="flex gap-3 border-b border-dashed border-border py-2.5 last:border-b-0"
-                >
-                  <div
-                    className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px] text-[12px] font-bold"
-                    style={{ background: s.bg, color: s.fg }}
-                  >
-                    {s.glyph}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[12.5px] leading-tight text-foreground">
-                      <span className="font-semibold">{entry.actor_name ?? 'System'}</span>{' '}
-                      <span className="text-foreground-tertiary">· {description}</span>
-                    </div>
-                    {detail.length > 0 && (
-                      <div className="mt-0.5 text-[11px] text-foreground-tertiary">{detail}</div>
-                    )}
-                  </div>
-                  <div className="whitespace-nowrap text-[10.5px] text-foreground-tertiary">
-                    {formatRelativeTime(entry.created_at)}
-                  </div>
-                </div>
-              );
-            })}
-            <LoadMoreButton
-              hasNextPage={query.hasNextPage}
-              isFetchingNextPage={query.isFetchingNextPage}
-              fetchNextPage={() => { void query.fetchNextPage(); }}
-            />
-          </>
-        )}
-      </div>
+      <TablePaginationFooter
+        table={table}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        className="shrink-0 border-t border-border px-4 py-2.5"
+      />
     </div>
   );
 }

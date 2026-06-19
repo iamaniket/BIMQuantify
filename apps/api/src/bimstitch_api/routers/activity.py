@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.access import (
@@ -22,6 +22,13 @@ from bimstitch_api.access import (
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.user import User
+from bimstitch_api.pagination import (
+    SortParams,
+    apply_sort,
+    count_query,
+    set_total_count,
+    sort_params,
+)
 from bimstitch_api.schemas.activity import ProjectActivityEntry
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
@@ -57,8 +64,9 @@ async def list_project_activity(
     response: Response,
     category: str | None = Query(default=None, pattern="^(upload|scan|change)$"),
     since: datetime | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=25, ge=25, le=100),
     offset: int = Query(default=0, ge=0),
+    sort: SortParams = Depends(sort_params),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
@@ -66,26 +74,9 @@ async def list_project_activity(
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
+    # One base SELECT carries every filter; the count and the page read from it,
+    # so the WHERE clauses can't drift between the two.
     base = (
-        select(AuditLog.id)
-        .where(
-            AuditLog.project_id == project.id,
-            AuditLog.action.in_(_KNOWN_ACTIONS),
-        )
-    )
-
-    if category is not None:
-        actions = _CATEGORY_ACTIONS.get(category, [])
-        base = base.where(AuditLog.action.in_(actions))
-
-    if since is not None:
-        since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)
-        base = base.where(AuditLog.created_at >= since_aware)
-
-    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
-    response.headers["X-Total-Count"] = str(total)
-
-    stmt = (
         select(
             AuditLog.id,
             AuditLog.action,
@@ -102,18 +93,31 @@ async def list_project_activity(
             AuditLog.project_id == project.id,
             AuditLog.action.in_(_KNOWN_ACTIONS),
         )
-        .order_by(AuditLog.created_at.desc())
-        .limit(limit)
-        .offset(offset)
     )
 
     if category is not None:
-        actions = _CATEGORY_ACTIONS.get(category, [])
-        stmt = stmt.where(AuditLog.action.in_(actions))
+        base = base.where(AuditLog.action.in_(_CATEGORY_ACTIONS.get(category, [])))
 
     if since is not None:
         since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)
-        stmt = stmt.where(AuditLog.created_at >= since_aware)
+        base = base.where(AuditLog.created_at >= since_aware)
+
+    set_total_count(response, await count_query(session, base))
+
+    # Whitelisted sort: date (created_at) and type (action, the dotted code that
+    # clusters events by kind). id tiebreaker keeps offset paging deterministic.
+    stmt = (
+        apply_sort(
+            base,
+            sort,
+            {"created_at": AuditLog.created_at, "action": AuditLog.action},
+            default="created_at",
+            default_dir="desc",
+            tiebreaker=AuditLog.id,
+        )
+        .limit(limit)
+        .offset(offset)
+    )
 
     rows = (await session.execute(stmt)).all()
 

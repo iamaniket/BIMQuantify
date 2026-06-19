@@ -13,6 +13,15 @@ samples/*
 # Throwaway local diagnostic scripts (scratch harnesses, not committed)
 scripts/_diag_*.py
 
+# Python — bytecode + tool caches (never commit; apps/api has its own copy,
+# this covers apps/arbiter and any other Python at the repo root)
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
 # Playwright
 playwright-report/
 test-results/

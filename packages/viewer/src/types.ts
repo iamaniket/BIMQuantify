@@ -102,26 +102,54 @@ export type ViewerHandle = {
 };
 
 export type IfcViewerProps = {
+  /**
+   * The model loaded FIRST into the scene (so the camera frames on it) and the
+   * one `onProgress` reports for. It is NOT a remount anchor: `bundle` and
+   * `additionalBundles` form one model set that the viewer diffs against what's
+   * loaded, so changing which bundle is `bundle` adds/removes only the delta in
+   * place — it never reconstructs the viewer.
+   */
   bundle: ViewerBundle;
   /**
-   * Extra models loaded into the SAME scene after `bundle` (federated
-   * multi-discipline viewer). Each should carry a stable `modelId`. The
-   * camera re-frames to encompass all once every model has loaded. Omit for
-   * the single-file viewer.
+   * Extra models loaded into the SAME scene alongside `bundle` (federated
+   * multi-discipline viewer). Each should carry a stable `modelId`. Together
+   * with `bundle` they form a single desired set: on every change the viewer
+   * loads/unloads only the delta (no remount), re-framing the camera once after
+   * the INITIAL batch and preserving it on later add/remove. Omit for the
+   * single-file viewer.
    */
   additionalBundles?: ViewerBundle[];
   className?: string;
+  /** The scene/canvas is live (mount complete). Fires before any model loads. */
   onSceneReady?: () => void;
+  /**
+   * Fires EXACTLY ONCE per viewer lifetime, after the INITIAL model batch has
+   * loaded (≥1 model present) and the scene is framed. Not re-fired when models
+   * are added/removed afterward.
+   */
   onReady?: (handle: ViewerHandle) => void;
+  /**
+   * Fatal error: the viewer failed to mount, or the INITIAL desired set was
+   * non-empty but NO model could be loaded (blank scene). A single federated
+   * model failing among others is NOT fatal — it routes to `onModelLoadError`.
+   */
   onError?: (err: Error) => void;
   /**
-   * A single federated `additionalBundles` model failed to load. The rest of
-   * the scene still renders — this is a non-fatal, per-model signal (vs the
-   * fatal `onError`, which fires when the PRIMARY bundle can't load). Hosts can
-   * surface a "this model couldn't be loaded" notice.
+   * A single model failed to load while others succeeded. The rest of the scene
+   * still renders — non-fatal, per-model signal (vs the fatal `onError`, which
+   * fires only when the whole initial set fails). Hosts can surface a "this
+   * model couldn't be loaded" notice.
    */
   onModelLoadError?: (modelId: string, err: Error) => void;
+  /** Load progress for the primary `bundle` on the INITIAL load only. */
   onProgress?: (loaded: number, total: number) => void;
+  /**
+   * Fires `true` when a model load/unload delta begins and `false` when it
+   * settles — for EVERY diff, including the initial batch and later federated
+   * add/remove/unload. Hosts use it to show a loading overlay during model swaps
+   * (`onProgress` only covers the primary's INITIAL download).
+   */
+  onBusyChange?: (busy: boolean) => void;
   /** Extra plugins registered after built-ins. */
   plugins?: Plugin[];
   /**

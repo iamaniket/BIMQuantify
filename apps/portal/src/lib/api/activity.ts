@@ -1,3 +1,4 @@
+import type { SortQueryParams } from './admin';
 import { apiClient, type PaginatedResponse } from './client';
 import {
   ProjectActivityListSchema,
@@ -5,22 +6,32 @@ import {
   type ProjectActivityList,
 } from './schemas/activity';
 
-export async function getProjectActivity(
+/** Filter + pagination + sort params for the project activity feed. */
+export type ListProjectActivityParams = {
+  category?: ActivityCategory | undefined;
+  since?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+} & SortQueryParams;
+
+function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
+  const parts: string[] = [];
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined) return;
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  });
+  return parts.length === 0 ? '' : `?${parts.join('&')}`;
+}
+
+/** Paginated page of project activity — items plus total (via X-Total-Count). */
+export async function listProjectActivityPage(
   accessToken: string,
   projectId: string,
-  category?: ActivityCategory,
-  limit = 50,
-  offset = 0,
-  since?: string,
+  params: ListProjectActivityParams = {},
 ): Promise<PaginatedResponse<ProjectActivityList>> {
-  const params = new URLSearchParams();
-  if (category !== undefined) params.set('category', category);
-  if (since !== undefined) params.set('since', since);
-  params.set('limit', String(limit));
-  params.set('offset', String(offset));
-  const qs = params.toString();
+  const query = buildQuery(params);
   return apiClient.getWithMeta<ProjectActivityList>(
-    `/projects/${projectId}/activity?${qs}`,
+    `/projects/${projectId}/activity${query}`,
     ProjectActivityListSchema,
     accessToken,
   );

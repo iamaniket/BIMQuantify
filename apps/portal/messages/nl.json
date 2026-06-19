@@ -3094,7 +3094,14 @@
     "typeChanges": "Wijzigingen",
     "loadMore": "Meer laden",
     "noActivity": "Nog geen activiteit.",
+    "loadError": "Activiteit laden mislukt.",
     "events": "{count} gebeurtenissen",
+    "colWhen": "Wanneer",
+    "colActor": "Gebruiker",
+    "colType": "Type",
+    "colActivity": "Activiteit",
+    "colDetails": "Details",
+    "systemActor": "Systeem",
     "modelCreated": "Model aangemaakt: {name}",
     "modelUpdated": "Model bijgewerkt: {name}",
     "modelDeleted": "Model verwijderd: {name}",
@@ -3111,6 +3118,10 @@
     "attachmentDeleted": "Verwijderd: {filename}"
   },
   "viewer": {
+    "loadingOverlay": {
+      "model": "Model laden…",
+      "updating": "Weergave bijwerken…"
+    },
     "minimap": {
       "title": "Plattegrond",
       "level": "Verdieping",

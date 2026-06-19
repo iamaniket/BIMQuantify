@@ -106,23 +106,3 @@ function ToolButtonInner(
 
 export const ToolButton = forwardRef<HTMLButtonElement, ButtonProps>(ToolButtonInner);
 ToolButton.displayName = 'ToolButton';
-
-/** Inline label/value chip used between buttons (e.g. zoom percentage). */
-export function ToolbarReadout({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}): JSX.Element {
-  return (
-    <span
-      className={cn(
-        'min-w-[48px] px-1 text-center text-caption font-semibold tabular-nums text-foreground/80',
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}

@@ -3094,7 +3094,14 @@
     "typeChanges": "Changes",
     "loadMore": "Load more",
     "noActivity": "No activity yet.",
+    "loadError": "Failed to load activity.",
     "events": "{count} events",
+    "colWhen": "When",
+    "colActor": "Actor",
+    "colType": "Type",
+    "colActivity": "Activity",
+    "colDetails": "Details",
+    "systemActor": "System",
     "modelCreated": "Created model {name}",
     "modelUpdated": "Updated model {name}",
     "modelDeleted": "Deleted model {name}",
@@ -3111,6 +3118,10 @@
     "attachmentDeleted": "Removed {filename}"
   },
   "viewer": {
+    "loadingOverlay": {
+      "model": "Loading model…",
+      "updating": "Updating view…"
+    },
     "minimap": {
       "title": "Floor plan",
       "level": "Level",

@@ -113,6 +113,26 @@ async function loadBundleInto(
 }
 
 /**
+ * The full, ordered, de-duplicated set of models the viewer should hold:
+ * `bundle` (index 0 — loaded first so the camera frames on it) followed by
+ * `additionalBundles`. Each entry is keyed by its stable `modelId`
+ * (`file-<fileId>`) when present, falling back to `fragmentsUrl`, so a refreshed
+ * presigned URL never re-keys an already-loaded model. The diff effect operates
+ * on this set, treating the primary like any other model.
+ */
+function buildDesired(props: IfcViewerProps): { key: string; bundle: ViewerBundle }[] {
+  const seen = new Set<string>();
+  const out: { key: string; bundle: ViewerBundle }[] = [];
+  for (const b of [props.bundle, ...(props.additionalBundles ?? [])]) {
+    const key = b.modelId ?? b.fragmentsUrl;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, bundle: b });
+  }
+  return out;
+}
+
+/**
  * Headless React wrapper around `Viewer`. Renders a fullsize <div>; the
  * viewer mounts itself into it and pushes state out via the imperative
  * handle. The component intentionally has no toolbar/panels — that UI
@@ -164,18 +184,22 @@ function IfcViewerImpl(
     return handle;
   }, []);
 
-  // Stable dependency for the diff effect — changes only when the SET of
-  // federated models changes, not when a layer's visibility toggles.
-  const additionalBundlesKey = (props.additionalBundles ?? [])
+  // Stable dependency for the diff effect — changes only when the MEMBERSHIP of
+  // the desired model set changes (primary + extras), keyed by the stable
+  // `modelId` so a refreshed presigned URL never re-keys an already-loaded model
+  // and a layer's visibility toggle never re-runs the diff.
+  const desiredKey = [props.bundle, ...(props.additionalBundles ?? [])]
     .map((b) => b.modelId ?? b.fragmentsUrl)
     .join('|');
 
-  // Incremental federated load: the mount effect loads only the primary bundle;
-  // `mounted` gates the diff effect below, which loads/unloads the
-  // `additionalBundles` delta in place (no remount, no camera reset).
+  // Mount-once + unified diff: the mount effect mounts the viewer with NO model;
+  // `mounted` gates the single diff effect below, which loads/unloads the FULL
+  // desired set (primary + extras) as a delta in place — no remount, no camera
+  // reset, and ANY model (including the primary) can be added/removed alone.
   const [mounted, setMounted] = useState(false);
-  const loadedExtraIdsRef = useRef<Set<string>>(new Set());
+  const loadedRef = useRef<Set<string>>(new Set());
   const firstDiffRef = useRef(true);
+  const onReadyFiredRef = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -300,19 +324,17 @@ function IfcViewerImpl(
       try {
         await viewer.mount(container);
         if (cancelled) return;
+        // The scene exists but holds NO model yet — the diff effect below loads
+        // the full desired set (primary + extras) incrementally, frames once,
+        // and fires onReady. `onSceneReady` signals only that the canvas/scene
+        // is live (unchanged contract).
         props.onSceneReady?.();
-        // Load only the PRIMARY bundle here; the diff effect below loads the
-        // federated extras (and unloads removed ones) incrementally.
-        await loadBundleInto(viewer, props.bundle, props.onProgress);
-        if (cancelled) return;
-        const handle = handleRef.current;
-        if (handle) props.onReady?.(handle);
         setMounted(true);
       } catch (err) {
         if (cancelled) return;
-        // Always-on (ungated): the primary model failed to load — the scene
-        // can't render without it. Distinct from the chatty `vlog`/`vwarn`.
-        verror('load', `primary model "${props.bundle.modelId ?? props.bundle.fragmentsUrl}" failed to load`, err);
+        // Always-on (ungated): the viewer couldn't mount — fatal, there is no
+        // scene. Distinct from the chatty `vlog`/`vwarn`.
+        verror('mount', 'viewer mount failed', err);
         props.onError?.(err instanceof Error ? err : new Error(String(err)));
       }
     })();
@@ -320,90 +342,123 @@ function IfcViewerImpl(
     return () => {
       cancelled = true;
       setMounted(false);
-      loadedExtraIdsRef.current = new Set();
+      loadedRef.current = new Set();
       firstDiffRef.current = true;
+      onReadyFiredRef.current = false;
       viewer.unmount().catch(() => undefined);
       viewerRef.current = null;
     };
-    // Re-mount ONLY when the primary bundle changes (a different scene anchor).
-    // Adding/removing federated models keeps the same primary and is handled by
-    // the diff effect — no remount, no camera reset. Other props (callbacks,
-    // plugin lists) are read at mount time; hosts swap plugins via handle.plugins.
+    // MOUNT ONCE. The viewer instance lives for the component's lifetime; ALL
+    // model load/unload is owned by the diff effect below, so swapping which
+    // model is "primary" never reconstructs the viewer (that was the federated
+    // full-reload bug). Option props (background/shadows/controls/zoom/plugins/…)
+    // are read at mount time — unchanged from before, since they were never in
+    // the dep array; hosts mutate plugins at runtime via handle.plugins.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.bundle.fragmentsUrl]);
+  }, []);
 
-  // Incremental federated load/unload: diff `additionalBundles` against what's
-  // loaded and apply only the delta — no remount, camera preserved.
+  // Unified incremental load/unload: diff the FULL desired set (primary + extras)
+  // against what's loaded and apply only the delta — no remount, camera
+  // preserved. Any model (including the primary) can be added/removed alone.
   useEffect(() => {
     const viewer = viewerRef.current;
     if (viewer === null || !mounted) return undefined;
 
-    const extras = (props.additionalBundles ?? []).filter((b) => b.modelId);
-    const desired = new Map(extras.map((b) => [b.modelId as string, b]));
-    const loaded = loadedExtraIdsRef.current;
+    const desired = buildDesired(props); // [{key, bundle}], primary at index 0
+    const desiredMap = new Map(desired.map((d) => [d.key, d.bundle]));
+    const loaded = loadedRef.current;
+    const isFirstDiff = firstDiffRef.current;
 
     let cancelled = false;
     void (async () => {
       const mark = (): number => (typeof performance !== 'undefined' ? performance.now() : 0);
       const since = (t0: number): string => `${Math.round(mark() - t0)}ms`;
 
-      const removed = [...loaded].filter((id) => !desired.has(id));
-      const added = [...desired.entries()].filter(([id]) => !loaded.has(id));
-      vlog('federate', 'diff additionalBundles', {
-        desired: [...desired.keys()],
+      const removed = [...loaded].filter((key) => !desiredMap.has(key));
+      // Preserve desired order so the primary (index 0) loads FIRST — a fresh
+      // viewer frames the camera on its first model (Viewer.loadFragments).
+      const added = desired.filter((d) => !loaded.has(d.key));
+      vlog('federate', 'diff desired set', {
+        desired: desired.map((d) => d.key),
         loaded: [...loaded],
-        added: added.map(([id]) => id),
+        added: added.map((d) => d.key),
         removed,
       });
 
-      // Unload models no longer in the set. A failure must not wedge the model
-      // in `loaded` (it would retry forever) — drop it and log.
-      for (const id of removed) {
-        const t0 = mark();
-        try {
-          await viewer.unloadModel(id);
-          vlog('federate', `unloaded "${id}" (${since(t0)})`);
-        } catch (err) {
-          vwarn('federate', `unloadModel("${id}") failed`, err);
-        }
-        loaded.delete(id);
-        if (cancelled) return;
-      }
-
-      // Load newly-added models. CRITICAL: each load is isolated so ONE failing
-      // model can't reject the whole batch — previously a single bad bundle
-      // aborted the remaining loads AND the framing below, blanking the scene.
-      let anySucceeded = false;
-      for (const [id, b] of added) {
-        const t0 = mark();
-        try {
-          await loadBundleInto(viewer, b);
-          loaded.add(id);
-          anySucceeded = true;
-          vlog('federate', `loaded "${id}" (${since(t0)})`);
-        } catch (err) {
-          // Always-on (ungated): a federated model failed to load. We skip it
-          // and keep the rest of the scene — but the failure must be visible by
-          // default (not hidden behind the viewer-debug gate like `vwarn`).
-          verror('load', `model "${id}" failed to load — skipping`, err);
-          props.onModelLoadError?.(id, err instanceof Error ? err : new Error(String(err)));
-        }
-        if (cancelled) return;
-      }
-
-      // Frame everything once on the initial multi-load — even if some models
-      // failed — so a single bad model can never leave the scene unframed/blank.
-      // Preserve the camera on every incremental add afterwards.
-      if (firstDiffRef.current) {
-        firstDiffRef.current = false;
-        if (anySucceeded) {
+      // Bracket the whole delta with onBusyChange so the host can show a loading
+      // overlay during ANY model swap — not just the primary's initial download
+      // that `onProgress` covers. `hasWork` skips no-op diffs.
+      const hasWork = removed.length > 0 || added.length > 0;
+      if (hasWork) props.onBusyChange?.(true);
+      try {
+        // Unload models no longer in the set. A failure must not wedge the model
+        // in `loaded` (it would retry forever) — drop it and log.
+        for (const key of removed) {
+          const t0 = mark();
           try {
-            await viewer.commands.execute('camera.zoomExtents');
-            vlog('federate', 'framed scene (camera.zoomExtents)');
+            await viewer.unloadModel(key);
+            vlog('federate', `unloaded "${key}" (${since(t0)})`);
           } catch (err) {
-            vwarn('federate', 'camera.zoomExtents failed', err);
+            vwarn('federate', `unloadModel("${key}") failed`, err);
+          }
+          loaded.delete(key);
+          if (cancelled) return;
+        }
+
+        // Load newly-added models. CRITICAL: each load is isolated so ONE failing
+        // model can't reject the whole batch — a single bad bundle must never
+        // abort the remaining loads AND the framing below, blanking the scene.
+        // `onProgress` is the primary's concern on the INITIAL load only (extras
+        // load quietly), matching the prior single-file behaviour.
+        let anySucceeded = false;
+        for (const { key, bundle } of added) {
+          const isPrimary = bundle === props.bundle;
+          const onProgress = isFirstDiff && isPrimary ? props.onProgress : undefined;
+          const t0 = mark();
+          try {
+            await loadBundleInto(viewer, bundle, onProgress);
+            loaded.add(key);
+            anySucceeded = true;
+            vlog('federate', `loaded "${key}" (${since(t0)})`);
+          } catch (err) {
+            // Always-on (ungated): a model failed to load. We skip it and keep the
+            // rest of the scene — but the failure must be visible by default (not
+            // hidden behind the viewer-debug gate like `vwarn`).
+            verror('load', `model "${key}" failed to load — skipping`, err);
+            props.onModelLoadError?.(key, err instanceof Error ? err : new Error(String(err)));
+          }
+          if (cancelled) return;
+        }
+
+        // First diff only: frame the whole initial set once (even if some models
+        // failed) so a single bad model can never leave the scene unframed, then
+        // fire onReady EXACTLY once. Later diffs preserve the camera and never
+        // re-fire onReady/onError — they are pure incremental add/unload.
+        if (isFirstDiff) {
+          firstDiffRef.current = false;
+          if (anySucceeded) {
+            try {
+              await viewer.commands.execute('camera.zoomExtents');
+              vlog('federate', 'framed scene (camera.zoomExtents)');
+            } catch (err) {
+              vwarn('federate', 'camera.zoomExtents failed', err);
+            }
+            if (!onReadyFiredRef.current) {
+              onReadyFiredRef.current = true;
+              const handle = handleRef.current;
+              if (handle) props.onReady?.(handle);
+            }
+          } else if (desired.length > 0) {
+            // The initial desired set was non-empty but nothing loaded — fatal,
+            // the scene is blank (matches the old "primary failed → onError").
+            verror('load', 'initial model set failed to load — scene is empty');
+            props.onError?.(new Error('No model could be loaded'));
           }
         }
+      } finally {
+        // Don't clear on cancellation — a superseding diff run owns the state and
+        // will re-assert busy=true, so clearing here would flicker the overlay off.
+        if (hasWork && !cancelled) props.onBusyChange?.(false);
       }
     })();
 
@@ -411,7 +466,7 @@ function IfcViewerImpl(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, additionalBundlesKey]);
+  }, [mounted, desiredKey]);
 
   return (
     <div

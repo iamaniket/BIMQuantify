@@ -569,11 +569,21 @@ function HouseBuildAnimation(): JSX.Element {
 type ModelLoadingOverlayProps = {
   progress: number;
   fading?: boolean;
+  /** Status text (host-provided so it's localized). */
+  label: string;
+  /**
+   * No known percentage (model add/remove/unload, where progress isn't
+   * reported): hide the progress bar + percent and let the looping house
+   * animation carry the indication on its own.
+   */
+  indeterminate?: boolean;
 };
 
 export function ModelLoadingOverlay({
   progress,
   fading = false,
+  label,
+  indeterminate = false,
 }: ModelLoadingOverlayProps): JSX.Element {
   const clamped = Math.max(0, Math.min(100, Math.round(progress)));
 
@@ -590,13 +600,15 @@ export function ModelLoadingOverlay({
         <div className="flex w-full flex-col gap-1.5">
           <div className="flex items-baseline justify-between">
             <span className="text-body3 text-foreground-secondary">
-              Loading model…
+              {label}
             </span>
-            <span className="text-caption tabular-nums text-foreground-tertiary">
-              {clamped}%
-            </span>
+            {indeterminate ? null : (
+              <span className="text-caption tabular-nums text-foreground-tertiary">
+                {clamped}%
+              </span>
+            )}
           </div>
-          <Progress value={clamped} variant="primary" />
+          {indeterminate ? null : <Progress value={clamped} variant="primary" />}
         </div>
       </div>
     </div>

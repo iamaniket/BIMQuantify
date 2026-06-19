@@ -163,6 +163,7 @@ export default function ViewerPage(): JSX.Element {
   const queryClient = useQueryClient();
   const tMarkup = useTranslations('viewer.markup');
   const tFed = useTranslations('viewer.federated');
+  const tLoad = useTranslations('viewer.loadingOverlay');
 
   const [inspectorRequest, setInspectorRequest] = useState<{
     view: 'findings';
@@ -338,6 +339,9 @@ export default function ViewerPage(): JSX.Element {
 
   const [sceneReady, setSceneReady] = useState(false);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
+  // True while the viewer is applying a model load/unload delta (initial batch
+  // OR a later federated add/remove/unload). Driven by IfcViewer's onBusyChange.
+  const [viewerBusy, setViewerBusy] = useState(false);
   const [overlayFading, setOverlayFading] = useState(false);
   const [pdfFirstPageRendered, setPdfFirstPageRendered] = useState(false);
   const pdfRenderedRef = useRef(false);
@@ -366,6 +370,7 @@ export default function ViewerPage(): JSX.Element {
     setSceneReady(false);
     setViewerError(null);
     setProgress(null);
+    setViewerBusy(false);
     setInspectorRequest(null);
     setOverlayFading(false);
     setPdfFirstPageRendered(false);
@@ -432,7 +437,7 @@ export default function ViewerPage(): JSX.Element {
   const pdfShellReady = shellReady && isPdf;
 
   const loadingActive =
-    (isIfc && sceneReady && !viewerReady && progress !== null) ||
+    (isIfc && (viewerBusy || (sceneReady && !viewerReady && progress !== null))) ||
     (isPdf && bundle !== null && !pdfFirstPageRendered);
 
   useEffect(() => {
@@ -736,6 +741,7 @@ export default function ViewerPage(): JSX.Element {
           setSceneReady(true);
         }}
         onProgress={onProgress}
+        onBusyChange={setViewerBusy}
         onReady={(handle) => {
           viewerHandleRef.current = handle;
           if (process.env.NODE_ENV === 'development') {
@@ -863,10 +869,21 @@ export default function ViewerPage(): JSX.Element {
         {canvas}
 
         {(loadingActive || overlayFading) ? (
-          <ModelLoadingOverlay
-            progress={progress !== null && progress.total > 0 ? (progress.loaded / progress.total) * 100 : (overlayFading ? 100 : 0)}
-            fading={overlayFading}
-          />
+          (() => {
+            const overlayDeterminate = progress !== null && progress.total > 0;
+            // "Updating view…" only for a later federated add/remove/unload
+            // (viewer already ready, busy again). Initial load + PDFs keep
+            // "Loading model…".
+            const isSubsequentLoad = isIfc && viewerReady && viewerBusy;
+            return (
+              <ModelLoadingOverlay
+                indeterminate={!overlayDeterminate}
+                progress={overlayDeterminate ? (progress.loaded / progress.total) * 100 : (overlayFading ? 100 : 0)}
+                fading={overlayFading}
+                label={tLoad(isSubsequentLoad ? 'updating' : 'model')}
+              />
+            );
+          })()
         ) : null}
 
         {isIfc ? <ContextMenu handle={viewerHandleRef.current} viewerReady={viewerReady} /> : null}
