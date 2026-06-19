@@ -91,6 +91,8 @@ export type {
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
+export { pick, clientToNdc } from './core/Raycaster.js';
+export type { PickResult } from './core/Raycaster.js';
 export { EventBus } from './core/EventBus.js';
 export { CommandRegistry, CommandNotFoundError } from './core/CommandRegistry.js';
 export type { CommandHandler, CommandMeta } from './core/CommandRegistry.js';

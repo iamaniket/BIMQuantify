@@ -4,10 +4,9 @@ export const sharedNlMessages: SharedMessages = {
   brand: {
     name: 'BimDossier',
     legalEntity: 'BimDossier B.V.',
-    tagline:
-      'Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier voor Nederlandse aannemers.',
+    tagline: 'Het Wkb-dossierplatform voor Nederlandse aannemers.',
     productDescription:
-      'Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier voor Nederlandse aannemers. Houd deadlines bij, beheer documenten, los bevindingen op en dien op tijd in.',
+      'Het Wkb-dossierplatform voor Nederlandse aannemers — houd deadlines bij, beheer documenten, los bevindingen op en dien op tijd in.',
     pilotHeading: 'Doe mee aan de BimDossier-pilot.',
   },
   legal: {

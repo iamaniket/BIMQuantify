@@ -1,6 +1,6 @@
 'use client';
 
-import type { EntityMarkerData, ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
+import type { EntityMarkerData, Vec3, ViewerBundle, ViewerHandle } from '@bimstitch/viewer';
 import { IfcViewer } from '@bimstitch/viewer/viewer-3d';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState, type JSX } from 'react';
@@ -10,6 +10,7 @@ import { cameraDebugPlugin } from './cameraDebugPlugin';
 import { cameraZoomPlugin } from './cameraZoomPlugin';
 import { DEMO_MODEL_ID, DEMO_SNAGS } from './demoSnags';
 import { monochromeLookPlugin } from './monochromeLookPlugin';
+import { snagPlacementPlugin, type SurfacePointsArgs } from './snagPlacementPlugin';
 
 // Self-contained demo model: a static fragments file shipped in apps/web/public,
 // so the marketing site has NO runtime dependency on the API or MinIO. The
@@ -46,18 +47,6 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
   const offClickRef = useRef<(() => void) | null>(null);
   const [activeSnagId, setActiveSnagId] = useState<string | null>(null);
 
-  const markers: EntityMarkerData[] = DEMO_SNAGS.map((snag) => ({
-    id: snag.id,
-    type: 'finding',
-    position: snag.position,
-    modelId: DEMO_MODEL_ID,
-    entityId: snag.id,
-    status: snag.status,
-    // Just the title — the pin keeps its status-colored real-app style, and
-    // both the hover tooltip and the click card show only the title.
-    label: t(`snags.${snag.titleKey}`),
-  }));
-
   const setPaused = (paused: boolean): void => {
     handleRef.current?.commands.execute('auto-rotate.setPaused', { paused }).catch(() => undefined);
   };
@@ -76,8 +65,8 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
   // appears already at this size — no zoom-in pop.
   const ZOOM = { sizeBoost: 1.5 } as const;
   const plugins = reducedMotion
-    ? [monochromeLookPlugin(), cameraZoomPlugin({ ...ZOOM, animate: false })]
-    : [monochromeLookPlugin(), cameraZoomPlugin(ZOOM), autoRotatePlugin()];
+    ? [monochromeLookPlugin(), cameraZoomPlugin({ ...ZOOM, animate: false }), snagPlacementPlugin()]
+    : [monochromeLookPlugin(), cameraZoomPlugin(ZOOM), autoRotatePlugin(), snagPlacementPlugin()];
   if (camDebug) plugins.push(cameraDebugPlugin());
 
   // Dismiss the title card on Escape; tear down the marker-click subscription
@@ -150,6 +139,27 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
           // `camera.zoomExtents` excursion that runs just before onReady, so the
           // model fades in already framed instead of popping/zooming.
           await handle.commands.execute('showcase.zoomIn').catch(() => undefined);
+          // Raycast well-spread points ON the framed model's surface, then pin
+          // each snag to one (falling back to its authored coord if a probe
+          // misses, so a pin is never dropped). This is what keeps the pins on
+          // the building instead of floating at the old hardcoded coordinates.
+          const points = await handle.commands
+            .execute<Vec3[]>('showcase.surfacePoints', {
+              count: DEMO_SNAGS.length,
+              modelId: DEMO_MODEL_ID,
+            } satisfies SurfacePointsArgs)
+            .catch(() => [] as Vec3[]);
+          const markers: EntityMarkerData[] = DEMO_SNAGS.map((snag, i) => ({
+            id: snag.id,
+            type: 'finding',
+            position: points[i] ?? snag.position,
+            modelId: DEMO_MODEL_ID,
+            entityId: snag.id,
+            status: snag.status,
+            // Just the title — the pin keeps its status-colored real-app style,
+            // and both the hover tooltip and the click card show only the title.
+            label: t(`snags.${snag.titleKey}`),
+          }));
           await handle.commands.execute('entity-marker.sync', markers).catch(() => undefined);
           // Clicking a pin toggles its title card (same id → dismiss).
           offClickRef.current = handle.events.on('entity-marker:click', (ev) => {

@@ -20,3 +20,9 @@
 export { IfcViewer } from './IfcViewer.js';
 export { FloorPlanViewer } from './FloorPlanViewer.js';
 export { decodeFloorPlans } from './plugins/3d/shared/floorplan-codec.js';
+
+// Raycast helper for custom plugins that need to hit-test the loaded models
+// (e.g. the marketing snag showcase pinning markers onto the model surface).
+// `core/Raycaster` is pdfjs-free, so it's safe in this embed entry.
+export { pick, clientToNdc } from './core/Raycaster.js';
+export type { PickResult } from './core/Raycaster.js';

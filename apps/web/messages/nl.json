@@ -1,8 +1,8 @@
 {
   "metadata": {
     "title": "BimDossier",
-    "defaultTitle": "BimDossier — Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier",
-    "description": "Wet kwaliteitsborging voor het bouwen (Wkb)-compliant digitaal dossier voor Nederlandse aannemers. Houd deadlines bij, beheer documenten, los bevindingen op en dien op tijd in."
+    "defaultTitle": "BimDossier — het Wkb-dossierplatform voor Nederlandse aannemers",
+    "description": "BimDossier is het Wkb-dossierplatform dat op uw model draait, voor Nederlandse aannemers. Gebouwd voor de Wet kwaliteitsborging voor het bouwen: bevindingen vastgezet in 3D, deadlines die automatisch bewaakt worden en een dossier dat klaarligt voor uw gereedmelding. EU-gehost, privacy-first."
   },
   "header": {
     "brand": "BimDossier",
@@ -13,16 +13,18 @@
     "contactSales": "Neem contact op"
   },
   "hero": {
-    "badge": "Early access — nu beschikbaar",
-    "headline": "Nooit meer een Wet kwaliteitsborging voor het bouwen (Wkb)-deadline missen.",
-    "subtitle": "BimDossier is het digitale dossierplatform voor Nederlandse aannemers. Houd bouwmelding- en gereedmeldingsdeadlines bij, beheer uw documenten, los bevindingen op en dien uw dossier bevoegd gezag op tijd in.",
-    "ctaPrimary": "Vraag toegang aan",
+    "badge": "Private pilot · beperkt aantal plekken voor Nederlandse aannemers",
+    "headline": "Het Wkb-dossierplatform, gebouwd op uw model.",
+    "subtitle": "BimDossier is het platform speciaal voor de Wkb — de Wet kwaliteitsborging voor het bouwen. Bevindingen staan vastgezet op uw 3D-BIM-model en op uw PDF-plattegronden, deadlines worden automatisch bewaakt van bouwmelding tot gereedmelding, en uw dossier ligt klaar voor het bevoegd gezag — niet verspreid over mappen en spreadsheets.",
+    "trust": "In private pilot met Nederlandse aannemers · EU-gehost · Privacy-first — uw gegevens verlaten de EU-infrastructuur nooit",
+    "ctaPrimary": "Vraag early access aan",
+    "ctaDemo": "Bekijk het op het model",
     "ctaSecondary": "Inloggen"
   },
   "features": {
     "eyebrow": "Mogelijkheden",
-    "headline": "Alles wat een aannemer nodig heeft voor Wet kwaliteitsborging voor het bouwen (Wkb)-compliance",
-    "subtitle": "Van projectstart tot gereedmelding — één platform voor uw hele Wet kwaliteitsborging voor het bouwen (Wkb)-dossier.",
+    "headline": "Het enige Wkb-dossier dat op uw BIM-model draait",
+    "subtitle": "Van bouwmelding tot gereedmelding draait uw complete Wkb-dossier op één plek: bevindingen in 3D, certificaten bewaakt, deadlines in beeld en op tijd ingediend.",
     "readMore": "Lees meer"
   },
   "featureDetail": {
@@ -80,9 +82,9 @@
     }
   },
   "cta": {
-    "headline": "Stop met documenten najagen. Begin op tijd in te dienen.",
-    "subtitle": "Sluit u aan bij het early access programma. Krijg uw Wet kwaliteitsborging voor het bouwen (Wkb)-dossier onder controle vóór uw volgende deadline.",
-    "button": "Vraag toegang aan"
+    "headline": "Stop met achter documenten aan jagen. Dien op tijd in.",
+    "subtitle": "Draai uw complete Wkb-dossier op het platform dat ervoor gebouwd is. Doe mee aan de private pilot en sta er bij uw volgende gereedmelding helemaal klaar voor.",
+    "button": "Vraag early access aan"
   },
   "footer": {
     "product": "Product",
@@ -96,7 +98,7 @@
   "blog": {
     "eyebrow": "Blog",
     "headline": "Inzichten & updates",
-    "subtitle": "Wet kwaliteitsborging voor het bouwen (Wkb)-compliance, Nederlandse bouwregelgeving en productupdates.",
+    "subtitle": "Wkb-compliance, Nederlandse bouwregelgeving en productupdates — van het team achter het dossier dat op uw BIM-model draait.",
     "empty": "Nog geen berichten. Kom snel terug.",
     "readingTime": "min leestijd"
   },

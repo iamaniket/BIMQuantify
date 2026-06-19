@@ -11,6 +11,9 @@ import { HeroShell } from './HeroShell';
 
 export function HeroSection(): JSX.Element {
   const t = useTranslations('hero');
+  // The trust line is authored as " · "-separated claims so it can render as a
+  // scannable strip of dot-prefixed items (stacks on mobile, inlines from sm up).
+  const trustItems = t('trust').split(' · ');
 
   return (
     <HeroShell size="splash" className="gap-6">
@@ -34,7 +37,28 @@ export function HeroSection(): JSX.Element {
             {t('ctaPrimary')}
           </Button>
         </Link>
+        <Link href="/#showcase">
+          <Button
+            variant="ghost"
+            size="lg"
+            className="border border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+          >
+            {t('ctaDemo')}
+          </Button>
+        </Link>
       </div>
+
+      <ul className="mt-2 flex flex-col gap-x-5 gap-y-2 text-body3 text-white/70 sm:flex-row sm:flex-wrap sm:items-center">
+        {trustItems.map((item) => (
+          <li key={item} className="flex items-center gap-2">
+            <span
+              aria-hidden
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-accent)]"
+            />
+            {item}
+          </li>
+        ))}
+      </ul>
     </HeroShell>
   );
 }

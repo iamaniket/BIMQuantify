@@ -1,8 +1,8 @@
 {
   "metadata": {
     "title": "BimDossier",
-    "defaultTitle": "BimDossier — Quality Assurance in Construction Act (Wkb)-compliant digital dossier",
-    "description": "Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time."
+    "defaultTitle": "BimDossier — the Wkb dossier platform for Dutch contractors",
+    "description": "The model-native Wkb dossier platform for Dutch contractors, built for the Wet kwaliteitsborging voor het bouwen. Snags pinned in 3D, deadlines that track themselves, a dossier ready for gereedmelding. EU-hosted."
   },
   "header": {
     "brand": "BimDossier",
@@ -13,16 +13,18 @@
     "contactSales": "Contact sales"
   },
   "hero": {
-    "badge": "Early access — now open",
-    "headline": "Never miss a Quality Assurance in Construction Act (Wkb) deadline again.",
-    "subtitle": "BimDossier is the digital dossier platform for Dutch contractors. Track bouwmelding and gereedmelding deadlines, manage your documents, resolve findings, and file your dossier bevoegd gezag on time.",
-    "ctaPrimary": "Get early access",
+    "badge": "Private pilot · limited spots for Dutch aannemers",
+    "headline": "The Wkb dossier platform, built on your model.",
+    "subtitle": "The dedicated platform for the Wkb — the Dutch Quality Assurance in Construction Act. Your findings live pinned on the 3D BIM model and PDF floor plans. Deadlines track themselves from bouwmelding to gereedmelding. Your dossier stays ready for bevoegd gezag — not scattered across folders and spreadsheets.",
+    "trust": "In private pilot with Dutch contractors · EU-hosted · Privacy-first — your data never leaves EU infrastructure",
+    "ctaPrimary": "Request early access",
+    "ctaDemo": "See it on the model",
     "ctaSecondary": "Log in"
   },
   "features": {
     "eyebrow": "Capabilities",
-    "headline": "Everything a contractor needs for Quality Assurance in Construction Act (Wkb) compliance",
-    "subtitle": "From project kickoff to gereedmelding — one platform for your entire Quality Assurance in Construction Act (Wkb) dossier.",
+    "headline": "The only Wkb dossier built on your BIM model",
+    "subtitle": "From bouwmelding to gereedmelding, your entire Wkb dossier runs in one place: snags in 3D, certificates tracked, deadlines computed, filed on time.",
     "readMore": "Read more"
   },
   "featureDetail": {
@@ -81,8 +83,8 @@
   },
   "cta": {
     "headline": "Stop chasing documents. Start filing on time.",
-    "subtitle": "Join the early access program. Get your Quality Assurance in Construction Act (Wkb) dossier under control before your next deadline.",
-    "button": "Get early access"
+    "subtitle": "Run your entire Wkb dossier on the platform built for it. Join the private pilot and walk into your next gereedmelding already done.",
+    "button": "Request early access"
   },
   "footer": {
     "product": "Product",
@@ -96,7 +98,7 @@
   "blog": {
     "eyebrow": "Blog",
     "headline": "Insights & updates",
-    "subtitle": "Quality Assurance in Construction Act (Wkb) compliance, Dutch building regulations, and product updates.",
+    "subtitle": "Wkb compliance, Dutch building regulations, and product updates — from the team building the model-native dossier.",
     "empty": "No posts yet. Check back soon.",
     "readingTime": "min read"
   },
