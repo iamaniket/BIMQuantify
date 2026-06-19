@@ -1,0 +1,134 @@
+{
+  "key": "viewer",
+  "hasAssets": false,
+  "images": [
+    "/features/viewer/01.png",
+    "/features/viewer/02.png",
+    "/features/viewer/03.png"
+  ],
+  "related": [
+    "snagging",
+    "bcf",
+    "findings"
+  ],
+  "en": {
+    "title": "3D + 2D model viewer",
+    "card": "View federated IFC models in the browser — no desktop software. Cut sections, measure, switch storeys and floor plans, and click any element for its properties.",
+    "tagline": "Your IFC models, right in the browser",
+    "intro": "View federated IFC models straight in the browser — no licensed desktop software, no high-end workstation. Combine architecture, structure, and MEP in one scene, cut section planes, measure distances, switch between storeys and 2D floor plans, and click any element to read its properties or jump to a linked finding. The whole model is one URL away for everyone on the project.",
+    "problemTitle": "Heavy desktop tools shouldn't gate a quick look",
+    "problem": "Opening a BIM model usually means a licensed desktop application and a machine powerful enough to run it. That puts the model out of reach for the people who often need it most — site teams checking a detail, clients reviewing progress, and the kwaliteitsborger verifying a finding. So the model stays with a handful of specialists, screenshots get emailed around in its place, and decisions are made from a static image instead of the live geometry.",
+    "solutionTitle": "A full viewer that runs anywhere",
+    "solution": [
+      "Open federated IFC models in any modern browser — nothing to install, on any device.",
+      "Cut section planes, measure distances, and switch between storeys and 2D floor plans.",
+      "Click any element to read its properties and jump straight to linked findings.",
+      "Combine architecture, structure, and MEP disciplines in a single coordinated scene."
+    ],
+    "highlights": [
+      {
+        "title": "Runs in any browser",
+        "body": "Open federated IFC models on a laptop, tablet, or phone with nothing to install and no licence to manage."
+      },
+      {
+        "title": "Section, measure, isolate",
+        "body": "Cut section planes, measure distances, and switch storeys or 2D floor plans to inspect exactly the part you care about."
+      },
+      {
+        "title": "Element properties on click",
+        "body": "Select any element to read its IFC properties and jump straight to the findings anchored to it."
+      },
+      {
+        "title": "Federated disciplines",
+        "body": "Architecture, structure, and MEP models load together in one coordinated scene, not separate one-off views."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Do I need to install any software to view models?",
+        "a": "No. The viewer runs in any modern browser on a laptop, tablet, or phone — there's nothing to install and no desktop licence required to open a federated IFC model."
+      },
+      {
+        "q": "Can I view multiple disciplines together?",
+        "a": "Yes. Architecture, structure, and MEP IFC models load into a single federated scene, so you can review the coordinated whole rather than switching between separate exports."
+      },
+      {
+        "q": "What can I do with an element in the viewer?",
+        "a": "You can click any element to read its IFC properties, cut section planes and measure around it, isolate its storey, and jump straight to any findings anchored to that element."
+      }
+    ],
+    "imageCaptions": [
+      "Federated model in the browser",
+      "Section cut and measurement",
+      "Element properties panel"
+    ],
+    "keywords": [
+      "IFC viewer browser",
+      "BIM model viewer",
+      "federated IFC model",
+      "online 3D model viewer",
+      "IFC section cut measure",
+      "web BIM viewer"
+    ]
+  },
+  "nl": {
+    "title": "3D- + 2D-modelviewer",
+    "card": "Bekijk gefedereerde IFC-modellen in de browser — geen desktopsoftware. Maak doorsnedes, meet, wissel tussen verdiepingen en plattegronden, en klik op elk element voor de eigenschappen.",
+    "tagline": "Uw IFC-modellen, direct in de browser",
+    "intro": "Bekijk gefedereerde IFC-modellen direct in de browser — geen gelicentieerde desktopsoftware, geen krachtig werkstation. Combineer architectuur, constructie en installaties in één scène, maak doorsnedevlakken, meet afstanden, wissel tussen verdiepingen en 2D-plattegronden en klik op elk element om de eigenschappen te lezen of naar een gekoppelde bevinding te springen. Het hele model is voor iedereen in het project één URL ver weg.",
+    "problemTitle": "Zware desktoptools horen geen snelle blik te blokkeren",
+    "problem": "Een BIM-model openen betekent meestal een gelicentieerde desktopapplicatie en een machine die krachtig genoeg is om die te draaien. Daardoor is het model onbereikbaar voor juist de mensen die het vaak het hardst nodig hebben — bouwteams die een detail controleren, opdrachtgevers die de voortgang bekijken en de kwaliteitsborger die een bevinding verifieert. Het model blijft zo bij een handvol specialisten, in plaats daarvan worden screenshots rondgemaild en worden beslissingen genomen op basis van een statisch beeld in plaats van de live geometrie.",
+    "solutionTitle": "Een volledige viewer die overal draait",
+    "solution": [
+      "Open gefedereerde IFC-modellen in elke moderne browser — niets te installeren, op elk apparaat.",
+      "Maak doorsnedevlakken, meet afstanden en wissel tussen verdiepingen en 2D-plattegronden.",
+      "Klik op elk element om de eigenschappen te lezen en direct naar gekoppelde bevindingen te springen.",
+      "Combineer architectuur-, constructie- en installatiedisciplines in één gecoördineerde scène."
+    ],
+    "highlights": [
+      {
+        "title": "Draait in elke browser",
+        "body": "Open gefedereerde IFC-modellen op een laptop, tablet of telefoon, zonder iets te installeren en zonder licentie om te beheren."
+      },
+      {
+        "title": "Doorsnijden, meten, isoleren",
+        "body": "Maak doorsnedevlakken, meet afstanden en wissel verdiepingen of 2D-plattegronden om precies het deel te inspecteren dat u nodig heeft."
+      },
+      {
+        "title": "Eigenschappen bij klik",
+        "body": "Selecteer elk element om de IFC-eigenschappen te lezen en direct naar de eraan verankerde bevindingen te springen."
+      },
+      {
+        "title": "Gefedereerde disciplines",
+        "body": "Architectuur-, constructie- en installatiemodellen laden samen in één gecoördineerde scène, geen losse eenmalige weergaven."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Moet ik software installeren om modellen te bekijken?",
+        "a": "Nee. De viewer draait in elke moderne browser op een laptop, tablet of telefoon — er is niets te installeren en geen desktoplicentie nodig om een gefedereerd IFC-model te openen."
+      },
+      {
+        "q": "Kan ik meerdere disciplines tegelijk bekijken?",
+        "a": "Ja. Architectuur-, constructie- en installatie-IFC-modellen laden in één gefedereerde scène, zodat u het gecoördineerde geheel bekijkt in plaats van te wisselen tussen losse exports."
+      },
+      {
+        "q": "Wat kan ik met een element in de viewer doen?",
+        "a": "U kunt op elk element klikken om de IFC-eigenschappen te lezen, doorsnedevlakken maken en eromheen meten, de verdieping isoleren en direct naar de bevindingen springen die aan dat element verankerd zijn."
+      }
+    ],
+    "imageCaptions": [
+      "Gefedereerd model in de browser",
+      "Doorsnede en meting",
+      "Eigenschappenpaneel van element"
+    ],
+    "keywords": [
+      "IFC-viewer browser",
+      "BIM-modelviewer",
+      "gefedereerd IFC-model",
+      "online 3D-modelviewer",
+      "IFC doorsnede meten",
+      "web BIM-viewer"
+    ]
+  }
+}

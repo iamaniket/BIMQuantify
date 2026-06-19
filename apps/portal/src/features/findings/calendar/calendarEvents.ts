@@ -83,7 +83,7 @@ export function daysFromToday(value: string | null | undefined, today: Date): nu
   return Math.round((target.getTime() - base.getTime()) / 86_400_000);
 }
 
-/** Ports `resolveStatus()` from `deadlines/DeadlineCard.tsx`. */
+/** Ports `resolveStatus()` from `deadlines/DeadlineRow.tsx`. */
 export function deadlineTone(deadline: Deadline, today: Date): CalendarTone {
   if (deadline.status === 'met') return 'success';
   if (deadline.status === 'not_applicable') return 'neutral';

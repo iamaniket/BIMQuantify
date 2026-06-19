@@ -1,15 +1,16 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { ArrowRight, type AppIcon } from '@bimstitch/ui/icons';
 
+import { getFeatureContent } from '@/components/features/featureContent';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { Link } from '@/i18n/navigation';
 
 type FeatureCardProps = {
-  /** Catalog `key`; doubles as the i18n namespace and the `/features/<slug>` URL. */
+  /** Catalog `key`; doubles as the content slug and the `/features/<slug>` URL. */
   featureKey: string;
   icon: AppIcon;
 };
@@ -22,11 +23,16 @@ type FeatureCardProps = {
  * whole card fills with primary blue: title/body/CTA flip to white, the card
  * lifts, the icon scales up, and the grid lines turn faint white. Every class
  * is a theme token, so dark mode flips automatically — no `dark:` overrides.
- * (`bg-primary-foreground` is the project's constant-white token, matching the
- * mockup's white icon tile in both themes.)
+ * Title + body come from the per-feature JSON resolved for the active locale;
+ * "Read more" is shared chrome from the `features.*` message namespace.
  */
-export function FeatureCard({ featureKey, icon: Icon }: FeatureCardProps): JSX.Element {
+export function FeatureCard({ featureKey, icon: Icon }: FeatureCardProps): JSX.Element | null {
   const t = useTranslations('features');
+  const locale = useLocale();
+  const content = getFeatureContent(featureKey, locale);
+  if (content === null) {
+    return null;
+  }
 
   return (
     <Link
@@ -51,10 +57,10 @@ export function FeatureCard({ featureKey, icon: Icon }: FeatureCardProps): JSX.E
 
       <div className="flex flex-col gap-3">
         <h3 className="text-title2 font-bold text-foreground transition-colors duration-300 group-hover:text-primary-foreground">
-          {t(`${featureKey}.title`)}
+          {content.title}
         </h3>
         <p className="text-body2 text-foreground-tertiary transition-colors duration-300 group-hover:text-primary-foreground">
-          {t(`${featureKey}.body`)}
+          {content.card}
         </p>
 
         <span className="mt-1 inline-flex items-center gap-1.5 text-body3 font-semibold text-primary transition-colors duration-300 group-hover:text-primary-foreground">

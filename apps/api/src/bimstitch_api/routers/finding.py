@@ -234,6 +234,7 @@ async def create_finding(
         resource_id=finding.id,
         after=_finding_snapshot(finding),
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return finding
@@ -564,6 +565,7 @@ async def update_finding(
         before=before,
         after=_finding_snapshot(finding),
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     # Re-fetch so the response carries the DB-side updated_at and the freshly
@@ -607,6 +609,7 @@ async def delete_finding(
         resource_id=finding_id,
         before=before,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

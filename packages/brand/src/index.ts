@@ -2,7 +2,11 @@ export { AuthShell } from './AuthShell.js';
 export type { AuthShellProps } from './AuthShell.js';
 export { BrandMark } from './BrandMark.js';
 export type { BrandMarkProps, BrandMarkTone } from './BrandMark.js';
-export { BRAND_MARK_DATA_URI, BRAND_GLYPH_WHITE_DATA_URI } from './brandMarkAsset.js';
+export {
+  BRAND_MARK_DATA_URI,
+  BRAND_GLYPH_WHITE_DATA_URI,
+  BRAND_GLYPH_BLUE_DATA_URI,
+} from './brandMarkAsset.js';
 export { HeroGrid } from './HeroGrid.js';
 export type { HeroGridProps } from './HeroGrid.js';
 export { KpiStrip } from './KpiStrip.js';

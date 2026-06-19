@@ -71,9 +71,13 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
     process.env.NODE_ENV !== 'production' ||
     (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('camdebug'));
 
+  // `sizeBoost` makes the model read bigger than a plain fit (distance ÷ boost).
+  // The reveal is deferred until this framing lands (see onReady), so the model
+  // appears already at this size — no zoom-in pop.
+  const ZOOM = { sizeBoost: 1.5 } as const;
   const plugins = reducedMotion
-    ? [monochromeLookPlugin(), cameraZoomPlugin({ animate: false })]
-    : [monochromeLookPlugin(), cameraZoomPlugin(), autoRotatePlugin()];
+    ? [monochromeLookPlugin(), cameraZoomPlugin({ ...ZOOM, animate: false })]
+    : [monochromeLookPlugin(), cameraZoomPlugin(ZOOM), autoRotatePlugin()];
   if (camDebug) plugins.push(cameraDebugPlugin());
 
   // Dismiss the title card on Escape; tear down the marker-click subscription
@@ -106,6 +110,13 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
       onPointerLeave={reducedMotion ? undefined : () => setPaused(false)}
     >
       <IfcViewer
+        // Forward the handle ref: `onReady` is only invoked once IfcViewer's
+        // imperative handle exists, and React skips `useImperativeHandle`
+        // entirely when no ref is forwarded. Without this, `onReady` never
+        // fires — so `showcase.zoomIn` (the bigger framing), the marker sync,
+        // and the selection/hover disable all silently no-op, leaving the model
+        // at the small built-in `camera.zoomExtents` fit.
+        ref={handleRef}
         bundle={DEMO_BUNDLE}
         className="h-full w-full"
         builtInPlugins="minimal"
@@ -120,7 +131,7 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
         // to rotate-only inside cameraZoomPlugin (the prop can't reach touch).
         controls={{ left: 'rotate', middle: 'none', right: 'none', wheel: 'none' }}
         plugins={plugins}
-        onReady={(handle) => {
+        onReady={async (handle) => {
           handleRef.current = handle;
           // Debug gate: expose the handle so you can re-run framing or read the
           // camera/model state from the console after editing knobs, e.g.
@@ -131,18 +142,22 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
           // Look, don't edit: disable model-element selection + hover highlight
           // so clicking/hovering the building paints nothing. Orbit/drag and the
           // idle auto-rotate are independent and stay live.
-          void handle.commands.execute('selection.setEnabled', false).catch(() => undefined);
-          void handle.commands.execute('hover.setEnabled', false).catch(() => undefined);
+          await handle.commands.execute('selection.setEnabled', false).catch(() => undefined);
+          await handle.commands.execute('hover.setEnabled', false).catch(() => undefined);
           // Frame the model in one self-contained move (center pivot + tilt +
-          // zoom + right-shift). Computes from the model box itself, so it does
-          // NOT depend on an animated `camera.zoomExtents` settling first.
-          void handle.commands.execute('showcase.zoomIn').catch(() => undefined);
-          void handle.commands.execute('entity-marker.sync', markers).catch(() => undefined);
+          // zoom + right-shift). AWAITED so the reveal below only happens once
+          // the showcase framing has landed — this is what hides the built-in
+          // `camera.zoomExtents` excursion that runs just before onReady, so the
+          // model fades in already framed instead of popping/zooming.
+          await handle.commands.execute('showcase.zoomIn').catch(() => undefined);
+          await handle.commands.execute('entity-marker.sync', markers).catch(() => undefined);
           // Clicking a pin toggles its title card (same id → dismiss).
           offClickRef.current = handle.events.on('entity-marker:click', (ev) => {
             setActiveSnagId((cur) => (cur === ev.id ? null : ev.id));
           });
-          onLoaded?.();
+          // Reveal on the next frame so the final framing is painted before the
+          // host fades the canvas in (onLoaded → opacity 0→100).
+          requestAnimationFrame(() => onLoaded?.());
         }}
         onError={onError}
       />

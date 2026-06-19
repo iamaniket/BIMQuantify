@@ -37,7 +37,10 @@ function hasWebGL(): boolean {
 function ShowcaseSkeleton(): JSX.Element {
   // Match the section's bg so the transparent viewer canvas blends seamlessly —
   // surface-medium showed through the alpha:0 canvas as an off-color rectangle.
-  return <div className="absolute inset-0 animate-pulse bg-surface-low" aria-hidden />;
+  // `z-10` keeps it ON TOP of the (transparent) canvas while the model loads and
+  // frames, so the built-in zoom-extents excursion is never seen — the model is
+  // revealed (via the fade below) only once it's already framed.
+  return <div className="absolute inset-0 z-10 animate-pulse bg-surface-low" aria-hidden />;
 }
 
 function ShowcaseFallback(): JSX.Element {
@@ -103,12 +106,21 @@ export function SnagShowcaseSection(): JSX.Element {
             <ShowcaseSkeleton />
           ) : (
             <>
+              {/* Fade the canvas in only once SnagViewer signals it's framed
+                  (onLoaded fires after showcase.zoomIn lands), so the model
+                  appears already sized — no load-time pop/zoom. */}
+              <div
+                className={`h-full w-full transition-opacity duration-700 ${
+                  loaded ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <SnagViewer
+                  reducedMotion={reducedMotion}
+                  onError={() => setFailed(true)}
+                  onLoaded={() => setLoaded(true)}
+                />
+              </div>
               {!loaded && <ShowcaseSkeleton />}
-              <SnagViewer
-                reducedMotion={reducedMotion}
-                onError={() => setFailed(true)}
-                onLoaded={() => setLoaded(true)}
-              />
             </>
           )}
         </div>

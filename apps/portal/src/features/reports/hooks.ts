@@ -22,7 +22,9 @@ import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import { reportKey, reportsListKey } from './queryKeys';
 
-/** List of generated reports for a project, newest first. */
+/** List of generated reports for a project, newest first. While any report in
+ * the list is non-terminal (queued/running), polls every 2s so the status
+ * badges in the list flip to ready/failed without reopening the preview. */
 export function useReports(
   projectId: string,
   reportType?: ReportType,
@@ -31,6 +33,14 @@ export function useReports(
     queryKey: reportsListKey(projectId, reportType),
     queryFn: (accessToken) => listReports(accessToken, projectId, reportType),
     enabled: projectId.length > 0,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data === undefined) return false;
+      const active = data.items.some(
+        (r) => r.status === 'queued' || r.status === 'running',
+      );
+      return active ? 2000 : false;
+    },
   });
 }
 

@@ -994,20 +994,13 @@
       "settings": "Instellingen"
     },
     "tabs": {
-      "overzicht": {
-        "label": "Overzicht",
-        "eyebrow": "Projectwerkruimte",
-        "subtitle": "{count, plural, =0 {Nog geen modellen} =1 {1 model} other {# modellen}}",
-        "deadlinesHeading": "Deadlines",
-        "emptyTitle": "Nog geen deadlines",
-        "emptyDescription": "Deadlines verschijnen automatisch zodra het project een geplande startdatum en opleverdatum heeft."
-      },
-      "dossier": {
-        "label": "Dossier",
+      "readiness": {
+        "label": "Gereedheid",
         "eyebrow": "Dossiergereedheid",
         "subtitle": "Wat je nog nodig hebt voor de gereedmelding",
-        "progressLabel": "{filled} van {total} verplichte items compleet",
-        "optionalLabel": "{filled} van {total} optionele items aangeleverd",
+        "progress": "{pct}% compleet · {filled} van {total} verplichte items"
+      },
+      "dossier": {
         "optionalBadge": "Optioneel",
         "statusProvided": "{count, plural, =1 {1 document} other {# documenten}} aangeleverd",
         "statusMissing": "Ontbreekt",
@@ -1426,6 +1419,7 @@
       },
       "deadlines": {
         "label": "Deadlines",
+        "heading": "Deadlines",
         "emptyTitle": "Nog geen deadlines",
         "emptyDescription": "Deadlines verschijnen automatisch zodra de benodigde datumvelden zijn ingevuld.",
         "dueDate": "Vervaldatum: {date}",
@@ -1941,6 +1935,20 @@
         "ready": "Gereed",
         "failed": "Mislukt"
       }
+    },
+    "tab": {
+      "searchPlaceholder": "Zoek rapporten…",
+      "generateMenu": "Meer rapporttypen",
+      "generateNewVersion": "Genereer nieuwe versie",
+      "versionHistory": "Versiegeschiedenis · {count} versies",
+      "noVersions": "Nog geen versies",
+      "emptyTitle": "Nog geen rapporten gegenereerd",
+      "emptyDescription": "Genereer een indieningsklare PDF om te beginnen.",
+      "noResults": "Geen rapporten komen overeen met je filters",
+      "justNow": "zojuist",
+      "minutesAgo": "{count}m geleden",
+      "hoursAgo": "{count}u geleden",
+      "daysAgo": "{count}d geleden"
     },
     "types": {
       "compliance_report": {
@@ -3115,7 +3123,57 @@
     "attachmentCompleted": "Toegevoegd: {filename}",
     "attachmentRejected": "Afgewezen: {filename}",
     "attachmentUpdated": "Bijgewerkt: {filename}",
-    "attachmentDeleted": "Verwijderd: {filename}"
+    "attachmentDeleted": "Verwijderd: {filename}",
+    "reportSigned": "Rapport ondertekend",
+    "certificateCompleted": "Certificaat toegevoegd: {filename}",
+    "certificateRejected": "Certificaat afgewezen: {filename}",
+    "certificateVersionAdded": "Nieuwe versie toegevoegd: {filename}",
+    "certificateLinked": "Certificaat uit bibliotheek gekoppeld: {filename}",
+    "certificateUpdated": "Certificaat bijgewerkt: {filename}",
+    "certificateDeleted": "Certificaat verwijderd: {filename}",
+    "findingCreated": "Bevinding aangemaakt: {title}",
+    "findingUpdated": "Bevinding bijgewerkt: {title}",
+    "findingPromoted": "Bevinding geopend: {title}",
+    "findingResolved": "Bevinding opgelost: {title}",
+    "findingVerified": "Bevinding geverifieerd: {title}",
+    "findingDeleted": "Bevinding verwijderd: {title}",
+    "riskCreated": "Risico aangemaakt",
+    "riskUpdated": "Risico bijgewerkt",
+    "riskDeleted": "Risico verwijderd",
+    "bcfTopicCreated": "BCF-issue aangemaakt: {title}",
+    "bcfTopicUpdated": "BCF-issue bijgewerkt: {title}",
+    "bcfTopicDeleted": "BCF-issue verwijderd: {title}",
+    "bcfImported": "{count} BCF-issues geïmporteerd",
+    "bcfCommentCreated": "Reactie op BCF-issue geplaatst",
+    "planGenerated": "Borgingsplan gegenereerd",
+    "planUpdated": "Borgingsplan bijgewerkt",
+    "planPublished": "Borgingsplan gepubliceerd",
+    "planSuperseded": "Borgingsplan vervangen",
+    "planReset": "Borgingsplan teruggezet",
+    "momentCreated": "Borgingsmoment toegevoegd",
+    "momentUpdated": "Borgingsmoment bijgewerkt",
+    "momentDeleted": "Borgingsmoment verwijderd",
+    "momentsReordered": "Borgingsmomenten herordend",
+    "checklistItemCreated": "Checklistitem toegevoegd",
+    "checklistItemUpdated": "Checklistitem bijgewerkt",
+    "checklistItemDeleted": "Checklistitem verwijderd",
+    "checklistItemsReordered": "Checklistitems herordend",
+    "inspectionStarted": "Inspectie gestart",
+    "inspectionResultSubmitted": "Inspectieresultaat ingediend",
+    "inspectionCompleted": "Inspectie afgerond",
+    "captureLinkCreated": "Opnamelink aangemaakt",
+    "captureLinkRevoked": "Opnamelink ingetrokken",
+    "deadlineFiled": "Deadline ingediend",
+    "projectCreated": "Project aangemaakt: {name}",
+    "projectUpdated": "Projectinstellingen bijgewerkt",
+    "projectDeleted": "Project verwijderd: {name}",
+    "projectArchived": "Project gearchiveerd",
+    "projectReactivated": "Project gereactiveerd",
+    "projectThumbnailUpdated": "Projectafbeelding bijgewerkt",
+    "projectMemberAdded": "Projectlid toegevoegd",
+    "projectMemberRemoved": "Projectlid verwijderd",
+    "projectMemberRoleChanged": "Rol van lid gewijzigd",
+    "projectInvitationCreated": "Iemand uitgenodigd voor het project"
   },
   "viewer": {
     "loadingOverlay": {

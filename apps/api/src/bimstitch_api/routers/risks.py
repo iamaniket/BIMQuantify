@@ -87,6 +87,7 @@ async def create_risk(
         resource_id=risk.id,
         after=_risk_snapshot(risk),
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return risk
@@ -172,6 +173,7 @@ async def update_risk(
         before=before,
         after=_risk_snapshot(risk),
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return risk
@@ -213,6 +215,7 @@ async def delete_risk(
         resource_id=risk_id,
         before=before,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

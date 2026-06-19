@@ -34,7 +34,7 @@ import { getViewerBundle } from '@/lib/api/projectFiles';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 import { useAuth } from '@/providers/AuthProvider';
 
-import { ModelActionPill } from './ModelActionPill';
+import { RowActionPill } from '@/components/shared/resource/RowActionPill';
 
 function formatRelativeTime(iso: string, t: ReturnType<typeof useTranslations>): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -225,7 +225,7 @@ export function ModelsTableRow({
   // Hover quick-actions (collapsed) and the expanded action bar share this set.
   const viewPill = (size: 'sm' | 'md'): JSX.Element | null => (
     isViewable && latestFile !== undefined ? (
-      <ModelActionPill
+      <RowActionPill
         size={size}
         href={viewHref}
         icon={<Eye className="h-3.5 w-3.5" />}
@@ -238,7 +238,7 @@ export function ModelsTableRow({
     ) : null
   );
   const uploadPill = (size: 'sm' | 'md'): JSX.Element => (
-    <ModelActionPill
+    <RowActionPill
       size={size}
       icon={<Upload className="h-3.5 w-3.5" />}
       label={t('upload')}
@@ -248,7 +248,7 @@ export function ModelsTableRow({
   );
   const checkBblPill = (size: 'sm' | 'md'): JSX.Element | null => (
     canCheckBbl && latestFile !== undefined ? (
-      <ModelActionPill
+      <RowActionPill
         size={size}
         icon={<ShieldCheck className="h-3.5 w-3.5" />}
         label={t('checkBbl')}
@@ -287,9 +287,9 @@ export function ModelsTableRow({
           }
           actions={
             <>
-              {viewPill('sm')}
-              {uploadPill('sm')}
-              {checkBblPill('sm')}
+              {viewPill('md')}
+              {uploadPill('md')}
+              {checkBblPill('md')}
             </>
           }
         >
@@ -342,7 +342,7 @@ export function ModelsTableRow({
               {checkBblPill('md')}
             </div>
             {canRemove && (
-              <ModelActionPill
+              <RowActionPill
                 tone="danger"
                 icon={<Trash2 className="h-3.5 w-3.5" />}
                 label={t('remove')}

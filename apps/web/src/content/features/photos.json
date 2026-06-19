@@ -1,0 +1,134 @@
+{
+  "key": "photos",
+  "hasAssets": false,
+  "images": [
+    "/features/photos/01.png",
+    "/features/photos/02.png",
+    "/features/photos/03.png"
+  ],
+  "related": [
+    "findings",
+    "snagging",
+    "mobile"
+  ],
+  "en": {
+    "title": "Photo evidence & annotation",
+    "card": "Capture photos on site, mark them up with arrows and notes, and attach them to findings as proof of resolution.",
+    "tagline": "Proof of resolution, marked up on the spot",
+    "intro": "Capture photos on site, mark them up with arrows and notes while the detail is fresh, and attach them to the finding they belong to as evidence. Because each photo is tied to its finding from the moment it's taken, you build up clear before-and-after proof of resolution — exactly the kind of defensible record the Wkb dossier and the bevoegd gezag expect.",
+    "problemTitle": "A photo without context proves little",
+    "problem": "Site photos scattered across personal phones, chat apps, and email lose their meaning within days. No one remembers which finding a shot belongs to, what it was meant to show, or whether it was the before or the after. When it's time to prove a finding was resolved, you're left scrolling a camera roll trying to reconstruct context that was obvious on the day — and a photo you can't place proves nothing, no matter how clearly it shows the work.",
+    "solutionTitle": "Annotated photos tied to the finding",
+    "solution": [
+      "Shoot photos directly against a finding, so they're always in context.",
+      "Mark up arrows and notes to point out exactly what changed.",
+      "Before-and-after evidence stays attached as the proof of resolution.",
+      "Every photo carries its finding link, so it never becomes an orphaned image."
+    ],
+    "highlights": [
+      {
+        "title": "Capture in context",
+        "body": "Photos are shot against a specific finding, so each image knows what it documents from the moment it's taken."
+      },
+      {
+        "title": "On-the-spot annotation",
+        "body": "Add arrows and notes to point out exactly what changed, while the detail is still fresh in your mind."
+      },
+      {
+        "title": "Before-and-after proof",
+        "body": "Paired evidence stays attached to the finding as a clear, defensible record that the work was actually done."
+      },
+      {
+        "title": "No orphaned images",
+        "body": "Every photo keeps its finding link, so it never drifts into a camera roll where its meaning is lost."
+      }
+    ],
+    "faq": [
+      {
+        "q": "How are photos linked to findings?",
+        "a": "Photos are captured directly against a finding, so each image is tied to the issue it documents from the moment it's taken — no manual sorting or matching afterwards."
+      },
+      {
+        "q": "Can I annotate photos?",
+        "a": "Yes. You can mark up arrows and notes on a photo to point out exactly what changed, capturing the context while it's still fresh rather than relying on memory later."
+      },
+      {
+        "q": "Do photos work as proof of resolution?",
+        "a": "They do. Before-and-after photos stay attached to their finding as a clear, defensible record that the work was completed — the kind of evidence the Wkb dossier and the bevoegd gezag expect."
+      }
+    ],
+    "imageCaptions": [
+      "Photo capture against a finding",
+      "Arrow-and-note annotation",
+      "Before / after evidence pair"
+    ],
+    "keywords": [
+      "site photo evidence",
+      "photo annotation construction",
+      "before after photos",
+      "proof of resolution",
+      "finding evidence photos",
+      "snag photos"
+    ]
+  },
+  "nl": {
+    "title": "Fotobewijs & annotatie",
+    "card": "Maak foto's op de bouwplaats, markeer ze met pijlen en notities en koppel ze als oplosbewijs aan bevindingen.",
+    "tagline": "Oplosbewijs, ter plekke gemarkeerd",
+    "intro": "Maak foto's op de bouwplaats, markeer ze met pijlen en notities terwijl het detail nog vers is en koppel ze als bewijs aan de bevinding waar ze bij horen. Doordat elke foto vanaf het moment van maken aan zijn bevinding vastzit, bouwt u helder voor-en-na-bewijs van de oplossing op — precies het soort verdedigbare vastlegging dat het Wkb-dossier en het bevoegd gezag verwachten.",
+    "problemTitle": "Een foto zonder context bewijst weinig",
+    "problem": "Bouwplaatsfoto's verspreid over privételefoons, chat-apps en e-mail verliezen binnen enkele dagen hun betekenis. Niemand weet nog bij welke bevinding een opname hoort, wat hij moest aantonen, of het de voor- of de na-foto was. Als u moet aantonen dat een bevinding is opgelost, blijft u door een fotorol scrollen om context te reconstrueren die op de dag zelf vanzelfsprekend was — en een foto die u niet kunt plaatsen bewijst niets, hoe duidelijk hij het werk ook laat zien.",
+    "solutionTitle": "Geannoteerde foto's gekoppeld aan de bevinding",
+    "solution": [
+      "Maak foto's direct bij een bevinding, zodat ze altijd in context staan.",
+      "Markeer pijlen en notities om precies aan te wijzen wat er veranderd is.",
+      "Voor-en-na-bewijs blijft gekoppeld als het bewijs van oplossing.",
+      "Elke foto draagt zijn bevindingslink mee, zodat hij nooit een verweesd beeld wordt."
+    ],
+    "highlights": [
+      {
+        "title": "Vastleggen in context",
+        "body": "Foto's worden bij een specifieke bevinding gemaakt, zodat elk beeld vanaf het moment van maken weet wat het documenteert."
+      },
+      {
+        "title": "Annotatie ter plekke",
+        "body": "Voeg pijlen en notities toe om precies aan te wijzen wat er veranderd is, terwijl het detail nog vers in uw geheugen zit."
+      },
+      {
+        "title": "Voor-en-na-bewijs",
+        "body": "Gepaard bewijs blijft aan de bevinding gekoppeld als een duidelijke, verdedigbare vastlegging dat het werk echt is gedaan."
+      },
+      {
+        "title": "Geen verweesde beelden",
+        "body": "Elke foto behoudt zijn bevindingslink, zodat hij nooit in een fotorol belandt waar zijn betekenis verloren gaat."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Hoe worden foto's aan bevindingen gekoppeld?",
+        "a": "Foto's worden direct bij een bevinding gemaakt, zodat elk beeld vanaf het moment van maken aan het punt vastzit dat het documenteert — geen handmatig sorteren of matchen achteraf."
+      },
+      {
+        "q": "Kan ik foto's annoteren?",
+        "a": "Ja. U kunt pijlen en notities op een foto markeren om precies aan te wijzen wat er veranderd is, en zo de context vastleggen terwijl die nog vers is in plaats van later op uw geheugen te vertrouwen."
+      },
+      {
+        "q": "Werken foto's als bewijs van oplossing?",
+        "a": "Ja. Voor-en-na-foto's blijven aan hun bevinding gekoppeld als een duidelijke, verdedigbare vastlegging dat het werk is voltooid — het soort bewijs dat het Wkb-dossier en het bevoegd gezag verwachten."
+      }
+    ],
+    "imageCaptions": [
+      "Foto maken bij een bevinding",
+      "Annotatie met pijl en notitie",
+      "Voor / na-bewijspaar"
+    ],
+    "keywords": [
+      "fotobewijs bouwplaats",
+      "foto-annotatie bouw",
+      "voor-en-na-foto's",
+      "bewijs van oplossing",
+      "bewijsfoto's bevinding",
+      "snagfoto's"
+    ]
+  }
+}

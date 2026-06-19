@@ -1,0 +1,134 @@
+{
+  "key": "reports",
+  "hasAssets": false,
+  "images": [
+    "/features/reports/01.png",
+    "/features/reports/02.png",
+    "/features/reports/03.png"
+  ],
+  "related": [
+    "dossier",
+    "findings",
+    "certificates"
+  ],
+  "en": {
+    "title": "Compliance reports",
+    "card": "Generate audit-ready PDF reports: borgingsplan, verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package.",
+    "tagline": "Audit-ready reports in a click",
+    "intro": "Generate the borgingsplan, the verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package as polished, consistent PDFs — straight from your live project data. Instead of stitching documents together by hand, you produce each Wkb deliverable in a click and regenerate it whenever the project moves on, so the report you file always matches reality.",
+    "problemTitle": "Assembling reports by hand burns days",
+    "problem": "The Wkb deliverables — the borgingsplan at the start, the verklaring kwaliteitsborger at the end, and the full dossier in between — are exactly the documents that eat days when assembled by hand. Worse, a hand-built report is a snapshot: the moment a finding is closed or a certificate is renewed, the document drifts out of sync with the project, and you either rebuild it or file something you know is already stale. Formatting inconsistencies between projects only make the package harder to trust.",
+    "solutionTitle": "Reports generated from live project data",
+    "solution": [
+      "Produce each required document straight from your current project data — no copy-paste assembly.",
+      "Reports are formatted to a consistent, audit-ready PDF template across every project.",
+      "Regenerate at any time, so the package always reflects the latest state of the project.",
+      "The borgingsplan, verklaring kwaliteitsborger, and full dossier are all produced from one source of truth."
+    ],
+    "highlights": [
+      {
+        "title": "Generated from live data",
+        "body": "Each report is built from the project's current state, so it reflects today's findings, certificates, and progress — not last month's."
+      },
+      {
+        "title": "Consistent PDF template",
+        "body": "Every document follows one audit-ready layout, so reports look the same and read the same across every project."
+      },
+      {
+        "title": "All Wkb deliverables",
+        "body": "Produce the borgingsplan, the verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package from one place."
+      },
+      {
+        "title": "Regenerate any time",
+        "body": "Re-run a report in a click whenever the project changes, so what you file is never out of date."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Which reports can BimDossier generate?",
+        "a": "It generates the core Wkb deliverables — the borgingsplan, the verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package — each as a polished PDF built from your project data."
+      },
+      {
+        "q": "Are reports built from live project data?",
+        "a": "Yes. Every report is generated from the project's current state, so findings, certificates, and progress are reflected as they are now. Regenerate at any time and the document updates to match."
+      },
+      {
+        "q": "Will reports look consistent across projects?",
+        "a": "Each document is formatted to the same audit-ready PDF template, so every report reads and looks consistent across all your projects — making the package easier for the bevoegd gezag to trust."
+      }
+    ],
+    "imageCaptions": [
+      "Generated borgingsplan PDF",
+      "Verklaring kwaliteitsborger",
+      "Complete dossier package"
+    ],
+    "keywords": [
+      "Wkb compliance report",
+      "borgingsplan",
+      "verklaring kwaliteitsborger",
+      "dossier bevoegd gezag",
+      "construction compliance PDF",
+      "audit-ready report"
+    ]
+  },
+  "nl": {
+    "title": "Compliancerapporten",
+    "card": "Genereer audit-ready PDF-rapporten: borgingsplan, verklaring kwaliteitsborger en het volledige dossier bevoegd gezag-pakket.",
+    "tagline": "Audit-ready rapporten met één klik",
+    "intro": "Genereer het borgingsplan, de verklaring kwaliteitsborger en het volledige dossier bevoegd gezag-pakket als verzorgde, consistente PDF's — rechtstreeks uit uw live projectdata. In plaats van documenten handmatig aan elkaar te knopen, maakt u elke Wkb-deliverable met één klik en genereert u opnieuw zodra het project verandert, zodat het rapport dat u indient altijd klopt met de werkelijkheid.",
+    "problemTitle": "Rapporten handmatig samenstellen kost dagen",
+    "problem": "De Wkb-deliverables — het borgingsplan aan het begin, de verklaring kwaliteitsborger aan het eind en het volledige dossier daartussenin — zijn precies de documenten die dagen kosten als u ze handmatig samenstelt. Erger nog, een handgemaakt rapport is een momentopname: zodra een bevinding wordt afgesloten of een certificaat wordt vernieuwd, raakt het document uit de pas met het project, en u bouwt het opnieuw of dient iets in waarvan u weet dat het al verouderd is. Opmaakverschillen tussen projecten maken het pakket alleen maar minder betrouwbaar.",
+    "solutionTitle": "Rapporten gegenereerd uit live projectdata",
+    "solution": [
+      "Maak elk vereist document direct vanuit uw actuele projectdata — geen knip-en-plakwerk.",
+      "Rapporten zijn opgemaakt volgens een consistent, audit-ready PDF-sjabloon voor elk project.",
+      "Genereer op elk moment opnieuw, zodat het pakket altijd de laatste stand van het project weerspiegelt.",
+      "Het borgingsplan, de verklaring kwaliteitsborger en het volledige dossier komen allemaal uit één bron van waarheid."
+    ],
+    "highlights": [
+      {
+        "title": "Gegenereerd uit live data",
+        "body": "Elk rapport wordt gebouwd uit de actuele stand van het project, zodat het de bevindingen, certificaten en voortgang van vandaag weergeeft — niet die van vorige maand."
+      },
+      {
+        "title": "Consistent PDF-sjabloon",
+        "body": "Elk document volgt één audit-ready opmaak, zodat rapporten er hetzelfde uitzien en hetzelfde lezen over alle projecten."
+      },
+      {
+        "title": "Alle Wkb-deliverables",
+        "body": "Maak het borgingsplan, de verklaring kwaliteitsborger en het volledige dossier bevoegd gezag-pakket vanuit één plek."
+      },
+      {
+        "title": "Altijd opnieuw genereren",
+        "body": "Genereer een rapport opnieuw met één klik zodra het project verandert, zodat wat u indient nooit verouderd is."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Welke rapporten kan BimDossier genereren?",
+        "a": "Het genereert de kern-Wkb-deliverables — het borgingsplan, de verklaring kwaliteitsborger en het volledige dossier bevoegd gezag-pakket — elk als een verzorgde PDF die uit uw projectdata wordt gebouwd."
+      },
+      {
+        "q": "Worden rapporten uit live projectdata gebouwd?",
+        "a": "Ja. Elk rapport wordt gegenereerd uit de actuele stand van het project, zodat bevindingen, certificaten en voortgang worden weergegeven zoals ze nu zijn. Genereer op elk moment opnieuw en het document wordt bijgewerkt."
+      },
+      {
+        "q": "Zien rapporten er consistent uit over projecten?",
+        "a": "Elk document is opgemaakt volgens hetzelfde audit-ready PDF-sjabloon, zodat elk rapport er consistent uitziet en leest over al uw projecten — wat het pakket betrouwbaarder maakt voor het bevoegd gezag."
+      }
+    ],
+    "imageCaptions": [
+      "Gegenereerd borgingsplan (PDF)",
+      "Verklaring kwaliteitsborger",
+      "Volledig dossierpakket"
+    ],
+    "keywords": [
+      "Wkb compliancerapport",
+      "borgingsplan",
+      "verklaring kwaliteitsborger",
+      "dossier bevoegd gezag",
+      "bouwcompliance PDF",
+      "audit-ready rapport"
+    ]
+  }
+}

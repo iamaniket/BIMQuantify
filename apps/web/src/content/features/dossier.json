@@ -1,0 +1,134 @@
+{
+  "key": "dossier",
+  "hasAssets": false,
+  "images": [
+    "/features/dossier/01.png",
+    "/features/dossier/02.png",
+    "/features/dossier/03.png"
+  ],
+  "related": [
+    "findings",
+    "reports",
+    "certificates"
+  ],
+  "en": {
+    "title": "Dossier completeness",
+    "card": "Template-based checklist per building type showing exactly which documents are still needed for your gereedmelding. Progress bar updates as you upload.",
+    "tagline": "Know exactly what your dossier still needs",
+    "intro": "A live, template-driven checklist shows exactly which documents your gereedmelding dossier still needs — tailored to the building type and gevolgklasse — with a progress bar that climbs as you upload. Instead of guessing whether the dossier bevoegd gezag is complete, you always see what is in, what is missing, and how close you are to filing.",
+    "problemTitle": "A dossier is only as good as what's missing",
+    "problem": "The gereedmelding dossier has to be complete before handover, but what 'complete' means changes with the building type and consequence class, and the requirements are scattered across guidance, templates, and habit. In practice teams assemble the dossier in shared folders and spreadsheets, where it's easy to assume a document is there when it isn't. The gap then surfaces at the worst possible moment — on the filing deadline, with the bevoegd gezag waiting and no time left to chase a missing certificate or report.",
+    "solutionTitle": "A template-driven checklist that tracks itself",
+    "solution": [
+      "Each building type loads a checklist of exactly the documents the bevoegd gezag expects — no guesswork about what belongs in the dossier.",
+      "Upload a document and the matching item ticks off automatically, so the progress bar reflects real completeness, not wishful thinking.",
+      "Outstanding items stay visible throughout the project, so nothing surfaces as a surprise at filing time.",
+      "A single completeness percentage tells you at a glance whether the dossier is ready to submit."
+    ],
+    "highlights": [
+      {
+        "title": "Building-type templates",
+        "body": "Every project loads the checklist that matches its building type and gevolgklasse, so the dossier scope is right from day one."
+      },
+      {
+        "title": "Auto-ticking checklist",
+        "body": "Uploading a document checks off the item it satisfies, keeping completeness tied to what is actually in the dossier."
+      },
+      {
+        "title": "Live progress bar",
+        "body": "A single percentage and a clear list of gaps show how close the gereedmelding dossier is to ready."
+      },
+      {
+        "title": "No last-minute gaps",
+        "body": "Outstanding documents stay visible from the start, so missing items are found with time to fix them, not on the deadline."
+      }
+    ],
+    "faq": [
+      {
+        "q": "How does BimDossier know which documents I need?",
+        "a": "Each building type and gevolgklasse loads a template checklist of the documents the bevoegd gezag expects for a gereedmelding, so the required scope is set automatically when you create the project."
+      },
+      {
+        "q": "Does the checklist update automatically when I upload?",
+        "a": "Yes. When you upload a document, the matching checklist item ticks off and the completeness progress bar updates, so the percentage always reflects what is genuinely in the dossier."
+      },
+      {
+        "q": "Can I see what is still missing before the deadline?",
+        "a": "Outstanding items stay visible throughout the project and a single completeness percentage shows readiness at a glance, so gaps surface early — with time to resolve them before filing."
+      }
+    ],
+    "imageCaptions": [
+      "Completeness checklist per building type",
+      "Progress bar updating on upload",
+      "Outstanding documents highlighted"
+    ],
+    "keywords": [
+      "gereedmelding dossier",
+      "Wkb dossier completeness",
+      "dossier bevoegd gezag",
+      "building type checklist",
+      "construction document checklist",
+      "dossier readiness"
+    ]
+  },
+  "nl": {
+    "title": "Dossiercompleetheid",
+    "card": "Sjabloon-gebaseerde checklist per gebouwtype die precies laat zien welke documenten nog nodig zijn voor uw gereedmelding. Voortgangsbalk wordt bijgewerkt bij elke upload.",
+    "tagline": "Weet precies wat uw dossier nog nodig heeft",
+    "intro": "Een live, sjabloon-gestuurde checklist laat precies zien welke documenten uw gereedmeldingsdossier nog nodig heeft — afgestemd op het gebouwtype en de gevolgklasse — met een voortgangsbalk die stijgt naarmate u uploadt. In plaats van te gokken of het dossier bevoegd gezag compleet is, ziet u altijd wat erin zit, wat ontbreekt en hoe dicht u bij indienen bent.",
+    "problemTitle": "Een dossier is zo goed als wat er ontbreekt",
+    "problem": "Het gereedmeldingsdossier moet compleet zijn vóór oplevering, maar wat 'compleet' betekent verschilt per gebouwtype en gevolgklasse, en de eisen liggen verspreid over richtlijnen, sjablonen en gewoonte. In de praktijk stellen teams het dossier samen in gedeelde mappen en spreadsheets, waar het makkelijk is om aan te nemen dat een document er is terwijl dat niet zo is. Het gat komt dan op het slechtst denkbare moment aan het licht — op de indieningsdeadline, met het bevoegd gezag dat wacht en geen tijd meer om een ontbrekend certificaat of rapport te achterhalen.",
+    "solutionTitle": "Een sjabloon-gestuurde checklist die zichzelf bijhoudt",
+    "solution": [
+      "Elk gebouwtype laadt een checklist met precies de documenten die het bevoegd gezag verwacht — geen giswerk over wat in het dossier hoort.",
+      "Upload een document en het bijbehorende item wordt automatisch afgevinkt, zodat de voortgangsbalk de echte compleetheid weerspiegelt en geen wensdenken.",
+      "Openstaande items blijven het hele project zichtbaar, zodat niets als verrassing opduikt bij de indiening.",
+      "Eén compleetheidspercentage laat in één oogopslag zien of het dossier klaar is om in te dienen."
+    ],
+    "highlights": [
+      {
+        "title": "Sjablonen per gebouwtype",
+        "body": "Elk project laadt de checklist die past bij het gebouwtype en de gevolgklasse, zodat de dossieromvang vanaf dag één klopt."
+      },
+      {
+        "title": "Zelf-afvinkende checklist",
+        "body": "Een geüpload document vinkt het item af waaraan het voldoet, zodat compleetheid gekoppeld blijft aan wat echt in het dossier zit."
+      },
+      {
+        "title": "Live voortgangsbalk",
+        "body": "Eén percentage en een duidelijke lijst met gaten laten zien hoe dicht het gereedmeldingsdossier bij klaar is."
+      },
+      {
+        "title": "Geen gaten op het laatst",
+        "body": "Openstaande documenten blijven vanaf het begin zichtbaar, zodat ontbrekende items op tijd worden gevonden en niet op de deadline."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Hoe weet BimDossier welke documenten ik nodig heb?",
+        "a": "Elk gebouwtype en elke gevolgklasse laadt een sjabloonchecklist met de documenten die het bevoegd gezag voor een gereedmelding verwacht, zodat de vereiste omvang automatisch vaststaat zodra u het project aanmaakt."
+      },
+      {
+        "q": "Wordt de checklist automatisch bijgewerkt als ik upload?",
+        "a": "Ja. Wanneer u een document uploadt, wordt het bijbehorende checklistitem afgevinkt en de voortgangsbalk bijgewerkt, zodat het percentage altijd weergeeft wat echt in het dossier zit."
+      },
+      {
+        "q": "Kan ik vóór de deadline zien wat er nog ontbreekt?",
+        "a": "Openstaande items blijven het hele project zichtbaar en één compleetheidspercentage toont de gereedheid in één oogopslag, zodat gaten vroeg opvallen — met tijd om ze vóór de indiening op te lossen."
+      }
+    ],
+    "imageCaptions": [
+      "Compleetheidschecklist per gebouwtype",
+      "Voortgangsbalk bij uploaden",
+      "Openstaande documenten uitgelicht"
+    ],
+    "keywords": [
+      "gereedmeldingsdossier",
+      "Wkb dossiercompleetheid",
+      "dossier bevoegd gezag",
+      "checklist per gebouwtype",
+      "bouwdocumenten checklist",
+      "dossier gereedheid"
+    ]
+  }
+}

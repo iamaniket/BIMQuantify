@@ -540,6 +540,7 @@ async def generate_borgingsplan(
         resource_id=plan.id,
         after={"version_number": plan.version_number, "status": plan.status.value, "moment_count": moment_count},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return plan
@@ -588,6 +589,7 @@ async def update_borgingsplan(
         before=before,
         after=after,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return await _reload_plan_with_children(session, plan.id)
@@ -636,6 +638,7 @@ async def publish_borgingsplan(
         before={"status": BorgingsplanStatus.draft.value},
         after={"status": BorgingsplanStatus.published.value, "version_number": plan.version_number},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return await _reload_plan_with_children(session, plan.id)
@@ -687,6 +690,7 @@ async def new_borgingsplan_version(
         before={"version_number": superseded_version, "status": BorgingsplanStatus.published.value},
         after={"status": BorgingsplanStatus.superseded.value},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     next_version = await _next_version_number(session, project.id)
@@ -703,6 +707,7 @@ async def new_borgingsplan_version(
         resource_id=new_plan.id,
         after={"version_number": new_plan.version_number, "status": new_plan.status.value, "cloned_from_version": superseded_version},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return new_plan
@@ -758,6 +763,7 @@ async def reset_borgingsplan_to_template(
         resource_id=new_plan.id,
         after={"version_number": version_number, "moment_count": len(new_plan.moments)},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return new_plan
@@ -838,6 +844,7 @@ async def create_moment(
             "sequence_in_phase": moment.sequence_in_phase,
         },
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return await _reload_moment_with_items(session, moment.id)
@@ -889,6 +896,7 @@ async def update_moment(
         before=before,
         after=after,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return await _reload_moment_with_items(session, moment.id)
@@ -934,6 +942,7 @@ async def delete_moment(
         resource_id=moment_id,
         before=before,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -1003,6 +1012,7 @@ async def reorder_moments(
         resource_id=plan_id,
         after={"phase": payload.phase.value, "order": [str(mid) for mid in payload.moment_ids]},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
 
@@ -1089,6 +1099,7 @@ async def create_checklist_item(
             "sequence": item.sequence,
         },
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return item
@@ -1141,6 +1152,7 @@ async def update_checklist_item(
         before=before,
         after=after,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return item
@@ -1187,6 +1199,7 @@ async def delete_checklist_item(
         resource_id=item_id,
         before=before,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -1249,6 +1262,7 @@ async def reorder_checklist_items(
         resource_id=moment_id,
         after={"order": [str(iid) for iid in payload.item_ids]},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
 

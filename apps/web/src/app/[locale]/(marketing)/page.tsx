@@ -8,7 +8,6 @@ import { FeaturesSection } from '@/components/sections/FeaturesSection';
 import { FromTheBlogSection } from '@/components/sections/FromTheBlogSection';
 import { HeroSection } from '@/components/sections/HeroSection';
 import { HowItWorksSection } from '@/components/sections/HowItWorksSection';
-import { MetricsSection } from '@/components/sections/MetricsSection';
 import { RoadmapSection } from '@/components/sections/RoadmapSection';
 import { SnagShowcaseSection } from '@/components/sections/SnagShowcaseSection';
 
@@ -30,7 +29,6 @@ export default async function WelcomePage({ params }: Props): Promise<JSX.Elemen
       <RoadmapSection />
       <SnagShowcaseSection />
       <HowItWorksSection />
-      <MetricsSection />
       <FromTheBlogSection locale={locale as Locale} />
       <CtaSection />
     </main>

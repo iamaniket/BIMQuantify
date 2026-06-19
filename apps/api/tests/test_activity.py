@@ -7,10 +7,18 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import _auth, _create_model, _create_project
+from tests.conftest import (
+    _auth,
+    _create_attachment_row,
+    _create_model,
+    _create_project,
+    _new_hash,
+)
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
+
+    from tests.conftest import FakeStorage
 
 
 def _activity_url(project_id: str, **params: object) -> str:
@@ -204,3 +212,103 @@ async def test_activity_sort_invalid_key(
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_activity_includes_finding_lifecycle(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """Creating and resolving a finding both surface in the project feed,
+    scoped to the project and categorized as a change. Guards the two bugs
+    that hid findings: the missing project_id and the action whitelist."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    created = await client.post(
+        f"/projects/{project['id']}/findings",
+        json={
+            "title": "Brandwerende doorvoer ontbreekt",
+            "description": "Doorvoer in brandscheiding niet afgewerkt.",
+        },
+        headers=_auth(token),
+    )
+    assert created.status_code == 201, created.text
+    finding_id = created.json()["id"]
+
+    promote = await client.patch(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        json={
+            "status": "open",
+            "deadline_date": "2026-08-01",
+            "assignee_user_id": org_user["id"],
+        },
+        headers=_auth(token),
+    )
+    assert promote.status_code == 200, promote.text
+
+    evidence = [await _create_attachment_row(project["id"])]
+    resolved = await client.patch(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        json={
+            "status": "resolved",
+            "resolution_note": "Afgekit en visueel gecontroleerd.",
+            "resolution_evidence_ids": evidence,
+        },
+        headers=_auth(token),
+    )
+    assert resolved.status_code == 200, resolved.text
+
+    resp = await client.get(_activity_url(project["id"]), headers=_auth(token))
+    assert resp.status_code == 200
+    by_action = {e["action"]: e for e in resp.json()}
+    assert "finding.created" in by_action
+    assert "finding.resolved" in by_action
+    for action in ("finding.created", "finding.resolved"):
+        entry = by_action[action]
+        assert entry["resource_type"] == "finding"
+        assert entry["resource_id"] == finding_id
+        assert entry["category"] == "change"
+
+
+@pytest.mark.asyncio
+async def test_activity_includes_certificate_upload(
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    org_user: dict[str, str],
+) -> None:
+    """A completed certificate upload appears (category upload); the noisy
+    pending '.initiated' row is excluded from the feed."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    init = await client.post(
+        f"/projects/{project['id']}/certificates/initiate",
+        json={
+            "filename": "ce-cert.pdf",
+            "size_bytes": 4096,
+            "content_type": "application/pdf",
+            "content_sha256": _new_hash(),
+            "certificate_type": "product",
+        },
+        headers=_auth(token),
+    )
+    assert init.status_code == 201, init.text
+    cert = init.json()
+
+    fake.objects[cert["storage_key"]] = b"x" * 4096
+    complete = await client.post(
+        f"/projects/{project['id']}/certificates/{cert['certificate_id']}/complete",
+        headers=_auth(token),
+    )
+    assert complete.status_code == 200, complete.text
+
+    resp = await client.get(_activity_url(project["id"]), headers=_auth(token))
+    assert resp.status_code == 200
+    entries = resp.json()
+    actions = {e["action"] for e in entries}
+    assert "certificate.completed" in actions
+    assert "certificate.initiated" not in actions
+    completed = next(e for e in entries if e["action"] == "certificate.completed")
+    assert completed["category"] == "upload"
+    assert completed["resource_type"] == "certificates"

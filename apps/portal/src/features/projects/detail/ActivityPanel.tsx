@@ -59,24 +59,78 @@ const ACTION_I18N_KEY: Record<string, string> = {
   'project_file.extraction_failed': 'extractionFailed',
   'compliance.checked': 'complianceChecked',
   'report.created': 'reportCreated',
+  'report.signed': 'reportSigned',
   'attachment.completed': 'attachmentCompleted',
   'attachment.rejected': 'attachmentRejected',
   'attachment.updated': 'attachmentUpdated',
   'attachment.deleted': 'attachmentDeleted',
+  'certificate.completed': 'certificateCompleted',
+  'certificate.rejected': 'certificateRejected',
+  'certificate.version_added': 'certificateVersionAdded',
+  'certificate.linked_from_library': 'certificateLinked',
+  'certificate.updated': 'certificateUpdated',
+  'certificate.deleted': 'certificateDeleted',
+  'finding.created': 'findingCreated',
+  'finding.updated': 'findingUpdated',
+  'finding.promoted': 'findingPromoted',
+  'finding.resolved': 'findingResolved',
+  'finding.verified': 'findingVerified',
+  'finding.deleted': 'findingDeleted',
+  'risk.created': 'riskCreated',
+  'risk.updated': 'riskUpdated',
+  'risk.deleted': 'riskDeleted',
+  'bcf_topic.created': 'bcfTopicCreated',
+  'bcf_topic.updated': 'bcfTopicUpdated',
+  'bcf_topic.deleted': 'bcfTopicDeleted',
+  'bcf.imported': 'bcfImported',
+  'bcf_comment.created': 'bcfCommentCreated',
+  'borgingsplan.generated': 'planGenerated',
+  'borgingsplan.updated': 'planUpdated',
+  'borgingsplan.published': 'planPublished',
+  'borgingsplan.superseded': 'planSuperseded',
+  'borgingsplan.reset': 'planReset',
+  'borgingsmoment.created': 'momentCreated',
+  'borgingsmoment.updated': 'momentUpdated',
+  'borgingsmoment.deleted': 'momentDeleted',
+  'borgingsmoment.reordered': 'momentsReordered',
+  'checklist_item.created': 'checklistItemCreated',
+  'checklist_item.updated': 'checklistItemUpdated',
+  'checklist_item.deleted': 'checklistItemDeleted',
+  'checklist_item.reordered': 'checklistItemsReordered',
+  'inspection.started': 'inspectionStarted',
+  'inspection_result.submitted': 'inspectionResultSubmitted',
+  'inspection.completed': 'inspectionCompleted',
+  'capture_link.created': 'captureLinkCreated',
+  'capture_link.revoked': 'captureLinkRevoked',
+  'deadline.filed': 'deadlineFiled',
+  'project.created': 'projectCreated',
+  'project.updated': 'projectUpdated',
+  'project.deleted': 'projectDeleted',
+  'project.archived': 'projectArchived',
+  'project.reactivated': 'projectReactivated',
+  'project.thumbnail_updated': 'projectThumbnailUpdated',
+  'project_member.added': 'projectMemberAdded',
+  'project_member.removed': 'projectMemberRemoved',
+  'project_member.role_changed': 'projectMemberRoleChanged',
+  'project_invitation.created': 'projectInvitationCreated',
 };
 
 function descriptionParams(entry: ProjectActivityEntry): Record<string, string> {
-  const after = entry.after ?? {};
+  // Updates carry `after`; deletes carry only `before`. Merge so labels that
+  // interpolate a name/title/filename still render for delete events (after
+  // wins on conflict).
+  const snap = { ...(entry.before ?? {}), ...(entry.after ?? {}) };
   return {
-    name: String(after['name'] ?? ''),
-    filename: String(after['original_filename'] ?? ''),
-    framework: String(after['framework'] ?? ''),
-    title: String(after['title'] ?? ''),
+    name: String(snap['name'] ?? ''),
+    filename: String(snap['original_filename'] ?? ''),
+    framework: String(snap['framework'] ?? ''),
+    title: String(snap['title'] ?? ''),
+    count: String(snap['imported_count'] ?? ''),
   };
 }
 
 function detailText(entry: ProjectActivityEntry): string {
-  const after = entry.after ?? {};
+  const after = { ...(entry.before ?? {}), ...(entry.after ?? {}) };
   const parts: string[] = [];
 
   if (after['file_type'] !== undefined) parts.push(String(after['file_type']).toUpperCase());

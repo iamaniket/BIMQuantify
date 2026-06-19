@@ -4,9 +4,11 @@ import { Download, Eye, MapPin, Trash2 } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Button, MetaGrid } from '@bimstitch/ui';
+import { MetaGrid } from '@bimstitch/ui';
 import type { Locale } from '@bimstitch/i18n';
-import { DetailCardBody, DetailCardFooter } from '@bimstitch/ui';
+import { DetailCardBody } from '@bimstitch/ui';
+
+import { RowActionPill } from '@/components/shared/resource/RowActionPill';
 
 import {
   extractExifMeta,
@@ -80,53 +82,58 @@ export function ExpandedBody({
     : null;
 
   return (
-    <>
-      <DetailCardBody>
-        {attachment.description !== null && (
-          <div className="whitespace-pre-wrap border-b border-dashed border-border py-2.5 text-body3 leading-snug text-foreground-secondary">
-            {attachment.description}
-          </div>
-        )}
-
-        <MetaGrid entries={entries} />
-
-        {mapUrl !== null && (
-          <div className="mb-2 overflow-hidden rounded border border-border">
-            <div className="flex items-center gap-1.5 bg-surface px-2 py-1">
-              <MapPin className="h-3 w-3 text-foreground-tertiary" />
-              <span className="font-sans text-[10.5px] uppercase tracking-wide text-foreground-tertiary">
-                {t('expandedLocation')}
-              </span>
-            </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={mapUrl}
-              alt={t('expandedLocation')}
-              className="block h-[100px] w-full object-cover"
-              loading="lazy"
-            />
-          </div>
-        )}
-      </DetailCardBody>
-
-      <DetailCardFooter className="justify-between">
-        <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="md" onClick={onView}>
-            <Eye className="h-3.5 w-3.5" />
-            {t('expandedView')}
-          </Button>
-          <Button variant="ghost" size="md" onClick={onDownload}>
-            <Download className="h-3.5 w-3.5" />
-            {t('expandedDownload')}
-          </Button>
+    <DetailCardBody>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <RowActionPill
+            size="md"
+            icon={<Eye className="h-3.5 w-3.5" />}
+            label={t('expandedView')}
+            onClick={onView}
+          />
+          <RowActionPill
+            size="md"
+            icon={<Download className="h-3.5 w-3.5" />}
+            label={t('expandedDownload')}
+            onClick={onDownload}
+          />
         </div>
         {canDelete && (
-          <Button variant="ghost" size="md" onClick={onDelete} className="text-error hover:text-error">
-            <Trash2 className="h-3.5 w-3.5" />
-            {t('expandedRemove')}
-          </Button>
+          <RowActionPill
+            tone="danger"
+            size="md"
+            icon={<Trash2 className="h-3.5 w-3.5" />}
+            label={t('expandedRemove')}
+            onClick={onDelete}
+          />
         )}
-      </DetailCardFooter>
-    </>
+      </div>
+
+      {attachment.description !== null && (
+        <div className="whitespace-pre-wrap border-b border-dashed border-border py-2.5 text-body3 leading-snug text-foreground-secondary">
+          {attachment.description}
+        </div>
+      )}
+
+      <MetaGrid entries={entries} />
+
+      {mapUrl !== null && (
+        <div className="mb-2 overflow-hidden rounded border border-border">
+          <div className="flex items-center gap-1.5 bg-surface px-2 py-1">
+            <MapPin className="h-3 w-3 text-foreground-tertiary" />
+            <span className="font-sans text-[10.5px] uppercase tracking-wide text-foreground-tertiary">
+              {t('expandedLocation')}
+            </span>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={mapUrl}
+            alt={t('expandedLocation')}
+            className="block h-[100px] w-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      )}
+    </DetailCardBody>
   );
 }

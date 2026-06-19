@@ -1,16 +1,14 @@
 'use client';
 
-import { CalendarDays, Download, Eye, FileAudio, FileText, FileVideo, Image, Layers } from '@bimstitch/ui/icons';
-import { useLocale, useTranslations } from 'next-intl';
+import { Download, Eye, FileAudio, FileText, FileVideo, Image } from '@bimstitch/ui/icons';
+import { useTranslations } from 'next-intl';
 import { useCallback, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { DetailCard, DetailCardRow } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { CountChip, DetailCard, DetailCardRow } from '@bimstitch/ui';
 
-import { RowAsideStat } from '@/components/shared/resource';
+import { RowActionPill } from '@/components/shared/resource/RowActionPill';
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
-import { formatDateTime } from '@/lib/formatting/dates';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 import { ExpandedBody } from './ExpandedBody';
@@ -49,7 +47,7 @@ export function AttachmentRow({
   onDelete,
 }: Props): JSX.Element {
   const t = useTranslations('viewerAttachments');
-  const locale = useLocale() as Locale;
+  const tVer = useTranslations('common.versions');
   const { tokens } = useAuth();
 
   const handleDownload = useCallback(async () => {
@@ -74,33 +72,28 @@ export function AttachmentRow({
         media={
           <CategoryIcon className="h-7 w-7 shrink-0 text-foreground-secondary" aria-hidden />
         }
-        aside={
-          <>
-            {attachment.version_number > 1 && (
-              <RowAsideStat icon={Layers} value={`v${String(attachment.version_number)}`} title={t('expandedVersion')} />
-            )}
-            <RowAsideStat icon={CalendarDays} value={formatDateTime(attachment.created_at, locale)} title={t('expandedAdded')} />
-          </>
-        }
+        info={attachment.version_number > 1 ? (
+          <CountChip className="rounded-full bg-surface-high px-2 py-0.5 font-semibold">
+            {tVer('badge', { n: attachment.version_number })}
+          </CountChip>
+        ) : undefined}
         actions={
           <>
-            <button
-              type="button"
+            <RowActionPill
+              size="md"
+              icon={<Eye className="h-3.5 w-3.5" />}
+              label={t('expandedView')}
               title={t('expandedView')}
-              onClick={(e) => { e.stopPropagation(); onView(); }}
-              className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
-            >
-              <Eye className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
+              onClick={onView}
+            />
+            <RowActionPill
+              size="md"
+              icon={<Download className="h-3.5 w-3.5" />}
+              label={t('expandedDownload')}
               title={t('expandedDownload')}
               // eslint-disable-next-line no-void
-              onClick={(e) => { e.stopPropagation(); void handleDownload(); }}
-              className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
-            >
-              <Download className="h-4 w-4" />
-            </button>
+              onClick={() => { void handleDownload(); }}
+            />
           </>
         }
       >

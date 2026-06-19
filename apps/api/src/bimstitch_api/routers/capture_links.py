@@ -96,6 +96,7 @@ async def create_capture_link(
         resource_id=link.id,
         after=_capture_link_snapshot(link),
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
 
@@ -183,6 +184,7 @@ async def revoke_capture_link(
         before=before,
         after=_capture_link_snapshot(link),
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

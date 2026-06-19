@@ -109,6 +109,7 @@ async def start_inspection(
             resource_id=moment.id,
             after={"moment_id": str(moment.id), "inspector_user_id": str(user.id)},
             actor_user_id=user.id,
+            project_id=project_id,
             request=request,
         )
 
@@ -233,6 +234,7 @@ async def submit_result(
             "has_references": bool(result.reference_attachment_ids),
         },
         actor_user_id=user.id,
+        project_id=project_id,
         request=request,
     )
     return result
@@ -326,7 +328,7 @@ async def complete_inspection(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> Borgingsmoment:
-    moment, _project_id = await _require_moment_writable(session, moment_id, user)
+    moment, project_id = await _require_moment_writable(session, moment_id, user)
 
     if moment.status is not BorgingsmomentStatus.in_progress:
         raise HTTPException(
@@ -381,6 +383,7 @@ async def complete_inspection(
             "fail_count": int(has_failures),
         },
         actor_user_id=user.id,
+        project_id=project_id,
         request=request,
     )
 
