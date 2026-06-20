@@ -8,7 +8,7 @@ export type SnagAnchor = { id: string; position: Vec3; modelId: string };
  * projects on screen (CSS px relative to the canvas/container top-left). `null`
  * when there are no anchors yet.
  */
-export type SnagSpotlight = { id: string; x: number; y: number; onScreen: boolean };
+export type SnagSpotlight = { id: string; x: number; y: number };
 
 export type SnagSpotlightOptions = {
   /** Reported on every camera move with the frontmost snag + its screen position. */
@@ -100,7 +100,6 @@ export function snagSpotlightPlugin(options: SnagSpotlightOptions): Plugin {
       id: chosen.id,
       x: (ndc.x * 0.5 + 0.5) * rect.width,
       y: (-ndc.y * 0.5 + 0.5) * rect.height,
-      onScreen: ndc.z >= -1 && ndc.z <= 1,
     });
   };
 

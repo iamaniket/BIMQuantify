@@ -89,7 +89,7 @@ export function CaptureLinksList({ projectId }: Props): JSX.Element {
                 {revoked && (
                   <>
                     <span className="opacity-40">&middot;</span>
-                    <span className="text-destructive">{t('captureLinkRevokedBadge')}</span>
+                    <span className="text-error">{t('captureLinkRevokedBadge')}</span>
                   </>
                 )}
                 {expired && !revoked && (

@@ -298,8 +298,8 @@
     "certificates": "Certificaten",
     "templates": "Sjablonen",
     "calendar": "Agenda",
-    "bblLibrary": "BBL-bibliotheek",
-    "wkbLibrary": "Wet kwaliteitsborging voor het bouwen (Wkb)-bibliotheek",
+    "bblLibrary": "Bbl-bibliotheek",
+    "wkbLibrary": "Wkb-bibliotheek",
     "tenant": {
       "label": "Tenant",
       "seats": "seats"
@@ -449,7 +449,7 @@
       "new": "Nieuw project"
     },
     "page": {
-      "searchPlaceholder": "Zoek projecten...",
+      "searchPlaceholder": "Zoek projecten…",
       "searchAriaLabel": "Zoek projecten",
       "expiryWarning": "{count, plural, one {# certificaat} other {# certificaten}} verlopen of verloopt binnen 60 dagen"
     },
@@ -478,7 +478,7 @@
       "construction": "Uitvoering",
       "handover": "Oplevering",
       "complete": "Gereed",
-      "on_hold": "On hold"
+      "on_hold": "In de wacht"
     },
     "phases": {
       "design": "Ontwerp",
@@ -595,7 +595,7 @@
           "buildingType": "Type bouwwerk",
           "consequenceClass": "Gevolgklasse",
           "plannedStartDate": "Geplande startdatum",
-          "instrument": "Toegelaten Wet kwaliteitsborging voor het bouwen (Wkb)-instrument",
+          "instrument": "Toegelaten Wkb-instrument",
           "instrumentPlaceholder": "Nog niet bekend — wordt ingevuld door KB",
           "instrumentHint": "Optioneel. Je kwaliteitsborger selecteert het instrument wanneer hij deelneemt."
         },
@@ -838,7 +838,7 @@
       "expiredSub": "voorbij geldigheid"
     },
     "list": {
-      "searchPlaceholder": "Zoek certificaten...",
+      "searchPlaceholder": "Zoek certificaten…",
       "filterAll": "Alle typen",
       "uploadButton": "Certificaat uploaden",
       "emptyTitle": "Nog geen certificaten",
@@ -875,7 +875,7 @@
     "linkDialog": {
       "title": "Koppelen uit bibliotheek",
       "description": "Selecteer een certificaat uit de organisatiebibliotheek om naar dit project te kopiëren.",
-      "searchPlaceholder": "Zoek in bibliotheek...",
+      "searchPlaceholder": "Zoek in bibliotheek…",
       "linkButton": "Koppelen aan project",
       "cancel": "Annuleren",
       "success": "Certificaat gekoppeld aan project",
@@ -1037,7 +1037,7 @@
   },
   "projectDetail": {
     "hero": {
-      "wkbScore": "Wet kwaliteitsborging voor het bouwen (Wkb)-score",
+      "wkbScore": "Wkb-score",
       "issuesOpen": "Open issues",
       "holdback": "Inhouding",
       "delivery": "Oplevering",
@@ -1136,7 +1136,7 @@
         "loadAllMenu": "Laadopties",
         "selectedCount": "{count, plural, =1 {1 model geselecteerd} other {# modellen geselecteerd}}",
         "clearSelection": "Wissen",
-        "bulkCheckBbl": "BBL controleren",
+        "bulkCheckBbl": "Bbl controleren",
         "bulkDownload": "Downloaden",
         "bulkRemove": "Verwijderen",
         "bulkRemoveTitle": "{count, plural, =1 {Model verwijderen?} other {# modellen verwijderen?}}",
@@ -1178,7 +1178,7 @@
           "selectAria": "{name} selecteren om in de viewer te laden",
           "noViewableFile": "Nog geen weergeefbaar bestand",
           "uploadFile": "Bestand uploaden",
-          "checkBbl": "BBL controleren",
+          "checkBbl": "Bbl controleren",
           "view": "Bekijken",
           "upload": "Uploaden",
           "remove": "Verwijderen",
@@ -1204,8 +1204,8 @@
           "view": "Bekijken",
           "viewAria": "{filename} bekijken",
           "viewAria3d": "{filename} in 3D bekijken",
-          "checkBbl": "BBL controleren",
-          "checkBblAria": "BBL-conformiteit controleren voor {filename}",
+          "checkBbl": "Bbl controleren",
+          "checkBblAria": "Bbl-conformiteit controleren voor {filename}",
           "downloadAria": "{filename} downloaden",
           "fileActions": "Bestandsacties",
           "delete": "Verwijderen",
@@ -1349,7 +1349,7 @@
         "description": "Upload tekeningen, certificaten en overige bestanden zodat je ze kunt koppelen aan inspecties en bevindingen.",
         "ctaLabel": "Bijlage uploaden",
         "uploadButton": "Uploaden",
-        "uploading": "Bezig met uploaden...",
+        "uploading": "Bezig met uploaden…",
         "uploadSuccess": "{name} geüpload",
         "downloadError": "Downloadlink kon niet worden aangemaakt",
         "deleteSuccess": "{name} verwijderd",
@@ -1400,7 +1400,7 @@
         "viewerLinkedModel": "Gekoppeld model",
         "viewerVersion": "Versie",
         "viewerNoPreview": "Voorbeeld niet beschikbaar voor dit bestandstype. Download om te bekijken.",
-        "viewerLoadingPreview": "Voorbeeld laden...",
+        "viewerLoadingPreview": "Voorbeeld laden…",
         "viewerGroupFile": "Bestand",
         "viewerGroupMedia": "Media",
         "viewerGroupDocument": "Document",
@@ -1416,7 +1416,7 @@
         "eyebrow": "Bewijs van conformiteit",
         "subtitle": "{count, plural, =0 {Geen certificaten} one {# certificaat} other {# certificaten}}",
         "title": "Nog geen certificaten",
-        "description": "Upload productcertificaten, testrapporten, inspectiecertificaten en garanties om je Wet kwaliteitsborging voor het bouwen (Wkb)-conformiteitsdossier op te bouwen.",
+        "description": "Upload productcertificaten, testrapporten, inspectiecertificaten en garanties om je Wkb-conformiteitsdossier op te bouwen.",
         "ctaLabel": "Certificaat uploaden",
         "searchPlaceholder": "Certificaten zoeken…",
         "noResults": "Geen certificaten komen overeen met uw zoekopdracht.",
@@ -1703,7 +1703,7 @@
       "severity": "ERNST",
       "assignee": "TOEGEWEZEN",
       "deadline": "DEADLINE",
-      "bblRef": "BBL REF",
+      "bblRef": "Bbl ref",
       "photos": "FOTO'S",
       "linkedElement": "GEKOPPELD",
       "created": "TOEGEVOEGD",
@@ -1931,7 +1931,7 @@
         "articles": "Artikelen",
         "models": "Modellen"
       },
-      "donutCenterLabel": "Wet kwaliteitsborging voor het bouwen (Wkb)-conform",
+      "donutCenterLabel": "Wkb-conform",
       "failingSuffix": "{count} gefaald",
       "trendEyebrow": "30-dagentrend"
     },
@@ -2223,16 +2223,16 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Wet kwaliteitsborging voor het bouwen (Wkb)-conform BIM-platform"
+      "tagline": "Wkb-conform BIM-platform"
     },
     "hero": {
-      "readyBadge": "Klaar voor Wet kwaliteitsborging voor het bouwen (Wkb) {version}",
-      "headlineTemplate": "Breng je <em>modellen</em>, <em>bevindingen</em> en <em>dossier</em> samen in één Wet kwaliteitsborging voor het bouwen (Wkb)-dossier.",
+      "readyBadge": "Klaar voor Wkb {version}",
+      "headlineTemplate": "Breng je <em>modellen</em>, <em>bevindingen</em> en <em>dossier</em> samen in één Wkb-dossier.",
       "subhead": "Gefedereerde IFC-review, geautomatiseerde Bouwbesluit-controles en een opleveringsklaar consumentendossier — voor bouwers onder de Wet kwaliteitsborging voor het bouwen (Wkb)."
     },
     "kpi": {
       "wkb": "Wkb",
-      "bbl": "BBL",
+      "bbl": "Bbl",
       "ifc": "IFC",
       "status": "Status",
       "statusNormal": "Normaal",
@@ -2286,7 +2286,6 @@
     }
   },
   "legal": {
-    "lastUpdated": "Laatst bijgewerkt: {date}",
     "navPrivacy": "Privacyverklaring",
     "navTerms": "Algemene voorwaarden",
     "navDpa": "Verwerkersovereenkomst (DPA)",
@@ -3004,7 +3003,7 @@
           "dropMdxHintNl": "sleep een .nl.mdx-bestand om in te vullen"
         },
         "placeholders": {
-          "title": "WKB Compliance Explained",
+          "title": "Wkb Compliance Explained",
           "titleNl": "Wkb uitgelegd",
           "description": "Een korte samenvatting voor de kaart en zoekresultaten.",
           "tags": "wkb, compliance, regelgeving",
@@ -3363,7 +3362,7 @@
       "annotationLabel": "Annotatie",
       "addAnnotation": "Annotatie toevoegen",
       "annotationAdded": "Annotatie toegevoegd",
-      "annotationDrawing": "Teken op de PDF...",
+      "annotationDrawing": "Teken op de PDF…",
       "annotationRemove": "Verwijderen",
       "shapes": {
         "rectangle": "Rechthoek",

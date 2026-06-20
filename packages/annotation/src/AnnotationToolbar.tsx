@@ -209,7 +209,7 @@ export function AnnotationToolbar({
         aria-label={labels.delete}
         disabled={!canDelete}
         onClick={onDelete}
-        className={cx(ICON_BTN_BASE, 'text-foreground-secondary hover:bg-background-hover hover:text-destructive')}
+        className={cx(ICON_BTN_BASE, 'text-foreground-secondary hover:bg-background-hover hover:text-error')}
       >
         <TrashIcon className="h-4 w-4" />
       </button>

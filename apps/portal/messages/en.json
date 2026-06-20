@@ -298,8 +298,8 @@
     "certificates": "Certificates",
     "templates": "Templates",
     "calendar": "Calendar",
-    "bblLibrary": "BBL library",
-    "wkbLibrary": "Quality Assurance in Construction Act  (Wkb) library",
+    "bblLibrary": "Bbl library",
+    "wkbLibrary": "Wkb library",
     "tenant": {
       "label": "Tenant",
       "seats": "seats"
@@ -449,7 +449,7 @@
       "new": "New project"
     },
     "page": {
-      "searchPlaceholder": "Search projects...",
+      "searchPlaceholder": "Search projects…",
       "searchAriaLabel": "Search projects",
       "expiryWarning": "{count, plural, one {# certificate} other {# certificates}} expired or expiring within 60 days"
     },
@@ -595,7 +595,7 @@
           "buildingType": "Building type",
           "consequenceClass": "Consequence class",
           "plannedStartDate": "Planned start date",
-          "instrument": "Approved Quality Assurance in Construction Act  (Wkb) instrument",
+          "instrument": "Approved Wkb instrument",
           "instrumentPlaceholder": "Not yet known — KB will select",
           "instrumentHint": "Optional. Your quality inspector will select the instrument when they join."
         },
@@ -838,7 +838,7 @@
       "expiredSub": "past validity"
     },
     "list": {
-      "searchPlaceholder": "Search certificates...",
+      "searchPlaceholder": "Search certificates…",
       "filterAll": "All types",
       "uploadButton": "Upload certificate",
       "emptyTitle": "No certificates yet",
@@ -875,7 +875,7 @@
     "linkDialog": {
       "title": "Link from library",
       "description": "Select a certificate from the organisation library to copy into this project.",
-      "searchPlaceholder": "Search library...",
+      "searchPlaceholder": "Search library…",
       "linkButton": "Link to project",
       "cancel": "Cancel",
       "success": "Certificate linked to project",
@@ -1037,7 +1037,7 @@
   },
   "projectDetail": {
     "hero": {
-      "wkbScore": "Quality Assurance in Construction Act  (Wkb) score",
+      "wkbScore": "Wkb score",
       "issuesOpen": "Issues open",
       "holdback": "Holdback",
       "delivery": "Delivery",
@@ -1136,7 +1136,7 @@
         "loadAllMenu": "Load options",
         "selectedCount": "{count, plural, =1 {1 model selected} other {# models selected}}",
         "clearSelection": "Clear",
-        "bulkCheckBbl": "Check BBL",
+        "bulkCheckBbl": "Check Bbl",
         "bulkDownload": "Download",
         "bulkRemove": "Remove",
         "bulkRemoveTitle": "{count, plural, =1 {Remove model?} other {Remove # models?}}",
@@ -1178,7 +1178,7 @@
           "selectAria": "Select {name} to load in the viewer",
           "noViewableFile": "No viewable file yet",
           "uploadFile": "Upload file",
-          "checkBbl": "Check BBL",
+          "checkBbl": "Check Bbl",
           "view": "View",
           "upload": "Upload",
           "remove": "Remove",
@@ -1204,8 +1204,8 @@
           "view": "View",
           "viewAria": "View {filename}",
           "viewAria3d": "View {filename} in 3D",
-          "checkBbl": "Check BBL",
-          "checkBblAria": "Check BBL compliance for {filename}",
+          "checkBbl": "Check Bbl",
+          "checkBblAria": "Check Bbl compliance for {filename}",
           "downloadAria": "Download {filename}",
           "fileActions": "File actions",
           "delete": "Delete",
@@ -1349,7 +1349,7 @@
         "description": "Upload drawings, certificates and other supporting files to reference them from inspections and findings.",
         "ctaLabel": "Upload attachment",
         "uploadButton": "Upload",
-        "uploading": "Uploading...",
+        "uploading": "Uploading…",
         "uploadSuccess": "{name} uploaded",
         "downloadError": "Could not generate download link",
         "deleteSuccess": "{name} deleted",
@@ -1400,7 +1400,7 @@
         "viewerLinkedModel": "Linked model",
         "viewerVersion": "Version",
         "viewerNoPreview": "Preview not available for this file type. Download to view.",
-        "viewerLoadingPreview": "Loading preview...",
+        "viewerLoadingPreview": "Loading preview…",
         "viewerGroupFile": "File",
         "viewerGroupMedia": "Media",
         "viewerGroupDocument": "Document",
@@ -1416,7 +1416,7 @@
         "eyebrow": "Proof of conformity",
         "subtitle": "{count, plural, =0 {No certificates} one {# certificate} other {# certificates}}",
         "title": "No certificates yet",
-        "description": "Upload product certificates, test reports, inspection certificates and warranties to build your Quality Assurance in Construction Act  (Wkb) conformity dossier.",
+        "description": "Upload product certificates, test reports, inspection certificates and warranties to build your Wkb conformity dossier.",
         "ctaLabel": "Upload certificate",
         "searchPlaceholder": "Search certificates…",
         "noResults": "No certificates match your search.",
@@ -1703,7 +1703,7 @@
       "severity": "SEVERITY",
       "assignee": "ASSIGNEE",
       "deadline": "DEADLINE",
-      "bblRef": "BBL REF",
+      "bblRef": "Bbl ref",
       "photos": "PHOTOS",
       "linkedElement": "LINKED",
       "created": "ADDED",
@@ -1931,7 +1931,7 @@
         "articles": "Articles",
         "models": "Models"
       },
-      "donutCenterLabel": "Quality Assurance in Construction Act  (Wkb) compliant",
+      "donutCenterLabel": "Wkb compliant",
       "failingSuffix": "{count} failing",
       "trendEyebrow": "30-day trend"
     },
@@ -2223,16 +2223,16 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Quality Assurance in Construction Act  (Wkb)-compliant BIM platform"
+      "tagline": "Wkb-compliant BIM platform"
     },
     "hero": {
-      "readyBadge": "Quality Assurance in Construction Act  (Wkb) {version} ready",
-      "headlineTemplate": "Stitch your <em>models</em>, <em>issues</em> and <em>dossier</em> into one Quality Assurance in Construction Act  (Wkb) record.",
-      "subhead": "Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act  (Wkb)."
+      "readyBadge": "Wkb {version} ready",
+      "headlineTemplate": "Bring your <em>models</em>, <em>issues</em> and <em>dossier</em> together into one Wkb record.",
+      "subhead": "Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act (Wkb)."
     },
     "kpi": {
       "wkb": "Wkb",
-      "bbl": "BBL",
+      "bbl": "Bbl",
       "ifc": "IFC",
       "status": "Status",
       "statusNormal": "Normal",
@@ -2286,7 +2286,6 @@
     }
   },
   "legal": {
-    "lastUpdated": "Last updated: {date}",
     "navPrivacy": "Privacy policy",
     "navTerms": "Terms of service",
     "navDpa": "Data processing agreement (DPA)",
@@ -3004,7 +3003,7 @@
           "dropMdxHintNl": "drop an .nl.mdx file to autofill"
         },
         "placeholders": {
-          "title": "WKB Compliance Explained",
+          "title": "Wkb Compliance Explained",
           "titleNl": "Wkb uitgelegd",
           "description": "A short summary shown on the card and in search results.",
           "tags": "wkb, compliance, regulations",
@@ -3363,7 +3362,7 @@
       "annotationLabel": "Annotation",
       "addAnnotation": "Add annotation",
       "annotationAdded": "Annotation added",
-      "annotationDrawing": "Draw on the PDF...",
+      "annotationDrawing": "Draw on the PDF…",
       "annotationRemove": "Remove",
       "shapes": {
         "rectangle": "Rectangle",

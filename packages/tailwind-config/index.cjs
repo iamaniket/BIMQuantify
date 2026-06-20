@@ -101,24 +101,17 @@ const preset = {
         display: ['var(--font-display)', 'Fraunces', 'Georgia', '"Times New Roman"', 'serif'],
       },
       borderRadius: {
+        // `xs` (no Tailwind default) and `sm` (4px, overrides Tailwind's 2px)
+        // are the only radii that diverge from the framework — md/lg/xl/2xl
+        // matched Tailwind v3 exactly and were dropped as no-op redeclarations.
         xs: '2px',
         sm: '4px',
-        md: '6px',
-        lg: '8px',
-        xl: '12px',
-        '2xl': '16px',
-      },
-      spacing: {
-        xxs: '2px',
-        xxl: '24px',
-        '4.5': '18px',
       },
       maxWidth: {
-        // Wider page-frame steps above Tailwind's default 7xl (80rem). The
+        // Wider page-frame step above Tailwind's default 7xl (80rem). The
         // marketing page frame uses `max-w-8xl` so the centered content fills
         // more of large monitors (less empty side margin).
         '8xl': '88rem', // 1408px
-        '9xl': '96rem', // 1536px
       },
       fontSize: {
         micro: ['9px', { lineHeight: '11px', letterSpacing: '0' }],
@@ -137,15 +130,22 @@ const preset = {
         h1: ['56px', { lineHeight: '64px', letterSpacing: '-0.01em' }],
       },
       boxShadow: {
-        sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
-        lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
-        xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+        // sm/md/lg/xl are intentionally omitted: they matched Tailwind v3's own
+        // black-rgba defaults exactly, so they're inherited rather than redeclared.
+        // Only the custom control/card elevations are defined here.
+        // Raised solid controls (primary/destructive buttons): subtle drop +
+        // inner top highlight for the "lifted key" look. -hover lifts more,
+        // -active presses the control in.
+        control: '0 1px 2px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        'control-hover': '0 2px 4px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        'control-active': 'inset 0 1px 3px rgba(0, 0, 0, 0.15)',
+        // Kanban card resting / lifted-on-hover.
+        card: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        'card-hover': '0 6px 20px rgba(0, 0, 0, 0.12)',
       },
       transitionDuration: {
         fast: '150ms',
         normal: '200ms',
-        slow: '300ms',
       },
       keyframes: {
         'viewer-fade-in': {

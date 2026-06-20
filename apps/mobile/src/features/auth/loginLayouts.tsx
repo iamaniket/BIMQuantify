@@ -6,7 +6,7 @@
 //
 // Device chrome from the mock (fake status bar, home indicator) is dropped —
 // the real OS supplies those; we pad by safe-area insets instead.
-import { NL_VIEWBOX, type MapMarker } from '@bimstitch/map';
+import { NL_ASPECT_RATIO, type MapMarker } from '@bimstitch/map';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   Keyboard,
@@ -43,7 +43,7 @@ import { LoginForm, type LoginFormProps } from './LoginForm';
 
 const TABLET_SUBTEXT = 'Quality Assurance in Construction Act (Wkb)-compliant BIM platform';
 const TABLET_PILL = 'Quality Assurance in Construction Act (Wkb) 2026.1 Ready';
-const NL_ASPECT = NL_VIEWBOX.height / NL_VIEWBOX.width;
+const NL_ASPECT = 1 / NL_ASPECT_RATIO;
 
 export interface LoginLayoutProps {
   form: LoginFormProps;

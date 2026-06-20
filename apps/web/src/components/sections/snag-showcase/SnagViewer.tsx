@@ -194,10 +194,11 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
               }
               return [] as Vec3[];
             });
-          if (process.env.NODE_ENV !== 'production') {
+          if (process.env.NODE_ENV !== 'production' && points.length < DEMO_SNAGS.length) {
             // eslint-disable-next-line no-console
             console.warn(
-              `[snag-debug] elementPoints returned ${String(points.length)}/${String(DEMO_SNAGS.length)} points`,
+              `[snag-debug] elementPoints returned only ${String(points.length)}/${String(DEMO_SNAGS.length)} points`
+              + ' — some snags fell back to authored coords',
               points,
             );
           }

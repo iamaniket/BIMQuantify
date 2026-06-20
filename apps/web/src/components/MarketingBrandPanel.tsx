@@ -6,7 +6,7 @@ import {
   KpiStrip,
   LegalFooter,
 } from '@bimstitch/brand';
-import { NetherlandsMap, type MapMarker } from '@bimstitch/map';
+import { NetherlandsMap, NL_ASPECT_RATIO_CSS, type MapMarker } from '@bimstitch/map';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -163,13 +163,13 @@ export function MarketingBrandPanel(): JSX.Element {
           <div
             className="flex flex-col"
             style={{
-              width: 'calc(min(70vh, 45vw) * (612.54211 / 723.61865))',
+              width: `calc(min(70vh, 45vw) * (${NL_ASPECT_RATIO_CSS}))`,
             }}
           >
             <div
               style={{
                 height: 'min(70vh, 45vw)',
-                aspectRatio: '612.54211 / 723.61865',
+                aspectRatio: NL_ASPECT_RATIO_CSS,
               }}
             >
               <NetherlandsMap

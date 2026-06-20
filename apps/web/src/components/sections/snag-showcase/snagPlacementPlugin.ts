@@ -30,7 +30,8 @@ const dbg = (...parts: unknown[]): void => {
  * Greedy farthest-point selection: pick `count` points that are maximally spread
  * out so no two snag pins cluster on the same wall. Seeded from a RANDOM element
  * each call, so every reload yields a different — but still well-distributed —
- * set of snags (the marketing brief: "random 5 snags").
+ * placement of the demo snags (the randomness is in WHICH surface points are
+ * chosen, not how many snags show).
  */
 function spread(points: Vec3[], count: number): Vec3[] {
   if (points.length <= count) return points;
@@ -80,11 +81,12 @@ function spread(points: Vec3[], count: number): Vec3[] {
  *
  * This fixes the earlier attempts:
  *  - The centroid version pinned to bounding-box centres → floating off the skin.
- *  - The first raycast version fired a *centred* NDC grid, but `SnagViewer`'s
- *    `lg:[&_canvas]:pl-[500px]` pad shifts the model right, so every probe sampled
- *    the empty left half and missed. Projecting a real centroid through the actual
- *    camera self-corrects for the pad (the projection and `pick`'s NDC→client-px
- *    conversion share the same canvas rect), so rays land on the model.
+ *  - The first raycast version fired a *centred* NDC grid, but `cameraZoomPlugin`'s
+ *    desktop right-shift (a camera `setFocalOffset`, see `panFraction`) slides the
+ *    model into the right ~70%, so every probe sampled the empty left half and
+ *    missed. Projecting a real centroid through the actual camera self-corrects for
+ *    the shift (the projection and `pick`'s NDC→client-px conversion share the same
+ *    canvas rect), so rays land on the model.
  *
  * SnagViewer calls it once in `onReady` after `showcase.zoomIn` frames the model,
  * then pins each demo snag to a returned surface point.
@@ -142,16 +144,22 @@ export function snagPlacementPlugin(): Plugin {
     // fires (the viewer holds the render loop open ~4s post-load), so getBoxes can
     // come back empty at first. Retry until it yields usable boxes (or give up
     // after ~2s) — both the aiming targets and the raycast need geometry present.
+    // Local ids are known from metadata immediately and don't change as geometry
+    // streams in — fetch them once, then retry only getBoxes below.
     let ids: number[] = [];
+    try {
+      ids = await model.getLocalIds();
+    } catch (err) {
+      dbg('getLocalIds threw:', err);
+      ids = [];
+    }
     let boxes: Awaited<ReturnType<typeof model.getBoxes>> = [];
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    for (let attempt = 0; attempt < 8 && ids.length > 0; attempt += 1) {
       try {
-        ids = await model.getLocalIds();
         // eslint-disable-next-line no-await-in-loop
-        boxes = ids.length > 0 ? await model.getBoxes(ids) : [];
+        boxes = await model.getBoxes(ids);
       } catch (err) {
-        dbg('getLocalIds/getBoxes threw:', err);
-        ids = [];
+        dbg('getBoxes threw:', err);
         boxes = [];
       }
       const usable = boxes.filter((b) => b && !b.isEmpty()).length;

@@ -3,7 +3,6 @@ export {
   getLocaleLabel,
   isLocale,
   localeStorageKey,
-  normalizeLocale,
   pickLocalized,
   supportedLocales,
 } from './common.js';

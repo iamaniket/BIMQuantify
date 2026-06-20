@@ -145,7 +145,7 @@ export const DetailCardRow = forwardRef<HTMLDivElement, DetailCardRowProps>(
         </div>
 
         {aside !== undefined && (
-          <div className="hidden items-center gap-3 justify-self-end font-sans text-[11px] text-foreground-tertiary tabular-nums lg:flex">
+          <div className="hidden items-center gap-3 justify-self-end font-sans text-caption text-foreground-tertiary tabular-nums lg:flex">
             {aside}
           </div>
         )}
