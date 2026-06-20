@@ -75,6 +75,7 @@
     "@bimstitch/tsconfig": "workspace:*",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.17.0",
+    "@next/eslint-plugin-next": "^16.2.9",
     "@playwright/test": "^1.49.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
