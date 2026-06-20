@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import type { JSX, ReactNode } from 'react';
 
 import { routing } from '@/i18n/routing';
+import { env } from '@/lib/env';
 import { PostHogProvider } from '@/providers/PostHogProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 
@@ -16,7 +17,7 @@ const fraunces = Fraunces({
   display: 'swap',
 });
 
-export function generateStaticParams(): Array<{ locale: string }> {
+export function generateStaticParams(): { locale: string }[] {
   return routing.locales.map((locale) => ({ locale }));
 }
 
@@ -33,6 +34,7 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'metadata' });
   return {
+    metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
     title: {
       default: t('defaultTitle'),
       template: '%s — BimDossier',
@@ -44,6 +46,7 @@ export async function generateMetadata({
       title: t('defaultTitle'),
       description: t('description'),
       locale: locale === 'nl' ? 'nl_NL' : 'en_US',
+      alternateLocale: locale === 'nl' ? ['en_US'] : ['nl_NL'],
     },
     twitter: {
       card: 'summary_large_image',

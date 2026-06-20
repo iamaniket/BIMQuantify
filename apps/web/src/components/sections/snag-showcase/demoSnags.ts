@@ -4,11 +4,12 @@
  * referenced by i18n key so they stay bilingual.
  *
  * `position` (model LOCAL frame) is now only a FALLBACK. Primary placement is
- * computed at load: `snagPlacementPlugin` raycasts the framed model and SnagViewer
- * pins each snag to a real on-surface point (`showcase.surfacePoints`). These
- * coords are used only if a probe misses the model, so the demo survives a swap of
- * `public/models/demo.frag` without manual re-tuning. The current model's bounding
- * box is roughly x -0.6–52.0, y -0.4–16.8 (up), z -18.8–5.7 (a large building).
+ * computed at load from the model's GEOMETRY: `snagPlacementPlugin` reads every
+ * element's bounding box and SnagViewer pins each snag to a well-spread element
+ * centroid (`showcase.elementPoints`). These coords are used only if that returns
+ * fewer points than snags, so the demo survives a swap of `public/models/demo.frag`
+ * without manual re-tuning. The current model's bounding box is roughly
+ * x -0.6–52.0, y -0.4–16.8 (up), z -18.8–5.7 (a large building).
  */
 
 export type DemoSnagSeverity = 'low' | 'medium' | 'high';
@@ -18,7 +19,7 @@ export type DemoSnagStatus =
   | 'in_progress'
   | 'resolved'
   | 'verified';
-export type DemoSnagKey = 'wall' | 'cover' | 'pipe' | 'airtight';
+export type DemoSnagKey = 'wall' | 'cover' | 'pipe' | 'airtight' | 'insulation';
 
 export type DemoSnag = {
   id: string;
@@ -64,5 +65,13 @@ export const DEMO_SNAGS: readonly DemoSnag[] = [
     status: 'verified',
     bblArticleRef: '4.150',
     position: { x: 8, y: 13, z: 2 },
+  },
+  {
+    id: 'snag-insulation',
+    titleKey: 'insulation',
+    severity: 'low',
+    status: 'open',
+    bblArticleRef: '4.149',
+    position: { x: 25, y: 14, z: -8 },
   },
 ];

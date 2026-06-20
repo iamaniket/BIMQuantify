@@ -7,6 +7,7 @@ import {
   LegalFooter,
 } from '@bimstitch/brand';
 import { NetherlandsMap, type MapMarker } from '@bimstitch/map';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
 import { fetchProjectsMap, fetchSystemStatus } from '@/lib/api';
@@ -26,13 +27,24 @@ const STATUS_DEFAULTS: StatusState = {
   ifc: '4.3',
 };
 
-const LEGAL_LINKS = [
-  { href: '/legal/privacy', label: 'Privacy policy' },
-  { href: '/legal/terms', label: 'Terms of service' },
-  { href: '/legal/dpa', label: 'Data processing agreement (DPA)' },
-] as const;
+/** System-status → `brandPanel.status.*` catalog key. */
+const STATUS_LABEL_KEY: Record<StatusState['status'], string> = {
+  normal: 'status.normal',
+  degraded: 'status.degraded',
+  down: 'status.outage',
+  loading: 'status.unknown',
+};
+
+/** System-status → KPI value color token. */
+const STATUS_COLOR: Record<StatusState['status'], string> = {
+  normal: 'var(--header-status-success-fg)',
+  degraded: 'var(--header-status-warning-dot)',
+  down: 'var(--header-status-error-dot)',
+  loading: 'var(--header-status-info-fg)',
+};
 
 export function MarketingBrandPanel(): JSX.Element {
+  const t = useTranslations('brandPanel');
   const [markers, setMarkers] = useState<readonly MapMarker[]>([]);
   const [sysStatus, setSysStatus] = useState<StatusState>(STATUS_DEFAULTS);
 
@@ -71,10 +83,13 @@ export function MarketingBrandPanel(): JSX.Element {
 
   const totalProjects = markers.reduce((sum, m) => sum + (m.count ?? 1), 0);
 
-  const statusLabel = sysStatus.status === 'normal' ? 'Normal'
-    : sysStatus.status === 'degraded' ? 'Degraded'
-      : sysStatus.status === 'down' ? 'Outage'
-        : '—';
+  const statusLabel = t(STATUS_LABEL_KEY[sysStatus.status]);
+
+  const legalLinks = [
+    { href: '/legal/privacy', label: t('legal.privacy') },
+    { href: '/legal/terms', label: t('legal.terms') },
+    { href: '/legal/dpa', label: t('legal.dpa') },
+  ];
 
   return (
     <>
@@ -84,10 +99,10 @@ export function MarketingBrandPanel(): JSX.Element {
         <BrandMark size={38} tone="on-dark" />
         <div>
           <div className="font-display text-[18px] font-semibold leading-tight tracking-tight text-white">
-            BimDossier
+            {t('brand')}
           </div>
           <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
-            Wet kwaliteitsborging voor het bouwen (Wkb)-compliant BIM platform
+            {t('eyebrow')}
           </div>
         </div>
       </div>
@@ -103,7 +118,7 @@ export function MarketingBrandPanel(): JSX.Element {
             }}
           >
             <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: 'var(--header-status-success-dot)' }} />
-            Wet kwaliteitsborging voor het bouwen (Wkb) {sysStatus.wkb} ready
+            {t('statusReady', { version: sysStatus.wkb })}
           </div>
 
           <h1
@@ -113,19 +128,20 @@ export function MarketingBrandPanel(): JSX.Element {
               textWrap: 'pretty',
             }}
           >
-            Stitch your{' '}
-            <span className="italic" style={{ color: 'var(--header-status-info-dot)' }}>models</span>,{' '}
-            <span className="italic" style={{ color: 'var(--header-status-info-dot)' }}>issues</span> and{' '}
-            <span className="italic" style={{ color: 'var(--header-status-info-dot)' }}>dossier</span>{' '}
-            into one Wet kwaliteitsborging voor het bouwen (Wkb) record.
+            {t.rich('headline', {
+              em: (chunks) => (
+                <span className="italic" style={{ color: 'var(--header-status-info-dot)' }}>
+                  {chunks}
+                </span>
+              ),
+            })}
           </h1>
 
           <p
             className="leading-snug text-white/70"
             style={{ fontSize: 'clamp(12.5px, 1vw, 15px)' }}
           >
-            Federated IFC review, automated Bouwbesluit checks and a delivery-ready
-            consumentendossier&nbsp;&mdash; for builders working under the Wet kwaliteitsborging voor het bouwen (Wkb).
+            {t('body')}
           </p>
 
           <KpiStrip
@@ -135,13 +151,9 @@ export function MarketingBrandPanel(): JSX.Element {
               { label: 'BBL', value: sysStatus.bbl, valueColor: 'var(--header-status-info-dot)' },
               { label: 'IFC', value: sysStatus.ifc, valueColor: 'var(--header-status-info-dot)' },
               {
-                label: 'Status',
+                label: t('kpiStatus'),
                 value: statusLabel,
-                valueColor:
-                  sysStatus.status === 'normal' ? 'var(--header-status-success-fg)'
-                    : sysStatus.status === 'degraded' ? 'var(--header-status-warning-dot)'
-                      : sysStatus.status === 'down' ? 'var(--header-status-error-dot)'
-                        : 'var(--header-status-info-fg)',
+                valueColor: STATUS_COLOR[sysStatus.status],
               },
             ]}
           />
@@ -165,7 +177,7 @@ export function MarketingBrandPanel(): JSX.Element {
                 fill="var(--color-primary-light, #e5ecf6)"
                 markers={markers}
                 animatePulse
-                ariaLabel="Live BimDossier project locations across the Netherlands"
+                ariaLabel={t('mapAria')}
                 className="drop-shadow-[0_24px_48px_rgba(0,0,0,0.30)]"
               />
             </div>
@@ -174,8 +186,10 @@ export function MarketingBrandPanel(): JSX.Element {
               style={{ visibility: markers.length > 0 ? 'visible' : 'hidden' }}
               aria-hidden={markers.length === 0}
             >
-              {formatApproxCount(totalProjects)} projects &middot;{' '}
-              {formatApproxCount(markers.length)} cities live
+              {t('mapCaption', {
+                projects: formatApproxCount(totalProjects),
+                cities: formatApproxCount(markers.length),
+              })}
             </div>
           </div>
         </div>
@@ -184,8 +198,8 @@ export function MarketingBrandPanel(): JSX.Element {
       <div className="relative mt-6">
         <LegalFooter
           tone="on-dark"
-          links={[...LEGAL_LINKS]}
-          tail={`Wet kwaliteitsborging voor het bouwen (Wkb) ${sysStatus.wkb}`}
+          links={legalLinks}
+          tail={`Wkb ${sysStatus.wkb}`}
         />
       </div>
     </>

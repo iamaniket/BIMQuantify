@@ -61,3 +61,28 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* Snag-showcase spotlight card enter animation (transform/opacity only — keyed on
+   the active snag id so it replays on every cycle tick). See SnagViewer.tsx. */
+@keyframes snagPop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@layer utilities {
+  .animate-snag-pop {
+    animation: snagPop 220ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-snag-pop {
+    animation: none;
+  }
+}

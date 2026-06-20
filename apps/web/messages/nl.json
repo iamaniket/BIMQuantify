@@ -14,14 +14,14 @@
   "hero": {
     "badge": "Private pilot · beperkt aantal plekken voor Nederlandse aannemers",
     "headline": "Het Wkb-dossierplatform, gebouwd op uw model.",
-    "subtitle": "BimDossier is het platform speciaal voor de Wkb — de Wet kwaliteitsborging voor het bouwen. Bevindingen staan vastgezet op uw 3D-BIM-model en op uw PDF-plattegronden, deadlines worden automatisch bewaakt van bouwmelding tot gereedmelding, en uw dossier ligt klaar voor het bevoegd gezag — niet verspreid over mappen en spreadsheets.",
-    "trust": "In private pilot met Nederlandse aannemers · EU-gehost · Privacy-first — uw gegevens verlaten de EU-infrastructuur nooit",
+    "subtitle": "Het platform speciaal voor de Wet kwaliteitsborging voor het bouwen. Zet elke bevinding vast op uw 3D-BIM-model — of gewoon op een PDF-plattegrond als u meer niet heeft. Deadlines worden automatisch bewaakt van bouwmelding tot gereedmelding, en uw dossier ligt klaar voor de kwaliteitsborger en het bevoegd gezag — niet verspreid over mappen en spreadsheets.",
+    "trust": "In private pilot met Nederlandse aannemers · EU-gehost, inclusief verwerkersovereenkomst · Werkt naast elke kwaliteitsborger en elk instrument",
     "ctaPrimary": "Vraag early access aan",
     "ctaDemo": "Bekijk het op het model"
   },
   "features": {
     "eyebrow": "Mogelijkheden",
-    "headline": "Het enige Wkb-dossier dat op uw BIM-model draait",
+    "headline": "Uw complete Wkb-dossier, gebouwd op uw model",
     "subtitle": "Van bouwmelding tot gereedmelding draait uw complete Wkb-dossier op één plek: bevindingen in 3D, certificaten bewaakt, deadlines in beeld en op tijd ingediend.",
     "readMore": "Lees meer"
   },
@@ -80,7 +80,7 @@
     }
   },
   "cta": {
-    "headline": "Stop met achter documenten aan jagen. Dien op tijd in.",
+    "headline": "Stop met achter documenten aan jagen. Lever een dossier dat standhoudt.",
     "subtitle": "Draai uw complete Wkb-dossier op het platform dat ervoor gebouwd is. Doe mee aan de private pilot en sta er bij uw volgende gereedmelding helemaal klaar voor.",
     "button": "Vraag early access aan"
   },
@@ -134,11 +134,10 @@
   "snagShowcase": {
     "eyebrow": "Kwaliteitsborging, live",
     "headline": "Vang gebreken voordat ze geld kosten.",
-    "subtitle": "Sleep om het model te draaien. Klik op een speld om de bevinding te zien.",
-    "cta": "Toegang aanvragen",
+    "subtitle": "Sleep om het model te draaien. Bevindingen worden er direct op gemarkeerd zodra inspecteurs ze vinden en oplossen.",
+    "cta": "Vraag early access aan",
     "hintDrag": "Sleep om te draaien",
-    "hintClick": "Klik op een speld om de bevinding te zien",
-    "dismissSnag": "Sluiten",
+    "hintWatch": "Elke speld markeert een echte Wkb-bevinding",
     "learnMoreBlog": "Lees hoe Wkb-borging werkt op de blog",
     "fallbackTitle": "Interactieve 3D-bevindingsinspectie",
     "fallbackBody": "Uw browser kan het live 3D-model niet tonen, maar dit zijn de bevindingen erin:",
@@ -148,11 +147,18 @@
       "medium": "Middel",
       "high": "Hoog"
     },
+    "status": {
+      "open": "Open",
+      "in_progress": "In behandeling",
+      "resolved": "Opgelost",
+      "verified": "Geverifieerd"
+    },
     "snags": {
       "wall": "Woningscheidende wand onvoldoende brandwerend",
       "cover": "Betondekking beneden minimum",
       "pipe": "Doorvoering leiding niet afgewerkt",
-      "airtight": "Luchtdichtheidsmeting uitgesteld"
+      "airtight": "Luchtdichtheidsmeting uitgesteld",
+      "insulation": "Isolatiewaarde dak niet gehaald"
     }
   },
   "fromBlog": {
@@ -160,5 +166,76 @@
     "headline": "Wkb-inzichten & productupdates",
     "readAll": "Alle artikelen lezen",
     "comingSoon": "Binnenkort meer artikelen."
+  },
+  "trust": {
+    "eyebrow": "Waarom u erop kunt vertrouwen",
+    "headline": "Gebouwd voor een pilot — en daar eerlijk over",
+    "subtitle": "Uw dossier is juridisch dragend. Hier staat precies wie er achter het platform zit, waar uw gegevens staan en waar het ophoudt.",
+    "items": {
+      "hosting": {
+        "title": "EU-gehost, inclusief verwerkersovereenkomst",
+        "body": "Uw gegevens draaien op EU-infrastructuur en verlaten die nooit. Met elke pilotpartner sluiten we een verwerkersovereenkomst (DPA)."
+      },
+      "instrument": {
+        "title": "Werkt naast uw kwaliteitsborger",
+        "body": "BimDossier is geen erkend Wkb-instrument en vervangt er ook geen. Het draait uw dossier en werkt naast elke kwaliteitsborger en elk instrument dat u al gebruikt."
+      },
+      "team": {
+        "title": "Een Nederlands team, bereikbaar",
+        "body": "Gebouwd in Nederland door het team achter BimDossier. Tijdens de pilot heeft u direct contact — geen ticketwachtrij."
+      }
+    },
+    "dpaLink": "Lees onze verwerkersovereenkomst"
+  },
+  "faq": {
+    "eyebrow": "Vragen",
+    "headline": "Wat aannemers ons als eerste vragen",
+    "items": [
+      {
+        "q": "Wat betekent \"private pilot\" voor mij?",
+        "a": "We nemen een kleine groep Nederlandse aannemers persoonlijk aan boord. U krijgt vroege toegang, een directe lijn met het team en inspraak in wat we hierna bouwen — in ruil voor praktijkfeedback."
+      },
+      {
+        "q": "Waar staan mijn gegevens, en is er een verwerkersovereenkomst?",
+        "a": "Alles draait op EU-infrastructuur en verlaat die nooit. Met elke pilotpartner sluiten we een verwerkersovereenkomst (DPA) — bekijk onze verwerkersovereenkomst voor de details."
+      },
+      {
+        "q": "Heb ik BIM-modellen nodig, of werken PDF-plattegronden ook?",
+        "a": "Allebei. Zet bevindingen direct op een PDF-plattegrond als u meer niet heeft, of op een gefedereerd IFC-model wanneer dat er wel is — het dossier werkt in beide gevallen hetzelfde."
+      },
+      {
+        "q": "Vervangt dit mijn kwaliteitsborger of instrument?",
+        "a": "Nee. BimDossier is geen erkend Wkb-instrument. Het draait uw dossier en werkt naast elke kwaliteitsborger en elk instrument dat u al gebruikt."
+      },
+      {
+        "q": "Past het bij de tools waarmee ik al werk?",
+        "a": "Bevindingen importeren en exporteren via BCF, zodat issues heen en weer gaan met de tools van uw kwaliteitsborger in plaats van in een silo te belanden."
+      },
+      {
+        "q": "Wat kost de pilot?",
+        "a": "De pilotprijs is afgestemd op uw team en projecten. Vraag toegang aan en we bespreken het — een gesprek beginnen verplicht u tot niets."
+      }
+    ]
+  },
+  "brandPanel": {
+    "brand": "BimDossier",
+    "eyebrow": "Platform voor de Wet kwaliteitsborging voor het bouwen (Wkb)",
+    "statusReady": "Wkb {version} gereed",
+    "headline": "Uw <em>modellen</em>, <em>bevindingen</em> en <em>dossier</em> in één Wkb-record.",
+    "body": "Zet bevindingen vast op uw model, bewaak elke deadline en houd het dossier klaar voor de kwaliteitsborger en het bevoegd gezag — gebouwd voor de Wet kwaliteitsborging voor het bouwen (Wkb).",
+    "status": {
+      "normal": "Normaal",
+      "degraded": "Verminderd",
+      "outage": "Storing",
+      "unknown": "—"
+    },
+    "kpiStatus": "Status",
+    "mapCaption": "{projects} projecten · {cities} steden live",
+    "mapAria": "Live BimDossier-projectlocaties in heel Nederland",
+    "legal": {
+      "privacy": "Privacybeleid",
+      "terms": "Algemene voorwaarden",
+      "dpa": "Verwerkersovereenkomst (DPA)"
+    }
   }
 }
