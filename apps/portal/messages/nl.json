@@ -219,6 +219,74 @@
       "workspaceBehaviorDescription": "Zoeken, dashboarddichtheid en opstartvoorkeuren worden hier samengebracht."
     }
   },
+  "calendar": {
+    "hero": {
+      "title": "Deadlinekalender",
+      "subtitle": "Alle meldingen uit al je projecten, gerangschikt op wat als eerste moet.",
+      "pendingLabel": "Openstaand",
+      "pendingSub": "Open meldingen",
+      "overdueLabel": "Te laat",
+      "overdueSub": "Verstreken",
+      "dueThisWeekLabel": "Deze week",
+      "dueThisWeekSub": "Komende 7 dagen"
+    },
+    "tabs": {
+      "overview": "Overzicht",
+      "calendar": "Kalender"
+    },
+    "panel": {
+      "overviewEyebrow": "Deadlines",
+      "overviewTitle": "Overzicht",
+      "calendarEyebrow": "Deadlines",
+      "calendarTitle": "Kalender"
+    },
+    "overview": {
+      "kpiTotal": "Totaal",
+      "kpiPending": "Openstaand",
+      "kpiPendingSub": "Open meldingen",
+      "kpiOverdue": "Te laat",
+      "kpiOverdueSub": "Verstreken",
+      "kpiDueThisWeek": "Deze week",
+      "kpiDueThisWeekSub": "Komende 7 dagen",
+      "kpiMet": "Ingediend",
+      "kpiMetSub": "Afgerond",
+      "statusTitle": "Op status",
+      "donutCenterLabel": "Totaal",
+      "status": {
+        "overdue": "Te laat",
+        "upcoming": "Aankomend",
+        "met": "Ingediend",
+        "notApplicable": "N.v.t."
+      },
+      "horizonTitle": "Komende periode",
+      "buckets": {
+        "range": "{from}-{to}d"
+      },
+      "upcomingTitle": "Aankomende deadlines",
+      "noUpcoming": "Geen aankomende deadlines.",
+      "daysRemaining": "{days, plural, =1 {nog 1 dag} other {nog # dagen}}",
+      "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}"
+    },
+    "month": {
+      "today": "Vandaag",
+      "prevMonth": "Vorige maand",
+      "nextMonth": "Volgende maand",
+      "empty": "Geen deadlines gepland.",
+      "dayEmpty": "Niets op deze dag.",
+      "moreCount": "{count} meer",
+      "legend": {
+        "overdue": "Te laat",
+        "dueSoon": "Bijna",
+        "upcoming": "Aankomend",
+        "met": "Ingediend",
+        "holiday": "Feestdag"
+      },
+      "dayPanel": {
+        "count": "{count, plural, =0 {Geen deadlines} one {# deadline} other {# deadlines}}",
+        "close": "Sluiten"
+      }
+    }
+  },
   "sidebar": {
     "adminConsole": "Beheerconsole",
     "orgMembers": "Leden",
@@ -229,6 +297,7 @@
     "projects": "Projecten",
     "certificates": "Certificaten",
     "templates": "Sjablonen",
+    "calendar": "Agenda",
     "bblLibrary": "BBL-bibliotheek",
     "wkbLibrary": "Wet kwaliteitsborging voor het bouwen (Wkb)-bibliotheek",
     "tenant": {
@@ -1419,6 +1488,7 @@
       },
       "deadlines": {
         "label": "Deadlines",
+        "viewOnCalendar": "Bekijk in agenda",
         "heading": "Deadlines",
         "emptyTitle": "Nog geen deadlines",
         "emptyDescription": "Deadlines verschijnen automatisch zodra de benodigde datumvelden zijn ingevuld.",

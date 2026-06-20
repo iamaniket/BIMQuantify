@@ -1,5 +1,5 @@
-// Vendored from E:/Proj/draftineai/copy/docs/figma/themes/dark-pure/tokens.json
 // Dark theme — semantic color tokens (sourced from "dark-pure").
+// Vendored from the Figma design-token export.
 
 import type { ThemeTokens } from './types.js';
 

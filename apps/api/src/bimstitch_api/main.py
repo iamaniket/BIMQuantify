@@ -39,6 +39,7 @@ from bimstitch_api.routers.admin_impersonate import router as admin_impersonate_
 from bimstitch_api.routers.admin_organizations import router as admin_organizations_router
 from bimstitch_api.routers.attachments import router as attachments_router
 from bimstitch_api.routers.bcf import router as bcf_router
+from bimstitch_api.routers.calendar import router as calendar_router
 from bimstitch_api.routers.borgingsplan import (
     moment_router as borgingsplan_moment_router,
 )
@@ -293,6 +294,7 @@ def create_app() -> FastAPI:
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
     app.include_router(deadlines_router)
+    app.include_router(calendar_router)
     app.include_router(dl_notif_settings_org_router)
     app.include_router(dl_notif_settings_project_router)
     app.include_router(risks_router)

@@ -219,6 +219,74 @@
       "workspaceBehaviorDescription": "Search, dashboard density, and startup preferences will be grouped here."
     }
   },
+  "calendar": {
+    "hero": {
+      "title": "Deadlines calendar",
+      "subtitle": "Every filing across all your projects, ranked by what's due next.",
+      "pendingLabel": "Pending",
+      "pendingSub": "Open filings",
+      "overdueLabel": "Overdue",
+      "overdueSub": "Past due",
+      "dueThisWeekLabel": "Due this week",
+      "dueThisWeekSub": "Next 7 days"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "calendar": "Calendar"
+    },
+    "panel": {
+      "overviewEyebrow": "Deadlines",
+      "overviewTitle": "Overview",
+      "calendarEyebrow": "Deadlines",
+      "calendarTitle": "Calendar"
+    },
+    "overview": {
+      "kpiTotal": "Total",
+      "kpiPending": "Pending",
+      "kpiPendingSub": "Open filings",
+      "kpiOverdue": "Overdue",
+      "kpiOverdueSub": "Past due",
+      "kpiDueThisWeek": "Due this week",
+      "kpiDueThisWeekSub": "Next 7 days",
+      "kpiMet": "Filed",
+      "kpiMetSub": "Completed",
+      "statusTitle": "By status",
+      "donutCenterLabel": "Total",
+      "status": {
+        "overdue": "Overdue",
+        "upcoming": "Upcoming",
+        "met": "Filed",
+        "notApplicable": "N/A"
+      },
+      "horizonTitle": "Upcoming horizon",
+      "buckets": {
+        "range": "{from}-{to}d"
+      },
+      "upcomingTitle": "Upcoming deadlines",
+      "noUpcoming": "No upcoming deadlines.",
+      "daysRemaining": "{days, plural, =1 {1 day left} other {# days left}}",
+      "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}"
+    },
+    "month": {
+      "today": "Today",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "empty": "No deadlines scheduled.",
+      "dayEmpty": "Nothing on this day.",
+      "moreCount": "{count} more",
+      "legend": {
+        "overdue": "Overdue",
+        "dueSoon": "Due soon",
+        "upcoming": "Upcoming",
+        "met": "Filed",
+        "holiday": "Holiday"
+      },
+      "dayPanel": {
+        "count": "{count, plural, =0 {No deadlines} one {# deadline} other {# deadlines}}",
+        "close": "Close"
+      }
+    }
+  },
   "sidebar": {
     "adminConsole": "Admin console",
     "orgMembers": "Members",
@@ -229,6 +297,7 @@
     "projects": "Projects",
     "certificates": "Certificates",
     "templates": "Templates",
+    "calendar": "Calendar",
     "bblLibrary": "BBL library",
     "wkbLibrary": "Quality Assurance in Construction Act  (Wkb) library",
     "tenant": {
@@ -1419,6 +1488,7 @@
       },
       "deadlines": {
         "label": "Deadlines",
+        "viewOnCalendar": "View on calendar",
         "heading": "Deadlines",
         "emptyTitle": "No deadlines yet",
         "emptyDescription": "Deadlines will appear automatically once the project has the required date fields filled in.",

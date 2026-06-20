@@ -6,7 +6,7 @@ import type {
 import { IfcViewer } from '@bimstitch/viewer/viewer-3d';
 import { useTranslations } from 'next-intl';
 import {
-  useEffect, useRef, useState, type JSX,
+  useCallback, useRef, useState, type JSX,
 } from 'react';
 
 import { autoRotatePlugin } from './autoRotatePlugin';
@@ -15,6 +15,9 @@ import { cameraZoomPlugin } from './cameraZoomPlugin';
 import { DEMO_MODEL_ID, DEMO_SNAGS, type DemoSnagStatus } from './demoSnags';
 import { monochromeLookPlugin } from './monochromeLookPlugin';
 import { snagPlacementPlugin, type ElementPointsArgs } from './snagPlacementPlugin';
+import {
+  snagSpotlightPlugin, type SnagAnchor, type SnagSpotlight,
+} from './snagSpotlightPlugin';
 
 // Self-contained demo model: a static fragments file shipped in apps/web/public,
 // so the marketing site has NO runtime dependency on the API or MinIO. The
@@ -26,17 +29,12 @@ const DEMO_BUNDLE: ViewerBundle = {
 };
 
 // A snag reads as "broken" while it's open/in-progress, "fixed" once resolved or
-// verified. Drives the status-pill color in the spotlight card (the pin already
-// encodes this via its ring color, shared with the real app).
+// verified. Drives the status-pill color in the popover (the pin already encodes
+// this via its ring color, shared with the real app).
 const BROKEN_STATUSES = new Set<DemoSnagStatus>(['draft', 'open', 'in_progress']);
 
-// How long each snag stays spotlit before the cycle advances.
-const CYCLE_MS = 2800;
-// After the user stops dragging, wait this long before resuming the cycle.
-const RESUME_DELAY_MS = 1400;
-
 type Props = {
-  /** When true, no idle auto-rotate and no spotlight cycle (prefers-reduced-motion). */
+  /** When true, no idle auto-rotate and no popover pulse (prefers-reduced-motion). */
   reducedMotion: boolean;
   /** Called on any load failure so the host can swap in the static fallback. */
   onError: () => void;
@@ -51,21 +49,23 @@ type Props = {
  * placed on real element geometry (see snagPlacementPlugin).
  *
  * It's a look-but-don't-edit hero: model-element selection + hover highlight are
- * disabled in `onReady`, and the pins aren't clickable. Instead a spotlight
- * auto-cycle walks through the snags — dimming the others, highlighting the
- * active one, and popping a card with its title + broken/fixed status. The cycle
- * pauses while the user drags. Skipped entirely under reduced motion.
+ * disabled in `onReady`, and the pins aren't clickable. As the model spins, the
+ * snag whose pin is CLOSEST to the camera (facing the viewer) gets spotlit — its
+ * other pins dim, a pulsing card pops over it, and it closes as the next snag
+ * rotates to the front (camera-driven, see snagSpotlightPlugin). One at a time.
  */
 export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props): JSX.Element {
   const t = useTranslations('snagShowcase');
   const handleRef = useRef<ViewerHandle | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  // Base markers (fixed positions/labels), built once in onReady. The cycle
+  // Base markers (fixed positions/labels), built once in onReady. The spotlight
   // re-syncs these with only the `dimmed` flag toggled — an in-place restyle.
   const baseMarkersRef = useRef<EntityMarkerData[]>([]);
-  // While true (user dragging) the cycle holds on the current snag.
-  const pausedRef = useRef(false);
-  const [ready, setReady] = useState(false);
+  // The popover wrapper; its transform is set imperatively every frame to track
+  // the active pin's screen position (no React re-render for the per-frame move).
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  // Last id we pushed to React state — lets the per-frame callback skip setState
+  // unless the spotlit snag actually changed.
+  const activeIdRef = useRef<string | null>(null);
   const [activeSnagId, setActiveSnagId] = useState<string | null>(null);
 
   // Camera-tuning debug gate: on in dev, or on any build via `?camdebug`. Adds
@@ -76,58 +76,47 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
   const camDebug = process.env.NODE_ENV !== 'production'
     || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('camdebug'));
 
+  // The camera-spotlight reporter: called on every camera move with the frontmost
+  // snag + where its pin projects on screen. Stable (refs only) so the plugin,
+  // captured once at mount, always drives the latest DOM.
+  const onSpotlight = useCallback((spotlight: SnagSpotlight | null): void => {
+    if (spotlight === null) {
+      activeIdRef.current = null;
+      setActiveSnagId(null);
+      return;
+    }
+    const el = popoverRef.current;
+    if (el) {
+      el.style.transform = `translate(${String(Math.round(spotlight.x))}px, ${String(Math.round(spotlight.y))}px)`;
+    }
+    if (spotlight.id !== activeIdRef.current) {
+      activeIdRef.current = spotlight.id;
+      setActiveSnagId(spotlight.id);
+      // Dim every pin except the spotlit one (in-place restyle, no flicker).
+      const markers = baseMarkersRef.current.map((m) => ({ ...m, dimmed: m.id !== spotlight.id }));
+      handleRef.current?.commands.execute('entity-marker.sync', markers).catch(() => undefined);
+    }
+  }, []);
+
   // `sizeBoost` makes the model read bigger than a plain fit (distance ÷ boost).
   // The reveal is deferred until this framing lands (see onReady), so the model
   // appears already at this size — no zoom-in pop.
   const ZOOM = { sizeBoost: 1.5 } as const;
   const plugins = reducedMotion
-    ? [monochromeLookPlugin(), cameraZoomPlugin({ ...ZOOM, animate: false }), snagPlacementPlugin()]
-    : [monochromeLookPlugin(), cameraZoomPlugin(ZOOM), autoRotatePlugin(), snagPlacementPlugin()];
+    ? [
+      monochromeLookPlugin(),
+      cameraZoomPlugin({ ...ZOOM, animate: false }),
+      snagPlacementPlugin(),
+      snagSpotlightPlugin({ onSpotlight }),
+    ]
+    : [
+      monochromeLookPlugin(),
+      cameraZoomPlugin(ZOOM),
+      autoRotatePlugin(),
+      snagPlacementPlugin(),
+      snagSpotlightPlugin({ onSpotlight }),
+    ];
   if (camDebug) plugins.push(cameraDebugPlugin());
-
-  // Pause the spotlight cycle while the user is dragging the model, resuming a
-  // beat after they let go (mirrors how autoRotatePlugin pauses on drag).
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    let resumeTimer: number | undefined;
-    const onDown = (): void => {
-      pausedRef.current = true;
-      if (resumeTimer) window.clearTimeout(resumeTimer);
-    };
-    const onUp = (): void => {
-      if (resumeTimer) window.clearTimeout(resumeTimer);
-      resumeTimer = window.setTimeout(() => {
-        pausedRef.current = false;
-      }, RESUME_DELAY_MS);
-    };
-    el.addEventListener('pointerdown', onDown);
-    window.addEventListener('pointerup', onUp);
-    return () => {
-      el.removeEventListener('pointerdown', onDown);
-      window.removeEventListener('pointerup', onUp);
-      if (resumeTimer) window.clearTimeout(resumeTimer);
-    };
-  }, []);
-
-  // The spotlight cycle: once the model is framed and markers exist, walk through
-  // the snags on a timer, dimming all but the active pin and showing its card.
-  useEffect(() => {
-    if (!ready || reducedMotion) return;
-    let idx = 0;
-    const tick = (): void => {
-      if (pausedRef.current) return;
-      const snag = DEMO_SNAGS[idx % DEMO_SNAGS.length];
-      idx += 1;
-      if (!snag) return;
-      setActiveSnagId(snag.id);
-      const markers = baseMarkersRef.current.map((m) => ({ ...m, dimmed: m.id !== snag.id }));
-      handleRef.current?.commands.execute('entity-marker.sync', markers).catch(() => undefined);
-    };
-    tick(); // spotlight the first snag immediately
-    const id = window.setInterval(tick, CYCLE_MS);
-    return () => { window.clearInterval(id); };
-  }, [ready, reducedMotion]);
 
   const activeSnag = activeSnagId !== null
     ? (DEMO_SNAGS.find((s) => s.id === activeSnagId) ?? null)
@@ -136,12 +125,14 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
 
   return (
     <div
-      ref={containerRef}
-      // Desktop only: pad the WebGL canvas 500px on the left so the model renders
-      // toward the right (clearing the text overlaid on the left). Gated to `lg`
-      // so it never pushes the model off a narrow phone screen — mobile stays
-      // centered. The model itself is camera-centered (no focal offset).
-      className="relative h-full w-full lg:[&_canvas]:pl-[500px]"
+      // Full-bleed canvas — NO padding. The desktop right-shift (clearing the
+      // text overlaid on the left) is done with the CAMERA in cameraZoomPlugin
+      // (`setFocalOffset`, see `panFraction`), not a canvas `padding-left`.
+      // Padding the canvas desynced its drawing buffer from
+      // `getBoundingClientRect()` and broke `pick()` (the raycast that pins snags
+      // to the model surface), so the pins floated on bounding-box centroids.
+      // Keeping the canvas flush with the container keeps picking calibrated.
+      className="relative h-full w-full"
     >
       <IfcViewer
         // Forward the handle ref: `onReady` is only invoked once IfcViewer's
@@ -186,10 +177,11 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
           // `camera.zoomExtents` excursion that runs just before onReady, so the
           // model fades in already framed instead of popping/zooming.
           await handle.commands.execute('showcase.zoomIn').catch(() => undefined);
-          // Sample well-spread element centroids straight from the model geometry,
+          // Sample well-spread points that sit ON the model's visible surface
+          // (raycast hits, the same anchor the real app stores for a finding),
           // then pin each snag to one (falling back to its authored coord only if
-          // geometry yields too few points). This keeps the pins ON the building
-          // regardless of camera framing or the canvas pad.
+          // the raycast yields too few points). This keeps the pins stuck to the
+          // building skin regardless of camera framing or the canvas pad.
           const points = await handle.commands
             .execute<Vec3[]>('showcase.elementPoints', {
               count: DEMO_SNAGS.length,
@@ -205,7 +197,7 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
           if (process.env.NODE_ENV !== 'production') {
             // eslint-disable-next-line no-console
             console.warn(
-              `[snag-debug] elementPoints returned ${points.length}/${DEMO_SNAGS.length} points`,
+              `[snag-debug] elementPoints returned ${String(points.length)}/${String(DEMO_SNAGS.length)} points`,
               points,
             );
           }
@@ -217,13 +209,19 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
             entityId: snag.id,
             status: snag.status,
             // Just the title — the pin keeps its status-colored real-app style,
-            // and both the hover tooltip and the spotlight card show only the title.
+            // and both the hover tooltip and the popover show only the title.
             label: t(`snags.${snag.titleKey}`),
           }));
           baseMarkersRef.current = markers;
           await handle.commands.execute('entity-marker.sync', markers).catch(() => undefined);
-          // Hand off to the spotlight cycle effect (no-op under reduced motion).
-          setReady(true);
+          // Hand the placed anchors to the camera-spotlight plugin, which now
+          // drives which snag is "active" by camera proximity on every frame.
+          const anchors: SnagAnchor[] = markers.map((m) => ({
+            id: m.id,
+            position: m.position,
+            modelId: m.modelId,
+          }));
+          await handle.commands.execute('showcase.setSnagAnchors', anchors).catch(() => undefined);
           // Reveal on the next frame so the final framing is painted before the
           // host fades the canvas in (onLoaded → opacity 0→100).
           requestAnimationFrame(() => onLoaded?.());
@@ -231,31 +229,61 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
         onError={onError}
       />
 
-      {activeSnag !== null && (
-        <div
-          key={activeSnag.id}
-          className="animate-snag-pop absolute bottom-4 right-4 z-10 flex max-w-[280px] flex-col gap-1.5 rounded-lg bg-surface-low px-3.5 py-2.5 shadow-lg ring-1 ring-border"
-        >
-          <span className="text-body3 font-medium text-foreground">
-            {t(`snags.${activeSnag.titleKey}`)}
-          </span>
-          <span className="flex items-center gap-1.5 text-caption font-medium">
-            {activeBroken ? (
+      {/* Popover anchor — positioned at the active pin's projected screen point
+          every frame via `popoverRef.style.transform` (set imperatively, NOT via
+          a React `style` prop — otherwise each re-render would reset the
+          transform and the card would jump for a frame). Its content is gated on
+          `activeSnag`, which is only set AFTER the transform in the same callback,
+          so it never paints at the corner before being positioned. Pointer-events
+          off so it never blocks drag-to-rotate through the card. */}
+      <div
+        ref={popoverRef}
+        aria-hidden={activeSnag === null}
+        className="pointer-events-none absolute left-0 top-0 z-10 will-change-transform"
+      >
+        {activeSnag !== null && !reducedMotion && (
+          // Radar-ping ring centered on the pin (the keyframe owns its centering
+          // transform, so no Tailwind -translate here).
+          <span
+            aria-hidden
+            className="animate-snag-pulse absolute left-0 top-0 h-9 w-9 rounded-full border-2 border-primary"
+          />
+        )}
+        {activeSnag !== null && (
+          // Outer = static positioning (center on the pin, lift above it); inner =
+          // the pop animation, keyed on the snag id so it replays on every switch.
+          <div className="absolute left-0 top-0 [transform:translate(-50%,calc(-100%-14px))]">
+            <div
+              key={activeSnag.id}
+              className="animate-snag-pop relative flex min-w-[180px] max-w-[260px] flex-col gap-1.5 rounded-lg bg-surface-low px-3.5 py-2.5 shadow-lg ring-1 ring-border"
+            >
+              <span className="text-body3 font-medium text-foreground">
+                {t(`snags.${activeSnag.titleKey}`)}
+              </span>
+              <span className="flex items-center gap-1.5 text-caption font-medium">
+                {activeBroken ? (
+                  <span
+                    aria-hidden
+                    className={`h-2 w-2 rounded-full ${activeSnag.status === 'in_progress' ? 'bg-warning' : 'bg-error'}`}
+                  />
+                ) : (
+                  <span aria-hidden className="text-success">
+                    ✓
+                  </span>
+                )}
+                <span className={activeBroken ? 'text-foreground-secondary' : 'text-success'}>
+                  {t(`status.${activeSnag.status}`)}
+                </span>
+              </span>
+              {/* Caret pointing down to the pin. */}
               <span
                 aria-hidden
-                className={`h-2 w-2 rounded-full ${activeSnag.status === 'in_progress' ? 'bg-warning' : 'bg-error'}`}
+                className="absolute left-1/2 top-full h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-surface-low"
               />
-            ) : (
-              <span aria-hidden className="text-success">
-                ✓
-              </span>
-            )}
-            <span className={activeBroken ? 'text-foreground-secondary' : 'text-success'}>
-              {t(`status.${activeSnag.status}`)}
-            </span>
-          </span>
-        </div>
-      )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

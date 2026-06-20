@@ -73,7 +73,10 @@ class DeadlineRule:
     use_working_days: bool  # True → skip weekends + holidays
     direction: str  # "before" | "after"
     legal_reference: str | None = None
-    default_reminder_days: tuple[int, ...] = (14, 7, 3, 1)
+    # Reminder tiers (days before due_date) the sweep fires at, most-distant
+    # first. T-30 gives the team a month's notice on the formal meldingen;
+    # the engine fires one email per tier as each threshold is crossed.
+    default_reminder_days: tuple[int, ...] = (30, 14, 7, 3, 1)
     default_recipient_roles: tuple[str, ...] = ("owner", "editor", "contractor")
     required_dossier_codes: tuple[str, ...] = ()  # dossier requirement codes needed to file
 

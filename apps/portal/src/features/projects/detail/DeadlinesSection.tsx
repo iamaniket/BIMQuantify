@@ -1,10 +1,12 @@
 'use client';
 
-import { ChevronDown, ChevronRight, Clock } from '@bimstitch/ui/icons';
+import { CalendarDays, ChevronDown, ChevronRight, Clock } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
+
+import { Link } from '@/i18n/navigation';
 
 import type { Deadline, EffectiveDeadlineNotificationSettings } from '@/lib/api/schemas/deadlines';
 
@@ -63,21 +65,30 @@ export function DeadlinesSection({ projectId }: Props): JSX.Element {
 
   return (
     <section>
-      <button
-        type="button"
-        onClick={() => { setCollapsed((prev) => !prev); }}
-        className="mb-2 flex w-full items-center gap-1.5 text-body3 font-semibold text-foreground-secondary hover:text-foreground"
-      >
-        {collapsed ? (
-          <ChevronRight className="h-3.5 w-3.5" />
-        ) : (
-          <ChevronDown className="h-3.5 w-3.5" />
-        )}
-        {t('deadlines.heading')}
-        <span className="ml-1 text-caption tabular-nums text-foreground-tertiary">
-          {metCount}/{deadlines.length}
-        </span>
-      </button>
+      <div className="mb-2 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => { setCollapsed((prev) => !prev); }}
+          className="flex flex-1 items-center gap-1.5 text-body3 font-semibold text-foreground-secondary hover:text-foreground"
+        >
+          {collapsed ? (
+            <ChevronRight className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )}
+          {t('deadlines.heading')}
+          <span className="ml-1 text-caption tabular-nums text-foreground-tertiary">
+            {metCount}/{deadlines.length}
+          </span>
+        </button>
+        <Link
+          href="/calendar"
+          className="inline-flex shrink-0 items-center gap-1 text-caption font-medium text-primary hover:underline"
+        >
+          <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+          {t('deadlines.viewOnCalendar')}
+        </Link>
+      </div>
 
       {!collapsed && (
         <ul className="space-y-1.5">

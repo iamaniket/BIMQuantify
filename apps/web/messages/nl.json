@@ -158,7 +158,12 @@
       "cover": "Betondekking beneden minimum",
       "pipe": "Doorvoering leiding niet afgewerkt",
       "airtight": "Luchtdichtheidsmeting uitgesteld",
-      "insulation": "Isolatiewaarde dak niet gehaald"
+      "insulation": "Isolatiewaarde dak niet gehaald",
+      "glazing": "U-waarde beglazing boven norm",
+      "drainage": "Afvoercapaciteit dak onvoldoende",
+      "ventilation": "Ventilatiedebiet onder eis",
+      "balustrade": "Balustradehoogte onder minimum",
+      "rebar": "Wapeningsafstand buiten tolerantie"
     }
   },
   "fromBlog": {

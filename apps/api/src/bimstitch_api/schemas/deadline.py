@@ -35,3 +35,45 @@ class DeadlineFileMet(BaseModel):
 
     reference_number: str | None = None
     filing_notes: str | None = None
+
+
+class CalendarDeadlineRead(BaseModel):
+    """Org-wide deadline row for the cross-project calendar.
+
+    Carries project context + the localized jurisdiction label so the portal
+    can render a single calendar/list across every project without a per-type
+    label lookup. ``days_until_due`` is signed (negative = overdue).
+    """
+
+    id: UUID
+    project_id: UUID
+    project_name: str
+    country: str
+    deadline_type: str
+    label: str
+    legal_reference: str | None
+    due_date: date | None
+    status: DeadlineStatus
+    is_overdue: bool
+    days_until_due: int | None
+
+
+class DeadlineWeekBucket(BaseModel):
+    """Count of pending deadlines whose due date falls in an inclusive day
+    range from today (e.g. 0-7, 8-14). Powers the Overview bar chart."""
+
+    days_from: int
+    days_to: int
+    count: int
+
+
+class DeadlineSummaryRead(BaseModel):
+    """Org-wide deadline aggregates for the calendar Overview KPIs/charts."""
+
+    total: int
+    pending: int
+    met: int
+    not_applicable: int
+    overdue: int
+    due_this_week: int
+    upcoming_buckets: list[DeadlineWeekBucket]

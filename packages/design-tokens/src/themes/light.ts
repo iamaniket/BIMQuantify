@@ -1,5 +1,4 @@
-// Vendored from E:/Proj/draftineai/copy/docs/figma/themes/light/tokens.json
-// Light theme — semantic color tokens.
+// Light theme — semantic color tokens. Vendored from the Figma design-token export.
 
 import type { ThemeTokens } from './types.js';
 
@@ -73,5 +72,3 @@ export const lightTheme: ThemeTokens = {
   },
   ring: '#2c5697',
 };
-
-export type { ThemeTokens } from './types.js';

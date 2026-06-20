@@ -1,7 +1,8 @@
 import type { Plugin, ViewerContext, Vec3 } from '@bimstitch/viewer';
+import { pick } from '@bimstitch/viewer/viewer-3d';
 
 export type ElementPointsArgs = {
-  /** How many spread-out element centroids to return. */
+  /** How many spread-out surface points to return. */
   count: number;
   /** Scene id of the model to sample (matches the marker's `modelId`). */
   modelId: string;
@@ -55,44 +56,67 @@ function spread(points: Vec3[], count: number): Vec3[] {
 
 /**
  * Marketing-showcase snag placement. Sibling of `autoRotatePlugin` /
- * `cameraZoomPlugin` — registers `showcase.elementPoints`, which reads the loaded
- * demo model's GEOMETRY (every element's bounding box) and returns up to `count`
- * well-spread element centroids (in the model's LOCAL frame, the frame
- * `entity-marker` expects).
+ * `cameraZoomPlugin` — registers `showcase.elementPoints`, which returns up to
+ * `count` well-spread points that sit ON the demo model's visible SURFACE (in the
+ * model's LOCAL frame, the frame `entity-marker` expects).
  *
- * This is camera- and layout-independent — unlike the old screen-space raycast it
- * replaced, which fired a centered NDC grid that missed the model once SnagViewer
- * shifted it right via a 500px canvas pad. A centroid sits INSIDE a real element,
- * so the CSS2D pin (which doesn't depth-test) always projects onto the building
- * from every rotation angle, never floating in interior air.
+ * Why surface points, not bounding-box centroids
+ * ----------------------------------------------
+ * The pins MUST land on the building's skin. An element's axis-aligned
+ * bounding-box centroid is NOT a surface point — it's the volumetric centre,
+ * i.e. *inside* the solid, and for L-shaped / ring / sloped / curved / assembly
+ * elements it's in empty air offset from the geometry. Pinning a CSS2D marker
+ * there (and CSS2D markers do not depth-test) makes the pin read as floating on
+ * an invisible box rather than stuck to the model. So a centroid is only an
+ * *aiming target* here, never the anchor.
+ *
+ * How a real surface point is found (same path as the real app)
+ * -------------------------------------------------------------
+ * For each candidate element we project its world centroid through the LIVE
+ * camera to get its true on-screen NDC, then `pick()` (the GPU raycast that
+ * powers right-click "place finding") returns the first SURFACE hit along that
+ * line of sight — a real point on the building's exterior. That hit point is the
+ * anchor, exactly like `Finding.anchor_x/y/z` (a stored raycast hit) in the app.
+ *
+ * This fixes the earlier attempts:
+ *  - The centroid version pinned to bounding-box centres → floating off the skin.
+ *  - The first raycast version fired a *centred* NDC grid, but `SnagViewer`'s
+ *    `lg:[&_canvas]:pl-[500px]` pad shifts the model right, so every probe sampled
+ *    the empty left half and missed. Projecting a real centroid through the actual
+ *    camera self-corrects for the pad (the projection and `pick`'s NDC→client-px
+ *    conversion share the same canvas rect), so rays land on the model.
  *
  * SnagViewer calls it once in `onReady` after `showcase.zoomIn` frames the model,
- * then pins each demo snag to a returned point.
+ * then pins each demo snag to a returned surface point.
  */
 export function snagPlacementPlugin(): Plugin {
   let ctx: ViewerContext | null = null;
 
   // Reject elements bigger than this fraction of the whole-model extent on any
-  // axis (IfcSite / whole-storey / whole-building), whose centroid floats in
-  // interior air. Keeps compact solids — walls, windows, columns, slabs, fixtures.
+  // axis (IfcSite / whole-storey / whole-building), whose centroid is a poor
+  // aiming target (it can project to empty screen space, or onto the wrong face).
+  // Keeps compact solids — walls, windows, columns, slabs, fixtures.
   const MAX_AXIS_FRACTION = 0.55;
 
   const elementPoints = async (args: unknown): Promise<Vec3[]> => {
     if (ctx === null) return [];
+    // Stable non-null handle for use inside async closures below (the captured
+    // `let ctx` widens back to nullable across awaits / callbacks).
+    const context = ctx;
     const { count, modelId } = (args as ElementPointsArgs | undefined) ?? {
       count: 0,
       modelId: '',
     };
     if (count <= 0) return [];
 
-    const model = ctx.models().get(modelId);
+    const model = context.models().get(modelId);
     if (!model) {
       dbg('model not found:', modelId, 'have:', [...ctx.models().keys()]);
       return [];
     }
 
-    // `getBoxes`/`getPositions` return WORLD-space coords; entity-marker re-applies
-    // the model's world matrix at render time, so hand back LOCAL-frame points (its
+    // `pick()` returns the hit point in WORLD space; `entity-marker` re-applies the
+    // model's world matrix at render time, so hand back LOCAL-frame points (its
     // inverse). Identity for the single base model, but correct if coordination
     // ever shifts. Borrow the camera's Vector3 as scratch (no `three` import —
     // matches the sibling plugins).
@@ -106,7 +130,8 @@ export function snagPlacementPlugin(): Plugin {
       return { x: v.x, y: v.y, z: v.z };
     };
 
-    // Whole-model extent → axis caps for the oversized-element filter.
+    // Whole-model extent → axis caps for the oversized-element filter (kept in
+    // WORLD space, the frame getBoxes returns).
     const mb = model.box;
     const hasExtent = Boolean(mb) && !mb.isEmpty();
     const capX = hasExtent ? (mb.max.x - mb.min.x) * MAX_AXIS_FRACTION : Infinity;
@@ -116,7 +141,7 @@ export function snagPlacementPlugin(): Plugin {
     // Element geometry can still be streaming for a few seconds AFTER onReady
     // fires (the viewer holds the render loop open ~4s post-load), so getBoxes can
     // come back empty at first. Retry until it yields usable boxes (or give up
-    // after ~2s) — this is the fix for snags falling back to hardcoded coords.
+    // after ~2s) — both the aiming targets and the raycast need geometry present.
     let ids: number[] = [];
     let boxes: Awaited<ReturnType<typeof model.getBoxes>> = [];
     for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -136,39 +161,86 @@ export function snagPlacementPlugin(): Plugin {
       await sleep(250);
     }
 
-    // Prefer compact (on-geometry) centroids; keep ALL non-empty ones as a
-    // fallback pool so an over-aggressive size filter can never starve us to [].
-    const filtered: Vec3[] = [];
-    const all: Vec3[] = [];
+    // AIMING TARGETS — world-space element centroids. Prefer compact (real
+    // building part) centroids; keep all non-empty ones as a top-up so an
+    // over-aggressive size filter can never starve the aim list.
+    const compactAim: Vec3[] = [];
+    const allAim: Vec3[] = [];
     for (const b of boxes) {
       if (!b || b.isEmpty()) continue;
       const sx = b.max.x - b.min.x;
       const sy = b.max.y - b.min.y;
       const sz = b.max.z - b.min.z;
       if (sx <= 0 && sy <= 0 && sz <= 0) continue; // degenerate / no geometry
-      const c = toLocal((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2);
-      all.push(c);
-      if (sx <= capX && sy <= capY && sz <= capZ) filtered.push(c);
+      const c: Vec3 = {
+        x: (b.min.x + b.max.x) / 2,
+        y: (b.min.y + b.max.y) / 2,
+        z: (b.min.z + b.max.z) / 2,
+      };
+      allAim.push(c);
+      if (sx <= capX && sy <= capY && sz <= capZ) compactAim.push(c);
     }
-    let pool = filtered.length >= count ? filtered : all;
+    let aim = compactAim.length >= count ? compactAim : [...compactAim, ...allAim];
 
-    // Last resort: the direct centroid API, in case boxes were all unusable.
-    if (pool.length === 0) {
+    // If boxes were all unusable, fall back to the direct centroid API just to
+    // have *something* to aim at.
+    if (aim.length === 0) {
       try {
         const positions = await model.getPositions(ids.length > 0 ? ids : undefined);
-        pool = positions.filter(Boolean).map((p) => toLocal(p.x, p.y, p.z));
+        aim = positions.filter(Boolean).map((p) => ({ x: p.x, y: p.y, z: p.z }));
       } catch (err) {
         dbg('getPositions fallback threw:', err);
-        pool = [];
+        aim = [];
       }
     }
+    if (aim.length === 0) {
+      dbg('no aiming targets — returning [] (snags fall back to authored coords)');
+      return [];
+    }
 
-    dbg(`pool=${pool.length} (filtered=${filtered.length} all=${all.length}) count=${count}`);
-    if (pool.length === 0) return [];
+    // Spread the aim list so we fire rays across the whole building, with a
+    // generous surplus of candidates as backups for rays that miss (centroid
+    // projects off-screen) or that land on a nearer occluder (still a valid
+    // surface point, just possibly a different element).
+    const candidates = spread(aim, Math.min(aim.length, Math.max(count * 4, count)));
 
-    // Stable left→right ordering so the spotlight cycle sweeps coherently across
-    // the building (the *set* still varies per reload via the random spread seed).
-    return spread(pool, count).sort(byCoord);
+    // Project each centroid → NDC with the LIVE camera (post-framing), then raycast
+    // at that NDC. `updateMatrixWorld` refreshes the camera's matrixWorldInverse so
+    // `project` is exact even right after `showcase.zoomIn` moved the camera.
+    camera.updateMatrixWorld();
+    const ndcs: { x: number; y: number }[] = candidates.flatMap((c) => {
+      const v = camera.position.clone();
+      v.set(c.x, c.y, c.z).project(camera); // NDC in v.x / v.y, depth in v.z
+      // Drop points off-screen or behind the camera — a `pick` there would miss.
+      const onScreen = v.x >= -1 && v.x <= 1 && v.y >= -1 && v.y <= 1 && v.z >= -1 && v.z <= 1;
+      return onScreen ? [{ x: v.x, y: v.y }] : [];
+    });
+
+    // Fire the rays in parallel (one-time, at load). Each hit is a real world-space
+    // point on the model's surface — the anchor we actually want.
+    const hits = await Promise.all(
+      ndcs.map((ndc) => pick(context, ndc).catch(() => null)),
+    );
+    const surface: Vec3[] = [];
+    for (const hit of hits) {
+      if (hit) surface.push(toLocal(hit.point.x, hit.point.y, hit.point.z));
+    }
+
+    dbg(
+      `surface hits=${String(surface.length)} from ${String(ndcs.length)} on-screen `
+      + `candidates (compactAim=${String(compactAim.length)} allAim=${String(allAim.length)}) `
+      + `count=${String(count)}`,
+    );
+
+    if (surface.length === 0) {
+      dbg('no surface hits — returning [] (snags fall back to authored coords)');
+      return [];
+    }
+
+    // Final well-spread subset of the genuine surface points, ordered left→right so
+    // the spotlight cycle sweeps coherently across the building (the *set* still
+    // varies per reload via the random spread seed inside the candidate selection).
+    return spread(surface, count).sort(byCoord);
   };
 
   return {
@@ -176,7 +248,7 @@ export function snagPlacementPlugin(): Plugin {
     install(context: ViewerContext): void {
       ctx = context;
       context.commands.register('showcase.elementPoints', elementPoints, {
-        title: 'Sample well-spread element centroids for the demo snags',
+        title: 'Sample well-spread surface points on the model for the demo snags',
       });
     },
     uninstall(): void {

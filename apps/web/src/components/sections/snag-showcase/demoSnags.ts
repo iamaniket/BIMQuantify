@@ -19,7 +19,17 @@ export type DemoSnagStatus =
   | 'in_progress'
   | 'resolved'
   | 'verified';
-export type DemoSnagKey = 'wall' | 'cover' | 'pipe' | 'airtight' | 'insulation';
+export type DemoSnagKey =
+  | 'wall'
+  | 'cover'
+  | 'pipe'
+  | 'airtight'
+  | 'insulation'
+  | 'glazing'
+  | 'drainage'
+  | 'ventilation'
+  | 'balustrade'
+  | 'rebar';
 
 export type DemoSnag = {
   id: string;
@@ -73,5 +83,45 @@ export const DEMO_SNAGS: readonly DemoSnag[] = [
     status: 'open',
     bblArticleRef: '4.149',
     position: { x: 25, y: 14, z: -8 },
+  },
+  {
+    id: 'snag-glazing',
+    titleKey: 'glazing',
+    severity: 'medium',
+    status: 'in_progress',
+    bblArticleRef: '4.83',
+    position: { x: 38, y: 3.5, z: -12 },
+  },
+  {
+    id: 'snag-drainage',
+    titleKey: 'drainage',
+    severity: 'high',
+    status: 'open',
+    bblArticleRef: '3.24',
+    position: { x: 12, y: 15.5, z: -4 },
+  },
+  {
+    id: 'snag-ventilation',
+    titleKey: 'ventilation',
+    severity: 'low',
+    status: 'in_progress',
+    bblArticleRef: '4.117',
+    position: { x: 20, y: 5, z: 1 },
+  },
+  {
+    id: 'snag-balustrade',
+    titleKey: 'balustrade',
+    severity: 'high',
+    status: 'resolved',
+    bblArticleRef: '4.21',
+    position: { x: 5, y: 9, z: -14 },
+  },
+  {
+    id: 'snag-rebar',
+    titleKey: 'rebar',
+    severity: 'medium',
+    status: 'verified',
+    bblArticleRef: '4.12',
+    position: { x: 48, y: 11, z: -9 },
   },
 ];

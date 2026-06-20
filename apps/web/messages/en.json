@@ -158,7 +158,12 @@
       "cover": "Concrete cover below minimum",
       "pipe": "Pipe penetration not sealed",
       "airtight": "Airtightness test outstanding",
-      "insulation": "Roof insulation value not met"
+      "insulation": "Roof insulation value not met",
+      "glazing": "Glazing U-value above limit",
+      "drainage": "Roof drainage capacity insufficient",
+      "ventilation": "Ventilation flow below requirement",
+      "balustrade": "Balustrade height below minimum",
+      "rebar": "Rebar spacing out of tolerance"
     }
   },
   "fromBlog": {
