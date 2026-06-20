@@ -206,49 +206,58 @@ export function snagPlacementPlugin(): Plugin {
       return [];
     }
 
-    // Spread the aim list so we fire rays across the whole building, with a
-    // generous surplus of candidates as backups for rays that miss (centroid
-    // projects off-screen) or that land on a nearer occluder (still a valid
-    // surface point, just possibly a different element).
-    const candidates = spread(aim, Math.min(aim.length, Math.max(count * 4, count)));
+    // Choose `count` well-spread compact-element centroids UP FRONT. A compact
+    // element's bbox centre sits on/inside a real building part, so it is always a
+    // valid ON-MODEL anchor — these are the guaranteed-on-model placements.
+    const chosen = spread(aim, count);
 
-    // Project each centroid → NDC with the LIVE camera (post-framing), then raycast
-    // at that NDC. `updateMatrixWorld` refreshes the camera's matrixWorldInverse so
-    // `project` is exact even right after `showcase.zoomIn` moved the camera.
+    // Try to REFINE each centroid to a true surface point via a raycast (a pin stuck
+    // to the building skin reads better than one at an element's volumetric centre),
+    // but KEEP the centroid whenever the ray misses or the GPU pick buffer is
+    // degenerate/stale (headless/SSR warmup returns the same hit for every ray).
+    // This guarantees every snag lands on the model — we never substitute an
+    // off-model authored coord here. `updateMatrixWorld` refreshes the camera's
+    // matrixWorldInverse so `project` is exact even right after `showcase.zoomIn`.
     camera.updateMatrixWorld();
-    const ndcs: { x: number; y: number }[] = candidates.flatMap((c) => {
-      const v = camera.position.clone();
-      v.set(c.x, c.y, c.z).project(camera); // NDC in v.x / v.y, depth in v.z
-      // Drop points off-screen or behind the camera — a `pick` there would miss.
-      const onScreen = v.x >= -1 && v.x <= 1 && v.y >= -1 && v.y <= 1 && v.z >= -1 && v.z <= 1;
-      return onScreen ? [{ x: v.x, y: v.y }] : [];
-    });
-
-    // Fire the rays in parallel (one-time, at load). Each hit is a real world-space
-    // point on the model's surface — the anchor we actually want.
-    const hits = await Promise.all(
-      ndcs.map((ndc) => pick(context, ndc).catch(() => null)),
+    const refined: Vec3[] = await Promise.all(
+      chosen.map(async (c) => {
+        const v = camera.position.clone();
+        v.set(c.x, c.y, c.z).project(camera); // NDC in v.x / v.y, depth in v.z
+        const onScreen = v.x >= -1 && v.x <= 1 && v.y >= -1 && v.y <= 1 && v.z >= -1 && v.z <= 1;
+        if (!onScreen) return c; // centroid (on-model) when it'd project off-screen
+        const hit = await pick(context, { x: v.x, y: v.y }).catch(() => null);
+        return hit ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : c;
+      }),
     );
-    const surface: Vec3[] = [];
-    for (const hit of hits) {
-      if (hit) surface.push(toLocal(hit.point.x, hit.point.y, hit.point.z));
+
+    // Guarantee distinct anchors: if a refinement raycast collapsed two snags onto
+    // the SAME surface point (a stale pick buffer returns one hit for every ray, or
+    // two centroids occlude to one face), fall back to that element's own DISTINCT
+    // centroid so the pins never stack on one spot.
+    const key = (p: Vec3): string => `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`;
+    const seen = new Set<string>();
+    const result: Vec3[] = [];
+    for (let i = 0; i < chosen.length; i += 1) {
+      let p = refined[i] ?? chosen[i]!;
+      if (seen.has(key(p))) p = chosen[i]!; // distinct on-model centroid
+      if (seen.has(key(p))) continue; // centroid itself a dup (shouldn't happen)
+      seen.add(key(p));
+      result.push(toLocal(p.x, p.y, p.z));
     }
 
     dbg(
-      `surface hits=${String(surface.length)} from ${String(ndcs.length)} on-screen `
-      + `candidates (compactAim=${String(compactAim.length)} allAim=${String(allAim.length)}) `
-      + `count=${String(count)}`,
+      `placed ${String(result.length)}/${String(count)} on-model points `
+      + `(compactAim=${String(compactAim.length)} allAim=${String(allAim.length)})`,
     );
 
-    if (surface.length === 0) {
-      dbg('no surface hits — returning [] (snags fall back to authored coords)');
+    if (result.length === 0) {
+      dbg('no on-model points — returning [] (snags fall back to authored coords)');
       return [];
     }
 
-    // Final well-spread subset of the genuine surface points, ordered left→right so
-    // the spotlight cycle sweeps coherently across the building (the *set* still
-    // varies per reload via the random spread seed inside the candidate selection).
-    return spread(surface, count).sort(byCoord);
+    // Ordered left→right so the spotlight cycle sweeps coherently across the
+    // building (the *set* still varies per reload via the random spread seed).
+    return result.sort(byCoord);
   };
 
   return {

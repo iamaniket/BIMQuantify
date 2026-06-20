@@ -57,9 +57,6 @@ type Props = {
 export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props): JSX.Element {
   const t = useTranslations('snagShowcase');
   const handleRef = useRef<ViewerHandle | null>(null);
-  // Base markers (fixed positions/labels), built once in onReady. The spotlight
-  // re-syncs these with only the `dimmed` flag toggled — an in-place restyle.
-  const baseMarkersRef = useRef<EntityMarkerData[]>([]);
   // The popover wrapper; its transform is set imperatively every frame to track
   // the active pin's screen position (no React re-render for the per-frame move).
   const popoverRef = useRef<HTMLDivElement | null>(null);
@@ -92,16 +89,17 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
     if (spotlight.id !== activeIdRef.current) {
       activeIdRef.current = spotlight.id;
       setActiveSnagId(spotlight.id);
-      // Dim every pin except the spotlit one (in-place restyle, no flicker).
-      const markers = baseMarkersRef.current.map((m) => ({ ...m, dimmed: m.id !== spotlight.id }));
-      handleRef.current?.commands.execute('entity-marker.sync', markers).catch(() => undefined);
+      // NOTE: all 10 pins stay fully visible — the frontmost snag is spotlit by the
+      // pulsing popover card alone (below), NOT by dimming the others. Fading the
+      // other 9 to 25% opacity made the demo read as a SINGLE snag on the
+      // monochrome model, so the spotlight no longer restyles the pins.
     }
   }, []);
 
   // `sizeBoost` makes the model read bigger than a plain fit (distance ÷ boost).
   // The reveal is deferred until this framing lands (see onReady), so the model
   // appears already at this size — no zoom-in pop.
-  const ZOOM = { sizeBoost: 1.5 } as const;
+  const ZOOM = { sizeBoost: 1.2 } as const;
   const plugins = reducedMotion
     ? [
       monochromeLookPlugin(),
@@ -171,6 +169,16 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
           // clickable. Orbit/drag and the idle auto-rotate stay live.
           await handle.commands.execute('selection.setEnabled', false).catch(() => undefined);
           await handle.commands.execute('hover.setEnabled', false).catch(() => undefined);
+          // Marketing-only: rotate around the model's CENTER, never the point
+          // under the cursor. The built-in `pivot-rotate` plugin (in the
+          // 'minimal' preset) moves the orbit point to the picked geometry on
+          // every drag (Navisworks-style), so the model would swing around
+          // whatever you grabbed. Disabling it makes camera-controls orbit its
+          // existing target — which `cameraZoomPlugin` pins to the model center
+          // via `setLookAt(..., cx, cy, cz)` — so the turntable always spins in
+          // place. This is a host-side command only; the viewer package is
+          // unchanged (the real app keeps pivot-on-pick).
+          await handle.commands.execute('pivotRotate.disable').catch(() => undefined);
           // Frame the model in one self-contained move (center pivot + tilt +
           // zoom + right-shift). AWAITED so the reveal below only happens once
           // the showcase framing has landed — this is what hides the built-in
@@ -213,7 +221,6 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
             // and both the hover tooltip and the popover show only the title.
             label: t(`snags.${snag.titleKey}`),
           }));
-          baseMarkersRef.current = markers;
           await handle.commands.execute('entity-marker.sync', markers).catch(() => undefined);
           // Hand the placed anchors to the camera-spotlight plugin, which now
           // drives which snag is "active" by camera proximity on every frame.

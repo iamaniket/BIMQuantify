@@ -3,13 +3,16 @@
  * mirrors the real `Finding` model (severity / status / Bbl article); titles are
  * referenced by i18n key so they stay bilingual.
  *
- * `position` (model LOCAL frame) is now only a FALLBACK. Primary placement is
- * computed at load from the model's GEOMETRY: `snagPlacementPlugin` reads every
- * element's bounding box and SnagViewer pins each snag to a well-spread element
- * centroid (`showcase.elementPoints`). These coords are used only if that returns
- * fewer points than snags, so the demo survives a swap of `public/models/demo.frag`
- * without manual re-tuning. The current model's bounding box is roughly
- * x -0.6–52.0, y -0.4–16.8 (up), z -18.8–5.7 (a large building).
+ * `position` (model LOCAL frame) is a LAST-RESORT FALLBACK only. Placement is
+ * computed at load from the model's GEOMETRY: `snagPlacementPlugin` picks
+ * `count` well-spread COMPACT-element bbox centroids (always on a building part)
+ * and refines each to a true surface point via a raycast when the GPU pick buffer
+ * is fresh (`showcase.elementPoints`). It always returns `count` ON-MODEL points,
+ * so these authored coords are reached only if the model has no usable geometry
+ * at all. IMPORTANT: they are NOT kept in sync with `public/models/demo.frag` —
+ * the current model's bounding box is roughly x -29..25.5, y -0.6..16.7,
+ * z -17.9..22.7, so several authored x values below sit OFF this model. Don't
+ * rely on them as real placements; fix the geometry path if pins go missing.
  */
 
 export type DemoSnagSeverity = 'low' | 'medium' | 'high';
