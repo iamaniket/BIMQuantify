@@ -1,6 +1,6 @@
 'use client';
 
-import type { AppIcon as LucideIcon } from '@bimstitch/ui';
+import type { AppIcon } from '@bimstitch/ui';
 import { useTranslations } from 'next-intl';
 import { Fragment, type JSX, type ReactNode } from 'react';
 
@@ -9,7 +9,7 @@ import { ToolButton, ToolbarGroup, ToolbarShell } from './_toolbarPrimitives';
 export type ButtonToolDef = {
   type: 'button';
   id: string;
-  icon: LucideIcon;
+  icon: AppIcon;
   /** Accessible name (aria-label). Also used as tooltip unless `tooltip` is set. */
   label: string;
   /** Title attribute — overrides `label` when the tooltip needs more detail. */

@@ -54,8 +54,8 @@ export type { DocumentSearchHit, PageDimensions } from './pdf-core/documentTypes
 export type DocumentViewerHandle = {
   zoomIn(): void;
   zoomOut(): void;
-  /** Set scale directly. If `originClient` is provided, zoom keeps that client point stable. */
-  zoomTo(scale: number, originClient?: { x: number; y: number }): void;
+  /** Set the zoom level directly. */
+  zoomTo(scale: number): void;
   /** Fit current page entirely inside the viewport. */
   fitPage(): void;
   /** Fit current page width to the viewport width. */
@@ -289,9 +289,8 @@ function DocumentViewerInner(
     (): DocumentViewerHandle => ({
       zoomIn: () => { void engineRef.current?.commands.execute('camera.zoomIn'); },
       zoomOut: () => { void engineRef.current?.commands.execute('camera.zoomOut'); },
-      zoomTo: (s, _origin) => {
-        void engineRef.current?.commands.execute('camera.zoomIn');
-        // TODO: implement zoomTo with origin via camera controls
+      zoomTo: (scale) => {
+        void engineRef.current?.commands.execute('camera.zoomTo', { zoom: scale });
       },
       fitPage: () => { void engineRef.current?.commands.execute('camera.fitPage'); },
       fitWidth: () => { void engineRef.current?.commands.execute('camera.fitWidth'); },

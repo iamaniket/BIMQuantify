@@ -123,7 +123,7 @@ export { KanbanCard } from './KanbanCard.js';
 export type { KanbanCardProps } from './KanbanCard.js';
 
 /* ── Icon system ────────────────────────────────────────────────── */
-export type { AppIcon, LucideIcon } from './lib/icons.js';
+export type { AppIcon } from './lib/icons.js';
 export { DEFAULT_ICON_WEIGHT, VIEWER_ICON_WEIGHT } from './lib/icons.js';
 export type { IconWeight } from './lib/iconMap.js';
 

@@ -1,16 +1,16 @@
 /**
- * `entity-marker-2d` — renders finding / certificate / attachment markers as
- * real three.js glyphs in the shared world-space scene (the 2D counterpart to
- * the 3D `entity-marker` plugin, which uses CSS2D DOM elements).
+ * `entity-marker-2d` — renders finding markers as real three.js glyphs in the
+ * shared world-space scene (the 2D counterpart to the 3D `entity-marker`
+ * plugin, which uses CSS2D DOM elements).
  *
- * Each marker is a small glyph (finding = status-colored disc inside a ring,
- * certificate = square, attachment = circle) authored in px and placed in a
- * per-marker group scaled by {@link SceneAPI.worldPerPx} so it stays a
- * **constant size on screen** at any zoom, positioned at the anchor's world
- * point. Clicks/hover are resolved by raycasting the shared camera; a placement
- * mode converts a click back to a normalized page point for "drop a pin here"
- * flows. Finding styling (fill + ring color, sizes) is the shared source of
- * truth in {@link findingMarkerStyle}, kept in lockstep with the 3D plugin.
+ * Each marker is a small glyph (a status-colored disc inside a ring) authored
+ * in px and placed in a per-marker group scaled by {@link SceneAPI.worldPerPx}
+ * so it stays a **constant size on screen** at any zoom, positioned at the
+ * anchor's world point. Clicks/hover are resolved by raycasting the shared
+ * camera; a placement mode converts a click back to a normalized page point for
+ * "drop a pin here" flows. Finding styling (fill + ring color, sizes) is the
+ * shared source of truth in {@link findingMarkerStyle}, kept in lockstep with
+ * the 3D plugin.
  *
  * Replaces the DOM `EntityPinLayer` / `AnnotationPinLayer` overlays.
  */
@@ -37,7 +37,7 @@ const GLYPH_R = MARKER_DIAMETER_PX / 2; // px half-extent of the glyph (matches 
 const HOVER_SCALE = 1.3;
 const CLICK_MOVE_TOL = 5; // px — pointer travel under this counts as a click, not a pan/drag
 
-export type EntityMarker2DType = 'finding' | 'certificate' | 'attachment';
+export type EntityMarker2DType = 'finding';
 
 export interface EntityMarker2DData {
   id: string;
@@ -50,14 +50,6 @@ export interface EntityMarker2DData {
   /** Finding lifecycle status — drives the glyph color for findings. */
   status?: string;
 }
-
-// Solid type color for the (now-unused) certificate/attachment glyphs. Finding
-// colors live in the shared `findingMarkerStyle` module.
-const MARKER_COLORS: Record<EntityMarker2DType, number> = {
-  finding: 0xef4444,
-  certificate: 0x3b82f6,
-  attachment: 0x10b981,
-};
 
 export interface EntityMarker2DAPI {
   sync(markers: EntityMarker2DData[]): void;
@@ -81,15 +73,6 @@ function circlePerimeter(r: number = GLYPH_R): THREE.Vector2[] {
     pts.push(new THREE.Vector2(Math.cos(t) * r, Math.sin(t) * r));
   }
   return pts;
-}
-
-/** Perimeter points (px, centered on origin) for the cert/attachment glyph. */
-function glyphPerimeter(type: EntityMarker2DType): THREE.Vector2[] {
-  if (type === 'certificate') {
-    const r = GLYPH_R * 0.82;
-    return [new THREE.Vector2(-r, -r), new THREE.Vector2(r, -r), new THREE.Vector2(r, r), new THREE.Vector2(-r, r)];
-  }
-  return circlePerimeter();
 }
 
 /** Filled mesh from a perimeter (px, centered on origin), tagged with `markerId`. */
@@ -129,27 +112,18 @@ function outlineLoop(
   return line;
 }
 
-/** Build the glyph objects for a marker, tagged with `markerId`. */
-function buildGlyph(type: EntityMarker2DType, markerId: string, status?: string): THREE.Object3D[] {
-  if (type === 'finding') {
-    // Concentric discs: a status-colored fill inside a ring (red while open,
-    // neutral once resolved), plus a white hairline for separation on busy
-    // backgrounds. The ring is a filled disc rather than a thick line because
-    // WebGL does not render line widths above 1px reliably across platforms.
-    const outer = circlePerimeter(GLYPH_R);
-    const inner = circlePerimeter(GLYPH_R - MARKER_RING_PX);
-    return [
-      fillMesh(outer, findingRingColor(status), markerId, RENDER_ORDER),
-      fillMesh(inner, findingFillColor(status), markerId, RENDER_ORDER + 1),
-      outlineLoop(outer, 0xffffff, markerId, RENDER_ORDER + 2),
-    ];
-  }
-
-  // cert/attachment (now unused): solid type-color fill + white outline.
-  const perimeter = glyphPerimeter(type);
+/** Build the finding glyph objects for a marker, tagged with `markerId`. */
+function buildGlyph(markerId: string, status?: string): THREE.Object3D[] {
+  // Concentric discs: a status-colored fill inside a ring (red while open,
+  // neutral once resolved), plus a white hairline for separation on busy
+  // backgrounds. The ring is a filled disc rather than a thick line because
+  // WebGL does not render line widths above 1px reliably across platforms.
+  const outer = circlePerimeter(GLYPH_R);
+  const inner = circlePerimeter(GLYPH_R - MARKER_RING_PX);
   return [
-    fillMesh(perimeter, MARKER_COLORS[type], markerId, RENDER_ORDER),
-    outlineLoop(perimeter, 0xffffff, markerId, RENDER_ORDER + 1),
+    fillMesh(outer, findingRingColor(status), markerId, RENDER_ORDER),
+    fillMesh(inner, findingFillColor(status), markerId, RENDER_ORDER + 1),
+    outlineLoop(outer, 0xffffff, markerId, RENDER_ORDER + 2),
   ];
 }
 
@@ -190,7 +164,7 @@ export function entityMarker2DPlugin(): DocumentPlugin & EntityMarker2DAPI {
     if (!layer) return;
     const group = new THREE.Group();
     group.userData['markerId'] = data.id;
-    for (const obj of buildGlyph(data.type, data.id, data.status)) group.add(obj);
+    for (const obj of buildGlyph(data.id, data.status)) group.add(obj);
     layer.add(group);
     const entry: MarkerEntry = { data, group };
     markers.set(data.id, entry);

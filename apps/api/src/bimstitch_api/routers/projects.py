@@ -29,7 +29,6 @@ from bimstitch_api.access import (
     load_project_or_404,
     require_member_manager,
     require_member_viewer,
-    require_membership,
     require_project_owner_or_admin,
     require_project_read_access,
     require_project_writable,
@@ -38,7 +37,7 @@ from bimstitch_api.access import (
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.guards import is_guest_member
 from bimstitch_api.auth.manager import UserManager, get_user_manager
-from bimstitch_api.auth.permissions import Action, Resource, require_permission
+from bimstitch_api.auth.permissions import Action
 from bimstitch_api.cache import CACHE_TTL_PROJECT_DETAIL, CACHE_TTL_PROJECT_LIST, cache_response
 from bimstitch_api.config import Settings, get_settings
 from bimstitch_api.db import get_session_maker
