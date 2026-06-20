@@ -6,6 +6,7 @@ import type { JSX } from 'react';
 import { Button } from '@bimstitch/ui';
 import { ArrowRight, CalendarClock, Mail } from '@bimstitch/ui/icons';
 
+import { HeroPill } from '@/components/sections/HeroPill';
 import { HeroShell } from '@/components/sections/HeroShell';
 import { Link } from '@/i18n/navigation';
 import { env } from '@/lib/env';
@@ -19,9 +20,7 @@ export function ContactSalesClient(): JSX.Element {
   return (
     <>
       <HeroShell size="splash" align="center" className="max-w-3xl gap-4">
-        <span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1 text-body3 font-medium text-white/90">
-          {t('eyebrow')}
-        </span>
+        <HeroPill>{t('eyebrow')}</HeroPill>
         <h1 className="max-w-2xl text-h3 font-semibold text-white sm:text-h2">
           {t('headline')}
         </h1>
@@ -31,7 +30,7 @@ export function ContactSalesClient(): JSX.Element {
       <section className="mx-auto w-full max-w-3xl px-6 py-16">
         <div className="grid gap-8 sm:grid-cols-2">
           <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface-low p-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-lighter">
               <CalendarClock className="h-5 w-5 text-primary" />
             </div>
             <h2 className="text-title2 font-semibold text-foreground">
@@ -55,7 +54,7 @@ export function ContactSalesClient(): JSX.Element {
           </div>
 
           <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface-low p-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-lighter">
               <Mail className="h-5 w-5 text-primary" />
             </div>
             <h2 className="text-title2 font-semibold text-foreground">

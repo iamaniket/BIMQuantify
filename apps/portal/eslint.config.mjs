@@ -3,7 +3,11 @@ import path from 'node:path';
 
 import js from '@eslint/js';
 import { FlatCompat } from '@eslint/eslintrc';
+import nextPlugin from '@next/eslint-plugin-next';
 import i18next from 'eslint-plugin-i18next';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -15,7 +19,30 @@ const compat = new FlatCompat({
 
 const airbnbExtends = compat.extends('airbnb-base');
 
-const nextExtends = compat.extends('next/core-web-vitals');
+// Next.js + React wired as NATIVE flat config. This replaces the previous
+// `compat.extends('next/core-web-vitals')`, which crashes ESLint 9 at
+// config-load: eslint-plugin-react 7.37's circular `configs` object makes
+// @eslint/eslintrc's config-validator throw "Converting circular structure to
+// JSON" when it formats a schema-validation error. Registering the plugins
+// directly skips that legacy eslintrc validator path. Mirrors the rule set the
+// `next/core-web-vitals` extend provided (react + hooks + a11y + next).
+const reactAndNext = {
+  plugins: {
+    react: reactPlugin,
+    'react-hooks': reactHooks,
+    'jsx-a11y': jsxA11y,
+    '@next/next': nextPlugin,
+  },
+  settings: { react: { version: 'detect' } },
+  rules: {
+    ...reactPlugin.configs.flat.recommended.rules,
+    ...reactPlugin.configs.flat['jsx-runtime'].rules,
+    ...reactHooks.configs.recommended.rules,
+    ...jsxA11y.configs.recommended.rules,
+    ...nextPlugin.configs.recommended.rules,
+    ...nextPlugin.configs['core-web-vitals'].rules,
+  },
+};
 
 export default tseslint.config(
   {
@@ -38,7 +65,7 @@ export default tseslint.config(
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   ...airbnbExtends,
-  ...nextExtends,
+  reactAndNext,
   i18next.configs['flat/recommended'],
   {
     // Currently 'warn' — graduate to 'error' once the existing JSX-text
@@ -118,6 +145,11 @@ export default tseslint.config(
       'import/prefer-default-export': 'off',
       'import/extensions': 'off',
       'import/no-unresolved': 'off',
+      // The repo is CRLF on Windows (git normalizes EOL on commit), so
+      // airbnb-base's `linebreak-style: ['error','unix']` is pure noise here
+      // — it accounted for ~85% of all reported problems. EOL is a git concern,
+      // not a lint concern.
+      'linebreak-style': 'off',
       'react/react-in-jsx-scope': 'off',
       'react/forbid-elements': ['error', {
         forbid: [

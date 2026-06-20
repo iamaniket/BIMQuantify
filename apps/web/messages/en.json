@@ -6,7 +6,6 @@
   },
   "header": {
     "brand": "BimDossier",
-    "signOut": "Sign out",
     "features": "Features",
     "blog": "Blog",
     "requestAccess": "Request access",
@@ -18,8 +17,7 @@
     "subtitle": "The dedicated platform for the Wkb — the Dutch Quality Assurance in Construction Act. Your findings live pinned on the 3D BIM model and PDF floor plans. Deadlines track themselves from bouwmelding to gereedmelding. Your dossier stays ready for bevoegd gezag — not scattered across folders and spreadsheets.",
     "trust": "In private pilot with Dutch contractors · EU-hosted · Privacy-first — your data never leaves EU infrastructure",
     "ctaPrimary": "Request early access",
-    "ctaDemo": "See it on the model",
-    "ctaSecondary": "Log in"
+    "ctaDemo": "See it on the model"
   },
   "features": {
     "eyebrow": "Capabilities",
@@ -156,15 +154,6 @@
       "pipe": "Pipe penetration not sealed",
       "airtight": "Airtightness test outstanding"
     }
-  },
-  "metrics": {
-    "eyebrow": "By the numbers",
-    "headline": "Built for the borging loop",
-    "caption": "We're in early access — real figures will appear here as our pilot projects file their first gereedmelding.",
-    "snagsResolved": "Snags resolved",
-    "compliancePassed": "Compliance checks passed",
-    "projects": "Projects under borging",
-    "avgDaysToClose": "Avg. days to close a snag"
   },
   "fromBlog": {
     "eyebrow": "From the blog",

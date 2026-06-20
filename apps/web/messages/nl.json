@@ -6,7 +6,6 @@
   },
   "header": {
     "brand": "BimDossier",
-    "signOut": "Uitloggen",
     "features": "Functies",
     "blog": "Blog",
     "requestAccess": "Toegang aanvragen",
@@ -18,8 +17,7 @@
     "subtitle": "BimDossier is het platform speciaal voor de Wkb — de Wet kwaliteitsborging voor het bouwen. Bevindingen staan vastgezet op uw 3D-BIM-model en op uw PDF-plattegronden, deadlines worden automatisch bewaakt van bouwmelding tot gereedmelding, en uw dossier ligt klaar voor het bevoegd gezag — niet verspreid over mappen en spreadsheets.",
     "trust": "In private pilot met Nederlandse aannemers · EU-gehost · Privacy-first — uw gegevens verlaten de EU-infrastructuur nooit",
     "ctaPrimary": "Vraag early access aan",
-    "ctaDemo": "Bekijk het op het model",
-    "ctaSecondary": "Inloggen"
+    "ctaDemo": "Bekijk het op het model"
   },
   "features": {
     "eyebrow": "Mogelijkheden",
@@ -156,15 +154,6 @@
       "pipe": "Doorvoering leiding niet afgewerkt",
       "airtight": "Luchtdichtheidsmeting uitgesteld"
     }
-  },
-  "metrics": {
-    "eyebrow": "In cijfers",
-    "headline": "Gebouwd voor de borgingscyclus",
-    "caption": "We zitten in early access — echte cijfers verschijnen hier zodra onze pilotprojecten hun eerste gereedmelding indienen.",
-    "snagsResolved": "Bevindingen opgelost",
-    "compliancePassed": "Compliancecontroles geslaagd",
-    "projects": "Projecten in borging",
-    "avgDaysToClose": "Gem. dagen tot afhandeling"
   },
   "fromBlog": {
     "eyebrow": "Van de blog",

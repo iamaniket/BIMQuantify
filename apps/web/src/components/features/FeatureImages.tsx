@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import type { JSX } from 'react';
 
@@ -9,7 +9,7 @@ import { Eyebrow } from '@bimstitch/ui';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { Reveal } from '@/components/shared/Reveal';
 
-import { getFeatureContent } from './featureContent';
+import { useFeatureContent } from './useFeatureContent';
 
 /**
  * Bottom "See it in action" strip. Until real screenshots land
@@ -21,8 +21,7 @@ import { getFeatureContent } from './featureContent';
  */
 export function FeatureImages({ featureKey }: { featureKey: string }): JSX.Element | null {
   const tDetail = useTranslations('featureDetail');
-  const locale = useLocale();
-  const content = getFeatureContent(featureKey, locale);
+  const { content } = useFeatureContent(featureKey);
   if (content === null) {
     return null;
   }
@@ -55,7 +54,7 @@ export function FeatureImages({ featureKey }: { featureKey: string }): JSX.Eleme
                   ) : (
                     <>
                       <BlueprintTexture className="opacity-[0.08]" toneClassName="text-primary" />
-                      <Icon className="relative h-10 w-10 text-primary/60" aria-hidden />
+                      <Icon className="relative h-10 w-10 text-primary opacity-60" aria-hidden />
                     </>
                   )}
                 </div>

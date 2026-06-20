@@ -1,11 +1,11 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Reveal } from '@/components/shared/Reveal';
 
-import { getFeatureContent } from './featureContent';
+import { useFeatureContent } from './useFeatureContent';
 
 /**
  * "Frequently asked questions" band for a feature page. Renders the three Q&A
@@ -15,8 +15,7 @@ import { getFeatureContent } from './featureContent';
  */
 export function FeatureFaq({ featureKey }: { featureKey: string }): JSX.Element | null {
   const tDetail = useTranslations('featureDetail');
-  const locale = useLocale();
-  const content = getFeatureContent(featureKey, locale);
+  const { content } = useFeatureContent(featureKey);
   if (content === null) {
     return null;
   }

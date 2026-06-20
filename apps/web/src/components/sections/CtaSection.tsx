@@ -4,10 +4,10 @@ import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { HeroGrid } from '@bimstitch/brand';
-import { Button } from '@bimstitch/ui';
 
 import { Reveal } from '@/components/shared/Reveal';
-import { Link } from '@/i18n/navigation';
+
+import { BrandAccentCta } from './BrandAccentCta';
 
 export function CtaSection(): JSX.Element {
   const t = useTranslations('cta');
@@ -23,15 +23,7 @@ export function CtaSection(): JSX.Element {
           <p className="max-w-xl text-title3 text-white/80">
             {t('subtitle')}
           </p>
-          <Link href="/request-access">
-            <Button
-              variant="primary"
-              size="lg"
-              className="bg-[var(--brand-accent)] text-[var(--brand-gradient-start)] hover:bg-[var(--brand-accent-soft)]"
-            >
-              {t('button')}
-            </Button>
-          </Link>
+          <BrandAccentCta>{t('button')}</BrandAccentCta>
         </div>
       </Reveal>
     </section>

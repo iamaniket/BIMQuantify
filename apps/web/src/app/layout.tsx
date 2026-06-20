@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 
 import './globals.css';
 
-const siteUrl = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://bimdossier.nl';
+import { env } from '@/lib/env';
+
+const siteUrl = env.NEXT_PUBLIC_SITE_URL;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

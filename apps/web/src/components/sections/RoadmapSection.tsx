@@ -3,9 +3,10 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Badge, Card, CardBody, Eyebrow } from '@bimstitch/ui';
+import { Badge, Card, CardBody } from '@bimstitch/ui';
 
 import { Reveal } from '@/components/shared/Reveal';
+import { SectionHeading } from '@/components/shared/SectionHeading';
 
 import { ROADMAP_FEATURES } from './featureCatalog';
 
@@ -14,15 +15,11 @@ export function RoadmapSection(): JSX.Element {
 
   return (
     <section id="roadmap" className="mx-auto w-full max-w-8xl px-6 py-20">
-      <div className="mb-12 flex flex-col items-center gap-3 text-center">
-        <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
-        <h2 className="max-w-2xl text-h3 font-semibold text-foreground">
-          {t('headline')}
-        </h2>
-        <p className="max-w-xl text-body1 text-foreground-secondary">
-          {t('subtitle')}
-        </p>
-      </div>
+      <SectionHeading
+        eyebrow={t('eyebrow')}
+        headline={t('headline')}
+        subtitle={t('subtitle')}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {ROADMAP_FEATURES.map(({ key, icon: Icon }, i) => (

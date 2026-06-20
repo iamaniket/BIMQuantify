@@ -87,7 +87,7 @@ export default async function BlogPostPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <BlogPostHero meta={post.meta} />
+      <BlogPostHero meta={post.meta} locale={locale} />
       {post.meta.image ? (
         <div className="mx-auto w-full max-w-8xl px-6 pt-12">
           <BlogPostCoverImage image={post.meta.image} title={post.meta.title} />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { ArrowRight } from '@bimstitch/ui/icons';
@@ -9,6 +9,7 @@ import { Reveal } from '@/components/shared/Reveal';
 import { Link } from '@/i18n/navigation';
 
 import { getFeatureContent } from './featureContent';
+import { useFeatureContent } from './useFeatureContent';
 
 /**
  * "Related capabilities" strip — three cross-links to sibling feature pages.
@@ -20,8 +21,7 @@ import { getFeatureContent } from './featureContent';
 export function FeatureRelated({ featureKey }: { featureKey: string }): JSX.Element | null {
   const t = useTranslations('features');
   const tDetail = useTranslations('featureDetail');
-  const locale = useLocale();
-  const content = getFeatureContent(featureKey, locale);
+  const { content, locale } = useFeatureContent(featureKey);
   if (content === null) {
     return null;
   }

@@ -3108,7 +3108,6 @@
     "colActor": "Gebruiker",
     "colType": "Type",
     "colActivity": "Activiteit",
-    "colDetails": "Details",
     "systemActor": "Systeem",
     "modelCreated": "Model aangemaakt: {name}",
     "modelUpdated": "Model bijgewerkt: {name}",

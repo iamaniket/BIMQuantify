@@ -480,12 +480,6 @@ importers:
       '@bimstitch/viewer':
         specifier: workspace:*
         version: link:../../packages/viewer
-      '@dnd-kit/core':
-        specifier: ^6.3.1
-        version: 6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@dnd-kit/utilities':
-        specifier: ^3.2.2
-        version: 3.2.2(react@19.2.5)
       '@thatopen/fragments':
         specifier: ~3.4.0
         version: 3.4.3(three@0.184.0)(web-ifc@0.0.77)
@@ -535,6 +529,9 @@ importers:
       '@eslint/js':
         specifier: ^9.17.0
         version: 9.39.4
+      '@next/eslint-plugin-next':
+        specifier: ^16.2.9
+        version: 16.2.9
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.59.1

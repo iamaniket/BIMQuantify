@@ -3,9 +3,10 @@ import type { MetadataRoute } from 'next';
 import { defaultLocale, supportedLocales } from '@bimstitch/i18n';
 
 import { FEATURE_SLUGS } from '@/components/features/featureContent';
-import { getAllPosts } from '@/lib/blog/mdx';
+import { getAllPostsMerged } from '@/lib/blog/mdx';
+import { env } from '@/lib/env';
 
-const siteUrl = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://bimdossier.nl';
+const siteUrl = env.NEXT_PUBLIC_SITE_URL;
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
 
@@ -28,7 +29,7 @@ function localizedEntry(
   }));
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -42,7 +43,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     localizedEntry(`/features/${slug}`, now, 'monthly', 0.7),
   );
 
-  const blogPages: MetadataRoute.Sitemap = getAllPosts(defaultLocale).flatMap((post) =>
+  const blogPages: MetadataRoute.Sitemap = (await getAllPostsMerged(defaultLocale)).flatMap((post) =>
     localizedEntry(`/blog/${post.slug}`, new Date(post.date), 'monthly', 0.6),
   );
 

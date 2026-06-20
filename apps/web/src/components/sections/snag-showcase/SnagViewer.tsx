@@ -47,10 +47,6 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
   const offClickRef = useRef<(() => void) | null>(null);
   const [activeSnagId, setActiveSnagId] = useState<string | null>(null);
 
-  const setPaused = (paused: boolean): void => {
-    handleRef.current?.commands.execute('auto-rotate.setPaused', { paused }).catch(() => undefined);
-  };
-
   // Camera-tuning debug gate: on in dev, or on any build via `?camdebug`. Adds
   // the interaction-only `[snag-cam]` logger and enables wheel-zoom so you can
   // dolly the model to find `cameraZoomPlugin` knob values. Off → zero change
@@ -93,10 +89,6 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
       // so it never pushes the model off a narrow phone screen — mobile stays
       // centered. The model itself is camera-centered (no focal offset).
       className="relative h-full w-full lg:[&_canvas]:pl-[500px]"
-      // Pause the idle spin while the pointer is over the model so pin tooltips
-      // stay readable; resume on leave. No-op under reduced motion.
-      onPointerEnter={reducedMotion ? undefined : () => setPaused(true)}
-      onPointerLeave={reducedMotion ? undefined : () => setPaused(false)}
     >
       <IfcViewer
         // Forward the handle ref: `onReady` is only invoked once IfcViewer's

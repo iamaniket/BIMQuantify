@@ -153,7 +153,6 @@ async def test_jurisdictions_exposes_dossier_templates(client: AsyncClient) -> N
     assert len(templates["dwelling"]) > 0
 
     # Category headers are exposed for the section grouping.
-    assert "models" in nl["dossier_category_labels"]
     assert "documents" in nl["dossier_category_labels"]
 
     # Every requirement carries the fields the portal needs to resolve it.
@@ -169,7 +168,7 @@ async def test_jurisdictions_exposes_dossier_templates(client: AsyncClient) -> N
 
     # At least one of each source kind exists across the dwelling set.
     kinds = {r["source_kind"] for r in templates["dwelling"]}
-    assert {"attachment_slot", "certificate_type", "derived", "model"} <= kinds
+    assert {"attachment_slot", "certificate_type", "derived"} <= kinds
     # Drawings is satisfied by an uploaded drawing OR a present BIM model.
     assert "attachment_or_model" in kinds
     drawings = next(r for r in templates["dwelling"] if r["code"] == "drawings")

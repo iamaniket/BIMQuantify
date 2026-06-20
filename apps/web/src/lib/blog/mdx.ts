@@ -9,6 +9,10 @@ import type { Locale } from '@bimstitch/i18n';
 import { fetchBlogPost, fetchBlogPosts } from '../api';
 import type { PostMeta } from './types.js';
 
+// Blog content is API-sourced. An optional in-repo MDX directory
+// (`apps/web/content/blog`) is supported as a build-time override — when it's
+// absent (the current default) every reader below degrades gracefully to `[]`,
+// and the merged loaders fall through to the API.
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'blog');
 
 function fileNameForSlug(slug: string, locale: Locale): string {

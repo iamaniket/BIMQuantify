@@ -129,22 +129,6 @@ function descriptionParams(entry: ProjectActivityEntry): Record<string, string> 
   };
 }
 
-function detailText(entry: ProjectActivityEntry): string {
-  const after = { ...(entry.before ?? {}), ...(entry.after ?? {}) };
-  const parts: string[] = [];
-
-  if (after['file_type'] !== undefined) parts.push(String(after['file_type']).toUpperCase());
-  if (after['version_number'] !== undefined) parts.push(`v${String(after['version_number'])}`);
-  if (after['ifc_schema'] !== undefined && after['ifc_schema'] !== null) parts.push(String(after['ifc_schema']));
-  if (after['rejection_reason'] !== undefined) parts.push(String(after['rejection_reason']));
-  if (after['pass_count'] !== undefined) {
-    parts.push(`${String(after['pass_count'])} pass · ${String(after['fail_count'] ?? 0)} fail`);
-  }
-  if (after['discipline'] !== undefined) parts.push(String(after['discipline']));
-
-  return parts.join(' · ');
-}
-
 type ActivityFilters = {
   category: ActivityCategory | undefined;
   since: string | undefined;
@@ -219,20 +203,6 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
           <div className="max-w-[240px] truncate text-foreground" title={description}>
             {description}
           </div>
-        );
-      },
-    },
-    {
-      header: t('colDetails'),
-      className: 'font-sans text-body3 text-foreground-tertiary',
-      // Resource metadata pulled from the audit row's `after` JSONB snapshot —
-      // sparse and event-type-dependent, so one Details column rather than many.
-      cell: (entry) => {
-        const detail = detailText(entry);
-        return detail.length > 0 ? (
-          <div className="max-w-[180px] truncate" title={detail}>{detail}</div>
-        ) : (
-          <span className="text-foreground-disabled">—</span>
         );
       },
     },

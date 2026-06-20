@@ -8,6 +8,7 @@ const orUndefined = (value: string | undefined): string | undefined =>
 export const env: Readonly<{
   NEXT_PUBLIC_API_URL: string;
   NEXT_PUBLIC_PORTAL_URL: string;
+  NEXT_PUBLIC_SITE_URL: string;
   NEXT_PUBLIC_POSTHOG_KEY: string | undefined;
   NEXT_PUBLIC_POSTHOG_HOST: string;
   NEXT_PUBLIC_SOCIAL_YOUTUBE_URL: string | undefined;
@@ -17,6 +18,7 @@ export const env: Readonly<{
 }> = Object.freeze({
   NEXT_PUBLIC_API_URL: process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000',
   NEXT_PUBLIC_PORTAL_URL: process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001',
+  NEXT_PUBLIC_SITE_URL: process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://bimdossier.nl',
   NEXT_PUBLIC_POSTHOG_KEY: process.env['NEXT_PUBLIC_POSTHOG_KEY'],
   NEXT_PUBLIC_POSTHOG_HOST: process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://eu.i.posthog.com',
   NEXT_PUBLIC_SOCIAL_YOUTUBE_URL: orUndefined(process.env['NEXT_PUBLIC_SOCIAL_YOUTUBE_URL']),

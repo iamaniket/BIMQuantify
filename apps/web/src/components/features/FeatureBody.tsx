@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Eyebrow } from '@bimstitch/ui';
@@ -8,7 +8,7 @@ import { CheckCircle } from '@bimstitch/ui/icons';
 
 import { Reveal } from '@/components/shared/Reveal';
 
-import { getFeatureContent } from './featureContent';
+import { useFeatureContent } from './useFeatureContent';
 
 /**
  * Problem + Solution band for a feature page. Two columns on desktop (stacked
@@ -18,8 +18,7 @@ import { getFeatureContent } from './featureContent';
  */
 export function FeatureBody({ featureKey }: { featureKey: string }): JSX.Element | null {
   const tDetail = useTranslations('featureDetail');
-  const locale = useLocale();
-  const content = getFeatureContent(featureKey, locale);
+  const { content } = useFeatureContent(featureKey);
   if (content === null) {
     return null;
   }

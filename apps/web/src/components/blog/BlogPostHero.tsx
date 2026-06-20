@@ -1,23 +1,23 @@
 import type { JSX } from 'react';
 
+import { HeroPill } from '@/components/sections/HeroPill';
 import { HeroShell } from '@/components/sections/HeroShell';
+import { formatBlogDate } from '@/lib/formatting/dates';
 import type { PostMeta } from '@/lib/blog/types';
 
 type BlogPostHeroProps = {
   meta: PostMeta;
+  locale: string;
 };
 
-export function BlogPostHero({ meta }: BlogPostHeroProps): JSX.Element {
+export function BlogPostHero({ meta, locale }: BlogPostHeroProps): JSX.Element {
   return (
     <HeroShell size="page" className="gap-4">
       <div className="flex flex-wrap items-center gap-2">
         {meta.tags.map((tag) => (
-          <span
-            key={tag}
-            className="w-fit rounded-full border border-white/20 bg-white/10 px-2 py-1 text-body3 font-medium text-white/90"
-          >
+          <HeroPill key={tag} compact>
             {tag}
-          </span>
+          </HeroPill>
         ))}
       </div>
 
@@ -31,11 +31,7 @@ export function BlogPostHero({ meta }: BlogPostHeroProps): JSX.Element {
         <span>{meta.author}</span>
         <span>·</span>
         <time dateTime={meta.date}>
-          {new Date(meta.date).toLocaleDateString('en-GB', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
+          {formatBlogDate(meta.date, locale, 'long')}
         </time>
         <span>·</span>
         <span>{meta.readingTime}</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { ArrowLeft } from '@bimstitch/ui/icons';
@@ -8,7 +8,7 @@ import { ArrowLeft } from '@bimstitch/ui/icons';
 import { HeroShell } from '@/components/sections/HeroShell';
 import { Link } from '@/i18n/navigation';
 
-import { getFeatureContent } from './featureContent';
+import { useFeatureContent } from './useFeatureContent';
 
 /**
  * Feature-page hero. Reuses the marketing hero backdrop (brand gradient +
@@ -20,8 +20,7 @@ import { getFeatureContent } from './featureContent';
  */
 export function FeatureHero({ featureKey }: { featureKey: string }): JSX.Element | null {
   const tDetail = useTranslations('featureDetail');
-  const locale = useLocale();
-  const content = getFeatureContent(featureKey, locale);
+  const { content } = useFeatureContent(featureKey);
   if (content === null) {
     return null;
   }
@@ -37,13 +36,9 @@ export function FeatureHero({ featureKey }: { featureKey: string }): JSX.Element
         {tDetail('backToFeatures')}
       </Link>
 
-      <div className="flex items-center gap-4">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 text-white ring-1 ring-white/20">
-          <Icon className="h-7 w-7" aria-hidden />
-        </div>
-        <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-body3 font-medium text-white/90">
-          {title}
-        </span>
+      <div className="flex items-center gap-3">
+        <Icon className="h-9 w-9 text-white" aria-hidden />
+        <span className="text-h5 font-semibold text-white sm:text-h4">{title}</span>
       </div>
 
       <h1 className="max-w-3xl text-h3 font-semibold text-white sm:text-h2">{tagline}</h1>

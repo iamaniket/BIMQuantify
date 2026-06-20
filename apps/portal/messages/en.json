@@ -3108,7 +3108,6 @@
     "colActor": "Actor",
     "colType": "Type",
     "colActivity": "Activity",
-    "colDetails": "Details",
     "systemActor": "System",
     "modelCreated": "Created model {name}",
     "modelUpdated": "Updated model {name}",

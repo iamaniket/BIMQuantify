@@ -13,8 +13,8 @@ type Props = { locale: Locale };
 /**
  * "From the blog" home strip — the 3 most recent posts, reusing the same
  * loader (`getAllPostsMerged`) and card (`BlogPostCard`) as the /blog index.
- * An async server component (no client boundary). Renders nothing when there
- * are no posts (empty `content/blog` + API unavailable), so the landing page
+ * An async server component (no client boundary). Posts are API-sourced;
+ * renders nothing when the API has no published posts, so the landing page
  * collapses cleanly until content exists.
  */
 export async function FromTheBlogSection({ locale }: Props): Promise<JSX.Element | null> {
@@ -40,7 +40,7 @@ export async function FromTheBlogSection({ locale }: Props): Promise<JSX.Element
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
-            <BlogPostCard key={post.slug} post={post} />
+            <BlogPostCard key={post.slug} post={post} locale={locale} />
           ))}
         </div>
       </div>

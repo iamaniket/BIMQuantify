@@ -1,11 +1,11 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { ArrowRight, type AppIcon } from '@bimstitch/ui/icons';
 
-import { getFeatureContent } from '@/components/features/featureContent';
+import { useFeatureContent } from '@/components/features/useFeatureContent';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { Link } from '@/i18n/navigation';
 
@@ -28,8 +28,7 @@ type FeatureCardProps = {
  */
 export function FeatureCard({ featureKey, icon: Icon }: FeatureCardProps): JSX.Element | null {
   const t = useTranslations('features');
-  const locale = useLocale();
-  const content = getFeatureContent(featureKey, locale);
+  const { content } = useFeatureContent(featureKey);
   if (content === null) {
     return null;
   }

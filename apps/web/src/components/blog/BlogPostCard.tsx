@@ -4,13 +4,15 @@ import { Badge } from '@bimstitch/ui';
 
 import { BlogCardThumbnail } from '@/components/blog/BlogCardThumbnail';
 import { Link } from '@/i18n/navigation';
+import { formatBlogDate } from '@/lib/formatting/dates';
 import type { PostMeta } from '@/lib/blog/types';
 
 type BlogPostCardProps = {
   post: PostMeta;
+  locale: string;
 };
 
-export function BlogPostCard({ post }: BlogPostCardProps): JSX.Element {
+export function BlogPostCard({ post, locale }: BlogPostCardProps): JSX.Element {
   return (
     <Link
       href={`/blog/${post.slug}`}
@@ -41,11 +43,7 @@ export function BlogPostCard({ post }: BlogPostCardProps): JSX.Element {
 
         <div className="mt-auto flex items-center gap-3 text-caption text-foreground-tertiary">
           <time dateTime={post.date}>
-            {new Date(post.date).toLocaleDateString('en-GB', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })}
+            {formatBlogDate(post.date, locale, 'short')}
           </time>
           <span>·</span>
           <span>{post.readingTime}</span>

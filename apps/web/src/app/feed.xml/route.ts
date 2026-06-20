@@ -1,11 +1,14 @@
-import { getAllPosts } from '@/lib/blog/mdx';
+import type { Locale } from '@bimstitch/i18n';
 
-const siteUrl = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://bimdossier.nl';
+import { getAllPostsMerged } from '@/lib/blog/mdx';
+import { env } from '@/lib/env';
+
+const siteUrl = env.NEXT_PUBLIC_SITE_URL;
 
 // Single English feed — blog content is authored in English by default, with
 // optional Dutch translations available at /nl/blog/<slug>. If we ever ship a
 // dedicated Dutch feed, branch this route on a locale query param.
-const FEED_LOCALE = 'en';
+const FEED_LOCALE: Locale = 'en';
 
 function escapeXml(s: string): string {
   return s
@@ -16,8 +19,8 @@ function escapeXml(s: string): string {
     .replace(/'/g, '&apos;');
 }
 
-export function GET(): Response {
-  const posts = getAllPosts(FEED_LOCALE);
+export async function GET(): Promise<Response> {
+  const posts = await getAllPostsMerged(FEED_LOCALE);
 
   const items = posts
     .map(

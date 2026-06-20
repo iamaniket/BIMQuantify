@@ -1,13 +1,13 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { CheckCircle } from '@bimstitch/ui/icons';
 
 import { Reveal } from '@/components/shared/Reveal';
 
-import { getFeatureContent } from './featureContent';
+import { useFeatureContent } from './useFeatureContent';
 
 /**
  * "Key capabilities" grid for a feature page. A four-card grid that breaks the
@@ -18,8 +18,7 @@ import { getFeatureContent } from './featureContent';
  */
 export function FeatureHighlights({ featureKey }: { featureKey: string }): JSX.Element | null {
   const tDetail = useTranslations('featureDetail');
-  const locale = useLocale();
-  const content = getFeatureContent(featureKey, locale);
+  const { content } = useFeatureContent(featureKey);
   if (content === null) {
     return null;
   }
