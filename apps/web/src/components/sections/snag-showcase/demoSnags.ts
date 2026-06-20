@@ -3,11 +3,12 @@
  * mirrors the real `Finding` model (severity / status / Bbl article); titles are
  * referenced by i18n key so they stay bilingual.
  *
- * `position` is in the demo model's LOCAL (authored) frame. The current model
- * (apps/web/public/models/demo.frag) has a bounding box of roughly
- * x -0.6–52.0, y -0.4–16.8 (up), z -18.8–5.7 (a large building), so the pins
- * below sit across its surface. Re-tune these if `public/models/demo.frag` is
- * swapped for a different model.
+ * `position` (model LOCAL frame) is now only a FALLBACK. Primary placement is
+ * computed at load: `snagPlacementPlugin` raycasts the framed model and SnagViewer
+ * pins each snag to a real on-surface point (`showcase.surfacePoints`). These
+ * coords are used only if a probe misses the model, so the demo survives a swap of
+ * `public/models/demo.frag` without manual re-tuning. The current model's bounding
+ * box is roughly x -0.6–52.0, y -0.4–16.8 (up), z -18.8–5.7 (a large building).
  */
 
 export type DemoSnagSeverity = 'low' | 'medium' | 'high';

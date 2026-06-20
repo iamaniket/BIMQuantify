@@ -4,9 +4,8 @@ import { ArrowRight, Bell, FileUp, MapPin, Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 
-import { Eyebrow } from '@bimstitch/ui';
-
 import { Reveal } from '@/components/shared/Reveal';
+import { SectionHeading } from '@/components/shared/SectionHeading';
 
 type StepKey = 'step1' | 'step2' | 'step3' | 'step4';
 
@@ -24,13 +23,8 @@ export function HowItWorksSection(): JSX.Element {
 
   return (
     <section id="how-it-works" className="bg-surface-low">
-      <div className="mx-auto w-full max-w-6xl px-6 py-20">
-        <div className="mb-12 flex flex-col items-center gap-3 text-center">
-          <Eyebrow size="md">{t('eyebrow')}</Eyebrow>
-          <h2 className="max-w-2xl text-h3 font-semibold text-foreground">
-            {t('headline')}
-          </h2>
-        </div>
+      <div className="mx-auto w-full max-w-8xl px-6 py-20">
+        <SectionHeading eyebrow={t('eyebrow')} headline={t('headline')} />
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {stepKeys.map((key, i) => {

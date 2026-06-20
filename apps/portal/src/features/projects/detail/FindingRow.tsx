@@ -8,15 +8,14 @@ import type { Locale } from '@bimstitch/i18n';
 
 import {
   Badge,
-  Button,
   DetailCard,
   DetailCardBody,
-  DetailCardFooter,
   DetailCardRow,
   MetaGrid,
 } from '@bimstitch/ui';
 
 import { ResourceMediaTile, RowAsideStat, type MediaTileTone } from '@/components/shared/resource';
+import { RowActionPill } from '@/components/shared/resource/RowActionPill';
 import { formatDate } from '@/lib/formatting/dates';
 import type { Finding, FindingStatusValue } from '@/lib/api/schemas';
 
@@ -89,14 +88,13 @@ export function FindingRow({
           </>
         }
         actions={
-          <button
-            type="button"
+          <RowActionPill
+            size="md"
+            icon={<Eye className="h-3.5 w-3.5" />}
+            label={tExpanded('view')}
             title={tExpanded('view')}
-            onClick={(e) => { e.stopPropagation(); onView(); }}
-            className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
+            onClick={onView}
+          />
         }
       >
         <div className="flex items-center gap-2">
@@ -133,6 +131,22 @@ export function FindingRow({
       </DetailCardRow>
 
       <DetailCardBody>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <RowActionPill
+            size="md"
+            icon={<Eye className="h-3.5 w-3.5" />}
+            label={tExpanded('view')}
+            onClick={onView}
+          />
+          <RowActionPill
+            tone="danger"
+            size="md"
+            icon={<Trash2 className="h-3.5 w-3.5" />}
+            label={tExpanded('delete')}
+            disabled={deleteDisabled}
+            onClick={onDelete}
+          />
+        </div>
         {finding.description !== '' && (
           <div className="whitespace-pre-wrap border-b border-dashed border-border py-2.5 text-body3 leading-snug text-foreground-secondary">
             {finding.description}
@@ -140,23 +154,6 @@ export function FindingRow({
         )}
         <MetaGrid entries={entries} />
       </DetailCardBody>
-
-      <DetailCardFooter className="justify-between">
-        <Button variant="ghost" size="md" onClick={onView}>
-          <Eye className="h-3.5 w-3.5" />
-          {tExpanded('view')}
-        </Button>
-        <Button
-          variant="ghost"
-          size="md"
-          onClick={onDelete}
-          disabled={deleteDisabled}
-          className="text-error hover:text-error"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          {tExpanded('delete')}
-        </Button>
-      </DetailCardFooter>
     </DetailCard>
   );
 }

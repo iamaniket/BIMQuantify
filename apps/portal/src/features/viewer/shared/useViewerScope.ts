@@ -262,16 +262,23 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     mode: 'multi',
     isLoading: ready && manifestQuery.isLoading,
     isError: manifestQuery.isError,
-    errorMessage: null,
-    isEmpty: !manifestQuery.isLoading && entries.length === 0,
+    // Surface manifest failures (was hardcoded null, which rendered the silent
+    // empty-state — a failed federated load looked identical to "no models").
+    errorMessage: bundleErrorMessage(manifestQuery.error),
+    // "Empty" means loaded-OK-but-zero-models, NOT errored — else an error would
+    // show the empty-state instead of the error banner.
+    isEmpty: !manifestQuery.isLoading && !manifestQuery.isError && entries.length === 0,
     primaryBundle: primary !== null ? entryToBundle(primary) : null,
     additionalBundles: entries
       .filter((_, i) => i !== primaryIndex)
       .map(entryToBundle),
-    // Anchor key = the primary model only. Adding/removing OTHER models keeps the
-    // same anchor, so the page never resets and the viewer never remounts — the
-    // IfcViewer diff effect loads/unloads the delta incrementally instead.
-    sceneKey: `multi:${primary === null ? 'none' : primary.file_id}`,
+    // Anchor key = the project, NOT any individual model. The viewer mounts once
+    // per project and the IfcViewer diff effect loads/unloads the delta in place,
+    // so toggling ANY model (including the one that happens to be primary) never
+    // changes this key and never remounts the viewer. The key still changes on a
+    // genuine scene change (different project, or single↔multi), which is exactly
+    // when the page's reset effects should fire.
+    sceneKey: `multi:${projectId}`,
     activeModelId: activeEntry?.model_id ?? '',
     activeFileId: activeEntry?.file_id ?? '',
     activeViewerModelId: activeEntry ? federatedModelId(activeEntry.file_id) : '',

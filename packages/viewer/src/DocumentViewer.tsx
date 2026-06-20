@@ -26,6 +26,7 @@ import type { CameraControlsConfig } from './plugins/2d/camera/index.js';
 import { cameraPlugin } from './plugins/2d/camera/index.js';
 import { contextMenuPlugin } from './plugins/2d/context-menu/index.js';
 import { entityMarker2DPlugin } from './plugins/2d/entity-marker/index.js';
+import { interaction2DPlugin } from './plugins/2d/interaction/index.js';
 import { measurePlugin } from './plugins/2d/measure/index.js';
 import { markupPlugins } from './plugins/2d/markup/index.js';
 import { mouseBindings2DPlugin } from './plugins/2d/mouse-bindings/index.js';
@@ -200,6 +201,8 @@ function DocumentViewerInner(
       measurePlugin(),
       ...markupPlugins(),
       entityMarker2DPlugin(),
+      // Guided-pick overlay on top of entity-marker placement (interaction.request).
+      interaction2DPlugin(),
       contextMenuPlugin(),
     ];
     if (navCompassRef.current?.enabled !== false) {

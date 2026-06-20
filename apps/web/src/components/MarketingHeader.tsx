@@ -7,16 +7,14 @@ import type { JSX } from 'react';
 
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { Link, usePathname } from '@/i18n/navigation';
-import { env } from '@/lib/env';
 
 type NavItem = { label: string; href: string; activeMatch?: string };
 
 /**
  * Sticky marketing top-nav. Surfaces Blog (and Features / Request access) on
  * every marketing page — previously the blog was reachable only from the
- * footer. Carries the language + theme toggles (moved out of the hero corner)
- * and a Sign-in link to the portal. Active state is derived from the
- * locale-stripped pathname.
+ * footer. Carries the language + theme toggles (moved out of the hero corner).
+ * Active state is derived from the locale-stripped pathname.
  */
 export function MarketingHeader(): JSX.Element {
   const t = useTranslations('header');
@@ -29,10 +27,10 @@ export function MarketingHeader(): JSX.Element {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-3">
+    <header className="sticky top-0 z-40 border-b border-border bg-background">
+      <div className="mx-auto flex w-full max-w-8xl items-center justify-between gap-4 px-6 py-3">
         <Link href="/" className="flex items-center gap-2">
-          <BrandMark size={26} tone="on-light" />
+          <BrandMark size={28} variant="glyph-blue" />
           <span className="text-title3 font-semibold text-foreground">{t('brand')}</span>
         </Link>
 
@@ -56,12 +54,6 @@ export function MarketingHeader(): JSX.Element {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a
-            href={env.NEXT_PUBLIC_PORTAL_URL}
-            className="hidden text-body2 font-medium text-foreground-secondary transition-colors hover:text-primary sm:inline-flex"
-          >
-            {t('signIn')}
-          </a>
           <LanguageToggle />
           <ThemeToggle />
         </div>

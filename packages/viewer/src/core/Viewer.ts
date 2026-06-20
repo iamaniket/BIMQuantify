@@ -32,9 +32,16 @@ import { ContactShadowBaker } from './contactShadow.js';
 import type { ContactShadowRect } from './contactShadow.js';
 import { applyLookToMaterial } from './displayLook.js';
 import { modelMap, threeScene } from './fragmentsCompat.js';
+import { boxSummary, isViewerDebug, vdump, vlog, vwarn } from './debugLog.js';
 import type { CullingMode, ItemId, MaterialLook, Plugin, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>;
+
+/** Human-readable name for a native `LodMode` value (diagnostic logging). */
+function lodName(mode: FRAGS.LodMode | undefined): string {
+  if (mode === undefined) return 'unset';
+  return (FRAGS.LodMode as unknown as Record<number, string>)[mode as unknown as number] ?? String(mode);
+}
 
 export interface ShadowOptions {
   enabled?: boolean;
@@ -288,6 +295,15 @@ export class Viewer {
   private readonly viewUpdatedUnsubs = new Map<string, () => void>();
   /** True while {@link bakeShadow} temporarily un-culls; suppresses renderer wake to avoid a flash. */
   private shadowBaking = false;
+  /**
+   * Reentrancy guard for {@link bakeShadow}. Two overlapping bakes would
+   * concurrently un-cull/re-cull the same models and fire two
+   * `fragments.update(true)` calls, racing the fragments worker — which both
+   * flashes and can leave {@link shadowBaking} stuck `true` (renderer parked →
+   * frozen canvas). Overlapping bakes coalesce: the in-flight one re-dirties so
+   * the next idle re-bakes once.
+   */
+  private shadowBakeInFlight = false;
   /** World-space AABB of all loaded models. */
   private sceneBox: THREE.Box3 | null = null;
   /**
@@ -351,6 +367,8 @@ export class Viewer {
     const renderer = world.renderer;
     if (renderer && renderer.mode !== RendererMode.AUTO) {
       renderer.mode = RendererMode.AUTO;
+      // Leading edge only (mode flip) — cheap, never per-frame.
+      vlog('render', `wake → AUTO (hold ${holdMs}ms)`);
     }
     if (this.idleTimer !== null) clearTimeout(this.idleTimer);
     this.idleTimer = setTimeout(() => {
@@ -365,6 +383,7 @@ export class Viewer {
       // we never stop a frame a handler just asked for.
       if (this.idleTimer === null && this.world?.renderer) {
         this.world.renderer.mode = RendererMode.MANUAL;
+        vlog('render', 'idle → park MANUAL');
       }
     }, holdMs);
   }
@@ -799,8 +818,22 @@ export class Viewer {
       this.markActive();
     };
     camControls.addEventListener('update', onCamChange);
+    // Diagnostic drag markers: camera-controls fires `controlstart`/`controlend`
+    // exactly around a user-initiated drag (not programmatic moves), so these
+    // bracket the "when I drag the model" window the user is debugging. Logging
+    // is gated inside vlog, so this costs nothing when debug is off.
+    const onControlStart = (): void => vlog('drag', 'pointer drag start');
+    const onControlEnd = (): void => vlog('drag', 'pointer drag end');
+    const camEvents = camControls as unknown as {
+      addEventListener: (t: string, f: () => void) => void;
+      removeEventListener: (t: string, f: () => void) => void;
+    };
+    camEvents.addEventListener('controlstart', onControlStart);
+    camEvents.addEventListener('controlend', onControlEnd);
     this.cameraChangeUnsub = () => {
       camControls.removeEventListener('update', onCamChange);
+      camEvents.removeEventListener('controlstart', onControlStart);
+      camEvents.removeEventListener('controlend', onControlEnd);
     };
 
     // Core command (no owner / no default shortcut): whole-model visibility for
@@ -818,6 +851,14 @@ export class Viewer {
       ({ modelId }) => this.unloadModel(modelId),
       { title: 'Unload model' },
     );
+    // Diagnostic snapshot — run from the console via
+    // `__viewer.commands.execute('debug.dump')` when the scene is blank to see,
+    // per model, whether it's hidden / frustum-culled / off-screen / missing.
+    // Always prints (it is only ever called on purpose) and also returns the
+    // object so it can be inspected from the resolved promise.
+    this.commands.register('debug.dump', () => this.debugDump(), {
+      title: 'Log a diagnostic snapshot of the viewer state',
+    });
 
     // On-demand rendering: park the renderer in MANUAL and only resume on a
     // visual change. Each event below means "something changed on screen" —
@@ -890,63 +931,103 @@ export class Viewer {
     const isFirstModel =
       modelMap(fragments).size === 0;
     const modelId = opts.modelId ?? `model-${String(Date.now())}`;
-    this.modelId = modelId;
-    // Stash before `model:loaded` fires so the outline plugin's handler
-    // sees the supply via ctx.getPrecomputedOutline.
-    if (opts.precomputedOutline) {
-      this.precomputedOutlines.set(modelId, opts.precomputedOutline);
-    }
-    const model = await fragments.load(buffer as ArrayBuffer, { modelId });
-
-    // Connect camera so the LOD streaming system knows the viewpoint, can
-    // stream ALL tile detail levels (not just the coarsest shell), and — when
-    // culling is on — knows which frustum to cull against.
-    model.useCamera(world.camera.three);
-
-    // Apply the current culling policy. Under `auto`, a brand-new single model
-    // resolves to ALL_VISIBLE (its element count isn't known yet — first-paint
-    // safety so the initial stream never shows holes); the `model:elementCount`
-    // and federation re-resolves upgrade it to ALL_GEOMETRY when warranted.
-    const initialLod = this.resolveLodMode(modelId);
-    this.appliedLodMode.set(modelId, initialLod);
-    await model.setLodMode(initialLod).catch(() => undefined);
-
-    // With native frustum culling on (ALL_GEOMETRY), tiles stream in/out as the
-    // camera turns. `onViewUpdated` fires after each view-update cycle — get the
-    // re-shown tiles drawn instead of the renderer parking with holes. (The
-    // material `onItemSet` hook covers brand-new tiles; this covers existing
-    // tiles re-entering the frustum.) Routed through onStreamedChange so the
-    // streaming tail repaints once at rest rather than re-arming AUTO forever.
-    const onViewUpdated = (): void => this.onStreamedChange();
-    model.onViewUpdated.add(onViewUpdated);
-    this.viewUpdatedUnsubs.set(modelId, () =>
-      model.onViewUpdated.remove(onViewUpdated),
-    );
-
     const sceneThree = threeScene(world.scene);
-    sceneThree.add(model.object);
 
-    if (isFirstModel) {
-      await this.frameModel(model);
-    } else {
-      // Extend the scene/depth bounds + zoom limit to include the new model
-      // without moving the camera.
-      this.refreshSceneBounds();
+    // `loadFragments` is failure-ATOMIC. A single bad federated model must never
+    // blank the whole scene: if `fragments.load` (or any post-load wiring) fails,
+    // it can leave a half-registered main-thread entry whose WORKER model never
+    // materialized — then a later op (`applyCulling`→`setLodMode`,
+    // `onViewUpdated`→`fragments.update`, visibility, …) hits
+    // `FragmentsThread.getModel("<id>")` → "Model not found" → render teardown.
+    // So `this.modelId`/`precomputedOutlines` are committed only AFTER a
+    // successful load, and the catch disposes + unwinds every per-id trace and
+    // rethrows so the caller (IfcViewer's federated loop) skips just this model.
+    let loaded: FRAGS.FragmentsModel | null = null;
+    try {
+      const model = await fragments.load(buffer as ArrayBuffer, { modelId });
+      loaded = model;
+
+      // Model is now real on BOTH threads — commit the active id and any stashed
+      // precomputed outline. The outline must be set before `model:loaded` fires
+      // so the outline plugin's handler sees it via ctx.getPrecomputedOutline.
+      this.modelId = modelId;
+      if (opts.precomputedOutline) {
+        this.precomputedOutlines.set(modelId, opts.precomputedOutline);
+      }
+
+      // Connect camera so the LOD streaming system knows the viewpoint, can
+      // stream ALL tile detail levels (not just the coarsest shell), and — when
+      // culling is on — knows which frustum to cull against.
+      model.useCamera(world.camera.three);
+
+      // Apply the current culling policy. Under `auto`, a brand-new single model
+      // resolves to ALL_VISIBLE (its element count isn't known yet — first-paint
+      // safety so the initial stream never shows holes); the `model:elementCount`
+      // and federation re-resolves upgrade it to ALL_GEOMETRY when warranted.
+      const initialLod = this.resolveLodMode(modelId);
+      this.appliedLodMode.set(modelId, initialLod);
+      await model.setLodMode(initialLod).catch(() => undefined);
+
+      // With native frustum culling on (ALL_GEOMETRY), tiles stream in/out as the
+      // camera turns. `onViewUpdated` fires after each view-update cycle — get the
+      // re-shown tiles drawn instead of the renderer parking with holes. (The
+      // material `onItemSet` hook covers brand-new tiles; this covers existing
+      // tiles re-entering the frustum.) Routed through onStreamedChange so the
+      // streaming tail repaints once at rest rather than re-arming AUTO forever.
+      const onViewUpdated = (): void => this.onStreamedChange();
+      model.onViewUpdated.add(onViewUpdated);
+      this.viewUpdatedUnsubs.set(modelId, () =>
+        model.onViewUpdated.remove(onViewUpdated),
+      );
+
+      sceneThree.add(model.object);
+
+      if (isFirstModel) {
+        await this.frameModel(model);
+      } else {
+        // Extend the scene/depth bounds + zoom limit to include the new model
+        // without moving the camera.
+        this.refreshSceneBounds();
+      }
+      // Position sun + size the blob shadow plane to the whole-scene footprint.
+      this.fitLightsToScene();
+      vlog('load', `model "${modelId}" loaded`, {
+        isFirstModel,
+        bytes: bytes.byteLength,
+        lod: lodName(initialLod),
+        modelBox: boxSummary(model.box),
+        sceneBox: boxSummary(this.sceneBox),
+        totalModels: modelMap(fragments).size,
+      });
+      // Keep rendering every frame while the model streams in (a few seconds for
+      // large models); the trailing `viewer:idle` from this hold kicks the
+      // post-processing composite once streaming settles.
+      this.markActive(MODEL_STREAM_HOLD_MS);
+
+      this.events.emit('model:loaded', { modelId });
+
+      // This model may have flipped the scene to federated. Under `auto`,
+      // re-resolve every model's LodMode now (no-op for a lone small model).
+      if (this.cullingMode === 'auto') void this.applyCulling();
+
+      return modelId;
+    } catch (err) {
+      // Unwind everything for this model so it leaves ZERO main-thread/worker
+      // desync (the half-registered entry is what makes later `getModel` blow up
+      // and blank the scene). `model:loaded` hasn't fired on this path, so no
+      // balancing `model:unloaded` is emitted.
+      if (loaded !== null) sceneThree.remove(loaded.object);
+      this.viewUpdatedUnsubs.get(modelId)?.();
+      this.viewUpdatedUnsubs.delete(modelId);
+      this.precomputedOutlines.delete(modelId);
+      this.appliedLodMode.delete(modelId);
+      this.elementCounts.delete(modelId);
+      await fragments.disposeModel(modelId).catch(() => undefined);
+      if (this.modelId === modelId) {
+        this.modelId = this.getModelIds()[0] ?? null;
+      }
+      throw err;
     }
-    // Position sun + size the blob shadow plane to the whole-scene footprint.
-    this.fitLightsToScene();
-    // Keep rendering every frame while the model streams in (a few seconds for
-    // large models); the trailing `viewer:idle` from this hold kicks the
-    // post-processing composite once streaming settles.
-    this.markActive(MODEL_STREAM_HOLD_MS);
-
-    this.events.emit('model:loaded', { modelId });
-
-    // This model may have flipped the scene to federated. Under `auto`,
-    // re-resolve every model's LodMode now (no-op for a lone small model).
-    if (this.cullingMode === 'auto') void this.applyCulling();
-
-    return modelId;
   }
 
   /**
@@ -1017,6 +1098,99 @@ export class Viewer {
       ZOOM_IN_DISTANCE_CEIL,
     );
     world.camera.controls.minDistance = this.zoomInDistance;
+    if (isViewerDebug()) this.debugBounds(maxDim);
+  }
+
+  /**
+   * Diagnostic-only: log the freshly-unioned scene bounds and flag two
+   * federated failure modes that present as "a model loaded but nothing shows":
+   * an empty model box (won't frame, never streams) and a model whose center
+   * sits far from the scene center (coordinate-origin mismatch — it renders
+   * off-screen / outside the frustum). Only called when viewer debug is on.
+   */
+  private debugBounds(maxDim: number): void {
+    const scene = this.sceneBox;
+    vlog('bounds', 'scene bounds refreshed', {
+      sceneBox: boxSummary(scene),
+      maxDim: Math.round(maxDim * 1000) / 1000,
+      zoomInDistance: Math.round(this.zoomInDistance * 1000) / 1000,
+      zoomOutLimit: this.zoomOutLimit === Infinity ? 'Infinity' : Math.round(this.zoomOutLimit),
+    });
+    if (maxDim > 1e6) {
+      vwarn(
+        'bounds',
+        `scene span is enormous (maxDim≈${Math.round(maxDim)}) — models are likely far apart in world space; framing + near/far fit may misbehave and geometry can look missing`,
+      );
+    }
+    const fragments = this.fragmentsModels;
+    if (!fragments || !scene || scene.isEmpty()) return;
+    const center = scene.getCenter(new THREE.Vector3());
+    for (const [id, model] of modelMap(fragments)) {
+      const mb = model.box;
+      if (!mb || mb.isEmpty()) {
+        vwarn('bounds', `model "${id}" has an EMPTY bounding box — it will not be framed and may appear missing`);
+        continue;
+      }
+      const mc = mb.getCenter(new THREE.Vector3());
+      const ms = mb.getSize(new THREE.Vector3());
+      const mMax = Math.max(ms.x, ms.y, ms.z, 1);
+      const offset = mc.distanceTo(center);
+      // Center further than ~2× the larger of (own size, scene span) from the
+      // shared center is the signature of an un-aligned coordinate origin.
+      if (offset > Math.max(maxDim, mMax) * 2) {
+        vwarn(
+          'bounds',
+          `model "${id}" sits ${Math.round(offset)} units from the scene center (own size ≈${Math.round(mMax)}) — likely a coordinate-origin mismatch; it may render off-screen / outside the frustum and never stream in`,
+          { modelCenter: [Math.round(mc.x), Math.round(mc.y), Math.round(mc.z)], sceneCenter: [Math.round(center.x), Math.round(center.y), Math.round(center.z)] },
+        );
+      }
+    }
+  }
+
+  /**
+   * Build, print, and return the diagnostic snapshot behind the `debug.dump`
+   * command: per-model box / visibility / applied LOD / element count, plus the
+   * culling mode, scene box, render mode, and camera. The one-call answer to
+   * "a model loaded but nothing shows — which one, and why?".
+   */
+  private debugDump(): Record<string, unknown> {
+    const fragments = this.fragmentsModels;
+    const world = this.world;
+    const round2 = (n: number): number => Math.round(n * 100) / 100;
+    const models: Record<string, unknown> = {};
+    if (fragments) {
+      for (const [id, model] of modelMap(fragments)) {
+        models[id] = {
+          box: boxSummary(model.box),
+          visible: !this.hiddenModelIds.has(id),
+          appliedLod: lodName(this.appliedLodMode.get(id)),
+          elementCount: this.elementCounts.get(id) ?? null,
+        };
+      }
+    }
+    const cam = world?.camera.three ?? null;
+    const target = world ? world.camera.controls.getTarget(new THREE.Vector3()) : null;
+    const snapshot: Record<string, unknown> = {
+      modelCount: fragments ? modelMap(fragments).size : 0,
+      cullingMode: this.cullingMode,
+      activeLook: this.activeLook,
+      renderMode: world?.renderer?.mode === RendererMode.AUTO ? 'AUTO' : 'MANUAL',
+      sceneBox: boxSummary(this.sceneBox),
+      zoomInDistance: round2(this.zoomInDistance),
+      zoomOutLimit: this.zoomOutLimit === Infinity ? 'Infinity' : Math.round(this.zoomOutLimit),
+      camera: cam
+        ? {
+            position: [round2(cam.position.x), round2(cam.position.y), round2(cam.position.z)],
+            target: target ? [round2(target.x), round2(target.y), round2(target.z)] : null,
+            near: round2(cam.near),
+            far: round2(cam.far),
+          }
+        : null,
+      hiddenModels: [...this.hiddenModelIds],
+      models,
+    };
+    vdump('viewer snapshot', snapshot);
+    return snapshot;
   }
 
   /**
@@ -1245,6 +1419,18 @@ export class Viewer {
       return;
     }
 
+    // Never run two bakes at once (see `shadowBakeInFlight`): concurrent
+    // un-cull/re-cull + double `fragments.update` on the same models races the
+    // worker and can wedge the renderer in the parked `shadowBaking` state.
+    // Coalesce — re-dirty so the trailing idle re-bakes after this one settles.
+    if (this.shadowBakeInFlight) {
+      this.shadowDirty = true;
+      vlog('shadow', 'bake already in flight — coalescing (re-dirty for next idle)');
+      return;
+    }
+    this.shadowBakeInFlight = true;
+    vlog('shadow', 'bake start');
+
     const token = ++this.shadowBakeToken;
 
     // Native frustum culling (ALL_GEOMETRY) leaves only the user-camera frustum
@@ -1324,8 +1510,14 @@ export class Viewer {
           this.appliedLodMode.set(id, want);
         }
         await fragments.update(true).catch(() => undefined);
-        this.shadowBaking = false;
       }
+      // Always clear the park/guard flags — even on an early return or a thrown
+      // bake — so this method can never leave the renderer permanently parked
+      // (the "frozen a few frames after load" failure). markActive() below is a
+      // no-op while shadowBaking is true, so it MUST be cleared first.
+      this.shadowBaking = false;
+      this.shadowBakeInFlight = false;
+      vlog('shadow', 'bake done');
       // Repaint the fresh shadow mask + restored geometry with one idle-quality
       // composite instead of waking the base renderer — markActive() would put
       // the renderer back in AUTO and paint un-FXAA'd frames during the settle
@@ -1381,7 +1573,10 @@ export class Viewer {
     if (!model) return;
     if (visible) this.hiddenModelIds.delete(modelId);
     else this.hiddenModelIds.add(modelId);
-    await model.setVisible(undefined, visible).catch(() => undefined);
+    await model.setVisible(undefined, visible).catch((e: unknown) =>
+      vwarn('vis', `setVisible(${String(visible)}) failed for model "${modelId}"`, e),
+    );
+    vlog('vis', `model "${modelId}" → ${visible ? 'visible' : 'hidden'}`);
     this.events.emit('model:visibility', { modelId, visible });
     // Toggling a model re-streams its tiles — keep drawing while they arrive.
     this.markActive(MODEL_STREAM_HOLD_MS);
@@ -1422,13 +1617,23 @@ export class Viewer {
     const fragments = this.fragmentsModels;
     if (fragments === null) return;
     const models = modelMap(fragments);
+    const federated = models.size > 1;
     let changed = false;
     for (const [id, model] of models) {
       const want = this.resolveLodMode(id);
-      if (this.appliedLodMode.get(id) === want) continue;
-      await model.setLodMode(want).catch(() => undefined);
+      const prev = this.appliedLodMode.get(id);
+      if (prev === want) continue;
+      await model.setLodMode(want).catch((e: unknown) =>
+        vwarn('cull', `setLodMode failed for model "${id}"`, e),
+      );
       this.appliedLodMode.set(id, want);
       changed = true;
+      vlog(
+        'cull',
+        `model "${id}" LOD ${lodName(prev)} → ${lodName(want)}${
+          federated ? ' (federated → frustum-culled)' : ''
+        }`,
+      );
     }
     if (!changed) return;
     await fragments.update(true).catch(() => undefined);
@@ -1518,6 +1723,7 @@ export class Viewer {
     // Re-union bounds + relight, but do NOT re-frame — the user is mid-view.
     this.refreshSceneBounds();
     this.fitLightsToScene();
+    vlog('load', `model "${modelId}" unloaded`, { remaining: this.getModelIds() });
     this.events.emit('model:unloaded', { modelId });
     this.markActive(MODEL_STREAM_HOLD_MS);
   }

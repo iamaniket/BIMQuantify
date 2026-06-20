@@ -36,7 +36,7 @@ export const mdxComponents: MDXComponents = {
     return (
       <a
         {...props}
-        className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+        className="text-primary underline decoration-primary underline-offset-2"
         target={isExternal ? '_blank' : undefined}
         rel={isExternal ? 'noopener noreferrer' : undefined}
       />

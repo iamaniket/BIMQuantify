@@ -1,0 +1,134 @@
+{
+  "key": "deadlines",
+  "hasAssets": false,
+  "images": [
+    "/features/deadlines/01.png",
+    "/features/deadlines/02.png",
+    "/features/deadlines/03.png"
+  ],
+  "related": [
+    "dossier",
+    "reports",
+    "board"
+  ],
+  "en": {
+    "title": "Deadline tracking",
+    "card": "Automatic computation of bouwmelding, informatieplicht, and gereedmelding deadlines. Email reminders at T-30, T-14, T-7, and T-1 days so you never miss a filing.",
+    "tagline": "Never miss a Wkb filing again",
+    "intro": "BimDossier turns the Wet kwaliteitsborging voor het bouwen (Wkb) timeline into deadlines it computes and watches for you. The moment you set a project's start and handover dates, the bouwmelding, informatieplicht moments, and gereedmelding are scheduled automatically — and your whole team is reminded well before each one, so a statutory filing never depends on someone remembering a date.",
+    "problemTitle": "Missed deadlines carry real consequences",
+    "problem": "The Wkb ties construction to hard statutory dates: the bouwmelding four weeks before you break ground, informatieplicht moments during the build, and the gereedmelding two weeks before handover. Miss one and the consequences are concrete — the bevoegd gezag can halt work, occupancy slips, and the project's credibility suffers. Tracking these dates by hand across a portfolio of projects, each on its own schedule, is exactly the kind of repetitive work where a single oversight goes unnoticed until it is too late to recover.",
+    "solutionTitle": "Deadlines computed and watched automatically",
+    "solution": [
+      "Every deadline is derived from your project's start and handover dates the moment you create it — no manual date math, no spreadsheets.",
+      "Email reminders fire at T-30, T-14, T-7, and T-1 days, so the whole team sees what's due next and who owns it.",
+      "A single calendar view shows every filing across all your projects at a glance, ranked by how close each one is.",
+      "Change a project date and every linked deadline recalculates instantly, keeping the schedule honest as plans shift."
+    ],
+    "highlights": [
+      {
+        "title": "Automatic deadline calculation",
+        "body": "Bouwmelding, informatieplicht, and gereedmelding dates are derived from your project schedule the instant the project is created."
+      },
+      {
+        "title": "Escalating email reminders",
+        "body": "Alerts at T-30, T-14, T-7, and T-1 days give your team a runway to act instead of a last-minute scramble."
+      },
+      {
+        "title": "Portfolio-wide calendar",
+        "body": "Every statutory filing across all your projects sits in one calendar, so nothing hides at the bottom of a list."
+      },
+      {
+        "title": "Recalculates on change",
+        "body": "Shift a start or handover date and all dependent deadlines update automatically — the schedule never goes stale."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Which Wkb deadlines does BimDossier track?",
+        "a": "It tracks the bouwmelding four weeks before construction, the informatieplicht moments during the build, and the gereedmelding two weeks before handover — all derived from your project's planned start and handover dates."
+      },
+      {
+        "q": "When are deadline reminders sent?",
+        "a": "Email reminders go out at T-30, T-14, T-7, and T-1 days before each statutory date, so the whole project team has time to prepare the filing and submit it on schedule."
+      },
+      {
+        "q": "What happens if a project date changes?",
+        "a": "Every linked deadline recalculates automatically the moment you update a start or handover date, so your Wkb filing schedule always reflects the current plan."
+      }
+    ],
+    "imageCaptions": [
+      "Per-project deadline timeline",
+      "Email reminder at T-7",
+      "All filings on one calendar"
+    ],
+    "keywords": [
+      "Wkb deadline tracking",
+      "bouwmelding deadline",
+      "gereedmelding",
+      "informatieplicht",
+      "construction compliance reminders",
+      "Wkb filing schedule"
+    ]
+  },
+  "nl": {
+    "title": "Deadlines bijhouden",
+    "card": "Automatische berekening van bouwmelding-, informatieplicht- en gereedmeldingsdeadlines. E-mailherinneringen op T-30, T-14, T-7 en T-1 dagen zodat u geen indienmoment mist.",
+    "tagline": "Mis nooit meer een Wkb-indiening",
+    "intro": "BimDossier zet de tijdlijn van de Wet kwaliteitsborging voor het bouwen (Wkb) om in deadlines die het voor u berekent en bewaakt. Zodra u de start- en opleverdatum van een project instelt, worden de bouwmelding, de informatieplichtmomenten en de gereedmelding automatisch ingepland — en wordt uw hele team ruim van tevoren herinnerd, zodat een wettelijke indiening nooit afhangt van iemand die aan een datum denkt.",
+    "problemTitle": "Gemiste deadlines hebben echte gevolgen",
+    "problem": "De Wkb koppelt de bouw aan harde wettelijke data: de bouwmelding vier weken vóór aanvang, informatieplichtmomenten tijdens de bouw en de gereedmelding twee weken vóór oplevering. Mist u er één, dan zijn de gevolgen concreet — het bevoegd gezag kan het werk stilleggen, de oplevering schuift op en de geloofwaardigheid van het project loopt een deuk op. Deze data handmatig bijhouden over een portfolio van projecten, elk met een eigen planning, is precies het soort repetitief werk waarbij één vergissing onopgemerkt blijft tot het te laat is.",
+    "solutionTitle": "Deadlines automatisch berekend en bewaakt",
+    "solution": [
+      "Elke deadline wordt afgeleid van de start- en opleverdatum van uw project zodra u het aanmaakt — geen handmatig rekenwerk, geen spreadsheets.",
+      "E-mailherinneringen worden verstuurd op T-30, T-14, T-7 en T-1 dagen, zodat het hele team ziet wat er aankomt en wie het oppakt.",
+      "Eén kalenderweergave toont elke indiening over al uw projecten in één oogopslag, gerangschikt op hoe dichtbij ze zijn.",
+      "Wijzig een projectdatum en elke gekoppelde deadline wordt direct herberekend, zodat de planning klopt terwijl plannen schuiven."
+    ],
+    "highlights": [
+      {
+        "title": "Automatische deadlineberekening",
+        "body": "Bouwmelding-, informatieplicht- en gereedmeldingsdata worden afgeleid van uw projectplanning op het moment dat het project wordt aangemaakt."
+      },
+      {
+        "title": "Oplopende e-mailherinneringen",
+        "body": "Waarschuwingen op T-30, T-14, T-7 en T-1 dagen geven uw team ruimte om te handelen in plaats van een sprint op het laatste moment."
+      },
+      {
+        "title": "Portfoliobrede kalender",
+        "body": "Elke wettelijke indiening over al uw projecten staat in één kalender, zodat niets onderaan een lijst verdwijnt."
+      },
+      {
+        "title": "Herberekent bij wijziging",
+        "body": "Verschuif een start- of opleverdatum en alle afhankelijke deadlines worden automatisch bijgewerkt — de planning veroudert nooit."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Welke Wkb-deadlines houdt BimDossier bij?",
+        "a": "Het houdt de bouwmelding vier weken vóór de bouw, de informatieplichtmomenten tijdens de bouw en de gereedmelding twee weken vóór oplevering bij — allemaal afgeleid van de geplande start- en opleverdatum van uw project."
+      },
+      {
+        "q": "Wanneer worden deadlineherinneringen verstuurd?",
+        "a": "E-mailherinneringen gaan uit op T-30, T-14, T-7 en T-1 dagen vóór elke wettelijke datum, zodat het hele projectteam tijd heeft om de indiening voor te bereiden en op tijd in te dienen."
+      },
+      {
+        "q": "Wat gebeurt er als een projectdatum verandert?",
+        "a": "Elke gekoppelde deadline wordt automatisch herberekend zodra u een start- of opleverdatum bijwerkt, zodat uw Wkb-indieningsplanning altijd de actuele planning weerspiegelt."
+      }
+    ],
+    "imageCaptions": [
+      "Deadline-tijdlijn per project",
+      "E-mailherinnering op T-7",
+      "Alle indieningen op één kalender"
+    ],
+    "keywords": [
+      "Wkb deadlines bijhouden",
+      "bouwmelding deadline",
+      "gereedmelding",
+      "informatieplicht",
+      "herinneringen bouwcompliance",
+      "Wkb-indieningsplanning"
+    ]
+  }
+}

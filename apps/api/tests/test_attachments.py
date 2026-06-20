@@ -424,6 +424,52 @@ async def test_update_description(
 
 
 @pytest.mark.asyncio
+async def test_update_annotation_state_round_trips(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(client, org_user["access_token"], project["id"])
+
+    # Fresh attachments carry no annotation state.
+    initial = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert initial.status_code == 200
+    assert initial.json()["annotation_state"] is None
+
+    state = {
+        "schemaVersion": 1,
+        "sourceVersionId": str(att["attachment_id"]),
+        "annotations": [
+            {
+                "id": "1",
+                "tool": "arrow",
+                "points": [[0.1, 0.2], [0.8, 0.7]],
+                "color": "#ef4444",
+                "strokeWidth": 6,
+            }
+        ],
+    }
+    resp = await client.patch(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        json={"annotation_state": state},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["annotation_state"] == state
+
+    # Persisted: a fresh GET returns the same document.
+    again = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert again.json()["annotation_state"] == state
+
+
+@pytest.mark.asyncio
 async def test_update_emits_audit(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],

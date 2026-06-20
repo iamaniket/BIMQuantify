@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, CalendarDays, ClipboardCheck, Download, Eye, FileBadge, Glasses, Hash, ShieldCheck, Trash2, Upload } from '@bimstitch/ui/icons';
+import { Box, ClipboardCheck, Download, Eye, FileBadge, Glasses, ShieldCheck, Trash2, Upload } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, type ComponentType, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -9,16 +9,16 @@ import type { Locale } from '@bimstitch/i18n';
 
 import {
   Badge,
-  Button,
+  CountChip,
   DetailCard,
   DetailCardBody,
-  DetailCardFooter,
   DetailCardRow,
   MetaGrid,
   type BadgeVariant,
 } from '@bimstitch/ui';
 
-import { ResourceMediaTile, RowAsideStat, VersionBadge, VersionHistoryList, type MediaTileTone } from '@/components/shared/resource';
+import { ResourceMediaTile, VersionHistoryList, type MediaTileTone } from '@/components/shared/resource';
+import { RowActionPill } from '@/components/shared/resource/RowActionPill';
 import { getCertificateDownloadUrl } from '@/lib/api/certificates';
 import { formatDate } from '@/lib/formatting/dates';
 import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
@@ -70,6 +70,7 @@ export function CertificateRow({
   deleteDisabled,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.certificates');
+  const tVer = useTranslations('common.versions');
   const locale = useLocale() as Locale;
   const { tokens } = useAuth();
 
@@ -122,32 +123,27 @@ export function CertificateRow({
     <DetailCard expanded={expanded} onToggle={onToggle}>
       <DetailCardRow
         media={<ResourceMediaTile icon={TYPE_ICON[certificate.certificate_type].icon} tone={TYPE_ICON[certificate.certificate_type].tone} />}
-        aside={
-          <>
-            {certificate.certificate_number !== null && certificate.certificate_number !== '' && (
-              <RowAsideStat icon={Hash} value={certificate.certificate_number} title={t('expandedNumber')} />
-            )}
-            <RowAsideStat icon={CalendarDays} value={formatDate(certificate.created_at, locale)} title={t('expandedAdded')} />
-          </>
-        }
+        info={certificate.version_number > 1 ? (
+          <CountChip className="rounded-full bg-surface-high px-2 py-0.5 font-semibold">
+            {tVer('badge', { n: certificate.version_number })}
+          </CountChip>
+        ) : undefined}
         actions={
           <>
-            <button
-              type="button"
+            <RowActionPill
+              size="md"
+              icon={<Eye className="h-3.5 w-3.5" />}
+              label={t('rowView')}
               title={t('rowView')}
-              onClick={(e) => { e.stopPropagation(); onView(certificate); }}
-              className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
-            >
-              <Eye className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
+              onClick={() => { onView(certificate); }}
+            />
+            <RowActionPill
+              size="md"
+              icon={<Download className="h-3.5 w-3.5" />}
+              label={t('download')}
               title={t('download')}
-              onClick={(e) => { e.stopPropagation(); void handleDownload(certificate.id); }}
-              className="inline-grid h-6 w-6 place-items-center rounded border border-transparent text-foreground-tertiary transition-all hover:bg-background-hover hover:text-foreground"
-            >
-              <Download className="h-4 w-4" />
-            </button>
+              onClick={() => { void handleDownload(certificate.id); }}
+            />
           </>
         }
       >
@@ -158,7 +154,6 @@ export function CertificateRow({
           <Badge variant="default" size="md" bordered>
             {t(`type.${certificate.certificate_type}`)}
           </Badge>
-          <VersionBadge version={certificate.version_number} />
         </div>
         <div className="flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
           {certificate.issuer !== null && certificate.issuer !== '' && (
@@ -176,6 +171,40 @@ export function CertificateRow({
       </DetailCardRow>
 
       <DetailCardBody>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <RowActionPill
+              size="md"
+              icon={<Eye className="h-3.5 w-3.5" />}
+              label={t('rowView')}
+              onClick={() => { onView(certificate); }}
+            />
+            <RowActionPill
+              size="md"
+              icon={<Download className="h-3.5 w-3.5" />}
+              label={t('download')}
+              onClick={() => { void handleDownload(certificate.id); }}
+            />
+            {canUpload && (
+              <RowActionPill
+                size="md"
+                icon={<Upload className="h-3.5 w-3.5" />}
+                label={t('uploadNewVersion')}
+                onClick={() => { onSupersede(certificate); }}
+              />
+            )}
+          </div>
+          {canDelete && (
+            <RowActionPill
+              tone="danger"
+              size="md"
+              icon={<Trash2 className="h-3.5 w-3.5" />}
+              label={t('expandedRemove')}
+              disabled={deleteDisabled}
+              onClick={() => { onDelete(certificate); }}
+            />
+          )}
+        </div>
         {certificate.description !== null && certificate.description !== '' && (
           <div className="whitespace-pre-wrap border-b border-dashed border-border py-2.5 text-body3 leading-snug text-foreground-secondary">
             {certificate.description}
@@ -190,37 +219,6 @@ export function CertificateRow({
           />
         )}
       </DetailCardBody>
-
-      <DetailCardFooter className="justify-between">
-        <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="md" onClick={() => { onView(certificate); }}>
-            <Eye className="h-3.5 w-3.5" />
-            {t('rowView')}
-          </Button>
-          <Button variant="ghost" size="md" onClick={() => { void handleDownload(certificate.id); }}>
-            <Download className="h-3.5 w-3.5" />
-            {t('download')}
-          </Button>
-          {canUpload && (
-            <Button variant="ghost" size="md" onClick={() => { onSupersede(certificate); }}>
-              <Upload className="h-3.5 w-3.5" />
-              {t('uploadNewVersion')}
-            </Button>
-          )}
-        </div>
-        {canDelete && (
-          <Button
-            variant="ghost"
-            size="md"
-            onClick={() => { onDelete(certificate); }}
-            disabled={deleteDisabled}
-            className="text-error hover:text-error"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            {t('expandedRemove')}
-          </Button>
-        )}
-      </DetailCardFooter>
     </DetailCard>
   );
 }

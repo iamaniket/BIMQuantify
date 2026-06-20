@@ -11,10 +11,13 @@ export type AutoRotateOptions = {
  * Gentle idle auto-rotate for the marketing 3D showcase. The viewer renders
  * on-demand (parks in MANUAL mode when idle), so each frame advances the camera
  * azimuth and calls `ctx.requestRender()` to wake it. Spinning pauses while the
- * user is dragging (camera-controls `controlstart`) and while the host signals a
- * hover via the `auto-rotate.setPaused` command, resuming after a short idle so
- * manual orbit always wins. Registered through `<IfcViewer plugins={[...]}>`;
- * omit it entirely to disable (e.g. `prefers-reduced-motion`).
+ * user is dragging (camera-controls `controlstart`), resuming after a short idle
+ * so manual orbit always wins — merely hovering the model never stops the spin.
+ * The `auto-rotate.setPaused` command lets another plugin freeze the turntable
+ * for a transient operation that needs a fixed pose (snagPlacementPlugin holds it
+ * still while raycasting snag positions, then resumes). Registered through
+ * `<IfcViewer plugins={[...]}>`; omit it entirely to disable (e.g.
+ * `prefers-reduced-motion`).
  */
 export function autoRotatePlugin(options: AutoRotateOptions = {}): Plugin {
   const speed = options.speed ?? 0.18;
@@ -23,7 +26,9 @@ export function autoRotatePlugin(options: AutoRotateOptions = {}): Plugin {
   let ctx: ViewerContext | null = null;
   let raf = 0;
   let last = 0;
-  let hoverPaused = false;
+  // Held by another plugin via `auto-rotate.setPaused` to freeze the turntable
+  // for a transient fixed-pose operation (e.g. snag-placement raycasting).
+  let externallyPaused = false;
   let interacting = false;
   let resumeTimer: ReturnType<typeof setTimeout> | null = null;
   const onStart = (): void => {
@@ -44,7 +49,7 @@ export function autoRotatePlugin(options: AutoRotateOptions = {}): Plugin {
     raf = requestAnimationFrame(tick);
     const dt = last ? (now - last) / 1000 : 0;
     last = now;
-    if (ctx === null || hoverPaused || interacting || dt <= 0) return;
+    if (ctx === null || externallyPaused || interacting || dt <= 0) return;
     // Azimuth only → a clean turntable. Fire-and-forget, then wake the renderer.
     void ctx.cameraControls.rotate(speed * dt, 0, false);
     ctx.requestRender();
@@ -59,7 +64,7 @@ export function autoRotatePlugin(options: AutoRotateOptions = {}): Plugin {
       context.commands.register(
         'auto-rotate.setPaused',
         (args: unknown) => {
-          hoverPaused = Boolean((args as { paused?: boolean } | undefined)?.paused);
+          externallyPaused = Boolean((args as { paused?: boolean } | undefined)?.paused);
         },
         { title: 'Pause or resume idle auto-rotate' },
       );

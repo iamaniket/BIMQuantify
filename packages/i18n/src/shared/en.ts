@@ -4,10 +4,9 @@ export const sharedEnMessages: SharedMessages = {
   brand: {
     name: 'BimDossier',
     legalEntity: 'BimDossier B.V.',
-    tagline:
-      'Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors.',
+    tagline: 'The Wkb dossier platform for Dutch contractors.',
     productDescription:
-      'Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time.',
+      'The model-native Wkb dossier platform for Dutch contractors — track deadlines, manage documents, resolve findings, and file on time.',
     pilotHeading: 'Join the BimDossier pilot.',
   },
   legal: {

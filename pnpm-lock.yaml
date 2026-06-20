@@ -132,6 +132,9 @@ importers:
 
   apps/portal:
     dependencies:
+      '@bimstitch/annotation':
+        specifier: workspace:*
+        version: link:../../packages/annotation
       '@bimstitch/brand':
         specifier: workspace:*
         version: link:../../packages/brand
@@ -256,6 +259,9 @@ importers:
       '@eslint/js':
         specifier: ^9.17.0
         version: 9.39.4
+      '@next/eslint-plugin-next':
+        specifier: ^16.2.9
+        version: 16.2.9
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.59.1
@@ -477,12 +483,6 @@ importers:
       '@bimstitch/viewer':
         specifier: workspace:*
         version: link:../../packages/viewer
-      '@dnd-kit/core':
-        specifier: ^6.3.1
-        version: 6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@dnd-kit/utilities':
-        specifier: ^3.2.2
-        version: 3.2.2(react@19.2.5)
       '@thatopen/fragments':
         specifier: ~3.4.0
         version: 3.4.3(three@0.184.0)(web-ifc@0.0.77)
@@ -532,6 +532,9 @@ importers:
       '@eslint/js':
         specifier: ^9.17.0
         version: 9.39.4
+      '@next/eslint-plugin-next':
+        specifier: ^16.2.9
+        version: 16.2.9
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.59.1
@@ -592,6 +595,36 @@ importers:
       typescript-eslint:
         specifier: ^8.18.0
         version: 8.59.0(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
+
+  packages/annotation:
+    devDependencies:
+      '@bimstitch/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/react':
+        specifier: ^19.0.1
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.0.1
+        version: 19.2.3(@types/react@19.2.14)
+      happy-dom:
+        specifier: ^20.9.0
+        version: 20.9.0
+      react:
+        specifier: ^19.0.0
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.5(react@19.2.5)
+      rimraf:
+        specifier: ^5.0.10
+        version: 5.0.10
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.19.19)(happy-dom@20.9.0)(jsdom@29.1.1)(lightningcss@1.32.0)(terser@5.48.0)
 
   packages/brand:
     dependencies:
@@ -728,6 +761,9 @@ importers:
 
   packages/viewer:
     dependencies:
+      '@bimstitch/annotation':
+        specifier: workspace:*
+        version: link:../annotation
       '@thatopen/components':
         specifier: ^3.4.6
         version: 3.4.6(@thatopen/fragments@3.4.3(three@0.184.0)(web-ifc@0.0.77))(camera-controls@3.1.2(three@0.184.0))(three@0.184.0)(web-ifc@0.0.77)
@@ -12168,7 +12204,9 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.85.3': {}
 
@@ -18696,7 +18734,7 @@ snapshots:
   vite@5.4.21(@types/node@22.19.17)(lightningcss@1.32.0)(terser@5.48.0):
     dependencies:
       esbuild: 0.21.5
-      postcss: 8.5.10
+      postcss: 8.5.15
       rollup: 4.60.2
     optionalDependencies:
       '@types/node': 22.19.17
@@ -18707,7 +18745,7 @@ snapshots:
   vite@5.4.21(@types/node@22.19.19)(lightningcss@1.32.0)(terser@5.48.0):
     dependencies:
       esbuild: 0.21.5
-      postcss: 8.5.10
+      postcss: 8.5.15
       rollup: 4.60.2
     optionalDependencies:
       '@types/node': 22.19.19

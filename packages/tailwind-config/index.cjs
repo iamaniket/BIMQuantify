@@ -106,11 +106,19 @@ const preset = {
         md: '6px',
         lg: '8px',
         xl: '12px',
+        '2xl': '16px',
       },
       spacing: {
         xxs: '2px',
         xxl: '24px',
         '4.5': '18px',
+      },
+      maxWidth: {
+        // Wider page-frame steps above Tailwind's default 7xl (80rem). The
+        // marketing page frame uses `max-w-8xl` so the centered content fills
+        // more of large monitors (less empty side margin).
+        '8xl': '88rem', // 1408px
+        '9xl': '96rem', // 1536px
       },
       fontSize: {
         micro: ['9px', { lineHeight: '11px', letterSpacing: '0' }],

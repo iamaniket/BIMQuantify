@@ -129,7 +129,7 @@ beforeEach(() => {
 });
 
 describe('DossierChecklistTab', () => {
-  it('renders category groups and requirement labels with a 0% bar when nothing is uploaded', () => {
+  it('renders category groups and requirement labels when nothing is uploaded', () => {
     renderTab();
     expect(screen.getByText('Models')).toBeInTheDocument();
     expect(screen.getByText('Documents')).toBeInTheDocument();
@@ -137,8 +137,8 @@ describe('DossierChecklistTab', () => {
     expect(screen.getByText('3D model / BIM model')).toBeInTheDocument();
     expect(screen.getByText('Drawings')).toBeInTheDocument();
     expect(screen.getByText('Product certificates')).toBeInTheDocument();
-    expect(screen.getByText('0%')).toBeInTheDocument();
-    // All three required items missing.
+    // All three required items missing. (The headline percentage now lives in
+    // the Readiness tab header — see RightColumnTabs — not in this tab.)
     expect(screen.getAllByText('Missing').length).toBeGreaterThanOrEqual(3);
   });
 
@@ -148,16 +148,13 @@ describe('DossierChecklistTab', () => {
       isLoading: false,
     });
     renderTab();
-    // 1 of 3 required complete → 33%.
-    expect(screen.getByText('33%')).toBeInTheDocument();
     expect(screen.getByText('1 document provided')).toBeInTheDocument();
   });
 
   it('marks the drawings row fulfilled from a BIM model alone (no drawing upload)', () => {
     mockUseModels.mockReturnValue({ data: [{ id: 'm1' }] });
     renderTab();
-    // model-present AND drawings are both satisfied by the one model → 2 of 3 → 67%.
-    expect(screen.getByText('67%')).toBeInTheDocument();
+    // model-present AND drawings are both satisfied by the one model.
     // The drawings row still offers an upload affordance for a real PDF drawing set.
     expect(screen.getByRole('button', { name: 'Upload' })).toBeInTheDocument();
   });

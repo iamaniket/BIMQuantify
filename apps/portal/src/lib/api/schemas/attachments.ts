@@ -38,6 +38,7 @@ export const AttachmentSchema = z.object({
   dossier_slot: z.union([DossierSlotEnum, z.null()]),
   capture_metadata: z.union([z.record(z.unknown()), z.null()]),
   server_metadata: z.union([z.record(z.unknown()), z.null()]),
+  annotation_state: z.union([z.record(z.unknown()), z.null()]),
   version_number: z.number(),
   parent_file_id: z.union([z.string().uuid(), z.null()]),
   created_at: z.string(),

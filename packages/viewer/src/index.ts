@@ -91,6 +91,8 @@ export type {
 } from './types.js';
 
 // Lower-level building blocks for users writing custom plugins.
+export { pick, clientToNdc } from './core/Raycaster.js';
+export type { PickResult } from './core/Raycaster.js';
 export { EventBus } from './core/EventBus.js';
 export { CommandRegistry, CommandNotFoundError } from './core/CommandRegistry.js';
 export type { CommandHandler, CommandMeta } from './core/CommandRegistry.js';
@@ -168,6 +170,8 @@ export type {
   EntityMarker2DData,
   EntityMarker2DType,
 } from './plugins/2d/entity-marker/index.js';
+export { interaction2DPlugin } from './plugins/2d/interaction/index.js';
+export type { Interaction2DRequestArgs } from './plugins/2d/interaction/index.js';
 
 // Floor-plan 2D viewer — reuses the world-space 2D engine to render a decoded
 // BIMFPLN2 plan (sibling to the PDF `DocumentViewer`).
@@ -204,6 +208,11 @@ export { pivotRotatePlugin } from './plugins/3d/pivot-rotate/index.js';
 export { visibilityPlugin } from './plugins/3d/visibility/index.js';
 export { inspectPlugin } from './plugins/3d/inspect/index.js';
 export { eraserPlugin } from './plugins/3d/eraser/index.js';
+// Guided-pick overlay (dimming scrim + instruction banner) shared by the 3D and
+// 2D engines. The shared `InteractionPluginAPI` is the common surface.
+export { interactionPlugin } from './plugins/3d/interaction/index.js';
+export type { InteractionRequestArgs } from './plugins/3d/interaction/index.js';
+export type { InteractionPluginAPI } from './plugins/shared/interaction-overlay/overlay-dom.js';
 export { toolManagerPlugin } from './plugins/3d/tool-manager/index.js';
 export type { NavMode, ActionMode, ToolManagerPluginAPI } from './plugins/3d/tool-manager/index.js';
 export { contextMenuPlugin } from './plugins/3d/context-menu/index.js';

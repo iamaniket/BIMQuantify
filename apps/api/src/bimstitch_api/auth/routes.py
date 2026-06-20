@@ -517,13 +517,20 @@ def build_auth_router() -> APIRouter:
                 detail="ACTIVATION_USER_INACTIVE",
             )
 
+        # The activation token sets the password EXACTLY ONCE — on the call that
+        # flips is_verified. A replay against an already-verified user is an
+        # idempotent no-op that must NOT reset the password: the token is a
+        # stateless ~7-day verify JWT with no credential fingerprint, so anyone
+        # who later observes the one-time invite link (forwarded mail, proxy/
+        # browser logs, a link prefetcher) could otherwise take over an active
+        # account by POSTing a new password. See F1.
         if not user.is_verified:
             try:
                 user = await user_manager.verify(payload.token, request)
             except fau_exceptions.UserAlreadyVerified:
-                # Raced with another call (or a verify happened out-of-band
-                # between _decode and here). Fall through — set the password.
-                pass
+                # Lost the race to a concurrent activation that already set the
+                # password — treat as the no-op replay path.
+                return Response(status_code=status.HTTP_204_NO_CONTENT)
             except (
                 fau_exceptions.InvalidVerifyToken,
                 fau_exceptions.UserNotExists,
@@ -533,16 +540,24 @@ def build_auth_router() -> APIRouter:
                     detail="ACTIVATION_BAD_TOKEN",
                 ) from exc
 
-        try:
-            await user_manager._update(user, {"password": payload.password})
-        except fau_exceptions.InvalidPasswordException as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": "ACTIVATION_INVALID_PASSWORD",
-                    "reason": e.reason,
-                },
-            ) from e
+            try:
+                # Stamp the token epoch alongside the initial password so any
+                # pre-activation session (there should be none) is invalidated.
+                await user_manager._update(
+                    user,
+                    {
+                        "password": payload.password,
+                        "tokens_valid_after": datetime.now(UTC),
+                    },
+                )
+            except fau_exceptions.InvalidPasswordException as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "ACTIVATION_INVALID_PASSWORD",
+                        "reason": e.reason,
+                    },
+                ) from e
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 

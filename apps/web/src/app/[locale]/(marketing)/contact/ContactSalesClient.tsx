@@ -3,10 +3,11 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { HeroGrid } from '@bimstitch/brand';
 import { Button } from '@bimstitch/ui';
 import { ArrowRight, CalendarClock, Mail } from '@bimstitch/ui/icons';
 
+import { HeroPill } from '@/components/sections/HeroPill';
+import { HeroShell } from '@/components/sections/HeroShell';
 import { Link } from '@/i18n/navigation';
 import { env } from '@/lib/env';
 
@@ -18,28 +19,18 @@ export function ContactSalesClient(): JSX.Element {
 
   return (
     <>
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-gradient-start)] to-[var(--brand-gradient-end)]" />
-        <HeroGrid opacity={0.08} stroke="#ffffff" step={36} />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(95,217,158,0.15),transparent)]" />
-
-        <div className="relative mx-auto flex w-full max-w-3xl flex-col items-center gap-4 px-6 py-24 text-center sm:py-32">
-          <span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1 text-body3 font-medium text-white/90">
-            {t('eyebrow')}
-          </span>
-          <h1 className="max-w-2xl text-h3 font-semibold text-white sm:text-h2">
-            {t('headline')}
-          </h1>
-          <p className="max-w-xl text-title3 text-white/80">
-            {t('subtitle')}
-          </p>
-        </div>
-      </section>
+      <HeroShell size="splash" align="center" className="max-w-3xl gap-4">
+        <HeroPill>{t('eyebrow')}</HeroPill>
+        <h1 className="max-w-2xl text-h3 font-semibold text-white sm:text-h2">
+          {t('headline')}
+        </h1>
+        <p className="max-w-xl text-title3 text-white/80">{t('subtitle')}</p>
+      </HeroShell>
 
       <section className="mx-auto w-full max-w-3xl px-6 py-16">
         <div className="grid gap-8 sm:grid-cols-2">
           <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface-low p-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-lighter">
               <CalendarClock className="h-5 w-5 text-primary" />
             </div>
             <h2 className="text-title2 font-semibold text-foreground">
@@ -63,7 +54,7 @@ export function ContactSalesClient(): JSX.Element {
           </div>
 
           <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface-low p-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-lighter">
               <Mail className="h-5 w-5 text-primary" />
             </div>
             <h2 className="text-title2 font-semibold text-foreground">

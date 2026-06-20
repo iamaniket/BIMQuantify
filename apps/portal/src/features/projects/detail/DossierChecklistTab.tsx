@@ -1,8 +1,8 @@
 'use client';
 
-import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, ShieldCheck, SlidersHorizontal, Upload, X } from '@bimstitch/ui/icons';
+import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, ShieldCheck, SlidersHorizontal, Upload } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useCallback, useMemo, useRef, useState, type JSX } from 'react';
+import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -17,25 +17,16 @@ import {
 } from '@bimstitch/ui';
 
 import type { CertificateTypeValue, DossierSlotValue } from '@/lib/api/schemas';
-import { useAttachments, useUnslottedDocuments } from '@/features/attachments/useAttachments';
+import { useUnslottedDocuments } from '@/features/attachments/useAttachments';
 import { useUpdateAttachment } from '@/features/attachments/useUpdateAttachment';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
-import { useCertificates } from '@/features/certificates/useCertificates';
-import { useFindings } from '@/features/findings/useFindings';
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
-import { useModels } from '@/features/models/useModels';
-import { useProject } from '@/features/projects/useProject';
 
 import { NewModelDialog } from '@/features/models/NewModelDialog';
 
 import { CertificateUploadDialog } from './CertificateUploadDialog';
-import {
-  computeDossierCompleteness,
-  selectDossierTemplate,
-  type DossierRequirementResult,
-} from './dossierTemplate';
-import { useDeadlines } from './deadlines/useDeadlines';
+import { type DossierRequirementResult } from './dossierTemplate';
+import { useDossierCompleteness } from './useDossierCompleteness';
 
 type Props = {
   projectId: string;
@@ -55,13 +46,8 @@ const OFFICE_ACCEPT = '.pdf,.docx,.xlsx,.pptx,.txt';
 export function DossierChecklistTab({ projectId, country }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.dossier');
 
-  const projectQuery = useProject(projectId);
   const jurisdiction = useJurisdiction(country);
-  const attachmentsQuery = useAttachments(projectId);
-  const certificatesQuery = useCertificates(projectId);
-  const modelsQuery = useModels(projectId);
-  const findingsQuery = useFindings(projectId);
-  const deadlinesQuery = useDeadlines(projectId);
+  const dossier = useDossierCompleteness(projectId, country);
 
   const uploadMutation = useUploadAttachment(projectId);
   const updateMutation = useUpdateAttachment(projectId);
@@ -72,38 +58,6 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
   const [certType, setCertType] = useState<CertificateTypeValue | null>(null);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-
-  const buildingType = projectQuery.data?.building_type ?? null;
-  const attachments = flattenPages(attachmentsQuery.data);
-  const certificates = flattenPages(certificatesQuery.data);
-
-  const template = useMemo(
-    () => selectDossierTemplate(jurisdiction?.dossier_requirement_templates, buildingType),
-    [jurisdiction, buildingType],
-  );
-
-  const allFindings = flattenPages(findingsQuery.data);
-  const findingsOpen = useMemo(
-    () =>
-      allFindings.filter(
-        (f) => f.status !== 'resolved' && f.status !== 'verified',
-      ).length,
-    [allFindings],
-  );
-  const deadlinesOverdue = useMemo(
-    () => (deadlinesQuery.data ?? []).filter((d) => d.is_overdue).length,
-    [deadlinesQuery.data],
-  );
-
-  const dossier = useMemo(
-    () =>
-      computeDossierCompleteness(template, attachments, certificates, {
-        modelCount: modelsQuery.data?.length ?? 0,
-        findingsOpen,
-        deadlinesOverdue,
-      }),
-    [template, attachments, certificates, modelsQuery.data, findingsOpen, deadlinesOverdue],
-  );
 
   const categoryLabel = useCallback(
     (code: string): string => jurisdiction?.dossier_category_labels[code] ?? code,
@@ -147,10 +101,7 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
     [linkSlot, updateMutation, t],
   );
 
-  const isLoading =
-    projectQuery.isLoading || attachmentsQuery.isLoading || certificatesQuery.isLoading;
-
-  if (isLoading) {
+  if (dossier.isLoading) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-10 w-full" />
@@ -160,7 +111,7 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
     );
   }
 
-  if (template.length === 0) {
+  if (dossier.templateEmpty) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-background px-4 py-8 text-center">
         <FileText className="mx-auto mb-2 h-6 w-6 text-foreground-tertiary" />
@@ -170,38 +121,9 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
     );
   }
 
-  const barColor =
-    dossier.pct >= 85 ? 'bg-success' : dossier.pct >= 70 ? 'bg-warning' : 'bg-primary';
-
   return (
     <div className="space-y-4">
-      {/* Progress header */}
-      <div className="rounded-lg border border-border bg-surface-low px-4 py-3 dark:bg-black/20">
-        <div className="mb-2 flex items-baseline justify-between">
-          <span className="text-body3 font-semibold text-foreground">
-            {t('progressLabel', { filled: dossier.filled, total: dossier.total })}
-          </span>
-          <span className="text-title3 font-semibold tabular-nums text-foreground">
-            {dossier.pct}%
-          </span>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-background-tertiary">
-          <div
-            className={`h-full rounded-full transition-all ${barColor}`}
-            style={{ width: `${String(dossier.pct)}%` }}
-          />
-        </div>
-        {dossier.optionalTotal > 0 && (
-          <div className="mt-2 text-caption text-foreground-tertiary">
-            {t('optionalLabel', {
-              filled: dossier.optionalFilled,
-              total: dossier.optionalTotal,
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Category groups */}
+      {/* Category groups — the headline percentage now lives in the Readiness tab header (see RightColumnTabs). */}
       {dossier.groups.map((group) => {
         const isCollapsed = collapsed.has(group.category);
         return (

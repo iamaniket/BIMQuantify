@@ -913,7 +913,6 @@ NL_INSTRUMENTS: tuple[Instrument, ...] = (
 # DossierSlot, certificate items to a CertificateType, progress items to a
 # derived signal. Last reviewed 2026-05-31.
 NL_DOSSIER_CATEGORY_LABELS: dict[str, LocaleMap] = {
-    "models": {"nl": "Modellen", "en": "Models"},
     "documents": {"nl": "Documenten", "en": "Documents"},
     "installations": {"nl": "Installaties", "en": "Installations"},
     "certificates": {"nl": "Certificaten", "en": "Certificates"},
@@ -923,13 +922,6 @@ NL_DOSSIER_CATEGORY_LABELS: dict[str, LocaleMap] = {
 }
 
 _NL_DOSSIER_BASE: tuple[DossierRequirementTemplate, ...] = (
-    DossierRequirementTemplate(
-        code="model-present",
-        category="models",
-        label={"nl": "3D-model / BIM-model", "en": "3D model / BIM model"},
-        source_kind="model",
-        source_value="models",
-    ),
     DossierRequirementTemplate(
         code="drawings",
         category="documents",

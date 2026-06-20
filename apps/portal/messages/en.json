@@ -1,4 +1,37 @@
 {
+  "imageAnnotator": {
+    "title": "Annotate photo",
+    "subtitle": "Draw arrows, shapes, text or blur over the photo. The original is always kept.",
+    "loading": "Loading photo…",
+    "loadError": "Could not load the photo to annotate.",
+    "saving": "Saving…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Annotations saved",
+    "saveError": "Could not save annotations",
+    "hint": "Tip: use the cursor tool to select, move or resize a shape.",
+    "redactWarning": "Blurred areas are permanently obscured in the saved image; the original photo is kept.",
+    "color": "Colour",
+    "strokeWidth": "Line width",
+    "thin": "Thin",
+    "medium": "Medium",
+    "thick": "Thick",
+    "undo": "Undo",
+    "redo": "Redo",
+    "delete": "Delete selected",
+    "clear": "Clear all",
+    "tools": {
+      "select": "Select",
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse",
+      "line": "Line",
+      "arrow": "Arrow",
+      "cloud": "Revision cloud",
+      "freehand": "Freehand",
+      "text": "Text",
+      "blur": "Blur / redact"
+    }
+  },
   "errorBoundary": {
     "title": "Something went wrong",
     "description": "An unexpected error occurred. You can try again — if it keeps happening, please contact support.",
@@ -961,20 +994,13 @@
       "settings": "Settings"
     },
     "tabs": {
-      "overzicht": {
-        "label": "Overview",
-        "eyebrow": "Project workspace",
-        "subtitle": "{count, plural, =0 {No models yet} =1 {1 model} other {# models}}",
-        "deadlinesHeading": "Deadlines",
-        "emptyTitle": "No deadlines yet",
-        "emptyDescription": "Deadlines will appear automatically once the project has planned start and delivery dates."
-      },
-      "dossier": {
-        "label": "Dossier",
+      "readiness": {
+        "label": "Readiness",
         "eyebrow": "Dossier readiness",
         "subtitle": "What you still need before gereedmelding",
-        "progressLabel": "{filled} of {total} required items complete",
-        "optionalLabel": "{filled} of {total} optional items provided",
+        "progress": "{pct}% complete · {filled} of {total} required items"
+      },
+      "dossier": {
         "optionalBadge": "Optional",
         "statusProvided": "{count, plural, =1 {1 document} other {# documents}} provided",
         "statusMissing": "Missing",
@@ -1259,6 +1285,8 @@
         "downloadError": "Could not generate download link",
         "deleteSuccess": "{name} deleted",
         "download": "Download",
+        "annotate": "Annotate",
+        "editAnnotations": "Edit annotations",
         "delete": "Delete",
         "viaCapture": "Capture",
         "linked": "Linked",
@@ -1391,6 +1419,7 @@
       },
       "deadlines": {
         "label": "Deadlines",
+        "heading": "Deadlines",
         "emptyTitle": "No deadlines yet",
         "emptyDescription": "Deadlines will appear automatically once the project has the required date fields filled in.",
         "dueDate": "Due: {date}",
@@ -1588,7 +1617,8 @@
       "label": "Photos",
       "add": "Add",
       "remove": "Remove photo",
-      "uploadError": "Could not upload {name}"
+      "uploadError": "Could not upload {name}",
+      "annotate": "Annotate"
     },
     "referenceDocuments": {
       "label": "Reference documents",
@@ -1905,6 +1935,20 @@
         "ready": "Ready",
         "failed": "Failed"
       }
+    },
+    "tab": {
+      "searchPlaceholder": "Search reports…",
+      "generateMenu": "More report types",
+      "generateNewVersion": "Generate new version",
+      "versionHistory": "Version history · {count} versions",
+      "noVersions": "No versions yet",
+      "emptyTitle": "No reports generated yet",
+      "emptyDescription": "Generate a filing-ready PDF to get started.",
+      "noResults": "No reports match your filters",
+      "justNow": "just now",
+      "minutesAgo": "{count}m ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count}d ago"
     },
     "types": {
       "compliance_report": {
@@ -3058,7 +3102,13 @@
     "typeChanges": "Changes",
     "loadMore": "Load more",
     "noActivity": "No activity yet.",
+    "loadError": "Failed to load activity.",
     "events": "{count} events",
+    "colWhen": "When",
+    "colActor": "Actor",
+    "colType": "Type",
+    "colActivity": "Activity",
+    "systemActor": "System",
     "modelCreated": "Created model {name}",
     "modelUpdated": "Updated model {name}",
     "modelDeleted": "Deleted model {name}",
@@ -3072,9 +3122,63 @@
     "attachmentCompleted": "Added {filename}",
     "attachmentRejected": "Rejected {filename}",
     "attachmentUpdated": "Updated {filename}",
-    "attachmentDeleted": "Removed {filename}"
+    "attachmentDeleted": "Removed {filename}",
+    "reportSigned": "Signed report",
+    "certificateCompleted": "Added certificate {filename}",
+    "certificateRejected": "Rejected certificate {filename}",
+    "certificateVersionAdded": "Added new version of {filename}",
+    "certificateLinked": "Linked certificate from library: {filename}",
+    "certificateUpdated": "Updated certificate {filename}",
+    "certificateDeleted": "Removed certificate {filename}",
+    "findingCreated": "Created finding: {title}",
+    "findingUpdated": "Updated finding: {title}",
+    "findingPromoted": "Opened finding: {title}",
+    "findingResolved": "Resolved finding: {title}",
+    "findingVerified": "Verified finding: {title}",
+    "findingDeleted": "Deleted finding: {title}",
+    "riskCreated": "Created a risk",
+    "riskUpdated": "Updated a risk",
+    "riskDeleted": "Removed a risk",
+    "bcfTopicCreated": "Created BCF issue: {title}",
+    "bcfTopicUpdated": "Updated BCF issue: {title}",
+    "bcfTopicDeleted": "Deleted BCF issue: {title}",
+    "bcfImported": "Imported {count} BCF issues",
+    "bcfCommentCreated": "Commented on a BCF issue",
+    "planGenerated": "Generated assurance plan",
+    "planUpdated": "Updated assurance plan",
+    "planPublished": "Published assurance plan",
+    "planSuperseded": "Superseded assurance plan",
+    "planReset": "Reset assurance plan",
+    "momentCreated": "Added assurance moment",
+    "momentUpdated": "Updated assurance moment",
+    "momentDeleted": "Removed assurance moment",
+    "momentsReordered": "Reordered assurance moments",
+    "checklistItemCreated": "Added checklist item",
+    "checklistItemUpdated": "Updated checklist item",
+    "checklistItemDeleted": "Removed checklist item",
+    "checklistItemsReordered": "Reordered checklist items",
+    "inspectionStarted": "Started inspection",
+    "inspectionResultSubmitted": "Submitted inspection result",
+    "inspectionCompleted": "Completed inspection",
+    "captureLinkCreated": "Created capture link",
+    "captureLinkRevoked": "Revoked capture link",
+    "deadlineFiled": "Filed deadline",
+    "projectCreated": "Created project {name}",
+    "projectUpdated": "Updated project settings",
+    "projectDeleted": "Deleted project {name}",
+    "projectArchived": "Archived project",
+    "projectReactivated": "Reactivated project",
+    "projectThumbnailUpdated": "Updated project image",
+    "projectMemberAdded": "Added a project member",
+    "projectMemberRemoved": "Removed a project member",
+    "projectMemberRoleChanged": "Changed a member's role",
+    "projectInvitationCreated": "Invited someone to the project"
   },
   "viewer": {
+    "loadingOverlay": {
+      "model": "Loading model…",
+      "updating": "Updating view…"
+    },
     "minimap": {
       "title": "Floor plan",
       "level": "Level",
@@ -3089,7 +3193,8 @@
       "title": "All models",
       "empty": "No processed models yet",
       "emptyHint": "Upload and process IFC models in this project to view them together.",
-      "loadError": "Failed to load the project's models."
+      "loadError": "Failed to load the project's models.",
+      "modelLoadFailed": "{count, plural, =1 {1 model couldn't be loaded and was skipped} other {# models couldn't be loaded and were skipped}}"
     },
     "floorplan": {
       "title": "Floor plan",

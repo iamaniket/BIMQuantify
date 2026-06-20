@@ -421,6 +421,7 @@ async def create_topic(
         resource_id=topic.id,
         after=_topic_snapshot(loaded),
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
 
@@ -680,6 +681,7 @@ async def import_bcf(
         resource_type="bcf_topic",
         after={"imported_count": len(loaded), "source": file.filename},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
 
@@ -928,6 +930,7 @@ async def update_topic(
         before=before,
         after=_topic_snapshot(topic),
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
 
@@ -971,6 +974,7 @@ async def delete_topic(
         resource_id=topic_id,
         before=before,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -1029,6 +1033,7 @@ async def add_comment(
         resource_id=comment.id,
         after={"comment_text": comment.comment_text, "topic_id": str(topic.id)},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
 

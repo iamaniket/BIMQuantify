@@ -94,17 +94,29 @@ export function mergeCollinearSegments(positions: Float32Array): Float32Array {
   const segCount = Math.floor(positions.length / 6);
   if (segCount <= 1) return positions;
 
-  // Weld endpoints → integer vertex ids.
-  const idOf = new Map<string, number>();
+  // Weld endpoints → integer vertex ids. Nested numeric maps (x→y→z→id) dedup on
+  // exact IEEE-754 equality — endpoints are bit-identical because EdgesGeometry
+  // reuses the source vertex values — so this matches the old string key without
+  // allocating a string per endpoint.
+  const idByXYZ = new Map<number, Map<number, Map<number, number>>>();
   const px: number[] = [];
   const py: number[] = [];
   const pz: number[] = [];
   const weld = (x: number, y: number, z: number): number => {
-    const key = `${x}|${y}|${z}`;
-    let id = idOf.get(key);
+    let byY = idByXYZ.get(x);
+    if (byY === undefined) {
+      byY = new Map<number, Map<number, number>>();
+      idByXYZ.set(x, byY);
+    }
+    let byZ = byY.get(y);
+    if (byZ === undefined) {
+      byZ = new Map<number, number>();
+      byY.set(y, byZ);
+    }
+    let id = byZ.get(z);
     if (id === undefined) {
       id = px.length;
-      idOf.set(key, id);
+      byZ.set(z, id);
       px.push(x);
       py.push(y);
       pz.push(z);

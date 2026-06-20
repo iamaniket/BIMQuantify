@@ -114,6 +114,15 @@ export interface ViewerEvents {
   'point:picked': { point: Vec3; item: ItemId | null };
   /** Placement plugin: the modal "drop a point" tool was entered / exited. */
   'placement:change': { active: boolean };
+  /**
+   * Interaction plugin: a guided pick (dimming overlay + instruction banner)
+   * resolved with a model point. `kind` discriminates this from the 2D variant
+   * (`{ kind: 'page', ... }` on the document bus) so a host handling both can
+   * normalize them into one anchor shape.
+   */
+  'interaction:resolved': { kind: 'point'; point: Vec3; item: ItemId | null };
+  /** Interaction plugin: a guided pick was cancelled (Esc / × / external exit). */
+  'interaction:cancelled': undefined;
   'xray:change': { xrayed: ItemId[]; opacityOverrides: Array<{ item: ItemId; opacity: number }> };
   'outline:ready': { modelId: string };
   'outline:change': { enabled: boolean };

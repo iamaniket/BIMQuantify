@@ -11,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { getDocument, VerbosityLevel } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument, type PDFPageProxy, VerbosityLevel } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import { postCallback } from '../api/callback.js';
 import { logger } from '../log.js';
@@ -23,7 +23,48 @@ import {
   uploadObject,
 } from '../storage/s3.js';
 import { classifyError } from './errors.js';
-import { buildPageGeometry, type GeometryArtifact } from './pdf-geometry.js';
+import { buildPageGeometry, type GeometryArtifact, type PageGeometry } from './pdf-geometry.js';
+
+// pdfjs page access within one document shares state (page cache, xref), so the
+// parallelism is kept low — a safe wall-clock win on multi-page docs without
+// risking library races. Bump only with measurement on large PDFs.
+const PDF_PAGE_CONCURRENCY = 2;
+
+/**
+ * Build every page's geometry with bounded concurrency, preserving page order.
+ * Each page's pdfjs resources are released via `cleanup()` the moment its
+ * geometry is built (peak memory stays ~`concurrency` operator lists, not the
+ * whole document). Fail-fast: a throw on any page rejects, mirroring the old
+ * serial loop so a bad page still fails the job.
+ */
+export async function extractPagesConcurrently(
+  doc: { getPage: (n: number) => Promise<PDFPageProxy> },
+  pageCount: number,
+  concurrency: number,
+  onPageDone?: (completed: number) => Promise<void> | void,
+): Promise<PageGeometry[]> {
+  const results = new Array<PageGeometry>(pageCount);
+  let nextPage = 1;
+  let completed = 0;
+  const worker = async (): Promise<void> => {
+    for (;;) {
+      const n = nextPage;
+      if (n > pageCount) return;
+      nextPage += 1;
+      const page = await doc.getPage(n);
+      try {
+        results[n - 1] = await buildPageGeometry(page, n - 1);
+      } finally {
+        page.cleanup();
+      }
+      completed += 1;
+      await onPageDone?.(completed);
+    }
+  };
+  const lanes = Math.max(1, Math.min(concurrency, pageCount));
+  await Promise.all(Array.from({ length: lanes }, () => worker()));
+  return results;
+}
 
 /** Payload shape for `pdf_extraction` jobs. */
 export type PdfExtractionPayload = {
@@ -130,19 +171,14 @@ export async function runPdfExtraction(
     await uploadObject(metadataKey, JSON.stringify(metadata), 'application/json');
     await reportProgress(40);
 
-    // Extract vector geometry + text, one page at a time so we never hold the
-    // whole document's operator lists in memory (100s of large PDFs). Per-page
-    // progress is mapped onto the 40→90 band so large docs show real movement.
-    const artifact: GeometryArtifact = { v: 1, p: [] };
-    for (let n = 1; n <= pageCount; n += 1) {
-      const page = await doc.getPage(n);
-      try {
-        artifact.p.push(await buildPageGeometry(page, n - 1));
-      } finally {
-        page.cleanup();
-      }
-      await reportProgress(40 + Math.round((n / pageCount) * 50));
-    }
+    // Extract vector geometry + text with bounded page concurrency so we never
+    // hold the whole document's operator lists in memory (100s of large PDFs).
+    // Per-page progress is mapped onto the 40→90 band so large docs show real
+    // movement; pages are reassembled in order inside the helper.
+    const pages = await extractPagesConcurrently(doc, pageCount, PDF_PAGE_CONCURRENCY, (done) =>
+      reportProgress(40 + Math.round((done / pageCount) * 50)),
+    );
+    const artifact: GeometryArtifact = { v: 1, p: pages };
     const geometryKey = pdfGeometryKeyFor(payload.storage_key);
     logger.info({ geometryKey, pageCount }, 'uploading PDF geometry');
     await uploadObject(geometryKey, JSON.stringify(artifact), 'application/json');

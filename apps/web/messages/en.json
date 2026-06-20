@@ -1,52 +1,62 @@
 {
   "metadata": {
     "title": "BimDossier",
-    "defaultTitle": "BimDossier — Quality Assurance in Construction Act (Wkb)-compliant digital dossier",
-    "description": "Quality Assurance in Construction Act (Wkb)-compliant digital dossier for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time."
+    "defaultTitle": "BimDossier — the Wkb dossier platform for Dutch contractors",
+    "description": "The model-native Wkb dossier platform for Dutch contractors, built for the Wet kwaliteitsborging voor het bouwen. Snags pinned in 3D, deadlines that track themselves, a dossier ready for gereedmelding. EU-hosted."
   },
   "header": {
     "brand": "BimDossier",
-    "signIn": "Log in",
-    "signOut": "Sign out",
     "features": "Features",
     "blog": "Blog",
     "requestAccess": "Request access",
     "contactSales": "Contact sales"
   },
   "hero": {
-    "badge": "Early access — now open",
-    "headline": "Never miss a Quality Assurance in Construction Act (Wkb) deadline again.",
-    "subtitle": "BimDossier is the digital dossier platform for Dutch contractors. Track bouwmelding and gereedmelding deadlines, manage your documents, resolve findings, and file your dossier bevoegd gezag on time.",
-    "ctaPrimary": "Get early access",
-    "ctaSecondary": "Log in"
+    "badge": "Private pilot · limited spots for Dutch aannemers",
+    "headline": "The Wkb dossier platform, built on your model.",
+    "subtitle": "The dedicated platform for the Wkb — the Dutch Quality Assurance in Construction Act. Your findings live pinned on the 3D BIM model and PDF floor plans. Deadlines track themselves from bouwmelding to gereedmelding. Your dossier stays ready for bevoegd gezag — not scattered across folders and spreadsheets.",
+    "trust": "In private pilot with Dutch contractors · EU-hosted · Privacy-first — your data never leaves EU infrastructure",
+    "ctaPrimary": "Request early access",
+    "ctaDemo": "See it on the model"
   },
   "features": {
     "eyebrow": "Capabilities",
-    "headline": "Everything a contractor needs for Quality Assurance in Construction Act (Wkb) compliance",
-    "subtitle": "From project kickoff to gereedmelding — one platform for your entire Quality Assurance in Construction Act (Wkb) dossier.",
-    "deadlines": {
-      "title": "Deadline tracking",
-      "body": "Automatic computation of bouwmelding, informatieplicht, and gereedmelding deadlines. Email reminders at T-30, T-14, T-7, and T-1 days so you never miss a filing."
-    },
-    "dossier": {
-      "title": "Dossier completeness",
-      "body": "Template-based checklist per building type showing exactly which documents are still needed for your gereedmelding. Progress bar updates as you upload."
-    },
-    "findings": {
-      "title": "Finding management",
-      "body": "Log inspection findings from your kwaliteitsborger, assign resolution, and upload evidence photos. Track every finding from open to verified."
-    },
-    "certificates": {
-      "title": "Certificate library",
-      "body": "Upload typed certificates — CE/DoP declarations, test reports, warranties — with expiry tracking. Get automatic warnings before certificates expire."
-    },
-    "viewer": {
-      "title": "IFC model viewer",
-      "body": "View and navigate 3D BIM models directly in the browser. Click elements, inspect properties, and link inspections to specific building components."
-    },
-    "reports": {
-      "title": "Compliance reports",
-      "body": "Generate audit-ready PDF reports: borgingsplan, verklaring kwaliteitsborger, and the complete dossier bevoegd gezag package."
+    "headline": "The only Wkb dossier built on your BIM model",
+    "subtitle": "From bouwmelding to gereedmelding, your entire Wkb dossier runs in one place: snags in 3D, certificates tracked, deadlines computed, filed on time.",
+    "readMore": "Read more"
+  },
+  "featureDetail": {
+    "backToFeatures": "Back to features",
+    "problemHeading": "The challenge",
+    "solutionHeading": "Our approach",
+    "highlightsHeading": "Key capabilities",
+    "faqHeading": "Frequently asked questions",
+    "relatedHeading": "Related capabilities",
+    "imagesHeading": "See it in action",
+    "imagesNote": "More screenshots and short videos coming soon."
+  },
+  "roadmap": {
+    "eyebrow": "On the roadmap",
+    "headline": "What we're building next",
+    "subtitle": "Already in design or in progress — not available yet.",
+    "badge": "Coming soon",
+    "items": {
+      "comments": {
+        "title": "Finding discussions",
+        "body": "Comment threads on each finding so your team and kwaliteitsborger can resolve issues in context."
+      },
+      "handover": {
+        "title": "Consumentendossier & oplevering",
+        "body": "Client handover sign-off and proces-verbaal, separate from the dossier bevoegd gezag."
+      },
+      "ai": {
+        "title": "AI dossier assistant",
+        "body": "Ask questions across your documents and drawings. Self-hosted and privacy-first — your data never leaves our EU infrastructure."
+      },
+      "push": {
+        "title": "Mobile push reminders",
+        "body": "Deadline and finding alerts pushed straight to your phone."
+      }
     }
   },
   "howItWorks": {
@@ -71,8 +81,8 @@
   },
   "cta": {
     "headline": "Stop chasing documents. Start filing on time.",
-    "subtitle": "Join the early access program. Get your Quality Assurance in Construction Act (Wkb) dossier under control before your next deadline.",
-    "button": "Get early access"
+    "subtitle": "Run your entire Wkb dossier on the platform built for it. Join the private pilot and walk into your next gereedmelding already done.",
+    "button": "Request early access"
   },
   "footer": {
     "product": "Product",
@@ -86,7 +96,7 @@
   "blog": {
     "eyebrow": "Blog",
     "headline": "Insights & updates",
-    "subtitle": "Quality Assurance in Construction Act (Wkb) compliance, Dutch building regulations, and product updates.",
+    "subtitle": "Wkb compliance, Dutch building regulations, and product updates — from the team building the model-native dossier.",
     "empty": "No posts yet. Check back soon.",
     "readingTime": "min read"
   },
@@ -124,30 +134,26 @@
   "snagShowcase": {
     "eyebrow": "Quality assurance, live",
     "headline": "Catch defects before they cost you.",
-    "subtitle": "Drag the model to inspect it. Hover a pin to read the snag — its severity, the Bbl article it touches, and where it sits in the Wkb borging loop.",
+    "subtitle": "Drag to rotate the model. Click a pin to see the snag it flags.",
     "cta": "Request access",
     "hintDrag": "Drag to rotate",
-    "hintHover": "Hover a pin for details",
+    "hintClick": "Click a pin to see the snag",
+    "dismissSnag": "Dismiss",
     "learnMoreBlog": "Learn how Wkb borging works on the blog",
     "fallbackTitle": "Interactive 3D snag inspection",
     "fallbackBody": "Your browser cannot show the live 3D model, but here are the snags it carries:",
     "fallbackAlt": "Interactive 3D building model with quality-assurance snags",
-    "severity": { "low": "Low", "medium": "Medium", "high": "High" },
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
     "snags": {
       "wall": "Party-wall fire rating not met",
       "cover": "Concrete cover below minimum",
       "pipe": "Pipe penetration not sealed",
       "airtight": "Airtightness test outstanding"
     }
-  },
-  "metrics": {
-    "eyebrow": "By the numbers",
-    "headline": "Built for the borging loop",
-    "caption": "Illustrative figures.",
-    "snagsResolved": "Snags resolved",
-    "compliancePassed": "Compliance checks passed",
-    "projects": "Projects under borging",
-    "avgDaysToClose": "Avg. days to close a snag"
   },
   "fromBlog": {
     "eyebrow": "From the blog",

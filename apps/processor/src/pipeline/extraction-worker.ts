@@ -25,7 +25,7 @@ import { SingleThreadedFragmentsModel } from '@thatopen/fragments';
 
 import { logger } from '../log.js';
 import { detectContentKind, shouldGenerateFloorPlan } from './classify.js';
-import { buildFloorPlans, encodeFloorPlans } from './floorplans.js';
+import { encodeFloorPlans, scanModelGeometry, sliceFloorPlans } from './floorplans.js';
 import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel } from './ifc.js';
 import { buildMetadata } from './metadata.js';
@@ -191,7 +191,11 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
   try {
     const ifcApi = await getIfcApi();
     const walkStart = performance.now();
-    const metadata = await buildMetadata(ifcApi, opened.modelID, opened.schema, logger);
+    // Skip the bbox in the metadata walk — the unified geometry sweep below
+    // computes it in the same pass it uses for the floor-plan up-axis + cut
+    // planes, so the model's geometry is streamed twice (scan + slice) instead
+    // of four times (metadata bbox + floor-plan pass 1 + pass 2 + slice).
+    const metadata = await buildMetadata(ifcApi, opened.modelID, opened.schema, logger, true);
     const metadataMs = Math.round(performance.now() - walkStart);
     const properties = await buildProperties(ifcApi, opened.modelID, metadata.elements, logger);
     const walkMs = Math.round(performance.now() - walkStart);
@@ -200,23 +204,26 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
     // below and is surfaced on the file as `detected_kind`.
     const detectedKind = detectContentKind(metadata.elementCounts);
 
-    // Per-storey floor-plan artifact (section cut + IfcSpace rooms), posted
-    // before the terminal 'walk' message. The 1.2 m cut is an architectural
-    // convention, so it is generated only for architectural/mixed content —
-    // MEP/structural-only models stay 3D-only (the cut would be noise). Also
-    // degrades gracefully: a failure — or a model with no storeys — posts
+    // ONE geometry sweep for the bounding box AND the floor-plan up-axis + cut
+    // planes. Runs unconditionally because the bbox is always needed; the slice
+    // (pass 2) then runs only for plan-worthy content. The 1.2 m cut is an
+    // architectural convention, so it is generated only for architectural/mixed
+    // models — MEP/structural-only ones stay 3D-only (the cut would be noise).
+    // Degrades gracefully: a failure, or a model with no storeys, posts
     // bytes:null and the viewer hides the 2D map.
     const fpStart = performance.now();
+    const scan = scanModelGeometry(
+      ifcApi,
+      opened.modelID,
+      metadata.project.lengthUnit,
+      metadata.elements,
+      logger,
+    );
+    metadata.bbox = scan.bbox;
     let floorPlansBytes: Uint8Array | null = null;
     if (shouldGenerateFloorPlan(detectedKind)) {
       try {
-        const floorPlans = buildFloorPlans(
-          ifcApi,
-          opened.modelID,
-          metadata.project.lengthUnit,
-          metadata.elements,
-          logger,
-        );
+        const floorPlans = sliceFloorPlans(ifcApi, opened.modelID, scan, logger);
         if (floorPlans.levels.length > 0) floorPlansBytes = encodeFloorPlans(floorPlans);
       } catch (err) {
         logger.warn(

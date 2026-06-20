@@ -99,7 +99,7 @@ export function Sidebar(): JSX.Element {
     <aside
       className="relative flex shrink-0 flex-col border-r border-white/12 text-white/[0.82]"
       style={{
-        width: collapsed ? 46 : 220,
+        width: collapsed ? 47 : 220,
         background: SIDEBAR_BG,
         transition: transitionsReady ? 'width 220ms cubic-bezier(.4,0,.2,1)' : 'none',
       }}

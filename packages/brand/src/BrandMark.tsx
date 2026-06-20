@@ -2,58 +2,67 @@ import type { CSSProperties, JSX } from 'react';
 
 import { cn } from '@bimstitch/ui';
 
+import {
+  BRAND_GLYPH_BLUE_DATA_URI,
+  BRAND_GLYPH_WHITE_DATA_URI,
+  BRAND_MARK_DATA_URI,
+} from './brandMarkAsset.js';
+
 export type BrandMarkTone = 'on-dark' | 'on-light';
+
+/**
+ * Which artwork to render:
+ * - `square` (default): the full blue-square chip — reads on any surface.
+ * - `glyph-blue`: the transparent blue "BD" letters — for light surfaces.
+ * - `glyph-white`: the transparent white "BD" letters — for blue/dark surfaces.
+ */
+export type BrandMarkVariant = 'square' | 'glyph-blue' | 'glyph-white';
+
+const ASSET_BY_VARIANT: Record<BrandMarkVariant, string> = {
+  square: BRAND_MARK_DATA_URI,
+  'glyph-blue': BRAND_GLYPH_BLUE_DATA_URI,
+  'glyph-white': BRAND_GLYPH_WHITE_DATA_URI,
+};
 
 export interface BrandMarkProps {
   size?: number;
+  variant?: BrandMarkVariant;
+  /**
+   * Retained for API compatibility. The canonical blue-square mark reads on
+   * both light and dark surfaces, so it no longer switches the artwork.
+   */
   tone?: BrandMarkTone;
   className?: string;
   style?: CSSProperties;
 }
 
-const toneStyles: Record<BrandMarkTone, { bg: string; border: string; color: string }> = {
-  'on-dark': {
-    bg: 'rgba(255,255,255,0.16)',
-    border: 'rgba(255,255,255,0.28)',
-    color: '#ffffff',
-  },
-  'on-light': {
-    bg: 'linear-gradient(135deg, var(--brand-gradient-start), var(--brand-gradient-end))',
-    border: 'rgba(0,0,0,0.06)',
-    color: '#ffffff',
-  },
-};
-
+/**
+ * The BimDossier "BD" brand mark — by default the blue square logo rendered as
+ * a rounded chip. The glyph variants render the transparent "BD" letters
+ * (no chip) for placement directly on a light or dark surface.
+ */
 export function BrandMark({
   size = 32,
-  tone = 'on-dark',
+  variant = 'square',
   className,
   style,
 }: BrandMarkProps): JSX.Element {
-  const t = toneStyles[tone];
-  const fontSize = Math.round(size * 0.5);
+  const isSquare = variant === 'square';
   return (
     <span
       aria-hidden
-      className={cn('inline-grid place-items-center', className)}
+      className={cn('inline-block', className)}
       style={{
         width: size,
         height: size,
-        borderRadius: 7,
-        background: t.bg,
-        border: `1px solid ${t.border}`,
-        color: t.color,
-        fontFamily:
-          "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-        fontWeight: 700,
-        fontSize,
-        lineHeight: 1,
-        letterSpacing: -1,
+        borderRadius: isSquare ? 7 : 0,
+        backgroundImage: `url(${ASSET_BY_VARIANT[variant]})`,
+        backgroundSize: isSquare ? 'cover' : 'contain',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         flexShrink: 0,
         ...style,
       }}
-    >
-      BD
-    </span>
+    />
   );
 }

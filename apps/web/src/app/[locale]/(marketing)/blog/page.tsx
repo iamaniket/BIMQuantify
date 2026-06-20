@@ -9,8 +9,8 @@ import { BlogPostCard } from '@/components/blog/BlogPostCard';
 import { getAllPostsMerged } from '@/lib/blog/mdx';
 
 // Re-render at most once per minute so newly-published API posts appear
-// without redeploying. Committed in-repo posts are still baked in at build
-// time — the revalidation only refreshes the API fetch.
+// without redeploying. Blog content is API-sourced; the revalidation
+// refreshes the API fetch.
 export const revalidate = 60;
 
 type Props = {
@@ -34,9 +34,9 @@ export default async function BlogListingPage({ params }: Props): Promise<JSX.El
 
   return (
     <main>
-      <BlogHero />
+      <BlogHero locale={locale as Locale} />
 
-      <div className="mx-auto w-full max-w-6xl px-6 py-12">
+      <div className="mx-auto w-full max-w-8xl px-6 py-12">
         {posts.length === 0 ? (
           <p className="text-body1 text-foreground-tertiary">
             {t('empty')}
@@ -44,7 +44,7 @@ export default async function BlogListingPage({ params }: Props): Promise<JSX.El
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {posts.map((post) => (
-              <BlogPostCard key={post.slug} post={post} />
+              <BlogPostCard key={post.slug} post={post} locale={locale} />
             ))}
           </div>
         )}

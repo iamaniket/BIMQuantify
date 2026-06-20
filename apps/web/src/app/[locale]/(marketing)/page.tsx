@@ -8,7 +8,7 @@ import { FeaturesSection } from '@/components/sections/FeaturesSection';
 import { FromTheBlogSection } from '@/components/sections/FromTheBlogSection';
 import { HeroSection } from '@/components/sections/HeroSection';
 import { HowItWorksSection } from '@/components/sections/HowItWorksSection';
-import { MetricsSection } from '@/components/sections/MetricsSection';
+import { RoadmapSection } from '@/components/sections/RoadmapSection';
 import { SnagShowcaseSection } from '@/components/sections/SnagShowcaseSection';
 
 // Refresh at most once per minute so the "From the blog" strip picks up newly
@@ -26,9 +26,9 @@ export default async function WelcomePage({ params }: Props): Promise<JSX.Elemen
     <main>
       <HeroSection />
       <FeaturesSection />
+      <RoadmapSection />
       <SnagShowcaseSection />
       <HowItWorksSection />
-      <MetricsSection />
       <FromTheBlogSection locale={locale as Locale} />
       <CtaSection />
     </main>

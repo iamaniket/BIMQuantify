@@ -201,13 +201,20 @@ async def check_compliance(
 
 async def _load_latest_compliance_job(
     session: AsyncSession,
+    project_id: UUID,
     file_id: UUID,
     framework: str,
 ) -> Job:
-    """Return the most recent succeeded compliance job for (file, framework).
+    """Return the most recent succeeded compliance job for (project, file, framework).
 
     Filters on `payload->>'framework'` since the framework now lives in the
     job payload, not the job_type column.
+
+    The `project_id` predicate binds the job to the project in the request
+    path: without it, a member of project A could pass a `file_id` belonging
+    to a sibling project B (same org schema) and read B's compliance results
+    (cross-project IDOR). The read-access gate only checks the *path* project,
+    so the job lookup must constrain by it too.
 
     Raises 404 NO_COMPLIANCE_RESULTS if none exists or the job has no result.
     """
@@ -215,6 +222,7 @@ async def _load_latest_compliance_job(
         await session.execute(
             select(Job)
             .where(
+                Job.project_id == project_id,
                 Job.file_id == file_id,
                 Job.job_type == JobType.compliance_check,
                 Job.status == JobStatus.succeeded,
@@ -249,7 +257,7 @@ async def get_latest_compliance(
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
-    job = await _load_latest_compliance_job(session, file_id, framework)
+    job = await _load_latest_compliance_job(session, project.id, file_id, framework)
     result = job.result or {}
 
     return ComplianceCheckResponse(
@@ -297,7 +305,7 @@ async def export_compliance_csv(
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
-    job = await _load_latest_compliance_job(session, file_id, framework)
+    job = await _load_latest_compliance_job(session, project.id, file_id, framework)
     details = (job.result or {}).get("details", []) or []
 
     buf = io.StringIO()
@@ -353,7 +361,7 @@ async def export_compliance_rules_csv(
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
-    job = await _load_latest_compliance_job(session, file_id, framework)
+    job = await _load_latest_compliance_job(session, project.id, file_id, framework)
     rules = (job.result or {}).get("rules_summary", []) or []
 
     buf = io.StringIO()

@@ -1,0 +1,134 @@
+{
+  "key": "mobile",
+  "hasAssets": false,
+  "images": [
+    "/features/mobile/01.png",
+    "/features/mobile/02.png",
+    "/features/mobile/03.png"
+  ],
+  "related": [
+    "snagging",
+    "photos",
+    "findings"
+  ],
+  "en": {
+    "title": "Mobile inspections, even offline",
+    "card": "A native app for on-site snagging. Place findings, shoot photos, and keep working with no signal — it syncs when you're back online.",
+    "tagline": "Inspect on site, signal or not",
+    "intro": "A native mobile app built for on-site snagging — place findings, shoot photos, and view the model directly where the work is. It's offline-first, so you keep inspecting in basements, shells, and dead-zone sites with no connection, and everything syncs to the project automatically the moment you're back online.",
+    "problemTitle": "Construction sites don't have reliable signal",
+    "problem": "Inspections happen exactly where mobile coverage is worst: in basements, concrete shells, lift cores, and remote sites far from a mast. An app that needs a live connection simply stops working there — so inspectors fall back to paper notes and phone photos, then spend the evening re-entering everything from memory. That double handling is slow, error-prone, and it's where details quietly go missing between the site visit and the project record.",
+    "solutionTitle": "Offline-first inspections that sync",
+    "solution": [
+      "Place findings and capture photos with no connection — everything is stored locally on the device.",
+      "Work continues uninterrupted as you move through the building, signal or not.",
+      "The moment you're back online, your work syncs to the project automatically.",
+      "View the model on the same device, so you can place findings against the geometry on site."
+    ],
+    "highlights": [
+      {
+        "title": "Offline-first by design",
+        "body": "Findings and photos are stored on the device, so inspections never stop in basements, shells, or dead-zone sites."
+      },
+      {
+        "title": "Automatic sync",
+        "body": "The moment a connection returns, everything captured offline syncs to the project — no manual upload, no double entry."
+      },
+      {
+        "title": "Snag at the source",
+        "body": "Place findings and shoot photos right where the work is, instead of jotting notes to re-enter back at the office."
+      },
+      {
+        "title": "Model on your phone",
+        "body": "View the model on the same device, so findings are placed against the real geometry on site."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Does the app work without an internet connection?",
+        "a": "Yes. The app is offline-first — you can place findings and capture photos with no connection, and everything is stored locally on the device until you're back online."
+      },
+      {
+        "q": "How does offline work get into the project?",
+        "a": "As soon as a connection returns, everything you captured offline syncs to the project automatically. There's no manual upload step and no re-entering notes from paper."
+      },
+      {
+        "q": "Can I view the model on the app?",
+        "a": "Yes. The model loads on the same device, so you can place findings against the real geometry on site rather than describing a location to record later."
+      }
+    ],
+    "imageCaptions": [
+      "Snagging on the mobile app",
+      "Working-offline indicator",
+      "Automatic sync on reconnect"
+    ],
+    "keywords": [
+      "mobile snagging app",
+      "offline construction inspection",
+      "on-site inspection app",
+      "field snagging",
+      "offline-first sync",
+      "mobile BIM inspection"
+    ]
+  },
+  "nl": {
+    "title": "Mobiel inspecteren, ook offline",
+    "card": "Een native app voor inspecties op locatie. Plaats bevindingen, maak foto's en werk door zonder bereik — het synchroniseert zodra u weer online bent.",
+    "tagline": "Inspecteer op locatie, met of zonder bereik",
+    "intro": "Een native mobiele app gebouwd voor snaggen op locatie — plaats bevindingen, maak foto's en bekijk het model direct waar het werk is. De app is offline-first, dus u blijft inspecteren in kelders, ruwbouw en bouwplaatsen zonder bereik, en alles synchroniseert automatisch met het project zodra u weer online bent.",
+    "problemTitle": "Bouwplaatsen hebben geen betrouwbaar bereik",
+    "problem": "Inspecties vinden juist plaats waar het mobiele bereik het slechtst is: in kelders, betonnen ruwbouw, liftkokers en afgelegen locaties ver van een mast. Een app die een live verbinding nodig heeft, werkt daar simpelweg niet meer — dus vallen inspecteurs terug op papieren notities en telefoonfoto's, om 's avonds alles uit het geheugen over te typen. Dat dubbele werk is traag en foutgevoelig, en juist daar gaan details stilletjes verloren tussen het bezoek en de projectvastlegging.",
+    "solutionTitle": "Offline-first inspecties die synchroniseren",
+    "solution": [
+      "Plaats bevindingen en maak foto's zonder verbinding — alles wordt lokaal op het apparaat opgeslagen.",
+      "Het werk gaat ononderbroken door terwijl u door het gebouw loopt, met of zonder bereik.",
+      "Zodra u weer online bent, synchroniseert uw werk automatisch met het project.",
+      "Bekijk het model op hetzelfde apparaat, zodat u bevindingen op locatie tegen de geometrie plaatst."
+    ],
+    "highlights": [
+      {
+        "title": "Offline-first ontworpen",
+        "body": "Bevindingen en foto's worden op het apparaat opgeslagen, zodat inspecties nooit stoppen in kelders, ruwbouw of locaties zonder bereik."
+      },
+      {
+        "title": "Automatische synchronisatie",
+        "body": "Zodra er weer verbinding is, synchroniseert alles wat offline is vastgelegd met het project — geen handmatige upload, geen dubbele invoer."
+      },
+      {
+        "title": "Snaggen bij de bron",
+        "body": "Plaats bevindingen en maak foto's precies waar het werk is, in plaats van notities te krabbelen om op kantoor over te typen."
+      },
+      {
+        "title": "Model op uw telefoon",
+        "body": "Bekijk het model op hetzelfde apparaat, zodat bevindingen tegen de echte geometrie op locatie worden geplaatst."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Werkt de app zonder internetverbinding?",
+        "a": "Ja. De app is offline-first — u kunt bevindingen plaatsen en foto's maken zonder verbinding, en alles wordt lokaal op het apparaat opgeslagen tot u weer online bent."
+      },
+      {
+        "q": "Hoe komt offline werk in het project terecht?",
+        "a": "Zodra er weer verbinding is, synchroniseert alles wat u offline hebt vastgelegd automatisch met het project. Er is geen handmatige uploadstap en geen overtypen van papieren notities."
+      },
+      {
+        "q": "Kan ik het model in de app bekijken?",
+        "a": "Ja. Het model laadt op hetzelfde apparaat, zodat u bevindingen tegen de echte geometrie op locatie kunt plaatsen in plaats van een locatie te omschrijven om later vast te leggen."
+      }
+    ],
+    "imageCaptions": [
+      "Bevindingen plaatsen in de mobiele app",
+      "Offline-indicator tijdens werken",
+      "Automatische synchronisatie bij herverbinding"
+    ],
+    "keywords": [
+      "mobiele snagging-app",
+      "offline bouwinspectie",
+      "inspectie-app op locatie",
+      "veldsnaggen",
+      "offline-first synchronisatie",
+      "mobiele BIM-inspectie"
+    ]
+  }
+}

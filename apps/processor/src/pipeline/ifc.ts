@@ -1,5 +1,12 @@
 /**
- * Wrap web-ifc so it can be initialised once and reused across jobs.
+ * Wrap web-ifc so it is initialised once per worker thread and reused for that
+ * thread's lifetime.
+ *
+ * NOTE: extraction spawns fresh worker threads per job (worker-host.ts) and
+ * terminates them afterwards, so in practice this cache lives for ONE job — the
+ * WASM `Init()` is paid on every extraction (and again, separately, inside the
+ * fragments thread's IfcImporter). The `wasm initialised` log below records that
+ * cost so we can decide whether a longer-lived worker pool is ever worth it.
  *
  * web-ifc is the WASM-based IFC parser that ThatOpen's higher-level libraries
  * sit on top of. It loads the IFC into memory and exposes a model handle we
@@ -14,10 +21,12 @@
 
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 
 import { IfcAPI, LogLevel } from 'web-ifc';
 
 import { type SupportedSchema, SUPPORTED_SCHEMAS } from '../config.js';
+import { logger } from '../log.js';
 import { bumpGetLine } from './timing.js';
 
 const require = createRequire(import.meta.url);
@@ -34,12 +43,16 @@ function resolveWasmDir(): string {
 }
 
 async function buildApi(): Promise<IfcAPI> {
+  const start = performance.now();
   const ifcApi = new IfcAPI();
   const dir = resolveWasmDir();
   // SetWasmPath wants a trailing separator. Second arg `true` means
   // "absolute path" (don't prepend the script directory).
   ifcApi.SetWasmPath(`${dir}${path.sep}`, true);
   await ifcApi.Init();
+  // Paid once per worker thread (≈ once per job — see the file header). Logged
+  // so a worker-pool decision can be made from data, not guesswork.
+  logger.info({ ms: Math.round(performance.now() - start) }, 'web-ifc wasm initialised');
   // web-ifc's JS-side module-static Log defaults to ERROR, and GetLines emits
   // one "ERROR: Invalid IFC Line" per unparseable line — pure stdout spam on
   // real-world models.

@@ -129,9 +129,12 @@ export async function runExtraction(
     // For an ifcZIP the stored object is the zip; unwrap to the inner IFC
     // before parsing. `sha256` stays the hash of the stored (compressed) bytes
     // — that's what the client uploaded and what dedup keys on.
-    let ifcBytes = payload.compressed ? extractIfcFromZip(bytes) : bytes;
+    let ifcBytes = payload.compressed ? await extractIfcFromZip(bytes) : bytes;
     // The workers take the buffer via transfer; a view (byteOffset / shorter
-    // length than its buffer) can't transfer cleanly, so normalise first.
+    // length than its buffer) can't transfer cleanly, so normalise first. The
+    // direct-.ifc path is already normalised (downloadObjectWithHash returns a
+    // full-length buffer), so this only fires for fflate's decompressed ifcZIP
+    // output, which can come back as a subarray view.
     if (ifcBytes.byteOffset !== 0 || ifcBytes.byteLength !== ifcBytes.buffer.byteLength) {
       ifcBytes = ifcBytes.slice();
     }
@@ -165,6 +168,7 @@ export async function runExtraction(
     const walkBytes = ifcBytes.slice();
     let fragWorker: ExtractionWorkerHandle | null = null;
     let walkWorker: ExtractionWorkerHandle | null = null;
+    const threadsStart = performance.now();
     try {
       fragWorker = startExtractionWorker(
         { task: 'frag-outline', bytes: ifcBytes },
@@ -218,7 +222,23 @@ export async function runExtraction(
           }
         },
       );
-      await Promise.all([fragWorker.done, walkWorker.done]);
+      // Time each thread independently so the logs show the real tail (frag +
+      // outline vs. parse + walk + scan), making the per-job bottleneck visible.
+      // Still fails fast: either rejection rejects the Promise.all exactly as
+      // the plain `[fragWorker.done, walkWorker.done]` did.
+      const fragDone = fragWorker.done.then(() => performance.now() - threadsStart);
+      const walkDone = walkWorker.done.then(() => performance.now() - threadsStart);
+      const [fragThreadMs, walkThreadMs] = await Promise.all([fragDone, walkDone]);
+      logger.info(
+        {
+          file_id: payload.file_id,
+          job_id: job.job_id,
+          fragThreadMs: Math.round(fragThreadMs),
+          walkThreadMs: Math.round(walkThreadMs),
+          bottleneck: fragThreadMs >= walkThreadMs ? 'frag-outline' : 'walk',
+        },
+        'extraction thread balance',
+      );
     } finally {
       // Any failure (either worker, schema gate, handler) must not leave the
       // sibling thread running; after natural completion this is a no-op.

@@ -309,6 +309,7 @@ async def create_project(
             else None,
         },
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     attach_notice(response, "PROJECT_CREATED", request, user)
@@ -389,6 +390,7 @@ async def create_project_with_thumbnail(
         resource_id=project.id,
         after={"name": project.name},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return await _project_to_read(project, storage, my_role=ProjectRole.owner)
@@ -444,6 +446,7 @@ async def update_project_thumbnail(
         resource_id=project.id,
         after={"thumbnail_url": new_key},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return await _project_to_read(project, storage)
@@ -579,6 +582,7 @@ async def update_project(
         before=before,
         after=after,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     attach_notice(response, "PROJECT_UPDATED", request, user)
@@ -606,6 +610,7 @@ async def delete_project(
         resource_id=project.id,
         before=before,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -643,6 +648,7 @@ async def archive_project(
         before={"lifecycle_state": ProjectLifecycleState.active.value},
         after={"lifecycle_state": ProjectLifecycleState.archived.value},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     attach_notice(response, "PROJECT_ARCHIVED", request, user)
@@ -685,6 +691,7 @@ async def reactivate_project(
         before={"lifecycle_state": ProjectLifecycleState.archived.value},
         after={"lifecycle_state": ProjectLifecycleState.active.value},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     attach_notice(response, "PROJECT_REACTIVATED", request, user)
@@ -813,6 +820,7 @@ async def add_member(
         resource_id=project.id,
         after={"user_id": str(payload.user_id), "role": payload.role.value},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return await _member_to_read(session, member)
@@ -847,6 +855,7 @@ async def remove_member(
         resource_id=project.id,
         before=before,
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -892,6 +901,7 @@ async def update_member_role(
         before={"user_id": str(user_id), "role": old_role.value},
         after={"user_id": str(user_id), "role": payload.role.value},
         actor_user_id=user.id,
+        project_id=project.id,
         request=request,
     )
     return await _member_to_read(session, target)
@@ -1047,6 +1057,7 @@ async def invite_to_project(
                 "scenario": scenario,
             },
             actor_user_id=user.id,
+            project_id=project.id,
             request=request,
         )
         await ms.commit()

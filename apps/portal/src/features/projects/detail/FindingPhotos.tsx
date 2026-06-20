@@ -1,11 +1,12 @@
 'use client';
 
 import { Label } from '@bimstitch/ui';
-import { ImagePlus, X } from '@bimstitch/ui/icons';
+import { ImagePlus, Pencil, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
+import { ImageAnnotatorDialog } from '@/features/attachments/ImageAnnotatorDialog';
 import { useAttachmentViewUrl } from '@/features/attachments/useAttachmentViewUrl';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 
@@ -14,6 +15,7 @@ type ThumbnailProps = {
   attachmentId: string;
   disabled: boolean;
   onRemove: () => void;
+  onAnnotate: () => void;
 };
 
 function PhotoThumbnail({
@@ -21,6 +23,7 @@ function PhotoThumbnail({
   attachmentId,
   disabled,
   onRemove,
+  onAnnotate,
 }: ThumbnailProps): JSX.Element {
   const t = useTranslations('findings.photos');
   const viewUrlQuery = useAttachmentViewUrl(projectId, attachmentId);
@@ -44,6 +47,15 @@ function PhotoThumbnail({
         className="absolute right-0.5 top-0.5 inline-grid h-4 w-4 place-items-center rounded-full bg-background/80 text-foreground-tertiary transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
       >
         <X className="h-3 w-3" />
+      </button>
+      <button
+        type="button"
+        title={t('annotate')}
+        disabled={disabled}
+        onClick={onAnnotate}
+        className="absolute bottom-0.5 right-0.5 inline-grid h-4 w-4 place-items-center rounded bg-background/80 text-foreground-tertiary transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+      >
+        <Pencil className="h-3 w-3" />
       </button>
     </div>
   );
@@ -70,6 +82,7 @@ export function FindingPhotos({
   const uploadMutation = useUploadAttachment(projectId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [annotatingId, setAnnotatingId] = useState<string | null>(null);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,6 +124,7 @@ export function FindingPhotos({
             attachmentId={id}
             disabled={disabled}
             onRemove={() => { onChange(photoIds.filter((x) => x !== id)); }}
+            onAnnotate={() => { setAnnotatingId(id); }}
           />
         ))}
         {Array.from({ length: uploadingCount }).map((_, i) => (
@@ -138,6 +152,15 @@ export function FindingPhotos({
         multiple
         className="hidden"
         onChange={(e) => { void handleFileChange(e); }}
+      />
+      <ImageAnnotatorDialog
+        projectId={projectId}
+        attachmentId={annotatingId}
+        open={annotatingId !== null}
+        onOpenChange={(o) => { if (!o) setAnnotatingId(null); }}
+        onAnnotated={(newId) => {
+          onChange(photoIds.map((x) => (x === annotatingId ? newId : x)));
+        }}
       />
     </div>
   );

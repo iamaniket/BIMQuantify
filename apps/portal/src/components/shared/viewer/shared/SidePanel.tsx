@@ -94,6 +94,10 @@ export function SidePanel({
   return (
     <div
       aria-hidden={!isOpen}
+      // Stable hook for the viewer's guided-pick overlay (`interaction.request`
+      // blockedSelectors): the scrim re-covers this panel so it's dimmed + inert
+      // while the user picks a point/element in the model.
+      data-pick-block=""
       style={{ width: isOpen ? width : DEFAULT_WIDTH }}
       className={cn(
         'absolute bottom-0 right-0 top-0 z-20 transition-transform duration-200 ease-out',

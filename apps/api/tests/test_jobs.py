@@ -10,6 +10,7 @@ from bimstitch_api.jobs import DispatchJobError, set_job_dispatcher
 from tests.conftest import (
     VALID_IFC_HEADER,
     FakeStorage,
+    _add_member,
     _auth,
     _create_model,
     _create_project,
@@ -411,6 +412,96 @@ async def test_jobs_cross_org_isolation(
     resp = await client.get("/jobs", headers=_auth(other_org_user["access_token"]))
     assert resp.status_code == 200
     assert resp.json()["total"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Cross-PROJECT isolation (intra-org BOLA) — a same-org member who is NOT a
+# member of the job's project must not read it. `same_org_non_admin_user`
+# (dave) is in AlphaCo but is neither an org admin nor a project member.
+# ---------------------------------------------------------------------------
+
+
+async def test_get_job_cross_project_non_member_404(
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A same-org non-member of the project cannot read the job (payload+result)."""
+    client, fake = fake_storage_client
+    await _ready_ifc(client, fake, org_user, name="idor-get.ifc")
+    job_id = (
+        await client.get("/jobs", headers=_auth(org_user["access_token"]))
+    ).json()["items"][0]["id"]
+
+    resp = await client.get(
+        f"/jobs/{job_id}", headers=_auth(same_org_non_admin_user["access_token"])
+    )
+    assert resp.status_code == 404, resp.text
+
+
+async def test_list_jobs_filter_cross_project_non_member_404(
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Filtering by another project's id is rejected for a non-member."""
+    client, fake = fake_storage_client
+    project_id, _m, _f = await _ready_ifc(client, fake, org_user, name="idor-filter.ifc")
+
+    resp = await client.get(
+        f"/jobs?project_id={project_id}",
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert resp.status_code == 404, resp.text
+
+
+async def test_list_jobs_no_filter_hides_non_member_projects(
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Without a filter, a non-admin sees only jobs for projects they belong to."""
+    client, fake = fake_storage_client
+    await _ready_ifc(client, fake, org_user, name="idor-hide.ifc")
+
+    resp = await client.get(
+        "/jobs", headers=_auth(same_org_non_admin_user["access_token"])
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["total"] == 0
+    assert body["items"] == []
+
+
+async def test_get_job_project_member_can_read(
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A project member (even a viewer) CAN read the project's jobs."""
+    client, fake = fake_storage_client
+    project_id, _m, _f = await _ready_ifc(client, fake, org_user, name="member-read.ifc")
+    job_id = (
+        await client.get("/jobs", headers=_auth(org_user["access_token"]))
+    ).json()["items"][0]["id"]
+
+    await _add_member(
+        client,
+        org_user["access_token"],
+        project_id,
+        same_org_non_admin_user["id"],
+        "viewer",
+    )
+
+    resp = await client.get(
+        f"/jobs/{job_id}", headers=_auth(same_org_non_admin_user["access_token"])
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["id"] == job_id
 
 
 # ---------------------------------------------------------------------------

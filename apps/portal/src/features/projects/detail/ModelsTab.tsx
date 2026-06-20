@@ -182,7 +182,7 @@ export function ModelsTab({ projectId, models }: Props): JSX.Element {
             ) : null}
             {canCreateModel ? (
               <Button
-                variant="border"
+                variant="primary"
                 size="md"
                 onClick={() => { setNewModelOpen(true); }}
               >

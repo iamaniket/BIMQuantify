@@ -74,6 +74,70 @@ async def test_identifier_gives_distinct_users_distinct_budgets() -> None:
 
 
 # ---------------------------------------------------------------------------
+# X-Forwarded-For spoofing — an unauthenticated attacker must NOT be able to
+# rotate the XFF header to mint a fresh login/refresh rate-limit bucket. With
+# no trusted proxy configured (the default), client identity is the real peer
+# IP and the spoofed header is ignored.
+# ---------------------------------------------------------------------------
+
+
+def _http_request_xff(
+    xff: str, *, client_host: str = "5.5.5.5", path: str = "/auth/jwt/login"
+) -> Request:
+    return Request(
+        {
+            "type": "http",
+            "headers": [(b"x-forwarded-for", xff.encode())],
+            "client": (client_host, 12345),
+            "state": {},
+            "path": path,
+        }
+    )
+
+
+async def test_client_ip_ignores_xff_from_untrusted_peer() -> None:
+    from bimstitch_api.auth.ratelimit import _client_ip
+
+    # Default config has no trusted proxies → the spoofed header is ignored.
+    assert _client_ip(_http_request_xff("9.9.9.9", client_host="1.2.3.4")) == "1.2.3.4"
+
+
+async def test_default_identifier_unaffected_by_rotating_xff() -> None:
+    from bimstitch_api.auth.ratelimit import default_rate_limit_identifier
+
+    a = await default_rate_limit_identifier(_http_request_xff("1.1.1.1"))
+    b = await default_rate_limit_identifier(_http_request_xff("2.2.2.2"))
+    # Same real peer, different spoofed XFF → SAME bucket (rotation is useless).
+    assert a == b == "5.5.5.5:/auth/jwt/login"
+
+
+async def test_who_ignores_rotating_xff_for_unauthenticated() -> None:
+    from bimstitch_api.auth.ratelimit import _who
+
+    a = _who(_http_request_xff("1.1.1.1"))
+    b = _who(_http_request_xff("2.2.2.2"))
+    assert a == b == "ip:5.5.5.5"
+
+
+async def test_client_ip_honors_xff_behind_trusted_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from bimstitch_api.auth import ratelimit as ratelimit_module
+
+    # When the immediate peer IS the configured trusted proxy, the right-most
+    # forwarded hop (the address the proxy observed) is used.
+    patched = get_settings().model_copy(update={"trusted_proxy_ips": "5.5.5.5"})
+    monkeypatch.setattr(ratelimit_module, "get_settings", lambda: patched)
+
+    req = _http_request_xff("203.0.113.7", client_host="5.5.5.5")
+    assert ratelimit_module._client_ip(req) == "203.0.113.7"
+
+    # A direct attacker (peer not in the allowlist) is still ignored.
+    direct = _http_request_xff("203.0.113.7", client_host="6.6.6.6")
+    assert ratelimit_module._client_ip(direct) == "6.6.6.6"
+
+
+# ---------------------------------------------------------------------------
 # End-to-end: the upload-initiate endpoint actually enforces its limiter.
 # ---------------------------------------------------------------------------
 

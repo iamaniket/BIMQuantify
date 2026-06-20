@@ -161,22 +161,50 @@ function toWorld(
   out[2] = (m[2] ?? 0) * px + (m[6] ?? 0) * py + (m[10] ?? 0) * pz + (m[14] ?? 0);
 }
 
+/** One resolved storey: express id, displayed elevation, and the world cut plane. */
+export type ScanStorey = { expressID: number; elevation: number; cut: number };
+
 /**
- * Build per-storey floor plans from a parsed IFC model. Detects the up-axis,
- * cuts perpendicular to it, and emits each storey's plan in the two horizontal
- * axes. Storey floor levels come from the lowest contained-element coordinate
- * along the up-axis (falling back to the Elevation attribute). Returns the plan
- * horizontal-axis indices plus one entry per storey that produced geometry.
+ * Result of the single geometry sweep shared by metadata (the bounding box) and
+ * the floor plans (up-axis + per-storey cut planes). One `StreamAllMeshes`
+ * drives all of it, so the walk thread transforms each vertex to world exactly
+ * once instead of three times (old: metadata bbox + floor-plan pass 1 + pass 2).
  */
-export function buildFloorPlans(
+export type GeometryScan = {
+  /** World-space axis-aligned bounding box over every vertex, or null if empty. */
+  bbox: { min: [number, number, number]; max: [number, number, number] } | null;
+  /** IFC axis index the plan's X / Y horizontal coords use. */
+  planAxisX: number;
+  planAxisY: number;
+  /** Detected up-axis (0=x, 1=y, 2=z). */
+  upAxis: number;
+  /** Storeys with a resolved cut plane, sorted by elevation. */
+  storeys: ScanStorey[];
+  /** IfcSpace express ids — reused by the slice pass to bucket room geometry. */
+  spaceIds: Set<number>;
+};
+
+/**
+ * Single-pass geometry scan. Detects the up-axis (area-weighted triangle-normal
+ * histogram), each storey's floor level (lowest contained-element coordinate
+ * along the up-axis, falling back to the Elevation attribute), AND the global
+ * axis-aligned bounding box — all from ONE `StreamAllMeshes` sweep.
+ *
+ * The bbox accumulates over every vertex (matching the old `computeBoundingBox`
+ * in metadata.ts), while the up-axis histogram and per-storey minima use only
+ * indexed (triangulated) geometry, exactly as the old floor-plan pass 1 did.
+ *
+ * UP-AXIS IS DETECTED, NOT ASSUMED (IFC is nominally Z-up but many models are
+ * Y-up) — see the file header. The sweep runs unconditionally because the bbox
+ * is always needed, even for models with no storeys / no floor plan.
+ */
+export function scanModelGeometry(
   api: IfcAPI,
   modelID: number,
   lengthUnit: string | null,
   elements: readonly FloorPlanElement[],
   logger?: Logger,
-): DecodedFloorPlans {
-  const empty: DecodedFloorPlans = { planAxisX: 0, planAxisY: 1, levels: [] };
-
+): GeometryScan {
   // Storeys + their optional Elevation attribute (used for the displayed level
   // value and ordering; the cut height itself comes from geometry below).
   const storeyVec = api.GetLineIDsWithType(modelID, IFCBUILDINGSTOREY);
@@ -189,7 +217,6 @@ export function buildFloorPlans(
     const e = numberValue(line['Elevation']);
     if (e !== null) elevationAttr.set(id, e);
   }
-  if (storeyIds.length === 0) return empty;
   const storeyIdSet = new Set(storeyIds);
 
   // IfcSpace express IDs (room geometry) and element→storey containment.
@@ -221,14 +248,27 @@ export function buildFloorPlans(
     if (storey !== undefined) elementToStorey.set(el.expressID, storey);
   }
 
-  // Pass 1 — detect the up-axis (area-weighted triangle-normal histogram over
-  // ALL geometry) AND, for the physical elements contained in each storey, the
-  // per-storey min along all three axes (up-axis is unknown until the pass ends).
-  const upBins = [0, 0, 0]; // Σ|n.x|, Σ|n.y|, Σ|n.z| (n = 2·area triangle normal)
+  // One sweep: global bbox (every vertex), up-axis histogram + per-storey min
+  // (indexed geometry only). upBins = Σ|n.x|, Σ|n.y|, Σ|n.z| (n = 2·area normal).
+  const upBins = [0, 0, 0];
   const storeyMin = new Map<number, [number, number, number]>();
   const a: [number, number, number] = [0, 0, 0];
-  const b: [number, number, number] = [0, 0, 0];
-  const c: [number, number, number] = [0, 0, 0];
+  let minX = Infinity;
+  let minY = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let maxZ = -Infinity;
+  let touched = false;
+  const growBbox = (): void => {
+    if (a[0] < minX) minX = a[0];
+    if (a[1] < minY) minY = a[1];
+    if (a[2] < minZ) minZ = a[2];
+    if (a[0] > maxX) maxX = a[0];
+    if (a[1] > maxY) maxY = a[1];
+    if (a[2] > maxZ) maxZ = a[2];
+    touched = true;
+  };
 
   api.StreamAllMeshes(modelID, (mesh) => {
     const isSpace = spaceIds.has(mesh.expressID);
@@ -238,10 +278,22 @@ export function buildFloorPlans(
       const placedGeom = placements.get(g);
       const geom = api.GetGeometry(modelID, placedGeom.geometryExpressID);
       const verts = api.GetVertexArray(geom.GetVertexData(), geom.GetVertexDataSize());
-      const indices = api.GetIndexArray(geom.GetIndexData(), geom.GetIndexDataSize());
       const m = placedGeom.flatTransformation;
       const vCount = Math.floor(verts.length / 6);
-      if (vCount === 0 || indices.length === 0) continue;
+      if (vCount === 0) continue;
+      const indices = api.GetIndexArray(geom.GetIndexData(), geom.GetIndexDataSize());
+
+      if (indices.length === 0) {
+        // No triangles: contributes to the bbox (the old computeBoundingBox swept
+        // every vertex) but not to the histogram / per-storey minima (the old
+        // pass 1 skipped index-less geometry).
+        for (let v = 0; v < vCount; v += 1) {
+          const o = v * 6;
+          toWorld(m, verts[o] ?? 0, verts[o + 1] ?? 0, verts[o + 2] ?? 0, a);
+          growBbox();
+        }
+        continue;
+      }
 
       const wx = new Float64Array(vCount);
       const wy = new Float64Array(vCount);
@@ -260,6 +312,7 @@ export function buildFloorPlans(
         wx[v] = a[0];
         wy[v] = a[1];
         wz[v] = a[2];
+        growBbox();
         if (min) {
           if (a[0] < min[0]) min[0] = a[0];
           if (a[1] < min[1]) min[1] = a[1];
@@ -291,7 +344,7 @@ export function buildFloorPlans(
   // (along up), falling back to the Elevation attribute; displayed elevation
   // prefers the attribute. Storeys with neither are skipped.
   const offset = CUT_HEIGHT_M / metresPerUnit(lengthUnit);
-  const storeys: { expressID: number; elevation: number; cut: number }[] = [];
+  const storeys: ScanStorey[] = [];
   for (const id of storeyIds) {
     const geomBase = storeyMin.get(id)?.[upAxis];
     const attr = elevationAttr.get(id);
@@ -299,11 +352,41 @@ export function buildFloorPlans(
     if (base === undefined || !Number.isFinite(base)) continue;
     storeys.push({ expressID: id, elevation: attr ?? base, cut: base + offset });
   }
-  if (storeys.length === 0) return empty;
   storeys.sort((s1, s2) => s1.elevation - s2.elevation);
 
-  // Pass 2 — slice walls + rooms at each storey's cut plane (along the up-axis),
-  // emitting segments in the two horizontal axes.
+  const bbox: GeometryScan['bbox'] = touched
+    ? { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] }
+    : null;
+
+  logger?.info(
+    {
+      stage: 'geometryScan',
+      upAxis: ['x', 'y', 'z'][upAxis],
+      storeys: storeys.length,
+      hasBbox: bbox !== null,
+    },
+    'geometry scan complete',
+  );
+
+  return { bbox, planAxisX: hX, planAxisY: hY, upAxis, storeys, spaceIds };
+}
+
+/**
+ * Slice walls + rooms at each storey's cut plane (the floor-plan "pass 2"),
+ * using the up-axis and cut planes already resolved by `scanModelGeometry`.
+ * Emits segments in the two horizontal axes. Returns `{0, 1, []}` when the scan
+ * found no usable storeys (mirrors the old empty-result axes).
+ */
+export function sliceFloorPlans(
+  api: IfcAPI,
+  modelID: number,
+  scan: GeometryScan,
+  logger?: Logger,
+): DecodedFloorPlans {
+  const { upAxis, planAxisX: hX, planAxisY: hY, storeys, spaceIds } = scan;
+  if (storeys.length === 0) return { planAxisX: 0, planAxisY: 1, levels: [] };
+
+  const a: [number, number, number] = [0, 0, 0];
   const wallByLevel: number[][] = storeys.map(() => []);
   const roomsByLevel: Map<number, number[]>[] = storeys.map(() => new Map());
   api.StreamAllMeshes(modelID, (mesh) => {
@@ -409,6 +492,23 @@ export function buildFloorPlans(
     'floor plans built',
   );
   return { planAxisX: hX, planAxisY: hY, levels };
+}
+
+/**
+ * Build per-storey floor plans from a parsed IFC model in one call (scan +
+ * slice). The extraction worker instead calls `scanModelGeometry` once — sharing
+ * the scan with the metadata bbox — then `sliceFloorPlans`; this wrapper keeps a
+ * standalone entry point for callers/tests that don't need the bbox.
+ */
+export function buildFloorPlans(
+  api: IfcAPI,
+  modelID: number,
+  lengthUnit: string | null,
+  elements: readonly FloorPlanElement[],
+  logger?: Logger,
+): DecodedFloorPlans {
+  const scan = scanModelGeometry(api, modelID, lengthUnit, elements, logger);
+  return sliceFloorPlans(api, modelID, scan, logger);
 }
 
 /** Encode a floor-plan result as gzipped format-v2 bytes (the S3 object). */

@@ -1,0 +1,134 @@
+{
+  "key": "certificates",
+  "hasAssets": false,
+  "images": [
+    "/features/certificates/01.png",
+    "/features/certificates/02.png",
+    "/features/certificates/03.png"
+  ],
+  "related": [
+    "dossier",
+    "reports",
+    "deadlines"
+  ],
+  "en": {
+    "title": "Certificate library",
+    "card": "Upload typed certificates — CE/DoP declarations, test reports, warranties — with expiry tracking. Get automatic warnings before certificates expire.",
+    "tagline": "Certificates, organised and never expired",
+    "intro": "Upload typed certificates — CE/DoP declarations, test reports, warranties, and inspection certificates — into one library that tracks every expiry date and warns you before anything lapses. Each document is filed against its type and kept current automatically, so the certificates backing your Wkb dossier are organised, findable, and always valid when the bevoegd gezag asks for them.",
+    "problemTitle": "Expired certificates undermine the dossier",
+    "problem": "Certificates arrive from dozens of suppliers in as many formats, each with its own validity period and renewal cycle. Filed away in folders, they're easy to forget — and an expired CE/DoP declaration or lapsed test report quietly weakens the compliance package without anyone noticing. By the time a gap is spotted, often during the gereedmelding, renewing a certificate can mean waiting on a third party you don't control, with the deadline already in sight.",
+    "solutionTitle": "A typed library that watches expiry for you",
+    "solution": [
+      "Upload each certificate against its type — CE/DoP, test report, warranty, inspection certificate, and more.",
+      "Expiry dates are tracked centrally, so the whole library stays current without a manual spreadsheet.",
+      "Automatic warnings give you time to renew before anything lapses, not after.",
+      "Every certificate is searchable and ready to pull into the dossier whenever it's needed."
+    ],
+    "highlights": [
+      {
+        "title": "Typed certificate library",
+        "body": "File each document against its type — CE/DoP, test report, warranty, inspection certificate — so the whole library stays structured and searchable."
+      },
+      {
+        "title": "Central expiry tracking",
+        "body": "Every validity date is tracked in one place, replacing the manual spreadsheet that always drifts out of date."
+      },
+      {
+        "title": "Renewal warnings",
+        "body": "Automatic alerts fire before a certificate lapses, giving you time to renew with the supplier instead of discovering a gap too late."
+      },
+      {
+        "title": "Dossier-ready",
+        "body": "Certificates are searchable and pull straight into the gereedmelding dossier whenever the bevoegd gezag asks."
+      }
+    ],
+    "faq": [
+      {
+        "q": "What kinds of certificates can I store?",
+        "a": "You can store typed documents such as CE/DoP declarations, test reports, warranties, and inspection certificates, each filed against its type so the library stays organised and searchable."
+      },
+      {
+        "q": "How does expiry tracking work?",
+        "a": "Each certificate's validity date is tracked centrally, and BimDossier sends automatic warnings before it lapses — so you renew in time rather than discovering an expired document during the gereedmelding."
+      },
+      {
+        "q": "Can certificates be added to the dossier?",
+        "a": "Yes. Every certificate is searchable and ready to pull into the gereedmelding dossier, so the documents backing your compliance package are always to hand when the bevoegd gezag asks."
+      }
+    ],
+    "imageCaptions": [
+      "Typed certificate library",
+      "Expiry warning before lapse",
+      "Certificate detail with metadata"
+    ],
+    "keywords": [
+      "certificate management",
+      "CE DoP declaration",
+      "certificate expiry tracking",
+      "Wkb certificates",
+      "test report library",
+      "warranty tracking construction"
+    ]
+  },
+  "nl": {
+    "title": "Certificatenbibliotheek",
+    "card": "Upload getypeerde certificaten — CE/DoP-verklaringen, testrapporten, garanties — met vervaldatumbewaking. Ontvang automatische waarschuwingen voordat certificaten verlopen.",
+    "tagline": "Certificaten, georganiseerd en nooit verlopen",
+    "intro": "Upload getypeerde certificaten — CE/DoP-verklaringen, testrapporten, garanties en inspectiecertificaten — in één bibliotheek die elke vervaldatum bewaakt en u waarschuwt voordat iets verloopt. Elk document wordt op type gearchiveerd en automatisch actueel gehouden, zodat de certificaten achter uw Wkb-dossier georganiseerd en vindbaar zijn en altijd geldig wanneer het bevoegd gezag erom vraagt.",
+    "problemTitle": "Verlopen certificaten ondermijnen het dossier",
+    "problem": "Certificaten komen van tientallen leveranciers in evenzoveel formaten, elk met een eigen geldigheidsduur en vernieuwingscyclus. Weggeborgen in mappen zijn ze makkelijk te vergeten — en een verlopen CE/DoP-verklaring of een verouderd testrapport verzwakt het compliancepakket ongemerkt. Tegen de tijd dat een gat wordt opgemerkt, vaak tijdens de gereedmelding, kan een certificaat vernieuwen betekenen dat u moet wachten op een derde partij die u niet in de hand heeft, met de deadline al in zicht.",
+    "solutionTitle": "Een getypeerde bibliotheek die de vervaldatum voor u bewaakt",
+    "solution": [
+      "Upload elk certificaat bij zijn type — CE/DoP, testrapport, garantie, inspectiecertificaat en meer.",
+      "Vervaldata worden centraal bijgehouden, zodat de hele bibliotheek actueel blijft zonder handmatige spreadsheet.",
+      "Automatische waarschuwingen geven u tijd om te vernieuwen voordat iets verloopt, niet erna.",
+      "Elk certificaat is doorzoekbaar en klaar om in het dossier te trekken wanneer dat nodig is."
+    ],
+    "highlights": [
+      {
+        "title": "Getypeerde certificatenbibliotheek",
+        "body": "Archiveer elk document bij zijn type — CE/DoP, testrapport, garantie, inspectiecertificaat — zodat de hele bibliotheek gestructureerd en doorzoekbaar blijft."
+      },
+      {
+        "title": "Centrale vervaldatumbewaking",
+        "body": "Elke geldigheidsdatum wordt op één plek bijgehouden, ter vervanging van de handmatige spreadsheet die altijd veroudert."
+      },
+      {
+        "title": "Vernieuwingswaarschuwingen",
+        "body": "Automatische meldingen gaan af voordat een certificaat verloopt, zodat u op tijd bij de leverancier vernieuwt in plaats van te laat een gat te ontdekken."
+      },
+      {
+        "title": "Dossierklaar",
+        "body": "Certificaten zijn doorzoekbaar en trekken rechtstreeks in het gereedmeldingsdossier wanneer het bevoegd gezag erom vraagt."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Welke soorten certificaten kan ik opslaan?",
+        "a": "U kunt getypeerde documenten opslaan zoals CE/DoP-verklaringen, testrapporten, garanties en inspectiecertificaten, elk gearchiveerd bij zijn type zodat de bibliotheek georganiseerd en doorzoekbaar blijft."
+      },
+      {
+        "q": "Hoe werkt de vervaldatumbewaking?",
+        "a": "De geldigheidsdatum van elk certificaat wordt centraal bijgehouden, en BimDossier stuurt automatische waarschuwingen voordat het verloopt — zodat u op tijd vernieuwt in plaats van tijdens de gereedmelding een verlopen document te ontdekken."
+      },
+      {
+        "q": "Kunnen certificaten aan het dossier worden toegevoegd?",
+        "a": "Ja. Elk certificaat is doorzoekbaar en klaar om in het gereedmeldingsdossier te trekken, zodat de documenten achter uw compliancepakket altijd bij de hand zijn wanneer het bevoegd gezag erom vraagt."
+      }
+    ],
+    "imageCaptions": [
+      "Getypeerde certificatenbibliotheek",
+      "Vervalwaarschuwing vóór verloop",
+      "Certificaatdetail met metadata"
+    ],
+    "keywords": [
+      "certificatenbeheer",
+      "CE DoP-verklaring",
+      "vervaldatumbewaking certificaten",
+      "Wkb-certificaten",
+      "testrapporten bibliotheek",
+      "garantiebeheer bouw"
+    ]
+  }
+}

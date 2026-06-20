@@ -14,10 +14,11 @@ import { totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 import { AttachmentsTab } from './AttachmentsTab';
 import { BevindingenTab } from './BevindingenTab';
 import { CertificatesTab } from './CertificatesTab';
+import { DeadlinesSection } from './DeadlinesSection';
 import { DossierChecklistTab } from './DossierChecklistTab';
 import { ModelsTab } from './ModelsTab';
-import { OverzichtTab } from './OverzichtTab';
 import { RapportenTab } from './RapportenTab';
+import { useDossierCompleteness } from './useDossierCompleteness';
 
 type Props = {
   projectId: string;
@@ -31,13 +32,26 @@ export function RightColumnTabs({
   models,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
-  const [topTab, setTopTab] = useState('overzicht');
+  const [topTab, setTopTab] = useState('readiness');
   const [bottomTab, setBottomTab] = useState('bevindingen');
   const attachmentCount = totalFromPages(useAttachments(projectId).data);
   const certificateCount = totalFromPages(useCertificates(projectId).data);
   const findingsCount = totalFromPages(useFindings(projectId).data);
+  const dossier = useDossierCompleteness(projectId, projectCountry);
 
-  const topSubtitleCount = topTab === 'dossier' ? 0
+  // Readiness header doubles as the dossier-completeness headline now that the
+  // in-tab progress bar is gone; the percentage is only meaningful once loaded
+  // and a template exists, so fall back to the descriptive subtitle otherwise.
+  const readinessSubtitle =
+    dossier.isLoading || dossier.templateEmpty
+      ? t('readiness.subtitle')
+      : t('readiness.progress', {
+          pct: dossier.pct,
+          filled: dossier.filled,
+          total: dossier.total,
+        });
+
+  const topSubtitleCount = topTab === 'readiness' ? 0
     : topTab === 'rapporten' ? 0
     : models.length;
 
@@ -53,8 +67,7 @@ export function RightColumnTabs({
           <div className="mb-2 flex min-w-max items-end justify-between gap-x-3">
             <Tabs value={topTab} onValueChange={setTopTab}>
               <TabsList className="inline-flex w-auto">
-                <TabsTrigger value="overzicht">{t('overzicht.label')}</TabsTrigger>
-                <TabsTrigger value="dossier">{t('dossier.label')}</TabsTrigger>
+                <TabsTrigger value="readiness">{t('readiness.label')}</TabsTrigger>
                 <TabsTrigger value="models">
                   {t('models.label')}
                   <Badge variant="default" size="md" bordered={false}>
@@ -69,18 +82,21 @@ export function RightColumnTabs({
                 {t(`${topTab}.eyebrow`)}
               </Eyebrow>
               <div className="text-body2 font-medium tracking-tight text-foreground">
-                {t(`${topTab}.subtitle`, { count: topSubtitleCount })}
+                {topTab === 'readiness'
+                  ? readinessSubtitle
+                  : t(`${topTab}.subtitle`, { count: topSubtitleCount })}
               </div>
             </div>
           </div>
         </div>
 
-        <div className={`min-h-0 flex-1 px-3 pb-3 pt-2 ${topTab === 'models' ? 'overflow-hidden' : 'overflow-auto'}`}>
-          {topTab === 'overzicht' && (
-            <OverzichtTab projectId={projectId} />
-          )}
-          {topTab === 'dossier' && (
-            <DossierChecklistTab projectId={projectId} country={projectCountry} />
+        <div className={`min-h-0 flex-1 px-3 pb-3 pt-2 ${topTab === 'models' || topTab === 'rapporten' ? 'overflow-hidden' : 'overflow-auto'}`}>
+          {/* `readiness` backs the merged Readiness tab: dossier checklist groups + a deadlines group */}
+          {topTab === 'readiness' && (
+            <div className="space-y-4">
+              <DossierChecklistTab projectId={projectId} country={projectCountry} />
+              <DeadlinesSection projectId={projectId} />
+            </div>
           )}
           {topTab === 'models' && (
             <ModelsTab projectId={projectId} models={models} />
