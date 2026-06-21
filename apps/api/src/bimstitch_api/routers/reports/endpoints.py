@@ -41,14 +41,12 @@ from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.auth.ratelimit import REPORT_GEN_LIMITER
 from bimstitch_api.config import Settings, get_settings
-from bimstitch_api.i18n import coerce_locale, t
 from bimstitch_api.jobs import (
     DispatchJobError,
     JobConcurrencyError,
     check_job_concurrency,
     dispatch_job,
 )
-from bimstitch_api.jurisdictions import find_instrument
 from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.models.borgingsmoment import Borgingsmoment
 from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
@@ -64,12 +62,24 @@ from bimstitch_api.models.report import Report, ReportStatus, ReportType
 from bimstitch_api.models.risk import Risk
 from bimstitch_api.models.user import User
 from bimstitch_api.notifications.service import publish_notification, upsert_job_notification
+from bimstitch_api.routers.reports.payloads import (
+    _assurance_plan_payload,
+    _declaration_payload,
+    _dossier_certificate_payload,
+    _dossier_finding_payload,
+    _instrument_payload,
+    _project_payload,
+    _report_notification_body,
+    _report_title,
+    _risk_payload,
+    _template_payload,
+)
 from bimstitch_api.schemas.report import (
     ReportCreateRequest,
     ReportListResponse,
     ReportResponse,
 )
-from bimstitch_api.storage import StorageBackend, get_attachments_bucket, get_storage
+from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
@@ -83,58 +93,6 @@ _COMPLIANCE_JOB_TYPES = (JobType.compliance_check,)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _report_title(report_type: ReportType, project_name: str, locale: str) -> str:
-    return t(
-        f"notifications.report.{report_type.value}.title",
-        coerce_locale(locale),
-        name=project_name,
-    )
-
-
-def _report_notification_body(report_type: ReportType, locale: str) -> str:
-    # The notification body templates don't take {name}; passing a stray
-    # `name` through `t()` is harmless because we omit vars when none are
-    # needed (see `t()`'s no-vars branch).
-    return t(
-        f"notifications.report.{report_type.value}.body",
-        coerce_locale(locale),
-    )
-
-
-def _project_payload(project: Project, contractor: Contractor | None) -> dict[str, object]:
-    """Snapshot of project metadata the worker uses to render the PDF cover.
-    Worker is stateless — everything it renders comes from this payload."""
-    return {
-        "id": str(project.id),
-        "name": project.name,
-        "country": project.country,
-        "reference_code": project.reference_code,
-        "status": project.status.value,
-        "phase": project.phase.value if project.phase is not None else None,
-        "address": {
-            "country": project.country,
-            "street": project.street,
-            "house_number": project.house_number,
-            "postal_code": project.postal_code,
-            "city": project.city,
-            "municipality": project.municipality,
-            "bag_id": project.bag_id,
-        },
-        "permit_number": project.permit_number,
-        "delivery_date": project.delivery_date.isoformat() if project.delivery_date else None,
-        "contractor": (
-            {
-                "name": contractor.name,
-                "kvk_number": contractor.kvk_number,
-                "contact_email": contractor.contact_email,
-                "contact_phone": contractor.contact_phone,
-            }
-            if contractor is not None
-            else None
-        ),
-    }
 
 
 async def _load_latest_compliance_job(
@@ -206,21 +164,6 @@ async def _resolve_template(
     ).scalar_one_or_none()
 
 
-def _template_payload(tpl: OrgTemplate) -> dict[str, object]:
-    """The template config shipped to the worker. Branding asset keys travel with
-    their bucket (the worker fetches logo/cover from MinIO by key); sections and
-    text blocks travel inline and are applied/interpolated at render time."""
-    config = tpl.config or {}
-    branding = dict(config.get("branding") or {})
-    branding["bucket"] = get_attachments_bucket()
-    return {
-        "id": str(tpl.id),
-        "branding": branding,
-        "sections": config.get("sections") or [],
-        "options": config.get("options") or {},
-    }
-
-
 # ---------------------------------------------------------------------------
 # Per-type source resolvers
 # ---------------------------------------------------------------------------
@@ -254,89 +197,6 @@ async def _resolve_compliance_source(
         title=_report_title(ReportType.compliance_report, project.name, locale),
         payload_extra={"compliance": source_job.result or {}},
     )
-
-
-# Construction-phase ordering for borgingsmomenten on the rendered plan.
-_PHASE_RANK: dict[str, int] = {
-    "foundation": 0,
-    "shell": 1,
-    "roof": 2,
-    "finishing": 3,
-    "handover": 4,
-    "other": 5,
-}
-
-
-def _instrument_payload(project: Project) -> dict[str, object] | None:
-    """The project's toegelaten instrument resolved from the jurisdiction
-    registry — name/provider/methodology for the report cover. None if the
-    project hasn't picked one yet (aannemer-first: 'KB will select')."""
-    if project.instrument_id is None:
-        return None
-    inst = find_instrument(project.country, project.instrument_id)
-    if inst is None:
-        return None
-    return {
-        "id": inst.id,
-        "name": inst.name,
-        "provider": inst.provider,
-        "methodology_url": inst.methodology_url,
-    }
-
-
-def _user_display_name(u: User | None) -> str | None:
-    """Display name (full_name, else email) for an eager-loaded User, or None."""
-    if u is None:
-        return None
-    return u.full_name or u.email
-
-
-def _assurance_plan_payload(plan: Borgingsplan) -> dict[str, object]:
-    """Snapshot the borgingsplan + its moments/checklist items for rendering.
-    moments + checklist_items are selectin-loaded with the plan; `created_by`
-    and each moment's `responsible` are eager-loaded by the resolver."""
-    moments = sorted(
-        plan.moments,
-        key=lambda m: (_PHASE_RANK.get(m.phase.value, 99), m.sequence_in_phase),
-    )
-    return {
-        "version_number": plan.version_number,
-        "status": plan.status.value,
-        "created_by": _user_display_name(plan.created_by),
-        "published_at": plan.published_at.isoformat() if plan.published_at else None,
-        "notes": plan.notes,
-        "moments": [
-            {
-                "phase": m.phase.value,
-                "name": m.name,
-                "planned_date": m.planned_date.isoformat(),
-                "actual_date": m.actual_date.isoformat() if m.actual_date else None,
-                "responsible": _user_display_name(m.responsible),
-                "status": m.status.value,
-                "checklist_items": [
-                    {
-                        "description": ci.description,
-                        "evidence_type": ci.evidence_type.value,
-                        "bbl_article_ref": ci.bbl_article_ref,
-                        "pass_fail_criteria": ci.pass_fail_criteria,
-                    }
-                    for ci in sorted(m.checklist_items, key=lambda c: c.sequence)
-                ],
-            }
-            for m in moments
-        ],
-    }
-
-
-def _risk_payload(risk: Risk) -> dict[str, object]:
-    return {
-        "category": risk.category.value,
-        "level": risk.level.value,
-        "description": risk.description,
-        "mitigation": risk.mitigation,
-        "responsible_party": risk.responsible_party,
-        "bbl_article_ref": risk.bbl_article_ref,
-    }
 
 
 async def _load_active_plan(
@@ -405,24 +265,6 @@ async def _resolve_assurance_plan_source(
     )
 
 
-def _declaration_payload(
-    user: User,
-    *,
-    signed: bool,
-    signed_at: str | None,
-    signature_hash: str | None,
-) -> dict[str, object]:
-    """The verklaring's declarant + signing state. Unsigned at generate time;
-    the sign endpoint re-renders with signed=True + the stamp fields."""
-    return {
-        "kwaliteitsborger": _user_display_name(user),
-        "kwaliteitsborger_email": user.email,
-        "signed": signed,
-        "signed_at": signed_at,
-        "signature_hash": signature_hash,
-    }
-
-
 async def _resolve_completion_declaration_source(
     session: AsyncSession, project: Project, user: User, locale: str
 ) -> _ReportPlan:
@@ -440,61 +282,6 @@ async def _resolve_completion_declaration_source(
             ),
         },
     )
-
-
-def _dossier_finding_payload(
-    finding: Finding, atts: dict[str, ProjectFile]
-) -> dict[str, object]:
-    """A finding + its resolution + image-attachment storage keys (the worker
-    embeds those photos). Only image attachments are embedded."""
-    photos: list[dict[str, str]] = []
-    seen: set[str] = set()
-    for aid in list(finding.photo_ids or []) + list(finding.resolution_evidence_ids or []):
-        key = str(aid)
-        if key in seen:
-            continue
-        seen.add(key)
-        att = atts.get(key)
-        if att is None or not att.content_type.startswith("image/"):
-            continue
-        photos.append({"storage_key": att.storage_key, "content_type": att.content_type})
-    return {
-        "title": finding.title,
-        "description": finding.description,
-        "severity": finding.severity.value,
-        "status": finding.status.value,
-        "deadline_date": finding.deadline_date.isoformat() if finding.deadline_date else None,
-        "bbl_article_ref": finding.bbl_article_ref,
-        "resolution_note": finding.resolution_note,
-        # Anchored BIM element identity + location (the "snap" GUID/location the
-        # dossier surfaces per finding). Coordinates are the only location stored
-        # on a finding — there is no human-readable storey name.
-        "linked_element_global_id": finding.linked_element_global_id,
-        "linked_model_id": str(finding.linked_model_id)
-        if finding.linked_model_id is not None
-        else None,
-        "linked_file_type": finding.linked_file_type,
-        "anchor_page": finding.anchor_page,
-        "anchor_x": finding.anchor_x,
-        "anchor_y": finding.anchor_y,
-        "anchor_z": finding.anchor_z,
-        "photos": photos,
-    }
-
-
-def _dossier_certificate_payload(cert: Certificate) -> dict[str, object]:
-    """A certificate's metadata + storage key (the worker merges PDF certs)."""
-    return {
-        "certificate_type": cert.certificate_type.value,
-        "certificate_number": cert.certificate_number,
-        "issuer": cert.issuer,
-        "subject": cert.subject,
-        "valid_from": cert.valid_from.isoformat() if cert.valid_from else None,
-        "valid_until": cert.valid_until.isoformat() if cert.valid_until else None,
-        "filename": cert.original_filename,
-        "content_type": cert.content_type,
-        "storage_key": cert.storage_key,
-    }
 
 
 async def _resolve_dossier_source(

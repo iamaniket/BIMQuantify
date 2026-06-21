@@ -1,20 +1,12 @@
-"""Endpoints for uploading, listing, downloading and deleting IFC files.
+"""Upload endpoints: two-phase initiate/complete and retry-extraction.
 
-Two-phase upload: the browser calls `initiate` to receive a presigned PUT URL,
-PUTs raw bytes directly to the object store, and then calls `complete` so the
-API can validate the file's STEP/IFC header and flip the row to `ready`.
-
-Files are nested under a Model (which is itself nested under a Project). Each
-upload is a new version of its model; `version_number` is assigned at
-`initiate` time as `MAX(version_number) + 1` per model.
+The endpoints here are decorated with the per-file `router` imported from
+`._shared`; importing this module registers them.
 """
 
-import asyncio
-import logging
-from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +15,6 @@ from bimstitch_api import audit
 from bimstitch_api.access import (
     load_project_or_404,
     require_membership,
-    require_project_read_access,
     require_project_writable,
 )
 from bimstitch_api.auth.fastapi_users import current_verified_user
@@ -52,52 +43,20 @@ from bimstitch_api.models.project_file import (
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.routers.models import _load_model_or_404
+from bimstitch_api.routers.project_files._shared import (
+    HEADER_PEEK_BYTES,
+    logger,
+    router,
+    _load_file_or_404,
+)
 from bimstitch_api.schemas.project_file import (
     InitiateUploadRequest,
     InitiateUploadResponse,
-    ProjectFileDownloadResponse,
     ProjectFileRead,
-    ProjectViewerManifestResponse,
-    ProjectViewerModelEntry,
-    ViewerBundleResponse,
 )
 from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.storage.minio import ObjectNotFoundError
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
-
-logger = logging.getLogger(__name__)
-
-router = APIRouter(
-    prefix="/projects/{project_id}/models/{model_id}/files",
-    tags=["project-files"],
-)
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-HEADER_PEEK_BYTES = 2048
-
-
-async def _load_file_or_404(session: AsyncSession, model_id: UUID, file_id: UUID) -> ProjectFile:
-    row = (
-        await session.execute(
-            select(ProjectFile).where(
-                ProjectFile.id == file_id,
-                ProjectFile.model_id == model_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FILE_NOT_FOUND")
-    return row
-
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -589,56 +548,6 @@ async def complete_upload(
     return row
 
 
-@router.get("", response_model=list[ProjectFileRead])
-async def list_files(
-    project_id: UUID,
-    model_id: UUID,
-    response: Response,
-    status_filter: Annotated[Literal["ready", "all"], Query(alias="status")] = "ready",
-    # Generous cap: the portal lists all versions/files for a model (no paging).
-    limit: int = Query(default=200, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
-) -> list[ProjectFile]:
-    project = await load_project_or_404(session, project_id)
-    await require_project_read_access(session, project.id, user, active_org_id)
-    model = await _load_model_or_404(session, project.id, model_id)
-
-    base = select(ProjectFile).where(ProjectFile.model_id == model.id)
-    if status_filter == "ready":
-        base = base.where(ProjectFile.status == ProjectFileStatus.ready)
-    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
-    response.headers["X-Total-Count"] = str(total)
-    result = await session.execute(
-        base.order_by(ProjectFile.version_number.desc()).limit(limit).offset(offset)
-    )
-    return list(result.scalars().all())
-
-
-@router.get("/{file_id}/download", response_model=ProjectFileDownloadResponse)
-async def get_download_url(
-    project_id: UUID,
-    model_id: UUID,
-    file_id: UUID,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
-    storage: StorageBackend = Depends(get_storage),
-) -> ProjectFileDownloadResponse:
-    project = await load_project_or_404(session, project_id)
-    await require_project_read_access(session, project.id, user, active_org_id)
-    model = await _load_model_or_404(session, project.id, model_id)
-
-    row = await _load_file_or_404(session, model.id, file_id)
-    if row.status is not ProjectFileStatus.ready:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FILE_NOT_READY")
-
-    download_url = await storage.presigned_get_url(row.storage_key, row.original_filename)
-    return ProjectFileDownloadResponse(download_url=download_url, expires_in=storage.presign_ttl)
-
-
 @router.post("/{file_id}/retry-extraction", response_model=ProjectFileRead)
 async def retry_extraction(
     project_id: UUID,
@@ -687,271 +596,3 @@ async def retry_extraction(
 
     await session.refresh(row)
     return row
-
-
-async def _presign_ifc_bundle(
-    row: ProjectFile, storage: StorageBackend
-) -> dict[str, str | None]:
-    """Presign the IFC artifact set for one extraction-succeeded file.
-
-    Returns a dict keyed fragments_url / metadata_url / properties_url /
-    outline_url / floor_plans_url; artifacts that don't exist (pre-outline
-    extractions, MEP models with no floor plan, graceful degrade) map to None.
-    The caller guarantees the row is an IFC file with a fragments key. All
-    present artifacts are presigned concurrently. Shared by the single-file
-    viewer bundle and the project-level federated manifest.
-    """
-    assert row.fragments_storage_key is not None  # caller-guaranteed (IFC path)
-    specs: list[tuple[str, str, str]] = [
-        ("fragments_url", row.fragments_storage_key, f"{row.original_filename}.frag"),
-    ]
-    if row.metadata_storage_key is not None:
-        specs.append(("metadata_url", row.metadata_storage_key, "metadata.json"))
-    if row.properties_storage_key is not None:
-        specs.append(("properties_url", row.properties_storage_key, "properties.json"))
-    if row.outline_storage_key is not None:
-        specs.append(("outline_url", row.outline_storage_key, "outline.bin"))
-    if row.floor_plans_storage_key is not None:
-        specs.append(("floor_plans_url", row.floor_plans_storage_key, "floor-plans.bin"))
-    urls = await asyncio.gather(
-        *(storage.presigned_get_url(key, name) for _, key, name in specs)
-    )
-    out: dict[str, str | None] = {
-        "fragments_url": None,
-        "metadata_url": None,
-        "properties_url": None,
-        "outline_url": None,
-        "floor_plans_url": None,
-    }
-    for (field, _key, _name), url in zip(specs, urls, strict=True):
-        out[field] = url
-    return out
-
-
-@router.get("/{file_id}/viewer-bundle", response_model=ViewerBundleResponse)
-async def get_viewer_bundle(
-    project_id: UUID,
-    model_id: UUID,
-    file_id: UUID,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
-    storage: StorageBackend = Depends(get_storage),
-) -> ViewerBundleResponse:
-    project = await load_project_or_404(session, project_id)
-    await require_project_read_access(session, project.id, user, active_org_id)
-    model = await _load_model_or_404(session, project.id, model_id)
-
-    row = await _load_file_or_404(session, model.id, file_id)
-
-    if row.file_type == FileType.pdf:
-        if row.status is not ProjectFileStatus.ready:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="VIEWER_BUNDLE_NOT_READY"
-            )
-        file_url = await storage.presigned_get_url(row.storage_key, row.original_filename)
-        geometry_url: str | None = None
-        if row.geometry_storage_key is not None:
-            geometry_url = await storage.presigned_get_url(
-                row.geometry_storage_key, "geometry.json"
-            )
-        return ViewerBundleResponse(
-            file_type=row.file_type,
-            file_url=file_url,
-            geometry_url=geometry_url,
-            expires_in=storage.presign_ttl,
-        )
-
-    if row.file_type in (FileType.dxf, FileType.dwg):
-        # Drawing path: the overlay renders the geometry artifact; the info
-        # panel reads the metadata blob. file_url lets the user grab the raw CAD.
-        if (
-            row.extraction_status is not ExtractionStatus.succeeded
-            or row.geometry_storage_key is None
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="VIEWER_BUNDLE_NOT_READY"
-            )
-        geometry_key = row.geometry_storage_key
-        cad_coros = [
-            storage.presigned_get_url(geometry_key, "geometry.json"),
-            storage.presigned_get_url(row.storage_key, row.original_filename),
-        ]
-        cad_metadata_key = row.metadata_storage_key
-        if cad_metadata_key is not None:
-            cad_coros.append(storage.presigned_get_url(cad_metadata_key, "metadata.json"))
-        cad_urls = await asyncio.gather(*cad_coros)
-        return ViewerBundleResponse(
-            file_type=row.file_type,
-            geometry_url=cad_urls[0],
-            file_url=cad_urls[1],
-            metadata_url=cad_urls[2] if cad_metadata_key is not None else None,
-            expires_in=storage.presign_ttl,
-        )
-
-    # IFC path
-    if row.extraction_status is not ExtractionStatus.succeeded or row.fragments_storage_key is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VIEWER_BUNDLE_NOT_READY")
-
-    bundle = await _presign_ifc_bundle(row, storage)
-    return ViewerBundleResponse(
-        file_type=row.file_type,
-        fragments_url=bundle["fragments_url"],
-        fragments_key=row.fragments_storage_key,
-        metadata_url=bundle["metadata_url"],
-        properties_url=bundle["properties_url"],
-        outline_url=bundle["outline_url"],
-        floor_plans_url=bundle["floor_plans_url"],
-        expires_in=storage.presign_ttl,
-    )
-
-
-@router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_file(
-    project_id: UUID,
-    model_id: UUID,
-    file_id: UUID,
-    request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
-    storage: StorageBackend = Depends(get_storage),
-) -> Response:
-    project = await load_project_or_404(session, project_id)
-    membership = await require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.project_file, Action.delete)
-    require_project_writable(project)
-    model = await _load_model_or_404(session, project.id, model_id)
-
-    row = await _load_file_or_404(session, model.id, file_id)
-    before = {
-        "original_filename": row.original_filename,
-        "file_type": row.file_type.value,
-        "version_number": row.version_number,
-    }
-
-    try:
-        await storage.delete_object(row.storage_key)
-    except ObjectNotFoundError:
-        pass
-    except Exception:
-        logger.warning(
-            "Failed to delete object %s during file delete; proceeding with row delete",
-            row.storage_key,
-            exc_info=True,
-        )
-
-    await audit.record(
-        session,
-        action="project_file.deleted",
-        resource_type="project_file",
-        resource_id=row.id,
-        before=before,
-        actor_user_id=user.id,
-        project_id=project.id,
-        request=request,
-    )
-
-    await session.delete(row)
-    await session.flush()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-# ---------------------------------------------------------------------------
-# Project-level federated viewer manifest
-# ---------------------------------------------------------------------------
-# Project-scoped (one prefix up from the per-file router) so the federated
-# viewer can load every discipline model of a project in one request.
-project_viewer_router = APIRouter(prefix="/projects/{project_id}", tags=["project-files"])
-
-
-@project_viewer_router.get("/viewer-bundle", response_model=ProjectViewerManifestResponse)
-async def get_project_viewer_bundle(
-    project_id: UUID,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
-    storage: StorageBackend = Depends(get_storage),
-) -> ProjectViewerManifestResponse:
-    """Federated viewer manifest: the latest ready, extraction-succeeded IFC
-    file for every (non-deleted) model in the project, each with presigned
-    artifact URLs. Powers the multi-discipline viewer — load all entries into
-    one scene, toggle each on/off, and source the 2D floor plan from the
-    `detected_kind == 'architectural'` entry. Models with no ready IFC file are
-    omitted.
-    """
-    project = await load_project_or_404(session, project_id)
-    await require_project_read_access(session, project.id, user, active_org_id)
-
-    # Two sequential reads (AsyncSession forbids concurrent queries), then a
-    # single concurrent presign fan-out (storage calls only, no DB).
-    models = list(
-        (
-            await session.execute(
-                select(Model)
-                .where(Model.project_id == project.id, Model.deleted_at.is_(None))
-                .order_by(Model.created_at)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    if not models:
-        return ProjectViewerManifestResponse(expires_in=storage.presign_ttl, models=[])
-
-    model_by_id = {m.id: m for m in models}
-    rows = (
-        (
-            await session.execute(
-                select(ProjectFile)
-                .where(
-                    ProjectFile.model_id.in_(list(model_by_id.keys())),
-                    ProjectFile.role == ProjectFileRole.model_source,
-                    ProjectFile.file_type == FileType.ifc,
-                    ProjectFile.extraction_status == ExtractionStatus.succeeded,
-                    ProjectFile.fragments_storage_key.is_not(None),
-                    ProjectFile.deleted_at.is_(None),
-                )
-                # Version-desc within each model so the first row seen per model
-                # is its current (latest) viewable version.
-                .order_by(ProjectFile.model_id, ProjectFile.version_number.desc())
-            )
-        )
-        .scalars()
-        .all()
-    )
-    latest_by_model: dict[UUID, ProjectFile] = {}
-    for row in rows:
-        if row.model_id is None or row.model_id in latest_by_model:
-            continue
-        latest_by_model[row.model_id] = row
-
-    # Preserve model creation order; drop models with no ready IFC file.
-    chosen = [
-        (model_by_id[m.id], latest_by_model[m.id])
-        for m in models
-        if m.id in latest_by_model
-    ]
-    bundles = await asyncio.gather(
-        *(_presign_ifc_bundle(row, storage) for _model, row in chosen)
-    )
-    entries = [
-        ProjectViewerModelEntry(
-            file_id=row.id,
-            model_id=model.id,
-            model_name=model.name,
-            discipline=model.discipline,
-            detected_kind=row.detected_kind,
-            fragments_url=bundle["fragments_url"],
-            fragments_key=row.fragments_storage_key,
-            metadata_url=bundle["metadata_url"],
-            properties_url=bundle["properties_url"],
-            outline_url=bundle["outline_url"],
-            floor_plans_url=bundle["floor_plans_url"],
-        )
-        for (model, row), bundle in zip(chosen, bundles, strict=True)
-    ]
-    return ProjectViewerManifestResponse(expires_in=storage.presign_ttl, models=entries)
-
-
-__all__ = ["router", "project_viewer_router"]
