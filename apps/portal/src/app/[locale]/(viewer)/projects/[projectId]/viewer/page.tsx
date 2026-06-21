@@ -40,8 +40,6 @@ import { useBcfMarkup2d } from '@/features/viewer/bcf/useBcfMarkup2d';
 import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
 import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
-import { MinimapView } from '@/features/viewer/3d/minimap/MinimapView';
-import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { useExplorerModels } from '@/features/viewer/3d/explorer/useExplorerModels';
@@ -56,7 +54,6 @@ import { useEntityMarkers2D } from '@/features/viewer/2d/useEntityMarkers2D';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { useFileFindings } from '@/features/findings/useFindings';
 import { buildGlobalIdToLocalId } from '@/features/viewer/shared/buildGlobalIdToLocalId';
-import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoadingOverlay';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
 import { StatusBar } from '@/features/viewer/shared/StatusBar';
 import { useDocumentShortcuts } from '@/features/viewer/2d/useDocumentShortcuts';
@@ -88,10 +85,9 @@ import {
 } from '@/lib/viewerSettings';
 import { parseEntityKey, toEntityKey, useViewerEntityStore } from '@/stores/viewerEntityStore';
 
-const IfcViewer = dynamic(
-  () => import('@bimstitch/viewer').then((m) => m.IfcViewer),
-  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
-);
+import { IfcViewerCanvas } from './components/IfcViewerCanvas';
+import { ViewerLoadingOverlay } from './components/ViewerLoadingOverlay';
+import { ViewerMobileBanner } from './components/ViewerMobileBanner';
 
 const DocumentViewer = dynamic(
   () => import('@bimstitch/viewer').then((m) => m.DocumentViewer),
@@ -709,159 +705,58 @@ export default function ViewerPage(): JSX.Element {
       />
     );
   } else {
-    const ifcViewerEl = (
-      <IfcViewer
-        key={`${scope.sceneKey}:${viewerEpoch}`}
-        ref={viewerHandleRef}
-        bundle={scope.primaryBundle!}
-        additionalBundles={scope.additionalBundles}
-        viewCube={{
-          enabled: settings.viewCube.enabled,
-          locale: locale as 'en' | 'nl',
-        }}
-        shadows={{
-          enabled: settings.shadows.enabled,
-        }}
-        background={{ color: settings.background.color }}
-        effects={settings.effects}
-        outline={{ enabled: settings.outline.enabled }}
-        hoverHighlight={{ color: settings.behavior.hoverHighlight.color }}
-        selectionHighlight={{ color: settings.behavior.selection.color }}
-        shortcuts={settings.shortcuts}
-        mouseBindings={settings.mouseBindings}
-        controls={settings.controls}
-        zoom={settings.zoom}
-        interactivePerformance={settings.interactivePerformance}
-        cameraFly={{
-          moveFraction: settings.cameraFly.moveFraction,
-          turnSpeed: (settings.cameraFly.turnSpeedDeg * Math.PI) / 180,
-          lookSensitivity: settings.cameraFly.lookSensitivity,
-        }}
+    canvas = (
+      <IfcViewerCanvas
+        scope={scope}
+        viewerEpoch={viewerEpoch}
+        viewerHandleRef={viewerHandleRef}
+        settings={settings}
+        locale={locale}
         onSceneReady={() => {
           setSceneReady(true);
         }}
         onProgress={onProgress}
         onBusyChange={setViewerBusy}
-        onReady={(handle) => {
-          viewerHandleRef.current = handle;
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (window as any).__viewer = handle;
-          }
+        onReady={() => {
           setViewerReady(true);
           setProgress(null);
         }}
-        onError={(err) => {
-          setViewerError(err.message);
+        onViewerError={(message) => {
+          setViewerError(message);
         }}
         onModelLoadError={(modelId) => {
           setFailedModelIds((prev) => (prev.includes(modelId) ? prev : [...prev, modelId]));
         }}
+        viewMode={viewMode}
+        isMobile={isMobile}
+        splitRatio={splitRatio}
+        splitContainerRef={splitContainerRef}
+        threeDPaneRef={threeDPaneRef}
+        planPaneRef={planPaneRef}
+        dividerRef={dividerRef}
+        onDividerPointerDown={handleDividerPointerDown}
+        onDividerPointerMove={handleDividerPointerMove}
+        onDividerPointerUp={handleDividerPointerUp}
+        hasFloorPlans={hasFloorPlans}
+        viewerReady={viewerReady}
+        planMetadata={planMetadata}
+        projectId={projectId}
+        fileId={fileId}
+        onFindingClick={openFindingInInspector}
+        onRequestFloorPlanInspector={handleFloorPlanInspector}
       />
-    );
-    // Split / 2D layout. Panes are ABSOLUTELY positioned so the WebGL/plan
-    // canvases never drive the flex layout width (fixed-size canvases otherwise
-    // propagate their intrinsic width up the tree and break the split). The 3D
-    // viewer is ALWAYS mounted (hidden only in 2D) so the minimap plugin keeps
-    // driving the model and isolation persists across mode switches.
-    // Mobile (<md): stacks top/bottom with fixed h-1/2 — no dragging.
-    // Desktop (md+): side-by-side; splitRatio drives inline width styles and
-    // the draggable divider updates them imperatively during drag.
-    const threeDPaneClass =
-      viewMode === '2d'
-        ? 'hidden'
-        : viewMode === 'split'
-          ? 'absolute inset-x-0 top-0 h-1/2 overflow-hidden md:inset-y-0 md:right-auto md:h-full'
-          : 'absolute inset-0 overflow-hidden';
-    const planPaneClass =
-      viewMode === '2d'
-        ? 'absolute inset-0 overflow-hidden'
-        : viewMode === 'split'
-          ? 'absolute inset-x-0 bottom-0 h-1/2 overflow-hidden border-t border-border md:inset-y-0 md:right-0 md:left-auto md:h-full md:border-t-0'
-          : 'absolute inset-0 overflow-hidden';
-
-    // Desktop inline styles drive the dynamic split ratio; mobile uses h-1/2 class.
-    const threeDSplitStyle =
-      viewMode === 'split' && !isMobile ? { width: `${splitRatio * 100}%` } : undefined;
-    const planSplitStyle =
-      viewMode === 'split' && !isMobile ? { width: `${(1 - splitRatio) * 100}%` } : undefined;
-
-    canvas = (
-      <div
-        ref={splitContainerRef}
-        className="relative h-full w-full overflow-hidden"
-        {...(viewMode !== '2d' ? { 'data-viewer-shortcut-scope': '' } : {})}
-      >
-        <div ref={threeDPaneRef} className={threeDPaneClass} style={threeDSplitStyle}>
-          {ifcViewerEl}
-          {hasFloorPlans && viewMode === '3d' && scope.planFloorPlansUrl ? (
-            <MinimapView
-              handle={viewerHandleRef.current}
-              viewerReady={viewerReady}
-              floorPlansUrl={scope.planFloorPlansUrl}
-              metadata={planMetadata}
-              {...(scope.planViewerModelId ? { planModelId: scope.planViewerModelId } : {})}
-              variant="overlay"
-            />
-          ) : null}
-        </div>
-
-        {/* Draggable divider — desktop split mode only */}
-        {viewMode === 'split' && !isMobile && (
-          <div
-            ref={dividerRef}
-            className="absolute inset-y-0 z-20 flex w-2 cursor-col-resize touch-none select-none flex-col items-center justify-center"
-            style={{ left: `calc(${splitRatio * 100}% - 4px)` }}
-            onPointerDown={handleDividerPointerDown}
-            onPointerMove={handleDividerPointerMove}
-            onPointerUp={handleDividerPointerUp}
-            onPointerCancel={handleDividerPointerUp}
-          >
-            {/* Thin visual bar */}
-            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
-            {/* Drag pip */}
-            <div className="relative z-10 flex h-8 w-3 items-center justify-center rounded-full border border-border bg-surface-low shadow-sm">
-              <div className="h-3 w-px rounded-full bg-foreground-tertiary" />
-            </div>
-          </div>
-        )}
-
-        {hasFloorPlans && viewMode !== '3d' && scope.planFloorPlansUrl ? (
-          <div ref={planPaneRef} className={planPaneClass} style={planSplitStyle}>
-            <FloorPlanPane
-              handle={viewerHandleRef.current}
-              viewerReady={viewerReady}
-              floorPlansUrl={scope.planFloorPlansUrl}
-              metadata={planMetadata}
-              projectId={projectId}
-              fileId={scope.planFileId ?? fileId}
-              viewMode={viewMode}
-              onFindingClick={openFindingInInspector}
-              onRequestInspector={handleFloorPlanInspector}
-            />
-          </div>
-        ) : null}
-      </div>
     );
   }
 
   return (
     <main className="flex min-h-0 w-full flex-1 flex-col">
       {!mobileBannerDismissed && (
-        <div className="flex items-center justify-between gap-2 border-b border-warning/30 bg-warning/10 px-4 py-2 text-body3 text-foreground md:hidden">
-          <span>3D viewer works best on a larger screen.</span>
-          <button
-            type="button"
-            aria-label="Dismiss"
-            onClick={() => {
-              sessionStorage.setItem('bimstitch.viewerMobileBanner', 'dismissed');
-              setMobileBannerDismissed(true);
-            }}
-            className="shrink-0 rounded px-2 py-0.5 text-caption font-semibold hover:bg-warning/20"
-          >
-            OK
-          </button>
-        </div>
+        <ViewerMobileBanner
+          onDismiss={() => {
+            sessionStorage.setItem('bimstitch.viewerMobileBanner', 'dismissed');
+            setMobileBannerDismissed(true);
+          }}
+        />
       )}
       <div className="flex min-h-0 min-w-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -869,21 +764,14 @@ export default function ViewerPage(): JSX.Element {
         {canvas}
 
         {(loadingActive || overlayFading) ? (
-          (() => {
-            const overlayDeterminate = progress !== null && progress.total > 0;
-            // "Updating view…" only for a later federated add/remove/unload
-            // (viewer already ready, busy again). Initial load + PDFs keep
-            // "Loading model…".
-            const isSubsequentLoad = isIfc && viewerReady && viewerBusy;
-            return (
-              <ModelLoadingOverlay
-                indeterminate={!overlayDeterminate}
-                progress={overlayDeterminate ? (progress.loaded / progress.total) * 100 : (overlayFading ? 100 : 0)}
-                fading={overlayFading}
-                label={tLoad(isSubsequentLoad ? 'updating' : 'model')}
-              />
-            );
-          })()
+          <ViewerLoadingOverlay
+            progress={progress}
+            overlayFading={overlayFading}
+            isIfc={isIfc}
+            viewerReady={viewerReady}
+            viewerBusy={viewerBusy}
+            tLoad={tLoad}
+          />
         ) : null}
 
         {isIfc ? <ContextMenu handle={viewerHandleRef.current} viewerReady={viewerReady} /> : null}
