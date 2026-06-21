@@ -90,22 +90,6 @@ def get_deadline_rules(country: str) -> tuple[DeadlineRule, ...]:
 
 
 @dataclass(frozen=True)
-class Instrument:
-    """A "toegelaten instrument" entry from a country's instrument register.
-
-    NL: the TloKB register (toegelaten instrumenten Wkb). Each country maps
-    a stable `id` (used as Project.instrument_id) to a human name, the
-    instrumentaanbieder (provider), and a URL pointing at the official
-    methodology. The list changes ~twice a year and is hand-maintained.
-    """
-
-    id: str
-    name: str
-    provider: str
-    methodology_url: str | None = None
-
-
-@dataclass(frozen=True)
 class RiskTemplate:
     """A seed risk for a Bbl risk-assessment category.
 
@@ -194,23 +178,13 @@ class Jurisdiction:
     address_id_label: str | None = None  # e.g. "BAG ID", "Kataster"
     # Per-framework descriptive note keyed by locale.
     notes: dict[str, LocaleMap] = field(default_factory=dict)
-    # Localized labels for the neutral BuildingType / ConsequenceClass codes
-    # stored on Project. The portal pulls these via GET /jurisdictions so
-    # NL renders "Woning", DE "Wohngebäude", etc. without touching schema.
+    # Localized labels for the neutral BuildingType codes stored on Project.
+    # The portal pulls these via GET /jurisdictions so NL renders "Woning",
+    # DE "Wohngebäude", etc. without touching schema.
     building_type_labels: dict[str, LocaleMap] = field(default_factory=dict)
-    consequence_class_labels: dict[str, LocaleMap] = field(default_factory=dict)
-    # Localized labels for ProjectStatus / ProjectPhase codes (neutral DB
-    # enums). The wizard overlays these on its English fallback list.
-    status_labels: dict[str, LocaleMap] = field(default_factory=dict)
+    # Localized labels for the neutral ProjectPhase codes. The wizard overlays
+    # these on its English fallback list.
     phase_labels: dict[str, LocaleMap] = field(default_factory=dict)
-    # Subset of ConsequenceClass values valid for this country's current
-    # framework scope. NL Wkb today only certifies Gk1 (= CC1) work;
-    # the API rejects projects that try to declare CC2/CC3.
-    allowed_consequence_classes: tuple[str, ...] = ("cc1", "cc2", "cc3")
-    # Toegelaten instrumenten for this country's quality-assurance regime
-    # (NL: TloKB register). The portal renders the dropdown from this list;
-    # the API rejects Project.instrument_id values that aren't here.
-    instruments: tuple[Instrument, ...] = ()
     # Localized labels for the neutral RiskCategory codes stored on Risk
     # (`structural_safety`, `fire_safety`, …). Country-specific because the
     # Bbl categories don't align 1:1 with other building-code regimes.
@@ -264,16 +238,6 @@ def get_dossier_requirements(
     if building_type and building_type in templates:
         return templates[building_type]
     return templates.get("other", ())
-
-
-def find_instrument(country: str, instrument_id: str) -> Instrument | None:
-    j = _REGISTRY.get(country.upper())
-    if j is None:
-        return None
-    for inst in j.instruments:
-        if inst.id == instrument_id:
-            return inst
-    return None
 
 
 _REGISTRY: dict[str, Jurisdiction] = {}

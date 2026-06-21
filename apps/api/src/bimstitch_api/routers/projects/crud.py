@@ -45,10 +45,8 @@ from bimstitch_api.routers.projects._shared import (
     _project_to_read,
     _seed_project_members,
     _serialize_field,
-    _validate_consequence_class,
     _validate_contractor_exists,
     _validate_country,
-    _validate_instrument,
     router,
 )
 from bimstitch_api.schemas.project import (
@@ -58,7 +56,6 @@ from bimstitch_api.schemas.project import (
 )
 from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
-
 
 # ---------------------------------------------------------------------------
 # Project CRUD
@@ -83,8 +80,6 @@ async def create_project(
             detail="GUEST_CANNOT_CREATE_PROJECT",
         )
     _validate_country(payload.country)
-    _validate_consequence_class(payload.consequence_class, payload.country)
-    _validate_instrument(payload.instrument_id, payload.country)
     await _validate_contractor_exists(session, payload.contractor_id)
 
     project = Project(
@@ -116,9 +111,6 @@ async def create_project(
             "name": project.name,
             "country": project.country,
             "building_type": project.building_type.value if project.building_type else None,
-            "consequence_class": project.consequence_class.value
-            if project.consequence_class
-            else None,
         },
         actor_user_id=user.id,
         project_id=project.id,
@@ -352,14 +344,6 @@ async def update_project(
     updates = payload.model_dump(exclude_unset=True)
     if "country" in updates:
         _validate_country(updates["country"])
-    if "consequence_class" in updates:
-        # Re-validate against the (possibly new) country; falls back to the
-        # existing project.country if the patch doesn't touch it.
-        target_country = updates.get("country", project.country)
-        _validate_consequence_class(payload.consequence_class, target_country)
-    if "instrument_id" in updates:
-        target_country = updates.get("country", project.country)
-        _validate_instrument(updates["instrument_id"], target_country)
     if "contractor_id" in updates:
         await _validate_contractor_exists(session, updates["contractor_id"])
     if "thumbnail_url" in updates:

@@ -1,4 +1,4 @@
-"""Tests for the enriched Project fields: status, phase, address, delivery date,
+"""Tests for the enriched Project fields: phase, address, delivery date,
 reference code, permit number, and contractor link.
 """
 
@@ -14,7 +14,7 @@ def _auth(token: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-async def test_create_project_defaults_status_and_phase(
+async def test_create_project_defaults_phase(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:
     response = await client.post(
@@ -24,7 +24,6 @@ async def test_create_project_defaults_status_and_phase(
     )
     assert response.status_code == 201, response.text
     body = response.json()
-    assert body["status"] == "planning"
     assert body["phase"] == "design"
     assert body["country"] == "NL"
     # Optional fields default to None.
@@ -56,7 +55,6 @@ async def test_create_project_with_all_new_fields(
         "name": "Roof Plan",
         "description": "Townhouses",
         "reference_code": "WKB-2026-0411",
-        "status": "construction",
         "phase": "shell",
         "delivery_date": "2026-08-12",
         "street": "Hoofdstraat",
@@ -77,26 +75,8 @@ async def test_create_project_with_all_new_fields(
 
 
 # ---------------------------------------------------------------------------
-# Patch (status, phase, address)
+# Patch (phase, address)
 # ---------------------------------------------------------------------------
-
-
-async def test_patch_project_status(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
-    created = (
-        await client.post(
-            "/projects", json={"name": "P1"}, headers=_auth(org_user["access_token"])
-        )
-    ).json()
-
-    response = await client.patch(
-        f"/projects/{created['id']}",
-        json={"status": "construction"},
-        headers=_auth(org_user["access_token"]),
-    )
-    assert response.status_code == 200, response.text
-    assert response.json()["status"] == "construction"
 
 
 async def test_patch_project_address_fields(
@@ -182,19 +162,8 @@ async def test_reference_code_unique_cross_org(
 
 
 # ---------------------------------------------------------------------------
-# Validation: status/phase enum values
+# Validation: phase enum values
 # ---------------------------------------------------------------------------
-
-
-async def test_create_project_rejects_invalid_status(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
-    response = await client.post(
-        "/projects",
-        json={"name": "X", "status": "not_a_real_status"},
-        headers=_auth(org_user["access_token"]),
-    )
-    assert response.status_code == 422
 
 
 async def test_create_project_rejects_invalid_phase(

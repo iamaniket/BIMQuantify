@@ -471,15 +471,6 @@
         "descriptionWithSearch": "Geen projecten komen overeen met \"{search}\". Probeer een andere zoekterm."
       }
     },
-    "statuses": {
-      "planning": "Planning",
-      "design": "Ontwerp",
-      "permit_review": "Vergunning",
-      "construction": "Uitvoering",
-      "handover": "Oplevering",
-      "complete": "Gereed",
-      "on_hold": "In de wacht"
-    },
     "phases": {
       "design": "Ontwerp",
       "tender": "Bestek",
@@ -589,20 +580,10 @@
           "referenceCodePlaceholder": "WKB-2026-0411",
           "permitNumber": "Vergunningnummer",
           "permitNumberPlaceholder": "OV-2026-0099",
-          "status": "Status",
           "phase": "Fase",
           "deliveryDate": "Opleverdatum",
           "buildingType": "Type bouwwerk",
-          "consequenceClass": "Gevolgklasse",
-          "plannedStartDate": "Geplande startdatum",
-          "instrument": "Toegelaten Wkb-instrument",
-          "instrumentPlaceholder": "Nog niet bekend — wordt ingevuld door KB",
-          "instrumentHint": "Optioneel. Je kwaliteitsborger selecteert het instrument wanneer hij deelneemt."
-        },
-        "source": {
-          "prefix": "Bron: TloKB-register (",
-          "linkLabel": "tlokb.nl",
-          "suffix": ")"
+          "plannedStartDate": "Geplande startdatum"
         }
       },
       "address": {
@@ -1057,7 +1038,6 @@
       "projectAccess": "Projecttoegang",
       "editProject": "Project bewerken",
       "noAddress": "Geen adres ingesteld",
-      "instrumentTooltip": "Toegelaten instrument · {provider}",
       "thumbnailAlt": "Miniatuur van {name}",
       "mapPreviewAlt": "Kaartvoorbeeld van {name}",
       "settings": "Instellingen"
@@ -2793,7 +2773,7 @@
           "fullName": "Jan Jansen"
         },
         "errors": {
-          "seatLimitExceeded": "De tenant heeft geen vrije zetels meer. Verhoog de zetellimiet voordat je nieuwe leden uitnodigt.",
+          "seatLimitExceeded": "Maximumaantal gebruikers bereikt. Verhoog de limiet of verwijder een lid voordat u iemand uitnodigt.",
           "alreadyMember": "Deze gebruiker is al lid van de tenant."
         }
       },

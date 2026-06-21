@@ -9,15 +9,13 @@ from fastapi import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimstitch_api.jurisdictions import find_instrument, supported_countries
-from bimstitch_api.jurisdictions import get as get_jurisdiction
+from bimstitch_api.jurisdictions import supported_countries
 from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
 from bimstitch_api.models.project import (
-    ConsequenceClass,
     Project,
 )
 from bimstitch_api.models.project_member import ProjectMember, ProjectRole
@@ -84,42 +82,6 @@ def _validate_country(country: str | None) -> None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"UNSUPPORTED_COUNTRY: '{country}' is not a registered jurisdiction",
-        )
-
-
-def _validate_consequence_class(
-    consequence_class: ConsequenceClass | None, country: str | None
-) -> None:
-    """422 if the consequence class is not in the country's allowed scope.
-    NL Wkb only certifies Gk1 (CC1) today; declaring CC2/CC3 for an NL
-    project is a domain error, not a UI quirk."""
-    if consequence_class is None or country is None:
-        return
-    jurisdiction = get_jurisdiction(country)
-    if jurisdiction is None:
-        return  # _validate_country surfaces this case separately
-    if consequence_class.value not in jurisdiction.allowed_consequence_classes:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"CONSEQUENCE_CLASS_OUT_OF_SCOPE: '{consequence_class.value}' is "
-                f"not in scope for country '{country}'"
-            ),
-        )
-
-
-def _validate_instrument(instrument_id: str | None, country: str | None) -> None:
-    """422 if the instrument id isn't registered for the project's country.
-    The instrument list is hand-maintained per jurisdiction (NL: TloKB)."""
-    if instrument_id is None or country is None:
-        return
-    if find_instrument(country, instrument_id) is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"INSTRUMENT_NOT_REGISTERED: '{instrument_id}' is not a "
-                f"toegelaten instrument for country '{country}'"
-            ),
         )
 
 

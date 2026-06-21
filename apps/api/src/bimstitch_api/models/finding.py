@@ -29,7 +29,7 @@ class FindingSeverity(StrEnum):
 
 
 class FindingStatus(StrEnum):
-    # Language-neutral lifecycle codes (cf. ProjectStatus). Dutch display
+    # Language-neutral lifecycle codes. Dutch display
     # labels live in the portal i18n catalog:
     #   open -> "open", in_progress -> "in behandeling",
     #   resolved -> "opgelost", verified -> "geverifieerd".

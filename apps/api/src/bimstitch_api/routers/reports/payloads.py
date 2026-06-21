@@ -7,7 +7,6 @@ or strings. The session-touching loaders/resolvers and the endpoints live in
 """
 
 from bimstitch_api.i18n import coerce_locale, t
-from bimstitch_api.jurisdictions import find_instrument
 from bimstitch_api.models.borgingsplan import Borgingsplan
 from bimstitch_api.models.certificate import Certificate
 from bimstitch_api.models.contractor import Contractor
@@ -47,7 +46,6 @@ def _project_payload(project: Project, contractor: Contractor | None) -> dict[st
         "name": project.name,
         "country": project.country,
         "reference_code": project.reference_code,
-        "status": project.status.value,
         "phase": project.phase.value if project.phase is not None else None,
         "address": {
             "country": project.country,
@@ -97,23 +95,6 @@ _PHASE_RANK: dict[str, int] = {
     "handover": 4,
     "other": 5,
 }
-
-
-def _instrument_payload(project: Project) -> dict[str, object] | None:
-    """The project's toegelaten instrument resolved from the jurisdiction
-    registry — name/provider/methodology for the report cover. None if the
-    project hasn't picked one yet (aannemer-first: 'KB will select')."""
-    if project.instrument_id is None:
-        return None
-    inst = find_instrument(project.country, project.instrument_id)
-    if inst is None:
-        return None
-    return {
-        "id": inst.id,
-        "name": inst.name,
-        "provider": inst.provider,
-        "methodology_url": inst.methodology_url,
-    }
 
 
 def _user_display_name(u: User | None) -> str | None:

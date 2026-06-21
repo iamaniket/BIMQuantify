@@ -67,7 +67,6 @@ from bimstitch_api.routers.reports.payloads import (
     _declaration_payload,
     _dossier_certificate_payload,
     _dossier_finding_payload,
-    _instrument_payload,
     _project_payload,
     _report_notification_body,
     _report_title,
@@ -258,7 +257,6 @@ async def _resolve_assurance_plan_source(
         source_job_id=None,
         title=_report_title(ReportType.assurance_plan, project.name, locale),
         payload_extra={
-            "instrument": _instrument_payload(project),
             "assurance_plan": _assurance_plan_payload(plan),
             "risks": [_risk_payload(r) for r in risks],
         },
@@ -276,7 +274,6 @@ async def _resolve_completion_declaration_source(
         source_job_id=None,
         title=_report_title(ReportType.completion_declaration, project.name, locale),
         payload_extra={
-            "instrument": _instrument_payload(project),
             "declaration": _declaration_payload(
                 user, signed=False, signed_at=None, signature_hash=None
             ),
@@ -377,7 +374,6 @@ async def _resolve_dossier_source(
         source_job_id=None,
         title=_report_title(ReportType.dossier, project.name, locale),
         payload_extra={
-            "instrument": _instrument_payload(project),
             "assurance_plan": _assurance_plan_payload(plan) if plan is not None else None,
             "risks": [_risk_payload(r) for r in risks],
             "findings": [_dossier_finding_payload(f, atts) for f in findings],
@@ -705,7 +701,6 @@ async def sign_report(
         "generated_at": datetime.now(UTC).isoformat(),
         "locale": report.locale,
         "jurisdiction": project.country,
-        "instrument": _instrument_payload(project),
         "declaration": _declaration_payload(
             user,
             signed=True,

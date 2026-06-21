@@ -14,30 +14,29 @@ import {
   cn,
 } from '@bimstitch/ui';
 
-import type { Project, ProjectStatusValue } from '@/lib/api/schemas';
-import { ProjectStatusEnum } from '@/lib/api/schemas';
-import { statusDotClasses } from '@/lib/formatting/projects';
+import type { Project, ProjectPhaseValue } from '@/lib/api/schemas';
+import { ProjectPhaseEnum } from '@/lib/api/schemas';
+import { phaseDotClasses } from '@/lib/formatting/projects';
 
-export type StatusFilter = 'all' | ProjectStatusValue | 'archived';
+export type PhaseFilter = 'all' | ProjectPhaseValue | 'archived';
 
 type Props = {
   projects: readonly Project[];
-  value: StatusFilter;
-  onChange: (next: StatusFilter) => void;
+  value: PhaseFilter;
+  onChange: (next: PhaseFilter) => void;
 };
 
 const ARCHIVED_DOT_CLASSES = 'bg-foreground-tertiary';
 
-function countsByFilter(projects: readonly Project[]): Record<StatusFilter, number> {
-  const counts: Record<StatusFilter, number> = {
+function countsByFilter(projects: readonly Project[]): Record<PhaseFilter, number> {
+  const counts: Record<PhaseFilter, number> = {
     all: projects.length,
-    planning: 0,
     design: 0,
-    permit_review: 0,
-    construction: 0,
+    tender: 0,
+    work_prep: 0,
+    shell: 0,
+    finishing: 0,
     handover: 0,
-    complete: 0,
-    on_hold: 0,
     archived: 0,
   };
   for (const project of projects) {
@@ -46,25 +45,25 @@ function countsByFilter(projects: readonly Project[]): Record<StatusFilter, numb
       continue;
     }
     if (project.lifecycle_state === 'active') {
-      counts[project.status] += 1;
+      counts[project.phase] += 1;
     }
   }
   return counts;
 }
 
-type Entry = { key: StatusFilter; label: string; dotClass: string };
+type Entry = { key: PhaseFilter; label: string; dotClass: string };
 
-export function ProjectStatusFilter({ projects, value, onChange }: Props): JSX.Element {
-  const tStatuses = useTranslations('projects.statuses');
+export function ProjectPhaseFilter({ projects, value, onChange }: Props): JSX.Element {
+  const tPhases = useTranslations('projects.phases');
   const tFilters = useTranslations('projects.filters');
   const counts = countsByFilter(projects);
 
   const entries: Entry[] = [
     { key: 'all', label: tFilters('all'), dotClass: 'bg-foreground/50' },
-    ...ProjectStatusEnum.options.map((status) => ({
-      key: status,
-      label: tStatuses(status),
-      dotClass: statusDotClasses(status),
+    ...ProjectPhaseEnum.options.map((phase) => ({
+      key: phase,
+      label: tPhases(phase),
+      dotClass: phaseDotClasses(phase),
     })),
     { key: 'archived', label: tFilters('archived'), dotClass: ARCHIVED_DOT_CLASSES },
   ];

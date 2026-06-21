@@ -11,8 +11,6 @@ export const NL_ASSURANCE_PLAN_LABELS = {
   reportTitle: 'Borgingsplan',
   reference: 'Projectkenmerk',
   address: 'Adres',
-  instrument: 'Instrument',
-  provider: 'Instrumentaanbieder',
   kwaliteitsborger: 'Kwaliteitsborger',
   version: 'Versie',
   status: 'Status',

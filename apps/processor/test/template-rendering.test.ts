@@ -26,15 +26,13 @@ describe('interpolate', () => {
 });
 
 describe('buildMergeContext', () => {
-  it('exposes project, contractor, report.generated_at and instrument', () => {
+  it('exposes project, contractor and report.generated_at', () => {
     const ctx = buildMergeContext({
       project: { id: 'p', name: 'P', contractor: { name: 'C', kvk_number: '123' } },
       generated_at: '2026-05-31T10:00:00Z',
-      instrument: { id: 'i', name: 'KiK' },
     });
     expect(interpolate('{{project.name}}', ctx)).toBe('P');
     expect(interpolate('{{contractor.kvk_number}}', ctx)).toBe('123');
-    expect(interpolate('{{instrument.name}}', ctx)).toBe('KiK');
     expect(interpolate('{{report.generated_at}}', ctx)).toContain('31-05-2026');
   });
 });
@@ -150,7 +148,6 @@ function dossierData(): DossierData {
     locale: 'nl',
     jurisdiction: 'NL',
     project: { id: 'p1', name: 'Test Project', country: 'NL', reference_code: 'REF-1' },
-    instrument: null,
     assurance_plan: null,
     risks: [],
     findings: [

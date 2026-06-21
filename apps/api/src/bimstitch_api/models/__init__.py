@@ -59,7 +59,6 @@ from bimstitch_api.models.project import (
     Project,
     ProjectLifecycleState,
     ProjectPhase,
-    ProjectStatus,
 )
 from bimstitch_api.models.project_file import (
     ATTACHMENT_ALLOWED_EXTENSIONS,
@@ -146,7 +145,6 @@ __all__ = [
     "ProjectMember",
     "ProjectPhase",
     "ProjectRole",
-    "ProjectStatus",
     "Report",
     "ReportStatus",
     "ReportType",

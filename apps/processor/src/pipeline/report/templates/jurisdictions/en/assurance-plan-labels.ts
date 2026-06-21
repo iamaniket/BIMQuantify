@@ -9,8 +9,6 @@ export const EN_ASSURANCE_PLAN_LABELS: AssurancePlanLabels = {
   reportTitle: 'Assurance Plan',
   reference: 'Project reference',
   address: 'Address',
-  instrument: 'Instrument',
-  provider: 'Instrument provider',
   kwaliteitsborger: 'Quality assurance inspector',
   version: 'Version',
   status: 'Status',

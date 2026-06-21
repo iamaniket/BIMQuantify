@@ -246,13 +246,11 @@ def downgrade() -> None:
         "projectlifecyclestate",
         "projectphase",
         "projectrole",
-        "projectstatus",
         "reportstatus",
         "reporttype",
         "riskcategory",
         "risklevel",
         "buildingtype",
-        "consequenceclass",
         "deadlinestatus",
         "inspectionverdict",
     ):

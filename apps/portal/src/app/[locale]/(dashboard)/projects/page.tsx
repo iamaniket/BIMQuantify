@@ -11,13 +11,13 @@ import { useExpiringCertificates } from '@/features/certificates/useExpiringCert
 import { NewProjectButton } from '@/features/projects/NewProjectButton';
 import { ProjectList } from '@/features/projects/ProjectList';
 import { ProjectsHero } from '@/features/projects/ProjectsHero';
-import { ProjectStatusFilter, type StatusFilter } from '@/features/projects/ProjectStatusFilter';
+import { ProjectPhaseFilter, type PhaseFilter } from '@/features/projects/ProjectPhaseFilter';
 import { useProjects } from '@/features/projects/useProjects';
 
 export default function ProjectsPage(): JSX.Element {
   const t = useTranslations('projects.page');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('all');
   const projectsQuery = useProjects();
   const projects = projectsQuery.data ?? [];
   const certWarning = useExpiringCertificates(projects);
@@ -48,17 +48,17 @@ export default function ProjectsPage(): JSX.Element {
               aria-label={t('searchAriaLabel')}
             />
           </div>
-          <ProjectStatusFilter
+          <ProjectPhaseFilter
             projects={projects}
-            value={statusFilter}
-            onChange={setStatusFilter}
+            value={phaseFilter}
+            onChange={setPhaseFilter}
           />
           <div className="ml-auto">
             <NewProjectButton />
           </div>
         </div>
 
-        <ProjectList search={search} statusFilter={statusFilter} />
+        <ProjectList search={search} phaseFilter={phaseFilter} />
       </div>
     </PageShell>
   );

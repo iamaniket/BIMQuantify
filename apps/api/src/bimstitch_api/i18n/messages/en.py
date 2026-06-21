@@ -218,7 +218,7 @@ en_messages: Catalog = {
     "errors.ORG_NAME_TAKEN": "That workspace name is already taken.",
     "errors.ORG_STATUS_NOT_TRANSITIONABLE": "This workspace's status can't be changed that way.",
     "errors.NO_ACTIVE_ORGANIZATION": "Select a workspace before continuing.",
-    "errors.SEAT_LIMIT_EXCEEDED": "The seat limit has been reached. Raise the limit or remove a member before inviting.",
+    "errors.SEAT_LIMIT_EXCEEDED": "Seat limit reached. Raise the limit or remove a member before inviting.",
     "errors.SEAT_LIMIT_BELOW_USAGE": "The new seat limit is below the number of seats currently in use.",
     "errors.STORAGE_LIMIT_BELOW_USAGE": "The new storage limit is below the amount currently in use.",
     "errors.PROVISIONING_FAILED": "We couldn't finish setting up the workspace. Please try again.",

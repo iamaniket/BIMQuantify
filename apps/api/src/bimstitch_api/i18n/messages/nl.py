@@ -186,7 +186,7 @@ nl_messages: Catalog = {
     "errors.ORG_NAME_TAKEN": "Die organisatienaam is al in gebruik.",
     "errors.ORG_STATUS_NOT_TRANSITIONABLE": "De status van deze organisatie kan niet op die manier worden gewijzigd.",
     "errors.NO_ACTIVE_ORGANIZATION": "Selecteer een organisatie voordat u doorgaat.",
-    "errors.SEAT_LIMIT_EXCEEDED": "Het maximumaantal gebruikers is bereikt. Verhoog de limiet of verwijder een lid voordat u uitnodigt.",
+    "errors.SEAT_LIMIT_EXCEEDED": "Maximumaantal gebruikers bereikt. Verhoog de limiet of verwijder een lid voordat u iemand uitnodigt.",
     "errors.SEAT_LIMIT_BELOW_USAGE": "De nieuwe gebruikerslimiet ligt onder het huidige gebruik.",
     "errors.STORAGE_LIMIT_BELOW_USAGE": "De nieuwe opslaglimiet ligt onder het huidige gebruik.",
     "errors.PROVISIONING_FAILED": "We konden het instellen van de organisatie niet voltooien. Probeer het opnieuw.",

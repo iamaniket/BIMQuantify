@@ -24,12 +24,9 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
   const t = useTranslations('projects.wizard.details');
   const refCodeId = useId();
   const permitId = useId();
-  const statusId = useId();
   const phaseId = useId();
   const deliveryId = useId();
   const buildingTypeId = useId();
-  const consequenceClassId = useId();
-  const instrumentId = useId();
   const plannedStartId = useId();
 
   const { errors } = form.formState;
@@ -37,13 +34,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
   const permitError = getFieldErrorMessage(errors, 'permit_number');
   const deliveryError = getFieldErrorMessage(errors, 'delivery_date');
   const plannedStartError = getFieldErrorMessage(errors, 'planned_start_date');
-  const {
-    statusOptions,
-    phaseOptions,
-    buildingTypeOptions,
-    consequenceClassOptions,
-    instrumentOptions,
-  } = useWizardOptions(country);
+  const { phaseOptions, buildingTypeOptions } = useWizardOptions(country);
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,16 +70,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={statusId} className={fieldLabelClass}>{t('fields.status')}</Label>
-          <Select id={statusId} disabled={isReadOnly} {...useRegisterField(form, 'status')}>
-            {statusOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </Select>
-        </div>
-
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={phaseId} className={fieldLabelClass}>{t('fields.phase')}</Label>
           <Select id={phaseId} disabled={isReadOnly} {...useRegisterField(form, 'phase')}>
@@ -98,22 +80,6 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
           </Select>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={deliveryId} className={fieldLabelClass}>{t('fields.deliveryDate')}</Label>
-          <Input
-            id={deliveryId}
-            type="date"
-            invalid={deliveryError !== undefined}
-            disabled={isReadOnly}
-            {...useRegisterField(form, 'delivery_date')}
-          />
-          {deliveryError !== undefined && (
-            <span role="alert" className={fieldErrorClass}>{deliveryError}</span>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={buildingTypeId} className={fieldLabelClass}>{t('fields.buildingType')}</Label>
           <Select
@@ -127,21 +93,21 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             ))}
           </Select>
         </div>
+      </div>
 
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={consequenceClassId} className={fieldLabelClass}>{t('fields.consequenceClass')}</Label>
-          <Select
-            id={consequenceClassId}
+          <Label htmlFor={deliveryId} className={fieldLabelClass}>{t('fields.deliveryDate')}</Label>
+          <Input
+            id={deliveryId}
+            type="date"
+            invalid={deliveryError !== undefined}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'consequence_class')}
-          >
-            <option value="">—</option>
-            {consequenceClassOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
+            {...useRegisterField(form, 'delivery_date')}
+          />
+          {deliveryError !== undefined && (
+            <span role="alert" className={fieldErrorClass}>{deliveryError}</span>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -156,39 +122,6 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
           {plannedStartError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{plannedStartError}</span>
           )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={instrumentId} className={fieldLabelClass}>{t('fields.instrument')}</Label>
-          <Select
-            id={instrumentId}
-            disabled={isReadOnly}
-            {...useRegisterField(form, 'instrument_id')}
-          >
-            <option value="">{t('fields.instrumentPlaceholder')}</option>
-            {instrumentOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label} · {opt.provider}
-              </option>
-            ))}
-          </Select>
-          <span className="text-caption text-foreground-tertiary">
-            {t('fields.instrumentHint')}
-          </span>
-          <span className="text-caption text-foreground-tertiary">
-            {t('source.prefix')}
-            <a
-              href="https://www.tlokb.nl/register"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline hover:text-foreground-secondary"
-            >
-              {t('source.linkLabel')}
-            </a>
-            {t('source.suffix')}
-          </span>
         </div>
       </div>
     </div>

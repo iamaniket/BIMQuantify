@@ -471,15 +471,6 @@
         "descriptionWithSearch": "No projects match \"{search}\". Try a different search."
       }
     },
-    "statuses": {
-      "planning": "Planning",
-      "design": "Design",
-      "permit_review": "Permit review",
-      "construction": "Construction",
-      "handover": "Handover",
-      "complete": "Completed",
-      "on_hold": "On hold"
-    },
     "phases": {
       "design": "Design",
       "tender": "Specification",
@@ -589,20 +580,10 @@
           "referenceCodePlaceholder": "WKB-2026-0411",
           "permitNumber": "Permit number",
           "permitNumberPlaceholder": "OV-2026-0099",
-          "status": "Status",
           "phase": "Phase",
           "deliveryDate": "Delivery date",
           "buildingType": "Building type",
-          "consequenceClass": "Consequence class",
-          "plannedStartDate": "Planned start date",
-          "instrument": "Approved Wkb instrument",
-          "instrumentPlaceholder": "Not yet known — KB will select",
-          "instrumentHint": "Optional. Your quality inspector will select the instrument when they join."
-        },
-        "source": {
-          "prefix": "Source: TloKB register (",
-          "linkLabel": "tlokb.nl",
-          "suffix": ")"
+          "plannedStartDate": "Planned start date"
         }
       },
       "address": {
@@ -1057,7 +1038,6 @@
       "projectAccess": "Project Access",
       "editProject": "Edit project",
       "noAddress": "No address set",
-      "instrumentTooltip": "Approved instrument · {provider}",
       "thumbnailAlt": "{name} thumbnail",
       "mapPreviewAlt": "{name} map preview",
       "settings": "Settings"
@@ -2793,7 +2773,7 @@
           "fullName": "Jane Doe"
         },
         "errors": {
-          "seatLimitExceeded": "The tenant has no available seats. Raise the seat limit before inviting more members.",
+          "seatLimitExceeded": "Seat limit reached. Raise the limit or remove a member before inviting.",
           "alreadyMember": "This user is already a member of the tenant."
         }
       },

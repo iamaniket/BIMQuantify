@@ -2,13 +2,6 @@ import { z } from 'zod';
 
 import { apiClient } from './client';
 
-const InstrumentSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  provider: z.string(),
-  methodology_url: z.union([z.string(), z.null()]),
-});
-
 const RiskTemplateSchema = z.object({
   code: z.string(),
   title: z.string(),
@@ -56,11 +49,7 @@ export const JurisdictionSchema = z.object({
   postcode_pattern: z.union([z.string(), z.null()]),
   address_id_label: z.union([z.string(), z.null()]),
   building_type_labels: z.record(z.string(), z.string()),
-  consequence_class_labels: z.record(z.string(), z.string()),
-  status_labels: z.record(z.string(), z.string()).optional().default({}),
   phase_labels: z.record(z.string(), z.string()).optional().default({}),
-  allowed_consequence_classes: z.array(z.string()),
-  instruments: z.array(InstrumentSchema),
   bbl_risk_category_labels: z.record(z.string(), z.string()),
   risk_templates: z.record(z.string(), z.array(RiskTemplateSchema)),
   borgingsmoment_phase_labels: z.record(z.string(), z.string()),
@@ -74,7 +63,6 @@ export const JurisdictionSchema = z.object({
 });
 
 export type Jurisdiction = z.infer<typeof JurisdictionSchema>;
-export type JurisdictionInstrument = z.infer<typeof InstrumentSchema>;
 export type JurisdictionRiskTemplate = z.infer<typeof RiskTemplateSchema>;
 export type JurisdictionBorgingsmomentTemplate = z.infer<
   typeof BorgingsmomentTemplateSchema

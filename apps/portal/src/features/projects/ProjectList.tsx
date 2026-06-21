@@ -17,7 +17,7 @@ import type { ProjectMemberList } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { ProjectCard } from './ProjectCard';
-import type { StatusFilter } from './ProjectStatusFilter';
+import type { PhaseFilter } from './ProjectPhaseFilter';
 import { projectMembersKey } from './queryKeys';
 import { useProjects } from './useProjects';
 
@@ -43,10 +43,10 @@ function ProjectSkeleton(): JSX.Element {
 
 type ProjectListProps = {
   search: string;
-  statusFilter: StatusFilter;
+  phaseFilter: PhaseFilter;
 };
 
-export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Element {
+export function ProjectList({ search, phaseFilter }: ProjectListProps): JSX.Element {
   const t = useTranslations('projects.list');
   const { tokens } = useAuth();
   const query = useProjects();
@@ -70,11 +70,11 @@ export function ProjectList({ search, statusFilter }: ProjectListProps): JSX.Ele
     });
 
   let filtered = searchFiltered;
-  if (statusFilter === 'archived') {
+  if (phaseFilter === 'archived') {
     filtered = searchFiltered.filter((p) => p.lifecycle_state === 'archived');
-  } else if (statusFilter !== 'all') {
+  } else if (phaseFilter !== 'all') {
     filtered = searchFiltered.filter(
-      (p) => p.lifecycle_state === 'active' && p.status === statusFilter,
+      (p) => p.lifecycle_state === 'active' && p.phase === phaseFilter,
     );
   }
 

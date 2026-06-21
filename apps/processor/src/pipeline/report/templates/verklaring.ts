@@ -17,7 +17,6 @@ import {
   renderSections,
   toLayoutBranding,
   type ContentSectionRender,
-  type ReportInstrument,
   type ReportProject,
   type ReportTemplate,
 } from './_helpers.js';
@@ -33,7 +32,6 @@ export type VerklaringData = {
   locale: string;
   jurisdiction?: string;
   project: ReportProject;
-  instrument: ReportInstrument | null;
   declaration: {
     kwaliteitsborger?: string | null;
     kwaliteitsborger_email?: string | null;
@@ -90,11 +88,6 @@ function signatureSection(data: VerklaringData, labels: VerklaringLabels): strin
 
 export function renderHtml(data: VerklaringData): string {
   const labels = resolveLabels(data.locale);
-  const instrumentText = data.instrument
-    ? `${escapeHtml(data.instrument.name)}${
-        data.instrument.provider ? ` · ${escapeHtml(data.instrument.provider)}` : ''
-      }`
-    : '—';
 
   const cover = `
     <header class="cover">
@@ -102,7 +95,6 @@ export function renderHtml(data: VerklaringData): string {
       <h1>${labels.reportTitle}</h1>
       <dl class="meta">
         <dt>${labels.kwaliteitsborger}</dt><dd>${or(data.declaration.kwaliteitsborger)}</dd>
-        <dt>${labels.instrument}</dt><dd>${instrumentText}</dd>
         <dt>${labels.address}</dt><dd>${addressLine(data.project.address)}</dd>
         <dt>${labels.reference}</dt><dd>${or(data.project.reference_code)}</dd>
         <dt>${labels.generatedAt}</dt><dd>${fmtDate(data.generated_at)}</dd>
@@ -111,7 +103,6 @@ export function renderHtml(data: VerklaringData): string {
 
   const bodyText = fill(labels.declarationBody, {
     kb: or(data.declaration.kwaliteitsborger),
-    instrument: data.instrument ? escapeHtml(data.instrument.name) : '—',
     address: addressLine(data.project.address),
   });
 

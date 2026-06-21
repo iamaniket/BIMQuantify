@@ -26,13 +26,6 @@ from bimstitch_api.jurisdictions import (
 router = APIRouter(prefix="/jurisdictions", tags=["jurisdictions"])
 
 
-class InstrumentResponse(BaseModel):
-    id: str
-    name: str
-    provider: str
-    methodology_url: str | None
-
-
 class RiskTemplateResponse(BaseModel):
     code: str
     title: str
@@ -88,11 +81,7 @@ class JurisdictionResponse(BaseModel):
     address_id_label: str | None
     notes: dict[str, str]
     building_type_labels: dict[str, str]
-    consequence_class_labels: dict[str, str]
-    status_labels: dict[str, str]
     phase_labels: dict[str, str]
-    allowed_consequence_classes: list[str]
-    instruments: list[InstrumentResponse]
     bbl_risk_category_labels: dict[str, str]
     risk_templates: dict[str, list[RiskTemplateResponse]]
     borgingsmoment_phase_labels: dict[str, str]
@@ -137,21 +126,7 @@ async def list_jurisdictions(
                 building_type_labels=localize_map(
                     j.building_type_labels, locale, default
                 ),
-                consequence_class_labels=localize_map(
-                    j.consequence_class_labels, locale, default
-                ),
-                status_labels=localize_map(j.status_labels, locale, default),
                 phase_labels=localize_map(j.phase_labels, locale, default),
-                allowed_consequence_classes=list(j.allowed_consequence_classes),
-                instruments=[
-                    InstrumentResponse(
-                        id=inst.id,
-                        name=inst.name,
-                        provider=inst.provider,
-                        methodology_url=inst.methodology_url,
-                    )
-                    for inst in j.instruments
-                ],
                 bbl_risk_category_labels=localize_map(
                     j.bbl_risk_category_labels, locale, default
                 ),

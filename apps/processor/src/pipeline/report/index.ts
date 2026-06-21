@@ -167,7 +167,6 @@ const CompliancePayloadSchema: z.ZodType<ComplianceReportData & { storage_key: s
       id: z.string(),
       name: z.string(),
       reference_code: z.string().nullable().optional(),
-      status: z.string().nullable().optional(),
       phase: z.string().nullable().optional(),
       address: z
         .object({

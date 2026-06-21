@@ -82,13 +82,6 @@ export type ReportProject = {
   contractor?: ReportContractor | null;
 };
 
-export type ReportInstrument = {
-  id: string;
-  name: string;
-  provider?: string | null;
-  methodology_url?: string | null;
-};
-
 /** Runtime schema for the project snapshot every report payload carries
  * (the API's `_project_payload`). Reused by the new orchestrators' payload
  * validators. */
@@ -97,7 +90,6 @@ export const reportProjectSchema = z.object({
   name: z.string(),
   country: z.string().nullable().optional(),
   reference_code: z.string().nullable().optional(),
-  status: z.string().nullable().optional(),
   phase: z.string().nullable().optional(),
   address: z
     .object({
@@ -123,16 +115,6 @@ export const reportProjectSchema = z.object({
     .nullable()
     .optional(),
 });
-
-export const reportInstrumentSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    provider: z.string().nullable().optional(),
-    methodology_url: z.string().nullable().optional(),
-  })
-  .nullable()
-  .optional();
 
 // ---------------------------------------------------------------------------
 // Report templates (branding wrapper + structured content)
@@ -231,13 +213,11 @@ export function interpolate(tpl: string, ctx: Record<string, unknown>): string {
 export function buildMergeContext(payload: {
   project: ReportProject;
   generated_at: string;
-  instrument?: ReportInstrument | null;
 }): Record<string, unknown> {
   return {
     project: payload.project,
     contractor: payload.project.contractor ?? {},
     report: { generated_at: fmtDate(payload.generated_at) },
-    instrument: payload.instrument ?? {},
   };
 }
 

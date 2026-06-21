@@ -53,7 +53,6 @@ _COMMON_MERGE_FIELDS: tuple[MergeField, ...] = (
     MergeField("contractor.name", "Contractor", "Aannemer"),
     MergeField("contractor.kvk_number", "KvK number", "KvK-nummer"),
     MergeField("report.generated_at", "Generated at", "Gegenereerd op"),
-    MergeField("instrument.name", "Instrument", "Instrument"),
 )
 
 # Content-section keys per report type. KEYS must match the processor renderers'
