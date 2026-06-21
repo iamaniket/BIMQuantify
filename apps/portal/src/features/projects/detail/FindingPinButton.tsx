@@ -17,8 +17,13 @@ export type AnchorState = {
   anchor_y?: number | null | undefined;
   anchor_z?: number | null | undefined;
   anchor_page?: number | null | undefined;
+  linked_model_id?: string | null | undefined;
+  linked_file_id?: string | null | undefined;
   linkedElementGlobalId?: string | null | undefined;
 };
+
+/** The picked item shape from the viewer's `point:picked` event (`ItemId`). */
+type PickedItem = { modelId: string; localId: number } | null;
 
 type Props = {
   fileType: LinkedFileTypeValue | null;
@@ -26,6 +31,11 @@ type Props = {
   onAnchorChange: (anchor: AnchorState | null) => void;
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
+  /** Active model/file to stamp onto a 3D pin so it renders as a marker. */
+  linkModelId?: string | null | undefined;
+  linkFileId?: string | null | undefined;
+  /** Resolve the picked element's GlobalId (active model only), else null. */
+  resolvePickedGlobalId?: ((item: PickedItem) => string | null) | undefined;
   disabled?: boolean | undefined;
 };
 
@@ -62,14 +72,20 @@ export function FindingPinButton({
   onAnchorChange,
   documentHandle,
   viewerHandle,
+  linkModelId,
+  linkFileId,
+  resolvePickedGlobalId,
   disabled,
 }: Props): JSX.Element | null {
   const tPin = useTranslations('findings.detail.pin');
   const [placing, setPlacing] = useState(false);
   const placingRef = useRef(false);
 
+  // A 3D viewer handle is enough to pin to the model — a null `fileType`
+  // (the inspector's no-selection "project mode") still means IFC. Only an
+  // explicit `pdf` file type routes to the 2D drawing-pin flow.
   const hasPdf = fileType === 'pdf' && documentHandle != null;
-  const hasIfc = fileType === 'ifc' && viewerHandle != null;
+  const hasIfc = fileType !== 'pdf' && viewerHandle != null;
   const active = hasPdf || hasIfc;
 
   const isPinned = currentAnchor != null && currentAnchor.anchor_x != null;
@@ -119,10 +135,19 @@ export function FindingPinButton({
       if (!placingRef.current) return;
       setPlacing(false);
       placingRef.current = false;
-      onAnchorChange(anchor3d(evt.point));
+      // Stamp the active model/file so the pin renders as a marker, and
+      // auto-link the picked element (active model only) when one was hit.
+      const next: AnchorState = { ...anchor3d(evt.point) };
+      if (linkFileId != null) {
+        next.linked_file_id = linkFileId;
+        if (linkModelId != null) next.linked_model_id = linkModelId;
+      }
+      const gid = resolvePickedGlobalId?.(evt.item) ?? null;
+      if (gid != null) next.linkedElementGlobalId = gid;
+      onAnchorChange(next);
     });
     return off;
-  }, [hasIfc, viewerHandle, onAnchorChange]);
+  }, [hasIfc, viewerHandle, onAnchorChange, linkFileId, linkModelId, resolvePickedGlobalId]);
 
   useEffect(() => {
     if (!hasIfc || !viewerHandle) return;

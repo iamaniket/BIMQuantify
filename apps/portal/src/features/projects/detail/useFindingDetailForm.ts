@@ -90,6 +90,8 @@ export type LocalAnchor = {
   anchor_y?: number | null | undefined;
   anchor_z?: number | null | undefined;
   anchor_page?: number | null | undefined;
+  linked_model_id?: string | null | undefined;
+  linked_file_id?: string | null | undefined;
   linked_element_global_id?: string | null | undefined;
 } | null;
 
@@ -138,6 +140,8 @@ export type FindingDetailFormApi = {
     anchor_y?: number | null | undefined;
     anchor_z?: number | null | undefined;
     anchor_page?: number | null | undefined;
+    linked_model_id?: string | null | undefined;
+    linked_file_id?: string | null | undefined;
     linked_element_global_id?: string | null | undefined;
   }) => void;
   /** Stage anchor removal locally (committed on Save, not immediately). */
@@ -279,7 +283,7 @@ export function useFindingDetailForm(
         linked_element_global_id: null,
       };
     }
-    return {
+    const next: FindingUpdateInput = {
       ...patch,
       linked_file_type: pendingAnchor.linked_file_type,
       anchor_x: pendingAnchor.anchor_x ?? null,
@@ -288,6 +292,15 @@ export function useFindingDetailForm(
       anchor_page: pendingAnchor.anchor_page ?? null,
       linked_element_global_id: pendingAnchor.linked_element_global_id ?? null,
     };
+    // Only stamp model/file links when the pin actually carried them, so
+    // re-pinning an already-linked finding never nulls its existing link.
+    if (pendingAnchor.linked_model_id !== undefined) {
+      next.linked_model_id = pendingAnchor.linked_model_id;
+    }
+    if (pendingAnchor.linked_file_id !== undefined) {
+      next.linked_file_id = pendingAnchor.linked_file_id;
+    }
+    return next;
   };
 
   const onSubmit: SubmitHandler<FindingDetailFormValues> = (values) => {

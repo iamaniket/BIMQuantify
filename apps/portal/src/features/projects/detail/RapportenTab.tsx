@@ -5,10 +5,11 @@ import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
 import {
-  EmptyState, SplitButton, type SplitButtonItem,
+  Button, EmptyState, SplitButton, type SplitButtonItem,
 } from '@bimstitch/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
+import { Link } from '@/i18n/navigation';
 import { useProjectPermissions } from '@/features/permissions';
 import { useGenerateReport, useReports } from '@/features/reports/hooks';
 import { ReportPreviewDrawer } from '@/features/reports/ReportPreviewDrawer';
@@ -116,7 +117,17 @@ export function RapportenTab({ projectId }: Props): JSX.Element {
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder={t('tab.searchPlaceholder')}
-        actions={generateButton}
+        actions={(
+          <div className="flex items-center gap-2">
+            <Button variant="border" size="md" asChild>
+              <Link href={`/projects/${projectId}/reports`}>
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                {t('tab.openPage')}
+              </Link>
+            </Button>
+            {generateButton}
+          </div>
+        )}
       />
 
       {missingDataMessage !== null ? (

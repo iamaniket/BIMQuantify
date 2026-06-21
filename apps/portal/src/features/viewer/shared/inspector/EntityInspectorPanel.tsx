@@ -2,14 +2,15 @@
 
 import { Info } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 
 import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
 import { ContextLine } from '@/components/shared/viewer/shared/ContextLine';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
+import { federatedModelId } from '@/features/viewer/3d/federation/federatedModelId';
 import { ElementHeader } from '@/features/viewer/3d/properties/ElementHeader';
-import type { ModelMetadata } from '@/lib/api/viewerTypes';
+import type { ElementEntry, ModelMetadata } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { EntityFindingsBody } from './EntityFindingsBody';
@@ -93,6 +94,23 @@ export function EntityInspectorPanel({
     isMultiSelection,
   } = useSelectedElement(metadata);
 
+  // Resolve a picked element (from `point:picked`) to its GlobalId so a pin can
+  // auto-link the element. The active viewer scene id is `file-<fileId>`; only
+  // picks on the active model resolve (others fall back to location-only).
+  const activeViewerModelId = federatedModelId(fileId);
+  const elementsByExpressId = useMemo(() => {
+    const map = new Map<number, ElementEntry>();
+    for (const el of metadata?.elements ?? []) map.set(el.expressID, el);
+    return map;
+  }, [metadata]);
+  const resolvePickedGlobalId = useCallback(
+    (item: { modelId: string; localId: number } | null): string | null =>
+      item != null && item.modelId === activeViewerModelId
+        ? elementsByExpressId.get(item.localId)?.globalId ?? null
+        : null,
+    [elementsByExpressId, activeViewerModelId],
+  );
+
   const isProjectMode = isPdf !== true && !hasSelection;
   // Floor-plan findings (file-scoped, IFC-anchored) replace the project-scope
   // fallback when on the plan surface with no 3D element selected.
@@ -146,6 +164,9 @@ export function EntityInspectorPanel({
         onAutoOpenConsumed={handleAutoOpenConsumed}
         viewerHandle={viewerHandle}
         activeFileType="ifc"
+        activeModelId={modelId}
+        activeFileId={fileId}
+        resolvePickedGlobalId={resolvePickedGlobalId}
       />
     );
   } else if (isProjectMode) {
@@ -163,6 +184,9 @@ export function EntityInspectorPanel({
         onAutoOpenConsumed={handleAutoOpenConsumed}
         viewerHandle={viewerHandle}
         activeFileType="ifc"
+        activeModelId={modelId}
+        activeFileId={fileId}
+        resolvePickedGlobalId={resolvePickedGlobalId}
       />
     );
   } else if (element !== null) {
@@ -181,6 +205,9 @@ export function EntityInspectorPanel({
           openFindingNonce={openFindingNonce}
           viewerHandle={viewerHandle}
           activeFileType="ifc"
+          activeModelId={modelId}
+          activeFileId={fileId}
+          resolvePickedGlobalId={resolvePickedGlobalId}
         />
       );
   } else {

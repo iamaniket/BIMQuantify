@@ -64,6 +64,11 @@ type EntityFindingsBodyProps = {
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
   activeFileType?: LinkedFileTypeValue | null | undefined;
+  /** Active model/file to attach when pinning (incl. the no-selection scope). */
+  activeModelId?: string | null | undefined;
+  activeFileId?: string | null | undefined;
+  /** Resolve the picked element's GlobalId (active model only), else null. */
+  resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
   onNavigateToPage?: ((page: number) => void) | undefined;
 };
 
@@ -77,6 +82,9 @@ export function EntityFindingsBody({
   documentHandle,
   viewerHandle,
   activeFileType,
+  activeModelId,
+  activeFileId,
+  resolvePickedGlobalId,
   onNavigateToPage,
 }: EntityFindingsBodyProps): JSX.Element {
   const t = useTranslations('viewerFindings');
@@ -225,6 +233,9 @@ export function EntityFindingsBody({
               linkedFileType={LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
               documentHandle={documentHandle}
               viewerHandle={viewerHandle}
+              activeModelId={activeModelId}
+              activeFileId={activeFileId}
+              resolvePickedGlobalId={resolvePickedGlobalId}
               onCreated={(id) => {
                 setCreateExpanded(false);
                 setPendingPoint(null);
@@ -304,6 +315,9 @@ export function EntityFindingsBody({
                       documentHandle={documentHandle}
                       viewerHandle={viewerHandle}
                       activeFileType={activeFileType ?? LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
+                      activeModelId={activeModelId}
+                      activeFileId={activeFileId}
+                      resolvePickedGlobalId={resolvePickedGlobalId}
                     />
                   </DetailCardBody>
                 </DetailCard>

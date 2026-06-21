@@ -221,10 +221,10 @@
   },
   "calendar": {
     "hero": {
-      "title": "Deadlines calendar",
-      "subtitle": "Every filing across all your projects, ranked by what's due next.",
+      "title": "Organization calendar",
+      "subtitle": "One shared calendar for your whole organization — every item across your projects, ranked by what's due next.",
       "pendingLabel": "Pending",
-      "pendingSub": "Open filings",
+      "pendingSub": "Open items",
       "overdueLabel": "Overdue",
       "overdueSub": "Past due",
       "dueThisWeekLabel": "Due this week",
@@ -235,35 +235,35 @@
       "calendar": "Calendar"
     },
     "panel": {
-      "overviewEyebrow": "Deadlines",
+      "overviewEyebrow": "Organization",
       "overviewTitle": "Overview",
-      "calendarEyebrow": "Deadlines",
+      "calendarEyebrow": "Organization",
       "calendarTitle": "Calendar"
     },
     "overview": {
       "kpiTotal": "Total",
       "kpiPending": "Pending",
-      "kpiPendingSub": "Open filings",
+      "kpiPendingSub": "Open items",
       "kpiOverdue": "Overdue",
       "kpiOverdueSub": "Past due",
       "kpiDueThisWeek": "Due this week",
       "kpiDueThisWeekSub": "Next 7 days",
-      "kpiMet": "Filed",
+      "kpiMet": "Done",
       "kpiMetSub": "Completed",
       "statusTitle": "By status",
       "donutCenterLabel": "Total",
       "status": {
         "overdue": "Overdue",
         "upcoming": "Upcoming",
-        "met": "Filed",
+        "met": "Done",
         "notApplicable": "N/A"
       },
       "horizonTitle": "Upcoming horizon",
       "buckets": {
         "range": "{from}-{to}d"
       },
-      "upcomingTitle": "Upcoming deadlines",
-      "noUpcoming": "No upcoming deadlines.",
+      "upcomingTitle": "Upcoming items",
+      "noUpcoming": "Nothing upcoming.",
       "daysRemaining": "{days, plural, =1 {1 day left} other {# days left}}",
       "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}"
     },
@@ -271,18 +271,18 @@
       "today": "Today",
       "prevMonth": "Previous month",
       "nextMonth": "Next month",
-      "empty": "No deadlines scheduled.",
+      "empty": "Nothing scheduled.",
       "dayEmpty": "Nothing on this day.",
       "moreCount": "{count} more",
       "legend": {
         "overdue": "Overdue",
         "dueSoon": "Due soon",
         "upcoming": "Upcoming",
-        "met": "Filed",
+        "met": "Done",
         "holiday": "Holiday"
       },
       "dayPanel": {
-        "count": "{count, plural, =0 {No deadlines} one {# deadline} other {# deadlines}}",
+        "count": "{count, plural, =0 {No items} one {# item} other {# items}}",
         "close": "Close"
       }
     }
@@ -2018,31 +2018,88 @@
       "justNow": "just now",
       "minutesAgo": "{count}m ago",
       "hoursAgo": "{count}h ago",
-      "daysAgo": "{count}d ago"
+      "daysAgo": "{count}d ago",
+      "openPage": "All reports"
+    },
+    "hub": {
+      "crumb": "Reports",
+      "crumbProjects": "Projects",
+      "projectNotFound": "Project not found. It may have been deleted.",
+      "projectLoadError": "Failed to load project.",
+      "tabs": {
+        "overview": "Overview",
+        "reports": "Reports"
+      },
+      "panel": {
+        "overviewEyebrow": "Generated documents",
+        "overviewTitle": "Reports overview",
+        "reportsEyebrow": "Generated documents",
+        "reportsTitle": "{count} reports"
+      },
+      "hero": {
+        "badge": "Reports",
+        "subtitle": "Generate and download filing-ready PDFs",
+        "totalLabel": "Total",
+        "totalSub": "{count} generated",
+        "readyLabel": "Ready",
+        "readySub": "Available to download",
+        "pendingLabel": "In progress",
+        "pendingSub": "Queued or generating",
+        "typesLabel": "Types",
+        "typesSub": "Covered"
+      },
+      "list": {
+        "searchPlaceholder": "Search reports…",
+        "filterAll": "All types",
+        "empty": "No reports match your filters",
+        "loadError": "Failed to load reports."
+      },
+      "columns": {
+        "report": "Report",
+        "status": "Status",
+        "created": "Created",
+        "size": "Size",
+        "actions": "Actions"
+      },
+      "overview": {
+        "kpiTotal": "Total reports",
+        "kpiReady": "Ready",
+        "kpiReadySub": "Available to download",
+        "kpiPending": "In progress",
+        "kpiPendingSub": "Queued or generating",
+        "kpiTypes": "Types covered",
+        "kpiTypesSub": "Of all report types",
+        "statusTitle": "By status",
+        "donutCenterLabel": "Reports",
+        "byTypeTitle": "By type",
+        "latestTitle": "Latest per type",
+        "latestNotGenerated": "Not generated",
+        "empty": "No reports generated yet"
+      }
     },
     "types": {
       "compliance_report": {
         "title": "Compliance report",
         "description": "Generate a PDF of the latest compliance check, ready to share.",
-        "generate": "Generate compliance report",
+        "generate": "Compliance report",
         "missingData": "No compliance data available — run a check on a processed IFC first."
       },
       "assurance_plan": {
         "title": "Assurance plan",
         "description": "Generate the borgingsplan as a filing-ready PDF for the bouwmelding.",
-        "generate": "Generate assurance plan",
+        "generate": "Assurance plan",
         "missingData": "No borgingsplan for this project yet."
       },
       "completion_declaration": {
         "title": "Completion declaration",
         "description": "Generate the kwaliteitsborger's declaration. Only the inspector can sign it.",
-        "generate": "Generate declaration",
+        "generate": "Declaration",
         "missingData": "Project details are incomplete for the declaration."
       },
       "dossier": {
         "title": "Dossier for the authority",
         "description": "Bundle the full dossier for the gereedmelding. You'll get an email when it's ready.",
-        "generate": "Generate dossier",
+        "generate": "Dossier",
         "missingData": "Not enough data to assemble the dossier yet."
       }
     },

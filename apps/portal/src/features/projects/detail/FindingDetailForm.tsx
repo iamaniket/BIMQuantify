@@ -23,6 +23,11 @@ type Props = {
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
   activeFileType?: LinkedFileTypeValue | null | undefined;
+  /** Active model/file to attach when pinning a previously-unlinked finding. */
+  activeModelId?: string | null | undefined;
+  activeFileId?: string | null | undefined;
+  /** Resolve the picked element's GlobalId (active model only), else null. */
+  resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
 };
 
 /**
@@ -38,6 +43,9 @@ export function FindingDetailForm({
   documentHandle,
   viewerHandle,
   activeFileType,
+  activeModelId,
+  activeFileId,
+  resolvePickedGlobalId,
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const api = useFindingDetailForm(projectId, finding, { onSaved, onDeleted });
@@ -52,6 +60,9 @@ export function FindingDetailForm({
         documentHandle={documentHandle}
         viewerHandle={viewerHandle}
         activeFileType={activeFileType}
+        activeModelId={activeModelId}
+        activeFileId={activeFileId}
+        resolvePickedGlobalId={resolvePickedGlobalId}
       />
 
       {(canEdit || canDelete) && (

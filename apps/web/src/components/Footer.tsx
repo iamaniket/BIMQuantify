@@ -86,9 +86,9 @@ export function Footer(): JSX.Element {
           }`}
         >
           <div className="col-span-2 flex flex-col gap-3 sm:col-span-1">
-            <div className="flex items-center gap-2">
-              <BrandMark size={28} tone="on-light" />
-              <span className="text-title3 font-semibold text-foreground">
+            <div className="flex items-center gap-2 text-primary">
+              <BrandMark size={28} variant="glyph-mono" />
+              <span className="text-title3 font-semibold">
                 {tHeader('brand')}
               </span>
             </div>

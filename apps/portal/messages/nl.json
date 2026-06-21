@@ -221,10 +221,10 @@
   },
   "calendar": {
     "hero": {
-      "title": "Deadlinekalender",
-      "subtitle": "Alle meldingen uit al je projecten, gerangschikt op wat als eerste moet.",
+      "title": "Organisatiekalender",
+      "subtitle": "Eén gedeelde kalender voor je hele organisatie — alle items uit je projecten, gerangschikt op wat als eerste moet.",
       "pendingLabel": "Openstaand",
-      "pendingSub": "Open meldingen",
+      "pendingSub": "Open items",
       "overdueLabel": "Te laat",
       "overdueSub": "Verstreken",
       "dueThisWeekLabel": "Deze week",
@@ -235,35 +235,35 @@
       "calendar": "Kalender"
     },
     "panel": {
-      "overviewEyebrow": "Deadlines",
+      "overviewEyebrow": "Organisatie",
       "overviewTitle": "Overzicht",
-      "calendarEyebrow": "Deadlines",
+      "calendarEyebrow": "Organisatie",
       "calendarTitle": "Kalender"
     },
     "overview": {
       "kpiTotal": "Totaal",
       "kpiPending": "Openstaand",
-      "kpiPendingSub": "Open meldingen",
+      "kpiPendingSub": "Open items",
       "kpiOverdue": "Te laat",
       "kpiOverdueSub": "Verstreken",
       "kpiDueThisWeek": "Deze week",
       "kpiDueThisWeekSub": "Komende 7 dagen",
-      "kpiMet": "Ingediend",
+      "kpiMet": "Klaar",
       "kpiMetSub": "Afgerond",
       "statusTitle": "Op status",
       "donutCenterLabel": "Totaal",
       "status": {
         "overdue": "Te laat",
         "upcoming": "Aankomend",
-        "met": "Ingediend",
+        "met": "Klaar",
         "notApplicable": "N.v.t."
       },
       "horizonTitle": "Komende periode",
       "buckets": {
         "range": "{from}-{to}d"
       },
-      "upcomingTitle": "Aankomende deadlines",
-      "noUpcoming": "Geen aankomende deadlines.",
+      "upcomingTitle": "Aankomende items",
+      "noUpcoming": "Niets aankomend.",
       "daysRemaining": "{days, plural, =1 {nog 1 dag} other {nog # dagen}}",
       "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}"
     },
@@ -271,18 +271,18 @@
       "today": "Vandaag",
       "prevMonth": "Vorige maand",
       "nextMonth": "Volgende maand",
-      "empty": "Geen deadlines gepland.",
+      "empty": "Niets gepland.",
       "dayEmpty": "Niets op deze dag.",
       "moreCount": "{count} meer",
       "legend": {
         "overdue": "Te laat",
         "dueSoon": "Bijna",
         "upcoming": "Aankomend",
-        "met": "Ingediend",
+        "met": "Klaar",
         "holiday": "Feestdag"
       },
       "dayPanel": {
-        "count": "{count, plural, =0 {Geen deadlines} one {# deadline} other {# deadlines}}",
+        "count": "{count, plural, =0 {Geen items} one {# item} other {# items}}",
         "close": "Sluiten"
       }
     }
@@ -2018,31 +2018,88 @@
       "justNow": "zojuist",
       "minutesAgo": "{count}m geleden",
       "hoursAgo": "{count}u geleden",
-      "daysAgo": "{count}d geleden"
+      "daysAgo": "{count}d geleden",
+      "openPage": "Alle rapporten"
+    },
+    "hub": {
+      "crumb": "Rapporten",
+      "crumbProjects": "Projecten",
+      "projectNotFound": "Project niet gevonden. Mogelijk is het verwijderd.",
+      "projectLoadError": "Laden van project is mislukt.",
+      "tabs": {
+        "overview": "Overzicht",
+        "reports": "Rapporten"
+      },
+      "panel": {
+        "overviewEyebrow": "Gegenereerde documenten",
+        "overviewTitle": "Rapportoverzicht",
+        "reportsEyebrow": "Gegenereerde documenten",
+        "reportsTitle": "{count} rapporten"
+      },
+      "hero": {
+        "badge": "Rapporten",
+        "subtitle": "Genereer en download indieningsklare PDF's",
+        "totalLabel": "Totaal",
+        "totalSub": "{count} gegenereerd",
+        "readyLabel": "Gereed",
+        "readySub": "Beschikbaar om te downloaden",
+        "pendingLabel": "Bezig",
+        "pendingSub": "In wachtrij of wordt gegenereerd",
+        "typesLabel": "Typen",
+        "typesSub": "Gedekt"
+      },
+      "list": {
+        "searchPlaceholder": "Zoek rapporten…",
+        "filterAll": "Alle typen",
+        "empty": "Geen rapporten komen overeen met je filters",
+        "loadError": "Laden van rapporten is mislukt."
+      },
+      "columns": {
+        "report": "Rapport",
+        "status": "Status",
+        "created": "Aangemaakt",
+        "size": "Grootte",
+        "actions": "Acties"
+      },
+      "overview": {
+        "kpiTotal": "Totaal rapporten",
+        "kpiReady": "Gereed",
+        "kpiReadySub": "Beschikbaar om te downloaden",
+        "kpiPending": "Bezig",
+        "kpiPendingSub": "In wachtrij of wordt gegenereerd",
+        "kpiTypes": "Typen gedekt",
+        "kpiTypesSub": "Van alle rapporttypen",
+        "statusTitle": "Op status",
+        "donutCenterLabel": "Rapporten",
+        "byTypeTitle": "Op type",
+        "latestTitle": "Laatste per type",
+        "latestNotGenerated": "Niet gegenereerd",
+        "empty": "Nog geen rapporten gegenereerd"
+      }
     },
     "types": {
       "compliance_report": {
         "title": "Nalevingsrapport",
         "description": "Genereer een PDF van de laatste nalevingscontrole, klaar om te delen.",
-        "generate": "Genereer nalevingsrapport",
+        "generate": "Nalevingsrapport",
         "missingData": "Geen nalevingsgegevens beschikbaar — voer eerst een controle uit op een verwerkt IFC-bestand."
       },
       "assurance_plan": {
         "title": "Borgingsplan",
         "description": "Genereer het borgingsplan als indieningsklare PDF voor de bouwmelding.",
-        "generate": "Genereer borgingsplan",
+        "generate": "Borgingsplan",
         "missingData": "Nog geen borgingsplan voor dit project."
       },
       "completion_declaration": {
         "title": "Verklaring kwaliteitsborger",
         "description": "Genereer de verklaring van de kwaliteitsborger. Alleen de inspecteur kan ondertekenen.",
-        "generate": "Genereer verklaring",
+        "generate": "Verklaring",
         "missingData": "Projectgegevens zijn onvolledig voor de verklaring."
       },
       "dossier": {
         "title": "Dossier bevoegd gezag",
         "description": "Bundel het volledige dossier voor de gereedmelding. Je ontvangt een e-mail zodra het klaar is.",
-        "generate": "Genereer dossier",
+        "generate": "Dossier",
         "missingData": "Onvoldoende gegevens om het dossier samen te stellen."
       }
     },
