@@ -100,7 +100,7 @@ test.describe.serial('Request-access journey', () => {
         (r) => r.url().includes('/access-requests') && r.request().method() === 'POST',
         { timeout: 20_000 },
       ),
-      page.getByRole('button', { name: 'Request demo access' }).click(),
+      page.getByRole('button', { name: 'Apply to join the pilot' }).click(),
     ]);
     if (!submitResp.ok()) {
       throw new Error(
@@ -108,8 +108,8 @@ test.describe.serial('Request-access journey', () => {
       );
     }
 
-    // Success panel ("Request received" eyebrow + requester email in body)
-    await expect(page.getByText('Request received')).toBeVisible({ timeout: 10_000 });
+    // Success panel ("Application received" eyebrow + requester email in body)
+    await expect(page.getByText('Application received')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(runState.requesterEmail)).toBeVisible();
   });
 
@@ -283,7 +283,7 @@ test.describe.serial('Request-access duplicate handling', () => {
         (r) => r.url().includes('/access-requests') && r.request().method() === 'POST',
         { timeout: 20_000 },
       ),
-      page.getByRole('button', { name: 'Request demo access' }).click(),
+      page.getByRole('button', { name: 'Apply to join the pilot' }).click(),
     ]);
     return resp;
   }
@@ -302,7 +302,7 @@ test.describe.serial('Request-access duplicate handling', () => {
       company: dupState.requesterCompany,
     });
     expect(first.status()).toBe(201);
-    await expect(page.getByText('Request received')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Application received')).toBeVisible({ timeout: 10_000 });
 
     // Second submission with the same email — different name/company shouldn't
     // matter; the dedup key is `work_email`.
@@ -312,7 +312,9 @@ test.describe.serial('Request-access duplicate handling', () => {
       company: `Different Co ${DUP_RUN_LETTERS}`,
     });
     expect(second.status()).toBe(409);
-    expect(await second.json()).toEqual({ detail: 'ACCESS_REQUEST_PENDING_DUPLICATE' });
+    // The API wraps HTTPExceptions in a localized { code, detail, message }
+    // envelope (detail preserved verbatim). Assert detail, not strict-equal.
+    expect((await second.json()).detail).toBe('ACCESS_REQUEST_PENDING_DUPLICATE');
 
     // Friendly inline error renders — anchored on the phrase in i18n.
     await expect(page.getByText(/already received your request/i)).toBeVisible({
@@ -411,6 +413,6 @@ test.describe.serial('Request-access duplicate handling', () => {
       company: `${dupState.requesterCompany} Retry`,
     });
     expect(second.status()).toBe(201);
-    await expect(page.getByText('Request received')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Application received')).toBeVisible({ timeout: 10_000 });
   });
 });
