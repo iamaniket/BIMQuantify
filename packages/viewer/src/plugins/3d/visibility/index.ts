@@ -27,6 +27,8 @@
 
 import { pick } from '../../../core/Raycaster.js';
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
+import { createExceptionManager, normalizeType } from './exceptionManager.js';
+import { createModelHider, type ModelHider } from './modelHider.js';
 
 const NAME = 'visibility' as const;
 
@@ -48,73 +50,12 @@ export interface VisibilityPluginAPI {
 
 const itemKey = (i: ItemId): string => `${i.modelId}::${String(i.localId)}`;
 
-/** Normalize an IFC type to the upper-case category key fragments uses (`IFCSPACE`). */
-const normalizeType = (t: string): string => t.trim().toUpperCase();
-
 function toModelIdMap(items: ItemId[]): Record<string, Set<number>> {
   const map: Record<string, Set<number>> = {};
   for (const it of items) {
     (map[it.modelId] ??= new Set()).add(it.localId);
   }
   return map;
-}
-
-/**
- * A `Hider`-shaped facade over the viewer's own `ctx.models()`. `set` mutates
- * visibility only — NO flush/render. Callers run exactly one `flush()` after
- * they have emitted `visibility:change`, so geometry and outline change in the
- * same painted frame.
- */
-interface ModelHider {
-  set(visible: boolean, modelIdMap?: Record<string, Set<number>>): Promise<void>;
-  isolate(modelIdMap: Record<string, Set<number>>): Promise<void>;
-  getVisibilityMap(state: boolean): Promise<Record<string, number[]>>;
-  flush(): Promise<void>;
-}
-
-function createModelHider(ctx: ViewerContext): ModelHider {
-  const set = async (
-    visible: boolean,
-    modelIdMap?: Record<string, Set<number>>,
-  ): Promise<void> => {
-    const models = ctx.models();
-    if (modelIdMap) {
-      for (const [modelId, ids] of Object.entries(modelIdMap)) {
-        const model = models.get(modelId);
-        if (!model) continue;
-        await model.setVisible([...ids], visible).catch(() => undefined);
-      }
-    } else {
-      for (const model of models.values()) {
-        await model.setVisible(undefined, visible).catch(() => undefined);
-      }
-    }
-  };
-
-  return {
-    set,
-    // Hide everything, then re-show the kept set. Sequential (not Hider's
-    // parallel) so the kept items deterministically win and end up visible.
-    // No flush here — the caller flushes once after emitting the change.
-    async isolate(modelIdMap) {
-      await set(false);
-      await set(true, modelIdMap);
-    },
-    async getVisibilityMap(state) {
-      const out: Record<string, number[]> = {};
-      for (const [modelId, model] of ctx.models()) {
-        out[modelId] = await model.getItemsByVisibility(state).catch(() => []);
-      }
-      return out;
-    },
-    // Drain the accumulated visibility changes to the GPU and draw them once —
-    // the viewer renders on-demand, so a silent setVisible would otherwise not
-    // show until the next interaction.
-    async flush() {
-      await ctx.fragments.update(true).catch(() => undefined);
-      ctx.requestRender();
-    },
-  };
 }
 
 export function visibilityPlugin(
@@ -138,61 +79,17 @@ export function visibilityPlugin(
   // --- Exception list (Part D) -------------------------------------------
   // IFC categories the plugin controls individually. Auto-hidden at load and
   // kept hidden through bulk ops; flipped only via `visibility.setTypeVisible`.
-  const managedTypes = new Set<string>(
-    (options.exceptionTypes ?? ['IfcSpace']).map(normalizeType),
-  );
-  // type key -> currently hidden? Default: hidden, so spaces are off by default
-  // even before the host pushes a preference.
-  const typeHidden = new Map<string, boolean>();
-  for (const key of managedTypes) typeHidden.set(key, true);
-  // modelId -> (type key -> localIds), resolved from the model at load time.
-  const exceptionIdsByModel = new Map<string, Map<string, number[]>>();
-
-  const resolveCategory = async (
-    model: { getItemsOfCategories(c: RegExp[]): Promise<Record<string, number[]>> },
-    key: string,
-  ): Promise<number[]> => {
-    try {
-      const res = await model.getItemsOfCategories([new RegExp(`^${key}$`, 'i')]);
-      return Object.values(res).flat();
-    } catch {
-      return [];
-    }
-  };
-
-  // Resolve every managed type's localIds for one model (called on model load).
-  const resolveExceptionsForModel = async (modelId: string): Promise<void> => {
-    if (!ctxRef) return;
-    const model = ctxRef.models().get(modelId);
-    if (!model) return;
-    let perType = exceptionIdsByModel.get(modelId);
-    if (!perType) {
-      perType = new Map();
-      exceptionIdsByModel.set(modelId, perType);
-    }
-    for (const key of managedTypes) {
-      perType.set(key, await resolveCategory(model, key));
-    }
-  };
-
-  // All ItemIds of a managed type across loaded models (optionally one model).
-  const exceptionItems = (key: string, modelId?: string): ItemId[] => {
-    const out: ItemId[] = [];
-    for (const [mId, perType] of exceptionIdsByModel) {
-      if (modelId && mId !== modelId) continue;
-      for (const localId of perType.get(key) ?? []) out.push({ modelId: mId, localId });
-    }
-    return out;
-  };
-
-  // ItemIds for every managed type that is currently toggled hidden.
-  const managedHiddenItems = (): ItemId[] => {
-    const out: ItemId[] = [];
-    for (const key of managedTypes) {
-      if (typeHidden.get(key)) out.push(...exceptionItems(key));
-    }
-    return out;
-  };
+  // Owns its own maps; reads `ctx` lazily via the closure below.
+  const exceptions = createExceptionManager(options.exceptionTypes, () => ctxRef);
+  const {
+    managedTypes,
+    typeHidden,
+    exceptionIdsByModel,
+    resolveCategory,
+    resolveExceptionsForModel,
+    exceptionItems,
+    managedHiddenItems,
+  } = exceptions;
 
   // Keys that must never be revealed by bulk/element show ops — the generic
   // persistent set plus every managed-hidden type's items.

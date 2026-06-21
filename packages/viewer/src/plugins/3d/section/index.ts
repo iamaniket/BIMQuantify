@@ -33,6 +33,7 @@ import { Clipper, Worlds } from '@thatopen/components';
 import type { SimplePlane, World } from '@thatopen/components';
 import type { Plugin, Vec3, ViewerContext } from '../../../core/types.js';
 import { pick } from '../../../core/Raycaster.js';
+import { createMaterialClippingSync } from './material-clipping.js';
 
 const NAME = 'section' as const;
 
@@ -64,18 +65,6 @@ export interface SectionPluginAPI {
   setEnabled(enabled: boolean): void;
   isEnabled(): boolean;
   planes(): SectionPlane[];
-}
-
-/** Minimal shape of the FragmentsModels material list we hook for streaming tiles. */
-interface MaterialItemEvent {
-  value: THREE.Material;
-}
-interface MaterialListEvent {
-  add(cb: (e: MaterialItemEvent) => void): void;
-  remove(cb: (e: MaterialItemEvent) => void): void;
-}
-interface MaterialList {
-  onItemSet: MaterialListEvent;
 }
 
 /** TransformControls surface we use — narrowed to avoid a hard three/examples dep. */
@@ -111,15 +100,17 @@ export function sectionPlugin(
   /** Per-plane `change` listener removers (our rotation-aware sync). */
   const controlSyncCleanup = new Map<string, () => void>();
 
-  // Material-clipping state. We keep `material.clippingPlanes` pointed at the
-  // live `SimplePlane.three` array; gizmo drags mutate those planes in place,
-  // so we only rebuild + flip `needsUpdate` when the active count changes.
-  let clipArray: THREE.Plane[] | null = null;
-  let clipCount = 0;
-  let materialList: MaterialList | null = null;
-  let onMaterialSet: ((e: MaterialItemEvent) => void) | null = null;
-  let modelLoadedUnsub: (() => void) | null = null;
   let clickUnsub: (() => void) | null = null;
+
+  // Material-clipping subsystem. Owns `material.clippingPlanes` upkeep + the
+  // streaming-material / model-loaded subscriptions; reads our live state by
+  // injection (ctx, the clipper's plane list, the global `enabled` flag).
+  const materialClipping = createMaterialClippingSync({
+    getCtx: () => ctxRef,
+    getPlanes: () => clipper?.list.values() ?? [],
+    isEnabled: () => enabled,
+  });
+  const syncMaterialClipping = (): void => materialClipping.sync();
 
   const getPlane = (id: string): SimplePlane | null => {
     if (!clipper) return null;
@@ -152,52 +143,6 @@ export function sectionPlugin(
       if (ourId) result.push(serializePlane(plane, ourId));
     }
     return result;
-  };
-
-  // ----- material clipping (our private fragment models) -----
-
-  /** Live `THREE.Plane`s for the active planes, or empty when the feature is off. */
-  const collectActivePlanes = (): THREE.Plane[] => {
-    const arr: THREE.Plane[] = [];
-    if (!clipper || !enabled) return arr;
-    for (const plane of clipper.list.values()) {
-      if (plane.enabled) arr.push(plane.three);
-    }
-    return arr;
-  };
-
-  const forEachMaterial = (fn: (mat: THREE.Material) => void): void => {
-    if (!ctxRef) return;
-    for (const model of ctxRef.models().values()) {
-      model.object.traverse((obj) => {
-        const mesh = obj as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        const mat = mesh.material;
-        if (Array.isArray(mat)) mat.forEach(fn);
-        else if (mat) fn(mat);
-      });
-    }
-  };
-
-  /**
-   * Rebuild the active-plane array and assign it to every fragment material.
-   * Called only on structural changes (add/remove/toggle/enable/model-load) —
-   * NOT per gizmo-drag frame, since materials reference the live `plane.three`
-   * objects that drags mutate in place. Flips `needsUpdate` only when the count
-   * changes (shader recompiles on `NUM_CLIPPING_PLANES`); same-count moves don't.
-   */
-  const syncMaterialClipping = (): void => {
-    if (!ctxRef) return;
-    const planes = collectActivePlanes();
-    clipArray = planes.length > 0 ? planes : null;
-    const countChanged = planes.length !== clipCount;
-    forEachMaterial((mat) => {
-      mat.clippingPlanes = clipArray;
-      if (countChanged) mat.needsUpdate = true;
-    });
-    clipCount = planes.length;
-    ctxRef.renderer.localClippingEnabled = planes.length > 0;
-    ctxRef.requestRender();
   };
 
   // ----- gizmo + helper visibility -----
@@ -510,24 +455,8 @@ export function sectionPlugin(
         });
       }
 
-      // Keep streamed-in geometry clipped: new fragment materials start with
-      // `clippingPlanes = null`, so apply the active set as each one is created.
-      materialList =
-        (ctx.fragments as unknown as { models?: { materials?: { list?: MaterialList } } })
-          .models?.materials?.list ?? null;
-      if (materialList) {
-        onMaterialSet = ({ value: material }): void => {
-          if (clipArray && material) {
-            material.clippingPlanes = clipArray;
-            material.needsUpdate = true;
-          }
-        };
-        materialList.onItemSet.add(onMaterialSet);
-      }
-      // A whole new model (federated add) needs its existing materials clipped.
-      modelLoadedUnsub = ctx.events.on('model:loaded', () => {
-        if (clipArray) syncMaterialClipping();
-      });
+      // Keep streamed-in geometry clipped + clip federated models on load.
+      materialClipping.install();
 
       ctx.commands.register('section.add', (args: unknown) => add(args), {
         title: 'Add a section plane',
@@ -676,13 +605,6 @@ export function sectionPlugin(
     uninstall() {
       clickUnsub?.();
       clickUnsub = null;
-      modelLoadedUnsub?.();
-      modelLoadedUnsub = null;
-      if (materialList && onMaterialSet) {
-        materialList.onItemSet.remove(onMaterialSet);
-      }
-      materialList = null;
-      onMaterialSet = null;
 
       for (const cleanup of controlSyncCleanup.values()) cleanup();
       controlSyncCleanup.clear();
@@ -691,15 +613,8 @@ export function sectionPlugin(
         clipper.deleteAll();
         clipper.enabled = false;
       }
-      // Drop our planes off every fragment material.
-      clipArray = null;
-      clipCount = 0;
-      forEachMaterial((mat) => {
-        if (mat.clippingPlanes) {
-          mat.clippingPlanes = null;
-          mat.needsUpdate = true;
-        }
-      });
+      // Tear down subscriptions + drop our planes off every fragment material.
+      materialClipping.uninstall();
 
       ourIdToClipperId.clear();
       clipperIdToOurId.clear();
