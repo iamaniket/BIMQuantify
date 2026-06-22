@@ -157,7 +157,11 @@ export default function ViewerPage(): JSX.Element {
   });
   // Marker / deep-link click → expand that finding's row in the inspector
   // (replacing the old floating detail modal). `nonce` re-fires on repeat clicks.
-  const [openFinding, setOpenFinding] = useState<{ id: string; nonce: number } | null>(null);
+  // `fileId` is a file-scope hint set when a coordinate-only (element-less but
+  // file-linked) finding is clicked, so the inspector lists it by file instead
+  // of falling back to project/unlinked scope (which would omit it).
+  const [openFinding, setOpenFinding] =
+    useState<{ id: string; nonce: number; fileId: string | null } | null>(null);
 
   // 2D BCF markup (PDF annotations): draft-create + click-to-open flow.
   const [markupCreateNonce, setMarkupCreateNonce] = useState(0);
@@ -486,8 +490,26 @@ export default function ViewerPage(): JSX.Element {
     } else {
       store.clearSelection();
     }
-    setOpenFinding((prev) => ({ id: finding.id, nonce: (prev?.nonce ?? 0) + 1 }));
+    // No element to anchor to → list the finding by its file so a coordinate-only
+    // (plane-anchored) finding is present in the inspector scope and can expand.
+    // PDF findings also fall here and already resolve to file scope (harmless).
+    const fileHint = item === undefined ? finding.linked_file_id : null;
+    setOpenFinding((prev) => ({
+      id: finding.id,
+      nonce: (prev?.nonce ?? 0) + 1,
+      fileId: fileHint,
+    }));
   }, [gidToLocal]);
+
+  // Once the user selects a real element, the file-scope hint from a prior
+  // coordinate-only finding click is stale — clear it so deselecting back to
+  // empty space restores project/unlinked scope. This never fires on the
+  // programmatic clearSelection() above (that drives hasSelection to false).
+  useEffect(() => {
+    if (hasSelection) {
+      setOpenFinding((prev) => (prev?.fileId == null ? prev : { ...prev, fileId: null }));
+    }
+  }, [hasSelection]);
 
   // Entity markers for the 3D (IFC) viewer. Single-file mode uses the rich,
   // isolation-aware single-model hook; federated mode aggregates finding pins
@@ -792,7 +814,16 @@ export default function ViewerPage(): JSX.Element {
           }}
         />
       )}
-      <div className="flex min-h-0 min-w-0 flex-1">
+      {/* Marker spans the WHOLE viewer workspace (canvas + toolbar + side panel +
+          side rail + status bar) on purpose: the keyboard-shortcuts plugin gates
+          its window-level fallback on hover/focus inside this scope, so 3D nav
+          shortcuts (WASDEQF, H, G, X, …) must stay alive while the cursor is over
+          any chrome — not just the canvas. Don't push this back down onto the
+          canvas wrapper. Dropped in 2D so 3D shortcuts don't drive the hidden pane. */}
+      <div
+        className="flex min-h-0 min-w-0 flex-1"
+        {...(viewMode !== '2d' ? { 'data-viewer-shortcut-scope': '' } : {})}
+      >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {canvas}
@@ -824,6 +855,7 @@ export default function ViewerPage(): JSX.Element {
                   requestNonce={inspectorRequest?.nonce}
                   openFindingId={openFinding?.id}
                   openFindingNonce={openFinding?.nonce}
+                  openFindingFileId={openFinding?.fileId ?? undefined}
                   floorPlan={inspectorRequest?.surface === 'floorplan' && viewMode !== '3d'}
                   documentHandle={documentHandle}
                   viewerHandle={viewerHandleRef.current}

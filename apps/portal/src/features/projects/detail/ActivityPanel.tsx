@@ -19,7 +19,7 @@ import { projectActivityKey } from '@/features/projects/queryKeys';
 type TimeWindow = 'all' | '1h' | '24h' | '7d' | '30d';
 type TypeFilter = 'all' | ActivityCategory;
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+const PAGE_SIZE_OPTIONS = [20, 40, 60, 80, 100] as const;
 
 const TIME_DURATIONS: Record<Exclude<TimeWindow, 'all'>, number> = {
   '1h': 3_600_000,

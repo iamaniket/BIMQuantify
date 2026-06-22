@@ -55,7 +55,7 @@ export default function ProjectCertificatesPage(): JSX.Element {
   const { projectId } = params;
   const { tokens } = useAuth();
 
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState('list');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<CertificateTypeValue | undefined>(undefined);
   const [viewing, setViewing] = useState<Certificate | null>(null);
@@ -139,7 +139,7 @@ export default function ProjectCertificatesPage(): JSX.Element {
       <PageShell
         hero={(
           <div className="relative flex h-full items-center gap-5 bg-surface-main px-5 py-4">
-            <Skeleton className="h-[140px] w-[200px] rounded-[10px]" />
+            <Skeleton className="h-[112px] w-[160px] rounded-[10px]" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-8 w-64" />
               <Skeleton className="h-4 w-48" />

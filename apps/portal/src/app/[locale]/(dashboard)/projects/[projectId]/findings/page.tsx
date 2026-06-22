@@ -7,7 +7,6 @@ import {
   LayoutGrid,
   MapPin,
   Settings,
-  Table2,
 } from '@bimstitch/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -24,7 +23,6 @@ import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { FindingsBoardHero } from '@/features/findings/board/FindingsBoardHero';
 import { FindingsKanbanBoard } from '@/features/findings/board/FindingsKanbanBoard';
 import { ProjectCalendarTab } from '@/features/findings/calendar/ProjectCalendarTab';
-import { FindingsListTab } from '@/features/findings/tabs/FindingsListTab';
 import { FindingsLocationsTab } from '@/features/findings/tabs/FindingsLocationsTab';
 import { FindingsOverviewTab } from '@/features/findings/tabs/FindingsOverviewTab';
 import { FindingsPhotosTab } from '@/features/findings/tabs/FindingsPhotosTab';
@@ -40,7 +38,7 @@ export default function FindingsBoardPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
 
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState('board');
 
   const projectQuery = useProject(projectId);
   const findingsQuery = useFindings(projectId);
@@ -77,7 +75,7 @@ export default function FindingsBoardPage(): JSX.Element {
       <PageShell
         hero={
           <div className="relative flex h-full items-center gap-5 bg-surface-main px-5 py-4">
-            <Skeleton className="h-[140px] w-[200px] rounded-[10px]" />
+            <Skeleton className="h-[112px] w-[160px] rounded-[10px]" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-8 w-64" />
               <Skeleton className="h-4 w-48" />
@@ -118,7 +116,6 @@ export default function FindingsBoardPage(): JSX.Element {
 
   const panelHeading = {
     board: { eyebrow: t('panel.boardEyebrow'), title: t('panel.boardTitle') },
-    list: { eyebrow: t('panel.listEyebrow'), title: t('panel.listTitle', { count: findings.length }) },
     overview: { eyebrow: t('panel.overviewEyebrow'), title: t('panel.overviewTitle') },
     calendar: { eyebrow: t('panel.calendarEyebrow'), title: t('panel.calendarTitle') },
     locations: { eyebrow: t('panel.locationsEyebrow'), title: t('panel.locationsTitle') },
@@ -137,7 +134,6 @@ export default function FindingsBoardPage(): JSX.Element {
           icon: <Columns3 className="h-4 w-4" />,
           badge: <Badge variant="primary" size="md" bordered={false}>{findings.length}</Badge>,
         },
-        { value: 'list', label: t('tabs.list'), icon: <Table2 className="h-4 w-4" /> },
         { value: 'calendar', label: t('tabs.calendar'), icon: <CalendarDays className="h-4 w-4" /> },
         { value: 'locations', label: t('tabs.locations'), icon: <MapPin className="h-4 w-4" /> },
         { value: 'photos', label: t('tabs.photos'), icon: <ImageIcon className="h-4 w-4" /> },
@@ -151,10 +147,6 @@ export default function FindingsBoardPage(): JSX.Element {
         <div className="flex h-full min-h-0 flex-col">
           <FindingsKanbanBoard projectId={projectId} findings={findings} members={members} />
         </div>
-      </TabsContent>
-
-      <TabsContent value="list" className="mt-0">
-        <FindingsListTab projectId={projectId} />
       </TabsContent>
 
       <TabsContent value="overview" className="mt-0">

@@ -21,8 +21,9 @@ type Props = {
   projectId: string;
 };
 
-// Rendered inside the Readiness tab as a category group styled like the dossier
-// checklist groups: a collapsible "Deadlines" header + compact DeadlineRow items.
+// Rendered as its own card on the project-detail page (directly below the
+// "Quality & documents" launcher): a collapsible "Deadlines" header + compact
+// DeadlineRow items. The card chrome is provided by the caller (RightColumnTabs).
 export function DeadlinesSection({ projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const deadlinesQuery = useDeadlines(projectId);
@@ -51,7 +52,7 @@ export function DeadlinesSection({ projectId }: Props): JSX.Element {
 
   if (deadlines.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-background px-4 py-8 text-center">
+      <div className="px-2 py-6 text-center">
         <Clock className="mx-auto mb-2 h-6 w-6 text-foreground-tertiary" />
         <div className="text-body3 font-semibold">{t('deadlines.emptyTitle')}</div>
         <div className="mt-1 text-caption text-foreground-tertiary">

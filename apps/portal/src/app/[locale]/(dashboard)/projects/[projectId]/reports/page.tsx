@@ -39,7 +39,7 @@ export default function ProjectReportsPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
 
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState('reports');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<ReportType | undefined>(undefined);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export default function ProjectReportsPage(): JSX.Element {
       <PageShell
         hero={(
           <div className="relative flex h-full items-center gap-5 bg-surface-main px-5 py-4">
-            <Skeleton className="h-[140px] w-[200px] rounded-[10px]" />
+            <Skeleton className="h-[112px] w-[160px] rounded-[10px]" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-8 w-64" />
               <Skeleton className="h-4 w-48" />

@@ -1803,7 +1803,7 @@
     }
   },
   "findingsBoard": {
-    "crumb": "Board",
+    "crumb": "Findings",
     "hero": {
       "badge": "Quality tracking",
       "subtitle": "Drag findings between columns to update status",
@@ -1851,8 +1851,7 @@
       "assigneeTooltip": "Filter by {name}"
     },
     "tabs": {
-      "board": "Board",
-      "list": "List",
+      "board": "Findings",
       "overview": "Overview",
       "calendar": "Calendar",
       "locations": "Locations",
@@ -1862,8 +1861,6 @@
     "panel": {
       "boardEyebrow": "Workflow",
       "boardTitle": "Kanban board",
-      "listEyebrow": "All findings",
-      "listTitle": "{count, plural, =0 {No findings} one {# finding} other {# findings}}",
       "overviewEyebrow": "Summary",
       "overviewTitle": "At a glance",
       "calendarEyebrow": "Schedule",
@@ -1874,29 +1871,6 @@
       "photosTitle": "Photos",
       "settingsEyebrow": "Reference",
       "settingsTitle": "Workflow & settings"
-    },
-    "list": {
-      "searchPlaceholder": "Search findings…",
-      "filterAll": "All statuses",
-      "filterDraft": "Draft",
-      "filterOpen": "Open",
-      "filterInProgress": "In progress",
-      "filterResolved": "Resolved",
-      "filterVerified": "Verified",
-      "filterAllPriorities": "All priorities",
-      "noResults": "No findings match your filters.",
-      "emptyTitle": "No findings yet",
-      "emptyDescription": "Log a finding to start tracking quality and compliance issues.",
-      "table": {
-        "title": "Title",
-        "status": "Status",
-        "assignee": "Assignee",
-        "deadline": "Deadline",
-        "ref": "Ref",
-        "created": "Created",
-        "empty": "No findings yet.",
-        "count": "Showing {count, plural, one {# finding} other {# findings}}"
-      }
     },
     "overview": {
       "statusTitle": "By status",

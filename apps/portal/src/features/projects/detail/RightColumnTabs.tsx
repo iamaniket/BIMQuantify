@@ -113,7 +113,12 @@ export function RightColumnTabs({
         </div>
       </div>
 
-      {/* Lower panel — Readiness (dossier + deadlines) and Models */}
+      {/* Deadlines — its own card directly below the launcher panel */}
+      <div className="max-h-64 shrink-0 overflow-auto rounded-lg border border-border bg-background p-3 shadow-sm">
+        <DeadlinesSection projectId={projectId} />
+      </div>
+
+      {/* Lower panel — Readiness (dossier checklist) and Models */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
         <div className="shrink-0 overflow-x-auto px-3 pt-2">
           <div className="mb-2 flex min-w-max items-end justify-between gap-x-3">
@@ -142,12 +147,9 @@ export function RightColumnTabs({
         </div>
 
         <div className={`min-h-0 flex-1 px-3 pb-3 pt-2 ${topTab === 'models' ? 'overflow-hidden' : 'overflow-auto'}`}>
-          {/* `readiness` backs the merged Readiness tab: dossier checklist groups + a deadlines group */}
+          {/* `readiness` backs the Readiness tab: dossier checklist groups (deadlines moved to their own card above) */}
           {topTab === 'readiness' && (
-            <div className="space-y-4">
-              <DossierChecklistTab projectId={projectId} country={projectCountry} />
-              <DeadlinesSection projectId={projectId} />
-            </div>
+            <DossierChecklistTab projectId={projectId} country={projectCountry} />
           )}
           {topTab === 'models' && (
             <ModelsTab projectId={projectId} models={models} />

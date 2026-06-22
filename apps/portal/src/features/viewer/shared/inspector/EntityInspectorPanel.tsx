@@ -31,6 +31,13 @@ type EntityInspectorPanelProps = {
   /** Expand this finding's row when `openFindingNonce` changes (marker click). */
   openFindingId?: string | undefined;
   openFindingNonce?: number | undefined;
+  /**
+   * File-scope hint for a clicked coordinate-only finding (element-less but
+   * file-linked). When set in 3D with nothing element-selected, findings are
+   * scoped to this file so the clicked finding is present and can expand,
+   * instead of falling back to project/unlinked scope (which would omit it).
+   */
+  openFindingFileId?: string | undefined;
   isPdf?: boolean;
   pdfCurrentPage?: number;
   /**
@@ -68,6 +75,7 @@ export function EntityInspectorPanel({
   requestNonce,
   openFindingId,
   openFindingNonce,
+  openFindingFileId,
   isPdf,
   pdfCurrentPage,
   floorPlan,
@@ -126,6 +134,11 @@ export function EntityInspectorPanel({
   // Floor-plan findings (file-scoped, IFC-anchored) replace the project-scope
   // fallback when on the plan surface with no 3D element selected.
   const isFloorPlanMode = floorPlan === true && isProjectMode;
+  // A coordinate-only (element-less but file-linked) finding was clicked: list
+  // by file so it's present and can expand, instead of project/unlinked scope
+  // (which omits it). A live element selection or the plan surface still win.
+  const useFileHint =
+    isProjectMode && !isFloorPlanMode && openFindingFileId !== undefined;
 
   // --- Early states (after all hooks) ---
   if (isPdf === true) {
@@ -154,6 +167,8 @@ export function EntityInspectorPanel({
         scope={{ kind: 'file', fileId }}
         autoOpenNonce={autoOpenNonce}
         onAutoOpenConsumed={handleAutoOpenConsumed}
+        openFindingId={openFindingId}
+        openFindingNonce={openFindingNonce}
         documentHandle={documentHandle}
         viewerHandle={viewerHandle}
         activeFileType="pdf"
@@ -173,6 +188,36 @@ export function EntityInspectorPanel({
         scope={{ kind: 'floorplanIfc', modelId, fileId }}
         autoOpenNonce={autoOpenNonce}
         onAutoOpenConsumed={handleAutoOpenConsumed}
+        openFindingId={openFindingId}
+        openFindingNonce={openFindingNonce}
+        viewerHandle={viewerHandle}
+        activeFileType="ifc"
+        activeModelId={modelId}
+        activeFileId={fileId}
+        resolvePickedGlobalId={resolvePickedGlobalId}
+        viewMode={viewMode}
+        floorPlanHandle={floorPlanHandle}
+        convertFloorPlanPoint={convertFloorPlanPoint}
+      />
+    );
+  } else if (useFileHint) {
+    // Clicked a coordinate-only finding in 3D: scope to its file so the row is
+    // present and can auto-expand (project/unlinked scope would omit it). New
+    // findings from the inline create form still anchor as IFC.
+    header = (
+      <ElementHeader
+        type={metadata?.schema ?? 'IFC'}
+        name={metadata?.project.name ?? null}
+      />
+    );
+    body = (
+      <EntityFindingsBody
+        projectId={projectId}
+        scope={{ kind: 'file', fileId: openFindingFileId! }}
+        autoOpenNonce={autoOpenNonce}
+        onAutoOpenConsumed={handleAutoOpenConsumed}
+        openFindingId={openFindingId}
+        openFindingNonce={openFindingNonce}
         viewerHandle={viewerHandle}
         activeFileType="ifc"
         activeModelId={modelId}
@@ -196,6 +241,8 @@ export function EntityInspectorPanel({
         scope={{ kind: 'project' }}
         autoOpenNonce={autoOpenNonce}
         onAutoOpenConsumed={handleAutoOpenConsumed}
+        openFindingId={openFindingId}
+        openFindingNonce={openFindingNonce}
         viewerHandle={viewerHandle}
         activeFileType="ifc"
         activeModelId={modelId}
@@ -239,7 +286,7 @@ export function EntityInspectorPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {header}
-      {isProjectMode && !isFloorPlanMode ? (
+      {isProjectMode && !isFloorPlanMode && !useFileHint ? (
         <OrphanedItemsNotice projectId={projectId} modelId={modelId} metadata={metadata} />
       ) : null}
       <div className="min-h-0 flex-1 overflow-hidden">{body}</div>

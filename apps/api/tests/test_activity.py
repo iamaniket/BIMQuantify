@@ -128,15 +128,23 @@ async def test_activity_limit_bounds(
     client: AsyncClient,
     org_user: dict[str, str],
 ) -> None:
-    """Page size is clamped to 25-100 at the query layer."""
+    """Page size is clamped to 20-100 at the query layer."""
     project = await _create_project(client, org_user["access_token"])
     await _create_model(client, org_user["access_token"], project["id"])
 
     too_small = await client.get(
-        _activity_url(project["id"], limit=24),
+        _activity_url(project["id"], limit=19),
         headers=_auth(org_user["access_token"]),
     )
     assert too_small.status_code == 422
+
+    # 20 is the floor — the portal's smallest page-size option. Guarding it keeps
+    # the UI default (20) from silently 422-ing the activity feed.
+    at_floor = await client.get(
+        _activity_url(project["id"], limit=20),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert at_floor.status_code == 200
 
     too_large = await client.get(
         _activity_url(project["id"], limit=101),

@@ -84,7 +84,7 @@ function AccountHero({
           <img
             src={avatarUrl}
             alt={userName}
-            className="h-[140px] w-[200px] rounded-[10px] object-cover shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]"
+            className="h-[112px] w-[160px] rounded-[10px] object-cover shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]"
           />
         ) : (
           <HeroImage>
@@ -635,7 +635,7 @@ export default function AccountPage(): JSX.Element {
       <PageShell
         hero={
           <div className="relative flex h-full items-center gap-5 bg-surface-main px-5 py-4">
-            <Skeleton className="h-[140px] w-[200px] rounded-[10px]" />
+            <Skeleton className="h-[112px] w-[160px] rounded-[10px]" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-8 w-64" />
               <Skeleton className="h-4 w-48" />

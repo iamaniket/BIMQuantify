@@ -166,7 +166,6 @@ export function IfcViewerCanvas({
     <div
       ref={splitContainerRef}
       className="relative h-full w-full overflow-hidden"
-      {...(viewMode !== '2d' ? { 'data-viewer-shortcut-scope': '' } : {})}
     >
       <div ref={threeDPaneRef} className={threeDPaneClass} style={threeDSplitStyle}>
         {ifcViewerEl}

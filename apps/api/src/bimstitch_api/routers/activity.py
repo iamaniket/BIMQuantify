@@ -87,7 +87,7 @@ async def list_project_activity(
     response: Response,
     category: str | None = Query(default=None, pattern="^(upload|scan|change)$"),
     since: datetime | None = Query(default=None),
-    limit: int = Query(default=25, ge=25, le=100),
+    limit: int = Query(default=20, ge=20, le=100),
     offset: int = Query(default=0, ge=0),
     sort: SortParams = Depends(sort_params),
     session: AsyncSession = Depends(get_tenant_session),
