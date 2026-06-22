@@ -228,8 +228,9 @@ async def test_activity_includes_finding_lifecycle(
     org_user: dict[str, str],
 ) -> None:
     """Creating and resolving a finding both surface in the project feed,
-    scoped to the project and categorized as a change. Guards the two bugs
-    that hid findings: the missing project_id and the action whitelist."""
+    scoped to the project. Create lands in the "create" bucket, the resolve
+    edit in "change". Guards the two bugs that hid findings: the missing
+    project_id and the action whitelist."""
     token = org_user["access_token"]
     project = await _create_project(client, token)
 
@@ -276,7 +277,75 @@ async def test_activity_includes_finding_lifecycle(
         entry = by_action[action]
         assert entry["resource_type"] == "finding"
         assert entry["resource_id"] == finding_id
-        assert entry["category"] == "change"
+    assert by_action["finding.created"]["category"] == "create"
+    assert by_action["finding.resolved"]["category"] == "change"
+
+
+@pytest.mark.asyncio
+async def test_activity_create_category_filter(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """The `create` filter returns only `.created` events (model.created here),
+    every row tagged "create"."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"])
+
+    resp = await client.get(
+        _activity_url(project["id"], category="create"),
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200
+    entries = resp.json()
+    assert entries, "expected at least the model.created row"
+    assert all(e["category"] == "create" for e in entries)
+    assert all(e["action"].endswith(".created") for e in entries)
+    assert "model.created" in {e["action"] for e in entries}
+
+
+@pytest.mark.asyncio
+async def test_activity_delete_category(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """Deleting a finding surfaces a `finding.deleted` row in the "delete"
+    bucket, and the `delete` filter returns only `.deleted` rows."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    created = await client.post(
+        f"/projects/{project['id']}/findings",
+        json={
+            "title": "Tijdelijke bevinding",
+            "description": "Wordt verwijderd.",
+        },
+        headers=_auth(token),
+    )
+    assert created.status_code == 201, created.text
+    finding_id = created.json()["id"]
+
+    deleted = await client.delete(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        headers=_auth(token),
+    )
+    assert deleted.status_code in (200, 204), deleted.text
+
+    resp = await client.get(_activity_url(project["id"]), headers=_auth(token))
+    assert resp.status_code == 200
+    by_action = {e["action"]: e for e in resp.json()}
+    assert "finding.deleted" in by_action
+    assert by_action["finding.deleted"]["category"] == "delete"
+
+    filtered = await client.get(
+        _activity_url(project["id"], category="delete"),
+        headers=_auth(token),
+    )
+    assert filtered.status_code == 200
+    entries = filtered.json()
+    assert entries, "expected at least the finding.deleted row"
+    assert all(e["category"] == "delete" for e in entries)
+    assert all(e["action"].endswith(".deleted") for e in entries)
 
 
 @pytest.mark.asyncio

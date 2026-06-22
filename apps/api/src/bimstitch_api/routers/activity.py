@@ -37,9 +37,12 @@ router = APIRouter(prefix="/projects/{project_id}/activity", tags=["activity"])
 # The feed surfaces EVERY project-scoped audit row (so new event types appear
 # automatically) except a small denylist of noisy "upload started" rows — the
 # terminal completed/rejected row is the one worth showing. The category
-# badge/filter is derived from the action: a curated upload/scan set, with
-# everything else (findings, risks, bcf, plan edits, project edits, …) falling
-# through to the "change" catch-all.
+# badge/filter is derived from the action: a curated upload/scan set is checked
+# first, then a `.created`/`.deleted` suffix rule buckets every entity's create
+# and delete events, with everything else (updates, risks, bcf, plan edits, …)
+# falling through to the "change" catch-all. Suffix-after-curated ordering keeps
+# the two intentional exceptions in place: report.created stays "scan" and
+# project_file.deleted stays "upload".
 _UPLOAD_ACTIONS: frozenset[str] = frozenset(
     {
         "project_file.completed",
@@ -78,6 +81,10 @@ def _category_for(action: str) -> str:
         return "upload"
     if action in _SCAN_ACTIONS:
         return "scan"
+    if action.endswith(".created"):
+        return "create"
+    if action.endswith(".deleted"):
+        return "delete"
     return "change"
 
 
@@ -85,7 +92,7 @@ def _category_for(action: str) -> str:
 async def list_project_activity(
     project_id: UUID,
     response: Response,
-    category: str | None = Query(default=None, pattern="^(upload|scan|change)$"),
+    category: str | None = Query(default=None, pattern="^(upload|scan|create|change|delete)$"),
     since: datetime | None = Query(default=None),
     limit: int = Query(default=20, ge=20, le=100),
     offset: int = Query(default=0, ge=0),
@@ -122,9 +129,28 @@ async def list_project_activity(
         base = base.where(AuditLog.action.in_(_UPLOAD_ACTIONS))
     elif category == "scan":
         base = base.where(AuditLog.action.in_(_SCAN_ACTIONS))
+    elif category == "create":
+        # Mirrors _category_for: a `.created` action that isn't a curated
+        # upload/scan (report.created stays "scan").
+        base = base.where(
+            AuditLog.action.notin_(_UPLOAD_ACTIONS | _SCAN_ACTIONS),
+            AuditLog.action.like("%.created"),
+        )
+    elif category == "delete":
+        # Mirrors _category_for: a `.deleted` action that isn't a curated
+        # upload/scan (project_file.deleted stays "upload").
+        base = base.where(
+            AuditLog.action.notin_(_UPLOAD_ACTIONS | _SCAN_ACTIONS),
+            AuditLog.action.like("%.deleted"),
+        )
     elif category == "change":
-        # The catch-all bucket: everything that isn't an upload or a scan.
-        base = base.where(AuditLog.action.notin_(_UPLOAD_ACTIONS | _SCAN_ACTIONS))
+        # The catch-all bucket: everything that isn't an upload, scan, create,
+        # or delete.
+        base = base.where(
+            AuditLog.action.notin_(_UPLOAD_ACTIONS | _SCAN_ACTIONS),
+            AuditLog.action.notlike("%.created"),
+            AuditLog.action.notlike("%.deleted"),
+        )
 
     if since is not None:
         since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)

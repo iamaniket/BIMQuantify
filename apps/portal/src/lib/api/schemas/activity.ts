@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ActivityCategorySchema = z.enum(['upload', 'scan', 'change']);
+export const ActivityCategorySchema = z.enum(['upload', 'scan', 'create', 'change', 'delete']);
 export type ActivityCategory = z.infer<typeof ActivityCategorySchema>;
 
 export const ProjectActivityEntrySchema = z.object({

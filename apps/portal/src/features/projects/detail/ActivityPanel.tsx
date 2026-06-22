@@ -37,7 +37,9 @@ function categoryStyle(category: string): { bg: string; fg: string; glyph: strin
   switch (category) {
     case 'upload': return { bg: 'rgba(44,86,151,0.10)', fg: 'var(--primary)', glyph: '↑' };
     case 'scan':   return { bg: 'rgba(95,217,158,0.18)', fg: 'var(--success)', glyph: '✓' };
+    case 'create': return { bg: 'rgba(95,136,178,0.16)', fg: 'var(--info)', glyph: '+' };
     case 'change': return { bg: 'rgba(169,116,40,0.16)', fg: 'var(--warning)', glyph: '✎' };
+    case 'delete': return { bg: 'rgba(201,71,54,0.14)', fg: 'var(--error)', glyph: '×' };
     default:       return { bg: 'var(--surface-high)', fg: 'var(--foreground-secondary)', glyph: '·' };
   }
 }
@@ -45,7 +47,9 @@ function categoryStyle(category: string): { bg: string; fg: string; glyph: strin
 const CATEGORY_LABEL_KEY: Record<ActivityCategory, string> = {
   upload: 'typeUploads',
   scan: 'typeScans',
+  create: 'typeCreate',
   change: 'typeChanges',
+  delete: 'typeDelete',
 };
 
 const ACTION_I18N_KEY: Record<string, string> = {
@@ -247,7 +251,9 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
             <option value="all">{t('typeAll')}</option>
             <option value="upload">{t('typeUploads')}</option>
             <option value="scan">{t('typeScans')}</option>
+            <option value="create">{t('typeCreate')}</option>
             <option value="change">{t('typeChanges')}</option>
+            <option value="delete">{t('typeDelete')}</option>
           </Select>
         </div>
       </div>
