@@ -15,6 +15,17 @@ export const projectActivityKey = <P>(
 ): readonly ['projects', string, 'activity', P] =>
   ['projects', projectId, 'activity', params] as const;
 
+/** Prefix key matching every page/filter/sort of one project's activity feed. */
+export const projectActivityRootKey = (
+  projectId: string,
+): readonly ['projects', string, 'activity'] =>
+  ['projects', projectId, 'activity'] as const;
+
+/** True for any project-activity feed query key, regardless of project/params.
+ * Used by the global mutation + WebSocket hooks that don't know the active id. */
+export const isProjectActivityQueryKey = (key: readonly unknown[]): boolean =>
+  key[0] === 'projects' && key[2] === 'activity';
+
 export const projectDeadlineSettingsKey = (projectId: string): readonly ['projects', string, 'deadline-settings'] => ['projects', projectId, 'deadline-settings'] as const;
 
 export const orgDeadlineSettingsKey = ['org-deadline-settings'] as const;

@@ -6,11 +6,13 @@ import type { JSX } from 'react';
 
 import { Button } from '@bimstitch/ui';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
+import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { Finding, LinkedFileTypeValue } from '@/lib/api/schemas';
 
 import { FindingDetailFields } from './FindingDetailFields';
+import type { ConvertFloorPlanPoint } from './FindingPinButton';
 import { useFindingDetailForm } from './useFindingDetailForm';
 
 type Props = {
@@ -23,6 +25,17 @@ type Props = {
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
   activeFileType?: LinkedFileTypeValue | null | undefined;
+  /** Active model/file to attach when pinning a previously-unlinked finding. */
+  activeModelId?: string | null | undefined;
+  activeFileId?: string | null | undefined;
+  /** Resolve the picked element's GlobalId (active model only), else null. */
+  resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
+  /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
+  viewMode?: ViewMode | undefined;
+  /** Floor-plan handle (2D plan surface) for picking in 2D mode. */
+  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Convert a normalized plan point to a 3D world anchor. */
+  convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
 };
 
 /**
@@ -38,6 +51,12 @@ export function FindingDetailForm({
   documentHandle,
   viewerHandle,
   activeFileType,
+  activeModelId,
+  activeFileId,
+  resolvePickedGlobalId,
+  viewMode,
+  floorPlanHandle,
+  convertFloorPlanPoint,
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const api = useFindingDetailForm(projectId, finding, { onSaved, onDeleted });
@@ -52,6 +71,12 @@ export function FindingDetailForm({
         documentHandle={documentHandle}
         viewerHandle={viewerHandle}
         activeFileType={activeFileType}
+        activeModelId={activeModelId}
+        activeFileId={activeFileId}
+        resolvePickedGlobalId={resolvePickedGlobalId}
+        viewMode={viewMode}
+        floorPlanHandle={floorPlanHandle}
+        convertFloorPlanPoint={convertFloorPlanPoint}
       />
 
       {(canEdit || canDelete) && (

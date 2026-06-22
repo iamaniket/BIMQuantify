@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 import type { ProgressReporter, WorkerJob } from '../../queue/queue.js';
 import { runReportJob } from './index.js';
-import { reportInstrumentSchema, reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
+import { reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
 import { renderHtml, type VerklaringData } from './templates/verklaring.js';
 import { embedTemplateLogo, mergeTemplateCover } from './templateAssets.js';
 
@@ -19,7 +19,6 @@ const PayloadSchema: z.ZodType<VerklaringData & { storage_key: string }> = z
     generated_at: z.string().min(1),
     locale: z.string().min(1),
     project: reportProjectSchema,
-    instrument: reportInstrumentSchema,
     declaration: z.object({
       kwaliteitsborger: z.string().nullable().optional(),
       kwaliteitsborger_email: z.string().nullable().optional(),

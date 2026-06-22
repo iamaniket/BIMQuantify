@@ -147,7 +147,7 @@ export function SnagShowcaseSection(): JSX.Element {
                 </li>
                 <li className="flex items-center gap-2">
                   <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  {t('hintClick')}
+                  {t('hintWatch')}
                 </li>
               </ul>
               <div className="pointer-events-auto mt-2 flex flex-wrap items-center gap-4">

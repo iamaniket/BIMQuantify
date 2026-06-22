@@ -49,6 +49,11 @@ type Props = {
   linkedFileType?: LinkedFileTypeValue | null;
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
+  /** Active model/file to attach when pinning (even in no-selection scope). */
+  activeModelId?: string | null | undefined;
+  activeFileId?: string | null | undefined;
+  /** Resolve the picked element's GlobalId (active model only), else null. */
+  resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
   onCreated: (findingId: string) => void;
   onCancel?: (() => void) | undefined;
 };
@@ -85,6 +90,9 @@ export function FindingCreateForm({
   linkedFileType,
   documentHandle,
   viewerHandle,
+  activeModelId,
+  activeFileId,
+  resolvePickedGlobalId,
   onCreated,
   onCancel,
 }: Props): JSX.Element {
@@ -129,8 +137,8 @@ export function FindingCreateForm({
       values,
       { photoIds, referenceAttachmentIds, customValues, template },
       {
-        linkedModelId,
-        linkedFileId,
+        linkedModelId: pinAnchor?.linked_model_id ?? linkedModelId,
+        linkedFileId: pinAnchor?.linked_file_id ?? linkedFileId,
         linkedElementGlobalId: pinAnchor?.linkedElementGlobalId ?? linkedElementGlobalId,
         linkedPoint: anchorPoint,
         linkedFileType: pinAnchor?.linked_file_type ?? linkedFileType,
@@ -210,6 +218,9 @@ export function FindingCreateForm({
         onAnchorChange={setPinAnchor}
         documentHandle={documentHandle}
         viewerHandle={viewerHandle}
+        linkModelId={activeModelId}
+        linkFileId={activeFileId}
+        resolvePickedGlobalId={resolvePickedGlobalId}
       />
 
       {showPhotos && (

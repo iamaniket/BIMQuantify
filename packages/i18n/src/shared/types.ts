@@ -10,8 +10,6 @@ export type SharedMessages = {
     privacy: string;
     terms: string;
     dpa: string;
-    backToSite: string;
-    backToPortal: string;
     navAriaLabel: string;
   };
   framework: {

@@ -7,12 +7,19 @@
  * object regardless of zoom. A small screen-space sphere marks the
  * pivot during the drag and fades out on release.
  *
- * How latency is avoided: `pick()` is async (worker raycast, ~5–50 ms).
+ * How latency is avoided: `pickAll()` is async (worker raycast, ~5–50 ms).
  * Awaiting it inside pointerdown lets camera-controls start orbiting
  * around the *old* pivot for several frames. Instead we maintain a
- * hover cache, throttled to ~150 ms, fed by the existing
- * `pointer:move` bus event. On pointerdown the pivot is read
- * synchronously from the cache.
+ * hover cache of the ray's hits, throttled to ~150 ms, fed by the
+ * existing `pointer:move` bus event. On pointerdown the candidate
+ * points are distilled synchronously from the cached hits.
+ *
+ * Why every hit, not just the closest: a wall in front of the target
+ * (opaque, or x-rayed so you can see through it) is the nearest surface,
+ * so `pick()`'s single closest hit would anchor the orbit to the wall.
+ * `pickAll()` returns every surface the ray crosses; `resolvePivot()`
+ * then prefers the selected element and skips see-through / section-clipped
+ * surfaces (see ./resolvePivot.ts).
  *
  * Why a capture-phase pointerdown listener: mouse-bindings attaches in
  * bubble phase, and camera-controls 2.x also bubbles. A capture-phase
@@ -22,8 +29,17 @@
 
 import * as THREE from 'three';
 
-import { pick } from '../../../core/Raycaster.js';
-import type { Plugin, ViewerContext } from '../../../core/types.js';
+import { pickAll, type PickResult } from '../../../core/Raycaster.js';
+import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
+import { isPointClipped, type SectionPlaneData } from '../shared/clipping.js';
+import type { SelectionPluginAPI } from '../selection/index.js';
+import type { XrayPluginAPI } from '../xray/index.js';
+import {
+  reduceHits,
+  resolvePivot,
+  type PivotCandidates,
+  type PivotHit,
+} from './resolvePivot.js';
 
 const NAME = 'pivot-rotate' as const;
 
@@ -69,6 +85,13 @@ const DEFAULTS = {
   truckSpeedClamp: [0.25, 50] as [number, number],
   debug: false,
 };
+
+/**
+ * Ray hits on an element at or below this opacity are treated as "see-through"
+ * and skipped when choosing the orbit pivot (x-rayed items fade to 0.08). The
+ * pivot lands on the first solid surface behind them instead.
+ */
+const SEE_THROUGH_OPACITY = 0.5;
 
 type ButtonName = 'left' | 'middle' | 'right';
 
@@ -116,6 +139,11 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
 
   return {
     name: NAME,
+    // Selection drives the pivot preference; x-ray tells us which surfaces are
+    // see-through. Both register before this plugin (see IfcViewer builtIns),
+    // but we still read them lazily through ctx.plugins so order can't bite.
+    dependencies: ['selection'],
+    optionalDependencies: ['xray'],
 
     install(ctx: ViewerContext) {
       const controls = ctx.cameraControls as unknown as {
@@ -149,11 +177,74 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       // orbit pivot and break look-in-place. Toggled via pivotRotate.enable/disable.
       let enabled = true;
 
-      // Hover cache. lastHit is in world space; null means "no geometry
-      // under the cursor at the last pick".
-      let lastHit: THREE.Vector3 | null = null;
+      // Hover cache: every surface the ray crossed at the last pick, sorted
+      // near→far. Selection / x-ray / section state is applied at pointerdown
+      // (not baked here) so a selection made since the last hover still counts.
+      let cachedHits: PickResult[] = [];
       let pickInflight = false;
       let lastPickAt = 0;
+
+      // Sibling-plugin reads. Resolved lazily so install order can't matter;
+      // both are registered before this plugin in practice. `selection` is a
+      // hard dependency; `xray` is optional (no x-ray → nothing is see-through).
+      const getSelection = (): SelectionPluginAPI | null =>
+        ctx.plugins.get<SelectionPluginAPI>('selection');
+      const getXray = (): XrayPluginAPI | null =>
+        ctx.plugins.get<XrayPluginAPI>('xray');
+
+      const isSeeThrough = (xray: XrayPluginAPI | null, item: ItemId): boolean => {
+        if (!xray) return false;
+        if (xray.hasItem(item)) return true;
+        const o = xray.getItemOpacity(item);
+        return typeof o === 'number' && o <= SEE_THROUGH_OPACITY;
+      };
+
+      const selectionHasAny = (): boolean => {
+        const sel = getSelection();
+        return !!sel && (sel.isAllSelected() || sel.size() > 0);
+      };
+
+      // Active section planes, kept in sync from the bus (mirrors selection).
+      let cachedSectionPlanes: SectionPlaneData[] = [];
+      const offSection = ctx.events.on('section:change', ({ planes }) => {
+        cachedSectionPlanes = planes;
+      });
+
+      // Selection centroid, recomputed whenever the selection changes so the
+      // pointerdown path stays synchronous. Null when nothing is selected.
+      let selectionCentroid: THREE.Vector3 | null = null;
+      const refreshCentroid = (): void => {
+        if (!ctx.commands.has('camera.getSelectionCentroid')) {
+          selectionCentroid = null;
+          return;
+        }
+        void ctx.commands
+          .execute<undefined, { x: number; y: number; z: number } | null>(
+            'camera.getSelectionCentroid',
+          )
+          .then((c) => {
+            selectionCentroid = c ? new THREE.Vector3(c.x, c.y, c.z) : null;
+          })
+          .catch(() => {
+            selectionCentroid = null;
+          });
+      };
+      const offSelection = ctx.events.on('selection:change', () => refreshCentroid());
+
+      // Distil the cached ray hits into pivot candidates using *live* selection
+      // / x-ray / section state. Cheap (a few Set lookups + plane dot products
+      // over a handful of hits) — safe to run on pointerdown.
+      const computeCandidates = (): PivotCandidates => {
+        const sel = getSelection();
+        const xray = getXray();
+        const hits: PivotHit[] = cachedHits.map((h) => ({
+          point: h.point,
+          selected: sel?.hasItem(h.item) ?? false,
+          seeThrough: isSeeThrough(xray, h.item),
+          clipped: isPointClipped(h.point, cachedSectionPlanes),
+        }));
+        return reduceHits(hits);
+      };
 
       // Deferred-pivot state. We hold off calling setOrbitPoint until
       // pointer movement exceeds a dead zone, confirming a drag gesture.
@@ -172,16 +263,12 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         if (now - lastPickAt < opts.hoverPickThrottleMs) return;
         pickInflight = true;
         lastPickAt = now;
-        void pick(ctx, ndc)
-          .then((res) => {
-            if (res) {
-              lastHit = new THREE.Vector3(res.point.x, res.point.y, res.point.z);
-            } else {
-              lastHit = null;
-            }
+        void pickAll(ctx, ndc)
+          .then((hits) => {
+            cachedHits = hits;
           })
           .catch(() => {
-            lastHit = null;
+            cachedHits = [];
           })
           .finally(() => {
             pickInflight = false;
@@ -355,36 +442,45 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         const buttonName = BUTTON_NAME[ev.button];
         if (!buttonName) return;
         const action = controls.mouseButtons[buttonName];
+        if (action !== TRUCK && action !== ROTATE) return;
 
-        // ── TRUCK (pan): calibrate speed + cursor, let camera-controls handle drag ──
+        const candidates = computeCandidates();
+
+        // ── TRUCK (pan): calibrate speed to the visible surface depth, then let
+        // camera-controls handle the drag. Pan depth follows the surface you can
+        // see, so use the solid/any hit — never the selection centroid. ──
         if (action === TRUCK) {
-          calibrateTruckSpeed(lastHit);
+          const depth = candidates.solidHit ?? candidates.anyHit;
+          calibrateTruckSpeed(
+            depth ? new THREE.Vector3(depth.x, depth.y, depth.z) : null,
+          );
           canvas.style.cursor = 'grabbing';
           isPanning = true;
           return; // don't stopImmediatePropagation — camera-controls needs the event
         }
 
-        if (action !== ROTATE) return;
-
-        // Snapshot the hover-cache pivot but don't apply yet — wait for
-        // the pointer to move past the dead zone to confirm a drag.
+        // ── ROTATE: snapshot the resolved pivot but don't apply yet — wait for
+        // the pointer to move past the dead zone to confirm a drag. ──
         downClientX = ev.clientX;
         downClientY = ev.clientY;
         pivotApplied = false;
         gestureButton = ev.button;
 
-        if (lastHit) {
-          deferredPivot = lastHit.clone();
-          deferredSource = 'hover-cache';
+        const resolution = resolvePivot(candidates, {
+          hasSelection: selectionHasAny(),
+          selectionCentroid,
+          sceneCentre: computeSceneCenter(),
+        });
+        if (resolution) {
+          deferredPivot = new THREE.Vector3(
+            resolution.point.x,
+            resolution.point.y,
+            resolution.point.z,
+          );
+          deferredSource = resolution.source;
         } else {
-          const center = computeSceneCenter();
-          if (center) {
-            deferredPivot = center;
-            deferredSource = 'scene-centre';
-          } else {
-            deferredPivot = null;
-            deferredSource = '';
-          }
+          deferredPivot = null;
+          deferredSource = '';
         }
 
         // Block camera-controls (bubble phase) from starting rotation
@@ -518,6 +614,8 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         window.removeEventListener('pointercancel', onPointerUp);
         offMove();
         offModel();
+        offSection();
+        offSelection();
         controls.truckSpeed = defaultTruckSpeed;
         if (raf) cancelAnimationFrame(raf);
         raf = 0;

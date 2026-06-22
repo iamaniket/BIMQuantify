@@ -7,8 +7,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'rea
 import { Badge, Button, Input, SplitButton, type SplitButtonItem } from '@bimstitch/ui';
 import { DetailCard, DetailCardBody, DetailCardRow } from '@bimstitch/ui';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
+import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
+import type { ConvertFloorPlanPoint } from '@/features/projects/detail/FindingPinButton';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { LoadMoreButton } from '@/components/shared/resource/LoadMoreButton';
 import { useFindingTemplates } from '@/features/findingTemplates/useFindingTemplates';
@@ -64,6 +66,17 @@ type EntityFindingsBodyProps = {
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
   activeFileType?: LinkedFileTypeValue | null | undefined;
+  /** Active model/file to attach when pinning (incl. the no-selection scope). */
+  activeModelId?: string | null | undefined;
+  activeFileId?: string | null | undefined;
+  /** Resolve the picked element's GlobalId (active model only), else null. */
+  resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
+  /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
+  viewMode?: ViewMode | undefined;
+  /** Floor-plan handle (2D plan surface) for picking in 2D mode. */
+  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Convert a normalized plan point to a 3D world anchor. */
+  convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
   onNavigateToPage?: ((page: number) => void) | undefined;
 };
 
@@ -77,6 +90,12 @@ export function EntityFindingsBody({
   documentHandle,
   viewerHandle,
   activeFileType,
+  activeModelId,
+  activeFileId,
+  resolvePickedGlobalId,
+  viewMode,
+  floorPlanHandle,
+  convertFloorPlanPoint,
   onNavigateToPage,
 }: EntityFindingsBodyProps): JSX.Element {
   const t = useTranslations('viewerFindings');
@@ -225,6 +244,9 @@ export function EntityFindingsBody({
               linkedFileType={LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
               documentHandle={documentHandle}
               viewerHandle={viewerHandle}
+              activeModelId={activeModelId}
+              activeFileId={activeFileId}
+              resolvePickedGlobalId={resolvePickedGlobalId}
               onCreated={(id) => {
                 setCreateExpanded(false);
                 setPendingPoint(null);
@@ -304,6 +326,12 @@ export function EntityFindingsBody({
                       documentHandle={documentHandle}
                       viewerHandle={viewerHandle}
                       activeFileType={activeFileType ?? LINKED_FILE_TYPE_BY_SCOPE[scope.kind]}
+                      activeModelId={activeModelId}
+                      activeFileId={activeFileId}
+                      resolvePickedGlobalId={resolvePickedGlobalId}
+                      viewMode={viewMode}
+                      floorPlanHandle={floorPlanHandle}
+                      convertFloorPlanPoint={convertFloorPlanPoint}
                     />
                   </DetailCardBody>
                 </DetailCard>

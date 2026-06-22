@@ -61,13 +61,10 @@ const EMPTY_DEFAULTS: ProjectFormValues = {
   name: '',
   description: '',
   reference_code: '',
-  status: 'planning',
   phase: 'design',
   delivery_date: '',
   planned_start_date: '',
   building_type: undefined,
-  consequence_class: undefined,
-  instrument_id: '',
   street: '',
   house_number: '',
   postal_code: '',
@@ -77,7 +74,6 @@ const EMPTY_DEFAULTS: ProjectFormValues = {
   bag_id: '',
   latitude: undefined,
   longitude: undefined,
-  contractor_id: '',
 };
 
 function projectToValues(project: Project): ProjectFormValues {
@@ -85,13 +81,10 @@ function projectToValues(project: Project): ProjectFormValues {
     name: project.name,
     description: project.description ?? '',
     reference_code: project.reference_code ?? '',
-    status: project.status,
     phase: project.phase,
     delivery_date: project.delivery_date ?? '',
     planned_start_date: project.planned_start_date ?? '',
     building_type: project.building_type ?? undefined,
-    consequence_class: project.consequence_class ?? undefined,
-    instrument_id: project.instrument_id ?? '',
     street: project.street ?? '',
     house_number: project.house_number ?? '',
     postal_code: project.postal_code ?? '',
@@ -101,7 +94,6 @@ function projectToValues(project: Project): ProjectFormValues {
     bag_id: project.bag_id ?? '',
     latitude: project.latitude ?? undefined,
     longitude: project.longitude ?? undefined,
-    contractor_id: project.contractor_id ?? '',
   };
 }
 
@@ -265,13 +257,10 @@ export function ProjectFormDialog(props: Props): JSX.Element {
 
     const sharedFields = {
       reference_code: nullableTrim(values.reference_code),
-      status: values.status,
       phase: values.phase,
       delivery_date: nullableTrim(values.delivery_date),
       planned_start_date: nullableTrim(values.planned_start_date),
       building_type: values.building_type ?? null,
-      consequence_class: values.consequence_class ?? null,
-      instrument_id: nullableTrim(values.instrument_id),
       street: nullableTrim(values.street),
       house_number: nullableTrim(values.house_number),
       postal_code: nullableTrim(values.postal_code),
@@ -281,7 +270,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
       bag_id: nullableTrim(values.bag_id),
       latitude: values.latitude ?? null,
       longitude: values.longitude ?? null,
-      contractor_id: nullableTrim(values.contractor_id),
     };
 
     if (mode === 'create') {

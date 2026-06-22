@@ -1,14 +1,18 @@
 import { apiClient } from './client';
 import {
+  CalendarDeadlineListSchema,
   DeadlineListSchema,
   DeadlineReadinessSchema,
   DeadlineSchema,
+  DeadlineSummarySchema,
   EffectiveDeadlineNotificationSettingsListSchema,
   EffectiveDeadlineNotificationSettingsSchema,
+  type CalendarDeadlineList,
   type Deadline,
   type DeadlineList,
   type DeadlineNotificationSettingsUpdate,
   type DeadlineReadiness,
+  type DeadlineSummary,
   type EffectiveDeadlineNotificationSettings,
   type EffectiveDeadlineNotificationSettingsList,
   type FileDeadlineBody,
@@ -53,6 +57,22 @@ export async function getDeadlineReadiness(
     DeadlineReadinessSchema,
     accessToken,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Org-wide calendar (cross-project deadline aggregation)
+// ---------------------------------------------------------------------------
+
+export async function listOrgDeadlines(
+  accessToken: string,
+): Promise<CalendarDeadlineList> {
+  return apiClient.get('/deadlines', CalendarDeadlineListSchema, accessToken);
+}
+
+export async function getOrgDeadlineSummary(
+  accessToken: string,
+): Promise<DeadlineSummary> {
+  return apiClient.get('/deadlines/summary', DeadlineSummarySchema, accessToken);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,20 +1,26 @@
 /**
- * Finding-Templates E2E — full CRUD lifecycle
+ * Org-Templates E2E — finding-template CRUD lifecycle
  *
- * Exercises the /templates page as a superadmin against the real API.
- * The E2E seed database starts with zero finding templates.
+ * Exercises the unified /templates page (orgTemplates feature) as a superadmin
+ * against the real API. The E2E seed database starts with zero templates.
  * Serial test order: each test builds on the state left by the previous one.
  *
- *  T1.  Navigate to /templates — verify empty Overview tab
+ * The builder is a multi-step wizard. For a finding template the steps are:
+ *   1. Type   — choose "Finding template" vs "Report template"
+ *   2. Setup  — name, description, "Set as default", built-in field toggles
+ *   3. Custom fields — add/remove custom fields
+ * Create flows open on step 1 (Type); edit flows open on step 2 (Setup).
+ *
+ *  T1.  Navigate to /templates — verify Overview tab renders its sections
  *  T2.  Templates tab — verify empty state with "New template" button
- *  T3.  Create the first template via the builder dialog (with a custom field)
+ *  T3.  Create the first template via the builder wizard (with a custom field)
  *  T4.  Verify it appears in the table and Overview
  *  T5.  Edit the template (rename + add a field)
  *  T6.  Create a second template and mark it as default
  *  T7.  Set-as-default swaps the badge to the new template
  *  T8.  Delete the non-default template
  *  T9.  Verify the default template cannot be deleted (409 guard)
- *  T10. Cleanup — restore clean state
+ *  T10. Cleanup — verify the page still renders
  */
 
 import { expect, test } from '@playwright/test';
@@ -34,11 +40,23 @@ async function gotoTemplates(page: import('@playwright/test').Page): Promise<voi
   const { email } = requireSuperAdminCreds();
   await injectSavedAuth(page, email);
   await page.goto('/en/templates');
-  // Wait for the API data to arrive (hero KPI shows "Templates" count)
+  // Wait for the hero to render (heading shows the page title).
   await expect(page.getByRole('heading', { name: /^templates$/i, level: 1 })).toBeVisible();
 }
 
-test.describe.serial('Finding templates CRUD', () => {
+/**
+ * Advance the create wizard from the Type step to the Setup step by selecting
+ * the "Finding template" type and clicking Next. (Create flows open on Type;
+ * edit flows already open on Setup.)
+ */
+async function pickFindingTypeAndContinue(
+  dialog: import('@playwright/test').Locator,
+): Promise<void> {
+  await dialog.getByRole('button', { name: /finding template/i }).click();
+  await dialog.getByRole('button', { name: /^next$/i }).click();
+}
+
+test.describe.serial('Org templates — finding CRUD', () => {
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(120_000);
 
@@ -59,20 +77,22 @@ test.describe.serial('Finding templates CRUD', () => {
   });
 
   /* ------------------------------------------------------------------ */
-  /*  T1 — Empty Overview tab                                            */
+  /*  T1 — Overview tab (empty state)                                    */
   /* ------------------------------------------------------------------ */
-  test('T1: Overview tab shows intro card (empty state)', async ({ page }) => {
+  test('T1: Overview tab renders Finding + Report sections (empty state)', async ({ page }) => {
     await gotoTemplates(page);
 
     // Overview tab is active by default
     const overviewTab = page.getByRole('tab', { name: /overview/i });
     await expect(overviewTab).toHaveAttribute('aria-selected', 'true');
 
-    // Intro card text is always visible
-    await expect(page.getByText(/build custom forms for findings/i)).toBeVisible();
+    // The unified Overview renders Finding/Report section headings…
+    await expect(page.getByRole('heading', { name: 'Finding templates' })).toBeVisible();
+    // …and the empty report section message.
+    await expect(page.getByText(/no report templates created yet/i)).toBeVisible();
 
-    // Hero KPIs
-    await expect(page.getByText(/in this workspace/i)).toBeVisible();
+    // Hero KPI sub copy
+    await expect(page.getByText(/across all types/i)).toBeVisible();
   });
 
   /* ------------------------------------------------------------------ */
@@ -96,7 +116,7 @@ test.describe.serial('Finding templates CRUD', () => {
   /* ------------------------------------------------------------------ */
   /*  T3 — Create the first template                                     */
   /* ------------------------------------------------------------------ */
-  test('T3: Create a template via the builder dialog', async ({ page }) => {
+  test('T3: Create a template via the builder wizard', async ({ page }) => {
     await gotoTemplates(page);
 
     // Switch to Templates tab and open builder
@@ -106,19 +126,22 @@ test.describe.serial('Finding templates CRUD', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
-    // Step 1: Setup — name + description
+    // Step 1: Type — choose finding template, continue to Setup
+    await pickFindingTypeAndContinue(dialog);
+
+    // Step 2: Setup — name + description
     await dialog.getByLabel(/template name/i).fill(TPL_A);
     const descField = dialog.getByLabel(/description/i);
     if (await descField.isVisible()) {
       await descField.fill(TPL_A_DESC);
     }
 
-    // Verify built-in field toggles
+    // Built-in field toggles live on the Setup step
     await expect(dialog.getByText('Standard fields', { exact: true })).toBeVisible();
     await expect(dialog.getByText('Severity', { exact: true })).toBeVisible();
 
-    // Step 2: Custom fields — add one text field
-    await dialog.getByRole('button', { name: /next/i }).click();
+    // Step 3: Custom fields — add one text field
+    await dialog.getByRole('button', { name: /^next$/i }).click();
     await expect(dialog.getByText(/custom fields/i).first()).toBeVisible();
     await dialog.getByRole('button', { name: /add field/i }).click();
 
@@ -126,8 +149,8 @@ test.describe.serial('Finding templates CRUD', () => {
     await expect(fieldLabel.first()).toBeVisible();
     await fieldLabel.first().fill('Inspector name');
 
-    // Save
-    await dialog.getByRole('button', { name: /save template/i }).click();
+    // Save (wizard primary button on the last step)
+    await dialog.getByRole('button', { name: /^save$/i }).click();
     await expect(dialog).not.toBeVisible({ timeout: 10_000 });
 
     // Template now visible in table
@@ -145,7 +168,7 @@ test.describe.serial('Finding templates CRUD', () => {
   test('T4: Template appears in Overview and table has correct columns', async ({ page }) => {
     await gotoTemplates(page);
 
-    // Overview tab: template card visible
+    // Overview tab: finding template card visible with its custom-field count
     await expect(page.getByText(TPL_A)).toBeVisible();
     await expect(page.getByText(/1 custom field/i)).toBeVisible();
 
@@ -154,17 +177,16 @@ test.describe.serial('Finding templates CRUD', () => {
     const table = page.getByRole('table');
     await expect(table).toBeVisible();
 
-    // Table column headers
+    // Table column headers — Name / Type / Default / Updated (no Fields column)
     await expect(table.getByRole('columnheader', { name: /^name$/i })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: /^type$/i })).toBeVisible();
     await expect(table.getByRole('columnheader', { name: /^default$/i })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: /^fields$/i })).toBeVisible();
     await expect(table.getByRole('columnheader', { name: /^updated$/i })).toBeVisible();
 
-    // Data row shows template details
+    // Data row shows the template, typed as a Finding
     const row = table.getByRole('row').filter({ hasText: TPL_A });
     await expect(row).toBeVisible();
-    // Field count = 1
-    await expect(row.getByRole('cell', { name: '1', exact: true })).toBeVisible();
+    await expect(row.getByText('Finding', { exact: true })).toBeVisible();
   });
 
   /* ------------------------------------------------------------------ */
@@ -184,19 +206,19 @@ test.describe.serial('Finding templates CRUD', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
-    // Rename
+    // Edit opens on the Setup step — rename
     const nameInput = dialog.getByLabel(/template name/i);
     await nameInput.clear();
     await nameInput.fill(TPL_A_RENAMED);
 
-    // Step 2: add another field
-    await dialog.getByRole('button', { name: /next/i }).click();
+    // Custom fields step — add another field
+    await dialog.getByRole('button', { name: /^next$/i }).click();
     await dialog.getByRole('button', { name: /add field/i }).click();
     const fieldLabels = dialog.getByPlaceholder(/field label/i);
     await fieldLabels.last().fill('Defect count');
 
     // Save
-    await dialog.getByRole('button', { name: /save template/i }).click();
+    await dialog.getByRole('button', { name: /^save$/i }).click();
     await expect(dialog).not.toBeVisible({ timeout: 10_000 });
 
     // Renamed in table
@@ -215,18 +237,21 @@ test.describe.serial('Finding templates CRUD', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
+    // Step 1: Type — choose finding template, continue to Setup
+    await pickFindingTypeAndContinue(dialog);
+
+    // Step 2: Setup — name + default toggle
     await dialog.getByLabel(/template name/i).fill(TPL_B);
 
-    // Toggle "Set as default" checkbox (sr-only input, label intercepts clicks)
+    // Toggle "Set as default" (sr-only checkbox, label intercepts clicks)
     const defaultCheckbox = dialog.getByRole('checkbox', { name: /set as default/i });
-    await expect(defaultCheckbox).toBeVisible();
     if (!(await defaultCheckbox.isChecked())) {
       await defaultCheckbox.check({ force: true });
     }
 
-    // Step 2 — skip custom fields
-    await dialog.getByRole('button', { name: /next/i }).click();
-    await dialog.getByRole('button', { name: /save template/i }).click();
+    // Step 3 — skip custom fields, then save
+    await dialog.getByRole('button', { name: /^next$/i }).click();
+    await dialog.getByRole('button', { name: /^save$/i }).click();
     await expect(dialog).not.toBeVisible({ timeout: 10_000 });
 
     const table = page.getByRole('table');
@@ -307,7 +332,7 @@ test.describe.serial('Finding templates CRUD', () => {
   /* ------------------------------------------------------------------ */
   /*  T10 — Cleanup                                                      */
   /* ------------------------------------------------------------------ */
-  test('T10: Cleanup — delete test template via API', async ({ page }) => {
+  test('T10: Page still renders after the lifecycle', async ({ page }) => {
     // The E2E database is recreated each run, so leaving the template
     // behind is harmless. Just verify the page still renders correctly.
     await gotoTemplates(page);

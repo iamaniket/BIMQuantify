@@ -43,6 +43,11 @@ services:
     environment:
       MINIO_ROOT_USER: bimstitch
       MINIO_ROOT_PASSWORD: bimstitch-secret
+      # Allow any origin so the E2E portal (:3002) can fetch presigned .frag
+      # bytes in-browser — the viewer spec loads converted models cross-origin
+      # (portal :3002 → MinIO :9002). Mirrors docker-compose.yml; presigned URLs
+      # are already signed, so a cross-origin GET grants nothing extra.
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
     ports:
       - "9002:9000"
       - "9003:9001"
@@ -51,3 +56,58 @@ services:
       interval: 3s
       timeout: 3s
       retries: 10
+
+  # Generic background worker — IFC→fragments conversion and worker-sent emails
+  # (deadline reminders). Without it the viewer + deadline-tracking specs can
+  # never reach a terminal state. Built from the same Dockerfile as dev; the
+  # E2E API (host :8010) dispatches here via E2E_PROCESSOR_URL → :8089, and this
+  # worker calls back to the host API at host.docker.internal:8010.
+  processor:
+    build:
+      context: ./apps/processor
+      dockerfile: Dockerfile
+    container_name: bimstitch-test-processor
+    environment:
+      # Dev posture so the production-config guard accepts the dev-default
+      # shared secret + MinIO creds below (same as docker-compose.yml).
+      NODE_ENV: development
+      PORT: "8080"
+      # Own BullMQ queues on the test Redis, DB 1 — kept off the E2E API's
+      # rate-limit/blocklist keys (DB 0, which global-setup FLUSHes).
+      REDIS_URL: redis://redis:6379/1
+      # Deliver worker-sent emails (deadline reminders) to the TEST MailHog so
+      # the deadline-tracking spec reads them at :8026. Same compose network →
+      # reach it by service name on the internal SMTP port.
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      SMTP_FROM: no-reply@bimstitch.dev
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: bimstitch
+      S3_SECRET_ACCESS_KEY: bimstitch-secret
+      S3_BUCKET_IFC: ifc-files
+      # The E2E API runs on the HOST (uvicorn :8010), reached from the container
+      # via the gateway. Worker callbacks (extraction → ProjectFile) land here.
+      API_BASE_URL: http://host.docker.internal:8010
+      PROCESSOR_SHARED_SECRET: dev-shared-secret-change-me
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      # Host 8089 (dev processor uses 8088) → container 8080. run-e2e.mjs points
+      # the E2E API's PROCESSOR_URL here via E2E_PROCESSOR_URL.
+      - "8089:8080"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 10s

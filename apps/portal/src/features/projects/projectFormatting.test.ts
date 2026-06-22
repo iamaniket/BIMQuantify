@@ -7,10 +7,10 @@ import {
   formatProjectBadgeLabel,
   formatProjectLifecycleLabel,
   isProjectArchived,
+  phaseBadgeClasses,
+  phaseDotClasses,
   projectBadgeClasses,
   projectDotClasses,
-  statusBadgeClasses,
-  statusDotClasses,
 } from '@/lib/formatting/projects';
 
 describe('formatProjectLifecycleLabel', () => {
@@ -38,33 +38,33 @@ describe('isProjectArchived', () => {
 });
 
 describe('projectBadgeClasses', () => {
-  it('returns status classes for active projects', () => {
-    const result = projectBadgeClasses({ status: 'design', lifecycle_state: 'active' });
+  it('returns phase classes for active projects', () => {
+    const result = projectBadgeClasses({ phase: 'design', lifecycle_state: 'active' });
     expect(result).toContain('sky');
   });
 
   it('returns lifecycle classes for archived projects', () => {
-    const result = projectBadgeClasses({ status: 'design', lifecycle_state: 'archived' });
-    expect(result).toContain('white');
+    const result = projectBadgeClasses({ phase: 'design', lifecycle_state: 'archived' });
+    expect(result).toContain('background-tertiary');
   });
 });
 
 describe('projectDotClasses', () => {
-  it('returns status dot for active projects', () => {
-    const result = projectDotClasses({ status: 'construction', lifecycle_state: 'active' });
+  it('returns phase dot for active projects', () => {
+    const result = projectDotClasses({ phase: 'shell', lifecycle_state: 'active' });
     expect(result).toContain('green');
   });
 
   it('returns lifecycle dot for archived projects', () => {
-    const result = projectDotClasses({ status: 'construction', lifecycle_state: 'archived' });
-    expect(result).toBe('bg-white');
+    const result = projectDotClasses({ phase: 'shell', lifecycle_state: 'archived' });
+    expect(result).toBe('bg-foreground-tertiary');
   });
 });
 
 describe('formatProjectBadgeLabel', () => {
-  it('returns statusLabel for active projects', () => {
+  it('returns phaseLabel for active projects', () => {
     const result = formatProjectBadgeLabel(
-      { status: 'design', lifecycle_state: 'active' },
+      { phase: 'design', lifecycle_state: 'active' },
       'Design',
     );
     expect(result).toBe('Design');
@@ -72,20 +72,20 @@ describe('formatProjectBadgeLabel', () => {
 
   it('returns lifecycle label for non-active projects', () => {
     const result = formatProjectBadgeLabel(
-      { status: 'design', lifecycle_state: 'archived' },
+      { phase: 'design', lifecycle_state: 'archived' },
       'Design',
     );
     expect(result).toBe('Archived');
   });
 });
 
-describe('statusBadgeClasses / statusDotClasses', () => {
-  it('returns badge classes for a status', () => {
-    expect(statusBadgeClasses('planning')).toContain('slate');
+describe('phaseBadgeClasses / phaseDotClasses', () => {
+  it('returns badge classes for a phase', () => {
+    expect(phaseBadgeClasses('design')).toContain('sky');
   });
 
-  it('returns dot classes for a status', () => {
-    expect(statusDotClasses('on_hold')).toContain('rose');
+  it('returns dot classes for a phase', () => {
+    expect(phaseDotClasses('handover')).toContain('blue');
   });
 });
 

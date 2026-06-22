@@ -12,19 +12,8 @@ from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 if TYPE_CHECKING:
-    from bimstitch_api.models.contractor import Contractor
     from bimstitch_api.models.model import Model
     from bimstitch_api.models.project_member import ProjectMember
-
-
-class ProjectStatus(StrEnum):
-    planning = "planning"
-    design = "design"
-    permit_review = "permit_review"
-    construction = "construction"
-    handover = "handover"
-    complete = "complete"
-    on_hold = "on_hold"
 
 
 class ProjectLifecycleState(StrEnum):
@@ -52,14 +41,6 @@ class BuildingType(StrEnum):
     other = "other"
 
 
-class ConsequenceClass(StrEnum):
-    # Eurocode EN 1990 consequence classes (pan-EU). NL Gevolgklasse
-    # GK1/GK2/GK3 maps directly to CC1/CC2/CC3.
-    cc1 = "cc1"
-    cc2 = "cc2"
-    cc3 = "cc3"
-
-
 class Project(TimestampMixin, TenantBase):
     """Project — lives in `org_<hex>.projects`. No `organization_id` column
     because the schema name IS the organization. FK to `users` is qualified
@@ -79,16 +60,6 @@ class Project(TimestampMixin, TenantBase):
 
     # Construction project metadata.
     reference_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    status: Mapped[ProjectStatus] = mapped_column(
-        SAEnum(
-            ProjectStatus,
-            name="projectstatus",
-            values_callable=lambda enum: [m.value for m in enum],
-        ),
-        nullable=False,
-        default=ProjectStatus.planning,
-        server_default=ProjectStatus.planning.value,
-    )
     country: Mapped[str] = mapped_column(
         String(2), nullable=False, default="NL", server_default="NL"
     )
@@ -126,20 +97,6 @@ class Project(TimestampMixin, TenantBase):
         ),
         nullable=True,
     )
-    consequence_class: Mapped[ConsequenceClass | None] = mapped_column(
-        SAEnum(
-            ConsequenceClass,
-            name="consequenceclass",
-            values_callable=lambda enum: [m.value for m in enum],
-        ),
-        nullable=True,
-    )
-
-    # Toegelaten instrument id from the project's jurisdiction registry
-    # (NL: TloKB). Stored as a free string so the list can be hand-updated
-    # without an enum migration twice a year. Validation lives in the
-    # router via jurisdictions.find_instrument().
-    instrument_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # Site address (BAG-aligned for future Dutch address-service integration).
     street: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -156,19 +113,12 @@ class Project(TimestampMixin, TenantBase):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    contractor_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("contractors.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
     members: Mapped[list["ProjectMember"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
     models: Mapped[list["Model"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    contractor: Mapped["Contractor | None"] = relationship(lazy="joined")
 
     __table_args__ = (
         Index(
@@ -177,9 +127,7 @@ class Project(TimestampMixin, TenantBase):
             unique=True,
             postgresql_where="lifecycle_state != 'removed'",
         ),
-        Index("ix_projects_status", "status"),
         Index("ix_projects_lifecycle_state", "lifecycle_state"),
-        Index("ix_projects_contractor_id", "contractor_id"),
         Index("ix_projects_planned_start_date", "planned_start_date"),
         Index(
             "uq_projects_reference_code",

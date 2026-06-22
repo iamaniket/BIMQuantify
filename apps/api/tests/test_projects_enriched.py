@@ -1,5 +1,5 @@
-"""Tests for the enriched Project fields: status, phase, address, delivery date,
-reference code, permit number, and contractor link.
+"""Tests for the enriched Project fields: phase, address, delivery date,
+reference code, and permit number.
 """
 
 from httpx import AsyncClient
@@ -14,7 +14,7 @@ def _auth(token: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-async def test_create_project_defaults_status_and_phase(
+async def test_create_project_defaults_phase(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:
     response = await client.post(
@@ -24,7 +24,6 @@ async def test_create_project_defaults_status_and_phase(
     )
     assert response.status_code == 201, response.text
     body = response.json()
-    assert body["status"] == "planning"
     assert body["phase"] == "design"
     assert body["country"] == "NL"
     # Optional fields default to None.
@@ -38,8 +37,6 @@ async def test_create_project_defaults_status_and_phase(
         "municipality",
         "bag_id",
         "permit_number",
-        "contractor_id",
-        "contractor_name",
     ):
         assert body[field] is None, f"{field} should default to None"
 
@@ -56,7 +53,6 @@ async def test_create_project_with_all_new_fields(
         "name": "Roof Plan",
         "description": "Townhouses",
         "reference_code": "WKB-2026-0411",
-        "status": "construction",
         "phase": "shell",
         "delivery_date": "2026-08-12",
         "street": "Hoofdstraat",
@@ -77,26 +73,8 @@ async def test_create_project_with_all_new_fields(
 
 
 # ---------------------------------------------------------------------------
-# Patch (status, phase, address)
+# Patch (phase, address)
 # ---------------------------------------------------------------------------
-
-
-async def test_patch_project_status(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
-    created = (
-        await client.post(
-            "/projects", json={"name": "P1"}, headers=_auth(org_user["access_token"])
-        )
-    ).json()
-
-    response = await client.patch(
-        f"/projects/{created['id']}",
-        json={"status": "construction"},
-        headers=_auth(org_user["access_token"]),
-    )
-    assert response.status_code == 200, response.text
-    assert response.json()["status"] == "construction"
 
 
 async def test_patch_project_address_fields(
@@ -182,19 +160,8 @@ async def test_reference_code_unique_cross_org(
 
 
 # ---------------------------------------------------------------------------
-# Validation: status/phase enum values
+# Validation: phase enum values
 # ---------------------------------------------------------------------------
-
-
-async def test_create_project_rejects_invalid_status(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
-    response = await client.post(
-        "/projects",
-        json={"name": "X", "status": "not_a_real_status"},
-        headers=_auth(org_user["access_token"]),
-    )
-    assert response.status_code == 422
 
 
 async def test_create_project_rejects_invalid_phase(
@@ -206,40 +173,6 @@ async def test_create_project_rejects_invalid_phase(
         headers=_auth(org_user["access_token"]),
     )
     assert response.status_code == 422
-
-
-# ---------------------------------------------------------------------------
-# Contractor link: contractor_name in project response
-# ---------------------------------------------------------------------------
-
-
-async def test_contractor_name_in_project_read(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
-    contractor = await client.post(
-        "/contractors",
-        json={"name": "Bouw BV"},
-        headers=_auth(org_user["access_token"]),
-    )
-    assert contractor.status_code == 201, contractor.text
-    contractor_id = contractor.json()["id"]
-
-    created = await client.post(
-        "/projects",
-        json={"name": "With Contractor", "contractor_id": contractor_id},
-        headers=_auth(org_user["access_token"]),
-    )
-    assert created.status_code == 201, created.text
-    body = created.json()
-    assert body["contractor_id"] == contractor_id
-    assert body["contractor_name"] == "Bouw BV"
-
-    # And on GET as well.
-    fetched = await client.get(
-        f"/projects/{body['id']}", headers=_auth(org_user["access_token"])
-    )
-    assert fetched.status_code == 200
-    assert fetched.json()["contractor_name"] == "Bouw BV"
 
 
 async def test_create_project_with_coordinates(
@@ -289,18 +222,3 @@ async def test_create_project_rejects_invalid_latitude(
         headers=_auth(org_user["access_token"]),
     )
     assert response.status_code == 422
-
-
-async def test_unknown_contractor_id_rejected(
-    client: AsyncClient, org_user: dict[str, str]
-) -> None:
-    response = await client.post(
-        "/projects",
-        json={
-            "name": "Bad Contractor",
-            "contractor_id": "00000000-0000-0000-0000-000000000000",
-        },
-        headers=_auth(org_user["access_token"]),
-    )
-    # Either 400 (validation in router) or 422 (FK rejected). 409 if treated as conflict.
-    assert response.status_code in (400, 404, 409, 422), response.text

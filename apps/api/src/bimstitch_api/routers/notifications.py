@@ -3,15 +3,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from redis.asyncio import Redis
-from sqlalchemy import case, exists, func, select
+from sqlalchemy import ColumnElement, case, exists, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.cache import get_redis_dep
 from bimstitch_api.models.notification import (
     Notification,
-    NotificationDismissal,
-    NotificationRead,
+    NotificationUserState,
 )
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.notification import (
@@ -44,6 +44,29 @@ async def _invalidate_unread_count(redis: Redis, org_id: UUID, user_id: UUID) ->
         logger.warning("unread-count cache invalidation failed for %s", key, exc_info=True)
 
 
+# Per-user read/dismiss state lives on a single `notification_user_state` row
+# (read_at / dismissed_at independently nullable). "Read" and "dismissed" are
+# therefore row-membership checks gated on the relevant timestamp being set.
+def _is_read_expr(user_id: UUID) -> ColumnElement[bool]:
+    return exists(
+        select(NotificationUserState.notification_id).where(
+            NotificationUserState.notification_id == Notification.id,
+            NotificationUserState.user_id == user_id,
+            NotificationUserState.read_at.is_not(None),
+        )
+    )
+
+
+def _dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
+    return exists(
+        select(NotificationUserState.notification_id).where(
+            NotificationUserState.notification_id == Notification.id,
+            NotificationUserState.user_id == user_id,
+            NotificationUserState.dismissed_at.is_not(None),
+        )
+    )
+
+
 @router.get("", response_model=NotificationListResponse)
 async def list_notifications(
     limit: int = Query(default=20, ge=1, le=100),
@@ -52,20 +75,10 @@ async def list_notifications(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> NotificationListResponse:
-    is_read_expr = exists(
-        select(NotificationRead.notification_id).where(
-            NotificationRead.notification_id == Notification.id,
-            NotificationRead.user_id == user.id,
-        )
-    )
+    is_read_expr = _is_read_expr(user.id)
     # Dismissed rows are hidden from this user's feed and counts (per-user,
     # like read state) — never hard-deleted from the org-shared table.
-    dismissed_expr = exists(
-        select(NotificationDismissal.notification_id).where(
-            NotificationDismissal.notification_id == Notification.id,
-            NotificationDismissal.user_id == user.id,
-        )
-    )
+    dismissed_expr = _dismissed_expr(user.id)
 
     count_stmt = select(func.count()).select_from(Notification).where(~dismissed_expr)
     total = (await session.scalar(count_stmt)) or 0
@@ -129,22 +142,10 @@ async def unread_count(
     except Exception:
         logger.warning("unread-count cache read failed for %s", key, exc_info=True)
 
-    is_read_expr = exists(
-        select(NotificationRead.notification_id).where(
-            NotificationRead.notification_id == Notification.id,
-            NotificationRead.user_id == user.id,
-        )
-    )
-    dismissed_expr = exists(
-        select(NotificationDismissal.notification_id).where(
-            NotificationDismissal.notification_id == Notification.id,
-            NotificationDismissal.user_id == user.id,
-        )
-    )
     stmt = (
         select(func.count())
         .select_from(Notification)
-        .where(~is_read_expr, ~dismissed_expr)
+        .where(~_is_read_expr(user.id), ~_dismissed_expr(user.id))
     )
     count = (await session.scalar(stmt)) or 0
 
@@ -173,18 +174,20 @@ async def mark_read(
             detail="NOTIFICATION_NOT_FOUND",
         )
 
-    existing = (
-        await session.execute(
-            select(NotificationRead).where(
-                NotificationRead.notification_id == notification_id,
-                NotificationRead.user_id == user.id,
-            )
+    # Upsert the per-user state row, stamping read_at only on first read
+    # (idempotent — a repeat call keeps the original timestamp).
+    stmt = (
+        pg_insert(NotificationUserState)
+        .values(notification_id=notification_id, user_id=user.id, read_at=func.now())
+        .on_conflict_do_update(
+            index_elements=["notification_id", "user_id"],
+            set_={"read_at": func.now()},
+            where=NotificationUserState.read_at.is_(None),
         )
-    ).scalar_one_or_none()
-    if existing is None:
-        session.add(NotificationRead(notification_id=notification_id, user_id=user.id))
-        await session.flush()
-        await _invalidate_unread_count(redis, active_org_id, user.id)
+    )
+    await session.execute(stmt)
+    await session.flush()
+    await _invalidate_unread_count(redis, active_org_id, user.id)
 
 
 @router.post("/{notification_id}/dismiss", status_code=status.HTTP_204_NO_CONTENT)
@@ -197,7 +200,7 @@ async def dismiss(
 ) -> None:
     """Dismiss a notification for the current user only.
 
-    Inserts a per-user ``NotificationDismissal`` row (idempotent) so the
+    Upserts the per-user state row's ``dismissed_at`` (idempotent) so the
     notification disappears from this user's feed and counts. The org-shared
     notification row is untouched — teammates still see it.
     """
@@ -210,18 +213,18 @@ async def dismiss(
             detail="NOTIFICATION_NOT_FOUND",
         )
 
-    existing = (
-        await session.execute(
-            select(NotificationDismissal).where(
-                NotificationDismissal.notification_id == notification_id,
-                NotificationDismissal.user_id == user.id,
-            )
+    stmt = (
+        pg_insert(NotificationUserState)
+        .values(notification_id=notification_id, user_id=user.id, dismissed_at=func.now())
+        .on_conflict_do_update(
+            index_elements=["notification_id", "user_id"],
+            set_={"dismissed_at": func.now()},
+            where=NotificationUserState.dismissed_at.is_(None),
         )
-    ).scalar_one_or_none()
-    if existing is None:
-        session.add(NotificationDismissal(notification_id=notification_id, user_id=user.id))
-        await session.flush()
-        await _invalidate_unread_count(redis, active_org_id, user.id)
+    )
+    await session.execute(stmt)
+    await session.flush()
+    await _invalidate_unread_count(redis, active_org_id, user.id)
 
 
 @router.post("/mark-all-read", status_code=status.HTTP_204_NO_CONTENT)
@@ -231,23 +234,26 @@ async def mark_all_read(
     active_org_id: UUID = Depends(require_active_organization),
     redis: Redis = Depends(get_redis_dep),
 ) -> None:
-    is_read_expr = exists(
-        select(NotificationRead.notification_id).where(
-            NotificationRead.notification_id == Notification.id,
-            NotificationRead.user_id == user.id,
-        )
+    unread_stmt = select(Notification.id).where(
+        ~_is_read_expr(user.id), ~_dismissed_expr(user.id)
     )
-    dismissed_expr = exists(
-        select(NotificationDismissal.notification_id).where(
-            NotificationDismissal.notification_id == Notification.id,
-            NotificationDismissal.user_id == user.id,
-        )
-    )
-    unread_stmt = select(Notification.id).where(~is_read_expr, ~dismissed_expr)
     unread_ids = list((await session.execute(unread_stmt)).scalars().all())
-    for nid in unread_ids:
-        session.add(NotificationRead(notification_id=nid, user_id=user.id))
     if unread_ids:
+        stmt = (
+            pg_insert(NotificationUserState)
+            .values(
+                [
+                    {"notification_id": nid, "user_id": user.id, "read_at": func.now()}
+                    for nid in unread_ids
+                ]
+            )
+            .on_conflict_do_update(
+                index_elements=["notification_id", "user_id"],
+                set_={"read_at": func.now()},
+                where=NotificationUserState.read_at.is_(None),
+            )
+        )
+        await session.execute(stmt)
         await session.flush()
         await _invalidate_unread_count(redis, active_org_id, user.id)
 
@@ -261,22 +267,31 @@ async def clear(
 ) -> None:
     """Clear (dismiss) the current user's entire feed.
 
-    Bulk-inserts a ``NotificationDismissal`` for every notification the user
-    has not already dismissed — read and unread alike — emptying their feed
-    without affecting teammates.
+    Bulk-upserts ``dismissed_at`` for every notification the user has not
+    already dismissed — read and unread alike — emptying their feed without
+    affecting teammates.
     """
-    dismissed_expr = exists(
-        select(NotificationDismissal.notification_id).where(
-            NotificationDismissal.notification_id == Notification.id,
-            NotificationDismissal.user_id == user.id,
-        )
-    )
     visible_ids = list(
-        (await session.execute(select(Notification.id).where(~dismissed_expr))).scalars().all()
+        (await session.execute(select(Notification.id).where(~_dismissed_expr(user.id))))
+        .scalars()
+        .all()
     )
-    for nid in visible_ids:
-        session.add(NotificationDismissal(notification_id=nid, user_id=user.id))
     if visible_ids:
+        stmt = (
+            pg_insert(NotificationUserState)
+            .values(
+                [
+                    {"notification_id": nid, "user_id": user.id, "dismissed_at": func.now()}
+                    for nid in visible_ids
+                ]
+            )
+            .on_conflict_do_update(
+                index_elements=["notification_id", "user_id"],
+                set_={"dismissed_at": func.now()},
+                where=NotificationUserState.dismissed_at.is_(None),
+            )
+        )
+        await session.execute(stmt)
         await session.flush()
         await _invalidate_unread_count(redis, active_org_id, user.id)
 

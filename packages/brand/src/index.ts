@@ -6,6 +6,7 @@ export {
   BRAND_MARK_DATA_URI,
   BRAND_GLYPH_WHITE_DATA_URI,
   BRAND_GLYPH_BLUE_DATA_URI,
+  BRAND_GLYPH_MASK_DATA_URI,
 } from './brandMarkAsset.js';
 export { HeroGrid } from './HeroGrid.js';
 export type { HeroGridProps } from './HeroGrid.js';

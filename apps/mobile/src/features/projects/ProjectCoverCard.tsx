@@ -9,7 +9,7 @@ import { BlueGradient } from '@/components/BlueGradient';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import type { Project } from '@/lib/api/schemas/projects';
 import { formatShortDate, humanize } from '@/lib/format';
-import { colors, projectStatusColor, radii } from '@/theme';
+import { colors, projectPhaseColor, radii } from '@/theme';
 
 const ON_SOFT = 'rgba(255,255,255,0.78)';
 const ON_FAINT = 'rgba(255,255,255,0.6)';
@@ -90,8 +90,8 @@ export function ProjectCoverCard({ project }: { project: Project }) {
           </View>
         )}
         <View style={styles.statusPill}>
-          <View style={[styles.dot, { backgroundColor: projectStatusColor(project.status) }]} />
-          <Text style={styles.statusPillText}>{humanize(project.status)}</Text>
+          <View style={[styles.dot, { backgroundColor: projectPhaseColor(project.phase ?? '') }]} />
+          <Text style={styles.statusPillText}>{humanize(project.phase ?? '')}</Text>
         </View>
         <View style={styles.dotsBtn}>
           <Ionicons name="ellipsis-horizontal" size={16} color="#fff" />

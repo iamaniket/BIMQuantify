@@ -219,6 +219,74 @@
       "workspaceBehaviorDescription": "Zoeken, dashboarddichtheid en opstartvoorkeuren worden hier samengebracht."
     }
   },
+  "calendar": {
+    "hero": {
+      "title": "Organisatiekalender",
+      "subtitle": "Eén gedeelde kalender voor je hele organisatie — alle items uit je projecten, gerangschikt op wat als eerste moet.",
+      "pendingLabel": "Openstaand",
+      "pendingSub": "Open items",
+      "overdueLabel": "Te laat",
+      "overdueSub": "Verstreken",
+      "dueThisWeekLabel": "Deze week",
+      "dueThisWeekSub": "Komende 7 dagen"
+    },
+    "tabs": {
+      "overview": "Overzicht",
+      "calendar": "Kalender"
+    },
+    "panel": {
+      "overviewEyebrow": "Organisatie",
+      "overviewTitle": "Overzicht",
+      "calendarEyebrow": "Organisatie",
+      "calendarTitle": "Kalender"
+    },
+    "overview": {
+      "kpiTotal": "Totaal",
+      "kpiPending": "Openstaand",
+      "kpiPendingSub": "Open items",
+      "kpiOverdue": "Te laat",
+      "kpiOverdueSub": "Verstreken",
+      "kpiDueThisWeek": "Deze week",
+      "kpiDueThisWeekSub": "Komende 7 dagen",
+      "kpiMet": "Klaar",
+      "kpiMetSub": "Afgerond",
+      "statusTitle": "Op status",
+      "donutCenterLabel": "Totaal",
+      "status": {
+        "overdue": "Te laat",
+        "upcoming": "Aankomend",
+        "met": "Klaar",
+        "notApplicable": "N.v.t."
+      },
+      "horizonTitle": "Komende periode",
+      "buckets": {
+        "range": "{from}-{to}d"
+      },
+      "upcomingTitle": "Aankomende items",
+      "noUpcoming": "Niets aankomend.",
+      "daysRemaining": "{days, plural, =1 {nog 1 dag} other {nog # dagen}}",
+      "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}"
+    },
+    "month": {
+      "today": "Vandaag",
+      "prevMonth": "Vorige maand",
+      "nextMonth": "Volgende maand",
+      "empty": "Niets gepland.",
+      "dayEmpty": "Niets op deze dag.",
+      "moreCount": "{count} meer",
+      "legend": {
+        "overdue": "Te laat",
+        "dueSoon": "Bijna",
+        "upcoming": "Aankomend",
+        "met": "Klaar",
+        "holiday": "Feestdag"
+      },
+      "dayPanel": {
+        "count": "{count, plural, =0 {Geen items} one {# item} other {# items}}",
+        "close": "Sluiten"
+      }
+    }
+  },
   "sidebar": {
     "adminConsole": "Beheerconsole",
     "orgMembers": "Leden",
@@ -229,8 +297,9 @@
     "projects": "Projecten",
     "certificates": "Certificaten",
     "templates": "Sjablonen",
-    "bblLibrary": "BBL-bibliotheek",
-    "wkbLibrary": "Wet kwaliteitsborging voor het bouwen (Wkb)-bibliotheek",
+    "calendar": "Agenda",
+    "bblLibrary": "Bbl-bibliotheek",
+    "wkbLibrary": "Wkb-bibliotheek",
     "tenant": {
       "label": "Tenant",
       "seats": "seats"
@@ -352,7 +421,6 @@
       "phase": "Fase",
       "delivery": "Oplevering",
       "permit": "Vergunning",
-      "contractor": "Aannemer",
       "address": "Adres",
       "municipality": "Gemeente",
       "bagId": "BAG-id",
@@ -380,7 +448,7 @@
       "new": "Nieuw project"
     },
     "page": {
-      "searchPlaceholder": "Zoek projecten...",
+      "searchPlaceholder": "Zoek projecten…",
       "searchAriaLabel": "Zoek projecten",
       "expiryWarning": "{count, plural, one {# certificaat} other {# certificaten}} verlopen of verloopt binnen 60 dagen"
     },
@@ -401,15 +469,6 @@
         "descriptionNoSearch": "Geen projecten komen overeen met het geselecteerde filter.",
         "descriptionWithSearch": "Geen projecten komen overeen met \"{search}\". Probeer een andere zoekterm."
       }
-    },
-    "statuses": {
-      "planning": "Planning",
-      "design": "Ontwerp",
-      "permit_review": "Vergunning",
-      "construction": "Uitvoering",
-      "handover": "Oplevering",
-      "complete": "Gereed",
-      "on_hold": "On hold"
     },
     "phases": {
       "design": "Ontwerp",
@@ -466,10 +525,6 @@
           "title": "Adres",
           "description": "Locatie"
         },
-        "contractor": {
-          "title": "Aannemer",
-          "description": "Koppel een bedrijf"
-        },
         "members": {
           "title": "Team",
           "description": "Mensen aan het project toevoegen"
@@ -494,9 +549,6 @@
         "thumbnailType": "Alleen JPEG-, PNG- of WebP-afbeeldingen zijn toegestaan.",
         "thumbnailSize": "Afbeelding moet 2 MB of kleiner zijn.",
         "thumbnailProcess": "Afbeelding kon niet worden verwerkt. Probeer een ander bestand.",
-        "contractorNameRequired": "Naam is verplicht",
-        "contractorAlreadyExists": "Er bestaat al een aannemer met die naam.",
-        "contractorCreateFailed": "Aannemer kon niet worden aangemaakt.",
         "nameTaken": "Deze naam is al in gebruik"
       },
       "basics": {
@@ -520,20 +572,10 @@
           "referenceCodePlaceholder": "WKB-2026-0411",
           "permitNumber": "Vergunningnummer",
           "permitNumberPlaceholder": "OV-2026-0099",
-          "status": "Status",
           "phase": "Fase",
           "deliveryDate": "Opleverdatum",
           "buildingType": "Type bouwwerk",
-          "consequenceClass": "Gevolgklasse",
-          "plannedStartDate": "Geplande startdatum",
-          "instrument": "Toegelaten Wet kwaliteitsborging voor het bouwen (Wkb)-instrument",
-          "instrumentPlaceholder": "Nog niet bekend — wordt ingevuld door KB",
-          "instrumentHint": "Optioneel. Je kwaliteitsborger selecteert het instrument wanneer hij deelneemt."
-        },
-        "source": {
-          "prefix": "Bron: TloKB-register (",
-          "linkLabel": "tlokb.nl",
-          "suffix": ")"
+          "plannedStartDate": "Geplande startdatum"
         }
       },
       "address": {
@@ -565,20 +607,6 @@
           "failedAria": "Kaartvoorbeeld kon niet worden geladen",
           "unavailable": "Kaartvoorbeeld is momenteel niet beschikbaar.",
           "imageAlt": "Luchtfoto op {latitude}, {longitude}"
-        }
-      },
-      "contractor": {
-        "fields": {
-          "contractor": "Aannemer",
-          "noneOption": "— Geen —",
-          "newContractorName": "Naam nieuwe aannemer",
-          "newContractorPlaceholder": "Bouw BV"
-        },
-        "actions": {
-          "addNewContractor": "+ Nieuwe aannemer toevoegen",
-          "adding": "Bezig met toevoegen…",
-          "add": "Toevoegen",
-          "cancel": "Annuleren"
         }
       },
       "members": {
@@ -769,7 +797,7 @@
       "expiredSub": "voorbij geldigheid"
     },
     "list": {
-      "searchPlaceholder": "Zoek certificaten...",
+      "searchPlaceholder": "Zoek certificaten…",
       "filterAll": "Alle typen",
       "uploadButton": "Certificaat uploaden",
       "emptyTitle": "Nog geen certificaten",
@@ -806,7 +834,7 @@
     "linkDialog": {
       "title": "Koppelen uit bibliotheek",
       "description": "Selecteer een certificaat uit de organisatiebibliotheek om naar dit project te kopiëren.",
-      "searchPlaceholder": "Zoek in bibliotheek...",
+      "searchPlaceholder": "Zoek in bibliotheek…",
       "linkButton": "Koppelen aan project",
       "cancel": "Annuleren",
       "success": "Certificaat gekoppeld aan project",
@@ -851,6 +879,125 @@
       "totalCerts": "Totaal",
       "validCerts": "Geldig",
       "expiringSoonCerts": "Verloopt binnenkort"
+    }
+  },
+  "certificates": {
+    "hub": {
+      "crumb": "Certificaten",
+      "crumbProjects": "Projecten",
+      "projectNotFound": "Project niet gevonden. Mogelijk is het verwijderd.",
+      "projectLoadError": "Project laden mislukt.",
+      "tabs": {
+        "overview": "Overzicht",
+        "list": "Certificaten"
+      },
+      "panel": {
+        "overviewEyebrow": "Bewijs van conformiteit",
+        "overviewTitle": "Certificatenoverzicht",
+        "listEyebrow": "Bewijs van conformiteit",
+        "listTitle": "{count} certificaten"
+      },
+      "hero": {
+        "badge": "Certificaten",
+        "subtitle": "Productcertificaten, testrapporten, inspecties & garanties",
+        "totalLabel": "Totaal",
+        "totalSub": "certificaten",
+        "validLabel": "Geldig",
+        "validSub": "binnen geldigheid",
+        "expiringLabel": "Verloopt",
+        "expiringSub": "binnen 30 dagen",
+        "expiredLabel": "Verlopen",
+        "expiredSub": "geldigheid voorbij"
+      },
+      "list": {
+        "searchPlaceholder": "Zoek certificaten…",
+        "filterAll": "Alle types",
+        "empty": "Geen certificaten voldoen aan je filters",
+        "loadError": "Certificaten laden mislukt."
+      },
+      "columns": {
+        "certificate": "Certificaat",
+        "type": "Type",
+        "issuer": "Uitgever",
+        "number": "Nummer",
+        "validUntil": "Geldig tot",
+        "added": "Toegevoegd",
+        "view": "Bekijken",
+        "download": "Downloaden",
+        "newVersion": "Nieuwe versie uploaden",
+        "delete": "Verwijderen"
+      },
+      "overview": {
+        "totalCerts": "Totaal",
+        "validCerts": "Geldig",
+        "expiringSoonCerts": "Verloopt binnenkort",
+        "byTypeTitle": "Certificaten per type",
+        "byExpiryTitle": "Geldigheidsstatus",
+        "recentTitle": "Recent toegevoegd",
+        "empty": "Nog geen certificaten"
+      }
+    }
+  },
+  "attachments": {
+    "hub": {
+      "crumb": "Bijlagen",
+      "crumbProjects": "Projecten",
+      "projectNotFound": "Project niet gevonden. Mogelijk is het verwijderd.",
+      "projectLoadError": "Project laden mislukt.",
+      "tabs": {
+        "overview": "Overzicht",
+        "list": "Bijlagen"
+      },
+      "panel": {
+        "overviewEyebrow": "Bestanden & bijlagen",
+        "overviewTitle": "Bijlagenoverzicht",
+        "listEyebrow": "Bestanden & bijlagen",
+        "listTitle": "{count} bijlagen"
+      },
+      "hero": {
+        "badge": "Bijlagen",
+        "subtitle": "Foto's, tekeningen en ondersteunende documenten",
+        "totalLabel": "Totaal",
+        "totalSub": "bestanden",
+        "imagesLabel": "Afbeeldingen",
+        "imagesSub": "foto's",
+        "documentsLabel": "Documenten",
+        "documentsSub": "PDF's & office",
+        "sizeLabel": "Totale grootte",
+        "sizeSub": "opgeslagen"
+      },
+      "list": {
+        "searchPlaceholder": "Zoek bestanden…",
+        "filterAll": "Alle",
+        "empty": "Geen bijlagen voldoen aan je filters",
+        "loadError": "Bijlagen laden mislukt."
+      },
+      "columns": {
+        "file": "Bestand",
+        "category": "Categorie",
+        "size": "Grootte",
+        "uploadedBy": "Geüpload door",
+        "added": "Toegevoegd",
+        "view": "Bekijken",
+        "download": "Downloaden",
+        "delete": "Verwijderen"
+      },
+      "overview": {
+        "total": "Totaal",
+        "images": "Afbeeldingen",
+        "documents": "Documenten",
+        "totalSize": "Totale grootte",
+        "byCategoryTitle": "Per categorie",
+        "recentTitle": "Recent toegevoegd",
+        "empty": "Nog geen bijlagen"
+      },
+      "category": {
+        "image": "Afbeeldingen",
+        "video": "Video's",
+        "audio": "Audio",
+        "office": "Documenten",
+        "other": "Overig"
+      }
     }
   },
   "projectAccess": {
@@ -968,7 +1115,7 @@
   },
   "projectDetail": {
     "hero": {
-      "wkbScore": "Wet kwaliteitsborging voor het bouwen (Wkb)-score",
+      "wkbScore": "Wkb-score",
       "issuesOpen": "Open issues",
       "holdback": "Inhouding",
       "delivery": "Oplevering",
@@ -988,7 +1135,6 @@
       "projectAccess": "Projecttoegang",
       "editProject": "Project bewerken",
       "noAddress": "Geen adres ingesteld",
-      "instrumentTooltip": "Toegelaten instrument · {provider}",
       "thumbnailAlt": "Miniatuur van {name}",
       "mapPreviewAlt": "Kaartvoorbeeld van {name}",
       "settings": "Instellingen"
@@ -1020,7 +1166,6 @@
       },
       "overviewCard": {
         "address": "Adres",
-        "contractor": "Aannemer",
         "status": "Status",
         "plannedStart": "Geplande start",
         "delivery": "Oplevering",
@@ -1067,7 +1212,7 @@
         "loadAllMenu": "Laadopties",
         "selectedCount": "{count, plural, =1 {1 model geselecteerd} other {# modellen geselecteerd}}",
         "clearSelection": "Wissen",
-        "bulkCheckBbl": "BBL controleren",
+        "bulkCheckBbl": "Bbl controleren",
         "bulkDownload": "Downloaden",
         "bulkRemove": "Verwijderen",
         "bulkRemoveTitle": "{count, plural, =1 {Model verwijderen?} other {# modellen verwijderen?}}",
@@ -1109,7 +1254,7 @@
           "selectAria": "{name} selecteren om in de viewer te laden",
           "noViewableFile": "Nog geen weergeefbaar bestand",
           "uploadFile": "Bestand uploaden",
-          "checkBbl": "BBL controleren",
+          "checkBbl": "Bbl controleren",
           "view": "Bekijken",
           "upload": "Uploaden",
           "remove": "Verwijderen",
@@ -1135,8 +1280,8 @@
           "view": "Bekijken",
           "viewAria": "{filename} bekijken",
           "viewAria3d": "{filename} in 3D bekijken",
-          "checkBbl": "BBL controleren",
-          "checkBblAria": "BBL-conformiteit controleren voor {filename}",
+          "checkBbl": "Bbl controleren",
+          "checkBblAria": "Bbl-conformiteit controleren voor {filename}",
           "downloadAria": "{filename} downloaden",
           "fileActions": "Bestandsacties",
           "delete": "Verwijderen",
@@ -1280,7 +1425,7 @@
         "description": "Upload tekeningen, certificaten en overige bestanden zodat je ze kunt koppelen aan inspecties en bevindingen.",
         "ctaLabel": "Bijlage uploaden",
         "uploadButton": "Uploaden",
-        "uploading": "Bezig met uploaden...",
+        "uploading": "Bezig met uploaden…",
         "uploadSuccess": "{name} geüpload",
         "downloadError": "Downloadlink kon niet worden aangemaakt",
         "deleteSuccess": "{name} verwijderd",
@@ -1331,7 +1476,7 @@
         "viewerLinkedModel": "Gekoppeld model",
         "viewerVersion": "Versie",
         "viewerNoPreview": "Voorbeeld niet beschikbaar voor dit bestandstype. Download om te bekijken.",
-        "viewerLoadingPreview": "Voorbeeld laden...",
+        "viewerLoadingPreview": "Voorbeeld laden…",
         "viewerGroupFile": "Bestand",
         "viewerGroupMedia": "Media",
         "viewerGroupDocument": "Document",
@@ -1347,7 +1492,7 @@
         "eyebrow": "Bewijs van conformiteit",
         "subtitle": "{count, plural, =0 {Geen certificaten} one {# certificaat} other {# certificaten}}",
         "title": "Nog geen certificaten",
-        "description": "Upload productcertificaten, testrapporten, inspectiecertificaten en garanties om je Wet kwaliteitsborging voor het bouwen (Wkb)-conformiteitsdossier op te bouwen.",
+        "description": "Upload productcertificaten, testrapporten, inspectiecertificaten en garanties om je Wkb-conformiteitsdossier op te bouwen.",
         "ctaLabel": "Certificaat uploaden",
         "searchPlaceholder": "Certificaten zoeken…",
         "noResults": "Geen certificaten komen overeen met uw zoekopdracht.",
@@ -1413,12 +1558,19 @@
         "linkFromLibrary": "Koppelen uit bibliotheek"
       },
       "rapporten": {
-        "label": "Rapporten",
-        "eyebrow": "Gegenereerde documenten",
-        "subtitle": "Genereer en download indieningsklare PDF's"
+        "label": "Rapporten"
+      },
+      "nav": {
+        "eyebrow": "Kwaliteit & documenten",
+        "subtitle": "Open een eigen werkruimte",
+        "findingsDesc": "Kwaliteitsissues volgen en oplossen",
+        "certificatesDesc": "Conformiteitsdocumenten",
+        "attachmentsDesc": "Foto's, tekeningen en bestanden",
+        "reportsDesc": "Gegenereerde indieningsklare PDF's"
       },
       "deadlines": {
         "label": "Deadlines",
+        "viewOnCalendar": "Bekijk in agenda",
         "heading": "Deadlines",
         "emptyTitle": "Nog geen deadlines",
         "emptyDescription": "Deadlines verschijnen automatisch zodra de benodigde datumvelden zijn ingevuld.",
@@ -1581,7 +1733,10 @@
         "coords2d": "({x}, {y})",
         "placementHintPdf": "Klik op de tekening om de pin te plaatsen",
         "placementHintIfc": "Klik op het model om de pin te plaatsen",
-        "placing": "Plaatsen…"
+        "placing": "Plaatsen…",
+        "updateBanner": "Klik in het model om de positie van de bevinding in te stellen",
+        "updateHint": "Klik op een element of punt — Esc om te annuleren",
+        "updateHintPdf": "Klik op de tekening om de positie in te stellen — Esc om te annuleren"
       },
       "history": {
         "title": "Geschiedenis",
@@ -1633,7 +1788,7 @@
       "severity": "ERNST",
       "assignee": "TOEGEWEZEN",
       "deadline": "DEADLINE",
-      "bblRef": "BBL REF",
+      "bblRef": "Bbl ref",
       "photos": "FOTO'S",
       "linkedElement": "GEKOPPELD",
       "created": "TOEGEVOEGD",
@@ -1861,7 +2016,7 @@
         "articles": "Artikelen",
         "models": "Modellen"
       },
-      "donutCenterLabel": "Wet kwaliteitsborging voor het bouwen (Wkb)-conform",
+      "donutCenterLabel": "Wkb-conform",
       "failingSuffix": "{count} gefaald",
       "trendEyebrow": "30-dagentrend"
     },
@@ -1936,43 +2091,85 @@
         "failed": "Mislukt"
       }
     },
-    "tab": {
-      "searchPlaceholder": "Zoek rapporten…",
-      "generateMenu": "Meer rapporttypen",
-      "generateNewVersion": "Genereer nieuwe versie",
-      "versionHistory": "Versiegeschiedenis · {count} versies",
-      "noVersions": "Nog geen versies",
-      "emptyTitle": "Nog geen rapporten gegenereerd",
-      "emptyDescription": "Genereer een indieningsklare PDF om te beginnen.",
-      "noResults": "Geen rapporten komen overeen met je filters",
-      "justNow": "zojuist",
-      "minutesAgo": "{count}m geleden",
-      "hoursAgo": "{count}u geleden",
-      "daysAgo": "{count}d geleden"
+    "hub": {
+      "crumb": "Rapporten",
+      "crumbProjects": "Projecten",
+      "projectNotFound": "Project niet gevonden. Mogelijk is het verwijderd.",
+      "projectLoadError": "Laden van project is mislukt.",
+      "tabs": {
+        "overview": "Overzicht",
+        "reports": "Rapporten"
+      },
+      "panel": {
+        "overviewEyebrow": "Gegenereerde documenten",
+        "overviewTitle": "Rapportoverzicht",
+        "reportsEyebrow": "Gegenereerde documenten",
+        "reportsTitle": "{count} rapporten"
+      },
+      "hero": {
+        "badge": "Rapporten",
+        "subtitle": "Genereer en download indieningsklare PDF's",
+        "totalLabel": "Totaal",
+        "totalSub": "{count} gegenereerd",
+        "readyLabel": "Gereed",
+        "readySub": "Beschikbaar om te downloaden",
+        "pendingLabel": "Bezig",
+        "pendingSub": "In wachtrij of wordt gegenereerd",
+        "typesLabel": "Typen",
+        "typesSub": "Gedekt"
+      },
+      "list": {
+        "searchPlaceholder": "Zoek rapporten…",
+        "filterAll": "Alle typen",
+        "empty": "Geen rapporten komen overeen met je filters",
+        "loadError": "Laden van rapporten is mislukt."
+      },
+      "columns": {
+        "report": "Rapport",
+        "status": "Status",
+        "created": "Aangemaakt",
+        "size": "Grootte",
+        "actions": "Acties"
+      },
+      "overview": {
+        "kpiTotal": "Totaal rapporten",
+        "kpiReady": "Gereed",
+        "kpiReadySub": "Beschikbaar om te downloaden",
+        "kpiPending": "Bezig",
+        "kpiPendingSub": "In wachtrij of wordt gegenereerd",
+        "kpiTypes": "Typen gedekt",
+        "kpiTypesSub": "Van alle rapporttypen",
+        "statusTitle": "Op status",
+        "donutCenterLabel": "Rapporten",
+        "byTypeTitle": "Op type",
+        "latestTitle": "Laatste per type",
+        "latestNotGenerated": "Niet gegenereerd",
+        "empty": "Nog geen rapporten gegenereerd"
+      }
     },
     "types": {
       "compliance_report": {
         "title": "Nalevingsrapport",
         "description": "Genereer een PDF van de laatste nalevingscontrole, klaar om te delen.",
-        "generate": "Genereer nalevingsrapport",
+        "generate": "Nalevingsrapport",
         "missingData": "Geen nalevingsgegevens beschikbaar — voer eerst een controle uit op een verwerkt IFC-bestand."
       },
       "assurance_plan": {
         "title": "Borgingsplan",
         "description": "Genereer het borgingsplan als indieningsklare PDF voor de bouwmelding.",
-        "generate": "Genereer borgingsplan",
+        "generate": "Borgingsplan",
         "missingData": "Nog geen borgingsplan voor dit project."
       },
       "completion_declaration": {
         "title": "Verklaring kwaliteitsborger",
         "description": "Genereer de verklaring van de kwaliteitsborger. Alleen de inspecteur kan ondertekenen.",
-        "generate": "Genereer verklaring",
+        "generate": "Verklaring",
         "missingData": "Projectgegevens zijn onvolledig voor de verklaring."
       },
       "dossier": {
         "title": "Dossier bevoegd gezag",
         "description": "Bundel het volledige dossier voor de gereedmelding. Je ontvangt een e-mail zodra het klaar is.",
-        "generate": "Genereer dossier",
+        "generate": "Dossier",
         "missingData": "Onvoldoende gegevens om het dossier samen te stellen."
       }
     },
@@ -2153,16 +2350,16 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Wet kwaliteitsborging voor het bouwen (Wkb)-conform BIM-platform"
+      "tagline": "Wkb-conform BIM-platform"
     },
     "hero": {
-      "readyBadge": "Klaar voor Wet kwaliteitsborging voor het bouwen (Wkb) {version}",
-      "headlineTemplate": "Breng je <em>modellen</em>, <em>bevindingen</em> en <em>dossier</em> samen in één Wet kwaliteitsborging voor het bouwen (Wkb)-dossier.",
+      "readyBadge": "Klaar voor Wkb {version}",
+      "headlineTemplate": "Breng je <em>modellen</em>, <em>bevindingen</em> en <em>dossier</em> samen in één Wkb-dossier.",
       "subhead": "Gefedereerde IFC-review, geautomatiseerde Bouwbesluit-controles en een opleveringsklaar consumentendossier — voor bouwers onder de Wet kwaliteitsborging voor het bouwen (Wkb)."
     },
     "kpi": {
       "wkb": "Wkb",
-      "bbl": "BBL",
+      "bbl": "Bbl",
       "ifc": "IFC",
       "status": "Status",
       "statusNormal": "Normaal",
@@ -2216,7 +2413,6 @@
     }
   },
   "legal": {
-    "lastUpdated": "Laatst bijgewerkt: {date}",
     "navPrivacy": "Privacyverklaring",
     "navTerms": "Algemene voorwaarden",
     "navDpa": "Verwerkersovereenkomst (DPA)",
@@ -2667,7 +2863,7 @@
           "fullName": "Jan Jansen"
         },
         "errors": {
-          "seatLimitExceeded": "De tenant heeft geen vrije zetels meer. Verhoog de zetellimiet voordat je nieuwe leden uitnodigt.",
+          "seatLimitExceeded": "Maximumaantal gebruikers bereikt. Verhoog de limiet of verwijder een lid voordat u iemand uitnodigt.",
           "alreadyMember": "Deze gebruiker is al lid van de tenant."
         }
       },
@@ -2934,7 +3130,7 @@
           "dropMdxHintNl": "sleep een .nl.mdx-bestand om in te vullen"
         },
         "placeholders": {
-          "title": "WKB Compliance Explained",
+          "title": "Wkb Compliance Explained",
           "titleNl": "Wkb uitgelegd",
           "description": "Een korte samenvatting voor de kaart en zoekresultaten.",
           "tags": "wkb, compliance, regelgeving",
@@ -3293,7 +3489,7 @@
       "annotationLabel": "Annotatie",
       "addAnnotation": "Annotatie toevoegen",
       "annotationAdded": "Annotatie toegevoegd",
-      "annotationDrawing": "Teken op de PDF...",
+      "annotationDrawing": "Teken op de PDF…",
       "annotationRemove": "Verwijderen",
       "shapes": {
         "rectangle": "Rechthoek",
@@ -3387,6 +3583,7 @@
       "screenshot": "Schermafbeelding",
       "settings": "Instellingen",
       "spaces": "Ruimtes",
+      "minimap": "Plattegrond",
       "comingSoonSuffix": "{label} (binnenkort beschikbaar)",
       "pan": "Verschuiven",
       "panTooltip": "Verschuiven (sleep om te verplaatsen)",

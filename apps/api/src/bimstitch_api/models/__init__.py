@@ -31,7 +31,6 @@ from bimstitch_api.models.checklist_item_result_attachment import (
     CHECKLIST_RESULT_ATTACHMENT_KINDS,
     ChecklistItemResultAttachment,
 )
-from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.deadline import Deadline, DeadlineStatus
 from bimstitch_api.models.deadline_notification_log import DeadlineNotificationLog
 from bimstitch_api.models.deadline_notification_settings import DeadlineNotificationSettings
@@ -45,7 +44,7 @@ from bimstitch_api.models.model import Model, ModelDiscipline, ModelStatus
 from bimstitch_api.models.notification import (
     Notification,
     NotificationEventType,
-    NotificationRead,
+    NotificationUserState,
 )
 from bimstitch_api.models.org_certificate import OrgCertificate
 from bimstitch_api.models.org_certificate_tag import OrgCertificateTag
@@ -59,7 +58,6 @@ from bimstitch_api.models.project import (
     Project,
     ProjectLifecycleState,
     ProjectPhase,
-    ProjectStatus,
 )
 from bimstitch_api.models.project_file import (
     ATTACHMENT_ALLOWED_EXTENSIONS,
@@ -107,7 +105,6 @@ __all__ = [
     "ChecklistItemResult",
     "ChecklistItemResultAttachment",
     "ChecklistItemType",
-    "Contractor",
     "Deadline",
     "DeadlineNotificationLog",
     "DeadlineNotificationSettings",
@@ -130,7 +127,7 @@ __all__ = [
     "ModelStatus",
     "Notification",
     "NotificationEventType",
-    "NotificationRead",
+    "NotificationUserState",
     "OrgCertificate",
     "OrgCertificateTag",
     "OrgTemplate",
@@ -146,7 +143,6 @@ __all__ = [
     "ProjectMember",
     "ProjectPhase",
     "ProjectRole",
-    "ProjectStatus",
     "Report",
     "ReportStatus",
     "ReportType",

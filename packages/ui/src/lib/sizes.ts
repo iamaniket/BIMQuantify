@@ -25,17 +25,17 @@ export type ControlSize = 'sm' | 'md' | 'lg';
  *
  * Individual components add their own padding/spacing on top of these base styles.
  *
- * Size scale:
- * - `sm`: h-6 (28px) + text-[12px] — compact controls, dense UIs
- * - `md`: h-7.5 (30px) + text-[14px] — default for most controls
- * - `lg`: h-8 (36px) + text-[16px] — prominent actions, accessibility
+ * Size scale (height + design-token font size):
+ * - `sm`: h-6 (24px) + text-body3 (12px) — compact controls, dense UIs
+ * - `md`: h-[30px] (30px) + text-body2 (14px) — default for most controls
+ * - `lg`: h-8 (32px) + text-body1 (16px) — prominent actions, accessibility
  *
  * @see Button.tsx - extends with horizontal padding
  * @see Input.tsx - extends with horizontal padding + icon spacing
  * @see Tabs.tsx - extends with horizontal padding for triggers
  */
 export const controlSizeStyles: Record<ControlSize, string> = {
-  sm: 'h-6 text-[12px]',
-  md: 'h-[30px] text-[14px]',
-  lg: 'h-8 text-[16px]',
+  sm: 'h-6 text-body3',
+  md: 'h-[30px] text-body2',
+  lg: 'h-8 text-body1',
 };

@@ -23,7 +23,6 @@ function makeData(): AssurancePlanData {
         city: 'Amsterdam',
       },
     },
-    instrument: { id: 'kik', name: 'KiK', provider: 'Stichting KiK', methodology_url: null },
     assurance_plan: {
       version_number: 2,
       status: 'published',
@@ -78,11 +77,9 @@ describe('assurance-plan template', () => {
     expect(html).toContain('Foto'); // photo evidence type
   });
 
-  it('renders the kwaliteitsborger + instrument on the cover', () => {
+  it('renders the kwaliteitsborger on the cover', () => {
     const html = renderHtml(makeData());
     expect(html).toContain('Jan de Boer');
-    expect(html).toContain('KiK');
-    expect(html).toContain('Stichting KiK');
   });
 
   it('includes a signature block', () => {

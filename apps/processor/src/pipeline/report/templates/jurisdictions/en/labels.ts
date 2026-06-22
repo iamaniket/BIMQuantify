@@ -20,7 +20,6 @@ export const EN_COMPLIANCE_LABELS: ComplianceReportLabels = {
   noResults: 'No check results available.',
   generatedAt: 'Generated at',
   project: 'Project',
-  contractor: 'Contractor',
   address: 'Address',
   permit: 'Permit',
   delivery: 'Delivery date',

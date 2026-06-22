@@ -54,8 +54,8 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
         onPointerDown={handlePointerDown}
         onClick={handleClick}
         className={cn(
-          'rounded-lg border border-border bg-background shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-all',
-          disabled ? 'cursor-default opacity-60' : 'cursor-grab active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.12)] hover:border-border-hover',
+          'rounded-lg border border-border bg-background shadow-card transition-all',
+          disabled ? 'cursor-default opacity-60' : 'cursor-grab active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-card-hover hover:border-border-hover',
           isDragging && 'opacity-40',
           className,
         )}

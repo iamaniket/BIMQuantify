@@ -28,10 +28,6 @@ const SAMPLE: ComplianceReportData = {
     },
     permit_number: 'OMG-2026-0042',
     delivery_date: '2026-09-30',
-    contractor: {
-      name: 'Bouwbedrijf De Vries',
-      kvk_number: '12345678',
-    },
   },
   compliance: {
     framework: 'bbl',
@@ -95,7 +91,6 @@ describe('renderHtml', () => {
     // Address line composes street + house_number + postal_code + city + municipality.
     expect(html).toContain('Hoofdstraat 12A');
     expect(html).toContain('1011 AB Amsterdam');
-    expect(html).toContain('Bouwbedrijf De Vries');
     expect(html).toContain('OMG-2026-0042');
   });
 

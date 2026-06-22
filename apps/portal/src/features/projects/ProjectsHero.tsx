@@ -23,8 +23,11 @@ export function ProjectsHero({ projects, certWarning }: Props): JSX.Element {
   const stats = useMemo(() => {
     const active = projects.filter((p) => p.lifecycle_state === 'active');
     const archived = projects.filter((p) => p.lifecycle_state === 'archived');
-    const inConstruction = active.filter((p) => p.status === 'construction');
-    const inDesign = active.filter((p) => p.status === 'design');
+    // "On-site construction" ≈ the shell + finishing phases.
+    const inConstruction = active.filter(
+      (p) => p.phase === 'shell' || p.phase === 'finishing',
+    );
+    const inDesign = active.filter((p) => p.phase === 'design');
 
     let approaching = 0;
     let overdue = 0;

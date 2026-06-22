@@ -5,10 +5,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from bimstitch_api.models.project import (
     BuildingType,
-    ConsequenceClass,
     ProjectLifecycleState,
     ProjectPhase,
-    ProjectStatus,
 )
 from bimstitch_api.models.project_member import ProjectRole
 
@@ -21,7 +19,6 @@ class ProjectBase(BaseModel):
     thumbnail_url: str | None = Field(default=None, max_length=2048)
 
     reference_code: str | None = Field(default=None, max_length=50)
-    status: ProjectStatus = ProjectStatus.planning
     phase: ProjectPhase = ProjectPhase.design
     # ISO 3166-1 alpha-2. NL is the only registered jurisdiction today.
     # The server validates this against the jurisdictions registry; an
@@ -33,11 +30,6 @@ class ProjectBase(BaseModel):
     # Building classification. Codes are jurisdiction-neutral; the portal
     # renders localized labels via the /jurisdictions endpoint.
     building_type: BuildingType | None = None
-    consequence_class: ConsequenceClass | None = None
-
-    # Toegelaten instrument id (NL: TloKB register slug). The router
-    # validates it belongs to the project's country jurisdiction.
-    instrument_id: str | None = Field(default=None, max_length=64)
 
     street: str | None = Field(default=None, max_length=255)
     house_number: str | None = Field(default=None, max_length=20)
@@ -49,8 +41,6 @@ class ProjectBase(BaseModel):
 
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
-
-    contractor_id: UUID | None = None
 
 
 class ProjectCreate(ProjectBase):
@@ -65,15 +55,12 @@ class ProjectUpdate(BaseModel):
     thumbnail_url: str | None = Field(default=None, max_length=2048)
 
     reference_code: str | None = Field(default=None, max_length=50)
-    status: ProjectStatus | None = None
     phase: ProjectPhase | None = None
     country: str | None = Field(default=None, min_length=2, max_length=2)
     delivery_date: date | None = None
     planned_start_date: date | None = None
 
     building_type: BuildingType | None = None
-    consequence_class: ConsequenceClass | None = None
-    instrument_id: str | None = Field(default=None, max_length=64)
 
     street: str | None = Field(default=None, max_length=255)
     house_number: str | None = Field(default=None, max_length=20)
@@ -86,8 +73,6 @@ class ProjectUpdate(BaseModel):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
-    contractor_id: UUID | None = None
-
 
 class ProjectRead(ProjectBase):
     id: UUID
@@ -95,7 +80,6 @@ class ProjectRead(ProjectBase):
     lifecycle_state: ProjectLifecycleState
     created_at: datetime
     updated_at: datetime
-    contractor_name: str | None = None
     # The requesting caller's own role on this project, so the portal can gate
     # its UI against the permission matrix without a second members fetch.
     # None when the caller reaches the project via an admin/superuser bypass

@@ -10,7 +10,7 @@ import { GridTexture } from '@/components/GridTexture';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import type { Project } from '@/lib/api/schemas/projects';
 import { formatShortDate, humanize } from '@/lib/format';
-import { colors, projectStatusColor, radii } from '@/theme';
+import { colors, projectPhaseColor, radii } from '@/theme';
 
 const ON_STRONG = 'rgba(255,255,255,0.92)';
 const ON_SOFT = 'rgba(255,255,255,0.7)';
@@ -109,8 +109,8 @@ export function ProjectCard({ project }: { project: Project }) {
 
         <View style={styles.metaRow}>
           <View style={styles.chip}>
-            <View style={[styles.dot, { backgroundColor: projectStatusColor(project.status) }]} />
-            <Text style={styles.chipText}>{humanize(project.status)}</Text>
+            <View style={[styles.dot, { backgroundColor: projectPhaseColor(project.phase ?? '') }]} />
+            <Text style={styles.chipText}>{humanize(project.phase ?? '')}</Text>
           </View>
           {project.delivery_date != null && project.delivery_date !== '' ? (
             <View style={styles.deliveryWrap}>

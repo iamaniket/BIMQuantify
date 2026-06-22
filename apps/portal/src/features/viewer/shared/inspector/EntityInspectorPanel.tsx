@@ -2,14 +2,17 @@
 
 import { Info } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
+import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
+import type { ConvertFloorPlanPoint } from '@/features/projects/detail/FindingPinButton';
 import { ContextLine } from '@/components/shared/viewer/shared/ContextLine';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
+import { federatedModelId } from '@/features/viewer/3d/federation/federatedModelId';
 import { ElementHeader } from '@/features/viewer/3d/properties/ElementHeader';
-import type { ModelMetadata } from '@/lib/api/viewerTypes';
+import type { ElementEntry, ModelMetadata } from '@/lib/api/viewerTypes';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { EntityFindingsBody } from './EntityFindingsBody';
@@ -39,6 +42,12 @@ type EntityInspectorPanelProps = {
   floorPlan?: boolean;
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
+  /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
+  viewMode?: ViewMode | undefined;
+  /** Floor-plan handle (2D plan surface) for picking in 2D mode. */
+  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Convert a normalized plan point to a 3D world anchor. */
+  convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
   onNavigateToPage?: ((page: number) => void) | undefined;
 };
 
@@ -64,6 +73,9 @@ export function EntityInspectorPanel({
   floorPlan,
   documentHandle,
   viewerHandle,
+  viewMode,
+  floorPlanHandle,
+  convertFloorPlanPoint,
   onNavigateToPage,
 }: EntityInspectorPanelProps): JSX.Element {
   const t = useTranslations('viewerInspector');
@@ -92,6 +104,23 @@ export function EntityInspectorPanel({
     hasSelection,
     isMultiSelection,
   } = useSelectedElement(metadata);
+
+  // Resolve a picked element (from `point:picked`) to its GlobalId so a pin can
+  // auto-link the element. The active viewer scene id is `file-<fileId>`; only
+  // picks on the active model resolve (others fall back to location-only).
+  const activeViewerModelId = federatedModelId(fileId);
+  const elementsByExpressId = useMemo(() => {
+    const map = new Map<number, ElementEntry>();
+    for (const el of metadata?.elements ?? []) map.set(el.expressID, el);
+    return map;
+  }, [metadata]);
+  const resolvePickedGlobalId = useCallback(
+    (item: { modelId: string; localId: number } | null): string | null =>
+      item != null && item.modelId === activeViewerModelId
+        ? elementsByExpressId.get(item.localId)?.globalId ?? null
+        : null,
+    [elementsByExpressId, activeViewerModelId],
+  );
 
   const isProjectMode = isPdf !== true && !hasSelection;
   // Floor-plan findings (file-scoped, IFC-anchored) replace the project-scope
@@ -146,6 +175,12 @@ export function EntityInspectorPanel({
         onAutoOpenConsumed={handleAutoOpenConsumed}
         viewerHandle={viewerHandle}
         activeFileType="ifc"
+        activeModelId={modelId}
+        activeFileId={fileId}
+        resolvePickedGlobalId={resolvePickedGlobalId}
+        viewMode={viewMode}
+        floorPlanHandle={floorPlanHandle}
+        convertFloorPlanPoint={convertFloorPlanPoint}
       />
     );
   } else if (isProjectMode) {
@@ -163,6 +198,12 @@ export function EntityInspectorPanel({
         onAutoOpenConsumed={handleAutoOpenConsumed}
         viewerHandle={viewerHandle}
         activeFileType="ifc"
+        activeModelId={modelId}
+        activeFileId={fileId}
+        resolvePickedGlobalId={resolvePickedGlobalId}
+        viewMode={viewMode}
+        floorPlanHandle={floorPlanHandle}
+        convertFloorPlanPoint={convertFloorPlanPoint}
       />
     );
   } else if (element !== null) {
@@ -181,6 +222,12 @@ export function EntityInspectorPanel({
           openFindingNonce={openFindingNonce}
           viewerHandle={viewerHandle}
           activeFileType="ifc"
+          activeModelId={modelId}
+          activeFileId={fileId}
+          resolvePickedGlobalId={resolvePickedGlobalId}
+          viewMode={viewMode}
+          floorPlanHandle={floorPlanHandle}
+          convertFloorPlanPoint={convertFloorPlanPoint}
         />
       );
   } else {

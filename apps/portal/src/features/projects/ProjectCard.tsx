@@ -70,14 +70,12 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
   const locale = useLocale() as Locale;
   const queryClient = useQueryClient();
   const { tokens } = useAuth();
-  const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
   const archived = isProjectArchived(project);
   const createdLabel = formatDate(project.created_at, locale, '');
   const updatedLabel = formatDate(project.updated_at, locale, '');
   const deliveryLabel = project.delivery_date === null ? '' : formatDate(project.delivery_date, locale, '');
   const cityLine = project.city ?? null;
-  const contractorName = project.contractor_name ?? null;
   const sortedMembers = sortMembersForCard(members, project.owner_id);
   const avatarMembers = sortedMembers.map((m, i) => ({
     id: m.user_id,
@@ -193,7 +191,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 py-3">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-primary px-2.5 py-1 text-caption font-semibold uppercase tracking-wider text-primary-foreground shadow-sm shadow-primary/20 transition-colors duration-200 group-hover:bg-primary-hover">
               <span className={`h-1.5 w-1.5 rounded-full ${projectDotClasses(project)}`} />
-              {formatProjectBadgeLabel(project, tStatuses(project.status))}
+              {formatProjectBadgeLabel(project, tPhases(project.phase))}
             </span>
           </div>
 
@@ -244,10 +242,6 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
               </div>
 
               <div className="grid grid-cols-1 gap-1.5 pt-1 text-body3 text-primary-foreground/85">
-                <p className="inline-flex items-center gap-1.5">
-                  <Icon icon={Layers} size="md" weight="regular" className="text-white/80" />
-                  {tPhases(project.phase)}
-                </p>
                 {project.permit_number !== null && (
                   <p className="inline-flex min-w-0 items-center gap-1.5 line-clamp-1 break-all">
                     <Icon icon={FileText} size="md" weight="regular" className="text-white/80" />
@@ -258,19 +252,12 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
             </div>
 
             <div className="min-w-0 space-y-2 text-body3 text-primary-foreground/85">
-              {(cityLine !== null || contractorName !== null) && (
+              {cityLine !== null && (
                 <div className="flex flex-col gap-0.5">
-                  {cityLine !== null && (
-                    <span className="inline-flex min-w-0 items-center gap-1">
-                      <Icon icon={MapPin} size="xs" weight="regular" className="text-white/80" />
-                      <span className="line-clamp-1 break-all">{cityLine}</span>
-                    </span>
-                  )}
-                  {contractorName !== null && (
-                    <span className="line-clamp-2 break-all text-primary-foreground/75">
-                      {contractorName}
-                    </span>
-                  )}
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <Icon icon={MapPin} size="xs" weight="regular" className="text-white/80" />
+                    <span className="line-clamp-1 break-all">{cityLine}</span>
+                  </span>
                 </div>
               )}
 

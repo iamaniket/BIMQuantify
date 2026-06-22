@@ -16,7 +16,7 @@ import { logger } from '../../log.js';
 import type { ProgressReporter, WorkerJob } from '../../queue/queue.js';
 import { downloadObject } from '../../storage/s3.js';
 import { runReportJob } from './index.js';
-import { reportInstrumentSchema, reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
+import { reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
 import { renderHtml, type DossierData } from './templates/dossier.js';
 import { embedTemplateLogo, mergeTemplateCover } from './templateAssets.js';
 
@@ -33,7 +33,6 @@ const PayloadSchema: z.ZodType<DossierData & { storage_key: string }> = z
     generated_at: z.string().min(1),
     locale: z.string().min(1),
     project: reportProjectSchema,
-    instrument: reportInstrumentSchema,
     assurance_plan: z
       .object({
         version_number: z.number(),

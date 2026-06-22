@@ -167,7 +167,6 @@ const CompliancePayloadSchema: z.ZodType<ComplianceReportData & { storage_key: s
       id: z.string(),
       name: z.string(),
       reference_code: z.string().nullable().optional(),
-      status: z.string().nullable().optional(),
       phase: z.string().nullable().optional(),
       address: z
         .object({
@@ -182,15 +181,6 @@ const CompliancePayloadSchema: z.ZodType<ComplianceReportData & { storage_key: s
         .optional(),
       permit_number: z.string().nullable().optional(),
       delivery_date: z.string().nullable().optional(),
-      contractor: z
-        .object({
-          name: z.string().nullable().optional(),
-          kvk_number: z.string().nullable().optional(),
-          contact_email: z.string().nullable().optional(),
-          contact_phone: z.string().nullable().optional(),
-        })
-        .nullable()
-        .optional(),
     }),
     compliance: z.record(z.unknown()),
     template: reportTemplateSchema,

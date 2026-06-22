@@ -2,9 +2,7 @@ import type { WizardStep } from '@/components/shared/wizard/Wizard';
 
 import type {
   BuildingTypeValue,
-  ConsequenceClassValue,
   ProjectPhaseValue,
-  ProjectStatusValue,
 } from '@/lib/api/schemas';
 
 import type { ProjectFormValues } from '../projectFormSchema';
@@ -13,16 +11,6 @@ import type { ProjectFormValues } from '../projectFormSchema';
 // labels via `useWizardOptions.ts` once `GET /jurisdictions?locale=` has
 // returned — so an NL project displayed in `/nl/...` ends up reading
 // "Ontwerp" / "Ruwbouw" / etc. instead of these defaults.
-export const STATUS_OPTIONS: readonly { value: ProjectStatusValue; label: string }[] = [
-  { value: 'planning', label: 'Planning' },
-  { value: 'design', label: 'Design' },
-  { value: 'permit_review', label: 'Permit review' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'handover', label: 'Handover' },
-  { value: 'complete', label: 'Completed' },
-  { value: 'on_hold', label: 'On hold' },
-];
-
 export const PHASE_OPTIONS: readonly { value: ProjectPhaseValue; label: string }[] = [
   { value: 'design', label: 'Design' },
   { value: 'tender', label: 'Tender' },
@@ -41,56 +29,6 @@ export const BUILDING_TYPE_OPTIONS: readonly {
   { value: 'dwelling', label: 'Dwelling' },
   { value: 'commercial', label: 'Commercial building' },
   { value: 'other', label: 'Other' },
-];
-
-// Eurocode CC1/CC2/CC3 = NL GK1/GK2/GK3. The `disabled` flag mirrors the
-// API's allowed_consequence_classes for the NL jurisdiction (today: CC1
-// only — CC2/CC3 are roadmap and the server would reject them).
-export const CONSEQUENCE_CLASS_OPTIONS: readonly {
-  value: ConsequenceClassValue;
-  label: string;
-  disabled: boolean;
-}[] = [
-  { value: 'cc1', label: 'Consequence class 1 (CC1)', disabled: false },
-  { value: 'cc2', label: 'Consequence class 2 (CC2) — out of scope', disabled: true },
-  { value: 'cc3', label: 'Consequence class 3 (CC3) — out of scope', disabled: true },
-];
-
-// Toegelaten instrumenten mirror of the API's NL_INSTRUMENTS list
-// (apps/api/src/bimstitch_api/jurisdictions/nl.py). To update: edit both
-// sides in lockstep — server validates the id against its own copy, so a
-// portal-only entry would 422 on submit. See README ("Updating toegelaten
-// instrumenten") for the cadence.
-export const INSTRUMENT_OPTIONS: readonly {
-  value: string;
-  label: string;
-  provider: string;
-  methodology_url: string;
-}[] = [
-  {
-    value: 'kik',
-    label: 'KiK',
-    provider: 'Stichting Kwaliteitsborging in de Bouw',
-    methodology_url: 'https://www.tlokb.nl/register',
-  },
-  {
-    value: 'tis-kwaliteitsborger-wkb',
-    label: 'TIS Kwaliteitsborger Wkb',
-    provider: 'SWK',
-    methodology_url: 'https://www.tlokb.nl/register',
-  },
-  {
-    value: 'wki-gk1',
-    label: 'WKI-GK1',
-    provider: 'Stichting Wkb-instrumenten',
-    methodology_url: 'https://www.tlokb.nl/register',
-  },
-  {
-    value: 'adp-bouwkwaliteit',
-    label: 'ADP-Bouwkwaliteit',
-    provider: 'ADP Bouwkwaliteit',
-    methodology_url: 'https://www.tlokb.nl/register',
-  },
 ];
 
 /** Stable step identifiers — used for React keys and step lookup. The
@@ -118,11 +56,8 @@ export const PROJECT_WIZARD_STEP_FIELDS: Record<
   ],
   details: [
     'reference_code',
-    'status',
     'phase',
     'building_type',
-    'consequence_class',
-    'instrument_id',
     'planned_start_date',
     'delivery_date',
     'permit_number',

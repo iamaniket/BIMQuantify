@@ -13,8 +13,6 @@ export const sharedNlMessages: SharedMessages = {
     privacy: 'Privacy',
     terms: 'Voorwaarden',
     dpa: 'Verwerkersovereenkomst',
-    backToSite: 'Terug naar site',
-    backToPortal: 'Terug naar portaal',
     navAriaLabel: 'Juridisch',
   },
   framework: {

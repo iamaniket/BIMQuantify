@@ -141,6 +141,59 @@ class TestReminderEngine:
         ]
         assert len(reminder_actions) >= 1
 
+    async def test_sends_t30_reminder(
+        self,
+        client: AsyncClient,
+        org_user: dict[str, str],
+        session_maker: async_sessionmaker[AsyncSession],
+        action_dispatch_calls: list[dict[str, object]],
+    ) -> None:
+        """A deadline ~25 days out fires the T-30 tier reminder.
+
+        Before T-30 was added (max tier 14), a 25-day-out deadline produced
+        no reminder; with the (30, 14, 7, 3, 1) default it must fire one, and
+        the notification log records the tier as days_before=30.
+        """
+        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimstitch_api.models.deadline_notification_log import (
+            DeadlineNotificationLog,
+        )
+
+        token = org_user["access_token"]
+        project = await _create_project_with_dates(client, token)
+        schema = _org_schema(org_user)
+
+        today = dt.date.today()
+        due = today + dt.timedelta(days=25)  # within T-30, beyond T-14
+        dl_id = await _set_deadline_due_date(
+            session_maker, schema, "construction_notification",
+            project["id"], due,
+        )
+
+        count = await sweep_all_orgs()
+        assert count > 0
+
+        reminder_actions = [
+            c for c in action_dispatch_calls
+            if c["action_type"] == "send_email"
+            and "Deadline-herinnering" in c["payload"]["subject"]
+            and "Bouwmelding" in c["payload"]["subject"]
+        ]
+        assert len(reminder_actions) >= 1
+
+        # Tier recorded as 30.
+        async with session_maker() as session:
+            await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
+            tiers = (
+                await session.execute(
+                    select(DeadlineNotificationLog.days_before).where(
+                        DeadlineNotificationLog.deadline_id == dl_id,
+                        DeadlineNotificationLog.notification_type == "reminder",
+                    )
+                )
+            ).scalars().all()
+        assert 30 in tiers
+
     async def test_idempotent_second_sweep_sends_nothing(
         self,
         client: AsyncClient,

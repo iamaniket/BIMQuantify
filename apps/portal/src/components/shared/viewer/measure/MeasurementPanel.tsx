@@ -1,7 +1,7 @@
 'use client';
 
 import { Box, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Square, Trash2 } from '@bimstitch/ui/icons';
-import { type AppIcon as LucideIcon } from '@bimstitch/ui';
+import { type AppIcon } from '@bimstitch/ui';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useRef, useState, type JSX, type ReactNode,
@@ -21,7 +21,7 @@ export type MeasureModeDef = {
   id: string;
   /** i18n key under `viewer.measurement` (e.g. 'modeDistance'). */
   labelKey: string;
-  icon: LucideIcon;
+  icon: AppIcon;
 };
 
 /** A row in the measurement list — already unit-formatted by the caller. */
@@ -47,7 +47,7 @@ type Props<TRaw> = {
   clearCommand?: string;
 };
 
-const ICON_BY_TYPE: Record<string, LucideIcon> = {
+const ICON_BY_TYPE: Record<string, AppIcon> = {
   distance: Ruler,
   angle: DraftingCompass,
   area: Square,

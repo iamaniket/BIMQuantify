@@ -51,3 +51,16 @@ export function findingRingColor(status?: string): string {
 export const MARKER_DIAMETER_PX = 14;
 /** Ring thickness (px). */
 export const MARKER_RING_PX = 2.5;
+
+/**
+ * Draft (unsaved preview) marker styling — a pin staged by the "update finding
+ * pin" flow but not yet saved. It must read clearly apart from every saved
+ * finding (which use the red-while-open / neutral-when-closed ring), so a draft
+ * uses the brand-accent ring + a translucent accent halo. Shared 3D + 2D.
+ */
+export const DRAFT_RING_COLOR = '#2c5697'; // brand primary — "in progress, unsaved"
+/** Halo radius factor (× glyph radius) and alpha for the draft glyph. */
+export const DRAFT_HALO_SCALE = 1.8;
+export const DRAFT_HALO_ALPHA = 0.3;
+/** Pre-computed accent halo as a CSS color (DRAFT_RING_COLOR @ DRAFT_HALO_ALPHA). */
+export const DRAFT_HALO_CSS = 'rgba(44, 86, 151, 0.3)';

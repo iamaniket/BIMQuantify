@@ -11,9 +11,6 @@ import type { Icon as PhosphorIcon, IconWeight } from '@phosphor-icons/react';
 /** Canonical icon-component type — use this for `icon` props. */
 export type AppIcon = PhosphorIcon;
 
-/** @deprecated Alias kept during the Lucide → Phosphor migration. Use `AppIcon`. */
-export type LucideIcon = PhosphorIcon;
-
 /** Default weight for all icons across the app (solid fill). */
 export const DEFAULT_ICON_WEIGHT: IconWeight = 'fill';
 

@@ -22,6 +22,26 @@ import {
 } from '../shared/css2d-overlay.js';
 import type { Css2dOverlay } from '../shared/css2d-overlay.js';
 import { Magnifier } from './magnifier.js';
+import {
+  hexToCssRgba,
+  createCssLabel,
+  formatDistance as formatDistanceImpl,
+  formatAngle as formatAngleImpl,
+  formatArea as formatAreaImpl,
+  formatVolume as formatVolumeImpl,
+} from './formatting.js';
+import {
+  getModelScale as getModelScaleImpl,
+  createDot as createDotImpl,
+  createDashedLine as createDashedLineImpl,
+  createRightAngleIndicator as createRightAngleIndicatorImpl,
+  createArc as createArcImpl,
+  computePolygonNormal,
+  computePolygonArea,
+  computePolygonCentroid,
+  createPolygonFill,
+  applyAxisLock,
+} from './geometry.js';
 
 const NAME = 'measurement' as const;
 
@@ -75,34 +95,6 @@ const DEFAULT_CONFIG: MeasurementConfig = {
 };
 
 let nextId = 0;
-
-// ----- CSS label helper -----
-
-function hexToCssRgba(hex: number, alpha: number): string {
-  const r = (hex >> 16) & 0xff;
-  const g = (hex >> 8) & 0xff;
-  const b = hex & 0xff;
-  return `rgba(${String(r)},${String(g)},${String(b)},${String(alpha)})`;
-}
-
-function createCssLabel(
-  ov: Css2dOverlay,
-  text: string,
-  labelScale: number,
-  parent: THREE.Object3D,
-  position: THREE.Vector3,
-  bgColor?: number,
-): CSS2DObject {
-  const obj = ov.createLabel(text, position, parent);
-  const fontSize = Math.round(12 * labelScale);
-  obj.element.style.fontSize = `${String(fontSize)}px`;
-  obj.element.style.fontWeight = 'bold';
-  if (bgColor !== undefined) {
-    obj.element.style.background = hexToCssRgba(bgColor, 0.82);
-  }
-  obj.layers.set(LAYER_OVERLAY);
-  return obj;
-}
 
 // ----- plugin -----
 
@@ -190,161 +182,21 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
 
   const getModelScale = (): number => {
     if (!ctxRef) return 10;
-    const box = new THREE.Box3();
-    for (const model of ctxRef.models().values()) {
-      const mBox = model.box;
-      if (mBox && !mBox.isEmpty()) box.union(mBox);
-    }
-    if (box.isEmpty()) return 10;
-    const size = box.getSize(new THREE.Vector3());
-    return Math.max(size.x, size.y, size.z, 1);
+    const boxes: Array<THREE.Box3 | undefined> = [];
+    for (const model of ctxRef.models().values()) boxes.push(model.box);
+    return getModelScaleImpl(boxes);
   };
 
-  const createDot = (pos: THREE.Vector3): THREE.Mesh => {
-    const scale = Math.max(getModelScale() / 200, 0.02) * config.dotScale;
-    const dot = new THREE.Mesh(DOT_GEO, DOT_MAT);
-    dot.position.copy(pos);
-    dot.scale.setScalar(scale / 0.05);
-    dot.renderOrder = 999;
-    dot.layers.set(LAYER_OVERLAY);
-    return dot;
-  };
+  const createDot = (pos: THREE.Vector3): THREE.Mesh =>
+    createDotImpl(pos, getModelScale(), config.dotScale, DOT_GEO, DOT_MAT);
 
-  const formatDistance = (d: number): string => {
-    const p = config.precision;
-    if (d < 0.01) return `${(d * 1000).toFixed(Math.max(p - 2, 1))} mm`;
-    if (d < 1) return `${(d * 1000).toFixed(Math.max(p - 3, 0))} mm`;
-    if (d < 100) return `${d.toFixed(p)} m`;
-    return `${d.toFixed(Math.max(p - 2, 1))} m`;
-  };
+  const formatDistance = (d: number): string => formatDistanceImpl(d, config.precision);
 
-  const formatAngle = (radians: number): string => {
-    const deg = radians * (180 / Math.PI);
-    return `${deg.toFixed(Math.max(config.precision - 2, 1))}°`;
-  };
+  const formatAngle = (radians: number): string => formatAngleImpl(radians, config.precision);
 
-  const formatArea = (area: number): string => {
-    const p = config.precision;
-    if (area < 0.0001) return `${(area * 1e6).toFixed(Math.max(p - 2, 1))} mm²`;
-    if (area < 0.01) return `${(area * 1e4).toFixed(Math.max(p - 2, 1))} cm²`;
-    return `${area.toFixed(p)} m²`;
-  };
+  const formatArea = (area: number): string => formatAreaImpl(area, config.precision);
 
-  const formatVolume = (vol: number): string => {
-    const p = config.precision;
-    if (vol < 0.000001) return `${(vol * 1e9).toFixed(Math.max(p - 2, 1))} mm³`;
-    if (vol < 0.001) return `${(vol * 1e6).toFixed(Math.max(p - 2, 1))} cm³`;
-    return `${vol.toFixed(p)} m³`;
-  };
-
-  const computePolygonNormal = (pts: THREE.Vector3[]): THREE.Vector3 => {
-    const n = new THREE.Vector3();
-    for (let i = 0; i < pts.length; i++) {
-      const cur = pts[i]!;
-      const next = pts[(i + 1) % pts.length]!;
-      n.x += (cur.y - next.y) * (cur.z + next.z);
-      n.y += (cur.z - next.z) * (cur.x + next.x);
-      n.z += (cur.x - next.x) * (cur.y + next.y);
-    }
-    if (n.lengthSq() < 1e-12) n.set(0, 1, 0);
-    return n.normalize();
-  };
-
-  const computePolygonArea = (pts: THREE.Vector3[]): number => {
-    if (pts.length < 3) return 0;
-    const normal = computePolygonNormal(pts);
-    const cross = new THREE.Vector3();
-    const total = new THREE.Vector3();
-    for (let i = 0; i < pts.length; i++) {
-      const cur = pts[i]!;
-      const next = pts[(i + 1) % pts.length]!;
-      cross.crossVectors(cur, next);
-      total.add(cross);
-    }
-    return Math.abs(total.dot(normal)) * 0.5;
-  };
-
-  const computePolygonCentroid = (pts: THREE.Vector3[]): THREE.Vector3 => {
-    const c = new THREE.Vector3();
-    for (const p of pts) c.add(p);
-    c.divideScalar(pts.length);
-    return c;
-  };
-
-  const createPolygonFill = (
-    pts: THREE.Vector3[],
-    color: number,
-    opacity: number,
-    parent: THREE.Object3D,
-  ): THREE.Mesh => {
-    const normal = computePolygonNormal(pts);
-    const up = Math.abs(normal.y) > 0.99
-      ? new THREE.Vector3(1, 0, 0)
-      : new THREE.Vector3(0, 1, 0);
-    const xAxis = new THREE.Vector3().crossVectors(up, normal).normalize();
-    const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
-    const origin = pts[0]!;
-
-    const shape = new THREE.Shape();
-    const projected = pts.map((p) => {
-      const d = new THREE.Vector3().subVectors(p, origin);
-      return new THREE.Vector2(d.dot(xAxis), d.dot(yAxis));
-    });
-    shape.moveTo(projected[0]!.x, projected[0]!.y);
-    for (let i = 1; i < projected.length; i++) {
-      shape.lineTo(projected[i]!.x, projected[i]!.y);
-    }
-    shape.closePath();
-
-    const geo = new THREE.ShapeGeometry(shape);
-    const positions = geo.getAttribute('position') as THREE.BufferAttribute;
-    for (let i = 0; i < positions.count; i++) {
-      const u = positions.getX(i);
-      const v = positions.getY(i);
-      const world = origin.clone()
-        .addScaledVector(xAxis, u)
-        .addScaledVector(yAxis, v);
-      positions.setXYZ(i, world.x, world.y, world.z);
-    }
-    positions.needsUpdate = true;
-    geo.computeVertexNormals();
-
-    const mat = new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity,
-      side: THREE.DoubleSide,
-      depthTest: false,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.renderOrder = 997;
-    mesh.layers.set(LAYER_OVERLAY);
-    parent.add(mesh);
-    return mesh;
-  };
-
-  const applyAxisLock = (anchor: THREE.Vector3, target: THREE.Vector3): { point: THREE.Vector3; axis: 'x' | 'y' | 'z' } => {
-    const delta = new THREE.Vector3().subVectors(target, anchor);
-    const absX = Math.abs(delta.x);
-    const absY = Math.abs(delta.y);
-    const absZ = Math.abs(delta.z);
-
-    let axis: 'x' | 'y' | 'z';
-    const locked = anchor.clone();
-
-    if (absX >= absY && absX >= absZ) {
-      axis = 'x';
-      locked.x += delta.x;
-    } else if (absY >= absX && absY >= absZ) {
-      axis = 'y';
-      locked.y += delta.y;
-    } else {
-      axis = 'z';
-      locked.z += delta.z;
-    }
-
-    return { point: locked, axis };
-  };
+  const formatVolume = (vol: number): string => formatVolumeImpl(vol, config.precision);
 
   let axisLockLabel: HTMLDivElement | null = null;
 
@@ -391,38 +243,14 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     });
   };
 
-  const createDashedLine = (a: THREE.Vector3, b: THREE.Vector3, color?: number): THREE.Line => {
-    const scale = getModelScale();
-    const mat = new THREE.LineDashedMaterial({
-      color: color ?? config.directColor,
-      depthTest: false,
-      dashSize: scale / 80,
-      gapSize: scale / 120,
-    });
-    const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
-    const line = new THREE.Line(geo, mat);
-    line.computeLineDistances();
-    line.renderOrder = 998;
-    return line;
-  };
+  const createDashedLine = (a: THREE.Vector3, b: THREE.Vector3, color?: number): THREE.Line =>
+    createDashedLineImpl(a, b, color ?? config.directColor, getModelScale());
 
   const createRightAngleIndicator = (
     corner: THREE.Vector3, dirH: THREE.Vector3, dirV: THREE.Vector3, size: number,
     color?: number,
-  ): THREE.Line => {
-    const hNorm = dirH.clone().normalize();
-    const vNorm = dirV.clone().normalize();
-    const pts = [
-      corner.clone().addScaledVector(hNorm, size),
-      corner.clone().addScaledVector(hNorm, size).addScaledVector(vNorm, size),
-      corner.clone().addScaledVector(vNorm, size),
-    ];
-    const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const mat = new THREE.LineBasicMaterial({ color: color ?? config.directColor, depthTest: false });
-    const line = new THREE.Line(geo, mat);
-    line.renderOrder = 998;
-    return line;
-  };
+  ): THREE.Line =>
+    createRightAngleIndicatorImpl(corner, dirH, dirV, size, color ?? config.directColor);
 
   const buildDistanceGroup = (p1: THREE.Vector3, p2: THREE.Vector3): THREE.Group => {
     const distance = p1.distanceTo(p2);
@@ -516,31 +344,8 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     dirB: THREE.Vector3,
     angle: number,
     radius: number,
-  ): THREE.Line => {
-    const segments = Math.max(Math.ceil(Math.abs(angle) / (Math.PI / 36)), 8);
-    const points: THREE.Vector3[] = [];
-
-    const nA = dirA.clone().normalize();
-    const nB = dirB.clone().normalize();
-
-    // Build a local frame: X = nA, compute Y perpendicular in the plane of nA/nB
-    const cross = new THREE.Vector3().crossVectors(nA, nB).normalize();
-    const perpY = new THREE.Vector3().crossVectors(cross, nA).normalize();
-
-    for (let i = 0; i <= segments; i++) {
-      const t = (i / segments) * angle;
-      const dir = new THREE.Vector3()
-        .addScaledVector(nA, Math.cos(t))
-        .addScaledVector(perpY, Math.sin(t))
-        .normalize();
-      points.push(vertex.clone().addScaledVector(dir, radius));
-    }
-
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const arc = new THREE.Line(geo, ARC_MAT);
-    arc.renderOrder = 999;
-    return arc;
-  };
+  ): THREE.Line =>
+    createArcImpl(vertex, dirA, dirB, angle, radius, ARC_MAT);
 
   const buildAngleGroup = (
     p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3,

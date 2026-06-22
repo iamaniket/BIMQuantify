@@ -17,9 +17,7 @@ function makeData(): DossierData {
       country: 'NL',
       reference_code: 'REF-1',
       address: { street: 'Hoofdstraat', house_number: '12', postal_code: '1011 AB', city: 'Amsterdam' },
-      contractor: { name: 'Bouwbedrijf X', kvk_number: '99887766' },
     },
-    instrument: { id: 'kik', name: 'KiK', provider: 'Stichting KiK', methodology_url: null },
     assurance_plan: {
       version_number: 1,
       status: 'published',

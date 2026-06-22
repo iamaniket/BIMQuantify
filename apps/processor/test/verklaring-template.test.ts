@@ -23,7 +23,6 @@ function makeData(signed = false): VerklaringData {
         city: 'Amsterdam',
       },
     },
-    instrument: { id: 'kik', name: 'KiK', provider: 'Stichting KiK', methodology_url: null },
     declaration: {
       kwaliteitsborger: 'Marie Inspecteur',
       kwaliteitsborger_email: 'marie@kb.nl',
@@ -35,12 +34,11 @@ function makeData(signed = false): VerklaringData {
 }
 
 describe('verklaring template', () => {
-  it('renders the declaration with the KB name + instrument', () => {
+  it('renders the declaration with the KB name', () => {
     const html = renderHtml(makeData());
     expect(html).toContain('<!doctype html>');
     expect(html).toContain('Verklaring kwaliteitsborger');
     expect(html).toContain('Marie Inspecteur');
-    expect(html).toContain('KiK');
     expect(html).toContain('Bbl'); // declaration body references the Bbl
   });
 

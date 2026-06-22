@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 import type { ProgressReporter, WorkerJob } from '../../queue/queue.js';
 import { runReportJob } from './index.js';
-import { reportInstrumentSchema, reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
+import { reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
 import { renderHtml, type AssurancePlanData } from './templates/assurance-plan.js';
 import { embedTemplateLogo, mergeTemplateCover } from './templateAssets.js';
 
@@ -19,7 +19,6 @@ const PayloadSchema: z.ZodType<AssurancePlanData & { storage_key: string }> = z
     generated_at: z.string().min(1),
     locale: z.string().min(1),
     project: reportProjectSchema,
-    instrument: reportInstrumentSchema,
     assurance_plan: z.object({
       version_number: z.number(),
       status: z.string(),

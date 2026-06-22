@@ -424,7 +424,6 @@ test.describe.serial('Multitenant E2E Journey', () => {
     // Step 3 (Details): building_type select defaults to "" which fails Zod enum validation.
     // Select a real value so form.trigger() passes and Create can submit.
     await dialog.locator('select[name="building_type"]').selectOption('dwelling');
-    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
 
     // Step 4 (Team): creation requires >=1 teammate. Queue an email invite to
     // satisfy the gate (no other org member is active yet at this point).
@@ -887,7 +886,6 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
     // Step 3 — Details
     await dialog.locator('select[name="building_type"]').selectOption('dwelling');
-    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
 
     // Step 4 — Team: satisfy the create gate so the guest can actually press
     // "Create project". The 403 comes from the server (POST /projects); the
@@ -1563,9 +1561,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
     const body = await inviteResp.json();
     expect(body.detail).toBe('SEAT_LIMIT_EXCEEDED');
 
-    // The portal should show an error toast with the seat-limit message.
+    // The portal surfaces the seat-limit error as a field error on the email
+    // input inside the invite dialog (errors.seatLimitExceeded).
     await expect(
-      page.getByText('Seat limit reached'),
+      dialog.getByText('Seat limit reached'),
     ).toBeVisible({ timeout: 5_000 });
 
     await page.keyboard.press('Escape');
@@ -1936,7 +1935,6 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await expect(dialog.locator('[aria-current="step"]')).toContainText('Details');
 
     await dialog.locator('select[name="building_type"]').selectOption('dwelling');
-    await dialog.locator('select[name="consequence_class"]').selectOption('cc1');
 
     // Team step: queue an email invite so the create gate (>=1 teammate) passes.
     await addWizardTeamInvite(dialog, `s1team-${RUN}@example.com`);

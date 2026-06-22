@@ -1,7 +1,7 @@
 'use client';
 
 import { Flag, Info, ListTree, Ruler, Scan } from '@bimstitch/ui/icons';
-import { type AppIcon as LucideIcon } from '@bimstitch/ui';
+import { type AppIcon } from '@bimstitch/ui';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -26,7 +26,7 @@ type SideRailProps = {
 type RailButton = {
   id: PanelId;
   labelKey: string;
-  icon: LucideIcon;
+  icon: AppIcon;
 };
 
 const IFC_BUTTONS: RailButton[] = [

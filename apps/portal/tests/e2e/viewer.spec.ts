@@ -21,7 +21,7 @@ const SAMPLES_DIR = resolve(__dirname, '../../../../assets/ifc');
 const MODELS = [
   { name: 'Duplex', discipline: 'architectural', file: 'Duplex.ifc' },
   { name: 'OpenHouse 2x3', discipline: 'structural', file: 'IfcOpenHouse2x3.ifc' },
-  { name: 'OpenHouse 4', discipline: 'mechanical', file: 'IfcOpenHouse4.ifc' },
+  { name: 'OpenHouse 4', discipline: 'mep', file: 'IfcOpenHouse4.ifc' },
 ] as const;
 
 // ── API helper — runs fetch inside the browser (CORS-safe) ────────────

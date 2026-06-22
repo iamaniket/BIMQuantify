@@ -1,18 +1,21 @@
 'use client';
 
-import { Blueprint, BoundingBox, Box, Eraser, Eye, Footprints, Home, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimstitch/ui/icons';
+import { Blueprint, BoundingBox, Box, Eraser, Eye, Footprints, Home, Map, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
 import type { ActionMode, DisplayMode, NavMode, ViewerHandle } from '@bimstitch/viewer';
 
+import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import type { ViewerSettings } from '@/lib/viewerSettings';
 
 import { type ToolGroup, UnifiedToolbar } from '@/components/shared/viewer/shared/UnifiedToolbar';
+import { ToolButton } from '@/components/shared/viewer/shared/_toolbarPrimitives';
 import { SettingsDialog } from '@/components/shared/viewer/shared/settings/SettingsDialog';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { CameraFlyPopover } from '@/components/shared/viewer/3d/CameraFlyPopover';
 import { DisplayModePopover } from '@/components/shared/viewer/3d/DisplayModePopover';
+import { MinimapPopover } from '@/components/shared/viewer/3d/MinimapPopover';
 
 type Props = {
   handle: ViewerHandle | null;
@@ -22,6 +25,11 @@ type Props = {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   hasFloorPlans: boolean;
+  floorPlansUrl: string | null;
+  planMetadata: ModelMetadata | undefined;
+  viewerReady: boolean;
+  /** Architectural model id in a federated view; omit for the single-file viewer. */
+  planModelId?: string;
 };
 
 export function Toolbar({
@@ -32,12 +40,17 @@ export function Toolbar({
   viewMode,
   onViewModeChange,
   hasFloorPlans,
+  floorPlansUrl,
+  planMetadata,
+  viewerReady,
+  planModelId,
 }: Props): JSX.Element {
   const t = useTranslations('viewer.toolbar');
   const tVm = useTranslations('viewer.viewMode');
   const tMode = useTranslations('viewer.displayMode');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [modeOpen, setModeOpen] = useState(false);
+  const [minimapOpen, setMinimapOpen] = useState(false);
   // Live active display mode, mirrored from the viewer's `display:change` event so
   // the toolbar highlight stays correct even when x-ray is toggled via the X
   // shortcut or context menu (the display-mode plugin reflects that back).
@@ -65,10 +78,15 @@ export function Toolbar({
     });
   };
 
-  // First-person navigation only applies to the 3D camera — fall back to orbit
-  // when the user switches to the pure 2D plan, where the nav group is hidden.
+  // First-person is the Split-mode nav; any other mode (3D or 2D) falls back to
+  // orbit. Switching nav mode is position-preserving (camera-fly re-asserts the
+  // current pose), so a mode switch only toggles orbit↔first-person and never
+  // moves the camera. The minimap pop-out lives only in 3D (Split/2D show the
+  // plan as a full pane), so close it on any move away from 3D — re-entering 3D
+  // starts closed.
   useEffect(() => {
-    if (viewMode === '2d' && firstPerson) run('tool.orbit');
+    if (viewMode !== 'split' && firstPerson) run('tool.orbit');
+    if (viewMode !== '3d') setMinimapOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
 
@@ -148,6 +166,41 @@ export function Toolbar({
     ],
   };
 
+  // Minimap toggle (3D only — Split/2D render the plan as a full pane). A `node`
+  // tool so the pop-out can anchor to the button via a `relative` wrapper
+  // instead of brittle pixel offsets. Default closed.
+  const minimapGroup: ToolGroup = {
+    tools: [
+      {
+        type: 'node',
+        id: 'minimap',
+        node: (
+          <div className="relative">
+            <ToolButton
+              isActive={minimapOpen}
+              title={t('minimap')}
+              aria-label={t('minimap')}
+              data-testid="viewer-tool-minimap"
+              onClick={() => { setMinimapOpen((v) => !v); }}
+            >
+              <Map className="h-[22px] w-[22px]" weight="bold" />
+            </ToolButton>
+            {minimapOpen ? (
+              <MinimapPopover
+                handle={handle}
+                viewerReady={viewerReady}
+                floorPlansUrl={floorPlansUrl}
+                metadata={planMetadata}
+                {...(planModelId ? { planModelId } : {})}
+                onClose={() => { setMinimapOpen(false); }}
+              />
+            ) : null}
+          </div>
+        ),
+      },
+    ],
+  };
+
   // Display toggles. Spaces (IfcSpace) are hidden by default — this button is
   // the only control for their visibility; active (pressed) means spaces shown.
   const displayGroup: ToolGroup = {
@@ -186,7 +239,14 @@ export function Toolbar({
   const groups: ToolGroup[] =
     viewMode === '2d'
       ? [...(hasFloorPlans ? [viewModeGroup] : []), settingsGroup]
-      : [navGroup, actionGroup, ...(hasFloorPlans ? [viewModeGroup] : []), displayGroup, settingsGroup];
+      : [
+          navGroup,
+          actionGroup,
+          ...(hasFloorPlans ? [viewModeGroup] : []),
+          ...(viewMode === '3d' && hasFloorPlans ? [minimapGroup] : []),
+          displayGroup,
+          settingsGroup,
+        ];
 
   return (
     <UnifiedToolbar groups={groups} testId="viewer-toolbar" testIdPrefix="viewer">

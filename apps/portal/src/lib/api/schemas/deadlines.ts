@@ -32,6 +32,46 @@ export const DeadlineListSchema = z.array(DeadlineSchema);
 export type DeadlineList = z.infer<typeof DeadlineListSchema>;
 
 // ---------------------------------------------------------------------------
+// Org-wide calendar (cross-project aggregation)
+// ---------------------------------------------------------------------------
+
+export const CalendarDeadlineSchema = z.object({
+  id: z.string().uuid(),
+  project_id: z.string().uuid(),
+  project_name: z.string(),
+  country: z.string(),
+  deadline_type: z.string(),
+  label: z.string(),
+  legal_reference: z.string().nullable(),
+  due_date: z.string().nullable(),
+  status: DeadlineStatusEnum,
+  is_overdue: z.boolean(),
+  days_until_due: z.number().int().nullable(),
+});
+export type CalendarDeadline = z.infer<typeof CalendarDeadlineSchema>;
+
+export const CalendarDeadlineListSchema = z.array(CalendarDeadlineSchema);
+export type CalendarDeadlineList = z.infer<typeof CalendarDeadlineListSchema>;
+
+export const DeadlineWeekBucketSchema = z.object({
+  days_from: z.number().int(),
+  days_to: z.number().int(),
+  count: z.number().int(),
+});
+export type DeadlineWeekBucket = z.infer<typeof DeadlineWeekBucketSchema>;
+
+export const DeadlineSummarySchema = z.object({
+  total: z.number().int(),
+  pending: z.number().int(),
+  met: z.number().int(),
+  not_applicable: z.number().int(),
+  overdue: z.number().int(),
+  due_this_week: z.number().int(),
+  upcoming_buckets: z.array(DeadlineWeekBucketSchema),
+});
+export type DeadlineSummary = z.infer<typeof DeadlineSummarySchema>;
+
+// ---------------------------------------------------------------------------
 // Filing
 // ---------------------------------------------------------------------------
 

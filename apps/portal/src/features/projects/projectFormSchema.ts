@@ -2,9 +2,7 @@ import { z } from 'zod';
 
 import {
   BuildingTypeEnum,
-  ConsequenceClassEnum,
   ProjectPhaseEnum,
-  ProjectStatusEnum,
 } from '@/lib/api/schemas';
 
 const optionalTrimmedString = (max: number): z.ZodOptional<z.ZodString> =>
@@ -24,7 +22,6 @@ export const ProjectFormSchema = z.object({
 
   // Project metadata
   reference_code: optionalTrimmedString(50),
-  status: ProjectStatusEnum.optional(),
   phase: ProjectPhaseEnum.optional(),
   delivery_date: z
     .string()
@@ -39,8 +36,6 @@ export const ProjectFormSchema = z.object({
     .optional()
     .or(z.literal('')),
   building_type: BuildingTypeEnum.optional(),
-  consequence_class: ConsequenceClassEnum.optional(),
-  instrument_id: optionalTrimmedString(64),
 
   // Address
   street: optionalTrimmedString(255),
@@ -60,8 +55,6 @@ export const ProjectFormSchema = z.object({
   // address lookup auto-populates them. Hidden inputs in the dialog hold them.
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
-
-  contractor_id: z.string().uuid().optional().or(z.literal('')),
 });
 
 export type ProjectFormValues = z.infer<typeof ProjectFormSchema>;

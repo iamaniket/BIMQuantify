@@ -953,7 +953,7 @@ async def test_list_reports_filters_by_report_type(
 # ---------------------------------------------------------------------------
 
 
-async def test_create_report_snapshot_includes_project_and_contractor(
+async def test_create_report_snapshot_includes_project_metadata(
     org_user: dict[str, str],
     email_transport: object,
     fake_storage_client: tuple[AsyncClient, FakeStorage],
@@ -961,40 +961,31 @@ async def test_create_report_snapshot_includes_project_and_contractor(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     """The worker is stateless — every field it needs to render the cover
-    page must live in `payload.project`. Verify address, contractor, and
-    permit number are snapshotted into the dispatched payload."""
+    page must live in `payload.project`. Verify address and permit number
+    are snapshotted into the dispatched payload."""
     from uuid import uuid4
 
     client, _ = fake_storage_client
 
-    # Build a project with a contractor + permit number directly via SQL so
+    # Build a project with address + permit number directly via SQL so
     # we don't depend on the project wizard's optional-field behaviour.
     org_id = UUID(org_user["organization_id"])
     user_id = UUID(org_user["id"])
     project_id = uuid4()
-    contractor_id = uuid4()
     schema = f"org_{str(org_id).replace('-', '')}"
     async with session_maker() as session, session.begin():
         await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
         await session.execute(
             text(
-                "INSERT INTO contractors (id, name, kvk_number) "
-                "VALUES (:id, 'Bouwbedrijf X', '99887766')"
-            ),
-            {"id": str(contractor_id)},
-        )
-        await session.execute(
-            text(
                 "INSERT INTO projects (id, name, owner_id, "
-                "contractor_id, street, house_number, postal_code, city, "
+                "street, house_number, postal_code, city, "
                 "permit_number) "
-                "VALUES (:id, 'P-snap', :owner, :contractor, "
+                "VALUES (:id, 'P-snap', :owner, "
                 "'Hoofdstraat', '12', '1011 AB', 'Amsterdam', 'OMG-2026-001')"
             ),
             {
                 "id": str(project_id),
                 "owner": str(user_id),
-                "contractor": str(contractor_id),
             },
         )
         # Owner membership — required by _require_membership.
@@ -1028,11 +1019,6 @@ async def test_create_report_snapshot_includes_project_and_contractor(
     assert addr["street"] == "Hoofdstraat"
     assert addr["house_number"] == "12"
     assert addr["city"] == "Amsterdam"
-
-    contractor = project_snap["contractor"]
-    assert isinstance(contractor, dict)
-    assert contractor["name"] == "Bouwbedrijf X"
-    assert contractor["kvk_number"] == "99887766"
 
 
 # ---------------------------------------------------------------------------

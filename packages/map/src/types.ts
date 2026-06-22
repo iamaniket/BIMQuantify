@@ -6,7 +6,10 @@ export interface MapMarker {
   readonly lng: number;
   /** Optional text label rendered next to the dot. */
   readonly label?: string;
-  /** Optional count badge — e.g. number of projects at this city. */
+  /**
+   * Optional per-city project count. Used by callers for summary captions —
+   * the map itself does not render it.
+   */
   readonly count?: number;
   /** Override the marker dot/ring colour. Defaults to the brand primary. */
   readonly accent?: string;

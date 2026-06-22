@@ -21,6 +21,23 @@ export const NL_VIEWBOX = {
 } as const;
 
 /**
+ * Aspect ratio (width ÷ height) of the bundled silhouette, derived from
+ * {@link NL_VIEWBOX}. Exported so consumers size the map without re-hardcoding
+ * the viewBox numbers — if the geometry is ever swapped, every caller updates
+ * automatically. {@link NL_ASPECT_RATIO_CSS} is the same ratio formatted for a
+ * CSS `aspect-ratio` value (and usable inside a `calc(... * (…))` width).
+ */
+export const NL_ASPECT_RATIO = NL_VIEWBOX.width / NL_VIEWBOX.height;
+export const NL_ASPECT_RATIO_CSS = `${NL_VIEWBOX.width} / ${NL_VIEWBOX.height}`;
+
+/**
+ * Default marker accent — the brand primary blue. Single source of truth for
+ * the dot/ring/pulse tint so non-DOM consumers (the react-native-svg port)
+ * import this instead of re-declaring the literal.
+ */
+export const NL_DEFAULT_ACCENT = '#2c5697';
+
+/**
  * Spherical-Mercator-style y for a given latitude (radians, then back to a
  * dimensionless value). Used so projected markers line up with the silhouette
  * — the SVG was traced from a Mercator-projected map.
@@ -50,12 +67,4 @@ export function createNlProjection(
     const y = (yTop - mercatorY(lat)) * sy;
     return [x, y] as const;
   };
-}
-
-/**
- * Single-shot projection helper for callers that just need one point against
- * the native viewBox (e.g. small one-off uses outside a render loop).
- */
-export function projectToNlSvg(lat: number, lng: number): ScreenPoint {
-  return createNlProjection(NL_VIEWBOX.width, NL_VIEWBOX.height)(lat, lng);
 }

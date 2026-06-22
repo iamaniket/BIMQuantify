@@ -12,12 +12,20 @@ import type { ProjectionConfig } from '../core/types.js';
 
 export { NetherlandsMap } from './NetherlandsMap.js';
 export type { NetherlandsMapProps } from './NetherlandsMap.js';
+// NL_BOUNDS is intentionally NOT re-exported — it is an internal calibration
+// constant (default for `createNlProjection`, and surfaced publicly only via
+// `NL_PROJECTION_CONFIG.bounds`).
 export {
-  NL_BOUNDS,
   NL_VIEWBOX,
+  NL_ASPECT_RATIO,
+  NL_ASPECT_RATIO_CSS,
+  NL_DEFAULT_ACCENT,
   createNlProjection,
-  projectToNlSvg,
 } from './projection.js';
+// Raw province silhouette geometry — exposed so non-DOM consumers (e.g. the
+// React Native app, which renders with react-native-svg) can reuse the exact
+// same path data the web `NetherlandsMap` draws, instead of copying it.
+export { NL_PROVINCE_PATHS } from './data/nl-province-paths.js';
 
 export const NL_PROJECTION_CONFIG: ProjectionConfig = {
   country: 'NL',

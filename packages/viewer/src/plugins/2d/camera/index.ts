@@ -332,6 +332,11 @@ export function cameraPlugin(
         void controls.zoomTo(1, true);
       }, { title: 'Actual size', defaultShortcut: '1' });
 
+      context.commands.register<{ zoom: number }>('camera.zoomTo', (a) => {
+        if (!controls || !a || a.zoom <= 0) return;
+        void controls.zoomTo(a.zoom, true);
+      }, { title: 'Zoom to level' });
+
       context.commands.register<CameraControlsConfig>('camera.setControls', (cfg) => {
         api.setButtonConfig(cfg);
       }, { title: 'Set camera controls' });

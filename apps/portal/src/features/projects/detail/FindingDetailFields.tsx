@@ -6,12 +6,13 @@ import { useCallback, type JSX } from 'react';
 
 import { Button, Input, Select, Textarea } from '@bimstitch/ui';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
+import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { Field } from '@/components/shared/forms/Field';
 import type { Finding, LinkedFileTypeValue } from '@/lib/api/schemas';
 
-import { FindingPinButton, type AnchorState } from './FindingPinButton';
+import { FindingPinButton, type AnchorState, type ConvertFloorPlanPoint } from './FindingPinButton';
 import { FindingPhotos } from './FindingPhotos';
 import { ReferenceDocumentPicker } from './ReferenceDocumentPicker';
 import { FINDING_SEVERITIES, type FindingDetailFormApi } from './useFindingDetailForm';
@@ -23,6 +24,17 @@ type Props = {
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
   activeFileType?: LinkedFileTypeValue | null | undefined;
+  /** Active model/file to attach when pinning a previously-unlinked finding. */
+  activeModelId?: string | null | undefined;
+  activeFileId?: string | null | undefined;
+  /** Resolve the picked element's GlobalId (active model only), else null. */
+  resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
+  /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
+  viewMode?: ViewMode | undefined;
+  /** Floor-plan handle (2D plan surface) for picking in 2D mode. */
+  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Convert a normalized plan point to a 3D world anchor. */
+  convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
 };
 
 /**
@@ -37,6 +49,12 @@ export function FindingDetailFields({
   documentHandle,
   viewerHandle,
   activeFileType,
+  activeModelId,
+  activeFileId,
+  resolvePickedGlobalId,
+  viewMode,
+  floorPlanHandle,
+  convertFloorPlanPoint,
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const tSeverity = useTranslations('findings.severity');
@@ -67,6 +85,8 @@ export function FindingDetailFields({
           anchor_y: anchor.anchor_y,
           anchor_z: anchor.anchor_z,
           anchor_page: anchor.anchor_page,
+          linked_model_id: anchor.linked_model_id,
+          linked_file_id: anchor.linked_file_id,
           linked_element_global_id: anchor.linkedElementGlobalId,
         });
       }
@@ -135,6 +155,12 @@ export function FindingDetailFields({
           onAnchorChange={handlePinChange}
           documentHandle={documentHandle}
           viewerHandle={viewerHandle}
+          linkModelId={activeModelId}
+          linkFileId={activeFileId}
+          resolvePickedGlobalId={resolvePickedGlobalId}
+          viewMode={viewMode}
+          floorPlanHandle={floorPlanHandle}
+          convertFloorPlanPoint={convertFloorPlanPoint}
           disabled={fieldsDisabled}
         />
       </div>

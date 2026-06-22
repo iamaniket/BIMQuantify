@@ -3,7 +3,7 @@
  *
  * Same plain-template-literal approach as compliance-report.ts, sharing the
  * `_helpers` + `_layout` + per-jurisdiction labels. Sections: cover (project +
- * kwaliteitsborger + instrument), risicobeoordeling table, borgingsmomenten
+ * kwaliteitsborger), risicobeoordeling table, borgingsmomenten
  * (grouped by phase, each with its checklist items), and a signature block.
  */
 
@@ -18,7 +18,6 @@ import {
   renderSections,
   toLayoutBranding,
   type ContentSectionRender,
-  type ReportInstrument,
   type ReportProject,
   type ReportTemplate,
 } from './_helpers.js';
@@ -60,7 +59,6 @@ export type AssurancePlanData = {
   locale: string;
   jurisdiction?: string;
   project: ReportProject;
-  instrument: ReportInstrument | null;
   assurance_plan: {
     version_number: number;
     status: string;
@@ -186,11 +184,6 @@ function signatureBlock(labels: AssurancePlanLabels): string {
 export function renderHtml(data: AssurancePlanData): string {
   const labels = resolveLabels(data.locale);
   const plan = data.assurance_plan;
-  const instrumentText = data.instrument
-    ? `${escapeHtml(data.instrument.name)}${
-        data.instrument.provider ? ` · ${escapeHtml(data.instrument.provider)}` : ''
-      }`
-    : '—';
 
   const cover = `
     <header class="cover">
@@ -199,7 +192,6 @@ export function renderHtml(data: AssurancePlanData): string {
       <dl class="meta">
         <dt>${labels.reference}</dt><dd>${or(data.project.reference_code)}</dd>
         <dt>${labels.address}</dt><dd>${addressLine(data.project.address)}</dd>
-        <dt>${labels.instrument}</dt><dd>${instrumentText}</dd>
         <dt>${labels.kwaliteitsborger}</dt><dd>${or(plan.created_by)}</dd>
         <dt>${labels.version}</dt><dd>v${String(plan.version_number)} · ${escapeHtml(
           map(labels.planStatus, plan.status),

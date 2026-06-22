@@ -145,7 +145,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
     };
     return (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <XCircle className="h-10 w-10 text-destructive" />
+        <XCircle className="h-10 w-10 text-error" />
         <h1 className="text-h3 font-semibold text-foreground">{t('invalidTitle')}</h1>
         <p className="text-body3 text-foreground-secondary">{messages[state.reason]}</p>
       </div>
@@ -187,7 +187,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
   if (state.kind === 'error') {
     return (
       <div className="flex flex-col items-center gap-4 py-12 text-center">
-        <XCircle className="h-10 w-10 text-destructive" />
+        <XCircle className="h-10 w-10 text-error" />
         <h1 className="text-h3 font-semibold text-foreground">{t('errorTitle')}</h1>
         <p className="text-body3 text-foreground-secondary">{t('errorDescription')}</p>
         <Button variant="primary" size="md" onClick={handleRetry}>

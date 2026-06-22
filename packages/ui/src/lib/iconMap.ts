@@ -32,7 +32,7 @@ export { BoundingBox } from '@phosphor-icons/react';
 export { Cube as Box } from '@phosphor-icons/react';
 export { Package as Boxes } from '@phosphor-icons/react';
 export { Buildings as Building2 } from '@phosphor-icons/react';
-export { Building as Building } from '@phosphor-icons/react';
+export { Building } from '@phosphor-icons/react';
 
 /* ── C ──────────────────────────────────────────────────────────── */
 export { CalendarBlank as CalendarClock } from '@phosphor-icons/react';
@@ -125,6 +125,7 @@ export { MagnifyingGlass as Search } from '@phosphor-icons/react';
 export { MagnifyingGlassMinus } from '@phosphor-icons/react';
 export { MagnifyingGlassPlus } from '@phosphor-icons/react';
 export { MapPin } from '@phosphor-icons/react';
+export { MapTrifold as Map } from '@phosphor-icons/react';
 export { List as Menu } from '@phosphor-icons/react';
 export { ChatCircle as MessageSquare } from '@phosphor-icons/react';
 export { Microphone as Mic } from '@phosphor-icons/react';
@@ -155,7 +156,7 @@ export { Scan } from '@phosphor-icons/react';
 export { ShareNetwork as Share2 } from '@phosphor-icons/react';
 export { Shield } from '@phosphor-icons/react';
 export { ShieldCheck } from '@phosphor-icons/react';
-export { SlidersHorizontal as SlidersHorizontal } from '@phosphor-icons/react';
+export { SlidersHorizontal } from '@phosphor-icons/react';
 export { DeviceMobile as Smartphone } from '@phosphor-icons/react';
 export { Sparkle as Sparkles } from '@phosphor-icons/react';
 export { Square } from '@phosphor-icons/react';

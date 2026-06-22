@@ -217,9 +217,12 @@ test.describe.serial('Admin blog publish lifecycle', () => {
     const url = `http://localhost:3000/nl/blog/${SLUG}`;
     test.setTimeout(120_000);
 
-    // Compute the expected date string the same way the hero formats it,
-    // so host-TZ differences don't break the assertion.
-    const expectedDate = new Date(PUBLISH_AT_ISO).toLocaleDateString('en-GB', {
+    // Compute the expected date string the same way the hero formats it.
+    // BlogPostHero renders <time> via formatBlogDate(date, locale, 'long'),
+    // which is locale-aware — this is the /nl/ page, so the month renders in
+    // Dutch ("mei", not "May"). Matching the page locale here also cancels
+    // host-TZ shifts (same Date + toLocaleDateString on the same host).
+    const expectedDate = new Date(PUBLISH_AT_ISO).toLocaleDateString('nl', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

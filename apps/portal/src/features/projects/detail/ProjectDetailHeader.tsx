@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Hammer, Layers, MapPin, Ruler, Scale } from '@bimstitch/ui/icons';
+import { Building2, Layers, MapPin, Ruler } from '@bimstitch/ui/icons';
 import { useEffect, useState, type JSX, type ReactNode } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
@@ -16,7 +16,6 @@ import { useLocale, useTranslations } from 'next-intl';
 import type { Locale } from '@bimstitch/i18n';
 
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
-import { INSTRUMENT_OPTIONS } from '@/features/projects/wizard/projectWizardSteps';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 
 type DeadlinesSummary = {
@@ -41,7 +40,6 @@ export function ProjectDetailHeader({
   action,
 }: Props): JSX.Element {
   const locale = useLocale() as Locale;
-  const tStatuses = useTranslations('projects.statuses');
   const tPhases = useTranslations('projects.phases');
   const tHero = useTranslations('projectDetail.hero');
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
@@ -54,10 +52,7 @@ export function ProjectDetailHeader({
   const address = formatAddress(project);
   const refLabel = project.reference_code ?? '—';
   const statusBadgeClass = projectBadgeClasses(project);
-  const stageLabel = `${tStatuses(project.status)} · ${tPhases(project.phase)}`;
-  const instrument = project.instrument_id === null
-    ? undefined
-    : INSTRUMENT_OPTIONS.find((opt) => opt.value === project.instrument_id);
+  const stageLabel = tPhases(project.phase);
   const showThumbnail = project.thumbnail_url !== null && !thumbnailFailed;
   const aerialUrl = (
     !showThumbnail
@@ -119,7 +114,7 @@ export function ProjectDetailHeader({
       <span
         className={`rounded-full border border-black/15 px-2 py-px text-[10px] font-bold uppercase tracking-[0.04em] text-black dark:border-white/20 dark:text-white ${statusBadgeClass}`}
       >
-        ● {formatProjectBadgeLabel(project, tStatuses(project.status))}
+        ● {formatProjectBadgeLabel(project, tPhases(project.phase))}
       </span>
     </>
   );
@@ -130,31 +125,6 @@ export function ProjectDetailHeader({
         <MapPin className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
         {address ?? tHero('noAddress')}
       </span>
-      {project.contractor_name !== null && (
-        <>
-          <span className="text-black/30 dark:text-white/60">·</span>
-          <span className="inline-flex items-center gap-1">
-            <Hammer className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
-            {project.contractor_name}
-          </span>
-        </>
-      )}
-      {instrument !== undefined && (
-        <>
-          <span className="text-black/30 dark:text-white/60">·</span>
-          <span className="inline-flex items-center gap-1" title={tHero('instrumentTooltip', { provider: instrument.provider })}>
-            <Scale className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
-            <a
-              href={instrument.methodology_url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline-offset-2 hover:underline"
-            >
-              {instrument.label}
-            </a>
-          </span>
-        </>
-      )}
     </>
   );
 

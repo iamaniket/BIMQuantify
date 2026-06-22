@@ -27,12 +27,13 @@ import { useFloorPlans, type RawLevel } from './useFloorPlans';
  * artifact, draws it, and drives the plugin through `handle.commands`.
  *
  * Two variants share the drawing code:
- *   - `overlay` — the classic bottom-right locator (collapsible, fixed size).
+ *   - `popover` — the fixed-size locator embedded in the toolbar's minimap
+ *                 pop-out (positioning + open/close are owned by the caller).
  *   - `full`    — fills its pane for Split / 2D mode; selecting a level
  *                 isolates that storey in 3D (plugin handles the hide).
  */
 
-type Variant = 'overlay' | 'full';
+type Variant = 'popover' | 'full';
 
 type Props = {
   handle: ViewerHandle | null;
@@ -78,7 +79,7 @@ export function MinimapView({
   viewerReady,
   floorPlansUrl,
   metadata,
-  variant = 'overlay',
+  variant = 'popover',
   planModelId,
 }: Props): ReactElement | null {
   const t = useTranslations('viewer.minimap');
@@ -108,7 +109,6 @@ export function MinimapView({
   const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
 
   const [selected, setSelected] = useState(0);
-  const [collapsed, setCollapsed] = useState(false);
   // Full variant isolates the selected storey by default (Split/2D behaviour).
   const [isolate, setIsolate] = useState(true);
   const level = levels[Math.min(selected, Math.max(0, levels.length - 1))] ?? null;
@@ -202,7 +202,7 @@ export function MinimapView({
 
   // Render the selected level's plan into the offscreen cache, then composite.
   useEffect(() => {
-    if (collapsed || !level) return;
+    if (!level) return;
     const { w, h } = dims;
     const canvas = canvasRef.current;
     if (!canvas || w <= 0 || h <= 0) return;
@@ -285,7 +285,7 @@ export function MinimapView({
     // with the resize-driven re-render (a pending rAF would skip the redraw and
     // leave the canvas blank in the full variant, whose size changes on mount).
     composite();
-  }, [level, collapsed, dims, isFull, composite]);
+  }, [level, dims, isFull, composite]);
 
   // Calibrate the plugin's IFC↔viewer transform, then listen for the projected
   // camera pose it emits. All world-space math lives in the plugin.
@@ -400,41 +400,16 @@ export function MinimapView({
     );
   }
 
-  if (collapsed) {
-    return (
-      <button
-        type="button"
-        onClick={() => setCollapsed(false)}
-        aria-label={t('expand')}
-        className="absolute bottom-3 right-3 z-30 flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface-low/95 text-foreground-secondary shadow-md backdrop-blur-sm hover:text-foreground"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <path d="M9 3v18M3 9h18" />
-        </svg>
-      </button>
-    );
-  }
-
+  // `popover` variant: the caller (toolbar minimap pop-out) owns the
+  // positioning + open/close, so this just renders the bordered box with the
+  // level picker and a fixed-size canvas.
   return (
-    <div className="absolute bottom-3 right-3 z-30 overflow-hidden rounded-md border border-border bg-surface-low/95 shadow-md backdrop-blur-sm">
+    <div className="overflow-hidden rounded-md border border-border bg-surface-low/95 shadow-md backdrop-blur-sm">
       <div className="flex items-center gap-1 border-b border-border px-2 py-1">
         <span className="text-caption font-semibold uppercase tracking-wide text-foreground-tertiary">
           {t('title')}
         </span>
-        <div className="ml-auto flex items-center gap-1">
-          {levelPicker}
-          <button
-            type="button"
-            onClick={() => setCollapsed(true)}
-            aria-label={t('collapse')}
-            className="flex h-5 w-5 items-center justify-center rounded text-foreground-tertiary hover:text-foreground"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M5 12h14" />
-            </svg>
-          </button>
-        </div>
+        <div className="ml-auto flex items-center gap-1">{levelPicker}</div>
       </div>
       <canvas
         ref={canvasRef}

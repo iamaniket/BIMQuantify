@@ -81,18 +81,17 @@ export const brand = {
 } as const;
 
 /**
- * Project-status accent colour, mapped onto the design tokens. Replaces the
+ * Project-phase accent colour, mapped onto the design tokens. Replaces the
  * ad-hoc hex map previously inlined in the projects list.
  */
-export function projectStatusColor(status: string): string {
+export function projectPhaseColor(phase: string): string {
   const map: Record<string, string> = {
-    planning: colors.textMuted,
     design: colors.primary,
-    permit_review: colors.info,
-    construction: colors.warning,
+    tender: colors.info,
+    work_prep: colors.textMuted,
+    shell: colors.warning,
+    finishing: colors.success,
     handover: colors.success,
-    complete: colors.success,
-    on_hold: colors.error,
   };
-  return map[status] ?? colors.textMuted;
+  return map[phase] ?? colors.textMuted;
 }

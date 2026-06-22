@@ -9,8 +9,6 @@ export const NL_DOSSIER_LABELS = {
   kicker: 'Wet kwaliteitsborging voor het bouwen (Wkb)',
   reference: 'Projectkenmerk',
   address: 'Adres',
-  instrument: 'Toegelaten instrument',
-  contractor: 'Aannemer',
   generatedAt: 'Gegenereerd op',
   toc: 'Inhoudsopgave',
 

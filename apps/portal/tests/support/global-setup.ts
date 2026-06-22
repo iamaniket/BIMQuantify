@@ -34,6 +34,16 @@ const REDIS_CONTAINER = process.env['E2E_REDIS_CONTAINER']
 const REDIS_DB = process.env['E2E_REDIS_DB'] ?? '2';
 const API_PORT = process.env['E2E_API_PORT'] ?? '8010';
 
+// Deadline reminder emails are delivered by the processor worker (the API only
+// dispatches the send_email action to it), so the E2E API must know where the
+// processor is and share its secret. The sweep runs on an interval — drop it to
+// 1 minute so a reminder fires within a test's lifetime.
+const PROCESSOR_URL = process.env['E2E_PROCESSOR_URL'] ?? 'http://localhost:8088';
+const PROCESSOR_SHARED_SECRET =
+  process.env['E2E_PROCESSOR_SHARED_SECRET'] ?? 'dev-shared-secret-change-me';
+const DEADLINE_SWEEP_INTERVAL_MINUTES =
+  process.env['E2E_DEADLINE_SWEEP_INTERVAL_MINUTES'] ?? '1';
+
 const API_URL = `http://localhost:${API_PORT}`;
 
 async function isApiHealthy(timeoutMs = 2_000): Promise<boolean> {
@@ -152,6 +162,9 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
         REDIS_URL,
         SMTP_PORT,
         S3_ENDPOINT_URL: S3_ENDPOINT,
+        PROCESSOR_URL,
+        PROCESSOR_SHARED_SECRET,
+        DEADLINE_SWEEP_INTERVAL_MINUTES,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: true,

@@ -13,8 +13,6 @@ export const sharedEnMessages: SharedMessages = {
     privacy: 'Privacy',
     terms: 'Terms',
     dpa: 'DPA',
-    backToSite: 'Back to site',
-    backToPortal: 'Back to portal',
     navAriaLabel: 'Legal',
   },
   framework: {

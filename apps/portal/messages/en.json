@@ -219,6 +219,74 @@
       "workspaceBehaviorDescription": "Search, dashboard density, and startup preferences will be grouped here."
     }
   },
+  "calendar": {
+    "hero": {
+      "title": "Organization calendar",
+      "subtitle": "One shared calendar for your whole organization — every item across your projects, ranked by what's due next.",
+      "pendingLabel": "Pending",
+      "pendingSub": "Open items",
+      "overdueLabel": "Overdue",
+      "overdueSub": "Past due",
+      "dueThisWeekLabel": "Due this week",
+      "dueThisWeekSub": "Next 7 days"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "calendar": "Calendar"
+    },
+    "panel": {
+      "overviewEyebrow": "Organization",
+      "overviewTitle": "Overview",
+      "calendarEyebrow": "Organization",
+      "calendarTitle": "Calendar"
+    },
+    "overview": {
+      "kpiTotal": "Total",
+      "kpiPending": "Pending",
+      "kpiPendingSub": "Open items",
+      "kpiOverdue": "Overdue",
+      "kpiOverdueSub": "Past due",
+      "kpiDueThisWeek": "Due this week",
+      "kpiDueThisWeekSub": "Next 7 days",
+      "kpiMet": "Done",
+      "kpiMetSub": "Completed",
+      "statusTitle": "By status",
+      "donutCenterLabel": "Total",
+      "status": {
+        "overdue": "Overdue",
+        "upcoming": "Upcoming",
+        "met": "Done",
+        "notApplicable": "N/A"
+      },
+      "horizonTitle": "Upcoming horizon",
+      "buckets": {
+        "range": "{from}-{to}d"
+      },
+      "upcomingTitle": "Upcoming items",
+      "noUpcoming": "Nothing upcoming.",
+      "daysRemaining": "{days, plural, =1 {1 day left} other {# days left}}",
+      "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}"
+    },
+    "month": {
+      "today": "Today",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "empty": "Nothing scheduled.",
+      "dayEmpty": "Nothing on this day.",
+      "moreCount": "{count} more",
+      "legend": {
+        "overdue": "Overdue",
+        "dueSoon": "Due soon",
+        "upcoming": "Upcoming",
+        "met": "Done",
+        "holiday": "Holiday"
+      },
+      "dayPanel": {
+        "count": "{count, plural, =0 {No items} one {# item} other {# items}}",
+        "close": "Close"
+      }
+    }
+  },
   "sidebar": {
     "adminConsole": "Admin console",
     "orgMembers": "Members",
@@ -229,8 +297,9 @@
     "projects": "Projects",
     "certificates": "Certificates",
     "templates": "Templates",
-    "bblLibrary": "BBL library",
-    "wkbLibrary": "Quality Assurance in Construction Act  (Wkb) library",
+    "calendar": "Calendar",
+    "bblLibrary": "Bbl library",
+    "wkbLibrary": "Wkb library",
     "tenant": {
       "label": "Tenant",
       "seats": "seats"
@@ -352,7 +421,6 @@
       "phase": "Phase",
       "delivery": "Delivery",
       "permit": "Permit",
-      "contractor": "Contractor",
       "address": "Address",
       "municipality": "Municipality",
       "bagId": "BAG ID",
@@ -380,7 +448,7 @@
       "new": "New project"
     },
     "page": {
-      "searchPlaceholder": "Search projects...",
+      "searchPlaceholder": "Search projects…",
       "searchAriaLabel": "Search projects",
       "expiryWarning": "{count, plural, one {# certificate} other {# certificates}} expired or expiring within 60 days"
     },
@@ -401,15 +469,6 @@
         "descriptionNoSearch": "No projects match the selected filter.",
         "descriptionWithSearch": "No projects match \"{search}\". Try a different search."
       }
-    },
-    "statuses": {
-      "planning": "Planning",
-      "design": "Design",
-      "permit_review": "Permit review",
-      "construction": "Construction",
-      "handover": "Handover",
-      "complete": "Completed",
-      "on_hold": "On hold"
     },
     "phases": {
       "design": "Design",
@@ -466,10 +525,6 @@
           "title": "Address",
           "description": "Site location"
         },
-        "contractor": {
-          "title": "Contractor",
-          "description": "Assign a company"
-        },
         "members": {
           "title": "Team",
           "description": "Add people to the project"
@@ -494,9 +549,6 @@
         "thumbnailType": "Only JPEG, PNG, or WebP images are allowed.",
         "thumbnailSize": "Image must be 2 MB or smaller.",
         "thumbnailProcess": "Could not process image. Please try another file.",
-        "contractorNameRequired": "Name is required",
-        "contractorAlreadyExists": "A contractor with that name already exists.",
-        "contractorCreateFailed": "Could not create contractor.",
         "nameTaken": "This name is taken"
       },
       "basics": {
@@ -520,20 +572,10 @@
           "referenceCodePlaceholder": "WKB-2026-0411",
           "permitNumber": "Permit number",
           "permitNumberPlaceholder": "OV-2026-0099",
-          "status": "Status",
           "phase": "Phase",
           "deliveryDate": "Delivery date",
           "buildingType": "Building type",
-          "consequenceClass": "Consequence class",
-          "plannedStartDate": "Planned start date",
-          "instrument": "Approved Quality Assurance in Construction Act  (Wkb) instrument",
-          "instrumentPlaceholder": "Not yet known — KB will select",
-          "instrumentHint": "Optional. Your quality inspector will select the instrument when they join."
-        },
-        "source": {
-          "prefix": "Source: TloKB register (",
-          "linkLabel": "tlokb.nl",
-          "suffix": ")"
+          "plannedStartDate": "Planned start date"
         }
       },
       "address": {
@@ -565,20 +607,6 @@
           "failedAria": "Map preview failed to load",
           "unavailable": "Map preview is currently unavailable.",
           "imageAlt": "Aerial view at {latitude}, {longitude}"
-        }
-      },
-      "contractor": {
-        "fields": {
-          "contractor": "Contractor",
-          "noneOption": "— None —",
-          "newContractorName": "New contractor name",
-          "newContractorPlaceholder": "Builder LLC"
-        },
-        "actions": {
-          "addNewContractor": "+ Add new contractor",
-          "adding": "Adding…",
-          "add": "Add",
-          "cancel": "Cancel"
         }
       },
       "members": {
@@ -769,7 +797,7 @@
       "expiredSub": "past validity"
     },
     "list": {
-      "searchPlaceholder": "Search certificates...",
+      "searchPlaceholder": "Search certificates…",
       "filterAll": "All types",
       "uploadButton": "Upload certificate",
       "emptyTitle": "No certificates yet",
@@ -806,7 +834,7 @@
     "linkDialog": {
       "title": "Link from library",
       "description": "Select a certificate from the organisation library to copy into this project.",
-      "searchPlaceholder": "Search library...",
+      "searchPlaceholder": "Search library…",
       "linkButton": "Link to project",
       "cancel": "Cancel",
       "success": "Certificate linked to project",
@@ -851,6 +879,125 @@
       "totalCerts": "Total",
       "validCerts": "Valid",
       "expiringSoonCerts": "Expiring soon"
+    }
+  },
+  "certificates": {
+    "hub": {
+      "crumb": "Certificates",
+      "crumbProjects": "Projects",
+      "projectNotFound": "Project not found. It may have been deleted.",
+      "projectLoadError": "Failed to load project.",
+      "tabs": {
+        "overview": "Overview",
+        "list": "Certificates"
+      },
+      "panel": {
+        "overviewEyebrow": "Proof of conformity",
+        "overviewTitle": "Certificates overview",
+        "listEyebrow": "Proof of conformity",
+        "listTitle": "{count} certificates"
+      },
+      "hero": {
+        "badge": "Certificates",
+        "subtitle": "Product certificates, test reports, inspections & warranties",
+        "totalLabel": "Total",
+        "totalSub": "certificates",
+        "validLabel": "Valid",
+        "validSub": "in date",
+        "expiringLabel": "Expiring",
+        "expiringSub": "within 30 days",
+        "expiredLabel": "Expired",
+        "expiredSub": "past validity"
+      },
+      "list": {
+        "searchPlaceholder": "Search certificates…",
+        "filterAll": "All types",
+        "empty": "No certificates match your filters",
+        "loadError": "Failed to load certificates."
+      },
+      "columns": {
+        "certificate": "Certificate",
+        "type": "Type",
+        "issuer": "Issuer",
+        "number": "Number",
+        "validUntil": "Valid until",
+        "added": "Added",
+        "view": "View",
+        "download": "Download",
+        "newVersion": "Upload new version",
+        "delete": "Delete"
+      },
+      "overview": {
+        "totalCerts": "Total",
+        "validCerts": "Valid",
+        "expiringSoonCerts": "Expiring soon",
+        "byTypeTitle": "Certificates by type",
+        "byExpiryTitle": "Expiry status",
+        "recentTitle": "Recently added",
+        "empty": "No certificates yet"
+      }
+    }
+  },
+  "attachments": {
+    "hub": {
+      "crumb": "Attachments",
+      "crumbProjects": "Projects",
+      "projectNotFound": "Project not found. It may have been deleted.",
+      "projectLoadError": "Failed to load project.",
+      "tabs": {
+        "overview": "Overview",
+        "list": "Attachments"
+      },
+      "panel": {
+        "overviewEyebrow": "Files & attachments",
+        "overviewTitle": "Attachments overview",
+        "listEyebrow": "Files & attachments",
+        "listTitle": "{count} attachments"
+      },
+      "hero": {
+        "badge": "Attachments",
+        "subtitle": "Photos, drawings and supporting documents",
+        "totalLabel": "Total",
+        "totalSub": "files",
+        "imagesLabel": "Images",
+        "imagesSub": "photos",
+        "documentsLabel": "Documents",
+        "documentsSub": "PDFs & office",
+        "sizeLabel": "Total size",
+        "sizeSub": "stored"
+      },
+      "list": {
+        "searchPlaceholder": "Search files…",
+        "filterAll": "All",
+        "empty": "No attachments match your filters",
+        "loadError": "Failed to load attachments."
+      },
+      "columns": {
+        "file": "File",
+        "category": "Category",
+        "size": "Size",
+        "uploadedBy": "Uploaded by",
+        "added": "Added",
+        "view": "View",
+        "download": "Download",
+        "delete": "Delete"
+      },
+      "overview": {
+        "total": "Total",
+        "images": "Images",
+        "documents": "Documents",
+        "totalSize": "Total size",
+        "byCategoryTitle": "By category",
+        "recentTitle": "Recently added",
+        "empty": "No attachments yet"
+      },
+      "category": {
+        "image": "Images",
+        "video": "Videos",
+        "audio": "Audio",
+        "office": "Documents",
+        "other": "Other"
+      }
     }
   },
   "projectAccess": {
@@ -968,7 +1115,7 @@
   },
   "projectDetail": {
     "hero": {
-      "wkbScore": "Quality Assurance in Construction Act  (Wkb) score",
+      "wkbScore": "Wkb score",
       "issuesOpen": "Issues open",
       "holdback": "Holdback",
       "delivery": "Delivery",
@@ -988,7 +1135,6 @@
       "projectAccess": "Project Access",
       "editProject": "Edit project",
       "noAddress": "No address set",
-      "instrumentTooltip": "Approved instrument · {provider}",
       "thumbnailAlt": "{name} thumbnail",
       "mapPreviewAlt": "{name} map preview",
       "settings": "Settings"
@@ -1020,7 +1166,6 @@
       },
       "overviewCard": {
         "address": "Address",
-        "contractor": "Contractor",
         "status": "Status",
         "plannedStart": "Planned start",
         "delivery": "Delivery",
@@ -1067,7 +1212,7 @@
         "loadAllMenu": "Load options",
         "selectedCount": "{count, plural, =1 {1 model selected} other {# models selected}}",
         "clearSelection": "Clear",
-        "bulkCheckBbl": "Check BBL",
+        "bulkCheckBbl": "Check Bbl",
         "bulkDownload": "Download",
         "bulkRemove": "Remove",
         "bulkRemoveTitle": "{count, plural, =1 {Remove model?} other {Remove # models?}}",
@@ -1109,7 +1254,7 @@
           "selectAria": "Select {name} to load in the viewer",
           "noViewableFile": "No viewable file yet",
           "uploadFile": "Upload file",
-          "checkBbl": "Check BBL",
+          "checkBbl": "Check Bbl",
           "view": "View",
           "upload": "Upload",
           "remove": "Remove",
@@ -1135,8 +1280,8 @@
           "view": "View",
           "viewAria": "View {filename}",
           "viewAria3d": "View {filename} in 3D",
-          "checkBbl": "Check BBL",
-          "checkBblAria": "Check BBL compliance for {filename}",
+          "checkBbl": "Check Bbl",
+          "checkBblAria": "Check Bbl compliance for {filename}",
           "downloadAria": "Download {filename}",
           "fileActions": "File actions",
           "delete": "Delete",
@@ -1280,7 +1425,7 @@
         "description": "Upload drawings, certificates and other supporting files to reference them from inspections and findings.",
         "ctaLabel": "Upload attachment",
         "uploadButton": "Upload",
-        "uploading": "Uploading...",
+        "uploading": "Uploading…",
         "uploadSuccess": "{name} uploaded",
         "downloadError": "Could not generate download link",
         "deleteSuccess": "{name} deleted",
@@ -1331,7 +1476,7 @@
         "viewerLinkedModel": "Linked model",
         "viewerVersion": "Version",
         "viewerNoPreview": "Preview not available for this file type. Download to view.",
-        "viewerLoadingPreview": "Loading preview...",
+        "viewerLoadingPreview": "Loading preview…",
         "viewerGroupFile": "File",
         "viewerGroupMedia": "Media",
         "viewerGroupDocument": "Document",
@@ -1347,7 +1492,7 @@
         "eyebrow": "Proof of conformity",
         "subtitle": "{count, plural, =0 {No certificates} one {# certificate} other {# certificates}}",
         "title": "No certificates yet",
-        "description": "Upload product certificates, test reports, inspection certificates and warranties to build your Quality Assurance in Construction Act  (Wkb) conformity dossier.",
+        "description": "Upload product certificates, test reports, inspection certificates and warranties to build your Wkb conformity dossier.",
         "ctaLabel": "Upload certificate",
         "searchPlaceholder": "Search certificates…",
         "noResults": "No certificates match your search.",
@@ -1413,12 +1558,19 @@
         "linkFromLibrary": "Link from library"
       },
       "rapporten": {
-        "label": "Reports",
-        "eyebrow": "Generated documents",
-        "subtitle": "Generate and download filing-ready PDFs"
+        "label": "Reports"
+      },
+      "nav": {
+        "eyebrow": "Quality & documents",
+        "subtitle": "Open a dedicated workspace",
+        "findingsDesc": "Track and resolve quality issues",
+        "certificatesDesc": "Proof-of-conformity documents",
+        "attachmentsDesc": "Photos, drawings and files",
+        "reportsDesc": "Generated filing-ready PDFs"
       },
       "deadlines": {
         "label": "Deadlines",
+        "viewOnCalendar": "View on calendar",
         "heading": "Deadlines",
         "emptyTitle": "No deadlines yet",
         "emptyDescription": "Deadlines will appear automatically once the project has the required date fields filled in.",
@@ -1581,7 +1733,10 @@
         "coords2d": "({x}, {y})",
         "placementHintPdf": "Click on the drawing to place the pin",
         "placementHintIfc": "Click on the model to place the pin",
-        "placing": "Placing…"
+        "placing": "Placing…",
+        "updateBanner": "Click in the model to set the finding's position",
+        "updateHint": "Click an element or point — Esc to cancel",
+        "updateHintPdf": "Click on the drawing to set the position — Esc to cancel"
       },
       "history": {
         "title": "History",
@@ -1633,7 +1788,7 @@
       "severity": "SEVERITY",
       "assignee": "ASSIGNEE",
       "deadline": "DEADLINE",
-      "bblRef": "BBL REF",
+      "bblRef": "Bbl ref",
       "photos": "PHOTOS",
       "linkedElement": "LINKED",
       "created": "ADDED",
@@ -1861,7 +2016,7 @@
         "articles": "Articles",
         "models": "Models"
       },
-      "donutCenterLabel": "Quality Assurance in Construction Act  (Wkb) compliant",
+      "donutCenterLabel": "Wkb compliant",
       "failingSuffix": "{count} failing",
       "trendEyebrow": "30-day trend"
     },
@@ -1936,43 +2091,85 @@
         "failed": "Failed"
       }
     },
-    "tab": {
-      "searchPlaceholder": "Search reports…",
-      "generateMenu": "More report types",
-      "generateNewVersion": "Generate new version",
-      "versionHistory": "Version history · {count} versions",
-      "noVersions": "No versions yet",
-      "emptyTitle": "No reports generated yet",
-      "emptyDescription": "Generate a filing-ready PDF to get started.",
-      "noResults": "No reports match your filters",
-      "justNow": "just now",
-      "minutesAgo": "{count}m ago",
-      "hoursAgo": "{count}h ago",
-      "daysAgo": "{count}d ago"
+    "hub": {
+      "crumb": "Reports",
+      "crumbProjects": "Projects",
+      "projectNotFound": "Project not found. It may have been deleted.",
+      "projectLoadError": "Failed to load project.",
+      "tabs": {
+        "overview": "Overview",
+        "reports": "Reports"
+      },
+      "panel": {
+        "overviewEyebrow": "Generated documents",
+        "overviewTitle": "Reports overview",
+        "reportsEyebrow": "Generated documents",
+        "reportsTitle": "{count} reports"
+      },
+      "hero": {
+        "badge": "Reports",
+        "subtitle": "Generate and download filing-ready PDFs",
+        "totalLabel": "Total",
+        "totalSub": "{count} generated",
+        "readyLabel": "Ready",
+        "readySub": "Available to download",
+        "pendingLabel": "In progress",
+        "pendingSub": "Queued or generating",
+        "typesLabel": "Types",
+        "typesSub": "Covered"
+      },
+      "list": {
+        "searchPlaceholder": "Search reports…",
+        "filterAll": "All types",
+        "empty": "No reports match your filters",
+        "loadError": "Failed to load reports."
+      },
+      "columns": {
+        "report": "Report",
+        "status": "Status",
+        "created": "Created",
+        "size": "Size",
+        "actions": "Actions"
+      },
+      "overview": {
+        "kpiTotal": "Total reports",
+        "kpiReady": "Ready",
+        "kpiReadySub": "Available to download",
+        "kpiPending": "In progress",
+        "kpiPendingSub": "Queued or generating",
+        "kpiTypes": "Types covered",
+        "kpiTypesSub": "Of all report types",
+        "statusTitle": "By status",
+        "donutCenterLabel": "Reports",
+        "byTypeTitle": "By type",
+        "latestTitle": "Latest per type",
+        "latestNotGenerated": "Not generated",
+        "empty": "No reports generated yet"
+      }
     },
     "types": {
       "compliance_report": {
         "title": "Compliance report",
         "description": "Generate a PDF of the latest compliance check, ready to share.",
-        "generate": "Generate compliance report",
+        "generate": "Compliance report",
         "missingData": "No compliance data available — run a check on a processed IFC first."
       },
       "assurance_plan": {
         "title": "Assurance plan",
         "description": "Generate the borgingsplan as a filing-ready PDF for the bouwmelding.",
-        "generate": "Generate assurance plan",
+        "generate": "Assurance plan",
         "missingData": "No borgingsplan for this project yet."
       },
       "completion_declaration": {
         "title": "Completion declaration",
         "description": "Generate the kwaliteitsborger's declaration. Only the inspector can sign it.",
-        "generate": "Generate declaration",
+        "generate": "Declaration",
         "missingData": "Project details are incomplete for the declaration."
       },
       "dossier": {
         "title": "Dossier for the authority",
         "description": "Bundle the full dossier for the gereedmelding. You'll get an email when it's ready.",
-        "generate": "Generate dossier",
+        "generate": "Dossier",
         "missingData": "Not enough data to assemble the dossier yet."
       }
     },
@@ -2153,16 +2350,16 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Quality Assurance in Construction Act  (Wkb)-compliant BIM platform"
+      "tagline": "Wkb-compliant BIM platform"
     },
     "hero": {
-      "readyBadge": "Quality Assurance in Construction Act  (Wkb) {version} ready",
-      "headlineTemplate": "Stitch your <em>models</em>, <em>issues</em> and <em>dossier</em> into one Quality Assurance in Construction Act  (Wkb) record.",
-      "subhead": "Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act  (Wkb)."
+      "readyBadge": "Wkb {version} ready",
+      "headlineTemplate": "Bring your <em>models</em>, <em>issues</em> and <em>dossier</em> together into one Wkb record.",
+      "subhead": "Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act (Wkb)."
     },
     "kpi": {
       "wkb": "Wkb",
-      "bbl": "BBL",
+      "bbl": "Bbl",
       "ifc": "IFC",
       "status": "Status",
       "statusNormal": "Normal",
@@ -2216,7 +2413,6 @@
     }
   },
   "legal": {
-    "lastUpdated": "Last updated: {date}",
     "navPrivacy": "Privacy policy",
     "navTerms": "Terms of service",
     "navDpa": "Data processing agreement (DPA)",
@@ -2667,7 +2863,7 @@
           "fullName": "Jane Doe"
         },
         "errors": {
-          "seatLimitExceeded": "The tenant has no available seats. Raise the seat limit before inviting more members.",
+          "seatLimitExceeded": "Seat limit reached. Raise the limit or remove a member before inviting.",
           "alreadyMember": "This user is already a member of the tenant."
         }
       },
@@ -2934,7 +3130,7 @@
           "dropMdxHintNl": "drop an .nl.mdx file to autofill"
         },
         "placeholders": {
-          "title": "WKB Compliance Explained",
+          "title": "Wkb Compliance Explained",
           "titleNl": "Wkb uitgelegd",
           "description": "A short summary shown on the card and in search results.",
           "tags": "wkb, compliance, regulations",
@@ -3293,7 +3489,7 @@
       "annotationLabel": "Annotation",
       "addAnnotation": "Add annotation",
       "annotationAdded": "Annotation added",
-      "annotationDrawing": "Draw on the PDF...",
+      "annotationDrawing": "Draw on the PDF…",
       "annotationRemove": "Remove",
       "shapes": {
         "rectangle": "Rectangle",
@@ -3387,6 +3583,7 @@
       "screenshot": "Screenshot",
       "settings": "Settings",
       "spaces": "Spaces",
+      "minimap": "Floor plan",
       "comingSoonSuffix": "{label} (coming soon)",
       "pan": "Pan",
       "panTooltip": "Pan (drag to move)",

@@ -573,6 +573,24 @@ export function floorPlanPlugin(
         { title: 'Convert a screen point to a plan point' },
       );
 
+      // Normalized page point (0..1, top-left, Y-down — the shape carried by the
+      // 2D `interaction:resolved` event) → plan point. Inverse of the union-box
+      // normalization in `useFloorPlanFindingMarkers`. The "update finding pin"
+      // flow converts the picked normalized point to a plan point here, then to a
+      // 3D world anchor via the minimap calibration.
+      context.commands.register<{ nx: number; ny: number }, { planX: number; planY: number } | null>(
+        'floorplan.planPointAtNorm',
+        (a) => {
+          const planW = union.maxX - union.minX || 1;
+          const planH = union.maxY - union.minY || 1;
+          return {
+            planX: union.minX + a.nx * planW,
+            planY: union.minY + (1 - a.ny) * planH,
+          };
+        },
+        { title: 'Convert a normalized page point to a plan point' },
+      );
+
       // The engine emits page:rendered on load; if it already fired before this
       // plugin installed (it won't, install precedes load), rebuild defensively.
       if (ctx.getUnscaledViewport()) rebuild();

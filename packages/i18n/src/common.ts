@@ -10,10 +10,6 @@ export function isLocale(value: string): value is Locale {
   return supportedLocales.includes(value as Locale);
 }
 
-export function normalizeLocale(value: string | null | undefined): Locale {
-  return value !== null && value !== undefined && isLocale(value) ? value : defaultLocale;
-}
-
 export function pickLocalized(
   map: Partial<Record<Locale, string>>,
   locale: Locale = defaultLocale,

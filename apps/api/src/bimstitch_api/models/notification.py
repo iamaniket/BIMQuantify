@@ -74,35 +74,18 @@ class Notification(TenantBase):
     )
 
 
-class NotificationRead(TenantBase):
-    __tablename__ = "notification_reads"
+class NotificationUserState(TenantBase):
+    """Per-user read/dismiss state over an org-shared notification.
 
-    notification_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("notifications.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    read_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-
-class NotificationDismissal(TenantBase):
-    """Per-user dismissal of an org-shared notification.
-
-    Notifications carry no ``user_id`` — the row is visible to every member of
-    the org. Dismissal is therefore tracked per user (exactly like
-    ``NotificationRead``): a dismissed notification is filtered out of *this*
-    user's feed and counts, while teammates still see it. There is no hard
-    delete of the shared row.
+    Notifications carry no ``user_id`` — a row is visible to every member of the
+    org. Both *read* and *dismissed* are tracked per user on a single row: it
+    exists once this user has read or dismissed the notification. ``read_at`` and
+    ``dismissed_at`` are independently nullable — read is ``read_at IS NOT NULL``,
+    dismissed is ``dismissed_at IS NOT NULL``. Teammates are unaffected and the
+    shared notification row is never hard-deleted.
     """
 
-    __tablename__ = "notification_dismissals"
+    __tablename__ = "notification_user_state"
 
     notification_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -114,6 +97,7 @@ class NotificationDismissal(TenantBase):
         ForeignKey("public.users.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    dismissed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dismissed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )

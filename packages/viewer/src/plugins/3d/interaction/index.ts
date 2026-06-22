@@ -32,6 +32,12 @@ export interface InteractionRequestArgs {
   cursor?: string;
   /** Selectors re-covered by the scrim where they overlap the viewport. */
   blockedSelectors?: string[];
+  /**
+   * Keep the current selection during the pick (forwarded to `placement.enter`).
+   * The portal's "update finding pin" flow sets this so clearing the selection
+   * doesn't re-scope the inspector and unmount the open finding mid-pick.
+   */
+  keepSelection?: boolean;
 }
 
 interface ModeView {
@@ -105,7 +111,10 @@ export function interactionPlugin(): Plugin & InteractionPluginAPI {
       }),
     );
 
-    await ctx.commands.execute('placement.enter', { oneShot: true });
+    await ctx.commands.execute('placement.enter', {
+      oneShot: true,
+      ...(a.keepSelection ? { keepSelection: true } : {}),
+    });
   };
 
   return {

@@ -9,6 +9,7 @@ import {
 } from '@bimstitch/ui/icons';
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ReactElement,
@@ -65,6 +66,10 @@ type Props = {
   onFindingClick: (finding: Finding) => void;
   /** Open a side-panel inspector view (e.g. from the right-click "Add finding"). */
   onRequestInspector: (view: 'findings') => void;
+  /** Surface the plan handle up so the inspector can pin on the plan in 2D mode. */
+  onFpHandle?: ((handle: FloorPlanViewerHandle | null) => void) | undefined;
+  /** Report the active storey elevation so a plan pick lifts to the right floor. */
+  onActiveElevationChange?: ((elevation: number | null) => void) | undefined;
 };
 
 /**
@@ -82,6 +87,8 @@ export function FloorPlanPane({
   viewMode,
   onFindingClick,
   onRequestInspector,
+  onFpHandle,
+  onActiveElevationChange,
 }: Props): ReactElement | null {
   const t = useTranslations('viewer.floorplan');
   const tb = useTranslations('viewer.toolbar');
@@ -102,6 +109,7 @@ export function FloorPlanPane({
 
   const handleFpRef = useCallback((h: FloorPlanViewerHandle | null) => {
     setFpHandle(h);
+    onFpHandle?.(h);
     if (process.env.NODE_ENV === 'development') {
       Object.defineProperty(window, '__fp', {
         configurable: true,
@@ -109,7 +117,7 @@ export function FloorPlanPane({
         writable: true,
       });
     }
-  }, []);
+  }, [onFpHandle]);
 
   const colors = useMemo(
     () => ({
@@ -182,6 +190,12 @@ export function FloorPlanPane({
     },
     [fpHandle, handle, levels, safeLevel],
   );
+
+  // Report the active storey elevation so the inspector's plan-pick can lift the
+  // picked point to the correct floor (same elevation `handleAddFinding` uses).
+  useEffect(() => {
+    onActiveElevationChange?.(levels[safeLevel]?.elevation ?? null);
+  }, [levels, safeLevel, onActiveElevationChange]);
 
   if (!data || levels.length === 0) return null;
   const level = levels[safeLevel];

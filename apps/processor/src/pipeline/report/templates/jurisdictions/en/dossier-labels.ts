@@ -10,8 +10,6 @@ export const EN_DOSSIER_LABELS: DossierLabels = {
   kicker: 'Quality Assurance for Building Act (Wkb)',
   reference: 'Project reference',
   address: 'Address',
-  instrument: 'Approved instrument',
-  contractor: 'Contractor',
   generatedAt: 'Generated at',
   toc: 'Table of Contents',
 

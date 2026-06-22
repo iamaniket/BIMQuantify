@@ -134,9 +134,9 @@ class TestSettingsResolution:
         assert len(settings) == 3
         by_type = {s["deadline_type"]: s for s in settings}
 
-        # construction_notification uses the global default (14, 7, 3, 1)
+        # construction_notification uses the global default (30, 14, 7, 3, 1)
         cn = by_type["construction_notification"]
-        assert cn["reminder_days"] == [14, 7, 3, 1]
+        assert cn["reminder_days"] == [30, 14, 7, 3, 1]
         assert cn["recipient_roles"] == ["owner", "editor", "contractor"]
         assert cn["source"] == "jurisdiction_default"
         assert cn["enabled"] is True
@@ -306,7 +306,7 @@ class TestOrgDefaultsPermissions:
         data = resp.json()
         assert data["enabled"] is False
         # Should still have jurisdiction default values for the rest
-        assert data["reminder_days"] == [14, 7, 3, 1]
+        assert data["reminder_days"] == [30, 14, 7, 3, 1]
         assert data["recipient_roles"] == ["owner", "editor", "contractor"]
 
 
@@ -464,7 +464,7 @@ class TestRLSIsolation:
         assert resp.status_code == 200
         by_type = {s["deadline_type"]: s for s in resp.json()}
         assert by_type["construction_notification"]["source"] == "jurisdiction_default"
-        assert by_type["construction_notification"]["reminder_days"] == [14, 7, 3, 1]
+        assert by_type["construction_notification"]["reminder_days"] == [30, 14, 7, 3, 1]
 
     async def test_org_b_cannot_see_org_a_project(
         self,
@@ -502,7 +502,7 @@ class TestJurisdictionEndpointDefaults:
         assert len(rules) == 3
 
         cn_rule = next(r for r in rules if r["deadline_type"] == "construction_notification")
-        assert cn_rule["default_reminder_days"] == [14, 7, 3, 1]
+        assert cn_rule["default_reminder_days"] == [30, 14, 7, 3, 1]
         assert cn_rule["default_recipient_roles"] == ["owner", "editor", "contractor"]
 
         io_rule = next(r for r in rules if r["deadline_type"] == "information_obligation")

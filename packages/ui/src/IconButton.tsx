@@ -32,12 +32,12 @@ const sizeStyles: Record<IconButtonSize, string> = {
 
 /**
  * Icon sizes scaled proportionally to button size.
- * Maintains ~57-67% of button height for balanced visual weight.
+ * Maintains ~60-75% of button height for balanced visual weight.
  */
 const iconSizeByButton: Record<IconButtonSize, string> = {
-  sm: 'h-4 w-4',      // 16px in 28px button
-  md: 'h-[18px] w-[18px]', // 18px in 32px button
-  lg: 'h-6 w-6',      // 24px in 36px button
+  sm: 'h-4 w-4',      // 16px in 24px button
+  md: 'h-[18px] w-[18px]', // 18px in 30px button
+  lg: 'h-6 w-6',      // 24px in 32px button
 };
 
 const baseStyles =

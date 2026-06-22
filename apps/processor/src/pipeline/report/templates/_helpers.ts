@@ -62,13 +62,6 @@ export function addressLine(addr: ReportAddress | null | undefined): string {
   return parts.length === 0 ? '—' : escapeHtml(parts.join(', '));
 }
 
-export type ReportContractor = {
-  name?: string | null;
-  kvk_number?: string | null;
-  contact_email?: string | null;
-  contact_phone?: string | null;
-};
-
 export type ReportProject = {
   id: string;
   name: string;
@@ -79,14 +72,6 @@ export type ReportProject = {
   address?: ReportAddress | null;
   permit_number?: string | null;
   delivery_date?: string | null;
-  contractor?: ReportContractor | null;
-};
-
-export type ReportInstrument = {
-  id: string;
-  name: string;
-  provider?: string | null;
-  methodology_url?: string | null;
 };
 
 /** Runtime schema for the project snapshot every report payload carries
@@ -97,7 +82,6 @@ export const reportProjectSchema = z.object({
   name: z.string(),
   country: z.string().nullable().optional(),
   reference_code: z.string().nullable().optional(),
-  status: z.string().nullable().optional(),
   phase: z.string().nullable().optional(),
   address: z
     .object({
@@ -113,26 +97,7 @@ export const reportProjectSchema = z.object({
     .optional(),
   permit_number: z.string().nullable().optional(),
   delivery_date: z.string().nullable().optional(),
-  contractor: z
-    .object({
-      name: z.string().nullable().optional(),
-      kvk_number: z.string().nullable().optional(),
-      contact_email: z.string().nullable().optional(),
-      contact_phone: z.string().nullable().optional(),
-    })
-    .nullable()
-    .optional(),
 });
-
-export const reportInstrumentSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    provider: z.string().nullable().optional(),
-    methodology_url: z.string().nullable().optional(),
-  })
-  .nullable()
-  .optional();
 
 // ---------------------------------------------------------------------------
 // Report templates (branding wrapper + structured content)
@@ -231,13 +196,10 @@ export function interpolate(tpl: string, ctx: Record<string, unknown>): string {
 export function buildMergeContext(payload: {
   project: ReportProject;
   generated_at: string;
-  instrument?: ReportInstrument | null;
 }): Record<string, unknown> {
   return {
     project: payload.project,
-    contractor: payload.project.contractor ?? {},
     report: { generated_at: fmtDate(payload.generated_at) },
-    instrument: payload.instrument ?? {},
   };
 }
 

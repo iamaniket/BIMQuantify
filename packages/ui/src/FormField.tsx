@@ -26,7 +26,7 @@ export interface FormFieldProps {
 }
 
 const DEFAULT_LABEL_CLASS =
-  'text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary';
+  'text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary';
 
 /**
  * Label + control + hint/error row. Matches the design's auth-form styling
@@ -58,12 +58,12 @@ export function FormField({
       </div>
       {children}
       {error !== undefined ? (
-        <div role="alert" className="flex items-center gap-1.5 text-[10.5px] text-error">
+        <div role="alert" className="flex items-center gap-1.5 text-caption text-error">
           <span aria-hidden className="size-1 rounded-full bg-error" />
           {error}
         </div>
       ) : hint !== undefined ? (
-        <div className="text-[10.5px] text-foreground-tertiary">{hint}</div>
+        <div className="text-caption text-foreground-tertiary">{hint}</div>
       ) : null}
     </div>
   );

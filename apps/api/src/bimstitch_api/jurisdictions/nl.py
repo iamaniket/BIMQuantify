@@ -7,15 +7,6 @@ Every user-facing string is a LocaleMap (`{"nl": "...", "en": "..."}`)
 so the portal can render Dutch or English without a translation round
 trip. The English copy here is professional construction-industry
 translation of the Dutch source — keep both sides in sync when editing.
-
-Maintaining the instruments list
---------------------------------
-`NL_INSTRUMENTS` mirrors the TloKB register
-(https://www.tlokb.nl/register) of toegelaten instrumenten. The register
-changes ~twice per year as instruments are admitted or withdrawn. To
-update: edit the tuple below — add/remove an `Instrument(...)` and bump
-the TloKB-checked date in the comment above the list. Do NOT scrape the
-register at runtime; the manual review is the point.
 """
 
 from __future__ import annotations
@@ -25,7 +16,6 @@ from bimstitch_api.jurisdictions import (
     ChecklistItemTemplate,
     DeadlineRule,
     DossierRequirementTemplate,
-    Instrument,
     Jurisdiction,
     LocaleMap,
     RiskTemplate,
@@ -395,9 +385,6 @@ NL_BBL_RISK_TEMPLATES: dict[str, tuple[RiskTemplate, ...]] = {
     ),
 }
 
-# TloKB register snapshot (last reviewed 2026-05-18). Each id is a stable
-# slug used as Project.instrument_id; renaming an id is a breaking change
-# for existing rows and requires a data migration.
 # Bbl phase labels for a Gk1 woning project. The neutral codes
 # (foundation/shell/roof/finishing/handover/other) live on Borgingsmoment.phase;
 # Dutch + English labels rendered through GET /jurisdictions.
@@ -880,33 +867,6 @@ NL_RISK_CATEGORY_TO_PHASES: dict[str, tuple[str, ...]] = {
 }
 
 
-NL_INSTRUMENTS: tuple[Instrument, ...] = (
-    Instrument(
-        id="kik",
-        name="KiK",
-        provider="Stichting Kwaliteitsborging in de Bouw (KiK)",
-        methodology_url="https://www.tlokb.nl/register",
-    ),
-    Instrument(
-        id="tis-kwaliteitsborger-wkb",
-        name="TIS Kwaliteitsborger Wkb",
-        provider="SWK (Stichting Waarborgfonds Koopwoningen)",
-        methodology_url="https://www.tlokb.nl/register",
-    ),
-    Instrument(
-        id="wki-gk1",
-        name="WKI-GK1",
-        provider="Stichting Wkb-instrumenten",
-        methodology_url="https://www.tlokb.nl/register",
-    ),
-    Instrument(
-        id="adp-bouwkwaliteit",
-        name="ADP-Bouwkwaliteit",
-        provider="ADP Bouwkwaliteit",
-        methodology_url="https://www.tlokb.nl/register",
-    ),
-)
-
 # Dossier-bevoegd-gezag completeness checklist. Hand-curated for the
 # aannemer-first flow; KB-layer items (borgingsplan / verklaring) are optional
 # until a kwaliteitsborger joins the project. Document items map to a
@@ -1038,29 +998,6 @@ NL = Jurisdiction(
         "commercial": {"nl": "Bedrijfspand", "en": "Commercial building"},
         "other": {"nl": "Anders", "en": "Other"},
     },
-    consequence_class_labels={
-        "cc1": {
-            "nl": "Gevolgklasse 1 (GK1)",
-            "en": "Consequence class 1 (CC1 / Gk1)",
-        },
-        "cc2": {
-            "nl": "Gevolgklasse 2 (GK2)",
-            "en": "Consequence class 2 (CC2 / Gk2)",
-        },
-        "cc3": {
-            "nl": "Gevolgklasse 3 (GK3)",
-            "en": "Consequence class 3 (CC3 / Gk3)",
-        },
-    },
-    status_labels={
-        "planning": {"nl": "Planning", "en": "Planning"},
-        "design": {"nl": "Ontwerp", "en": "Design"},
-        "permit_review": {"nl": "Vergunning", "en": "Permit review"},
-        "construction": {"nl": "Uitvoering", "en": "Construction"},
-        "handover": {"nl": "Oplevering", "en": "Handover"},
-        "complete": {"nl": "Gereed", "en": "Completed"},
-        "on_hold": {"nl": "On hold", "en": "On hold"},
-    },
     phase_labels={
         "design": {"nl": "Ontwerp", "en": "Design"},
         "tender": {"nl": "Bestek", "en": "Tender"},
@@ -1069,9 +1006,6 @@ NL = Jurisdiction(
         "finishing": {"nl": "Afbouw", "en": "Finishing"},
         "handover": {"nl": "Oplevering", "en": "Handover"},
     },
-    # NL Wkb today: only Gk1 is in scope. GK2/GK3 are roadmap.
-    allowed_consequence_classes=("cc1",),
-    instruments=NL_INSTRUMENTS,
     bbl_risk_category_labels={
         "structural_safety": {
             "nl": "Constructieve veiligheid",

@@ -7,10 +7,11 @@ import {
 } from 'react';
 
 import { cn } from './lib/cn.js';
+import { buttonFocusDisabled, buttonVariantStyles, type ButtonVariant } from './lib/buttonStyles.js';
 import { controlSizeStyles } from './lib/sizes.js';
 import type { ControlSize } from './lib/sizes.js';
 
-export type ButtonVariant = 'primary' | 'border' | 'secondary' | 'ghost' | 'destructive';
+export type { ButtonVariant } from './lib/buttonStyles.js';
 export type ButtonSize = ControlSize;
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -21,44 +22,17 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const baseStyles =
   'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-all duration-150 '
-  + 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 '
-  + 'focus-visible:ring-offset-background '
-  + 'disabled:cursor-not-allowed disabled:bg-background-tertiary disabled:text-foreground-disabled disabled:shadow-none';
-
-const variantStyles: Record<ButtonVariant, string> = {
-  primary:
-    'bg-primary text-primary-foreground '
-    + 'shadow-[0_1px_2px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] '
-    + 'hover:bg-primary-hover hover:shadow-[0_2px_4px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.1)] '
-    + 'active:bg-primary-active active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)] active:translate-y-px',
-  border:
-    'border border-border bg-background text-foreground shadow-sm '
-    + 'hover:bg-background-hover hover:border-border-hover hover:shadow-md '
-    + 'active:bg-background-active active:shadow-none active:translate-y-px',
-  secondary:
-    'bg-background-secondary text-foreground border border-border shadow-sm '
-    + 'hover:bg-background-hover hover:shadow-md '
-    + 'active:bg-background-active active:shadow-none active:translate-y-px',
-  ghost:
-    'bg-transparent text-foreground '
-    + 'hover:bg-background-hover '
-    + 'active:bg-background-active',
-  destructive:
-    'bg-error text-error-foreground '
-    + 'shadow-[0_1px_2px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] '
-    + 'hover:bg-error-hover hover:shadow-[0_2px_4px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.1)] '
-    + 'active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)] active:translate-y-px',
-};
+  + buttonFocusDisabled;
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: `${controlSizeStyles.sm} px-2 leading-[12px]`,
-  md: `${controlSizeStyles.md} px-3 leading-[14px]`,
-  lg: `${controlSizeStyles.lg} px-4 leading-[18px]`,
+  sm: `${controlSizeStyles.sm} px-2`,
+  md: `${controlSizeStyles.md} px-3`,
+  lg: `${controlSizeStyles.lg} px-4`,
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', type, asChild, children, ...rest }, ref) => {
-    const classes = cn(baseStyles, variantStyles[variant], sizeStyles[size], className);
+    const classes = cn(baseStyles, buttonVariantStyles[variant], sizeStyles[size], className);
 
     if (asChild && isValidElement(children)) {
       return cloneElement(children as ReactElement<Record<string, unknown>>, {

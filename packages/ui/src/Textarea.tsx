@@ -9,7 +9,7 @@ export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 const baseStyles =
   'w-full rounded-md border bg-background text-foreground transition-colors '
   + 'placeholder:text-foreground-placeholder '
-  + 'min-h-[80px] px-3 py-2 text-[14px] '
+  + 'min-h-[80px] px-3 py-2 text-body2 '
   + 'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 '
   + 'disabled:cursor-not-allowed disabled:bg-background-tertiary disabled:text-foreground-disabled';
 

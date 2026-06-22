@@ -20,7 +20,6 @@ import {
   renderSections,
   toLayoutBranding,
   type ContentSectionRender,
-  type ReportInstrument,
   type ReportProject,
   type ReportTemplate,
 } from './_helpers.js';
@@ -67,7 +66,6 @@ export type DossierData = {
   locale: string;
   jurisdiction?: string;
   project: ReportProject;
-  instrument: ReportInstrument | null;
   assurance_plan: {
     version_number: number;
     status: string;
@@ -227,11 +225,6 @@ function renderDeclaration(data: DossierData, labels: DossierLabels): string {
 
 export function renderHtml(data: DossierData): string {
   const labels = resolveLabels(data.locale);
-  const instrumentText = data.instrument
-    ? `${escapeHtml(data.instrument.name)}${
-        data.instrument.provider ? ` · ${escapeHtml(data.instrument.provider)}` : ''
-      }`
-    : '—';
 
   const cover = `
     <header class="cover">
@@ -241,8 +234,6 @@ export function renderHtml(data: DossierData): string {
         <dt>Project</dt><dd>${or(data.project.name)}</dd>
         <dt>${labels.reference}</dt><dd>${or(data.project.reference_code)}</dd>
         <dt>${labels.address}</dt><dd>${addressLine(data.project.address)}</dd>
-        <dt>${labels.instrument}</dt><dd>${instrumentText}</dd>
-        <dt>${labels.contractor}</dt><dd>${or(data.project.contractor?.name)}</dd>
         <dt>${labels.generatedAt}</dt><dd>${fmtDate(data.generated_at)}</dd>
       </dl>
       <div class="toc">

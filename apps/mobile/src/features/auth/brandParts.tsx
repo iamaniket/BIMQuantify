@@ -8,6 +8,7 @@
 // `NetherlandsMap`, just rendered with react-native-svg instead of DOM SVG.
 import {
   createNlProjection,
+  NL_DEFAULT_ACCENT,
   NL_PROVINCE_PATHS,
   NL_VIEWBOX,
   type MapMarker,
@@ -26,8 +27,6 @@ import Svg, {
 
 import { GridTexture } from '@/components/GridTexture';
 import { brand, colors, fonts } from '@/theme';
-
-const MARKER_ACCENT = '#2c5697';
 
 // ── Hero background — blue gradient (SVG) + faint blueprint grid ────────────
 export function HeroBackground({ gridStep = 30 }: { gridStep?: number }) {
@@ -98,7 +97,7 @@ export function NlMap({
       </G>
       {markers?.map((m, i) => {
         const [x, y] = project(m.lat, m.lng);
-        const accent = m.accent ?? MARKER_ACCENT;
+        const accent = m.accent ?? NL_DEFAULT_ACCENT;
         return (
           <Fragment key={`${m.lat}-${m.lng}-${i}`}>
             <Circle cx={x} cy={y} r={7} fill="#fff" stroke={accent} strokeWidth={2.2} />

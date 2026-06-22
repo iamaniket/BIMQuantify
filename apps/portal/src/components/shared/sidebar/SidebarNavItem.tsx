@@ -1,6 +1,6 @@
 'use client';
 
-import type { AppIcon as LucideIcon } from '@bimstitch/ui';
+import type { AppIcon } from '@bimstitch/ui';
 import { Link } from '@/i18n/navigation';
 import type { JSX, ReactNode } from 'react';
 
@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, controlSizeStyles } from '@bim
 
 type SidebarNavItemProps = {
   label: string;
-  icon: LucideIcon;
+  icon: AppIcon;
   collapsed: boolean;
   active?: boolean;
   href?: string;

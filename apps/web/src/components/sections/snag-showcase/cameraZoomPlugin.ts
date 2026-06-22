@@ -22,11 +22,24 @@ export type CameraZoomOptions = {
   /**
    * Extra "make it bigger" multiplier on top of the dolly framing — the model's
    * on-screen size is scaled by this (distance ÷ sizeBoost). Default 1.2 (20%
-   * bigger). The right-shift is NOT done here: it's a CSS `padding-left` on the
-   * canvas in SnagViewer (desktop only), so the model stays camera-centered and
-   * the focal offset is always cleared.
+   * bigger).
    */
   sizeBoost?: number;
+  /**
+   * Desktop-only right-shift, as a fraction of the viewport half-width (in world
+   * units at the framing distance). Default 0.4 — the model sits in the right
+   * ~70% so the hero text overlaid on the left stays clear.
+   *
+   * This is done with the CAMERA (`setFocalOffset`), NOT a CSS `padding-left` on
+   * the canvas. The padding approach desynced the WebGL drawing buffer from the
+   * canvas's `getBoundingClientRect()`, which broke `pick()` (NDC↔client px) — so
+   * the snag raycast sampled empty space and missed, and pins fell back to
+   * floating bounding-box centroids. A camera focal offset keeps the canvas
+   * full-bleed (rect == drawing buffer) so `pick()` is calibrated and snag pins
+   * land on the real model surface, while the orbit target stays on the model
+   * center so the idle turntable still spins in place.
+   */
+  panFraction?: number;
   /**
    * Camera tilt in degrees (polar angle: 0 = top-down, 90 = dead-on side).
    * Default 90 — dead-level, looking at the building straight from the side.
@@ -62,11 +75,16 @@ type Box = { min: { x: number; y: number; z: number }; max: { x: number; y: numb
  *     the model about its own center);
  *   - places the eye at `polarDeg` tilt / `azimuthDeg` facing, at a distance that
  *     fits the model then dollies in by `factorWide`/`factor` × `sizeBoost`
- *     (bigger); the model stays CAMERA-CENTERED (focal offset always 0).
+ *     (bigger);
+ *   - on desktop, shifts the model right via a camera `setFocalOffset` (see
+ *     `panFraction`) so the hero text on the left stays clear; mobile stays
+ *     centered.
  *
- * The right-shift is done in CSS (a `padding-left` on the canvas, desktop only —
- * see SnagViewer), not the camera, so it never pushes the model off a phone
- * screen and the turntable keeps spinning about the model's own center.
+ * The right-shift is done with the CAMERA, not a CSS `padding-left` on the canvas.
+ * Canvas padding desyncs the WebGL drawing buffer from `getBoundingClientRect()`,
+ * which breaks `pick()` (the raycast that pins snags to the model surface); a
+ * focal offset keeps the canvas full-bleed so picking stays calibrated. The orbit
+ * target stays on the model center, so the idle turntable keeps spinning in place.
  *
  * `install` also locks TOUCH input to one-finger-rotate only (two/three-finger =
  * none), disabling pinch-zoom and two-finger pan on mobile. Mouse buttons are
@@ -78,6 +96,7 @@ export function cameraZoomPlugin(options: CameraZoomOptions = {}): Plugin {
   const factorWide = options.factorWide ?? 0.3;
   const animate = options.animate ?? false;
   const sizeBoost = options.sizeBoost ?? 1.2;
+  const panFraction = options.panFraction ?? 0.4;
   const polarRad = ((options.polarDeg ?? 90) * Math.PI) / 180;
   const azimuthRad = ((options.azimuthDeg ?? 45) * Math.PI) / 180;
 
@@ -136,9 +155,16 @@ export function cameraZoomPlugin(options: CameraZoomOptions = {}): Plugin {
           const ey = cy + dd * Math.cos(polarRad);
           const ez = cz + dd * sinP * Math.cos(azimuthRad);
           void controls.setLookAt(ex, ey, ez, cx, cy, cz, animate);
-          // Keep the model camera-centered; the right-shift is the CSS
-          // padding-left on the canvas (SnagViewer, desktop only).
-          void controls.setFocalOffset(0, 0, 0, animate);
+          // Desktop right-shift via the camera (NOT canvas padding — see the
+          // header note). `focalOffset.x` is added to the eye along its world
+          // right-axis, so a NEGATIVE x slides the subject to the RIGHT while the
+          // orbit target stays on the model center (turntable keeps spinning in
+          // place). The shift is `panFraction` of the viewport half-width in world
+          // units at the framing distance `dd` (tan(halfH)·dd). Mobile stays
+          // centered so the model never leaves a narrow screen.
+          const halfWidthWorld = Math.tan(halfH) * dd;
+          const offsetX = wide ? -halfWidthWorld * panFraction : 0;
+          void controls.setFocalOffset(offsetX, 0, 0, animate);
 
           ctx.requestRender();
       };

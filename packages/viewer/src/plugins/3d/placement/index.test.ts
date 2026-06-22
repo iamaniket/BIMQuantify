@@ -84,6 +84,19 @@ describe('placement plugin', () => {
     expect(changes).toEqual([true]);
   });
 
+  it('keeps the selection on enter when keepSelection is set', async () => {
+    const { ctx, commands, bindCalls, clearedSelection } = makeCtx(null);
+    const plugin = placementPlugin();
+    plugin.install(ctx);
+
+    await commands.execute('placement.enter', { keepSelection: true });
+
+    expect(plugin.isActive()).toBe(true);
+    // Still rebinds click:left — only the selection clear is skipped.
+    expect(bindCalls).toContainEqual({ gesture: 'click:left', command: 'placement.pick' });
+    expect(clearedSelection()).toBe(false);
+  });
+
   it('restores the saved click:left binding on exit', async () => {
     const { ctx, commands, bindCalls } = makeCtx(null);
     const plugin = placementPlugin();

@@ -55,9 +55,56 @@
   }
 
   html {
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* Snag-showcase spotlight card enter animation (transform/opacity only — keyed on
+   the active snag id so it replays on every cycle tick). See SnagViewer.tsx. */
+@keyframes snagPop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Snag-showcase radar-ping ring around the spotlit pin (closest to the camera).
+   Owns its own centering translate so it expands from the pin's exact point. */
+@keyframes snagPulse {
+  0% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.3);
+  }
+}
+
+@layer utilities {
+  .animate-snag-pop {
+    animation: snagPop 220ms ease-out;
+  }
+
+  .animate-snag-pulse {
+    animation: snagPulse 1700ms ease-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-snag-pop,
+  .animate-snag-pulse {
+    animation: none;
   }
 }
