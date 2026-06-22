@@ -1,6 +1,8 @@
 'use client';
 
-import { BookOpen, Building2, ChevronRight, Download, Inbox, LayoutGrid, Plus, Table2, Users } from '@bimstitch/ui/icons';
+import {
+  Activity, BookOpen, Building2, ChevronRight, Download, Inbox, LayoutGrid, Plus, Table2, Users,
+} from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
 import type { Locale } from '@bimstitch/i18n';
@@ -43,7 +45,10 @@ import {
 import { listBlogPostsPage } from '@/lib/api/blog';
 import { adminAccessRequestsListKey } from '@/features/admin/access-requests/queryKeys';
 import { adminBlogListKey } from '@/features/admin/blog/queryKeys';
-import { formatDate } from '@/lib/formatting/dates';
+import { ChartSection } from '@/components/shared/charts/ChartSection';
+import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
+import { TrendArea } from '@/components/shared/charts/TrendArea';
+import { formatDate, formatMonthDay } from '@/lib/formatting/dates';
 import type {
   AccessRequestRead,
   BlogPostRead,
@@ -147,8 +152,67 @@ function OverviewPane({
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
+  const statusSegments: DonutSegment[] = [
+    { value: byStatus.active.length, color: 'var(--success)', label: t('statusActive') },
+    { value: byStatus.suspended.length, color: 'var(--warning)', label: t('statusSuspended') },
+    { value: byStatus.provisioning.length, color: 'var(--foreground-tertiary)', label: t('statusProvisioning') },
+  ];
+
+  // Tenants created per week over the last 8 weeks.
+  const trend = ((): { values: number[]; labels: string[] } => {
+    const weeks = 8;
+    const msWeek = 7 * 24 * 60 * 60 * 1000;
+    const today = new Date(new Date().toDateString());
+    const start = today.getTime() - (weeks - 1) * msWeek;
+    const values = new Array<number>(weeks).fill(0);
+    for (const o of organizations) {
+      const ts = new Date(o.created_at).getTime();
+      if (!Number.isNaN(ts)) {
+        let idx = Math.floor((ts - start) / msWeek);
+        if (idx >= weeks) idx = weeks - 1;
+        if (idx >= 0) values[idx] = (values[idx] ?? 0) + 1;
+      }
+    }
+    const labels = values.map(
+      (_, i) => formatMonthDay(new Date(start + i * msWeek).toISOString(), locale),
+    );
+    return { values, labels };
+  })();
+
   return (
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+    <div className="flex flex-col gap-5">
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <ChartSection icon={<LayoutGrid className="h-3.5 w-3.5" aria-hidden />} title={t('byStatusTitle')}>
+          <div className="flex flex-col items-center gap-5 sm:flex-row">
+            <DonutChart
+              segments={statusSegments}
+              centerValue={String(organizations.length)}
+              centerLabel={t('donutCenterLabel')}
+              size={180}
+            />
+            <ul className="flex min-w-0 flex-1 flex-col gap-2">
+              {statusSegments.map((seg) => (
+                <li key={seg.label} className="flex items-center gap-2.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: seg.color }} />
+                  <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">{seg.label}</span>
+                  <span className="shrink-0 text-body3 font-semibold tabular-nums text-foreground">{seg.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </ChartSection>
+        <ChartSection icon={<Activity className="h-3.5 w-3.5" aria-hidden />} title={t('trendTitle')}>
+          {organizations.length === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('trendEmpty')}</p>
+          ) : (
+            <TrendArea values={trend.values} labels={trend.labels} height={200} />
+          )}
+        </ChartSection>
+      </div>
+
+      {/* Existing stat cards */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
       {/* Tenants by status */}
       <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-4 text-body2 font-bold">{t('byStatusTitle')}</h3>
@@ -285,6 +349,7 @@ function OverviewPane({
             <ChevronRight className="h-3.5 w-3.5 text-foreground-tertiary" />
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

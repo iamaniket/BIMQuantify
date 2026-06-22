@@ -163,16 +163,17 @@ async def test_jurisdictions_exposes_dossier_templates(client: AsyncClient) -> N
         "certificate_type",
         "derived",
         "model",
-        "attachment_or_model",
     }
 
     # At least one of each source kind exists across the dwelling set.
     kinds = {r["source_kind"] for r in templates["dwelling"]}
     assert {"attachment_slot", "certificate_type", "derived"} <= kinds
-    # Drawings is satisfied by an uploaded drawing OR a present BIM model.
-    assert "attachment_or_model" in kinds
+    # Drawings is satisfied by a viewable/processed BIM model (model-backed,
+    # never an attachment).
+    assert "model" in kinds
     drawings = next(r for r in templates["dwelling"] if r["code"] == "drawings")
-    assert drawings["source_kind"] == "attachment_or_model"
+    assert drawings["source_kind"] == "model"
+    assert drawings["source_value"] == "models"
 
 
 async def test_dossier_template_labels_localized(client: AsyncClient) -> None:

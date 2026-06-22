@@ -45,10 +45,12 @@ from bimstitch_api.models.user import User
 from bimstitch_api.routers.models import _load_model_or_404
 from bimstitch_api.routers.project_files._shared import (
     HEADER_PEEK_BYTES,
-    logger,
-    router,
     _load_file_or_404,
+    logger,
+    resolve_head_file_id,
+    router,
 )
+from bimstitch_api.schemas.model import ModelRead
 from bimstitch_api.schemas.project_file import (
     InitiateUploadRequest,
     InitiateUploadResponse,
@@ -281,6 +283,9 @@ async def complete_upload(
         row.extraction_status = ExtractionStatus.queued
         if model.primary_file_type is None:
             model.primary_file_type = row.file_type
+        # A newly-completed version reclaims the head: clear any restore pointer
+        # so the model's effective head reverts to this (newest) version.
+        model.head_file_id = None
 
         try:
             await check_job_concurrency(session, settings)
@@ -461,6 +466,9 @@ async def complete_upload(
         row.extraction_status = ExtractionStatus.queued
         if model.primary_file_type is None:
             model.primary_file_type = row.file_type
+        # A newly-completed version reclaims the head: clear any restore pointer
+        # so the model's effective head reverts to this (newest) version.
+        model.head_file_id = None
 
         try:
             await check_job_concurrency(session, settings)
@@ -596,3 +604,84 @@ async def retry_extraction(
 
     await session.refresh(row)
     return row
+
+
+@router.post("/{file_id}/restore", response_model=ModelRead)
+async def restore_version(
+    project_id: UUID,
+    model_id: UUID,
+    file_id: UUID,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> Model:
+    """Make an older model version the current head (F7 restore-version-as-head).
+
+    Repoints ``model.head_file_id`` at the chosen version — no bytes are copied
+    and no new version row is created, so the immutable version history is left
+    untouched. The viewer/compliance follow the pointer (see
+    ``resolve_head_file_id``); a later "upload new version" clears the pointer so
+    the newest upload reclaims the head. The source must be a viewable version
+    (``ready`` + extraction-succeeded, or a ``ready`` PDF) and not already the
+    head.
+    """
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
+    require_permission(membership.role, Resource.project_file, Action.update)
+    require_project_writable(project)
+    model = await _load_model_or_404(session, project.id, model_id)
+
+    source = await _load_file_or_404(session, model.id, file_id)
+
+    restorable = source.status is ProjectFileStatus.ready and (
+        source.file_type is FileType.pdf
+        or source.extraction_status is ExtractionStatus.succeeded
+    )
+    if not restorable:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="SOURCE_NOT_RESTORABLE"
+        )
+
+    # Candidate set = the model's ready versions (what the portal treats as
+    # selectable head), newest first. Restoring the current effective head is a
+    # no-op and rejected so the action is meaningful.
+    ready_versions = list(
+        (
+            await session.execute(
+                select(ProjectFile)
+                .where(
+                    ProjectFile.model_id == model.id,
+                    ProjectFile.status == ProjectFileStatus.ready,
+                )
+                .order_by(ProjectFile.version_number.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if source.id == resolve_head_file_id(model, ready_versions):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="VERSION_ALREADY_HEAD"
+        )
+
+    model.head_file_id = source.id
+
+    await audit.record(
+        session,
+        action="project_file.version_restored",
+        resource_type="project_file",
+        resource_id=source.id,
+        after={
+            "restored_from_version": source.version_number,
+            "head_file_id": str(source.id),
+            "model_id": str(model.id),
+            "original_filename": source.original_filename,
+        },
+        actor_user_id=user.id,
+        project_id=project.id,
+        request=request,
+    )
+    await session.flush()
+    await session.refresh(model)
+    return model

@@ -237,6 +237,8 @@ en_messages: Catalog = {
     "errors.MODEL_NAME_CONFLICT": "A model with that name already exists.",
     "errors.MODEL_FILE_TYPE_LOCKED": "This model's file type can no longer be changed.",
     "errors.VERSION_NUMBER_CONFLICT": "That version number is already in use.",
+    "errors.SOURCE_NOT_RESTORABLE": "Only a ready, fully-processed version can be restored.",
+    "errors.VERSION_ALREADY_HEAD": "That version is already the current one.",
 
     # --- files / uploads / storage ---
     "errors.FILE_NOT_FOUND": "That file could not be found.",

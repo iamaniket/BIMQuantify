@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Eye, ShieldCheck, Upload, Trash2,
+  Eye, RotateCcw, ShieldCheck, Upload, Trash2,
 } from '@bimstitch/ui/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -25,7 +25,9 @@ import { useCheckCompliance } from '@/features/compliance/hooks';
 import { useDeleteModel } from '@/features/models/useDeleteModel';
 import { useProjectPermissions } from '@/features/permissions';
 import { acceptedExtensions, isAllowedFile } from '@/features/models/fileValidation';
+import { isFileViewable } from '@/features/models/modelViewability';
 import { useModelFiles } from '@/features/models/useModelFiles';
+import { useRestoreModelFileVersion } from '@/features/models/useRestoreModelFileVersion';
 import { useUploadModelFile } from '@/features/models/useUploadModelFile';
 import { UploadProgressItem, type UploadState } from '@/features/models/UploadProgressItem';
 import { viewerKeys } from '@/features/viewer/shared/queryKeys';
@@ -97,21 +99,23 @@ export function ModelsTableRow({
   const complianceMutation = useCheckCompliance(projectId, model.id);
   const uploadMutation = useUploadModelFile();
   const deleteMutation = useDeleteModel();
+  const restoreMutation = useRestoreModelFileVersion();
   const queryClient = useQueryClient();
   const { tokens } = useAuth();
   const { can } = useProjectPermissions(projectId);
   const canRemove = can('model', 'delete');
+  const canRestore = can('project_file', 'update');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [pending, setPending] = useState<PendingUpload[]>([]);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState<{ fileId: string; version: number } | null>(null);
   const files = prefetchedFiles ?? filesQuery.data ?? [];
   const colors = disciplineChipColors(model.discipline);
-  const latestFile = files.length > 0 ? files[0] : undefined;
-  const isViewable = latestFile !== undefined && (
-    latestFile.file_type === 'pdf'
-      ? latestFile.status === 'ready'
-      : latestFile.extraction_status === 'succeeded'
-  );
+  // The head is the model's restore pointer when set, else the newest version.
+  const latestFile = (
+    model.head_file_id != null ? files.find((f) => f.id === model.head_file_id) : undefined
+  ) ?? (files.length > 0 ? files[0] : undefined);
+  const isViewable = latestFile !== undefined && isFileViewable(latestFile);
   const canCheckBbl = latestFile?.file_type === 'ifc' && latestFile.extraction_status === 'succeeded';
   const lockedFileType: FileTypeValue | null = model.primary_file_type ?? null;
 
@@ -207,6 +211,14 @@ export function ModelsTableRow({
       { onSuccess: () => { setConfirmRemove(false); } },
     );
   }, [deleteMutation, projectId, model.id]);
+
+  const handleRestore = useCallback(() => {
+    if (confirmRestore === null) return;
+    restoreMutation.mutate(
+      { projectId, modelId: model.id, fileId: confirmRestore.fileId },
+      { onSuccess: () => { setConfirmRestore(null); } },
+    );
+  }, [restoreMutation, projectId, model.id, confirmRestore]);
 
   const prewarmViewer = useCallback(() => {
     if (!isViewable || latestFile === undefined || tokens === null) return;
@@ -391,7 +403,32 @@ export function ModelsTableRow({
                   sizeBytes: f.size_bytes,
                   createdAt: f.created_at,
                 }))}
+                headId={latestFile?.id}
                 isLoading={prefetchedFiles === undefined && filesQuery.isLoading}
+                renderActions={
+                  canRestore
+                    ? (entry, isHead) => {
+                        if (isHead) return null;
+                        const f = files.find((ff) => ff.id === entry.id);
+                        const viewable = f !== undefined && (
+                          f.file_type === 'pdf'
+                            ? f.status === 'ready'
+                            : f.extraction_status === 'succeeded'
+                        );
+                        if (!viewable) return null;
+                        return (
+                          <RowActionPill
+                            size="sm"
+                            icon={<RotateCcw className="h-3.5 w-3.5" />}
+                            label={t('restore')}
+                            title={t('restoreTitle')}
+                            pending={restoreMutation.isPending && confirmRestore?.fileId === entry.id}
+                            onClick={() => { setConfirmRestore({ fileId: entry.id, version: entry.versionNumber }); }}
+                          />
+                        );
+                      }
+                    : undefined
+                }
               />
             </>
           )}
@@ -409,6 +446,19 @@ export function ModelsTableRow({
         variant="destructive"
         isPending={deleteMutation.isPending}
         errorMessage={deleteMutation.error instanceof ApiError ? deleteMutation.error.detail : null}
+      />
+
+      <ConfirmDialog
+        open={confirmRestore !== null}
+        onOpenChange={(open) => { if (!open) setConfirmRestore(null); }}
+        title={t('restoreTitle')}
+        description={confirmRestore !== null ? t('restoreBody', { version: confirmRestore.version }) : ''}
+        confirmLabel={t('restoreConfirm')}
+        cancelLabel={t('cancel')}
+        onConfirm={handleRestore}
+        variant="default"
+        isPending={restoreMutation.isPending}
+        errorMessage={restoreMutation.error instanceof ApiError ? restoreMutation.error.detail : null}
       />
     </>
   );

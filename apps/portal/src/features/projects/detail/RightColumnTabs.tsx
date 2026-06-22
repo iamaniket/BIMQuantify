@@ -149,7 +149,11 @@ export function RightColumnTabs({
         <div className={`min-h-0 flex-1 px-3 pb-3 pt-2 ${topTab === 'models' ? 'overflow-hidden' : 'overflow-auto'}`}>
           {/* `readiness` backs the Readiness tab: dossier checklist groups (deadlines moved to their own card above) */}
           {topTab === 'readiness' && (
-            <DossierChecklistTab projectId={projectId} country={projectCountry} />
+            <DossierChecklistTab
+              projectId={projectId}
+              country={projectCountry}
+              onNavigateToModels={() => { setTopTab('models'); }}
+            />
           )}
           {topTab === 'models' && (
             <ModelsTab projectId={projectId} models={models} />

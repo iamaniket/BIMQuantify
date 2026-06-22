@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, ShieldCheck, SlidersHorizontal, Upload } from '@bimstitch/ui/icons';
+import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, Plus, ShieldCheck, SlidersHorizontal, Upload } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -22,8 +22,6 @@ import { useUpdateAttachment } from '@/features/attachments/useUpdateAttachment'
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
 
-import { NewModelDialog } from '@/features/models/NewModelDialog';
-
 import { CertificateUploadDialog } from './CertificateUploadDialog';
 import { type DossierRequirementResult } from './dossierTemplate';
 import { useDossierCompleteness } from './useDossierCompleteness';
@@ -31,6 +29,8 @@ import { useDossierCompleteness } from './useDossierCompleteness';
 type Props = {
   projectId: string;
   country: string;
+  /** Switches the surrounding panel to the Models tab (drives the Drawings CTA). */
+  onNavigateToModels?: () => void;
 };
 
 const SOURCE_ICONS: Record<DossierRequirementResult['sourceKind'], typeof Check> = {
@@ -38,12 +38,11 @@ const SOURCE_ICONS: Record<DossierRequirementResult['sourceKind'], typeof Check>
   certificate_type: ShieldCheck,
   derived: SlidersHorizontal,
   model: Box,
-  attachment_or_model: FileText,
 };
 
 const OFFICE_ACCEPT = '.pdf,.docx,.xlsx,.pptx,.txt';
 
-export function DossierChecklistTab({ projectId, country }: Props): JSX.Element {
+export function DossierChecklistTab({ projectId, country, onNavigateToModels }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.dossier');
 
   const jurisdiction = useJurisdiction(country);
@@ -56,7 +55,6 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
   const pendingSlotRef = useRef<DossierSlotValue | null>(null);
   const [linkSlot, setLinkSlot] = useState<DossierSlotValue | null>(null);
   const [certType, setCertType] = useState<CertificateTypeValue | null>(null);
-  const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const categoryLabel = useCallback(
@@ -160,7 +158,8 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
                     onUpload={handleUploadInto}
                     onLink={setLinkSlot}
                     onUploadCertificate={setCertType}
-                    onUploadModel={() => { setModelDialogOpen(true); }}
+                    hasAnyModel={dossier.hasAnyModel}
+                    onNavigateToModels={onNavigateToModels ?? (() => {})}
                     busy={uploadMutation.isPending}
                   />
                 ))}
@@ -192,12 +191,6 @@ export function DossierChecklistTab({ projectId, country }: Props): JSX.Element 
         onOpenChange={(open) => { if (!open) setCertType(null); }}
         initialType={certType ?? 'product'}
       />
-
-      <NewModelDialog
-        projectId={projectId}
-        open={modelDialogOpen}
-        onOpenChange={setModelDialogOpen}
-      />
     </div>
   );
 }
@@ -207,14 +200,16 @@ function DossierRow({
   onUpload,
   onLink,
   onUploadCertificate,
-  onUploadModel,
+  hasAnyModel,
+  onNavigateToModels,
   busy,
 }: {
   req: DossierRequirementResult;
   onUpload: (slot: DossierSlotValue) => void;
   onLink: (slot: DossierSlotValue) => void;
   onUploadCertificate: (type: CertificateTypeValue) => void;
-  onUploadModel: () => void;
+  hasAnyModel: boolean;
+  onNavigateToModels: () => void;
   busy: boolean;
 }): JSX.Element {
   const t = useTranslations('projectDetail.tabs.dossier');
@@ -251,7 +246,7 @@ function DossierRow({
       </div>
 
       {/* CTAs by source kind */}
-      {(req.sourceKind === 'attachment_slot' || req.sourceKind === 'attachment_or_model') && (
+      {req.sourceKind === 'attachment_slot' && (
         <div className="flex shrink-0 items-center gap-1.5">
           <Button
             variant="ghost"
@@ -283,15 +278,18 @@ function DossierRow({
           {t('uploadCertificate')}
         </Button>
       )}
-      {req.sourceKind === 'model' && (
+      {/* Drawings is model-backed: a button only when no model exists yet —
+          it hands off to the Models tab to create one and upload files. Once
+          any model is present the row just reflects met/processing state. */}
+      {req.sourceKind === 'model' && !req.fulfilled && !hasAnyModel && (
         <Button
           variant="primary"
           size="md"
           className="shrink-0"
-          onClick={onUploadModel}
+          onClick={onNavigateToModels}
         >
-          <Upload className="mr-1.5 h-3.5 w-3.5" />
-          {t('uploadModel')}
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          {t('addModel')}
         </Button>
       )}
       {req.sourceKind === 'derived' && !req.fulfilled && (

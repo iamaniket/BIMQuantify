@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.conftest import _auth, _create_project
+from tests.conftest import VALID_IFC_HEADER, _auth, _create_model, _create_project
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    from tests.conftest import FakeStorage
 
 
 # ---------------------------------------------------------------------------
@@ -735,6 +737,78 @@ async def test_readiness_gereedmelding_has_all_codes(
 
     readiness = await _get_readiness(client, token, project["id"], dl["id"])
     assert len(readiness["items"]) == 11
+
+
+async def test_readiness_drawings_requires_viewable_model(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """Drawings (model-backed) is fulfilled only by a viewable/processed model.
+
+    A model whose only file is still extracting does not count; once its IFC
+    extraction succeeds the drawings dossier code flips to fulfilled. Drawings
+    no longer reads attachments at all.
+    """
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+
+    project = await _create_project_with_dates(client, token, name="Drawings Model")
+    deadlines = await _list_deadlines(client, token, project["id"])
+    dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
+
+    def _drawings(readiness: dict) -> dict:
+        return next(i for i in readiness["items"] if i["code"] == "drawings")
+
+    # 1) No model → drawings missing.
+    readiness = await _get_readiness(client, token, project["id"], dl["id"])
+    assert _drawings(readiness)["fulfilled"] is False
+    assert _drawings(readiness)["count"] == 0
+
+    # 2) A model whose IFC was just completed (extraction still queued) is not
+    #    yet viewable → drawings stays missing.
+    model = await _create_model(client, token, project["id"], name="m-drawings")
+    init = (
+        await client.post(
+            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            json={
+                "filename": "drawings.ifc",
+                "size_bytes": len(VALID_IFC_HEADER),
+                "content_type": "application/octet-stream",
+                "content_sha256": "1" * 64,
+            },
+            headers=_auth(token),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_IFC_HEADER
+    complete = await client.post(
+        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        headers=_auth(token),
+    )
+    assert complete.status_code == 200, complete.text
+
+    readiness = await _get_readiness(client, token, project["id"], dl["id"])
+    assert _drawings(readiness)["fulfilled"] is False
+
+    # 3) Extraction succeeds → the model is viewable → drawings fulfilled.
+    succeeded = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": init["file_id"],
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+            "fragments_key": f"projects/{project['id']}/{init['file_id']}.frag",
+            "metadata_key": f"projects/{project['id']}/{init['file_id']}.metadata.json",
+            "properties_key": f"projects/{project['id']}/{init['file_id']}.properties.json",
+        },
+        headers={"Authorization": "Bearer dev-shared-secret-change-me"},
+    )
+    assert succeeded.status_code == 200, succeeded.text
+
+    readiness = await _get_readiness(client, token, project["id"], dl["id"])
+    item = _drawings(readiness)
+    assert item["fulfilled"] is True
+    assert item["count"] == 1
 
 
 async def test_readiness_404_wrong_project(

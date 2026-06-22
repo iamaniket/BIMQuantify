@@ -30,6 +30,7 @@ import {
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
 import { ProjectFormDialog } from '@/features/projects/ProjectFormDialog';
 import { ProjectSettingsDialog } from '@/features/projects/detail/ProjectSettingsDialog';
+import { ProjectActionsMenu } from '@/features/projects/detail/ProjectActionsMenu';
 import { isProjectArchived } from '@/lib/formatting/projects';
 import { Link } from '@/i18n/navigation';
 
@@ -150,6 +151,7 @@ export default function ProjectDetailPage(): JSX.Element {
           <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('projectAccess')}
         </Link>
       </Button>
+      <ProjectActionsMenu project={project} />
     </>
   );
 

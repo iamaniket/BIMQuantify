@@ -32,6 +32,10 @@ class ModelRead(ModelBase):
     id: UUID
     project_id: UUID
     primary_file_type: FileType | None = None
+    # Current-revision pointer. NULL means the head is the newest version; when
+    # set, the portal targets this file as the model's head (view / compliance /
+    # version-history "current" badge). See F7 restore-version-as-head.
+    head_file_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 

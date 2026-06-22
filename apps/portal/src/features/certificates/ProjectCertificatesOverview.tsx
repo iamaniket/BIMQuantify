@@ -1,26 +1,46 @@
 'use client';
 
-import { CheckCircle, Clock, FileBadge } from '@bimstitch/ui/icons';
+import {
+  Activity,
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle,
+  Clock,
+  FileBadge,
+  Layers,
+} from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
 import { Badge, type BadgeVariant } from '@bimstitch/ui';
 import type { Locale } from '@bimstitch/i18n';
 
-import { formatDate } from '@/lib/formatting/dates';
+import { BarChartMini } from '@/components/shared/charts/BarChartMini';
+import { ChartSection } from '@/components/shared/charts/ChartSection';
+import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
+import { StatCard } from '@/components/shared/charts/StatCard';
+import { TrendArea } from '@/components/shared/charts/TrendArea';
+import { formatMonthDay } from '@/lib/formatting/dates';
 import type { Certificate } from '@/lib/api/schemas';
 
-import { getCertificateExpiryState, type CertificateExpiryState } from './expiry';
+import {
+  getCertificateDaysLeft,
+  getCertificateExpiryState,
+  type CertificateExpiryState,
+} from './expiry';
 
 type Props = {
   certificates: Certificate[];
+  /** When provided, renewal rows become clickable and open the cert viewer. */
+  onView?: (cert: Certificate) => void;
 };
 
-const EXPIRY_COLOR: Record<CertificateExpiryState, string> = {
-  none: 'bg-foreground-tertiary',
-  valid: 'bg-success',
-  expiring: 'bg-warning',
-  expired: 'bg-error',
+// Donut/legend colors — green/amber/red/neutral, matching the expiry badges.
+const EXPIRY_COLORS: Record<CertificateExpiryState, string> = {
+  valid: 'var(--success)',
+  expiring: 'var(--warning)',
+  expired: 'var(--error)',
+  none: 'var(--foreground-tertiary)',
 };
 
 const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
@@ -30,13 +50,22 @@ const EXPIRY_BADGE: Record<CertificateExpiryState, BadgeVariant> = {
   expired: 'error',
 };
 
+const EXPIRY_ORDER: CertificateExpiryState[] = ['valid', 'expiring', 'expired', 'none'];
 const TYPE_KEYS = ['product', 'installation_test', 'inspection', 'warranty', 'other'] as const;
 
-export function ProjectCertificatesOverview({ certificates }: Props): JSX.Element {
+// Certificates expiring within this horizon (or already expired) surface in the
+// "renewals due" list — a wider window than the 30-day "expiring" badge.
+const RENEWAL_HORIZON_DAYS = 90;
+const TREND_WEEKS = 8;
+const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+export function ProjectCertificatesOverview({ certificates, onView }: Props): JSX.Element {
   const t = useTranslations('certificates.hub.overview');
   const tType = useTranslations('projectDetail.tabs.certificates.type');
   const tExpiry = useTranslations('projectDetail.tabs.certificates.expiry');
   const locale = useLocale() as Locale;
+
+  const total = certificates.length;
 
   const byType = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -48,118 +77,175 @@ export function ProjectCertificatesOverview({ certificates }: Props): JSX.Elemen
   }, [certificates]);
 
   const byExpiry = useMemo(() => {
-    const counts: Record<CertificateExpiryState, number> = { none: 0, valid: 0, expiring: 0, expired: 0 };
+    const counts: Record<CertificateExpiryState, number> = {
+      none: 0, valid: 0, expiring: 0, expired: 0,
+    };
     for (const c of certificates) {
-      counts[getCertificateExpiryState(c.valid_until)]++;
+      counts[getCertificateExpiryState(c.valid_until)] += 1;
     }
     return counts;
   }, [certificates]);
 
-  const recent = useMemo(
-    () =>
-      [...certificates]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 5),
+  const expirySegments = useMemo<DonutSegment[]>(
+    () => EXPIRY_ORDER.map((state) => ({
+      value: byExpiry[state],
+      color: EXPIRY_COLORS[state],
+      label: tExpiry(state),
+    })),
+    [byExpiry, tExpiry],
+  );
+
+  const typeCategories = useMemo(() => TYPE_KEYS.map((k) => tType(k)), [tType]);
+  const typeValues = useMemo(() => TYPE_KEYS.map((k) => byType[k] ?? 0), [byType]);
+
+  // Certificates added per week over the last TREND_WEEKS weeks.
+  const trend = useMemo(() => {
+    const today = new Date(new Date().toDateString());
+    const start = today.getTime() - (TREND_WEEKS - 1) * MS_WEEK;
+    const values = new Array<number>(TREND_WEEKS).fill(0);
+    for (const c of certificates) {
+      const ts = new Date(c.created_at).getTime();
+      if (!Number.isNaN(ts)) {
+        let idx = Math.floor((ts - start) / MS_WEEK);
+        if (idx >= TREND_WEEKS) idx = TREND_WEEKS - 1; // clamp future-dated
+        if (idx >= 0) values[idx] = (values[idx] ?? 0) + 1;
+      }
+    }
+    const labels = values.map(
+      (_, i) => formatMonthDay(new Date(start + i * MS_WEEK).toISOString(), locale),
+    );
+    return { values, labels };
+  }, [certificates, locale]);
+
+  // Renewals due: dated certs expiring within the horizon (or already expired),
+  // soonest first. Each carries its computed days-left for the row label.
+  const renewals = useMemo(
+    () => certificates
+      .map((c) => ({ cert: c, daysLeft: getCertificateDaysLeft(c.valid_until) }))
+      .filter(
+        (r): r is { cert: Certificate; daysLeft: number } =>
+          r.daysLeft !== null && r.daysLeft <= RENEWAL_HORIZON_DAYS,
+      )
+      .sort((a, b) => a.daysLeft - b.daysLeft),
     [certificates],
   );
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Stats strip */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-border bg-surface-low p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-lighter text-primary">
-              <FileBadge className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="text-h4 font-extrabold tabular-nums">{certificates.length}</div>
-              <div className="text-caption text-foreground-tertiary">{t('totalCerts')}</div>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface-low p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success-lighter text-success">
-              <CheckCircle className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="text-h4 font-extrabold tabular-nums">{byExpiry.valid}</div>
-              <div className="text-caption text-foreground-tertiary">{t('validCerts')}</div>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface-low p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning-lighter text-warning">
-              <Clock className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="text-h4 font-extrabold tabular-nums">{byExpiry.expiring}</div>
-              <div className="text-caption text-foreground-tertiary">{t('expiringSoonCerts')}</div>
-            </div>
-          </div>
-        </div>
+    <div className="flex flex-col gap-4">
+      {/* KPI stat cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          label={t('totalCerts')}
+          value={total}
+          icon={<FileBadge className="h-3.5 w-3.5" aria-hidden />}
+          accent="neutral"
+        />
+        <StatCard
+          label={t('validCerts')}
+          value={byExpiry.valid}
+          icon={<CheckCircle className="h-3.5 w-3.5" aria-hidden />}
+          accent="success"
+        />
+        <StatCard
+          label={t('expiringSoonCerts')}
+          value={byExpiry.expiring}
+          sub={t('expiringSoonSub')}
+          icon={<Clock className="h-3.5 w-3.5" aria-hidden />}
+          accent="warning"
+        />
+        <StatCard
+          label={t('expiredCerts')}
+          value={byExpiry.expired}
+          icon={<AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
+          accent="error"
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface-low p-5">
-          <h3 className="mb-4 text-body2 font-bold">{t('byTypeTitle')}</h3>
-          <div className="space-y-3">
-            {TYPE_KEYS.map((key) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-body3 font-medium text-foreground-secondary">{tType(key)}</span>
-                <span className="font-sans text-body3 text-foreground-tertiary tabular-nums">{byType[key]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-surface-low p-5">
-          <h3 className="mb-4 text-body2 font-bold">{t('byExpiryTitle')}</h3>
-          <div className="space-y-3">
-            {(['valid', 'expiring', 'expired', 'none'] as const).map((state) => (
-              <div key={state} className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-body3 font-medium text-foreground-secondary">
-                  <span className={`h-2.5 w-2.5 rounded-sm ${EXPIRY_COLOR[state]}`} />
-                  {tExpiry(state)}
-                </div>
-                <span className="font-sans text-body3 text-foreground-tertiary tabular-nums">{byExpiry[state]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
-          <h3 className="mb-4 text-body2 font-bold">{t('recentTitle')}</h3>
-          {recent.length === 0 ? (
-            <p className="text-body3 text-foreground-tertiary">{t('empty')}</p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Expiry status donut + legend */}
+        <ChartSection icon={<Clock className="h-3.5 w-3.5" aria-hidden />} title={t('byExpiryTitle')}>
+          {total === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('empty')}</p>
           ) : (
-            <div className="divide-y divide-border">
-              {recent.map((cert) => {
-                const expiryState = getCertificateExpiryState(cert.valid_until);
-                return (
-                  <div key={cert.id} className="flex items-center justify-between py-2.5">
-                    <div className="min-w-0">
-                      <span className="text-body3 font-medium">{cert.original_filename}</span>
-                      {cert.issuer !== null && cert.issuer !== '' && (
-                        <span className="ml-2 font-sans text-caption text-foreground-tertiary">{cert.issuer}</span>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <Badge variant={EXPIRY_BADGE[expiryState]} size="md" bordered>
-                        {tExpiry(expiryState)}
-                      </Badge>
-                      <span className="text-caption text-foreground-tertiary tabular-nums">
-                        {formatDate(cert.created_at, locale)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex flex-col items-center gap-5 sm:flex-row">
+              <DonutChart
+                segments={expirySegments}
+                centerValue={String(total)}
+                centerLabel={t('donutCenterLabel')}
+                size={180}
+              />
+              <ul className="flex min-w-0 flex-1 flex-col gap-2">
+                {EXPIRY_ORDER.map((state) => (
+                  <li key={state} className="flex items-center gap-2.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: EXPIRY_COLORS[state] }} />
+                    <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">{tExpiry(state)}</span>
+                    <span className="shrink-0 text-body3 font-semibold tabular-nums text-foreground">{byExpiry[state]}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
-        </div>
+        </ChartSection>
+
+        {/* Certificates by type */}
+        <ChartSection icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('byTypeTitle')}>
+          {total === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('empty')}</p>
+          ) : (
+            <BarChartMini categories={typeCategories} values={typeValues} height={200} />
+          )}
+        </ChartSection>
+
+        {/* Added over time */}
+        <ChartSection
+          icon={<Activity className="h-3.5 w-3.5" aria-hidden />}
+          title={t('trendTitle')}
+          className="lg:col-span-2"
+        >
+          {total === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('trendEmpty')}</p>
+          ) : (
+            <TrendArea values={trend.values} labels={trend.labels} height={200} />
+          )}
+        </ChartSection>
+
+        {/* Renewals due */}
+        <ChartSection
+          icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />}
+          title={t('renewalsTitle')}
+          className="lg:col-span-2"
+        >
+          {renewals.length === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('renewalsEmpty')}</p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {renewals.map(({ cert, daysLeft }) => {
+                const state = getCertificateExpiryState(cert.valid_until);
+                const overdue = daysLeft < 0;
+                return (
+                  <li key={cert.id}>
+                    <button
+                      type="button"
+                      onClick={() => { if (onView !== undefined) onView(cert); }}
+                      className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-background-hover"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-body3 font-medium text-foreground">
+                        {cert.original_filename}
+                        {cert.issuer !== null && cert.issuer !== '' && (
+                          <span className="ml-2 font-sans text-caption font-normal text-foreground-tertiary">{cert.issuer}</span>
+                        )}
+                      </span>
+                      <Badge variant={EXPIRY_BADGE[state]} size="md" bordered>{tExpiry(state)}</Badge>
+                      <span className={`shrink-0 text-[11px] font-semibold tabular-nums ${overdue ? 'text-error' : 'text-foreground-tertiary'}`}>
+                        {overdue ? tExpiry('expired') : t('daysLeft', { n: daysLeft })}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </ChartSection>
       </div>
     </div>
   );

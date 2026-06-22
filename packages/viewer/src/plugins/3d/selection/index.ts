@@ -502,6 +502,23 @@ export function selectionPlugin(options: SelectionPluginOptions = {}): Plugin & 
         title: 'Get selection enabled state',
       });
 
+      // Live selection-color change (portal settings color picker). Mutate the
+      // shared THREE.Color in place and repaint the current selection so the
+      // change shows immediately — re-setColor overwrites the prior tint.
+      ctx.commands.register('selection.setColor', (args: unknown) => {
+        const next = typeof args === 'number'
+          ? args
+          : (args as { color?: number } | null)?.color;
+        if (typeof next !== 'number') return;
+        color.set(next);
+        if (allSelected) {
+          paintBulkColor(true);
+        } else {
+          const items = [...itemMap.values()];
+          if (items.length) paint(items, true);
+        }
+      }, { title: 'Set selection color' });
+
       ctx.commands.register('selection.selectAll', () => selectAll(), {
         title: 'Select all elements',
         defaultShortcut: 'Ctrl+A',

@@ -158,7 +158,7 @@ export default function CertificatesPage(): JSX.Element {
         {certsQuery.isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : (
-          <OrgCertificatesOverview certificates={allCerts} />
+          <OrgCertificatesOverview certificates={allCerts} onView={setViewingCert} />
         )}
       </TabsContent>
 

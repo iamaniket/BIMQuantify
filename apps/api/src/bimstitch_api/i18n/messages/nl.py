@@ -205,6 +205,8 @@ nl_messages: Catalog = {
     "errors.MODEL_NAME_CONFLICT": "Er bestaat al een model met die naam.",
     "errors.MODEL_FILE_TYPE_LOCKED": "Het bestandstype van dit model kan niet meer worden gewijzigd.",
     "errors.VERSION_NUMBER_CONFLICT": "Dat versienummer is al in gebruik.",
+    "errors.SOURCE_NOT_RESTORABLE": "Alleen een gereede, volledig verwerkte versie kan worden hersteld.",
+    "errors.VERSION_ALREADY_HEAD": "Die versie is al de huidige versie.",
 
     # --- bestanden / uploads / opslag ---
     "errors.FILE_NOT_FOUND": "Dat bestand kon niet worden gevonden.",

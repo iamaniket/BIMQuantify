@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import {
   AppDialog, Select, Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@bimstitch/ui';
-import type { CameraFlyPluginOptions, CullingMode, ViewerHandle } from '@bimstitch/viewer';
+import type { CameraFlyPluginOptions, CullingMode, ViewerHandle, ZoomOptions } from '@bimstitch/viewer';
 
 import {
   DEFAULT_VIEWER_SETTINGS,
@@ -434,9 +434,8 @@ function needsReload(prev: ViewerSettings, next: ViewerSettings): boolean {
   if (prev.controls.middle !== next.controls.middle) return true;
   if (prev.controls.right !== next.controls.right) return true;
   if (prev.controls.wheel !== next.controls.wheel) return true;
-  if (prev.zoom.maxFactor !== next.zoom.maxFactor) return true;
-  if (prev.behavior.hoverHighlight.color !== next.behavior.hoverHighlight.color) return true;
-  if (prev.behavior.selection.color !== next.behavior.selection.color) return true;
+  // zoom (speed/min/maxFactor) and hover/selection colors apply live via
+  // applyLiveCommands3D — no remount needed.
   return false;
 }
 
@@ -484,6 +483,25 @@ function applyLiveCommands3D(
   }
   if (Object.keys(flyPatch).length > 0) {
     handle.commands.execute('cameraFly.setOptions', flyPatch).catch(() => undefined);
+  }
+
+  // Zoom: retune wheel speed + the scale-aware min/max dolly limits in place.
+  const snapZoom = snapshot.zoom;
+  const draftZoom = draft.zoom;
+  const zoomPatch: Partial<ZoomOptions> = {};
+  if (snapZoom.speed !== draftZoom.speed) zoomPatch.speed = draftZoom.speed;
+  if (snapZoom.minFactor !== draftZoom.minFactor) zoomPatch.minFactor = draftZoom.minFactor;
+  if (snapZoom.maxFactor !== draftZoom.maxFactor) zoomPatch.maxFactor = draftZoom.maxFactor;
+  if (Object.keys(zoomPatch).length > 0) {
+    handle.commands.execute('zoom.setOptions', zoomPatch).catch(() => undefined);
+  }
+
+  // Hover / selection highlight colors — recolor live (no remount).
+  if (snapshot.behavior.hoverHighlight.color !== draft.behavior.hoverHighlight.color) {
+    handle.commands.execute('hover.setColor', draft.behavior.hoverHighlight.color).catch(() => undefined);
+  }
+  if (snapshot.behavior.selection.color !== draft.behavior.selection.color) {
+    handle.commands.execute('selection.setColor', draft.behavior.selection.color).catch(() => undefined);
   }
 
   const snapShortcuts = snapshot.shortcuts;

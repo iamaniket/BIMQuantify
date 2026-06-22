@@ -2,6 +2,7 @@ import { computeFileSha256 } from '../upload/sha256';
 import { apiClient } from './client';
 import {
   InitiateUploadResponseSchema,
+  ModelSchema,
   ProjectFileDownloadResponseSchema,
   ProjectFileListSchema,
   ProjectFileSchema,
@@ -9,6 +10,7 @@ import {
   ViewerBundleResponseSchema,
   type InitiateUploadRequest,
   type InitiateUploadResponse,
+  type Model,
   type ProjectFile,
   type ProjectFileDownloadResponse,
   type ProjectFileList,
@@ -76,6 +78,25 @@ export async function deleteProjectFile(
 ): Promise<void> {
   return apiClient.delete(
     `/projects/${projectId}/models/${modelId}/files/${fileId}`,
+    accessToken,
+  );
+}
+
+/**
+ * Restore an older model version as the current head (F7). Repoints the model's
+ * `head_file_id` at the chosen version — no bytes are re-uploaded and no new
+ * version is created. Returns the updated model (with the new `head_file_id`).
+ */
+export async function restoreModelFileVersion(
+  accessToken: string,
+  projectId: string,
+  modelId: string,
+  fileId: string,
+): Promise<Model> {
+  return apiClient.post<Model>(
+    `/projects/${projectId}/models/${modelId}/files/${fileId}/restore`,
+    {},
+    ModelSchema,
     accessToken,
   );
 }

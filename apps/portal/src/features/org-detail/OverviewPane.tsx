@@ -1,8 +1,10 @@
 'use client';
 
-import { ChevronRight, Download, Key, Settings, Shield, Trash2, UserPlus } from '@bimstitch/ui/icons';
-import { useTranslations } from 'next-intl';
-import type { JSX, ReactNode } from 'react';
+import {
+  Activity, ChevronRight, Download, Key, Settings, Shield, Trash2, UserPlus, Users,
+} from '@bimstitch/ui/icons';
+import { useLocale, useTranslations } from 'next-intl';
+import { useMemo, type JSX, type ReactNode } from 'react';
 
 import {
   Badge,
@@ -11,14 +13,20 @@ import {
   CardBody,
   CardHeader,
 } from '@bimstitch/ui';
+import type { Locale } from '@bimstitch/i18n';
 
+import { ChartSection } from '@/components/shared/charts/ChartSection';
+import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
+import { TrendArea } from '@/components/shared/charts/TrendArea';
+import { formatMonthDay } from '@/lib/formatting/dates';
 import type { AuditEntry, MemberRead } from '@/lib/api/schemas';
 
 import { relativeTime } from './orgDetailHelpers';
 import type { OrgDetailViewProps } from './types';
 
 // ---------------------------------------------------------------------------
-// Overview pane
+// Overview pane — seat usage, recent activity, members-by-role donut,
+// activity-over-time trend, quick actions, danger zone.
 // ---------------------------------------------------------------------------
 
 export function OverviewPane({
@@ -49,7 +57,38 @@ export function OverviewPane({
 
   const recentEvents = auditEntries.slice(0, 4);
 
+  const locale = useLocale() as Locale;
+  const memberTotal = adminCount + memberCount + pendingCount;
+  const roleSegments: DonutSegment[] = [
+    { value: adminCount, color: 'var(--primary)', label: t('roleAdmin') },
+    { value: memberCount, color: 'var(--foreground-tertiary)', label: t('roleMember') },
+    { value: pendingCount, color: 'var(--warning)', label: t('pendingInvite') },
+  ];
+
+  // Audit activity per week over the last 8 weeks.
+  const activityTrend = useMemo(() => {
+    const weeks = 8;
+    const msWeek = 7 * 24 * 60 * 60 * 1000;
+    const today = new Date(new Date().toDateString());
+    const start = today.getTime() - (weeks - 1) * msWeek;
+    const values = new Array<number>(weeks).fill(0);
+    let total = 0;
+    for (const e of auditEntries) {
+      const ts = new Date(e.created_at).getTime();
+      if (!Number.isNaN(ts)) {
+        let idx = Math.floor((ts - start) / msWeek);
+        if (idx >= weeks) idx = weeks - 1;
+        if (idx >= 0) { values[idx] = (values[idx] ?? 0) + 1; total += 1; }
+      }
+    }
+    const labels = values.map(
+      (_, i) => formatMonthDay(new Date(start + i * msWeek).toISOString(), locale),
+    );
+    return { values, labels, total };
+  }, [auditEntries, locale]);
+
   return (
+    <div className="flex flex-col gap-5">
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="flex flex-col gap-5">
         <Card>
@@ -240,6 +279,41 @@ export function OverviewPane({
             </CardBody>
           </Card>
         )}
+      </div>
+    </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <ChartSection icon={<Users className="h-3.5 w-3.5" aria-hidden />} title={t('membersByRoleTitle')}>
+          {memberTotal === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('noMembers')}</p>
+          ) : (
+            <div className="flex flex-col items-center gap-5 sm:flex-row">
+              <DonutChart
+                segments={roleSegments}
+                centerValue={String(memberTotal)}
+                centerLabel={t('donutCenterLabel')}
+                size={160}
+              />
+              <ul className="flex min-w-0 flex-1 flex-col gap-2">
+                {roleSegments.map((seg) => (
+                  <li key={seg.label} className="flex items-center gap-2.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: seg.color }} />
+                    <span className="min-w-0 flex-1 truncate text-body3 text-foreground-secondary">{seg.label}</span>
+                    <span className="shrink-0 text-body3 font-semibold tabular-nums text-foreground">{seg.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </ChartSection>
+        <ChartSection icon={<Activity className="h-3.5 w-3.5" aria-hidden />} title={t('activityTrendTitle')}>
+          {activityTrend.total === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('trendEmpty')}</p>
+          ) : (
+            <TrendArea values={activityTrend.values} labels={activityTrend.labels} height={180} />
+          )}
+        </ChartSection>
       </div>
     </div>
   );

@@ -59,6 +59,7 @@ const ACTION_I18N_KEY: Record<string, string> = {
   'project_file.completed': 'fileCompleted',
   'project_file.rejected': 'fileRejected',
   'project_file.deleted': 'fileDeleted',
+  'project_file.version_restored': 'fileVersionRestored',
   'project_file.extraction_succeeded': 'extractionSucceeded',
   'project_file.extraction_failed': 'extractionFailed',
   'compliance.checked': 'complianceChecked',

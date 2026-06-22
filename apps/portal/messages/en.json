@@ -265,7 +265,9 @@
       "upcomingTitle": "Upcoming items",
       "noUpcoming": "Nothing upcoming.",
       "daysRemaining": "{days, plural, =1 {1 day left} other {# days left}}",
-      "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}"
+      "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}",
+      "trendTitle": "Deadlines over time",
+      "trendEmpty": "No upcoming deadlines."
     },
     "month": {
       "today": "Today",
@@ -878,7 +880,16 @@
       "recentTitle": "Recently added",
       "totalCerts": "Total",
       "validCerts": "Valid",
-      "expiringSoonCerts": "Expiring soon"
+      "expiringSoonCerts": "Expiring soon",
+      "expiringSoonSub": "Within 30 days",
+      "expiredCerts": "Expired",
+      "donutCenterLabel": "certificates",
+      "trendTitle": "Added over time",
+      "trendEmpty": "No certificates yet.",
+      "renewalsTitle": "Renewals due",
+      "renewalsEmpty": "Nothing expiring in the next 90 days.",
+      "daysLeft": "{n}d left",
+      "empty": "No certificates yet"
     }
   },
   "certificates": {
@@ -933,6 +944,14 @@
         "expiringSoonCerts": "Expiring soon",
         "byTypeTitle": "Certificates by type",
         "byExpiryTitle": "Expiry status",
+        "expiringSoonSub": "Within 30 days",
+        "expiredCerts": "Expired",
+        "donutCenterLabel": "certificates",
+        "trendTitle": "Added over time",
+        "trendEmpty": "No certificates yet.",
+        "renewalsTitle": "Renewals due",
+        "renewalsEmpty": "Nothing expiring in the next 90 days.",
+        "daysLeft": "{n}d left",
         "recentTitle": "Recently added",
         "empty": "No certificates yet"
       }
@@ -988,6 +1007,10 @@
         "documents": "Documents",
         "totalSize": "Total size",
         "byCategoryTitle": "By category",
+        "donutCenterLabel": "files",
+        "storageTitle": "Storage by category",
+        "trendTitle": "Added over time",
+        "trendEmpty": "No attachments yet.",
         "recentTitle": "Recently added",
         "empty": "No attachments yet"
       },
@@ -1153,7 +1176,7 @@
         "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
         "uploadCta": "Upload",
         "uploadCertificate": "Upload certificate",
-        "uploadModel": "Upload model",
+        "addModel": "Add model",
         "linkExisting": "Link an existing document",
         "uploadSuccess": "Uploaded {name}",
         "linkSuccess": "Document linked to the dossier",
@@ -1263,6 +1286,10 @@
           "removeTitle": "Remove model?",
           "removeBody": "This permanently deletes “{name}” and all its file versions. This cannot be undone.",
           "removeConfirm": "Remove",
+          "restore": "Restore",
+          "restoreTitle": "Restore this version?",
+          "restoreBody": "This makes v{version} the current version. The newer versions stay in the history.",
+          "restoreConfirm": "Restore",
           "cancel": "Cancel",
           "noVersionsUploaded": "No versions uploaded yet.",
           "latest": "LATEST",
@@ -2118,6 +2145,8 @@
         "byTypeTitle": "By type",
         "latestTitle": "Latest per type",
         "latestNotGenerated": "Not generated",
+        "trendTitle": "Generated over time",
+        "trendEmpty": "No reports generated yet.",
         "empty": "No reports generated yet"
       }
     },
@@ -2319,7 +2348,23 @@
       "fieldCount": "{count, plural, =0 {No custom fields} one {# custom field} other {# custom fields}}",
       "totalReportTemplates": "Report templates",
       "reportDefaults": "Defaults configured",
-      "noReportTemplates": "No report templates created yet."
+      "noReportTemplates": "No report templates created yet.",
+      "totalTemplates": "Templates",
+      "byTypeTitle": "Templates by type",
+      "fieldTypesTitle": "Field types in use",
+      "fieldsPerTemplateTitle": "Custom fields per template",
+      "fieldsDonutCenter": "fields",
+      "findingType": "Finding",
+      "noFields": "No custom fields yet.",
+      "noFindingTemplates": "No finding templates yet.",
+      "fieldType": {
+        "text": "Text",
+        "textarea": "Text area",
+        "number": "Number",
+        "date": "Date",
+        "select": "Dropdown",
+        "checkbox": "Checkbox"
+      }
     }
   },
   "auth": {
@@ -2491,7 +2536,13 @@
       "exportDataSub": "Members + audit log, CSV",
       "dangerZoneTitle": "Danger zone",
       "dangerZoneDesc": "Permanently delete this organization. All projects, members and audit history will be wiped. This cannot be undone.",
-      "deleteOrg": "Delete organization"
+      "deleteOrg": "Delete organization",
+      "donutCenterLabel": "members",
+      "roleAdmin": "Admin",
+      "roleMember": "Member",
+      "noMembers": "No members yet.",
+      "activityTrendTitle": "Activity over time",
+      "trendEmpty": "No activity yet."
     },
     "members": {
       "inviteButton": "Invite member",
@@ -2611,7 +2662,13 @@
       "exportDataSub": "Members + audit log, CSV",
       "dangerZoneTitle": "Danger zone",
       "dangerZoneDesc": "Permanently delete this organization. All projects, members and audit history will be wiped. This cannot be undone.",
-      "deleteOrg": "Delete organization"
+      "deleteOrg": "Delete organization",
+      "donutCenterLabel": "members",
+      "roleAdmin": "Admin",
+      "roleMember": "Member",
+      "noMembers": "No members yet.",
+      "activityTrendTitle": "Activity over time",
+      "trendEmpty": "No activity yet."
     },
     "members": {
       "inviteButton": "Invite member",
@@ -2689,7 +2746,10 @@
         "createTenant": "Create tenant",
         "createTenantDesc": "Provision a new org schema",
         "exportPlatformData": "Export platform data",
-        "exportPlatformDataDesc": "Tenants, seats, storage — CSV"
+        "exportPlatformDataDesc": "Tenants, seats, storage — CSV",
+        "donutCenterLabel": "Tenants",
+        "trendTitle": "Tenants over time",
+        "trendEmpty": "No tenants yet."
       },
       "statusFilters": {
         "all": "All statuses",
@@ -3260,6 +3320,7 @@
     "fileCompleted": "Added {filename}",
     "fileRejected": "Rejected {filename}",
     "fileDeleted": "Removed {filename}",
+    "fileVersionRestored": "Restored {filename} as the current version",
     "extractionSucceeded": "Extracted {filename}",
     "extractionFailed": "Extraction failed: {filename}",
     "complianceChecked": "Ran {framework} compliance check",
@@ -3676,10 +3737,10 @@
       "movementSpeed": "Movement speed",
       "turnSpeed": "Turn speed",
       "lookSensitivity": "Mouse-look sensitivity",
-      "sprintHint": "Hold Shift while moving to go faster",
+      "sprintHint": "Applies to fly mode (press F, then move with WASD). Hold Shift to go faster.",
       "behavior": "Behavior",
-      "behaviorNoteColor": "Color changes reload the viewer",
-      "behaviorNoteToggle": "Toggle: live · Color: reload",
+      "behaviorNoteColor": "Highlight colors for hover and selection",
+      "behaviorNoteToggle": "Toggles and colors apply live",
       "hoverHighlight": "Hover highlight",
       "hoverColor": "Hover color",
       "clickToSelect": "Click to select",

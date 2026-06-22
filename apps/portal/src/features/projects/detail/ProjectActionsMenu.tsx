@@ -17,12 +17,12 @@ import { toast } from 'sonner';
 
 import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';
+import { useRouter } from '@/i18n/navigation';
 
-import { ProjectFormDialog } from './ProjectFormDialog';
 import { isProjectArchived } from '@/lib/formatting/projects';
-import { useArchiveProject } from './useArchiveProject';
-import { useDeleteProject } from './useDeleteProject';
-import { useReactivateProject } from './useReactivateProject';
+import { useArchiveProject } from '../useArchiveProject';
+import { useDeleteProject } from '../useDeleteProject';
+import { useReactivateProject } from '../useReactivateProject';
 
 type Props = {
   project: Project;
@@ -53,9 +53,9 @@ function formatArchiveError(
   return t('errors.archiveFailed');
 }
 
-export function ProjectCardMenu({ project }: Props): JSX.Element {
+export function ProjectActionsMenu({ project }: Props): JSX.Element {
   const t = useTranslations('projects.card.menu');
-  const [editOpen, setEditOpen] = useState(false);
+  const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const archived = isProjectArchived(project);
@@ -77,6 +77,8 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
       {
         onSuccess: () => {
           setDeleteOpen(false);
+          // The project no longer exists — leave the now-dead detail page.
+          router.push('/projects');
         },
       },
     );
@@ -107,31 +109,15 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            variant="ghost"
+            variant="border"
             size="md"
             aria-label={t('actions')}
-            className="absolute right-2 top-2 z-20 h-8 w-8 rounded-full bg-black/25 p-0 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
-            onPointerDown={(event) => {
-              event.stopPropagation();
-            }}
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
+            className="px-2"
           >
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
-              if (!archived) {
-                setEditOpen(true);
-              }
-            }}
-          >
-            {archived ? t('view') : t('edit')}
-          </DropdownMenuItem>
           {archived ? (
             <DropdownMenuItem
               onSelect={(event) => {
@@ -169,13 +155,6 @@ export function ProjectCardMenu({ project }: Props): JSX.Element {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <ProjectFormDialog
-        mode="edit"
-        project={project}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

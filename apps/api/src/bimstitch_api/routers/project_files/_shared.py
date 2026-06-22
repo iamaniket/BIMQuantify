@@ -67,6 +67,23 @@ async def _load_file_or_404(session: AsyncSession, model_id: UUID, file_id: UUID
     return row
 
 
+def resolve_head_file_id(model: Model, candidates_desc: list[ProjectFile]) -> UUID | None:
+    """Resolve a model's effective head-file id (F7 restore-version-as-head).
+
+    Returns ``model.head_file_id`` when it is set and still present among
+    ``candidates_desc`` (the eligible versions, ordered ``version_number`` desc);
+    otherwise the newest candidate's id, falling back to the historical
+    "head = highest version" behaviour. ``candidates_desc`` should already be
+    filtered to the rows the caller treats as selectable (e.g. ready /
+    extraction-succeeded). Returns ``None`` only when there are no candidates.
+    """
+    if model.head_file_id is not None and any(
+        c.id == model.head_file_id for c in candidates_desc
+    ):
+        return model.head_file_id
+    return candidates_desc[0].id if candidates_desc else None
+
+
 async def _presign_ifc_bundle(
     row: ProjectFile, storage: StorageBackend
 ) -> dict[str, str | None]:
@@ -169,11 +186,19 @@ async def get_project_viewer_bundle(
         .scalars()
         .all()
     )
-    latest_by_model: dict[UUID, ProjectFile] = {}
+    # Group eligible rows per model (already version-desc), then pick each
+    # model's effective head — its `head_file_id` pointer when set, else newest.
+    rows_by_model: dict[UUID, list[ProjectFile]] = {}
     for row in rows:
-        if row.model_id is None or row.model_id in latest_by_model:
+        if row.model_id is None:
             continue
-        latest_by_model[row.model_id] = row
+        rows_by_model.setdefault(row.model_id, []).append(row)
+    latest_by_model: dict[UUID, ProjectFile] = {}
+    for mid, group in rows_by_model.items():
+        head_id = resolve_head_file_id(model_by_id[mid], group)
+        head_row = next((r for r in group if r.id == head_id), None)
+        if head_row is not None:
+            latest_by_model[mid] = head_row
 
     # Preserve model creation order; drop models with no ready IFC file.
     chosen = [

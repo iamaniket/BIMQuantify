@@ -48,6 +48,7 @@ _UPLOAD_ACTIONS: frozenset[str] = frozenset(
         "project_file.completed",
         "project_file.rejected",
         "project_file.deleted",
+        "project_file.version_restored",
         "attachment.completed",
         "attachment.rejected",
         "certificate.completed",

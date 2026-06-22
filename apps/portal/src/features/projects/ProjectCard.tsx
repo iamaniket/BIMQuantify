@@ -31,7 +31,6 @@ import type { Locale } from '@bimstitch/i18n';
 
 import { projectKey, projectDeadlinesKey, projectActivityKey } from './queryKeys';
 
-import { ProjectCardMenu } from './ProjectCardMenu';
 import {
   formatProjectBadgeLabel,
   isProjectArchived,
@@ -290,7 +289,6 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
           </div>
         </CardFooter>
       </Link>
-      <ProjectCardMenu project={project} />
     </Card>
   );
 }

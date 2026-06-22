@@ -24,3 +24,19 @@ export function getCertificateExpiryState(
   if (daysLeft <= EXPIRY_WARNING_DAYS) return 'expiring';
   return 'valid';
 }
+
+/**
+ * Whole days until `valid_until` (negative once expired). `null` when the
+ * certificate has no expiry date. Date-only comparison, mirroring
+ * {@link getCertificateExpiryState}.
+ */
+export function getCertificateDaysLeft(
+  validUntil: string | null,
+  now: Date = new Date(),
+): number | null {
+  if (validUntil === null || validUntil === '') return null;
+  const until = Date.parse(`${validUntil.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(until)) return null;
+  const today = Date.parse(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.floor((until - today) / MS_PER_DAY);
+}

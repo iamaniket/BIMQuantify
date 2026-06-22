@@ -6,7 +6,8 @@ import { useAttachments } from '@/features/attachments/useAttachments';
 import { useCertificates } from '@/features/certificates/useCertificates';
 import { useFindings } from '@/features/findings/useFindings';
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
-import { useModels } from '@/features/models/useModels';
+import { isModelViewable } from '@/features/models/modelViewability';
+import { useModelsWithVersions } from '@/features/models/useModelsWithVersions';
 import { useProject } from '@/features/projects/useProject';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
@@ -22,6 +23,8 @@ export type DossierCompletenessState = DossierCompleteness & {
   isLoading: boolean;
   /** No requirement template for this jurisdiction/building type. */
   templateEmpty: boolean;
+  /** At least one model exists (viewable or not) — drives the Drawings CTA. */
+  hasAnyModel: boolean;
 };
 
 /**
@@ -39,13 +42,23 @@ export function useDossierCompleteness(
   const jurisdiction = useJurisdiction(country);
   const attachmentsQuery = useAttachments(projectId);
   const certificatesQuery = useCertificates(projectId);
-  const modelsQuery = useModels(projectId);
+  // Versions are needed to know which models have a viewable/processed file
+  // (what fulfils the model-backed Drawings slot). Polls while extracting so
+  // the checklist flips to met without a manual refresh.
+  const modelsQuery = useModelsWithVersions(projectId, true);
   const findingsQuery = useFindings(projectId);
   const deadlinesQuery = useDeadlines(projectId);
 
   const buildingType = projectQuery.data?.building_type ?? null;
   const attachments = flattenPages(attachmentsQuery.data);
   const certificates = flattenPages(certificatesQuery.data);
+
+  const models = modelsQuery.data;
+  const modelCount = models?.length ?? 0;
+  const viewableModelCount = useMemo(
+    () => (models ?? []).filter((m) => isModelViewable(m.versions)).length,
+    [models],
+  );
 
   const template = useMemo(
     () => selectDossierTemplate(jurisdiction?.dossier_requirement_templates, buildingType),
@@ -65,11 +78,12 @@ export function useDossierCompleteness(
   const dossier = useMemo(
     () =>
       computeDossierCompleteness(template, attachments, certificates, {
-        modelCount: modelsQuery.data?.length ?? 0,
+        modelCount,
+        viewableModelCount,
         findingsOpen,
         deadlinesOverdue,
       }),
-    [template, attachments, certificates, modelsQuery.data, findingsOpen, deadlinesOverdue],
+    [template, attachments, certificates, modelCount, viewableModelCount, findingsOpen, deadlinesOverdue],
   );
 
   return {
@@ -77,5 +91,6 @@ export function useDossierCompleteness(
     isLoading:
       projectQuery.isLoading || attachmentsQuery.isLoading || certificatesQuery.isLoading,
     templateEmpty: template.length === 0,
+    hasAnyModel: modelCount > 0,
   };
 }

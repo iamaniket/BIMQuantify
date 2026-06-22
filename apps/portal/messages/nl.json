@@ -265,7 +265,9 @@
       "upcomingTitle": "Aankomende items",
       "noUpcoming": "Niets aankomend.",
       "daysRemaining": "{days, plural, =1 {nog 1 dag} other {nog # dagen}}",
-      "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}"
+      "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}",
+      "trendTitle": "Deadlines na verloop van tijd",
+      "trendEmpty": "Geen aankomende deadlines."
     },
     "month": {
       "today": "Vandaag",
@@ -878,7 +880,16 @@
       "recentTitle": "Recent toegevoegd",
       "totalCerts": "Totaal",
       "validCerts": "Geldig",
-      "expiringSoonCerts": "Verloopt binnenkort"
+      "expiringSoonCerts": "Verloopt binnenkort",
+      "expiringSoonSub": "Binnen 30 dagen",
+      "expiredCerts": "Verlopen",
+      "donutCenterLabel": "certificaten",
+      "trendTitle": "Toegevoegd na verloop van tijd",
+      "trendEmpty": "Nog geen certificaten.",
+      "renewalsTitle": "Vernieuwingen nodig",
+      "renewalsEmpty": "Niets verloopt in de komende 90 dagen.",
+      "daysLeft": "Nog {n}d",
+      "empty": "Nog geen certificaten"
     }
   },
   "certificates": {
@@ -933,6 +944,14 @@
         "expiringSoonCerts": "Verloopt binnenkort",
         "byTypeTitle": "Certificaten per type",
         "byExpiryTitle": "Geldigheidsstatus",
+        "expiringSoonSub": "Binnen 30 dagen",
+        "expiredCerts": "Verlopen",
+        "donutCenterLabel": "certificaten",
+        "trendTitle": "Toegevoegd na verloop van tijd",
+        "trendEmpty": "Nog geen certificaten.",
+        "renewalsTitle": "Vernieuwingen nodig",
+        "renewalsEmpty": "Niets verloopt in de komende 90 dagen.",
+        "daysLeft": "Nog {n}d",
         "recentTitle": "Recent toegevoegd",
         "empty": "Nog geen certificaten"
       }
@@ -988,6 +1007,10 @@
         "documents": "Documenten",
         "totalSize": "Totale grootte",
         "byCategoryTitle": "Per categorie",
+        "donutCenterLabel": "bestanden",
+        "storageTitle": "Opslag per categorie",
+        "trendTitle": "Toegevoegd na verloop van tijd",
+        "trendEmpty": "Nog geen bijlagen.",
         "recentTitle": "Recent toegevoegd",
         "empty": "Nog geen bijlagen"
       },
@@ -1153,7 +1176,7 @@
         "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
         "uploadCta": "Uploaden",
         "uploadCertificate": "Certificaat uploaden",
-        "uploadModel": "Model uploaden",
+        "addModel": "Model toevoegen",
         "linkExisting": "Bestaand document koppelen",
         "uploadSuccess": "{name} geüpload",
         "linkSuccess": "Document gekoppeld aan het dossier",
@@ -1263,6 +1286,10 @@
           "removeTitle": "Model verwijderen?",
           "removeBody": "Hiermee worden “{name}” en alle bestandsversies definitief verwijderd. Dit kan niet ongedaan worden gemaakt.",
           "removeConfirm": "Verwijderen",
+          "restore": "Herstellen",
+          "restoreTitle": "Deze versie herstellen?",
+          "restoreBody": "Hiermee wordt v{version} de huidige versie. De nieuwere versies blijven in de geschiedenis staan.",
+          "restoreConfirm": "Herstellen",
           "cancel": "Annuleren",
           "noVersionsUploaded": "Nog geen versies geüpload.",
           "latest": "LAATSTE",
@@ -2118,6 +2145,8 @@
         "byTypeTitle": "Op type",
         "latestTitle": "Laatste per type",
         "latestNotGenerated": "Niet gegenereerd",
+        "trendTitle": "Gegenereerd na verloop van tijd",
+        "trendEmpty": "Nog geen rapporten gegenereerd.",
         "empty": "Nog geen rapporten gegenereerd"
       }
     },
@@ -2319,7 +2348,23 @@
       "fieldCount": "{count, plural, =0 {Geen aangepaste velden} one {# aangepast veld} other {# aangepaste velden}}",
       "totalReportTemplates": "Rapportsjablonen",
       "reportDefaults": "Standaarden ingesteld",
-      "noReportTemplates": "Nog geen rapportsjablonen aangemaakt."
+      "noReportTemplates": "Nog geen rapportsjablonen aangemaakt.",
+      "totalTemplates": "Templates",
+      "byTypeTitle": "Templates per type",
+      "fieldTypesTitle": "Veldtypen in gebruik",
+      "fieldsPerTemplateTitle": "Aangepaste velden per template",
+      "fieldsDonutCenter": "velden",
+      "findingType": "Bevinding",
+      "noFields": "Nog geen aangepaste velden.",
+      "noFindingTemplates": "Nog geen bevindingstemplates.",
+      "fieldType": {
+        "text": "Tekst",
+        "textarea": "Tekstvak",
+        "number": "Getal",
+        "date": "Datum",
+        "select": "Keuzelijst",
+        "checkbox": "Selectievakje"
+      }
     }
   },
   "auth": {
@@ -2491,7 +2536,13 @@
       "exportDataSub": "Leden + auditlog, CSV",
       "dangerZoneTitle": "Gevarenzone",
       "dangerZoneDesc": "Verwijder deze organisatie permanent. Alle projecten, leden en auditgeschiedenis worden gewist. Dit kan niet ongedaan worden gemaakt.",
-      "deleteOrg": "Organisatie verwijderen"
+      "deleteOrg": "Organisatie verwijderen",
+      "donutCenterLabel": "leden",
+      "roleAdmin": "Beheerder",
+      "roleMember": "Lid",
+      "noMembers": "Nog geen leden.",
+      "activityTrendTitle": "Activiteit na verloop van tijd",
+      "trendEmpty": "Nog geen activiteit."
     },
     "members": {
       "inviteButton": "Lid uitnodigen",
@@ -2611,7 +2662,13 @@
       "exportDataSub": "Leden + auditlog, CSV",
       "dangerZoneTitle": "Gevarenzone",
       "dangerZoneDesc": "Verwijder deze organisatie permanent. Alle projecten, leden en auditgeschiedenis worden gewist. Dit kan niet ongedaan worden gemaakt.",
-      "deleteOrg": "Organisatie verwijderen"
+      "deleteOrg": "Organisatie verwijderen",
+      "donutCenterLabel": "leden",
+      "roleAdmin": "Beheerder",
+      "roleMember": "Lid",
+      "noMembers": "Nog geen leden.",
+      "activityTrendTitle": "Activiteit na verloop van tijd",
+      "trendEmpty": "Nog geen activiteit."
     },
     "members": {
       "inviteButton": "Lid uitnodigen",
@@ -2689,7 +2746,10 @@
         "createTenant": "Tenant aanmaken",
         "createTenantDesc": "Richt een nieuw org-schema in",
         "exportPlatformData": "Platformgegevens exporteren",
-        "exportPlatformDataDesc": "Tenants, zetels, opslag — CSV"
+        "exportPlatformDataDesc": "Tenants, zetels, opslag — CSV",
+        "donutCenterLabel": "Tenants",
+        "trendTitle": "Tenants na verloop van tijd",
+        "trendEmpty": "Nog geen tenants."
       },
       "statusFilters": {
         "all": "Alle statussen",
@@ -3260,6 +3320,7 @@
     "fileCompleted": "Toegevoegd: {filename}",
     "fileRejected": "Afgewezen: {filename}",
     "fileDeleted": "Verwijderd: {filename}",
+    "fileVersionRestored": "{filename} hersteld als huidige versie",
     "extractionSucceeded": "Geëxtraheerd: {filename}",
     "extractionFailed": "Extractie mislukt: {filename}",
     "complianceChecked": "{framework} nalevingscontrole uitgevoerd",
@@ -3676,10 +3737,10 @@
       "movementSpeed": "Bewegingssnelheid",
       "turnSpeed": "Draaisnelheid",
       "lookSensitivity": "Muiskijkgevoeligheid",
-      "sprintHint": "Houd Shift ingedrukt tijdens het bewegen om sneller te gaan",
+      "sprintHint": "Geldt voor vliegmodus (druk op F en beweeg met WASD). Houd Shift ingedrukt om sneller te gaan.",
       "behavior": "Gedrag",
-      "behaviorNoteColor": "Kleurwijzigingen laden de viewer opnieuw",
-      "behaviorNoteToggle": "Schakelaar: live · Kleur: opnieuw laden",
+      "behaviorNoteColor": "Markeerkleuren voor hover en selectie",
+      "behaviorNoteToggle": "Schakelaars en kleuren worden live toegepast",
       "hoverHighlight": "Markering bij aanwijzen",
       "hoverColor": "Aanwijskleur",
       "clickToSelect": "Klikken om te selecteren",

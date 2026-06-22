@@ -12,13 +12,15 @@ import {
 } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  useCallback, useMemo, useState, type JSX, type ReactNode,
+  useCallback, useMemo, useState, type JSX,
 } from 'react';
 
 import type { Locale } from '@bimstitch/i18n';
 import { Badge } from '@bimstitch/ui';
 
 import { BarChartMini } from '@/components/shared/charts/BarChartMini';
+import { ChartBarRow } from '@/components/shared/charts/ChartBarRow';
+import { ChartSection } from '@/components/shared/charts/ChartSection';
 import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
 import { StatCard } from '@/components/shared/charts/StatCard';
 import { TrendArea } from '@/components/shared/charts/TrendArea';
@@ -57,49 +59,6 @@ type Props = {
   findings: Finding[];
   members: ProjectMember[];
 };
-
-type SectionProps = {
-  icon: JSX.Element;
-  title: string;
-  className?: string;
-  children: ReactNode;
-};
-
-function Section({
-  icon, title, className, children,
-}: SectionProps): JSX.Element {
-  return (
-    <div className={`rounded-xl border border-border bg-surface-main p-4 ${className ?? ''}`}>
-      <div className="mb-3 flex items-center gap-2 text-caption font-bold uppercase tracking-widest text-foreground-tertiary">
-        {icon}
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-type BarRowProps = {
-  label: string;
-  count: number;
-  total: number;
-  color: string;
-};
-
-function BarRow({
-  label, count, total, color,
-}: BarRowProps): JSX.Element {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 truncate text-body3 text-foreground-secondary">{label}</span>
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-low">
-        <div className="h-full rounded-full" style={{ width: `${String(pct)}%`, backgroundColor: color }} />
-      </div>
-      <span className="w-8 shrink-0 text-right text-body3 font-semibold tabular-nums text-foreground">{count}</span>
-    </div>
-  );
-}
 
 export function FindingsOverviewTab({ projectId, findings, members }: Props): JSX.Element {
   const t = useTranslations('findingsBoard.overview');
@@ -277,7 +236,7 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Status donut + legend */}
-        <Section icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('statusTitle')}>
+        <ChartSection icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('statusTitle')}>
           <div className="flex flex-col items-center gap-5 sm:flex-row">
             <DonutChart
               segments={statusSegments}
@@ -295,15 +254,15 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
               ))}
             </ul>
           </div>
-        </Section>
+        </ChartSection>
 
         {/* Severity bar chart */}
-        <Section icon={<AlertTriangle className="h-3.5 w-3.5" aria-hidden />} title={t('severityTitle')}>
+        <ChartSection icon={<AlertTriangle className="h-3.5 w-3.5" aria-hidden />} title={t('severityTitle')}>
           <BarChartMini categories={severityCategories} values={severityValues} height={200} />
-        </Section>
+        </ChartSection>
 
         {/* Created over time */}
-        <Section
+        <ChartSection
           icon={<Activity className="h-3.5 w-3.5" aria-hidden />}
           title={t('trendTitle')}
           className="lg:col-span-2"
@@ -313,23 +272,23 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
           ) : (
             <TrendArea values={trend.values} labels={trend.labels} height={200} />
           )}
-        </Section>
+        </ChartSection>
 
         {/* Assignee workload */}
-        <Section icon={<UserRound className="h-3.5 w-3.5" aria-hidden />} title={t('assigneeTitle')}>
+        <ChartSection icon={<UserRound className="h-3.5 w-3.5" aria-hidden />} title={t('assigneeTitle')}>
           {workload.length === 0 ? (
             <p className="py-2 text-body3 text-foreground-tertiary">{t('noActive')}</p>
           ) : (
             <div className="flex flex-col gap-2.5">
               {workload.map((w) => (
-                <BarRow key={w.label} label={w.label} count={w.count} total={activeWorkloadTotal} color="var(--primary)" />
+                <ChartBarRow key={w.label} label={w.label} count={w.count} total={activeWorkloadTotal} color="var(--primary)" />
               ))}
             </div>
           )}
-        </Section>
+        </ChartSection>
 
         {/* Overdue items */}
-        <Section icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />} title={t('overdueTitle')}>
+        <ChartSection icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />} title={t('overdueTitle')}>
           {overdue.length === 0 ? (
             <p className="py-2 text-body3 text-foreground-tertiary">{t('noOverdue')}</p>
           ) : (
@@ -353,7 +312,7 @@ export function FindingsOverviewTab({ projectId, findings, members }: Props): JS
               ))}
             </ul>
           )}
-        </Section>
+        </ChartSection>
       </div>
 
       <FindingDetailModal

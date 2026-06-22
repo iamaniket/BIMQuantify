@@ -34,16 +34,13 @@ vi.mock('@bimstitch/ui', () => ({
 }));
 
 vi.mock('./CertificateUploadDialog', () => ({ CertificateUploadDialog: () => null }));
-vi.mock('@/features/models/NewModelDialog', () => ({
-  NewModelDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="new-model-dialog" /> : null),
-}));
 
 const mockUseProject = vi.fn();
 const mockUseJurisdiction = vi.fn();
 const mockUseAttachments = vi.fn();
 const mockUseUnslotted = vi.fn();
 const mockUseCertificates = vi.fn();
-const mockUseModels = vi.fn();
+const mockUseModelsWithVersions = vi.fn();
 const mockUseFindings = vi.fn();
 const mockUseDeadlines = vi.fn();
 const mockUpload = vi.fn();
@@ -66,7 +63,9 @@ vi.mock('@/features/attachments/useUpdateAttachment', () => ({
 vi.mock('@/features/certificates/useCertificates', () => ({
   useCertificates: () => mockUseCertificates(),
 }));
-vi.mock('@/features/models/useModels', () => ({ useModels: () => mockUseModels() }));
+vi.mock('@/features/models/useModelsWithVersions', () => ({
+  useModelsWithVersions: () => mockUseModelsWithVersions(),
+}));
 vi.mock('@/features/findings/useFindings', () => ({ useFindings: () => mockUseFindings() }));
 vi.mock('./deadlines/useDeadlines', () => ({ useDeadlines: () => mockUseDeadlines() }));
 
@@ -76,22 +75,24 @@ function infiniteData<T>(items: T[]) {
   return { pages: [{ data: items, totalCount: items.length }], pageParams: [0] };
 }
 
+// Drawings is model-backed; structural-calculations exercises the attachment
+// upload/link CTAs; product-certificates the certificate CTA.
 const TEMPLATE: JurisdictionDossierRequirement[] = [
-  {
-    code: 'model-present',
-    category: 'models',
-    label: '3D model / BIM model',
-    required: true,
-    source_kind: 'model',
-    source_value: 'models',
-  },
   {
     code: 'drawings',
     category: 'documents',
     label: 'Drawings',
     required: true,
-    source_kind: 'attachment_or_model',
-    source_value: 'drawings',
+    source_kind: 'model',
+    source_value: 'models',
+  },
+  {
+    code: 'structural-calculations',
+    category: 'documents',
+    label: 'Structural calculations',
+    required: true,
+    source_kind: 'attachment_slot',
+    source_value: 'structural_calculations',
   },
   {
     code: 'product-certificates',
@@ -105,13 +106,24 @@ const TEMPLATE: JurisdictionDossierRequirement[] = [
 
 const JURISDICTION = {
   dossier_requirement_templates: { dwelling: TEMPLATE, other: TEMPLATE },
-  dossier_category_labels: { models: 'Models', documents: 'Documents', certificates: 'Certificates' },
+  dossier_category_labels: { documents: 'Documents', certificates: 'Certificates' },
 };
 
-function renderTab(): void {
+/** A model whose head file is a ready, fully-extracted IFC (viewable). */
+const VIEWABLE_MODEL = {
+  id: 'm1',
+  versions: [{ file_type: 'ifc', status: 'ready', extraction_status: 'succeeded' }],
+};
+/** A model whose IFC is still extracting — present but not yet viewable. */
+const PROCESSING_MODEL = {
+  id: 'm1',
+  versions: [{ file_type: 'ifc', status: 'ready', extraction_status: 'queued' }],
+};
+
+function renderTab(onNavigateToModels: () => void = () => {}): void {
   render(
     <IntlWrapper>
-      <DossierChecklistTab projectId="p1" country="NL" />
+      <DossierChecklistTab projectId="p1" country="NL" onNavigateToModels={onNavigateToModels} />
     </IntlWrapper>,
   );
 }
@@ -123,7 +135,7 @@ beforeEach(() => {
   mockUseAttachments.mockReturnValue({ data: infiniteData([]), isLoading: false });
   mockUseUnslotted.mockReturnValue({ data: [], isLoading: false });
   mockUseCertificates.mockReturnValue({ data: infiniteData([]), isLoading: false });
-  mockUseModels.mockReturnValue({ data: [] });
+  mockUseModelsWithVersions.mockReturnValue({ data: [] });
   mockUseFindings.mockReturnValue({ data: infiniteData([]) });
   mockUseDeadlines.mockReturnValue({ data: [] });
 });
@@ -131,32 +143,49 @@ beforeEach(() => {
 describe('DossierChecklistTab', () => {
   it('renders category groups and requirement labels when nothing is uploaded', () => {
     renderTab();
-    expect(screen.getByText('Models')).toBeInTheDocument();
     expect(screen.getByText('Documents')).toBeInTheDocument();
     expect(screen.getByText('Certificates')).toBeInTheDocument();
-    expect(screen.getByText('3D model / BIM model')).toBeInTheDocument();
     expect(screen.getByText('Drawings')).toBeInTheDocument();
+    expect(screen.getByText('Structural calculations')).toBeInTheDocument();
     expect(screen.getByText('Product certificates')).toBeInTheDocument();
     // All three required items missing. (The headline percentage now lives in
     // the Readiness tab header — see RightColumnTabs — not in this tab.)
     expect(screen.getAllByText('Missing').length).toBeGreaterThanOrEqual(3);
   });
 
-  it('reflects a fulfilled requirement once a matching document exists', () => {
+  it('reflects a fulfilled attachment requirement once a matching document exists', () => {
     mockUseAttachments.mockReturnValue({
-      data: infiniteData([{ status: 'ready', dossier_slot: 'drawings' }]),
+      data: infiniteData([{ status: 'ready', dossier_slot: 'structural_calculations' }]),
       isLoading: false,
     });
     renderTab();
     expect(screen.getByText('1 document provided')).toBeInTheDocument();
   });
 
-  it('marks the drawings row fulfilled from a BIM model alone (no drawing upload)', () => {
-    mockUseModels.mockReturnValue({ data: [{ id: 'm1' }] });
+  it('marks the drawings row fulfilled from a viewable model (no attachment)', () => {
+    mockUseModelsWithVersions.mockReturnValue({ data: [VIEWABLE_MODEL] });
     renderTab();
-    // model-present AND drawings are both satisfied by the one model.
-    // The drawings row still offers an upload affordance for a real PDF drawing set.
-    expect(screen.getByRole('button', { name: 'Upload' })).toBeInTheDocument();
+    // Drawings is met by the processed model — no "Add model" CTA on the row.
+    expect(screen.queryByRole('button', { name: 'Add model' })).not.toBeInTheDocument();
+    expect(screen.getByText('1 document provided')).toBeInTheDocument();
+  });
+
+  it('shows Add model on the drawings row and navigates to Models when no model exists', () => {
+    const onNavigate = vi.fn();
+    renderTab(onNavigate);
+
+    const addModel = screen.getByRole('button', { name: 'Add model' });
+    expect(addModel).toHaveAttribute('data-variant', 'primary');
+    fireEvent.click(addModel);
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the drawings CTA while a model exists but is still processing', () => {
+    mockUseModelsWithVersions.mockReturnValue({ data: [PROCESSING_MODEL] });
+    renderTab();
+    // A model is present, so no button — but it isn't viewable yet, so missing.
+    expect(screen.queryByRole('button', { name: 'Add model' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Missing').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows the empty state when no template is configured', () => {
@@ -170,21 +199,20 @@ describe('DossierChecklistTab', () => {
 
   it('opens the link-existing dialog and links a chosen document', () => {
     mockUseUnslotted.mockReturnValue({
-      data: [{ id: 'a1', original_filename: 'plattegrond.pdf' }],
+      data: [{ id: 'a1', original_filename: 'berekening.pdf' }],
       isLoading: false,
     });
     renderTab();
 
-    // Click the "Link an existing document" button on the drawings row.
+    // The only attachment-slot row (structural calculations) carries the Link CTA.
     fireEvent.click(screen.getAllByTitle('Link an existing document')[0]!);
 
     // Dialog opens and lists the untagged document.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    const docButton = screen.getByText('plattegrond.pdf');
-    fireEvent.click(docButton);
+    fireEvent.click(screen.getByText('berekening.pdf'));
 
     expect(mockUpdate).toHaveBeenCalledWith(
-      { attachmentId: 'a1', input: { dossier_slot: 'drawings' } },
+      { attachmentId: 'a1', input: { dossier_slot: 'structural_calculations' } },
       expect.anything(),
     );
   });
@@ -194,16 +222,6 @@ describe('DossierChecklistTab', () => {
 
     expect(screen.getByRole('button', { name: 'Upload' })).toHaveAttribute('data-variant', 'primary');
     expect(screen.getByRole('button', { name: 'Upload certificate' })).toHaveAttribute('data-variant', 'primary');
-    expect(screen.getByRole('button', { name: 'Upload model' })).toHaveAttribute('data-variant', 'primary');
-  });
-
-  it('renders the Models category and opens NewModelDialog when Upload model is clicked', () => {
-    renderTab();
-
-    expect(screen.getByText('Models')).toBeInTheDocument();
-    expect(screen.getByText('3D model / BIM model')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Upload model' }));
-    expect(screen.getByTestId('new-model-dialog')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add model' })).toHaveAttribute('data-variant', 'primary');
   });
 });

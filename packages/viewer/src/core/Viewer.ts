@@ -860,6 +860,37 @@ export class Viewer {
       title: 'Log a diagnostic snapshot of the viewer state',
     });
 
+    // Live zoom retune (driven by the portal settings sliders). `speed` maps to
+    // the wheel dolly sensitivity; `min/maxFactor` re-derive the scale-aware
+    // orbit minDistance (fly-through threshold) + zoom-out cap via
+    // refreshSceneBounds. Each field is optional — only provided values are
+    // applied, in place, with no remount. Mirrors the mount-time setup above.
+    this.commands.register<Partial<ZoomOptions>, void>(
+      'zoom.setOptions',
+      (args) => {
+        const world = this.world;
+        if (world === null || args == null) return;
+        const zoom = (this.options.zoom ??= {});
+        if (typeof args.speed === 'number') {
+          zoom.speed = args.speed;
+          world.camera.controls.dollySpeed = args.speed;
+        }
+        let boundsChanged = false;
+        if (typeof args.minFactor === 'number') {
+          zoom.minFactor = args.minFactor;
+          boundsChanged = true;
+        }
+        if (typeof args.maxFactor === 'number') {
+          zoom.maxFactor = args.maxFactor;
+          boundsChanged = true;
+        }
+        // min/maxFactor feed refreshSceneBounds (it reads this.options.zoom);
+        // speed-only changes don't need the recompute.
+        if (boundsChanged) this.refreshSceneBounds();
+      },
+      { title: 'Set zoom options (speed / zoom limits)' },
+    );
+
     // On-demand rendering: park the renderer in MANUAL and only resume on a
     // visual change. Each event below means "something changed on screen" —
     // route it through markActive() so a frame (and the idle composite) is

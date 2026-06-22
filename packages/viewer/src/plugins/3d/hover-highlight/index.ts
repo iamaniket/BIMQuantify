@@ -207,6 +207,23 @@ export function hoverHighlightPlugin(
       ctx.commands.register('hover.isEnabled', () => enabled, {
         title: 'Get hover enabled state',
       });
+
+      // Live highlight-color change (portal settings color picker). Mutate the
+      // shared THREE.Color in place so every subsequent paint uses it, and
+      // recolor the currently-painted item now so the change is visible without
+      // waiting for the next pointer move.
+      ctx.commands.register('hover.setColor', (args: unknown) => {
+        const next = typeof args === 'number'
+          ? args
+          : (args as { color?: number } | null)?.color;
+        if (typeof next !== 'number') return;
+        color.set(next);
+        if (ctxRef && painted) {
+          void modelOf(painted)?.setColor([painted.localId], color).catch(() => undefined);
+          edges.remove(ctxRef, [painted]);
+          void edges.add(ctxRef, [painted], color);
+        }
+      }, { title: 'Set hover highlight color' });
     },
 
     uninstall() {
