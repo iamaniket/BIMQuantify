@@ -12,7 +12,6 @@ from bimstitch_api.db import TenantBase
 from bimstitch_api.models._mixins import TimestampMixin
 
 if TYPE_CHECKING:
-    from bimstitch_api.models.contractor import Contractor
     from bimstitch_api.models.model import Model
     from bimstitch_api.models.project_member import ProjectMember
 
@@ -114,19 +113,12 @@ class Project(TimestampMixin, TenantBase):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    contractor_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("contractors.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
     members: Mapped[list["ProjectMember"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
     models: Mapped[list["Model"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    contractor: Mapped["Contractor | None"] = relationship(lazy="joined")
 
     __table_args__ = (
         Index(
@@ -136,7 +128,6 @@ class Project(TimestampMixin, TenantBase):
             postgresql_where="lifecycle_state != 'removed'",
         ),
         Index("ix_projects_lifecycle_state", "lifecycle_state"),
-        Index("ix_projects_contractor_id", "contractor_id"),
         Index("ix_projects_planned_start_date", "planned_start_date"),
         Index(
             "uq_projects_reference_code",

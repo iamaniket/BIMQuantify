@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.jurisdictions import supported_countries
-from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
@@ -49,8 +48,7 @@ async def _project_to_read(
     storage: StorageBackend,
     my_role: ProjectRole | None = None,
 ) -> dict[str, object]:
-    """Serialize a Project ORM object to a dict with the thumbnail URL resolved
-    and the linked contractor's name denormalized into `contractor_name`.
+    """Serialize a Project ORM object to a dict with the thumbnail URL resolved.
 
     `my_role` is the requesting caller's role on this project (or None when they
     reach it via an admin bypass rather than a membership row); it is surfaced so
@@ -58,7 +56,6 @@ async def _project_to_read(
     """
     data: dict[str, object] = ProjectRead.model_validate(project).model_dump()
     data["thumbnail_url"] = await _resolve_thumbnail_url(project.thumbnail_url, storage)
-    data["contractor_name"] = project.contractor.name if project.contractor is not None else None
     data["my_role"] = my_role.value if my_role is not None else None
     return data
 
@@ -83,21 +80,6 @@ def _validate_country(country: str | None) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"UNSUPPORTED_COUNTRY: '{country}' is not a registered jurisdiction",
         )
-
-
-async def _validate_contractor_exists(session: AsyncSession, contractor_id: UUID | None) -> None:
-    """Surface a 400 if the contractor isn't in the current tenant schema.
-    Cross-tenant isolation is enforced by the schema namespace itself —
-    contractors in another org's schema are inaccessible to this session,
-    so a non-matching id just returns nothing.
-    """
-    if contractor_id is None:
-        return
-    found = (
-        await session.execute(select(Contractor.id).where(Contractor.id == contractor_id))
-    ).scalar_one_or_none()
-    if found is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CONTRACTOR_NOT_FOUND")
 
 
 async def _member_to_read(session: AsyncSession, member: ProjectMember) -> dict[str, object]:

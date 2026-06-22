@@ -28,7 +28,7 @@ export type ReportRow = Report & { versionNumber: number };
  * Flat, one-row-per-generation report list — the second tab of the dedicated
  * Reports page. Columns sort client-side (keys match the page's
  * `useClientPagination` accessors); per-row actions (View / Download / Sign)
- * reuse the same {@link RowActionPill} wiring as {@link ReportVersionTimeline}.
+ * are rendered via {@link RowActionPill}.
  */
 export function ReportsTable({
   projectId,

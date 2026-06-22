@@ -51,7 +51,6 @@ from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.models.borgingsmoment import Borgingsmoment
 from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
 from bimstitch_api.models.certificate import Certificate, CertificateStatus
-from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.finding import Finding
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.notification import NotificationEventType
@@ -428,17 +427,6 @@ async def create_report(
     membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.report, Action.create)
 
-    # Eager-load contractor for the render snapshot (project.contractor is a
-    # relationship; we issue an explicit SELECT under tenant RLS). Used by every
-    # report type's cover page.
-    contractor: Contractor | None = None
-    if project.contractor_id is not None:
-        contractor = (
-            await session.execute(
-                select(Contractor).where(Contractor.id == project.contractor_id)
-            )
-        ).scalar_one_or_none()
-
     # Resolve locale: explicit request value wins, otherwise the
     # jurisdiction's default (NL → 'nl'). Falls back to 'en' if no
     # jurisdiction is registered for the project's country.
@@ -485,7 +473,7 @@ async def create_report(
     worker_payload: dict[str, object] = {
         "report_id": str(report.id),
         "storage_key": storage_key,
-        "project": _project_payload(project, contractor),
+        "project": _project_payload(project),
         "generated_at": generated_at.isoformat(),
         "locale": locale,
         "jurisdiction": project.country,
@@ -697,7 +685,7 @@ async def sign_report(
     worker_payload: dict[str, object] = {
         "report_id": str(report.id),
         "storage_key": report.storage_key,
-        "project": _project_payload(project, None),
+        "project": _project_payload(project),
         "generated_at": datetime.now(UTC).isoformat(),
         "locale": report.locale,
         "jurisdiction": project.country,

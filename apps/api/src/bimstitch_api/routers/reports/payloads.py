@@ -9,7 +9,6 @@ or strings. The session-touching loaders/resolvers and the endpoints live in
 from bimstitch_api.i18n import coerce_locale, t
 from bimstitch_api.models.borgingsplan import Borgingsplan
 from bimstitch_api.models.certificate import Certificate
-from bimstitch_api.models.contractor import Contractor
 from bimstitch_api.models.finding import Finding
 from bimstitch_api.models.org_template import OrgTemplate
 from bimstitch_api.models.project import Project
@@ -38,7 +37,7 @@ def _report_notification_body(report_type: ReportType, locale: str) -> str:
     )
 
 
-def _project_payload(project: Project, contractor: Contractor | None) -> dict[str, object]:
+def _project_payload(project: Project) -> dict[str, object]:
     """Snapshot of project metadata the worker uses to render the PDF cover.
     Worker is stateless — everything it renders comes from this payload."""
     return {
@@ -58,16 +57,6 @@ def _project_payload(project: Project, contractor: Contractor | None) -> dict[st
         },
         "permit_number": project.permit_number,
         "delivery_date": project.delivery_date.isoformat() if project.delivery_date else None,
-        "contractor": (
-            {
-                "name": contractor.name,
-                "kvk_number": contractor.kvk_number,
-                "contact_email": contractor.contact_email,
-                "contact_phone": contractor.contact_phone,
-            }
-            if contractor is not None
-            else None
-        ),
     }
 
 

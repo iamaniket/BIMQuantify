@@ -197,8 +197,6 @@ nl_messages: Catalog = {
     "errors.PROJECT_ARCHIVED": "Dit project is gearchiveerd. Heractiveer het om wijzigingen aan te brengen.",
     "errors.PROJECT_NOT_ARCHIVED": "Dit project is niet gearchiveerd.",
     "errors.NAME_EMPTY_AFTER_TRIM": "De naam mag niet leeg zijn.",
-    "errors.CONTRACTOR_NOT_FOUND": "Die aannemer kon niet worden gevonden.",
-    "errors.CONTRACTOR_NAME_CONFLICT": "Er bestaat al een aannemer met die naam.",
     "errors.CONSEQUENCE_CLASS_OUT_OF_SCOPE": "Die gevolgklasse is niet geldig voor het gekozen land.",
     "errors.INSTRUMENT_NOT_REGISTERED": "Dat instrument is niet beschikbaar voor het gekozen land.",
 

@@ -234,7 +234,6 @@ export function renderHtml(data: DossierData): string {
         <dt>Project</dt><dd>${or(data.project.name)}</dd>
         <dt>${labels.reference}</dt><dd>${or(data.project.reference_code)}</dd>
         <dt>${labels.address}</dt><dd>${addressLine(data.project.address)}</dd>
-        <dt>${labels.contractor}</dt><dd>${or(data.project.contractor?.name)}</dd>
         <dt>${labels.generatedAt}</dt><dd>${fmtDate(data.generated_at)}</dd>
       </dl>
       <div class="toc">

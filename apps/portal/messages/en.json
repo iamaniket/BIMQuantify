@@ -421,7 +421,6 @@
       "phase": "Phase",
       "delivery": "Delivery",
       "permit": "Permit",
-      "contractor": "Contractor",
       "address": "Address",
       "municipality": "Municipality",
       "bagId": "BAG ID",
@@ -526,10 +525,6 @@
           "title": "Address",
           "description": "Site location"
         },
-        "contractor": {
-          "title": "Contractor",
-          "description": "Assign a company"
-        },
         "members": {
           "title": "Team",
           "description": "Add people to the project"
@@ -554,9 +549,6 @@
         "thumbnailType": "Only JPEG, PNG, or WebP images are allowed.",
         "thumbnailSize": "Image must be 2 MB or smaller.",
         "thumbnailProcess": "Could not process image. Please try another file.",
-        "contractorNameRequired": "Name is required",
-        "contractorAlreadyExists": "A contractor with that name already exists.",
-        "contractorCreateFailed": "Could not create contractor.",
         "nameTaken": "This name is taken"
       },
       "basics": {
@@ -615,20 +607,6 @@
           "failedAria": "Map preview failed to load",
           "unavailable": "Map preview is currently unavailable.",
           "imageAlt": "Aerial view at {latitude}, {longitude}"
-        }
-      },
-      "contractor": {
-        "fields": {
-          "contractor": "Contractor",
-          "noneOption": "— None —",
-          "newContractorName": "New contractor name",
-          "newContractorPlaceholder": "Builder LLC"
-        },
-        "actions": {
-          "addNewContractor": "+ Add new contractor",
-          "adding": "Adding…",
-          "add": "Add",
-          "cancel": "Cancel"
         }
       },
       "members": {
@@ -903,6 +881,125 @@
       "expiringSoonCerts": "Expiring soon"
     }
   },
+  "certificates": {
+    "hub": {
+      "crumb": "Certificates",
+      "crumbProjects": "Projects",
+      "projectNotFound": "Project not found. It may have been deleted.",
+      "projectLoadError": "Failed to load project.",
+      "tabs": {
+        "overview": "Overview",
+        "list": "Certificates"
+      },
+      "panel": {
+        "overviewEyebrow": "Proof of conformity",
+        "overviewTitle": "Certificates overview",
+        "listEyebrow": "Proof of conformity",
+        "listTitle": "{count} certificates"
+      },
+      "hero": {
+        "badge": "Certificates",
+        "subtitle": "Product certificates, test reports, inspections & warranties",
+        "totalLabel": "Total",
+        "totalSub": "certificates",
+        "validLabel": "Valid",
+        "validSub": "in date",
+        "expiringLabel": "Expiring",
+        "expiringSub": "within 30 days",
+        "expiredLabel": "Expired",
+        "expiredSub": "past validity"
+      },
+      "list": {
+        "searchPlaceholder": "Search certificates…",
+        "filterAll": "All types",
+        "empty": "No certificates match your filters",
+        "loadError": "Failed to load certificates."
+      },
+      "columns": {
+        "certificate": "Certificate",
+        "type": "Type",
+        "issuer": "Issuer",
+        "number": "Number",
+        "validUntil": "Valid until",
+        "added": "Added",
+        "view": "View",
+        "download": "Download",
+        "newVersion": "Upload new version",
+        "delete": "Delete"
+      },
+      "overview": {
+        "totalCerts": "Total",
+        "validCerts": "Valid",
+        "expiringSoonCerts": "Expiring soon",
+        "byTypeTitle": "Certificates by type",
+        "byExpiryTitle": "Expiry status",
+        "recentTitle": "Recently added",
+        "empty": "No certificates yet"
+      }
+    }
+  },
+  "attachments": {
+    "hub": {
+      "crumb": "Attachments",
+      "crumbProjects": "Projects",
+      "projectNotFound": "Project not found. It may have been deleted.",
+      "projectLoadError": "Failed to load project.",
+      "tabs": {
+        "overview": "Overview",
+        "list": "Attachments"
+      },
+      "panel": {
+        "overviewEyebrow": "Files & attachments",
+        "overviewTitle": "Attachments overview",
+        "listEyebrow": "Files & attachments",
+        "listTitle": "{count} attachments"
+      },
+      "hero": {
+        "badge": "Attachments",
+        "subtitle": "Photos, drawings and supporting documents",
+        "totalLabel": "Total",
+        "totalSub": "files",
+        "imagesLabel": "Images",
+        "imagesSub": "photos",
+        "documentsLabel": "Documents",
+        "documentsSub": "PDFs & office",
+        "sizeLabel": "Total size",
+        "sizeSub": "stored"
+      },
+      "list": {
+        "searchPlaceholder": "Search files…",
+        "filterAll": "All",
+        "empty": "No attachments match your filters",
+        "loadError": "Failed to load attachments."
+      },
+      "columns": {
+        "file": "File",
+        "category": "Category",
+        "size": "Size",
+        "uploadedBy": "Uploaded by",
+        "added": "Added",
+        "view": "View",
+        "download": "Download",
+        "delete": "Delete"
+      },
+      "overview": {
+        "total": "Total",
+        "images": "Images",
+        "documents": "Documents",
+        "totalSize": "Total size",
+        "byCategoryTitle": "By category",
+        "recentTitle": "Recently added",
+        "empty": "No attachments yet"
+      },
+      "category": {
+        "image": "Images",
+        "video": "Videos",
+        "audio": "Audio",
+        "office": "Documents",
+        "other": "Other"
+      }
+    }
+  },
   "projectAccess": {
     "crumb": "Access",
     "title": "Access",
@@ -1069,7 +1166,6 @@
       },
       "overviewCard": {
         "address": "Address",
-        "contractor": "Contractor",
         "status": "Status",
         "plannedStart": "Planned start",
         "delivery": "Delivery",
@@ -1462,9 +1558,15 @@
         "linkFromLibrary": "Link from library"
       },
       "rapporten": {
-        "label": "Reports",
-        "eyebrow": "Generated documents",
-        "subtitle": "Generate and download filing-ready PDFs"
+        "label": "Reports"
+      },
+      "nav": {
+        "eyebrow": "Quality & documents",
+        "subtitle": "Open a dedicated workspace",
+        "findingsDesc": "Track and resolve quality issues",
+        "certificatesDesc": "Proof-of-conformity documents",
+        "attachmentsDesc": "Photos, drawings and files",
+        "reportsDesc": "Generated filing-ready PDFs"
       },
       "deadlines": {
         "label": "Deadlines",
@@ -1988,21 +2090,6 @@
         "ready": "Ready",
         "failed": "Failed"
       }
-    },
-    "tab": {
-      "searchPlaceholder": "Search reports…",
-      "generateMenu": "More report types",
-      "generateNewVersion": "Generate new version",
-      "versionHistory": "Version history · {count} versions",
-      "noVersions": "No versions yet",
-      "emptyTitle": "No reports generated yet",
-      "emptyDescription": "Generate a filing-ready PDF to get started.",
-      "noResults": "No reports match your filters",
-      "justNow": "just now",
-      "minutesAgo": "{count}m ago",
-      "hoursAgo": "{count}h ago",
-      "daysAgo": "{count}d ago",
-      "openPage": "All reports"
     },
     "hub": {
       "crumb": "Reports",
@@ -3496,6 +3583,7 @@
       "screenshot": "Screenshot",
       "settings": "Settings",
       "spaces": "Spaces",
+      "minimap": "Floor plan",
       "comingSoonSuffix": "{label} (coming soon)",
       "pan": "Pan",
       "panTooltip": "Pan (drag to move)",

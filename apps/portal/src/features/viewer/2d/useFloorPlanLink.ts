@@ -45,9 +45,9 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
 
   const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
 
-  // Ensure the minimap is calibrated in Split/2D too — the overlay MinimapView
-  // (which calibrates in 3D mode) is unmounted here, and its calibration may not
-  // have completed before this pane mounted. Idempotent; safe to call again.
+  // Ensure the minimap is calibrated in Split/2D too — the 3D minimap pop-out
+  // (which calibrates only while open) isn't mounted here, and its calibration
+  // may not have completed before this pane mounted. Idempotent; safe to recall.
   const ifcBbox = metadata?.bbox;
   useEffect(() => {
     if (!viewerHandle || !viewerReady || !ifcBbox) return;

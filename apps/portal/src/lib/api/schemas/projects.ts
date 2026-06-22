@@ -60,9 +60,6 @@ export const ProjectSchema = z.object({
   latitude: z.union([z.number(), z.null()]),
   longitude: z.union([z.number(), z.null()]),
 
-  contractor_id: z.union([z.string().uuid(), z.null()]),
-  contractor_name: z.union([z.string(), z.null()]),
-
   // The current caller's own role on this project (null when reached via an
   // org-admin/superuser bypass without a membership row). Drives UI gating
   // against the permission matrix. Keep as a plain union (input == output) —
@@ -95,7 +92,6 @@ export const ProjectCreateSchema = z.object({
   permit_number: z.union([z.string().max(100), z.null()]).optional(),
   latitude: z.union([z.number().min(-90).max(90), z.null()]).optional(),
   longitude: z.union([z.number().min(-180).max(180), z.null()]).optional(),
-  contractor_id: z.union([z.string().uuid(), z.null()]).optional(),
 });
 
 export type ProjectCreateInput = z.infer<typeof ProjectCreateSchema>;

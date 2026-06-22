@@ -125,6 +125,7 @@ export { MagnifyingGlass as Search } from '@phosphor-icons/react';
 export { MagnifyingGlassMinus } from '@phosphor-icons/react';
 export { MagnifyingGlassPlus } from '@phosphor-icons/react';
 export { MapPin } from '@phosphor-icons/react';
+export { MapTrifold as Map } from '@phosphor-icons/react';
 export { List as Menu } from '@phosphor-icons/react';
 export { ChatCircle as MessageSquare } from '@phosphor-icons/react';
 export { Microphone as Mic } from '@phosphor-icons/react';

@@ -63,12 +63,6 @@ export type ComplianceReportData = {
     } | null;
     permit_number?: string | null;
     delivery_date?: string | null;
-    contractor?: {
-      name?: string | null;
-      kvk_number?: string | null;
-      contact_email?: string | null;
-      contact_phone?: string | null;
-    } | null;
   };
   compliance: {
     framework?: string;
@@ -246,7 +240,6 @@ export function renderHtml(data: ComplianceReportData): string {
         <dt>${labels.reference}</dt><dd>${or(data.project.reference_code)}</dd>
         <dt>${labels.framework}</dt><dd>${or(data.compliance.framework?.toUpperCase())}</dd>
         <dt>${labels.address}</dt><dd>${addressLine(data.project.address)}</dd>
-        <dt>${labels.contractor}</dt><dd>${or(data.project.contractor?.name)}</dd>
         <dt>${labels.permit}</dt><dd>${or(data.project.permit_number)}</dd>
         <dt>${labels.delivery}</dt><dd>${or(data.project.delivery_date)}</dd>
         <dt>${labels.generatedAt}</dt><dd>${fmtDate(data.generated_at)}</dd>

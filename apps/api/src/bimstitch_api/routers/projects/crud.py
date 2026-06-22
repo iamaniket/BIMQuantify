@@ -45,7 +45,6 @@ from bimstitch_api.routers.projects._shared import (
     _project_to_read,
     _seed_project_members,
     _serialize_field,
-    _validate_contractor_exists,
     _validate_country,
     router,
 )
@@ -80,7 +79,6 @@ async def create_project(
             detail="GUEST_CANNOT_CREATE_PROJECT",
         )
     _validate_country(payload.country)
-    await _validate_contractor_exists(session, payload.contractor_id)
 
     project = Project(
         owner_id=user.id,
@@ -344,8 +342,6 @@ async def update_project(
     updates = payload.model_dump(exclude_unset=True)
     if "country" in updates:
         _validate_country(updates["country"])
-    if "contractor_id" in updates:
-        await _validate_contractor_exists(session, updates["contractor_id"])
     if "thumbnail_url" in updates:
         old_key = project.thumbnail_url
         new_val = updates["thumbnail_url"]

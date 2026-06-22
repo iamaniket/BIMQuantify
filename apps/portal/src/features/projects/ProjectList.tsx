@@ -59,7 +59,7 @@ export function ProjectList({ search, phaseFilter }: ProjectListProps): JSX.Elem
     : projects.filter((p) => {
       const haystacks: (string | null)[] = [
         p.name, p.description, p.reference_code,
-        p.city, p.contractor_name,
+        p.city,
       ];
       return haystacks.some((s) => {
         if (s === null) {

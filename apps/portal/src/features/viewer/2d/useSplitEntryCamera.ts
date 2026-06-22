@@ -20,17 +20,17 @@ type CameraPose = { position: { x: number; y: number; z: number }; target: { x: 
 /** A plan projection (+recovered IFC elevation) from `minimap.projectPoint`. */
 type Projected = { x: number; y: number; elevation: number } | null;
 
-/** Horizontal heading is degenerate below this plan distance → nudge the look point. */
-const MIN_HEADING_DISTANCE = 1e-3;
-
 /**
- * On entering Split view, make the floor-plan pane "step into" the building at the
- * level the user was already looking at, rather than always opening on level 0:
- *   1. Read the live 3D camera, recover its IFC elevation, and select the level
- *      whose elevation is nearest the camera height.
- *   2. Snap the camera onto that level (floor + eye height), preserving the current
- *      horizontal position + heading.
- *   3. Enter first-person navigation so the user can immediately walk the level.
+ * On entering Split view:
+ *   1. Read the live 3D camera, recover its IFC elevation, and open the floor-plan
+ *      pane on the level whose elevation is nearest the camera height (rather than
+ *      always level 0). This only changes the 2D plan's active floor.
+ *   2. Switch the 3D pane to first-person navigation.
+ *
+ * A mode switch must NOT move the 3D camera — only toggle the nav mode. Entering
+ * first-person is position-preserving (camera-fly re-asserts the current pose on
+ * enter), so the camera stays exactly where it was; we no longer snap it onto the
+ * level. Leaving Split restores orbit (handled in the toolbar) — also jump-free.
  *
  * Runs once per Split entry (guarded by `didInit`); a manual level change afterward
  * is therefore never overridden. Reuses the minimap plugin's calibration (the 3D
@@ -69,11 +69,6 @@ export function useSplitEntryCamera(opts: SplitEntryCameraOptions): void {
       // Not calibrated yet → leave the guard unset; `minimap:calibrated` re-runs.
       if (cancelled || !here) return;
 
-      const look = await viewerHandle.commands
-        .execute<Projected>('minimap.projectPoint', pose.target)
-        .catch(() => null);
-      if (cancelled) return;
-
       const currentLevels = levelsRef.current;
       if (currentLevels.length === 0) return;
 
@@ -90,36 +85,15 @@ export function useSplitEntryCamera(opts: SplitEntryCameraOptions): void {
 
       didInit.current = true;
 
-      const target = currentLevels[best];
-      if (!target) return;
-
+      // Open the plan on the floor the user was looking at — this drives only the
+      // 2D plan's active level, NOT the 3D camera.
       setActiveLevelRef.current(best);
 
-      // Preserve heading; guard against a straight-down orbit view where the
-      // projected here↔look points coincide (no valid forward direction).
-      let lookX = look?.x ?? here.x;
-      let lookY = look?.y ?? here.y;
-      if (Math.hypot(lookX - here.x, lookY - here.y) < MIN_HEADING_DISTANCE) {
-        lookX = here.x;
-        lookY = here.y + 1;
-      }
-
-      // Enter first-person BEFORE the snap so the mode switch doesn't disturb the
-      // final pose.
+      // Toggle the 3D pane to first-person. Position-preserving (camera-fly
+      // re-asserts the current pose on enter), so the camera does not move — a
+      // mode switch only changes the nav mode.
       await viewerHandle.commands
         .execute('tool.set', { navMode: 'firstPerson' })
-        .catch(() => undefined);
-      if (cancelled) return;
-
-      await viewerHandle.commands
-        .execute('minimap.placeCamera', {
-          planX: here.x,
-          planY: here.y,
-          lookX,
-          lookY,
-          elevation: target.elevation,
-          animate: false,
-        })
         .catch(() => undefined);
     };
 

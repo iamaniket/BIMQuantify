@@ -7,7 +7,6 @@ import { type JSX } from 'react';
 import { Skeleton } from '@bimstitch/ui';
 import type { FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
-import { MinimapView } from '@/features/viewer/3d/minimap/MinimapView';
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { Finding } from '@/lib/api/schemas';
@@ -171,16 +170,6 @@ export function IfcViewerCanvas({
     >
       <div ref={threeDPaneRef} className={threeDPaneClass} style={threeDSplitStyle}>
         {ifcViewerEl}
-        {hasFloorPlans && viewMode === '3d' && scope.planFloorPlansUrl ? (
-          <MinimapView
-            handle={viewerHandleRef.current}
-            viewerReady={viewerReady}
-            floorPlansUrl={scope.planFloorPlansUrl}
-            metadata={planMetadata}
-            {...(scope.planViewerModelId ? { planModelId: scope.planViewerModelId } : {})}
-            variant="overlay"
-          />
-        ) : null}
       </div>
 
       {/* Draggable divider — desktop split mode only */}

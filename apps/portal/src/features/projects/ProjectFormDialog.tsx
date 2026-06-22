@@ -74,7 +74,6 @@ const EMPTY_DEFAULTS: ProjectFormValues = {
   bag_id: '',
   latitude: undefined,
   longitude: undefined,
-  contractor_id: '',
 };
 
 function projectToValues(project: Project): ProjectFormValues {
@@ -95,7 +94,6 @@ function projectToValues(project: Project): ProjectFormValues {
     bag_id: project.bag_id ?? '',
     latitude: project.latitude ?? undefined,
     longitude: project.longitude ?? undefined,
-    contractor_id: project.contractor_id ?? '',
   };
 }
 
@@ -272,7 +270,6 @@ export function ProjectFormDialog(props: Props): JSX.Element {
       bag_id: nullableTrim(values.bag_id),
       latitude: values.latitude ?? null,
       longitude: values.longitude ?? null,
-      contractor_id: nullableTrim(values.contractor_id),
     };
 
     if (mode === 'create') {

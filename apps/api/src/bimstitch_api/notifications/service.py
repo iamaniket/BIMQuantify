@@ -8,9 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimstitch_api.cache import get_redis
 from bimstitch_api.models.notification import (
     Notification,
-    NotificationDismissal,
     NotificationEventType,
-    NotificationRead,
+    NotificationUserState,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,13 +78,8 @@ async def upsert_job_notification(
         existing.created_at = func.now()
 
         await session.execute(
-            delete(NotificationRead).where(
-                NotificationRead.notification_id == existing.id
-            )
-        )
-        await session.execute(
-            delete(NotificationDismissal).where(
-                NotificationDismissal.notification_id == existing.id
+            delete(NotificationUserState).where(
+                NotificationUserState.notification_id == existing.id
             )
         )
         await session.flush()

@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Hammer, Layers, MapPin, Ruler } from '@bimstitch/ui/icons';
+import { Building2, Layers, MapPin, Ruler } from '@bimstitch/ui/icons';
 import { useEffect, useState, type JSX, type ReactNode } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
@@ -125,15 +125,6 @@ export function ProjectDetailHeader({
         <MapPin className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
         {address ?? tHero('noAddress')}
       </span>
-      {project.contractor_name !== null && (
-        <>
-          <span className="text-black/30 dark:text-white/60">·</span>
-          <span className="inline-flex items-center gap-1">
-            <Hammer className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" />
-            {project.contractor_name}
-          </span>
-        </>
-      )}
     </>
   );
 

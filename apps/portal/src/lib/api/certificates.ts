@@ -103,20 +103,6 @@ export async function listCertificates(
   );
 }
 
-/** Full version history of one logical certificate, newest version first (#35).
- * Accepts any version id in the group; the head is the first element. */
-export async function listCertificateVersions(
-  accessToken: string,
-  projectId: string,
-  certificateId: string,
-): Promise<CertificateList> {
-  return apiClient.get<CertificateList>(
-    `/projects/${projectId}/certificates/${certificateId}/versions`,
-    CertificateListSchema,
-    accessToken,
-  );
-}
-
 export async function getCertificateDownloadUrl(
   accessToken: string,
   projectId: string,

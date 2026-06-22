@@ -404,7 +404,7 @@ async def test_schema_endpoint_for_dossier(client: AsyncClient, org_user: dict[s
     keys = {s["key"] for s in body["sections"]}
     assert keys == {"risks", "plan", "findings", "certificates", "declaration"}
     paths = {m["path"] for m in body["merge_fields"]}
-    assert "project.name" in paths and "contractor.kvk_number" in paths
+    assert "project.name" in paths and "project.permit_number" in paths
 
 
 async def test_schema_endpoint_rejects_findings(

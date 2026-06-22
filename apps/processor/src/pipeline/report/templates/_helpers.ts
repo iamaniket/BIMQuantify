@@ -62,13 +62,6 @@ export function addressLine(addr: ReportAddress | null | undefined): string {
   return parts.length === 0 ? '—' : escapeHtml(parts.join(', '));
 }
 
-export type ReportContractor = {
-  name?: string | null;
-  kvk_number?: string | null;
-  contact_email?: string | null;
-  contact_phone?: string | null;
-};
-
 export type ReportProject = {
   id: string;
   name: string;
@@ -79,7 +72,6 @@ export type ReportProject = {
   address?: ReportAddress | null;
   permit_number?: string | null;
   delivery_date?: string | null;
-  contractor?: ReportContractor | null;
 };
 
 /** Runtime schema for the project snapshot every report payload carries
@@ -105,15 +97,6 @@ export const reportProjectSchema = z.object({
     .optional(),
   permit_number: z.string().nullable().optional(),
   delivery_date: z.string().nullable().optional(),
-  contractor: z
-    .object({
-      name: z.string().nullable().optional(),
-      kvk_number: z.string().nullable().optional(),
-      contact_email: z.string().nullable().optional(),
-      contact_phone: z.string().nullable().optional(),
-    })
-    .nullable()
-    .optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -216,7 +199,6 @@ export function buildMergeContext(payload: {
 }): Record<string, unknown> {
   return {
     project: payload.project,
-    contractor: payload.project.contractor ?? {},
     report: { generated_at: fmtDate(payload.generated_at) },
   };
 }

@@ -229,8 +229,6 @@ en_messages: Catalog = {
     "errors.PROJECT_ARCHIVED": "This project is archived. Reactivate it to make changes.",
     "errors.PROJECT_NOT_ARCHIVED": "This project isn't archived.",
     "errors.NAME_EMPTY_AFTER_TRIM": "The name can't be empty.",
-    "errors.CONTRACTOR_NOT_FOUND": "That contractor could not be found.",
-    "errors.CONTRACTOR_NAME_CONFLICT": "A contractor with that name already exists.",
     "errors.CONSEQUENCE_CLASS_OUT_OF_SCOPE": "That consequence class isn't valid for the selected country.",
     "errors.INSTRUMENT_NOT_REGISTERED": "That instrument isn't available for the selected country.",
 

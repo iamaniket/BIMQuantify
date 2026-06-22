@@ -22,7 +22,6 @@ export const NL_COMPLIANCE_LABELS = {
   noResults: 'Geen controleresultaten beschikbaar.',
   generatedAt: 'Gegenereerd op',
   project: 'Project',
-  contractor: 'Aannemer',
   address: 'Adres',
   permit: 'Vergunning',
   delivery: 'Opleverdatum',

@@ -42,8 +42,6 @@ class ProjectBase(BaseModel):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
-    contractor_id: UUID | None = None
-
 
 class ProjectCreate(ProjectBase):
     pass
@@ -75,8 +73,6 @@ class ProjectUpdate(BaseModel):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
-    contractor_id: UUID | None = None
-
 
 class ProjectRead(ProjectBase):
     id: UUID
@@ -84,7 +80,6 @@ class ProjectRead(ProjectBase):
     lifecycle_state: ProjectLifecycleState
     created_at: datetime
     updated_at: datetime
-    contractor_name: str | None = None
     # The requesting caller's own role on this project, so the portal can gate
     # its UI against the permission matrix without a second members fetch.
     # None when the caller reaches the project via an admin/superuser bypass

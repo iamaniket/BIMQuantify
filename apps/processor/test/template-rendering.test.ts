@@ -26,13 +26,12 @@ describe('interpolate', () => {
 });
 
 describe('buildMergeContext', () => {
-  it('exposes project, contractor and report.generated_at', () => {
+  it('exposes project and report.generated_at', () => {
     const ctx = buildMergeContext({
-      project: { id: 'p', name: 'P', contractor: { name: 'C', kvk_number: '123' } },
+      project: { id: 'p', name: 'P' },
       generated_at: '2026-05-31T10:00:00Z',
     });
     expect(interpolate('{{project.name}}', ctx)).toBe('P');
-    expect(interpolate('{{contractor.kvk_number}}', ctx)).toBe('123');
     expect(interpolate('{{report.generated_at}}', ctx)).toContain('31-05-2026');
   });
 });

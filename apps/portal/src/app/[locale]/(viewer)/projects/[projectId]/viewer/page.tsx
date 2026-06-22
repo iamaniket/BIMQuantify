@@ -916,6 +916,10 @@ export default function ViewerPage(): JSX.Element {
               viewMode={viewMode}
               onViewModeChange={setViewMode}
               hasFloorPlans={hasFloorPlans}
+              floorPlansUrl={scope.planFloorPlansUrl}
+              planMetadata={planMetadata}
+              viewerReady={viewerReady}
+              {...(scope.planViewerModelId ? { planModelId: scope.planViewerModelId } : {})}
             />
           </div>
         ) : null}

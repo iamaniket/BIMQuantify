@@ -421,7 +421,6 @@
       "phase": "Fase",
       "delivery": "Oplevering",
       "permit": "Vergunning",
-      "contractor": "Aannemer",
       "address": "Adres",
       "municipality": "Gemeente",
       "bagId": "BAG-id",
@@ -526,10 +525,6 @@
           "title": "Adres",
           "description": "Locatie"
         },
-        "contractor": {
-          "title": "Aannemer",
-          "description": "Koppel een bedrijf"
-        },
         "members": {
           "title": "Team",
           "description": "Mensen aan het project toevoegen"
@@ -554,9 +549,6 @@
         "thumbnailType": "Alleen JPEG-, PNG- of WebP-afbeeldingen zijn toegestaan.",
         "thumbnailSize": "Afbeelding moet 2 MB of kleiner zijn.",
         "thumbnailProcess": "Afbeelding kon niet worden verwerkt. Probeer een ander bestand.",
-        "contractorNameRequired": "Naam is verplicht",
-        "contractorAlreadyExists": "Er bestaat al een aannemer met die naam.",
-        "contractorCreateFailed": "Aannemer kon niet worden aangemaakt.",
         "nameTaken": "Deze naam is al in gebruik"
       },
       "basics": {
@@ -615,20 +607,6 @@
           "failedAria": "Kaartvoorbeeld kon niet worden geladen",
           "unavailable": "Kaartvoorbeeld is momenteel niet beschikbaar.",
           "imageAlt": "Luchtfoto op {latitude}, {longitude}"
-        }
-      },
-      "contractor": {
-        "fields": {
-          "contractor": "Aannemer",
-          "noneOption": "— Geen —",
-          "newContractorName": "Naam nieuwe aannemer",
-          "newContractorPlaceholder": "Bouw BV"
-        },
-        "actions": {
-          "addNewContractor": "+ Nieuwe aannemer toevoegen",
-          "adding": "Bezig met toevoegen…",
-          "add": "Toevoegen",
-          "cancel": "Annuleren"
         }
       },
       "members": {
@@ -903,6 +881,125 @@
       "expiringSoonCerts": "Verloopt binnenkort"
     }
   },
+  "certificates": {
+    "hub": {
+      "crumb": "Certificaten",
+      "crumbProjects": "Projecten",
+      "projectNotFound": "Project niet gevonden. Mogelijk is het verwijderd.",
+      "projectLoadError": "Project laden mislukt.",
+      "tabs": {
+        "overview": "Overzicht",
+        "list": "Certificaten"
+      },
+      "panel": {
+        "overviewEyebrow": "Bewijs van conformiteit",
+        "overviewTitle": "Certificatenoverzicht",
+        "listEyebrow": "Bewijs van conformiteit",
+        "listTitle": "{count} certificaten"
+      },
+      "hero": {
+        "badge": "Certificaten",
+        "subtitle": "Productcertificaten, testrapporten, inspecties & garanties",
+        "totalLabel": "Totaal",
+        "totalSub": "certificaten",
+        "validLabel": "Geldig",
+        "validSub": "binnen geldigheid",
+        "expiringLabel": "Verloopt",
+        "expiringSub": "binnen 30 dagen",
+        "expiredLabel": "Verlopen",
+        "expiredSub": "geldigheid voorbij"
+      },
+      "list": {
+        "searchPlaceholder": "Zoek certificaten…",
+        "filterAll": "Alle types",
+        "empty": "Geen certificaten voldoen aan je filters",
+        "loadError": "Certificaten laden mislukt."
+      },
+      "columns": {
+        "certificate": "Certificaat",
+        "type": "Type",
+        "issuer": "Uitgever",
+        "number": "Nummer",
+        "validUntil": "Geldig tot",
+        "added": "Toegevoegd",
+        "view": "Bekijken",
+        "download": "Downloaden",
+        "newVersion": "Nieuwe versie uploaden",
+        "delete": "Verwijderen"
+      },
+      "overview": {
+        "totalCerts": "Totaal",
+        "validCerts": "Geldig",
+        "expiringSoonCerts": "Verloopt binnenkort",
+        "byTypeTitle": "Certificaten per type",
+        "byExpiryTitle": "Geldigheidsstatus",
+        "recentTitle": "Recent toegevoegd",
+        "empty": "Nog geen certificaten"
+      }
+    }
+  },
+  "attachments": {
+    "hub": {
+      "crumb": "Bijlagen",
+      "crumbProjects": "Projecten",
+      "projectNotFound": "Project niet gevonden. Mogelijk is het verwijderd.",
+      "projectLoadError": "Project laden mislukt.",
+      "tabs": {
+        "overview": "Overzicht",
+        "list": "Bijlagen"
+      },
+      "panel": {
+        "overviewEyebrow": "Bestanden & bijlagen",
+        "overviewTitle": "Bijlagenoverzicht",
+        "listEyebrow": "Bestanden & bijlagen",
+        "listTitle": "{count} bijlagen"
+      },
+      "hero": {
+        "badge": "Bijlagen",
+        "subtitle": "Foto's, tekeningen en ondersteunende documenten",
+        "totalLabel": "Totaal",
+        "totalSub": "bestanden",
+        "imagesLabel": "Afbeeldingen",
+        "imagesSub": "foto's",
+        "documentsLabel": "Documenten",
+        "documentsSub": "PDF's & office",
+        "sizeLabel": "Totale grootte",
+        "sizeSub": "opgeslagen"
+      },
+      "list": {
+        "searchPlaceholder": "Zoek bestanden…",
+        "filterAll": "Alle",
+        "empty": "Geen bijlagen voldoen aan je filters",
+        "loadError": "Bijlagen laden mislukt."
+      },
+      "columns": {
+        "file": "Bestand",
+        "category": "Categorie",
+        "size": "Grootte",
+        "uploadedBy": "Geüpload door",
+        "added": "Toegevoegd",
+        "view": "Bekijken",
+        "download": "Downloaden",
+        "delete": "Verwijderen"
+      },
+      "overview": {
+        "total": "Totaal",
+        "images": "Afbeeldingen",
+        "documents": "Documenten",
+        "totalSize": "Totale grootte",
+        "byCategoryTitle": "Per categorie",
+        "recentTitle": "Recent toegevoegd",
+        "empty": "Nog geen bijlagen"
+      },
+      "category": {
+        "image": "Afbeeldingen",
+        "video": "Video's",
+        "audio": "Audio",
+        "office": "Documenten",
+        "other": "Overig"
+      }
+    }
+  },
   "projectAccess": {
     "crumb": "Toegang",
     "title": "Toegang",
@@ -1069,7 +1166,6 @@
       },
       "overviewCard": {
         "address": "Adres",
-        "contractor": "Aannemer",
         "status": "Status",
         "plannedStart": "Geplande start",
         "delivery": "Oplevering",
@@ -1462,9 +1558,15 @@
         "linkFromLibrary": "Koppelen uit bibliotheek"
       },
       "rapporten": {
-        "label": "Rapporten",
-        "eyebrow": "Gegenereerde documenten",
-        "subtitle": "Genereer en download indieningsklare PDF's"
+        "label": "Rapporten"
+      },
+      "nav": {
+        "eyebrow": "Kwaliteit & documenten",
+        "subtitle": "Open een eigen werkruimte",
+        "findingsDesc": "Kwaliteitsissues volgen en oplossen",
+        "certificatesDesc": "Conformiteitsdocumenten",
+        "attachmentsDesc": "Foto's, tekeningen en bestanden",
+        "reportsDesc": "Gegenereerde indieningsklare PDF's"
       },
       "deadlines": {
         "label": "Deadlines",
@@ -1988,21 +2090,6 @@
         "ready": "Gereed",
         "failed": "Mislukt"
       }
-    },
-    "tab": {
-      "searchPlaceholder": "Zoek rapporten…",
-      "generateMenu": "Meer rapporttypen",
-      "generateNewVersion": "Genereer nieuwe versie",
-      "versionHistory": "Versiegeschiedenis · {count} versies",
-      "noVersions": "Nog geen versies",
-      "emptyTitle": "Nog geen rapporten gegenereerd",
-      "emptyDescription": "Genereer een indieningsklare PDF om te beginnen.",
-      "noResults": "Geen rapporten komen overeen met je filters",
-      "justNow": "zojuist",
-      "minutesAgo": "{count}m geleden",
-      "hoursAgo": "{count}u geleden",
-      "daysAgo": "{count}d geleden",
-      "openPage": "Alle rapporten"
     },
     "hub": {
       "crumb": "Rapporten",
@@ -3496,6 +3583,7 @@
       "screenshot": "Schermafbeelding",
       "settings": "Instellingen",
       "spaces": "Ruimtes",
+      "minimap": "Plattegrond",
       "comingSoonSuffix": "{label} (binnenkort beschikbaar)",
       "pan": "Verschuiven",
       "panTooltip": "Verschuiven (sleep om te verplaatsen)",

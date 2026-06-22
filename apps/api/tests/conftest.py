@@ -92,12 +92,11 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         CaptureLink,
         ChecklistItem,
         ChecklistItemResult,
-        Contractor,
         Deadline,
         Job,
         Model,
         Notification,
-        NotificationRead,
+        NotificationUserState,
         Organization,
         OrganizationMember,
         Project,
@@ -299,7 +298,7 @@ async def _clean_tables(
                         "borgingsmomenten, borgingsplans, deadlines, "
                         "capture_links, blog_posts, "
                         "risks, access_requests, reports, jobs, project_files, models, "
-                        "project_members, projects, contractors, notification_reads, "
+                        "project_members, projects, notification_user_state, "
                         "notifications, audit_log, certificates, org_certificates, "
                         "organization_members, users, "
                         "organizations RESTART IDENTITY CASCADE"

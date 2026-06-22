@@ -76,7 +76,6 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
   const updatedLabel = formatDate(project.updated_at, locale, '');
   const deliveryLabel = project.delivery_date === null ? '' : formatDate(project.delivery_date, locale, '');
   const cityLine = project.city ?? null;
-  const contractorName = project.contractor_name ?? null;
   const sortedMembers = sortMembersForCard(members, project.owner_id);
   const avatarMembers = sortedMembers.map((m, i) => ({
     id: m.user_id,
@@ -253,19 +252,12 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
             </div>
 
             <div className="min-w-0 space-y-2 text-body3 text-primary-foreground/85">
-              {(cityLine !== null || contractorName !== null) && (
+              {cityLine !== null && (
                 <div className="flex flex-col gap-0.5">
-                  {cityLine !== null && (
-                    <span className="inline-flex min-w-0 items-center gap-1">
-                      <Icon icon={MapPin} size="xs" weight="regular" className="text-white/80" />
-                      <span className="line-clamp-1 break-all">{cityLine}</span>
-                    </span>
-                  )}
-                  {contractorName !== null && (
-                    <span className="line-clamp-2 break-all text-primary-foreground/75">
-                      {contractorName}
-                    </span>
-                  )}
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <Icon icon={MapPin} size="xs" weight="regular" className="text-white/80" />
+                    <span className="line-clamp-1 break-all">{cityLine}</span>
+                  </span>
                 </div>
               )}
 

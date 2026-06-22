@@ -55,7 +55,6 @@ from bimstitch_api.routers.compliance import (
 from bimstitch_api.routers.compliance import (
     router as compliance_router,
 )
-from bimstitch_api.routers.contractors import router as contractors_router
 from bimstitch_api.routers.deadline_notification_settings import (
     org_router as dl_notif_settings_org_router,
 )
@@ -286,7 +285,6 @@ def create_app() -> FastAPI:
     app.include_router(me_memberships_router)
     app.include_router(me_profile_router)
     app.include_router(projects_router)
-    app.include_router(contractors_router)
     app.include_router(models_router)
     app.include_router(project_files_router)
     app.include_router(project_viewer_router)
