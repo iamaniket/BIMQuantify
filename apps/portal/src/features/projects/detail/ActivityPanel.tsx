@@ -157,6 +157,9 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
     initialPageSize: PAGE_SIZE_OPTIONS[0],
     initialSort: { key: 'created_at', dir: 'desc' },
     enabled: projectId.length > 0,
+    // Catch events with no local mutation / WS push to this client (cross-user
+    // edits, background-sweep audit rows) when the user refocuses the tab.
+    refetchOnWindowFocus: true,
   });
 
   const columns: Column<ProjectActivityEntry>[] = [

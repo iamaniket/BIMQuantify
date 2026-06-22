@@ -5,6 +5,8 @@ import type { Plugin, ViewerContext, Vec3 } from '../../../core/types.js';
 import {
   MARKER_DIAMETER_PX,
   MARKER_RING_PX,
+  DRAFT_RING_COLOR,
+  DRAFT_HALO_CSS,
   findingFillColor,
   findingRingColor,
 } from '../../shared/findingMarkerStyle.js';
@@ -35,6 +37,11 @@ export interface EntityMarkerData {
   status?: string;
   /** Render at reduced opacity (e.g. not associated with the isolated object). */
   dimmed?: boolean;
+  /**
+   * Render as an unsaved draft preview (dashed accent ring + accent halo) — the
+   * "update finding pin" flow shows the staged position before it is saved.
+   */
+  draft?: boolean;
 }
 
 export interface EntityMarkerPluginAPI {
@@ -64,6 +71,20 @@ const ringFor = (data: EntityMarkerData): string => {
   if (data.type === 'finding') return findingRingColor(data.status);
   return '#fff';
 };
+
+// Border shorthand — a dashed accent ring for an unsaved draft, else a solid
+// status ring. The draft variant is what visually separates a staged-but-unsaved
+// pin from every persisted finding.
+const borderFor = (data: EntityMarkerData): string =>
+  data.draft
+    ? `${MARKER_RING_PX}px dashed ${DRAFT_RING_COLOR}`
+    : `${MARKER_RING_PX}px solid ${ringFor(data)}`;
+
+// Box-shadow — a draft adds a translucent accent halo on top of the base halo.
+const boxShadowFor = (data: EntityMarkerData): string =>
+  data.draft
+    ? `0 0 0 1px rgba(255,255,255,0.55), 0 0 0 5px ${DRAFT_HALO_CSS}, 0 1px 3px rgba(0,0,0,0.4)`
+    : '0 0 0 1px rgba(255,255,255,0.55), 0 1px 3px rgba(0,0,0,0.4)';
 
 export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
   let ctxRef: ViewerContext | null = null;
@@ -134,8 +155,8 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
       height: ${MARKER_DIAMETER_PX}px;
       border-radius: 50%;
       background: ${fillFor(data)};
-      border: ${MARKER_RING_PX}px solid ${ringFor(data)};
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.55), 0 1px 3px rgba(0,0,0,0.4);
+      border: ${borderFor(data)};
+      box-shadow: ${boxShadowFor(data)};
       transition: transform 150ms ease;
     `;
 
@@ -198,7 +219,8 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
     data: EntityMarkerData,
   ): void => {
     entry.circle.style.background = fillFor(data);
-    entry.circle.style.borderColor = ringFor(data);
+    entry.circle.style.border = borderFor(data);
+    entry.circle.style.boxShadow = boxShadowFor(data);
     entry.wrapper.style.opacity = data.dimmed ? DIMMED_OPACITY : '1';
     entry.data = data;
   };
@@ -240,9 +262,10 @@ export function entityMarkerPlugin(): Plugin & EntityMarkerPluginAPI {
         } else if (
           existing.data.status !== m.status ||
           existing.data.type !== m.type ||
-          existing.data.dimmed !== m.dimmed
+          existing.data.dimmed !== m.dimmed ||
+          existing.data.draft !== m.draft
         ) {
-          // Only the appearance changed (color / dim) — restyle in place.
+          // Only the appearance changed (color / dim / draft) — restyle in place.
           updateMarker(existing, m);
         }
       }

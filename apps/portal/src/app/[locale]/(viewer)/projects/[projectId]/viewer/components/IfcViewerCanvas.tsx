@@ -5,7 +5,7 @@ import type React from 'react';
 import { type JSX } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
 import { MinimapView } from '@/features/viewer/3d/minimap/MinimapView';
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
@@ -49,6 +49,10 @@ export interface IfcViewerCanvasProps {
   fileId: string;
   onFindingClick: (finding: Finding) => void;
   onRequestFloorPlanInspector: (view: 'findings') => void;
+  /** Surface the floor-plan handle up so the inspector can pin on the plan (2D). */
+  onFpHandle?: ((handle: FloorPlanViewerHandle | null) => void) | undefined;
+  /** Report the active storey elevation for the plan-pick → world conversion. */
+  onFpActiveElevationChange?: ((elevation: number | null) => void) | undefined;
 }
 
 export function IfcViewerCanvas({
@@ -80,6 +84,8 @@ export function IfcViewerCanvas({
   fileId,
   onFindingClick,
   onRequestFloorPlanInspector,
+  onFpHandle,
+  onFpActiveElevationChange,
 }: IfcViewerCanvasProps): JSX.Element {
   const ifcViewerEl = (
     <IfcViewer
@@ -209,6 +215,8 @@ export function IfcViewerCanvas({
             viewMode={viewMode}
             onFindingClick={onFindingClick}
             onRequestInspector={onRequestFloorPlanInspector}
+            onFpHandle={onFpHandle}
+            onActiveElevationChange={onFpActiveElevationChange}
           />
         </div>
       ) : null}

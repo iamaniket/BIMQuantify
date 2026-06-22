@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import { useDeleteFinding } from '@/features/findings/useDeleteFinding';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
+import { useFindingPinPreviewStore } from '@/features/viewer/shared/findingPinPreviewStore';
 import { useProjectPermissions } from '@/features/permissions';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useRegisterField } from '@/hooks/useRegisterField';
@@ -186,6 +187,8 @@ export function useFindingDetailForm(
   // removed the anchor; `{...}` = user placed/updated the anchor. Committed to
   // the server only when the form is saved, so the panel stays open.
   const [pendingAnchor, setPendingAnchor] = useState<LocalAnchor | undefined>(undefined);
+  const setPinPreview = useFindingPinPreviewStore((s) => s.setPreview);
+  const clearPinPreview = useFindingPinPreviewStore((s) => s.clear);
 
   const form = useForm<FindingDetailFormValues>({ resolver: zodResolver(FindingDetailFormSchema) });
   const { reset: resetForm } = form;
@@ -221,6 +224,49 @@ export function useFindingDetailForm(
     setPendingAnchor(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finding?.id, finding?.updated_at, resetForm]);
+
+  // Mirror the staged anchor into the viewer's draft-marker store so a re-picked
+  // pin shows immediately (before Save). `undefined` = no local change → clear;
+  // `null` = staged removal; otherwise the staged ifc/pdf anchor.
+  useEffect(() => {
+    if (finding === null) return;
+    const fid = finding.id;
+    if (pendingAnchor === undefined) {
+      clearPinPreview(fid);
+      return;
+    }
+    if (pendingAnchor === null) {
+      setPinPreview({ findingId: fid, anchor: null, label: finding.title, status: finding.status });
+      return;
+    }
+    const a = pendingAnchor;
+    if (a.linked_file_type === 'ifc' && a.anchor_x != null && a.anchor_y != null && a.anchor_z != null) {
+      setPinPreview({
+        findingId: fid,
+        anchor: { kind: 'ifc', x: a.anchor_x, y: a.anchor_y, z: a.anchor_z },
+        label: finding.title,
+        status: finding.status,
+      });
+    } else if (a.linked_file_type === 'pdf' && a.anchor_x != null && a.anchor_y != null && a.anchor_page != null) {
+      setPinPreview({
+        findingId: fid,
+        anchor: { kind: 'pdf', x: a.anchor_x, y: a.anchor_y, page: a.anchor_page },
+        label: finding.title,
+        status: finding.status,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finding?.id, finding?.title, finding?.status, pendingAnchor, setPinPreview, clearPinPreview]);
+
+  // Drop the draft preview when this finding collapses or a different one opens
+  // (the id-guarded clear leaves a newly-mounted finding's preview intact).
+  useEffect(() => {
+    const fid = finding?.id;
+    return () => {
+      if (fid !== undefined) clearPinPreview(fid);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finding?.id]);
 
   const members = membersQuery.data ?? [];
   const assigneeValue = form.watch('assignee_user_id');
@@ -262,9 +308,12 @@ export function useFindingDetailForm(
 
   const mutateWithSaved = (input: FindingUpdateInput): void => {
     if (finding === null) return;
+    const id = finding.id;
     updateMutation.mutate(
-      { findingId: finding.id, input },
-      { onSuccess: () => { onSaved?.(); } },
+      { findingId: id, input },
+      // Drop the draft preview on success; the refetched finding carries the new
+      // anchor, so the persisted marker takes over (merge de-dupes by id).
+      { onSuccess: () => { clearPinPreview(id); onSaved?.(); } },
     );
   };
 

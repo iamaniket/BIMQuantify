@@ -1631,7 +1631,10 @@
         "coords2d": "({x}, {y})",
         "placementHintPdf": "Click on the drawing to place the pin",
         "placementHintIfc": "Click on the model to place the pin",
-        "placing": "Placing…"
+        "placing": "Placing…",
+        "updateBanner": "Click in the model to set the finding's position",
+        "updateHint": "Click an element or point — Esc to cancel",
+        "updateHintPdf": "Click on the drawing to set the position — Esc to cancel"
       },
       "history": {
         "title": "History",

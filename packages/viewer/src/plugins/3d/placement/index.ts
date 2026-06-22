@@ -30,6 +30,13 @@ export interface PlacementPluginAPI {
 export interface PlacementEnterArgs {
   /** Exit automatically after the first successful pick. Default: false. */
   oneShot?: boolean;
+  /**
+   * Keep the current selection instead of clearing it on enter. Default: false.
+   * The portal's "update finding pin" flow sets this: the inspector is scoped to
+   * the selected element, so clearing the selection would re-scope the panel and
+   * unmount the open finding mid-pick.
+   */
+  keepSelection?: boolean;
 }
 
 export function placementPlugin(): Plugin & PlacementPluginAPI {
@@ -40,7 +47,9 @@ export function placementPlugin(): Plugin & PlacementPluginAPI {
 
   const enter = async (args: unknown): Promise<void> => {
     if (!ctxRef || active) return;
-    oneShot = (args as PlacementEnterArgs | undefined)?.oneShot ?? false;
+    const a = args as PlacementEnterArgs | undefined;
+    oneShot = a?.oneShot ?? false;
+    const keepSelection = a?.keepSelection ?? false;
 
     const bindings = await ctxRef.commands.execute<
       undefined,
@@ -53,7 +62,9 @@ export function placementPlugin(): Plugin & PlacementPluginAPI {
       gesture: 'click:left',
       command: 'placement.pick',
     });
-    await ctxRef.commands.execute('selection.clear').catch(() => undefined);
+    if (!keepSelection) {
+      await ctxRef.commands.execute('selection.clear').catch(() => undefined);
+    }
 
     active = true;
     ctxRef.events.emit('placement:change', { active: true });

@@ -24,6 +24,9 @@ import type {
 import {
   MARKER_DIAMETER_PX,
   MARKER_RING_PX,
+  DRAFT_RING_COLOR,
+  DRAFT_HALO_SCALE,
+  DRAFT_HALO_ALPHA,
   findingFillColor,
   findingRingColor,
 } from '../../shared/findingMarkerStyle.js';
@@ -49,6 +52,11 @@ export interface EntityMarker2DData {
   entityId: string;
   /** Finding lifecycle status — drives the glyph color for findings. */
   status?: string;
+  /**
+   * Render as an unsaved draft preview (accent ring + translucent accent halo) —
+   * the "update finding pin" flow shows the staged position before it is saved.
+   */
+  draft?: boolean;
 }
 
 export interface EntityMarker2DAPI {
@@ -81,10 +89,11 @@ function fillMesh(
   color: THREE.ColorRepresentation,
   markerId: string,
   renderOrder: number,
+  opacity = 1,
 ): THREE.Mesh {
   const mesh = new THREE.Mesh(
     new THREE.ShapeGeometry(new THREE.Shape(perimeter)),
-    new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true }),
+    new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity }),
   );
   mesh.renderOrder = renderOrder;
   mesh.frustumCulled = false;
@@ -113,18 +122,28 @@ function outlineLoop(
 }
 
 /** Build the finding glyph objects for a marker, tagged with `markerId`. */
-function buildGlyph(markerId: string, status?: string): THREE.Object3D[] {
+function buildGlyph(markerId: string, status?: string, draft?: boolean): THREE.Object3D[] {
   // Concentric discs: a status-colored fill inside a ring (red while open,
   // neutral once resolved), plus a white hairline for separation on busy
   // backgrounds. The ring is a filled disc rather than a thick line because
   // WebGL does not render line widths above 1px reliably across platforms.
   const outer = circlePerimeter(GLYPH_R);
   const inner = circlePerimeter(GLYPH_R - MARKER_RING_PX);
-  return [
-    fillMesh(outer, findingRingColor(status), markerId, RENDER_ORDER),
+  // A draft uses the accent ring + a translucent accent halo behind the glyph so
+  // a staged-but-unsaved pin reads clearly apart from every persisted finding.
+  const ring = draft ? DRAFT_RING_COLOR : findingRingColor(status);
+  const objs: THREE.Object3D[] = [];
+  if (draft) {
+    objs.push(
+      fillMesh(circlePerimeter(GLYPH_R * DRAFT_HALO_SCALE), DRAFT_RING_COLOR, markerId, RENDER_ORDER - 1, DRAFT_HALO_ALPHA),
+    );
+  }
+  objs.push(
+    fillMesh(outer, ring, markerId, RENDER_ORDER),
     fillMesh(inner, findingFillColor(status), markerId, RENDER_ORDER + 1),
     outlineLoop(outer, 0xffffff, markerId, RENDER_ORDER + 2),
-  ];
+  );
+  return objs;
 }
 
 export function entityMarker2DPlugin(): DocumentPlugin & EntityMarker2DAPI {
@@ -164,7 +183,7 @@ export function entityMarker2DPlugin(): DocumentPlugin & EntityMarker2DAPI {
     if (!layer) return;
     const group = new THREE.Group();
     group.userData['markerId'] = data.id;
-    for (const obj of buildGlyph(data.id, data.status)) group.add(obj);
+    for (const obj of buildGlyph(data.id, data.status, data.draft)) group.add(obj);
     layer.add(group);
     const entry: MarkerEntry = { data, group };
     markers.set(data.id, entry);
@@ -299,6 +318,7 @@ export function entityMarker2DPlugin(): DocumentPlugin & EntityMarker2DAPI {
           existing.data.y !== m.y ||
           existing.data.type !== m.type ||
           existing.data.status !== m.status ||
+          existing.data.draft !== m.draft ||
           existing.data.label !== m.label ||
           existing.data.entityId !== m.entityId
         ) {

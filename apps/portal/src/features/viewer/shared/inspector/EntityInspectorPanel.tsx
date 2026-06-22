@@ -4,8 +4,10 @@ import { Info } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
+import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
+import type { ConvertFloorPlanPoint } from '@/features/projects/detail/FindingPinButton';
 import { ContextLine } from '@/components/shared/viewer/shared/ContextLine';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { federatedModelId } from '@/features/viewer/3d/federation/federatedModelId';
@@ -40,6 +42,12 @@ type EntityInspectorPanelProps = {
   floorPlan?: boolean;
   documentHandle?: DocumentViewerHandle | null | undefined;
   viewerHandle?: ViewerHandle | null | undefined;
+  /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
+  viewMode?: ViewMode | undefined;
+  /** Floor-plan handle (2D plan surface) for picking in 2D mode. */
+  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Convert a normalized plan point to a 3D world anchor. */
+  convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
   onNavigateToPage?: ((page: number) => void) | undefined;
 };
 
@@ -65,6 +73,9 @@ export function EntityInspectorPanel({
   floorPlan,
   documentHandle,
   viewerHandle,
+  viewMode,
+  floorPlanHandle,
+  convertFloorPlanPoint,
   onNavigateToPage,
 }: EntityInspectorPanelProps): JSX.Element {
   const t = useTranslations('viewerInspector');
@@ -167,6 +178,9 @@ export function EntityInspectorPanel({
         activeModelId={modelId}
         activeFileId={fileId}
         resolvePickedGlobalId={resolvePickedGlobalId}
+        viewMode={viewMode}
+        floorPlanHandle={floorPlanHandle}
+        convertFloorPlanPoint={convertFloorPlanPoint}
       />
     );
   } else if (isProjectMode) {
@@ -187,6 +201,9 @@ export function EntityInspectorPanel({
         activeModelId={modelId}
         activeFileId={fileId}
         resolvePickedGlobalId={resolvePickedGlobalId}
+        viewMode={viewMode}
+        floorPlanHandle={floorPlanHandle}
+        convertFloorPlanPoint={convertFloorPlanPoint}
       />
     );
   } else if (element !== null) {
@@ -208,6 +225,9 @@ export function EntityInspectorPanel({
           activeModelId={modelId}
           activeFileId={fileId}
           resolvePickedGlobalId={resolvePickedGlobalId}
+          viewMode={viewMode}
+          floorPlanHandle={floorPlanHandle}
+          convertFloorPlanPoint={convertFloorPlanPoint}
         />
       );
   } else {

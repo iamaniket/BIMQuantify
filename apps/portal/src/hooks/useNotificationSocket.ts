@@ -8,6 +8,7 @@ import {
   notificationsKey,
   unreadCountKey,
 } from '@/features/notifications/queryKeys';
+import { isProjectActivityQueryKey } from '@/features/projects/queryKeys';
 
 const MAX_RECONNECT_DELAY = 30_000;
 
@@ -21,6 +22,12 @@ export function useNotificationSocket(accessToken: string | null): void {
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: notificationsKey }).catch(() => undefined);
     qc.invalidateQueries({ queryKey: unreadCountKey }).catch(() => undefined);
+    // Server-side completions (e.g. model conversion → job_succeeded/job_failed)
+    // arrive over this socket; refresh the mounted project-activity feed too so
+    // it reflects the new audit row without a reload.
+    qc.invalidateQueries({
+      predicate: (q) => isProjectActivityQueryKey(q.queryKey),
+    }).catch(() => undefined);
   }, [qc]);
 
   useEffect(() => {

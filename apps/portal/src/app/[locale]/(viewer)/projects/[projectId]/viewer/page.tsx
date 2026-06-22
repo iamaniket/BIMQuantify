@@ -21,6 +21,7 @@ import type {
   DocumentActiveTool,
   DocumentRotation,
   DocumentViewerHandle,
+  FloorPlanViewerHandle,
   MarkupTool,
   ViewerHandle,
 } from '@bimstitch/viewer';
@@ -145,6 +146,11 @@ export default function ViewerPage(): JSX.Element {
   const [pdfRotation, setPdfRotation] = useState<DocumentRotation>(0);
   const [pdfSettings, setPdfSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
+  // Floor-plan handle + active storey elevation, surfaced from the plan pane so
+  // the inspector's "update pin" can pick on the plan (2D mode) and lift the
+  // picked point to a 3D world anchor at the right floor.
+  const [fpHandle, setFpHandle] = useState<FloorPlanViewerHandle | null>(null);
+  const [fpElevation, setFpElevation] = useState<number | null>(null);
   const [mobileBannerDismissed, setMobileBannerDismissed] = useState(() => {
     if (typeof window === 'undefined') return true;
     return sessionStorage.getItem('bimstitch.viewerMobileBanner') === 'dismissed';
@@ -635,6 +641,32 @@ export default function ViewerPage(): JSX.Element {
     setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1, surface: 'floorplan' }));
   }, []);
 
+  // Lift a normalized plan point (from a 2D guided pick) to a 3D world anchor:
+  // plan-point via the floor-plan engine, then world via the minimap calibration
+  // at the active storey elevation. Mirrors FloorPlanPane.handleAddFinding.
+  const convertFloorPlanPoint = useCallback(
+    async (norm: { x: number; y: number }): Promise<{ x: number; y: number; z: number } | null> => {
+      const vh = viewerHandleRef.current;
+      if (!fpHandle || !vh) return null;
+      const plan = await fpHandle.commands
+        .execute<{ planX: number; planY: number } | null>('floorplan.planPointAtNorm', {
+          nx: norm.x,
+          ny: norm.y,
+        })
+        .catch(() => null);
+      if (!plan) return null;
+      const world = await vh.commands
+        .execute<{ x: number; y: number; z: number } | null>('minimap.planToWorld', {
+          planX: plan.planX,
+          planY: plan.planY,
+          elevation: fpElevation ?? 0,
+        })
+        .catch(() => null);
+      return world ?? null;
+    },
+    [fpHandle, fpElevation],
+  );
+
   useDocumentShortcuts({
     enabled: isPdf && documentHandle !== null,
     shortcuts: pdfSettings.shortcuts,
@@ -744,6 +776,8 @@ export default function ViewerPage(): JSX.Element {
         fileId={fileId}
         onFindingClick={openFindingInInspector}
         onRequestFloorPlanInspector={handleFloorPlanInspector}
+        onFpHandle={setFpHandle}
+        onFpActiveElevationChange={setFpElevation}
       />
     );
   }
@@ -793,6 +827,9 @@ export default function ViewerPage(): JSX.Element {
                   floorPlan={inspectorRequest?.surface === 'floorplan' && viewMode !== '3d'}
                   documentHandle={documentHandle}
                   viewerHandle={viewerHandleRef.current}
+                  viewMode={viewMode}
+                  floorPlanHandle={fpHandle}
+                  convertFloorPlanPoint={convertFloorPlanPoint}
                   onNavigateToPage={isPdf ? setPdfCurrentPage : undefined}
                   {...(isPdf ? {
                     isPdf: true,

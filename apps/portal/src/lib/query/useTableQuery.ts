@@ -88,6 +88,9 @@ type UseTableQueryOptions<TItem, TFilters extends Record<string, unknown>> = {
   initialPageSize?: number;
   initialSort?: SortState;
   enabled?: boolean;
+  /** Override the global `refetchOnWindowFocus: false` for this list — e.g. the
+   * activity feed opts in so it refreshes when the user refocuses the tab. */
+  refetchOnWindowFocus?: boolean;
 };
 
 /**
@@ -106,6 +109,7 @@ export function useTableQuery<TItem, TFilters extends Record<string, unknown>>(
     initialPageSize = DEFAULT_PAGE_SIZE,
     initialSort = null,
     enabled,
+    refetchOnWindowFocus,
   } = options;
 
   const { tokens } = useAuth();
@@ -153,6 +157,7 @@ export function useTableQuery<TItem, TFilters extends Record<string, unknown>>(
     },
     enabled: accessToken !== null && (enabled ?? true),
     placeholderData: keepPreviousData,
+    ...(refetchOnWindowFocus !== undefined ? { refetchOnWindowFocus } : {}),
   });
 
   const rows = query.data?.data ?? [];

@@ -11,6 +11,8 @@ export interface EntityMarker2D {
   entityId: string;
   /** Finding lifecycle status — drives the marker color. */
   status?: FindingStatusValue;
+  /** Staged-but-unsaved preview pin — renders with the distinct draft style. */
+  draft?: boolean;
 }
 
 export interface EntityMarker3D {
@@ -25,4 +27,6 @@ export interface EntityMarker3D {
   status?: FindingStatusValue;
   /** Render dimmed (not associated with the isolated object). */
   dimmed?: boolean;
+  /** Staged-but-unsaved preview pin — renders with the distinct draft style. */
+  draft?: boolean;
 }

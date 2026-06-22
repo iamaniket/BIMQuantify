@@ -21,23 +21,45 @@ export interface PickResult {
   raw: FRAGS.RaycastResult;
 }
 
+/**
+ * NDC → client-pixel coords for `FragmentsModel.raycast*`. The library expects
+ * `mouse` in **client pixels** (it does its own client→NDC conversion using
+ * `getBoundingClientRect`); passing NDC here yields a silent miss after the
+ * second conversion. Uses `rect.width/height` (not `clientWidth/clientHeight`)
+ * to stay consistent with `clientToNdc`.
+ */
+function ndcToClientMouse(
+  canvas: HTMLCanvasElement,
+  ndc: { x: number; y: number },
+): THREE.Vector2 {
+  const rect = canvas.getBoundingClientRect();
+  return new THREE.Vector2(
+    ((ndc.x + 1) / 2) * rect.width + rect.left,
+    ((1 - ndc.y) / 2) * rect.height + rect.top,
+  );
+}
+
+function toPickResult(
+  ctx: ViewerContext,
+  model: FRAGS.FragmentsModel,
+  result: FRAGS.RaycastResult,
+): PickResult {
+  return {
+    item: { modelId: getModelId(ctx, model), localId: result.localId },
+    point: { x: result.point.x, y: result.point.y, z: result.point.z },
+    distance: result.distance,
+    model,
+    raw: result,
+  };
+}
+
 export async function pick(
   ctx: ViewerContext,
   ndc: { x: number; y: number },
 ): Promise<PickResult | null> {
   const camera = ctx.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
   const canvas = ctx.canvas;
-  // `FragmentsModel.raycast` expects `mouse` in **client pixel** coords
-  // (it does its own client→NDC conversion using `getBoundingClientRect`
-  // and `clientWidth`/`clientHeight`). Passing NDC here yields a silent
-  // miss after the library's second conversion. Convert NDC → client
-  // pixels for the canvas. Use `rect.width/height` (not `clientWidth/
-  // clientHeight`) to stay consistent with `clientToNdc`.
-  const rect = canvas.getBoundingClientRect();
-  const mouse = new THREE.Vector2(
-    ((ndc.x + 1) / 2) * rect.width + rect.left,
-    ((1 - ndc.y) / 2) * rect.height + rect.top,
-  );
+  const mouse = ndcToClientMouse(canvas, ndc);
 
   let best: PickResult | null = null;
   for (const model of ctx.models().values()) {
@@ -49,16 +71,43 @@ export async function pick(
     }
     if (!result) continue;
     if (!best || result.distance < best.distance) {
-      best = {
-        item: { modelId: getModelId(ctx, model), localId: result.localId },
-        point: { x: result.point.x, y: result.point.y, z: result.point.z },
-        distance: result.distance,
-        model,
-        raw: result,
-      };
+      best = toPickResult(ctx, model, result);
     }
   }
   return best;
+}
+
+/**
+ * Like {@link pick}, but returns **every** surface the ray crosses across all
+ * models, sorted near→far. Backed by `FragmentsModel.raycastAll`, which (unlike
+ * `raycast`) does not stop at the first hit — so callers can see through a wall
+ * to the geometry behind it. Used by the pivot-rotate plugin to choose an orbit
+ * point that respects selection / x-ray rather than blindly grabbing the
+ * closest surface. Results are NOT pre-sorted by the library, so we sort here.
+ */
+export async function pickAll(
+  ctx: ViewerContext,
+  ndc: { x: number; y: number },
+): Promise<PickResult[]> {
+  const camera = ctx.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  const canvas = ctx.canvas;
+  const mouse = ndcToClientMouse(canvas, ndc);
+
+  const hits: PickResult[] = [];
+  for (const model of ctx.models().values()) {
+    let results: FRAGS.RaycastResult[] | null;
+    try {
+      results = await model.raycastAll({ camera, mouse, dom: canvas });
+    } catch {
+      continue;
+    }
+    if (!results) continue;
+    for (const result of results) {
+      hits.push(toPickResult(ctx, model, result));
+    }
+  }
+  hits.sort((a, b) => a.distance - b.distance);
+  return hits;
 }
 
 /** Reverse-lookup the modelId for a model. The map keys it. */

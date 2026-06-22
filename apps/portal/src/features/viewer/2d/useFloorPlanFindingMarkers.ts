@@ -100,6 +100,7 @@ export function useFloorPlanFindingMarkers(opts: FloorPlanFindingMarkersOptions)
           label: m.label,
           entityId: m.entityId,
           ...(m.status ? { status: m.status } : {}),
+          ...(m.draft ? { draft: true } : {}),
         });
       });
 

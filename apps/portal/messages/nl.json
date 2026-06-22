@@ -1631,7 +1631,10 @@
         "coords2d": "({x}, {y})",
         "placementHintPdf": "Klik op de tekening om de pin te plaatsen",
         "placementHintIfc": "Klik op het model om de pin te plaatsen",
-        "placing": "Plaatsen…"
+        "placing": "Plaatsen…",
+        "updateBanner": "Klik in het model om de positie van de bevinding in te stellen",
+        "updateHint": "Klik op een element of punt — Esc om te annuleren",
+        "updateHintPdf": "Klik op de tekening om de positie in te stellen — Esc om te annuleren"
       },
       "history": {
         "title": "Geschiedenis",

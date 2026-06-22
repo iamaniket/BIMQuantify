@@ -83,7 +83,7 @@ describe('FindingPinButton visibility', () => {
 });
 
 describe('FindingPinButton placement', () => {
-  it('stamps active model/file and auto-links the picked element on pick', () => {
+  it('arms a guided pick that keeps the selection, then stamps the resolved point', () => {
     const onAnchorChange = vi.fn();
     const viewer = fakeViewerHandle();
     const resolvePickedGlobalId = (item: PickedItem) =>
@@ -99,8 +99,15 @@ describe('FindingPinButton placement', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /pin to model/i }));
+    // The guided overlay keeps the selection so the inspector stays scoped.
+    expect(viewer.handle.commands.execute).toHaveBeenCalledWith(
+      'interaction.request',
+      expect.objectContaining({ keepSelection: true }),
+    );
+
     act(() => {
-      viewer.emit('point:picked', {
+      viewer.emit('interaction:resolved', {
+        kind: 'point',
         point: { x: 1, y: 2, z: 3 },
         item: { modelId: 'file-file-1', localId: 42 },
       });
@@ -132,7 +139,11 @@ describe('FindingPinButton placement', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /pin to model/i }));
     act(() => {
-      viewer.emit('point:picked', { point: { x: 4, y: 5, z: 6 }, item: null });
+      viewer.emit('interaction:resolved', {
+        kind: 'point',
+        point: { x: 4, y: 5, z: 6 },
+        item: null,
+      });
     });
 
     expect(onAnchorChange).toHaveBeenCalledWith({
@@ -143,5 +154,24 @@ describe('FindingPinButton placement', () => {
       linked_file_id: 'file-1',
       linked_model_id: 'model-1',
     });
+  });
+
+  it('does not change the anchor when the pick is cancelled', () => {
+    const onAnchorChange = vi.fn();
+    const viewer = fakeViewerHandle();
+
+    renderButton({
+      fileType: null,
+      viewerHandle: viewer.handle,
+      linkFileId: 'file-1',
+      onAnchorChange,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /pin to model/i }));
+    act(() => {
+      viewer.emit('interaction:cancelled', undefined);
+    });
+
+    expect(onAnchorChange).not.toHaveBeenCalled();
   });
 });

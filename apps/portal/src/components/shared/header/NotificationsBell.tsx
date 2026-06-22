@@ -1,7 +1,7 @@
 'use client';
 
 import { IconButton } from '@bimstitch/ui';
-import { AlertTriangle, Bell, CheckCircle2, Clock, Loader2, Mail, RefreshCw, Search, UserPlus, X } from '@bimstitch/ui/icons';
+import { AlertTriangle, Bell, Check, CheckCircle2, Clock, Loader2, Mail, RefreshCw, Search, Trash2, UserPlus, X, XCircle } from '@bimstitch/ui/icons';
 import {
   useEffect, useRef, useState, type JSX,
 } from 'react';
@@ -188,12 +188,13 @@ function NotificationRow({
           size="sm"
           aria-label={t('dismiss')}
           title={t('dismiss')}
+          className="hover:bg-error-lighter hover:text-error"
           onClick={(e) => {
             e.stopPropagation();
             onDismiss(n.id);
           }}
         >
-          <X className="h-3 w-3" aria-hidden />
+          <XCircle className="h-[18px] w-[18px]" aria-hidden />
         </IconButton>
         {n.is_read ? null : (
           <span className="h-[7px] w-[7px] rounded-full bg-primary" />
@@ -300,8 +301,9 @@ export function NotificationsBell(): JSX.Element {
                 onClick={() => {
                   markAll.mutate();
                 }}
-                className="rounded p-1 text-[11px] font-semibold text-primary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-semibold text-primary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
               >
+                <Check className="h-3.5 w-3.5" aria-hidden />
                 {t('markAllRead')}
               </button>
               <button
@@ -310,8 +312,9 @@ export function NotificationsBell(): JSX.Element {
                 onClick={() => {
                   clearAll.mutate();
                 }}
-                className="rounded p-1 text-[11px] font-semibold text-foreground-secondary hover:bg-background-hover disabled:cursor-default disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-semibold text-foreground-secondary hover:bg-error-lighter hover:text-error disabled:cursor-default disabled:opacity-40"
               >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
                 {t('clearAll')}
               </button>
             </div>
