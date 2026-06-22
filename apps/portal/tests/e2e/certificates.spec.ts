@@ -119,9 +119,11 @@ async function uploadCertificate(
   await expect(dialog).toBeHidden();
 }
 
-/** The table row whose product/file cell contains `text`. */
+/** The table row whose product/file cell contains `text`. Uses `.filter()` —
+ * `getByRole()` does not accept a `has`/`hasText` option, so filtering must be a
+ * separate step or the role match is unconstrained (every <tr>, header included). */
 function rowFor(page: Page, text: string) {
-  return page.getByRole('row', { has: page.getByText(text) });
+  return page.getByRole('row').filter({ hasText: text });
 }
 
 // ── Suite ──────────────────────────────────────────────────────────────

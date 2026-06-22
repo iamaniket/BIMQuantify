@@ -242,6 +242,152 @@ test.describe.serial('Request-access journey', () => {
 });
 
 // =============================================================================
+// Pilot-questions journey — proves the optional pilot-qualification answers
+// (monthly budget, start timeline, projects/year, live-project commitment)
+// survive the round-trip from the public form into the portal admin.
+//
+// There are no dedicated columns for these — `RequestAccessForm` folds them
+// into the free-text `notes` blob via `composeAccessRequestNotes()`. So
+// "getting all the pilot info in the portal" means: (P1) the browser sends a
+// `notes` body carrying every answer, and (P2) the admin sees every answer
+// when the request row is expanded.
+//
+// Placed BEFORE the duplicate block so its single public submission is only
+// the 2nd POST /access-requests of the run, comfortably inside the 5/hour
+// per-IP rate limit (ACCESS_REQUEST_RATE_LIMITER).
+// =============================================================================
+
+test.describe.serial('Request-access pilot questions', () => {
+  const PILOT_RUN = `${Date.now().toString(36)}p`;
+  // The full-name regex requires unicode letters only — map 0-9 → a-j for any
+  // token derived from the (digit-bearing) run id.
+  const PILOT_RUN_LETTERS = PILOT_RUN.replace(/[0-9]/g, (d) =>
+    String.fromCharCode(97 + Number(d)),
+  );
+  const pilotState = {
+    requesterName: `Sanne ${PILOT_RUN_LETTERS}`,
+    requesterEmail: `e2e-pilot-${PILOT_RUN}@bimdossier-e2e.nl`,
+    requesterCompany: `BAM ${PILOT_RUN_LETTERS}`,
+    role: 'BIM Manager / BIM-coördinator',
+    // Free-text goal carrying the run id so the P2 assertion can't collide with
+    // notes left by any other row in the shared test DB.
+    goal: `Pilot E2E goal ${PILOT_RUN}: faster federated IFC review and a clean dossier export.`,
+  };
+
+  test.beforeAll(async () => {
+    // Health gate so a missing API surfaces immediately rather than as a
+    // confusing 30s timeout on the first navigation.
+    const healthRes = await fetch(`${E2E_ENV.API_URL}/health`, {
+      signal: AbortSignal.timeout(10_000),
+    }).catch((err: unknown) => {
+      throw new Error(
+        `API unreachable at ${E2E_ENV.API_URL}/health — is globalSetup running? ` +
+          `(${err instanceof Error ? err.message : err})`,
+      );
+    });
+    if (!healthRes.ok) {
+      throw new Error(`API returned HTTP ${healthRes.status} — expected 200`);
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // P1 — anonymous submission with every optional pilot question answered
+  // ---------------------------------------------------------------------------
+
+  test('P1: anonymous user submits with all pilot questions answered', async ({ page }) => {
+    await page.goto('/en/request-access');
+
+    const nameInput = page.locator('input[autocomplete="name"]');
+    await expect(nameInput).toBeVisible({ timeout: 30_000 });
+
+    await nameInput.fill(pilotState.requesterName);
+    await page.locator('input[autocomplete="email"]').fill(pilotState.requesterEmail);
+    await page.locator('input[autocomplete="organization"]').fill(pilotState.requesterCompany);
+
+    // Seven <select> controls render in DOM order:
+    //   0 role · 1 company_size · 2 country
+    //   3 budget · 4 timeline · 5 project_volume · 6 live_commitment
+    const selects = page.locator('form select');
+    await selects.nth(0).selectOption({ label: pilotState.role });
+    await selects.nth(1).selectOption('201-500');
+    await selects.nth(2).selectOption('NL');
+    // The optional pilot-qualification answers — selected by option value.
+    await selects.nth(3).selectOption('149'); // Monthly budget → €149/month
+    await selects.nth(4).selectOption('1-3m'); // Start timeline → Within 1–3 months
+    await selects.nth(5).selectOption('21-50'); // Projects/year → 21–50
+    await selects.nth(6).selectOption('yes'); // Live project → Yes, ready to go
+
+    await page.locator('form textarea').fill(pilotState.goal);
+    await page.locator('input[type="checkbox"]').check();
+
+    const [submitResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/access-requests') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      page.getByRole('button', { name: 'Apply to join the pilot' }).click(),
+    ]);
+    if (!submitResp.ok()) {
+      throw new Error(
+        `submit /access-requests returned ${submitResp.status()}: ${await submitResp.text()}`,
+      );
+    }
+
+    // Assert the composed `notes` the browser actually sent carries every pilot
+    // answer. Pinning this client-side means a P2 miss can only be the admin
+    // render, never the compose step. `.` stands in for the en-dash so the
+    // assertion doesn't hinge on the exact dash codepoint.
+    const sentNotes =
+      (submitResp.request().postDataJSON() as { notes?: string }).notes ?? '';
+    expect(sentNotes).toContain('Pilot questions');
+    expect(sentNotes).toMatch(/Budget: €149\/month/);
+    expect(sentNotes).toMatch(/Start: Within 1.3 months/);
+    expect(sentNotes).toMatch(/Projects\/year: 21.50/);
+    expect(sentNotes).toContain('Live project: Yes, ready to go');
+    expect(sentNotes).toContain(pilotState.goal);
+
+    await expect(page.getByText('Application received')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(pilotState.requesterEmail)).toBeVisible();
+  });
+
+  // ---------------------------------------------------------------------------
+  // P2 — admin sees every pilot answer (structured fields + folded notes)
+  // ---------------------------------------------------------------------------
+
+  test('P2: super admin sees all the pilot info in the portal', async ({ page }) => {
+    const { email, password } = requireSuperAdminCreds();
+    await loginViaAPI(page, email, password);
+
+    await page.goto('/en/admin/access-requests');
+
+    // Narrow to this run's row by its unique email so assertions are robust
+    // against any pre-existing rows in the shared test DB.
+    const search = page.getByPlaceholder(/search by name, email, or company/i);
+    await expect(search).toBeVisible({ timeout: 15_000 });
+    await search.fill(pilotState.requesterEmail);
+
+    // Structured columns round-tripped into the table.
+    await expect(page.getByText(pilotState.requesterEmail)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(pilotState.requesterName)).toBeVisible();
+    await expect(page.getByText(pilotState.requesterCompany).first()).toBeVisible();
+    await expect(page.getByText(pilotState.role).first()).toBeVisible();
+
+    // Expand the row to reveal the free-text notes blob.
+    await page.getByRole('button', { name: 'Show details' }).first().click();
+
+    // Every pilot answer composeAccessRequestNotes folded in is visible to the
+    // reviewer. getByText normalizes whitespace, so the multi-line notes blob
+    // matches each line as a substring; `.` stands in for the en-dash.
+    await expect(page.getByText('Pilot questions')).toBeVisible();
+    await expect(page.getByText(/Budget:\s*€149\/month/)).toBeVisible();
+    await expect(page.getByText(/Start:\s*Within 1.3 months/)).toBeVisible();
+    await expect(page.getByText(/Projects\/year:\s*21.50/)).toBeVisible();
+    await expect(page.getByText(/Live project:\s*Yes, ready to go/)).toBeVisible();
+    await expect(page.getByText(new RegExp(`Pilot E2E goal ${PILOT_RUN}`))).toBeVisible();
+  });
+});
+
+// =============================================================================
 // Duplicate-handling journey — runs AFTER the main flow above so it can reuse
 // the org + AR row created in R3 to drive the org-name-taken assertion.
 // =============================================================================
