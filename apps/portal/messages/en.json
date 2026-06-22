@@ -2396,13 +2396,6 @@
   "dashboardFooter": {
     "copyright": "© {year} {brand}"
   },
-  "pwaInstall": {
-    "promptTitle": "Install BimDossier",
-    "promptBody": "Add to your home screen for full-screen inspections, offline access and faster launches.",
-    "install": "Install",
-    "dismiss": "Not now",
-    "iosHint": "On iOS, tap the share icon and choose “Add to Home Screen”."
-  },
   "orgDetail": {
     "tabs": {
       "overview": "Overview",
@@ -3209,26 +3202,6 @@
     },
     "entry": {
       "startInspection": "Start inspection"
-    }
-  },
-  "offline": {
-    "banner": {
-      "offline": "You're offline. Changes are saved locally.",
-      "syncing": "Syncing {count} items…",
-      "syncComplete": "All changes synced.",
-      "failed": "{count} items couldn't sync. Tap to retry."
-    },
-    "syncStatus": {
-      "pending": "Pending sync",
-      "syncing": "Syncing…",
-      "failed": "Sync failed — tap to retry"
-    },
-    "conflict": {
-      "title": "Sync conflict",
-      "message": "The server version was kept for this item."
-    },
-    "photo": {
-      "savedLocally": "Photo saved locally"
     }
   },
   "capturePage": {

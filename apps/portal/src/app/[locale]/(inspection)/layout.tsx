@@ -4,7 +4,6 @@ import { useRouter } from '@/i18n/navigation';
 import { useEffect, type JSX, type ReactNode } from 'react';
 
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
-import { getSyncEngine } from '@/lib/offline/sync.js';
 import { useAuth } from '@/providers/AuthProvider';
 
 type Props = {
@@ -21,12 +20,6 @@ export default function InspectionLayout({ children }: Props): JSX.Element {
       router.replace('/login');
     }
   }, [router, tokens, hasHydrated]);
-
-  useEffect(() => {
-    const engine = getSyncEngine();
-    engine.start();
-    return () => { engine.stop(); };
-  }, []);
 
   if (!hasHydrated || tokens === null) {
     return <main className="flex flex-1 items-center justify-center" />;

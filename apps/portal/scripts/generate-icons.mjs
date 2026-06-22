@@ -1,4 +1,4 @@
-// Regenerates the portal favicons + PWA install icons from the source brand art.
+// Regenerates the portal favicons from the source brand art.
 //
 // Source art (transparent, 2048x2048):
 //   assets/logos/bd_light.png  -> blue mark, used on LIGHT-mode browser tabs
@@ -11,10 +11,6 @@
 //     favicon.ico         blue  48x48   legacy fallback
 //   Apple touch icon (iOS flattens alpha -> solid tile):
 //     apple-icon.png      white-on-blue 180x180
-//   PWA install icons (referenced by src/app/manifest.ts):
-//     icon-192.png / icon-512.png            white-on-blue tile (purpose: any)
-//     icon-maskable-192.png / -512.png       white-on-blue full-bleed, mark in safe zone
-//     icon.svg / icon-maskable.svg           SVG wrappers around the 512px tiles
 //
 // Run from anywhere: `node apps/portal/scripts/generate-icons.mjs`
 import { createRequire } from 'node:module';
@@ -86,11 +82,6 @@ function pngToIco(png, size) {
   return Buffer.concat([header, entry, png]);
 }
 
-function svgWrap(pngBuffer) {
-  const b64 = pngBuffer.toString('base64');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="BimDossier"><image width="512" height="512" href="data:image/png;base64,${b64}"/></svg>\n`;
-}
-
 // Single theme-aware SVG favicon: embeds both marks, toggled by an in-SVG media query.
 // Chrome ignores the `media` attribute on `<link rel="icon">` but honors
 // `@media (prefers-color-scheme)` inside an SVG favicon.
@@ -121,20 +112,6 @@ async function main() {
   // Apple touch icon.
   await (await tile(SRC_DARK, 180, BRAND_BLUE, 0.73)).toFile(resolve(PUBLIC, 'apple-icon.png'));
 
-  // PWA "any" install icons — white mark on a blue tile.
-  const any512 = await (await tile(SRC_DARK, 512, BRAND_BLUE, 0.74)).toBuffer();
-  await sharp(any512).resize(192, 192).toFile(resolve(PUBLIC, 'icon-192.png'));
-  await writeFile(resolve(PUBLIC, 'icon-512.png'), any512);
-
-  // PWA maskable icons — full-bleed blue, mark kept inside the safe zone.
-  const mask512 = await (await tile(SRC_DARK, 512, BRAND_BLUE, 0.6)).toBuffer();
-  await sharp(mask512).resize(192, 192).toFile(resolve(PUBLIC, 'icon-maskable-192.png'));
-  await writeFile(resolve(PUBLIC, 'icon-maskable-512.png'), mask512);
-
-  // SVG wrappers (manifest references these; same embedded-raster format as before).
-  await writeFile(resolve(PUBLIC, 'icon.svg'), svgWrap(any512));
-  await writeFile(resolve(PUBLIC, 'icon-maskable.svg'), svgWrap(mask512));
-
   console.log('Generated portal icons in apps/portal/public/:');
   for (const f of [
     'favicon.svg',
@@ -142,12 +119,6 @@ async function main() {
     'favicon-dark.png',
     'favicon.ico',
     'apple-icon.png',
-    'icon-192.png',
-    'icon-512.png',
-    'icon-maskable-192.png',
-    'icon-maskable-512.png',
-    'icon.svg',
-    'icon-maskable.svg',
   ]) {
     console.log('  ' + f);
   }

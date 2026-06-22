@@ -2396,13 +2396,6 @@
   "dashboardFooter": {
     "copyright": "© {year} {brand}"
   },
-  "pwaInstall": {
-    "promptTitle": "BimDossier installeren",
-    "promptBody": "Voeg toe aan je beginscherm voor full-screen inspecties, offline gebruik en sneller starten.",
-    "install": "Installeren",
-    "dismiss": "Niet nu",
-    "iosHint": "Tik op iOS op het deel-icoon en kies “Zet op beginscherm”."
-  },
   "orgDetail": {
     "tabs": {
       "overview": "Overzicht",
@@ -3209,26 +3202,6 @@
     },
     "entry": {
       "startInspection": "Inspectie starten"
-    }
-  },
-  "offline": {
-    "banner": {
-      "offline": "Je bent offline. Wijzigingen worden lokaal opgeslagen.",
-      "syncing": "{count} items synchroniseren…",
-      "syncComplete": "Alle wijzigingen gesynchroniseerd.",
-      "failed": "{count} items konden niet synchroniseren. Tik om opnieuw te proberen."
-    },
-    "syncStatus": {
-      "pending": "Wacht op synchronisatie",
-      "syncing": "Synchroniseren…",
-      "failed": "Synchronisatie mislukt — tik om opnieuw te proberen"
-    },
-    "conflict": {
-      "title": "Synchronisatieconflict",
-      "message": "De serverversie is behouden voor dit item."
-    },
-    "photo": {
-      "savedLocally": "Foto lokaal opgeslagen"
     }
   },
   "capturePage": {

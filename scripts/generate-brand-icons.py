@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Generate every favicon / app-icon / PWA / mobile / in-app brand asset from the
+"""Generate every favicon / app-icon / mobile / in-app brand asset from the
 master logo at assets/logos/BD_W_bg.png.
 
 Master = BD_W_bg.png (the full blue square — "the one"). The transparent white glyph
 BD_W.png is used only where a layered/transparent mark is structurally required:
-Android adaptive-icon foreground + monochrome layers, the splash logo, and maskable
-PWA icons (which need extra safe-zone padding so a circular mask never clips the
-letters).
+Android adaptive-icon foreground + monochrome layers and the splash logo.
 
 Run from the repo root:  python scripts/generate-brand-icons.py
 Idempotent — safe to re-run. Requires Pillow.
@@ -93,23 +91,6 @@ def write_ico(rel: str) -> None:
     print(f"  ico  {rel}  (16/32/48)")
 
 
-def write_svg_wrapper(rel: str, inner: Image.Image, size: int = 512) -> None:
-    """SVG that embeds the raster as a data-URI (keeps the manifest's svg+xml entries
-    valid while rendering the exact logo art)."""
-    path = os.path.join(ROOT, rel)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    b64 = base64.b64encode(png_bytes(inner)).decode("ascii")
-    svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
-        f'viewBox="0 0 {size} {size}" role="img" aria-label="BimDossier">'
-        f'<image width="{size}" height="{size}" '
-        f'href="data:image/png;base64,{b64}"/></svg>\n'
-    )
-    with open(path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(svg)
-    print(f"  svg  {rel}")
-
-
 def write_brand_asset(rel: str) -> None:
     """TS module exporting the brand mark as self-contained base64 data-URIs for the
     shared @bimstitch/brand package (it can't import an app's public asset / a .png).
@@ -162,16 +143,8 @@ def main() -> None:
     write_png("apps/web/src/app/icon.png", full_bleed(512))
     write_png("apps/web/src/app/apple-icon.png", full_bleed(180))
     write_ico("apps/web/src/app/favicon.ico")
-    write_png("apps/web/public/icon-192.png", full_bleed(192))
-    write_png("apps/web/public/icon-512.png", full_bleed(512))
 
     print("apps/portal:")
-    write_png("apps/portal/public/icon-192.png", full_bleed(192))
-    write_png("apps/portal/public/icon-512.png", full_bleed(512))
-    write_png("apps/portal/public/icon-maskable-192.png", glyph_on_canvas(192, 0.62, BRAND_BLUE))
-    write_png("apps/portal/public/icon-maskable-512.png", glyph_on_canvas(512, 0.62, BRAND_BLUE))
-    write_svg_wrapper("apps/portal/public/icon.svg", full_bleed(512))
-    write_svg_wrapper("apps/portal/public/icon-maskable.svg", glyph_on_canvas(512, 0.62, BRAND_BLUE))
     write_png("apps/portal/src/app/apple-icon.png", full_bleed(180))
     write_ico("apps/portal/src/app/favicon.ico")
 

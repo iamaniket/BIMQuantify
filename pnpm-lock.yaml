@@ -192,9 +192,6 @@ importers:
       http-proxy:
         specifier: ^1.18.1
         version: 1.18.1
-      idb:
-        specifier: ^8.0.3
-        version: 8.0.3
       import-in-the-middle:
         specifier: ^3.0.1
         version: 3.0.1
@@ -6287,9 +6284,6 @@ packages:
   icu-minify@4.11.0:
     resolution: {integrity: sha512-XRvblCwLqWXio5ZLcmDqXvJv7alSACK6UjXuuMOdQWB//d25AQX6xlVlI1FEbc3Q6iPLXXo6HaVLn8LcAFhn1Q==}
 
-  idb@8.0.3:
-    resolution: {integrity: sha512-LtwtVyVYO5BqRvcsKuB2iUMnHwPVByPCXFXOpuU96IZPPoPN6xjOGxZQ74pgSVVLQWtUOYgyeL4GE98BY5D3wg==}
-
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
 
@@ -12207,7 +12201,9 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.85.3': {}
 
@@ -15636,8 +15632,6 @@ snapshots:
   icu-minify@4.11.0:
     dependencies:
       '@formatjs/icu-messageformat-parser': 3.5.6
-
-  idb@8.0.3: {}
 
   ieee754@1.2.1: {}
 

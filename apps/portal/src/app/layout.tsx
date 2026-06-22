@@ -6,11 +6,10 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'BimDossier',
   description: 'BimDossier portal — sign in to manage your projects.',
-  applicationName: 'BimDossier',
   // Theme-aware favicon (follows the OS `prefers-color-scheme`): favicon.svg embeds both
   // marks and toggles via an in-SVG media query (makes Chrome/Firefox switch — Chrome
   // ignores the link `media` attribute); the light/dark PNGs cover Safari (honors `media`,
-  // ignores SVG favicons); favicon.ico is the legacy fallback. PWA install icons: manifest.ts.
+  // ignores SVG favicons); favicon.ico is the legacy fallback.
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -19,11 +18,6 @@ export const metadata: Metadata = {
       { url: '/favicon.ico', sizes: '48x48' },
     ],
     apple: { url: '/apple-icon.png', sizes: '180x180' },
-  },
-  appleWebApp: {
-    capable: true,
-    title: 'BimDossier',
-    statusBarStyle: 'default',
   },
   formatDetection: { telephone: false },
 };

@@ -15,8 +15,6 @@ const fraunces = Fraunces({
 });
 
 import { LocaleMigrationShim } from '@/components/LocaleMigrationShim';
-import { PwaInstallPrompt } from '@/components/PwaInstallPrompt';
-import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import { routing } from '@/i18n/routing';
 import { IconProvider } from '@bimstitch/ui/providers';
 import { AuthProvider } from '@/providers/AuthProvider';
@@ -65,14 +63,12 @@ export default async function LocaleLayout({ children, params }: Props): Promise
         />
         <NextIntlClientProvider>
           <LocaleMigrationShim />
-          <ServiceWorkerRegistrar />
           <ThemeProvider>
             <IconProvider>
               <QueryProvider>
                 <AuthProvider>
                   <PostHogProvider>
                     {children}
-                    <PwaInstallPrompt />
                     <Toaster richColors closeButton position="bottom-left" />
                   </PostHogProvider>
                 </AuthProvider>
