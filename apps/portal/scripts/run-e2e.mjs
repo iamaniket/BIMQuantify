@@ -5,8 +5,14 @@
  * MinIO 9002), runs Playwright E2E tests against them, and tears everything
  * down — even on failure.
  *
+ * With no extra args it runs the ENTIRE suite (every *.spec.ts under tests/),
+ * serially — one file after another — because playwright.config.ts pins
+ * `workers: 1` + `fullyParallel: false`. Pass args to scope it down, e.g.:
+ *   node scripts/run-e2e.mjs tests/e2e/viewer.spec.ts   # one spec
+ *   node scripts/run-e2e.mjs --ui                       # interactive UI
+ *
  * Usage:
- *   pnpm test:e2e:full           # multitenant suite
+ *   pnpm test:e2e:full           # full suite
  *   node scripts/run-e2e.mjs     # same thing
  */
 
@@ -29,10 +35,13 @@ const E2E_ENV = {
 };
 
 // Allow passing extra playwright args, e.g.: node scripts/run-e2e.mjs --ui
+// With no args, run the whole suite (all specs under tests/) serially via the
+// config's workers:1 + fullyParallel:false. Naming no spec also makes
+// playwright.config.ts start the marketing web app on :3000 that admin-blog needs.
 const extraArgs = argv.slice(2).join(' ');
 const testCmd = extraArgs
   ? `npx playwright test ${extraArgs}`
-  : 'npx playwright test tests/e2e/multitenant.spec.ts --project=chromium --workers=1';
+  : 'npx playwright test --project=chromium --workers=1';
 
 let exitCode = 0;
 
