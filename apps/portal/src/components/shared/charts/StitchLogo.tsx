@@ -34,6 +34,3 @@ export function DossierLogo({
     />
   );
 }
-
-/** @deprecated Use `DossierLogo` instead. */
-export const StitchLogo = DossierLogo;

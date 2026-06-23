@@ -24,7 +24,6 @@ import {
   complianceDomainsKey,
   complianceArticlesKey,
   issuesKey,
-  trendKey,
   projectReportsKey,
 } from './queryKeys';
 
@@ -33,12 +32,7 @@ import type {
   ComplianceDomain,
   ComplianceArticle,
   ComplianceIssue,
-  ComplianceTrend,
 } from './types';
-
-import {
-  MOCK_TREND,
-} from './mockData';
 
 function mapToComplianceSummary(resp: ComplianceSummaryResponse): ComplianceSummary {
   let passCount = 0;
@@ -160,14 +154,6 @@ export function useComplianceIssues(
     queryFn: (accessToken) => getComplianceLatest(accessToken, projectId, modelId!, fileId!),
     enabled: projectId.length > 0 && !!fileId && !!modelId,
     select: mapToIssues,
-  });
-}
-
-export function useComplianceTrend(projectId: string): UseQueryResult<ComplianceTrend> {
-  return useAuthQuery({
-    queryKey: trendKey(projectId),
-    queryFn: async () => MOCK_TREND,
-    enabled: projectId.length > 0,
   });
 }
 

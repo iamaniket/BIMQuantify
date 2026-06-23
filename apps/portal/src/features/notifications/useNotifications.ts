@@ -8,7 +8,6 @@ import {
   getUnreadCount,
   listNotifications,
   markAllNotificationsRead,
-  markNotificationRead,
 } from '@/lib/api/notifications';
 import type {
   NotificationListResponse,
@@ -33,13 +32,6 @@ export function useUnreadCount(): UseQueryResult<UnreadCountResponse> {
     queryKey: unreadCountKey,
     queryFn: (accessToken) => getUnreadCount(accessToken),
     refetchInterval: POLL_FALLBACK_MS,
-  });
-}
-
-export function useMarkRead(): UseMutationResult<void, Error, string> {
-  return useAuthMutation({
-    mutationFn: (accessToken, id) => markNotificationRead(accessToken, id),
-    invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }
 

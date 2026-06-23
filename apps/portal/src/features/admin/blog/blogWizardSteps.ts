@@ -57,7 +57,3 @@ export const BLOG_WIZARD_STEPS: readonly (WizardStep & { id: BlogWizardStepId })
     description: 'Title and body',
   },
 ] as const;
-
-export const BLOG_WIZARD_STEP_IDS: readonly BlogWizardStepId[] = (
-  BLOG_WIZARD_STEPS.map((s) => s.id)
-);

@@ -38,26 +38,4 @@ export type ComplianceIssue = {
   requirementText: string;
 };
 
-export type ActivityItem = {
-  id: string;
-  type: 'upload' | 'scan' | 'pin' | 'fix' | 'report';
-  actor: string;
-  description: string;
-  detail: string;
-  timestamp: string;
-};
-
-export type DossierSection = {
-  name: string;
-  percentage: number;
-  itemsDone: number;
-  itemsTotal: number;
-};
-
-export type DossierData = {
-  overallPercentage: number;
-  holdbackAmount: string;
-  sections: DossierSection[];
-};
-
 export type ComplianceTrend = number[];

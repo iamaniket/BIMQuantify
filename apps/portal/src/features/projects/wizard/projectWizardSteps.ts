@@ -107,7 +107,3 @@ export const PROJECT_CREATE_WIZARD_STEPS: readonly (WizardStep & { id: ProjectWi
     description: 'Add people to the project',
   },
 ] as const;
-
-export const PROJECT_WIZARD_STEP_IDS: readonly ProjectWizardStepId[] = (
-  PROJECT_CREATE_WIZARD_STEPS.map((s) => s.id)
-);

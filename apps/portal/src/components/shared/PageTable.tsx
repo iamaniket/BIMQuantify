@@ -6,7 +6,6 @@ import { Fragment, type ReactNode } from 'react';
 import {
   cn,
   Input,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -88,47 +87,6 @@ export function PageTable<T>({
       </Table>
       </div>
       {renderAfter}
-    </>
-  );
-}
-
-export function PageTableContent({
-  isLoading,
-  isError,
-  errorMessage,
-  countLabel,
-  skeletonRows = 3,
-  children,
-}: {
-  isLoading: boolean;
-  isError: boolean;
-  errorMessage: ReactNode;
-  countLabel?: ReactNode;
-  skeletonRows?: number;
-  children: ReactNode;
-}): ReactNode {
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {Array.from({ length: skeletonRows }, (_, i) => (
-          <Skeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    );
-  }
-
-  if (isError) {
-    return <p className="text-body3 text-error">{errorMessage}</p>;
-  }
-
-  return (
-    <>
-      {children}
-      {countLabel != null && (
-        <div className="mt-3 flex items-center justify-between text-body3 text-foreground-tertiary">
-          <span>{countLabel}</span>
-        </div>
-      )}
     </>
   );
 }

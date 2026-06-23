@@ -28,13 +28,6 @@ export async function getUnreadCount(
   );
 }
 
-export async function markNotificationRead(
-  accessToken: string,
-  notificationId: string,
-): Promise<void> {
-  return apiClient.patchNoContent(`/notifications/${notificationId}/read`, accessToken);
-}
-
 export async function markAllNotificationsRead(
   accessToken: string,
 ): Promise<void> {

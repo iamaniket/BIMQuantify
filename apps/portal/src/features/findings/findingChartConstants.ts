@@ -12,14 +12,6 @@ export const STATUS_COLORS: Record<FindingStatusValue, string> = {
   verified: 'var(--success-hover)',
 };
 
-// Severity colors: high = error, medium = warning, low = info. Used by the
-// findings-by-severity pie in the completeness rings.
-export const SEVERITY_COLORS: Record<FindingSeverityValue, string> = {
-  high: 'var(--error)',
-  medium: 'var(--warning)',
-  low: 'var(--info)',
-};
-
 export const STATUS_ORDER: FindingStatusValue[] = [
   'draft',
   'open',

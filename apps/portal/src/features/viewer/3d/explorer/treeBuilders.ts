@@ -116,20 +116,6 @@ export function collectAllKeys(nodes: TreeNodeData[]): string[] {
   return keys;
 }
 
-/** Collect spatial-tree node keys down to `maxDepth` levels (0 = root only). */
-export function collectExpandedKeys(
-  node: SpatialNode,
-  maxDepth: number,
-  depth = 0,
-): string[] {
-  if (depth > maxDepth) return [];
-  const key = `sp-${String(node.expressID)}`;
-  const childKeys = node.children.flatMap(
-    (c) => collectExpandedKeys(c, maxDepth, depth + 1),
-  );
-  return [key, ...childKeys];
-}
-
 // ── Federated (multi-model) explorer builders ───────────────────────────────
 // The single-file tabs read one model's metadata + the viewer's `store.modelId`.
 // In a federated scene the explorer spans every loaded model, so these builders
