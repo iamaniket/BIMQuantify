@@ -13,6 +13,3 @@ export type AppIcon = PhosphorIcon;
 
 /** Default weight for all icons across the app (solid fill). */
 export const DEFAULT_ICON_WEIGHT: IconWeight = 'fill';
-
-/** Weight used in the 3D/2D viewer toolbars (bolder outline, not filled). */
-export const VIEWER_ICON_WEIGHT: IconWeight = 'bold';

@@ -1,10 +1,8 @@
 export { Button } from './Button.js';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button.js';
-export { Panel, PanelHeader, PanelBody, PanelFooter } from './Panel.js';
-export type { PanelProps } from './Panel.js';
 export { Input } from './Input.js';
 export type { InputProps, InputSize } from './Input.js';
-export { Icon, iconSizeClassNames } from './Icon.js';
+export { Icon } from './Icon.js';
 export type { IconProps, IconSize } from './Icon.js';
 export { IconButton } from './IconButton.js';
 export type { IconButtonProps, IconButtonSize } from './IconButton.js';
@@ -105,7 +103,7 @@ export {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell, SortableTableHead,
 } from './Table.js';
 export type { SortDirection, SortableTableHeadProps } from './Table.js';
-export { Pagination, paginationRange, DEFAULT_PAGE_SIZE_OPTIONS } from './Pagination.js';
+export { Pagination, paginationRange } from './Pagination.js';
 export type { PaginationProps, PaginationLabels } from './Pagination.js';
 export {
   DetailCard, DetailCardRow, DetailCardBody, DetailCardFooter,
@@ -113,17 +111,10 @@ export {
 export type {
   DetailCardProps, DetailCardRowProps, DetailCardBodyProps, DetailCardFooterProps,
 } from './DetailCard.js';
-export { MetaGrid } from './MetaGrid.js';
-export type { MetaGridProps, MetaGridEntry } from './MetaGrid.js';
 export { KanbanBoard } from './KanbanBoard.js';
 export type { KanbanBoardProps, KanbanColumnDef } from './KanbanBoard.js';
-export { KanbanColumn } from './KanbanColumn.js';
-export type { KanbanColumnProps } from './KanbanColumn.js';
-export { KanbanCard } from './KanbanCard.js';
-export type { KanbanCardProps } from './KanbanCard.js';
 
 /* ── Icon system ────────────────────────────────────────────────── */
 export type { AppIcon } from './lib/icons.js';
-export { DEFAULT_ICON_WEIGHT, VIEWER_ICON_WEIGHT } from './lib/icons.js';
-export type { IconWeight } from './lib/iconMap.js';
+export { DEFAULT_ICON_WEIGHT } from './lib/icons.js';
 
