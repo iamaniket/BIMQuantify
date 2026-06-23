@@ -119,50 +119,6 @@
     "sentBody": "Als er een account bestaat voor dit e-mailadres, is er een resetlink onderweg. De link verloopt na 1 uur.",
     "backToLogin": "Terug naar inloggen"
   },
-  "invitations": {
-    "eyebrow": "Teamuitnodigingen",
-    "title": "Uw openstaande uitnodigingen",
-    "subtitle": "Accepteer een uitnodiging om lid te worden van de organisatie, of wijs af als deze niet voor u is.",
-    "loading": "Uitnodigingen laden…",
-    "emptyTitle": "Geen openstaande uitnodigingen",
-    "emptyBody": "U heeft op dit moment geen openstaande teamuitnodigingen. Vraag een beheerder u opnieuw uit te nodigen als u er een verwacht.",
-    "backToProjects": "Terug naar projecten",
-    "accept": "Accepteren",
-    "accepting": "Accepteren…",
-    "decline": "Afwijzen",
-    "declining": "Afwijzen…",
-    "retry": "Opnieuw proberen",
-    "roleAdmin": "Beheerdersrol",
-    "roleMember": "Lidrol",
-    "invitedBy": "Uitgenodigd door {email}",
-    "invitedByUnknown": "Uitgenodigd om deel te nemen",
-    "expiresOn": "Verloopt op {date}",
-    "errors": {
-      "loadFailed": "Uitnodigingen konden niet worden geladen. Probeer het opnieuw.",
-      "acceptFailed": "Uitnodiging accepteren is mislukt. Probeer het opnieuw.",
-      "declineFailed": "Uitnodiging afwijzen is mislukt. Probeer het opnieuw."
-    },
-    "acceptSuccess": "Uitnodiging geaccepteerd — welkom bij het team!",
-    "declineSuccess": "Uitnodiging afgewezen."
-  },
-  "onboarding": {
-    "title": "Welkom bij {org}!",
-    "roleDescriptionAdmin": "U bent toegetreden als beheerder. U heeft volledige toegang om het team en alle projecten te beheren.",
-    "roleDescriptionMember": "U bent toegetreden als teamlid. Dit kunt u doen:",
-    "getStarted": "Aan de slag",
-    "capabilities": {
-      "admin": {
-        "manageTeam": "Teamleden uitnodigen en beheren",
-        "createProjects": "Projecten aanmaken en configureren",
-        "fullAccess": "Volledige toegang tot documenten, bevindingen en rapporten"
-      },
-      "member": {
-        "viewProjects": "Projecten bekijken en samenwerken",
-        "uploadDocuments": "Documenten en certificaten uploaden",
-        "trackFindings": "Bevindingen bijhouden en oplossen"
-      }
-    }
-  },
   "resetPassword": {
     "eyebrow": "Nieuw wachtwoord",
     "title": "Kies een nieuw wachtwoord",
@@ -412,23 +368,6 @@
     }
   },
   "projects": {
-    "about": {
-      "descriptionHeading": "Beschrijving",
-      "noDescription": "Geen beschrijving.",
-      "infoHeading": "Projectgegevens",
-      "addressHeading": "Locatieadres",
-      "timestampsHeading": "Tijdstempels",
-      "referenceCode": "Referentiecode",
-      "status": "Status",
-      "phase": "Fase",
-      "delivery": "Oplevering",
-      "permit": "Vergunning",
-      "address": "Adres",
-      "municipality": "Gemeente",
-      "bagId": "BAG-id",
-      "created": "Aangemaakt",
-      "updated": "Bijgewerkt"
-    },
     "hero": {
       "title": "Projecten",
       "badge": "Portfoliooverzicht",
@@ -481,8 +420,6 @@
       "handover": "Oplevering"
     },
     "card": {
-      "phaseLabel": "Fase:",
-      "permitLabel": "Vergunning:",
       "menu": {
         "actions": "Projectacties",
         "view": "Bekijken",
@@ -1834,24 +1771,6 @@
       "pickerTitle": "Selecteer een document",
       "pickerDescription": "Kies een projectdocument als referentie.",
       "empty": "Geen documenten beschikbaar"
-    },
-    "expanded": {
-      "status": "STATUS",
-      "severity": "ERNST",
-      "assignee": "TOEGEWEZEN",
-      "deadline": "DEADLINE",
-      "bblRef": "Bbl ref",
-      "photos": "FOTO'S",
-      "linkedElement": "GEKOPPELD",
-      "created": "TOEGEVOEGD",
-      "updated": "BIJGEWERKT",
-      "noAssignee": "Niet toegewezen",
-      "photoCount": "{count, plural, =0 {Geen} one {1 foto} other {# foto's}}",
-      "linkedYes": "Gekoppeld aan element",
-      "view": "Bekijken",
-      "openDetail": "Detail openen",
-      "delete": "Verwijderen",
-      "promote": "Promoveren"
     }
   },
   "findingsBoard": {
@@ -2983,12 +2902,6 @@
         "selectPlaceholder": "Kies een collega…",
         "cancel": "Annuleren",
         "confirm": "Overdragen en verwijderen"
-      },
-      "leave": {
-        "title": "Deze tenant verlaten",
-        "subtitle": "Je verliest toegang tot alle projecten in deze tenant. De beheerder moet je opnieuw uitnodigen om terug te komen.",
-        "confirm": "Tenant verlaten",
-        "cancel": "Annuleren"
       }
     },
     "accessRequests": {
@@ -3615,11 +3528,6 @@
     },
     "modeIndicator": {
       "exitHint": "Druk op ESC om af te sluiten"
-    },
-    "pages": {
-      "loading": "Pagina's laden…",
-      "pageLabel": "Pagina {page}",
-      "current": "huidige"
     },
     "toolbar": {
       "homeView": "Beginaanzicht",
