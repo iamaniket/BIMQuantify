@@ -19,7 +19,7 @@ import { EntityFindingsBody } from './EntityFindingsBody';
 import { OrphanedItemsNotice } from './OrphanedItemsNotice';
 import { useSelectedElement } from './useSelectedElement';
 
-type EntityInspectorPanelProps = {
+type EntityFindingsPanelProps = {
   metadata: ModelMetadata | undefined;
   projectId: string;
   modelId: string;
@@ -59,14 +59,14 @@ type EntityInspectorPanelProps = {
 };
 
 /**
- * The viewer inspector — a single shared **findings** panel for both the 3D IFC
+ * The viewer Findings panel — a single shared findings panel for both the 3D IFC
  * viewer and the 2D PDF viewer. Attachments and certificates are no longer
  * anchored to the model; they live at the project level (project detail tabs /
- * org certificate library), so the inspector keeps findings only. The header
+ * org certificate library), so this panel shows findings only. The header
  * differs only in how findings are *scoped*: 3D scopes by selected element (or
  * project when nothing is selected); PDF scopes findings by the open file.
  */
-export function EntityInspectorPanel({
+export function EntityFindingsPanel({
   metadata,
   projectId,
   modelId,
@@ -85,8 +85,8 @@ export function EntityInspectorPanel({
   floorPlanHandle,
   convertFloorPlanPoint,
   onNavigateToPage,
-}: EntityInspectorPanelProps): JSX.Element {
-  const t = useTranslations('viewerInspector');
+}: EntityFindingsPanelProps): JSX.Element {
+  const t = useTranslations('viewerFindings');
   const tAttachments = useTranslations('viewerAttachments');
   const [consumedNonce, setConsumedNonce] = useState<number | undefined>(undefined);
 

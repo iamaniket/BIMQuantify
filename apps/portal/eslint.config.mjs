@@ -81,10 +81,9 @@ export default tseslint.config(
     },
   },
   {
-    // Literals are allowed in: test assertions, skeuomorphic art (raw
+    // Literals are allowed in: test assertions and skeuomorphic art (raw
     // brand label baked into a fake keyboard / mouse diagram, per
-    // CLAUDE.md exception), and OG/icon routes (Satori needs literal
-    // strings; no runtime translation pipeline).
+    // CLAUDE.md exception).
     files: [
       '**/*.test.{ts,tsx}',
       '**/*.spec.{ts,tsx}',
@@ -92,9 +91,6 @@ export default tseslint.config(
       'src/__tests__/**',
       'src/components/shared/viewer/shared/settings/VisualKeyboard.tsx',
       'src/components/shared/viewer/shared/settings/MouseDiagram.tsx',
-      'src/app/**/apple-icon.tsx',
-      'src/app/**/icon.tsx',
-      'src/app/**/opengraph-image.tsx',
       // Catastrophic fallback — replaces the root layout, so it can't reach the
       // i18n provider and uses minimal hardcoded copy.
       'src/app/**/global-error.tsx',

@@ -15,8 +15,6 @@ const ProjectsMapPointSchema = z.object({
 
 const ProjectsMapResponseSchema = z.array(ProjectsMapPointSchema);
 
-export type ProjectsMapPoint = z.infer<typeof ProjectsMapPointSchema>;
-
 /**
  * Fetches anonymized project locations from `/public/projects-map` and
  * shapes them as `MapMarker[]` for the `<NetherlandsMap />` component.

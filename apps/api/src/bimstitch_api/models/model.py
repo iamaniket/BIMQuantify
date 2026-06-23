@@ -67,6 +67,27 @@ class Model(TimestampMixin, SoftDeleteMixin, TenantBase):
         ),
         nullable=True,
     )
+    # Current-revision pointer (F7 "restore version as head"). NULL = the head is
+    # derived as the highest version_number (default behaviour); when set it pins
+    # the head to a chosen older version. Kept as a plain column with NO ORM
+    # relationship to avoid mutual-FK flush-ordering hazards (project_files
+    # already points back at models via model_id). Resolution lives in
+    # `routers/project_files._shared.resolve_head_file_id`. ON DELETE SET NULL so
+    # deleting the pinned version cleanly reverts the head to newest.
+    head_file_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        # `use_alter` breaks the models <-> project_files FK cycle
+        # (project_files.model_id already points back here): the constraint is
+        # emitted as a separate ALTER so create_all / drop_all can order the two
+        # tables. Named so the ALTER is deterministic.
+        ForeignKey(
+            "project_files.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_models_head_file_id",
+        ),
+        nullable=True,
+    )
 
     project: Mapped["Project"] = relationship(back_populates="models")
     files: Mapped[list["ProjectFile"]] = relationship(

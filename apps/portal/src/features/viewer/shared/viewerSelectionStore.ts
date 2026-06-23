@@ -61,11 +61,6 @@ export function useViewerTarget(projectId: string): ViewerTarget {
   return useViewerSelectionStore((s) => s.byProject[projectId] ?? DEFAULT_TARGET);
 }
 
-/** Imperative read — for nav handlers and the dropdown set-math. */
-export function getViewerTarget(projectId: string): ViewerTarget {
-  return useViewerSelectionStore.getState().byProject[projectId] ?? DEFAULT_TARGET;
-}
-
 /** Imperative setter — used by every "open viewer" entry point. */
 export function setViewerTarget(projectId: string, target: ViewerTarget): void {
   useViewerSelectionStore.getState().setTarget(projectId, target);

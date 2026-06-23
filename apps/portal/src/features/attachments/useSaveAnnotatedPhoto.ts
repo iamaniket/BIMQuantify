@@ -9,7 +9,7 @@ import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { attachmentsKey } from './queryKeys';
 
-export type SaveAnnotatedPhotoVars = {
+type SaveAnnotatedPhotoVars = {
   /** The current head attachment being annotated (the new burn supersedes it). */
   attachment: Attachment;
   /** The vector annotations to burn + persist. */

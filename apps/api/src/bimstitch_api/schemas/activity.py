@@ -18,3 +18,21 @@ class ProjectActivityEntry(BaseModel):
     before: dict[str, Any] | None
     after: dict[str, Any] | None
     created_at: datetime
+
+
+class ActivityTimelineBucket(BaseModel):
+    """One time bucket of the project activity-over-time trend.
+
+    Only buckets with at least one event are returned (ascending by
+    ``bucket_start``); the client zero-fills gaps over its fixed time axis.
+
+    ``by_category`` and ``by_resource`` break the bucket's ``count`` down so the
+    chart can render a per-point hover tooltip ("10 activities — 4 created,
+    3 changes … · 5 findings, 3 reports"). Both carry only non-zero entries and
+    each sums to ``count``.
+    """
+
+    bucket_start: datetime
+    count: int
+    by_category: dict[str, int]
+    by_resource: dict[str, int]

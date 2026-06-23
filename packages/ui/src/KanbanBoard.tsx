@@ -30,6 +30,8 @@ export type KanbanBoardProps<T> = {
   renderCard: (item: T) => ReactNode;
   onMove?: (itemId: string, fromColumn: string, toColumn: string) => void;
   canDrop?: (itemId: string, fromColumn: string, toColumn: string) => boolean;
+  /** Fired when a drop lands on a column that `canDrop` rejected. */
+  onInvalidDrop?: (itemId: string, fromColumn: string, toColumn: string) => void;
   renderOverlay?: (item: T) => ReactNode;
   emptyLabel?: string;
   className?: string;
@@ -46,6 +48,7 @@ export function KanbanBoard<T>({
   renderCard,
   onMove,
   canDrop,
+  onInvalidDrop,
   renderOverlay,
   emptyLabel,
   className,
@@ -84,7 +87,10 @@ export function KanbanBoard<T>({
     if (fromColumn === toColumn) return;
     if (!columns.some((c) => c.id === toColumn)) return;
 
-    if (canDrop !== undefined && !canDrop(itemId, fromColumn, toColumn)) return;
+    if (canDrop !== undefined && !canDrop(itemId, fromColumn, toColumn)) {
+      onInvalidDrop?.(itemId, fromColumn, toColumn);
+      return;
+    }
 
     onMove?.(itemId, fromColumn, toColumn);
   };

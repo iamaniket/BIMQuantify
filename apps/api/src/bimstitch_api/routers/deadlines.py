@@ -33,7 +33,13 @@ from bimstitch_api.models.certificate import Certificate, CertificateStatus
 from bimstitch_api.models.deadline import Deadline, DeadlineStatus
 from bimstitch_api.models.finding import Finding, FindingStatus
 from bimstitch_api.models.model import Model
-from bimstitch_api.models.project_file import ProjectFile, ProjectFileRole, ProjectFileStatus
+from bimstitch_api.models.project_file import (
+    ExtractionStatus,
+    FileType,
+    ProjectFile,
+    ProjectFileRole,
+    ProjectFileStatus,
+)
 from bimstitch_api.models.user import User
 from bimstitch_api.schemas.deadline import DeadlineFileMet, DeadlineRead
 from bimstitch_api.tenancy import get_tenant_session, require_active_organization
@@ -175,6 +181,34 @@ async def _count_models(session: AsyncSession, project_id: UUID) -> int:
     ) or 0
 
 
+async def _count_viewable_models(session: AsyncSession, project_id: UUID) -> int:
+    """Count distinct models with at least one *viewable* model-source file.
+
+    "Viewable" mirrors the portal: a ready IFC whose geometry extraction
+    succeeded, or a ready PDF (something the 3D/2D viewer can actually open).
+    A model that exists but is still processing — or has no file — does not
+    count. This is what fulfils the model-backed "drawings" dossier slot.
+    """
+    return (
+        await session.scalar(
+            select(func.count(func.distinct(ProjectFile.model_id))).where(
+                ProjectFile.project_id == project_id,
+                ProjectFile.role == ProjectFileRole.model_source,
+                ProjectFile.deleted_at.is_(None),
+                ProjectFile.model_id.is_not(None),
+                ProjectFile.status == ProjectFileStatus.ready,
+                (
+                    (
+                        (ProjectFile.file_type == FileType.ifc)
+                        & (ProjectFile.extraction_status == ExtractionStatus.succeeded)
+                    )
+                    | (ProjectFile.file_type == FileType.pdf)
+                ),
+            )
+        )
+    ) or 0
+
+
 async def _check_fulfillment(
     session: AsyncSession,
     project_id: UUID,
@@ -188,15 +222,6 @@ async def _check_fulfillment(
     if source_kind == "attachment_slot":
         count = await _count_ready_attachments_in_slot(session, project_id, source_value)
         return count > 0, count
-
-    if source_kind == "attachment_or_model":
-        # Drawings: an uploaded drawing in the slot, or a BIM model (which carries
-        # the geometry the per-storey 2D plans derive from).
-        count = await _count_ready_attachments_in_slot(session, project_id, source_value)
-        if count > 0:
-            return True, count
-        model_count = await _count_models(session, project_id)
-        return model_count > 0, model_count
 
     if source_kind == "certificate_type":
         count = (
@@ -249,10 +274,11 @@ async def _check_fulfillment(
             count = await _count_models(session, project_id)
             return count > 0, count
 
-    if source_kind == "model":
-        if source_value == "models":
-            count = await _count_models(session, project_id)
-            return count > 0, count
+    if source_kind == "model" and source_value == "models":
+        # Drawings: a viewable/processed model (ready+extracted IFC or ready
+        # PDF). Models still processing — or without a file — don't count.
+        count = await _count_viewable_models(session, project_id)
+        return count > 0, count
 
     return False, 0
 

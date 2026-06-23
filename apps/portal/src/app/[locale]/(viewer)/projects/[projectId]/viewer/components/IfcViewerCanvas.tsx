@@ -47,8 +47,8 @@ export interface IfcViewerCanvasProps {
   projectId: string;
   fileId: string;
   onFindingClick: (finding: Finding) => void;
-  onRequestFloorPlanInspector: (view: 'findings') => void;
-  /** Surface the floor-plan handle up so the inspector can pin on the plan (2D). */
+  onRequestFloorPlanFindings: (view: 'findings') => void;
+  /** Surface the floor-plan handle up so the Findings panel can pin on the plan (2D). */
   onFpHandle?: ((handle: FloorPlanViewerHandle | null) => void) | undefined;
   /** Report the active storey elevation for the plan-pick → world conversion. */
   onFpActiveElevationChange?: ((elevation: number | null) => void) | undefined;
@@ -82,7 +82,7 @@ export function IfcViewerCanvas({
   projectId,
   fileId,
   onFindingClick,
-  onRequestFloorPlanInspector,
+  onRequestFloorPlanFindings,
   onFpHandle,
   onFpActiveElevationChange,
 }: IfcViewerCanvasProps): JSX.Element {
@@ -102,7 +102,10 @@ export function IfcViewerCanvas({
       background={{ color: settings.background.color }}
       effects={settings.effects}
       outline={{ enabled: settings.outline.enabled }}
-      hoverHighlight={{ color: settings.behavior.hoverHighlight.color }}
+      hoverHighlight={{
+        color: settings.behavior.hoverHighlight.color,
+        enabled: settings.behavior.hoverHighlight.enabled,
+      }}
       selectionHighlight={{ color: settings.behavior.selection.color }}
       shortcuts={settings.shortcuts}
       mouseBindings={settings.mouseBindings}
@@ -202,7 +205,7 @@ export function IfcViewerCanvas({
             fileId={scope.planFileId ?? fileId}
             viewMode={viewMode}
             onFindingClick={onFindingClick}
-            onRequestInspector={onRequestFloorPlanInspector}
+            onRequestFindings={onRequestFloorPlanFindings}
             onFpHandle={onFpHandle}
             onActiveElevationChange={onFpActiveElevationChange}
           />

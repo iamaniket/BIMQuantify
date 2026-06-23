@@ -13,17 +13,17 @@
   ],
   "en": {
     "title": "Findings board & calendar",
-    "card": "Track every finding on a Kanban board, a deadline calendar, and overview dashboards — filter by assignee, status, or severity.",
+    "card": "Track every finding on a Kanban board, a deadline calendar, and overview dashboards. Filter by assignee, status, or severity.",
     "tagline": "See your findings the way you work",
-    "intro": "Track every finding the way that fits the moment — a Kanban board to see progress, a deadline calendar to stay ahead of due dates, and overview dashboards to spot trends. Filter by assignee, status, or severity in a click, so the same set of findings can answer \"what's overdue?\", \"who's overloaded?\", and \"what's critical?\" without ever leaving the project.",
+    "intro": "Track every finding the way that fits the moment. Use the Kanban board to watch progress, the deadline calendar to stay ahead of due dates, and the dashboards to spot trends. Filter by assignee, status, or severity in a click, and the same set of findings will answer \"what's overdue?\", \"who's overloaded?\", and \"what's critical?\" without you ever leaving the project.",
     "problemTitle": "A flat list hides what matters now",
-    "problem": "When findings pile up in one long, flat list, the list itself becomes the bottleneck. It's hard to see at a glance what's overdue, who's carrying too much, or which severities deserve attention first — so the urgent and the trivial sit side by side with equal weight. People end up exporting to a spreadsheet to sort and filter, which immediately drifts from the real data, and the answer to \"where do we actually stand?\" takes a meeting instead of a glance.",
+    "problem": "When findings pile up in one long, flat list, the list itself becomes the bottleneck. You can't tell at a glance what's overdue, who's carrying too much, or which severities deserve attention first. The urgent and the trivial sit side by side with equal weight. So people export to a spreadsheet to sort and filter, that copy immediately drifts from the real data, and answering \"where do we actually stand?\" takes a meeting instead of a glance.",
     "solutionTitle": "Multiple views over the same findings",
     "solution": [
       "A Kanban board groups findings by status, so progress is visible at a glance.",
       "A calendar surfaces due dates, so nothing slips past its deadline.",
       "Dashboards and filters slice by assignee, status, or severity in one click.",
-      "Every view reads from the same live findings — no exports, no drift."
+      "Every view reads from the same live findings. Nothing to export, nothing to drift."
     ],
     "highlights": [
       {
@@ -36,17 +36,17 @@
       },
       {
         "title": "Overview dashboards",
-        "body": "Charts summarise findings by status, severity, and assignee, turning a long list into a picture of where the project stands."
+        "body": "Charts summarise findings by status, severity, and assignee. A long list becomes a picture of where the project stands."
       },
       {
         "title": "One-click filters",
-        "body": "Slice the same findings by assignee, status, or severity instantly — no exports to a spreadsheet that goes stale."
+        "body": "Slice the same findings by assignee, status, or severity in an instant. No exports to a spreadsheet that goes stale."
       }
     ],
     "faq": [
       {
         "q": "What views are available for findings?",
-        "a": "Findings can be viewed as a Kanban board grouped by status, a calendar of due dates, and overview dashboards — so you can pick the view that answers the question you have right now."
+        "a": "Findings can be viewed as a Kanban board grouped by status, a calendar of due dates, and overview dashboards. Pick whichever view answers the question you have right now."
       },
       {
         "q": "Can I filter findings by assignee or severity?",
@@ -73,17 +73,17 @@
   },
   "nl": {
     "title": "Bevindingenbord & kalender",
-    "card": "Volg elke bevinding op een Kanban-bord, een deadlinekalender en overzichtsdashboards — filter op toegewezen persoon, status of urgentie.",
+    "card": "Volg elke bevinding op een Kanban-bord, een deadlinekalender en overzichtsdashboards. Filter op toegewezen persoon, status of urgentie.",
     "tagline": "Bekijk uw bevindingen zoals u werkt",
-    "intro": "Volg elke bevinding op de manier die bij het moment past — een Kanban-bord om voortgang te zien, een deadlinekalender om vervaldata voor te blijven en overzichtsdashboards om trends te spotten. Filter met één klik op toegewezen persoon, status of urgentie, zodat dezelfde set bevindingen antwoord geeft op \"wat is te laat?\", \"wie is overbelast?\" en \"wat is kritiek?\" zonder het project te verlaten.",
+    "intro": "Volg elke bevinding op de manier die bij het moment past. Het Kanban-bord laat de voortgang zien, met de deadlinekalender blijft u de vervaldata voor, en de overzichtsdashboards brengen trends in beeld. Filter met één klik op toegewezen persoon, status of urgentie, en dezelfde set bevindingen geeft antwoord op \"wat is te laat?\", \"wie is overbelast?\" en \"wat is kritiek?\" zonder dat u het project verlaat.",
     "problemTitle": "Een platte lijst verbergt wat nu telt",
-    "problem": "Als bevindingen zich opstapelen in één lange, platte lijst, wordt de lijst zelf de bottleneck. Het is moeilijk om in één oogopslag te zien wat te laat is, wie te veel draagt, of welke urgenties eerst aandacht verdienen — zo staan het urgente en het triviale met gelijk gewicht naast elkaar. Mensen exporteren dan naar een spreadsheet om te sorteren en filteren, die meteen afwijkt van de echte data, en het antwoord op \"waar staan we eigenlijk?\" kost een vergadering in plaats van een blik.",
+    "problem": "Als bevindingen zich opstapelen in één lange, platte lijst, wordt de lijst zelf de bottleneck. U ziet niet in één oogopslag wat te laat is, wie te veel draagt of welke urgenties eerst aandacht verdienen. Het urgente en het triviale staan met gelijk gewicht naast elkaar. Dus exporteren mensen naar een spreadsheet om te sorteren en filteren, die kopie wijkt meteen af van de echte data, en het antwoord op \"waar staan we eigenlijk?\" kost een vergadering in plaats van een blik.",
     "solutionTitle": "Meerdere weergaven over dezelfde bevindingen",
     "solution": [
       "Een Kanban-bord groepeert bevindingen op status, zodat voortgang in één oogopslag zichtbaar is.",
       "Een kalender toont de vervaldata, zodat niets voorbij zijn deadline glipt.",
       "Dashboards en filters splitsen op toegewezen persoon, status of urgentie met één klik.",
-      "Elke weergave leest uit dezelfde live bevindingen — geen exports, geen afwijking."
+      "Elke weergave leest uit dezelfde live bevindingen. Niets te exporteren, niets dat afwijkt."
     ],
     "highlights": [
       {
@@ -96,17 +96,17 @@
       },
       {
         "title": "Overzichtsdashboards",
-        "body": "Grafieken vatten bevindingen samen op status, urgentie en toegewezen persoon, en maken van een lange lijst een beeld van waar het project staat."
+        "body": "Grafieken vatten bevindingen samen op status, urgentie en toegewezen persoon. Een lange lijst wordt zo een beeld van waar het project staat."
       },
       {
         "title": "Filters met één klik",
-        "body": "Splits dezelfde bevindingen direct op toegewezen persoon, status of urgentie — geen exports naar een spreadsheet die veroudert."
+        "body": "Splits dezelfde bevindingen direct op toegewezen persoon, status of urgentie. Geen exports naar een spreadsheet die veroudert."
       }
     ],
     "faq": [
       {
         "q": "Welke weergaven zijn er voor bevindingen?",
-        "a": "Bevindingen zijn te bekijken als een Kanban-bord gegroepeerd op status, een kalender met vervaldata en overzichtsdashboards — zodat u de weergave kiest die de vraag van dit moment beantwoordt."
+        "a": "Bevindingen zijn te bekijken als een Kanban-bord gegroepeerd op status, een kalender met vervaldata en overzichtsdashboards. Kies de weergave die de vraag van dit moment beantwoordt."
       },
       {
         "q": "Kan ik bevindingen filteren op persoon of urgentie?",

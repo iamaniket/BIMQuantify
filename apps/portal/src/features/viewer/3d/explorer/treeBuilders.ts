@@ -4,11 +4,11 @@ import { toEntityKey } from '@/stores/viewerEntityStore';
 import { ifcClassColor } from './ifcClassColors';
 import type { TreeNodeData } from './TreeNode';
 
-export function elementLabel(el: ElementEntry): string {
+function elementLabel(el: ElementEntry): string {
   return el.name ?? `#${String(el.expressID)}`;
 }
 
-export function elementToLeaf(
+function elementToLeaf(
   el: ElementEntry,
   modelId: string,
   keyPrefix: string,
@@ -23,7 +23,7 @@ export function elementToLeaf(
   };
 }
 
-export function groupElementsBy<K extends string | number>(
+function groupElementsBy<K extends string | number>(
   elements: ElementEntry[],
   getKey: (el: ElementEntry) => K | null,
 ): Map<K, ElementEntry[]> {
@@ -44,7 +44,7 @@ export function groupElementsBy<K extends string | number>(
   return map;
 }
 
-export function collectStoreys(node: SpatialNode): Map<number, SpatialNode> {
+function collectStoreys(node: SpatialNode): Map<number, SpatialNode> {
   const map = new Map<number, SpatialNode>();
   if (node.type === 'IfcBuildingStorey') {
     map.set(node.expressID, node);
@@ -114,20 +114,6 @@ export function collectAllKeys(nodes: TreeNodeData[]): string[] {
   };
   nodes.forEach(walk);
   return keys;
-}
-
-/** Collect spatial-tree node keys down to `maxDepth` levels (0 = root only). */
-export function collectExpandedKeys(
-  node: SpatialNode,
-  maxDepth: number,
-  depth = 0,
-): string[] {
-  if (depth > maxDepth) return [];
-  const key = `sp-${String(node.expressID)}`;
-  const childKeys = node.children.flatMap(
-    (c) => collectExpandedKeys(c, maxDepth, depth + 1),
-  );
-  return [key, ...childKeys];
 }
 
 // ── Federated (multi-model) explorer builders ───────────────────────────────

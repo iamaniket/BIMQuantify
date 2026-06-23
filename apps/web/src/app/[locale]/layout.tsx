@@ -37,7 +37,7 @@ export async function generateMetadata({
     metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
     title: {
       default: t('defaultTitle'),
-      template: '%s — BimDossier',
+      template: '%s · BimDossier',
     },
     description: t('description'),
     openGraph: {

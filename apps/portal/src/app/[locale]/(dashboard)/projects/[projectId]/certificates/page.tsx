@@ -261,7 +261,7 @@ export default function ProjectCertificatesPage(): JSX.Element {
         {certificates.isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : (
-          <ProjectCertificatesOverview certificates={certificates.items} />
+          <ProjectCertificatesOverview certificates={certificates.items} onView={setViewing} />
         )}
       </TabsContent>
 

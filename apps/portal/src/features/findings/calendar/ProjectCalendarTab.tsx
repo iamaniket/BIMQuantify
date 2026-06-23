@@ -9,12 +9,13 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import {
-  type JSX, type ReactNode,
+  useState, type JSX, type ReactNode,
 } from 'react';
 
 import { CalendarEventChip } from '@/components/shared/calendar/CalendarEventChip';
 import { MonthCalendar } from '@/components/shared/calendar/MonthCalendar';
 import { WeekCalendar } from '@/components/shared/calendar/WeekCalendar';
+import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { FindingDetailPanel } from '@/features/projects/detail/FindingDetailPanel';
 import { FilingDialog } from '@/features/projects/detail/deadlines/FilingDialog';
 import type { Finding } from '@/lib/api/schemas';
@@ -80,6 +81,10 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
     handleDragEnd,
     handleDragCancel,
   } = useProjectCalendarData(projectId, findings);
+
+  // 'panel' = right-rail; 'dialog' = expanded into the centered modal. Only the
+  // expand button flips it to 'dialog'; closing the dialog resets it to 'panel'.
+  const [detailMode, setDetailMode] = useState<'panel' | 'dialog'>('panel');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -188,11 +193,14 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
             />
           )}
 
-          <FindingDetailPanel
-            projectId={projectId}
-            finding={selectedFinding}
-            onClose={() => { setSelectedFinding(null); }}
-          />
+          {detailMode === 'panel' && (
+            <FindingDetailPanel
+              projectId={projectId}
+              finding={selectedFinding}
+              onClose={() => { setSelectedFinding(null); }}
+              onExpand={() => { setDetailMode('dialog'); }}
+            />
+          )}
         </div>
 
         {/* Unscheduled: items with no date (mostly findings without a deadline).
@@ -231,6 +239,13 @@ export function ProjectCalendarTab({ projectId, findings }: Props): JSX.Element 
           label={filingDeadline.label}
         />
       )}
+
+      <FindingDetailModal
+        projectId={projectId}
+        finding={detailMode === 'dialog' ? selectedFinding : null}
+        open={detailMode === 'dialog' && selectedFinding !== null}
+        onOpenChange={(o) => { if (!o) { setSelectedFinding(null); setDetailMode('panel'); } }}
+      />
     </div>
   );
 }

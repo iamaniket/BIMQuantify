@@ -119,50 +119,6 @@
     "sentBody": "Als er een account bestaat voor dit e-mailadres, is er een resetlink onderweg. De link verloopt na 1 uur.",
     "backToLogin": "Terug naar inloggen"
   },
-  "invitations": {
-    "eyebrow": "Teamuitnodigingen",
-    "title": "Uw openstaande uitnodigingen",
-    "subtitle": "Accepteer een uitnodiging om lid te worden van de organisatie, of wijs af als deze niet voor u is.",
-    "loading": "Uitnodigingen laden…",
-    "emptyTitle": "Geen openstaande uitnodigingen",
-    "emptyBody": "U heeft op dit moment geen openstaande teamuitnodigingen. Vraag een beheerder u opnieuw uit te nodigen als u er een verwacht.",
-    "backToProjects": "Terug naar projecten",
-    "accept": "Accepteren",
-    "accepting": "Accepteren…",
-    "decline": "Afwijzen",
-    "declining": "Afwijzen…",
-    "retry": "Opnieuw proberen",
-    "roleAdmin": "Beheerdersrol",
-    "roleMember": "Lidrol",
-    "invitedBy": "Uitgenodigd door {email}",
-    "invitedByUnknown": "Uitgenodigd om deel te nemen",
-    "expiresOn": "Verloopt op {date}",
-    "errors": {
-      "loadFailed": "Uitnodigingen konden niet worden geladen. Probeer het opnieuw.",
-      "acceptFailed": "Uitnodiging accepteren is mislukt. Probeer het opnieuw.",
-      "declineFailed": "Uitnodiging afwijzen is mislukt. Probeer het opnieuw."
-    },
-    "acceptSuccess": "Uitnodiging geaccepteerd — welkom bij het team!",
-    "declineSuccess": "Uitnodiging afgewezen."
-  },
-  "onboarding": {
-    "title": "Welkom bij {org}!",
-    "roleDescriptionAdmin": "U bent toegetreden als beheerder. U heeft volledige toegang om het team en alle projecten te beheren.",
-    "roleDescriptionMember": "U bent toegetreden als teamlid. Dit kunt u doen:",
-    "getStarted": "Aan de slag",
-    "capabilities": {
-      "admin": {
-        "manageTeam": "Teamleden uitnodigen en beheren",
-        "createProjects": "Projecten aanmaken en configureren",
-        "fullAccess": "Volledige toegang tot documenten, bevindingen en rapporten"
-      },
-      "member": {
-        "viewProjects": "Projecten bekijken en samenwerken",
-        "uploadDocuments": "Documenten en certificaten uploaden",
-        "trackFindings": "Bevindingen bijhouden en oplossen"
-      }
-    }
-  },
   "resetPassword": {
     "eyebrow": "Nieuw wachtwoord",
     "title": "Kies een nieuw wachtwoord",
@@ -265,7 +221,9 @@
       "upcomingTitle": "Aankomende items",
       "noUpcoming": "Niets aankomend.",
       "daysRemaining": "{days, plural, =1 {nog 1 dag} other {nog # dagen}}",
-      "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}"
+      "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}",
+      "trendTitle": "Deadlines na verloop van tijd",
+      "trendEmpty": "Geen aankomende deadlines."
     },
     "month": {
       "today": "Vandaag",
@@ -410,23 +368,6 @@
     }
   },
   "projects": {
-    "about": {
-      "descriptionHeading": "Beschrijving",
-      "noDescription": "Geen beschrijving.",
-      "infoHeading": "Projectgegevens",
-      "addressHeading": "Locatieadres",
-      "timestampsHeading": "Tijdstempels",
-      "referenceCode": "Referentiecode",
-      "status": "Status",
-      "phase": "Fase",
-      "delivery": "Oplevering",
-      "permit": "Vergunning",
-      "address": "Adres",
-      "municipality": "Gemeente",
-      "bagId": "BAG-id",
-      "created": "Aangemaakt",
-      "updated": "Bijgewerkt"
-    },
     "hero": {
       "title": "Projecten",
       "badge": "Portfoliooverzicht",
@@ -479,8 +420,6 @@
       "handover": "Oplevering"
     },
     "card": {
-      "phaseLabel": "Fase:",
-      "permitLabel": "Vergunning:",
       "menu": {
         "actions": "Projectacties",
         "view": "Bekijken",
@@ -488,9 +427,12 @@
         "reactivate": "Heractiveren",
         "archive": "Archiveren",
         "remove": "Verwijderen",
+        "removeAria": "Project verwijderen",
         "deleteTitle": "Project verwijderen",
         "deleteDescription": "\"{name}\" verwijderen uit actieve weergaven? Het wordt verborgen in normale projectlijsten.",
         "deleteConfirm": "Verwijderen",
+        "deleteConfirmPrompt": "Typ ter bevestiging de projectnaam \"{name}\" hieronder.",
+        "deleteConfirmPlaceholder": "Projectnaam",
         "archiveTitle": "Project archiveren",
         "archiveDescription": "\"{name}\" archiveren? Het project wordt alleen-lezen — niemand kan bewerken, controles uitvoeren of rapporten genereren totdat het opnieuw is geactiveerd.",
         "archiveConfirm": "Archiveren",
@@ -878,7 +820,16 @@
       "recentTitle": "Recent toegevoegd",
       "totalCerts": "Totaal",
       "validCerts": "Geldig",
-      "expiringSoonCerts": "Verloopt binnenkort"
+      "expiringSoonCerts": "Verloopt binnenkort",
+      "expiringSoonSub": "Binnen 30 dagen",
+      "expiredCerts": "Verlopen",
+      "donutCenterLabel": "certificaten",
+      "trendTitle": "Toegevoegd na verloop van tijd",
+      "trendEmpty": "Nog geen certificaten.",
+      "renewalsTitle": "Vernieuwingen nodig",
+      "renewalsEmpty": "Niets verloopt in de komende 90 dagen.",
+      "daysLeft": "Nog {n}d",
+      "empty": "Nog geen certificaten"
     }
   },
   "certificates": {
@@ -933,6 +884,14 @@
         "expiringSoonCerts": "Verloopt binnenkort",
         "byTypeTitle": "Certificaten per type",
         "byExpiryTitle": "Geldigheidsstatus",
+        "expiringSoonSub": "Binnen 30 dagen",
+        "expiredCerts": "Verlopen",
+        "donutCenterLabel": "certificaten",
+        "trendTitle": "Toegevoegd na verloop van tijd",
+        "trendEmpty": "Nog geen certificaten.",
+        "renewalsTitle": "Vernieuwingen nodig",
+        "renewalsEmpty": "Niets verloopt in de komende 90 dagen.",
+        "daysLeft": "Nog {n}d",
         "recentTitle": "Recent toegevoegd",
         "empty": "Nog geen certificaten"
       }
@@ -988,6 +947,10 @@
         "documents": "Documenten",
         "totalSize": "Totale grootte",
         "byCategoryTitle": "Per categorie",
+        "donutCenterLabel": "bestanden",
+        "storageTitle": "Opslag per categorie",
+        "trendTitle": "Toegevoegd na verloop van tijd",
+        "trendEmpty": "Nog geen bijlagen.",
         "recentTitle": "Recent toegevoegd",
         "empty": "Nog geen bijlagen"
       },
@@ -1153,7 +1116,7 @@
         "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
         "uploadCta": "Uploaden",
         "uploadCertificate": "Certificaat uploaden",
-        "uploadModel": "Model uploaden",
+        "addModel": "Model toevoegen",
         "linkExisting": "Bestaand document koppelen",
         "uploadSuccess": "{name} geüpload",
         "linkSuccess": "Document gekoppeld aan het dossier",
@@ -1189,7 +1152,29 @@
         "findingsOpenDetail": "{count, plural, =1 {1 open} other {# open}}",
         "findingsResolved": "Alle opgelost",
         "deadlinesOverdueDetail": "{count, plural, =1 {1 te laat} other {# te laat}}",
-        "deadlinesOnTrack": "Op schema"
+        "deadlinesOnTrack": "Op schema",
+        "rings": {
+          "title": "Projectvolledigheid",
+          "findingsLabel": "Bevindingen",
+          "dossierLabel": "Dossier",
+          "deadlinesLabel": "Deadlines",
+          "centerLabel": "Compleet",
+          "overallLabel": "Totaal",
+          "tooltip": "{filled} van {total} · {pct}%",
+          "tooltipNa": "Niet van toepassing",
+          "ariaLabel": "{label}: {value} van {total} compleet, {pct}%"
+        },
+        "expanded": {
+          "back": "Terug",
+          "dossierComplete": "Compleet",
+          "dossierRemaining": "Resterend",
+          "deadlinesMet": "Behaald",
+          "deadlinesPending": "Openstaand",
+          "deadlinesOverdue": "Verlopen",
+          "emptyFindings": "Nog geen bevindingen",
+          "emptyDeadlines": "Nog geen deadlines",
+          "emptyDossier": "Nog geen dossiervereisten"
+        }
       },
       "models": {
         "label": "Modellen",
@@ -1263,6 +1248,10 @@
           "removeTitle": "Model verwijderen?",
           "removeBody": "Hiermee worden “{name}” en alle bestandsversies definitief verwijderd. Dit kan niet ongedaan worden gemaakt.",
           "removeConfirm": "Verwijderen",
+          "restore": "Herstellen",
+          "restoreTitle": "Deze versie herstellen?",
+          "restoreBody": "Hiermee wordt v{version} de huidige versie. De nieuwere versies blijven in de geschiedenis staan.",
+          "restoreConfirm": "Herstellen",
           "cancel": "Annuleren",
           "noVersionsUploaded": "Nog geen versies geüpload.",
           "latest": "LAATSTE",
@@ -1675,6 +1664,7 @@
       "subtitle": "Bewerk de bevinding, wijs een verantwoordelijke en deadline toe en promoot deze.",
       "save": "Wijzigingen opslaan",
       "close": "Sluiten",
+      "expand": "Openen in dialoogvenster",
       "tabs": {
         "edit": "Bewerken",
         "history": "Geschiedenis"
@@ -1685,7 +1675,8 @@
         "severity": "Ernst",
         "bblArticleRef": "Bbl-artikelverwijzing",
         "assignee": "Verantwoordelijke",
-        "deadline": "Deadline"
+        "deadline": "Deadline",
+        "status": "Status"
       },
       "placeholders": {
         "assignee": "Niet toegewezen"
@@ -1782,24 +1773,6 @@
       "pickerTitle": "Selecteer een document",
       "pickerDescription": "Kies een projectdocument als referentie.",
       "empty": "Geen documenten beschikbaar"
-    },
-    "expanded": {
-      "status": "STATUS",
-      "severity": "ERNST",
-      "assignee": "TOEGEWEZEN",
-      "deadline": "DEADLINE",
-      "bblRef": "Bbl ref",
-      "photos": "FOTO'S",
-      "linkedElement": "GEKOPPELD",
-      "created": "TOEGEVOEGD",
-      "updated": "BIJGEWERKT",
-      "noAssignee": "Niet toegewezen",
-      "photoCount": "{count, plural, =0 {Geen} one {1 foto} other {# foto's}}",
-      "linkedYes": "Gekoppeld aan element",
-      "view": "Bekijken",
-      "openDetail": "Detail openen",
-      "delete": "Verwijderen",
-      "promote": "Promoveren"
     }
   },
   "findingsBoard": {
@@ -1842,13 +1815,37 @@
       "weeksAgo": "{count}w geleden"
     },
     "empty": "Geen bevindingen",
-    "invalidDrop": "Kan hier niet naartoe",
+    "dragRejected": {
+      "noPermission": "Je hebt geen rechten om bevindingen te verplaatsen.",
+      "needsInspector": "Alleen de kwaliteitsborger kan een bevinding verifiëren.",
+      "verifiedLocked": "Geverifieerde bevindingen zijn vergrendeld en kunnen niet worden verplaatst.",
+      "openFirst": "Een concept moet eerst naar Open voordat een andere status mogelijk is.",
+      "resolveFirst": "Een bevinding moet eerst opgelost zijn voordat deze geverifieerd kan worden.",
+      "generic": "Kan een bevinding niet van {from} naar {to} verplaatsen."
+    },
     "logFinding": "Bevinding vastleggen",
     "searchPlaceholder": "Bevindingen zoeken…",
     "filterAllPriorities": "Alle prioriteiten",
     "filter": {
       "unassigned": "Niet toegewezen",
       "assigneeTooltip": "Filter op {name}"
+    },
+    "export": {
+      "csv": "CSV exporteren",
+      "csvError": "Kon de bevindingen-CSV niet exporteren.",
+      "snag": "Bevindingenrapport",
+      "dialogTitle": "Bevindingenrapport (PDF)",
+      "dialogSubtitle": "Genereer een bevindingenlijst om aan een onderaannemer te geven. Verschijnt zodra klaar onder Rapporten van het project.",
+      "recipientLabel": "Ontvanger (toegewezen aan)",
+      "recipientAll": "Alle toegewezenen",
+      "statusLabel": "Status",
+      "severityLabel": "Ernst",
+      "anyOption": "Alle",
+      "generate": "Genereren",
+      "generating": "Genereren…",
+      "cancel": "Annuleren",
+      "success": "Het bevindingenrapport wordt gegenereerd — te vinden onder Rapporten.",
+      "error": "Kon het bevindingenrapport niet genereren."
     },
     "tabs": {
       "board": "Bevindingen",
@@ -2118,6 +2115,8 @@
         "byTypeTitle": "Op type",
         "latestTitle": "Laatste per type",
         "latestNotGenerated": "Niet gegenereerd",
+        "trendTitle": "Gegenereerd na verloop van tijd",
+        "trendEmpty": "Nog geen rapporten gegenereerd.",
         "empty": "Nog geen rapporten gegenereerd"
       }
     },
@@ -2145,12 +2144,36 @@
         "description": "Bundel het volledige dossier voor de gereedmelding. Je ontvangt een e-mail zodra het klaar is.",
         "generate": "Dossier",
         "missingData": "Onvoldoende gegevens om het dossier samen te stellen."
+      },
+      "snag_list": {
+        "title": "Bevindingenlijst",
+        "description": "Een bevindingenlijst per ontvanger om aan een onderaannemer te geven, gegenereerd vanuit het bevindingenbord.",
+        "generate": "Bevindingenlijst",
+        "missingData": "Geen bevindingen gevonden voor deze selectie."
       }
     },
     "sign": {
       "sign": "Onderteken",
       "signing": "Bezig met ondertekenen…",
       "signed": "Ondertekend"
+    },
+    "viewer": {
+      "title": "Rapport",
+      "subtitle": "Voorbeeld van de gegenereerde PDF",
+      "close": "Sluiten",
+      "groupFile": "Bestand",
+      "groupReport": "Rapport",
+      "groupOrigin": "Herkomst",
+      "fieldFilename": "Bestandsnaam",
+      "fieldSize": "Grootte",
+      "fieldFileType": "Bestandstype",
+      "fileTypeValue": "PDF",
+      "fieldType": "Type",
+      "fieldStatus": "Status",
+      "fieldLocale": "Taal",
+      "fieldCreated": "Aangemaakt",
+      "fieldFinished": "Voltooid",
+      "fieldSignedOn": "Ondertekend op"
     }
   },
   "reportTemplates": {
@@ -2319,7 +2342,23 @@
       "fieldCount": "{count, plural, =0 {Geen aangepaste velden} one {# aangepast veld} other {# aangepaste velden}}",
       "totalReportTemplates": "Rapportsjablonen",
       "reportDefaults": "Standaarden ingesteld",
-      "noReportTemplates": "Nog geen rapportsjablonen aangemaakt."
+      "noReportTemplates": "Nog geen rapportsjablonen aangemaakt.",
+      "totalTemplates": "Templates",
+      "byTypeTitle": "Templates per type",
+      "fieldTypesTitle": "Veldtypen in gebruik",
+      "fieldsPerTemplateTitle": "Aangepaste velden per template",
+      "fieldsDonutCenter": "velden",
+      "findingType": "Bevinding",
+      "noFields": "Nog geen aangepaste velden.",
+      "noFindingTemplates": "Nog geen bevindingstemplates.",
+      "fieldType": {
+        "text": "Tekst",
+        "textarea": "Tekstvak",
+        "number": "Getal",
+        "date": "Datum",
+        "select": "Keuzelijst",
+        "checkbox": "Selectievakje"
+      }
     }
   },
   "auth": {
@@ -2491,7 +2530,13 @@
       "exportDataSub": "Leden + auditlog, CSV",
       "dangerZoneTitle": "Gevarenzone",
       "dangerZoneDesc": "Verwijder deze organisatie permanent. Alle projecten, leden en auditgeschiedenis worden gewist. Dit kan niet ongedaan worden gemaakt.",
-      "deleteOrg": "Organisatie verwijderen"
+      "deleteOrg": "Organisatie verwijderen",
+      "donutCenterLabel": "leden",
+      "roleAdmin": "Beheerder",
+      "roleMember": "Lid",
+      "noMembers": "Nog geen leden.",
+      "activityTrendTitle": "Activiteit na verloop van tijd",
+      "trendEmpty": "Nog geen activiteit."
     },
     "members": {
       "inviteButton": "Lid uitnodigen",
@@ -2611,7 +2656,13 @@
       "exportDataSub": "Leden + auditlog, CSV",
       "dangerZoneTitle": "Gevarenzone",
       "dangerZoneDesc": "Verwijder deze organisatie permanent. Alle projecten, leden en auditgeschiedenis worden gewist. Dit kan niet ongedaan worden gemaakt.",
-      "deleteOrg": "Organisatie verwijderen"
+      "deleteOrg": "Organisatie verwijderen",
+      "donutCenterLabel": "leden",
+      "roleAdmin": "Beheerder",
+      "roleMember": "Lid",
+      "noMembers": "Nog geen leden.",
+      "activityTrendTitle": "Activiteit na verloop van tijd",
+      "trendEmpty": "Nog geen activiteit."
     },
     "members": {
       "inviteButton": "Lid uitnodigen",
@@ -2689,7 +2740,10 @@
         "createTenant": "Tenant aanmaken",
         "createTenantDesc": "Richt een nieuw org-schema in",
         "exportPlatformData": "Platformgegevens exporteren",
-        "exportPlatformDataDesc": "Tenants, zetels, opslag — CSV"
+        "exportPlatformDataDesc": "Tenants, zetels, opslag — CSV",
+        "donutCenterLabel": "Tenants",
+        "trendTitle": "Tenants na verloop van tijd",
+        "trendEmpty": "Nog geen tenants."
       },
       "statusFilters": {
         "all": "Alle statussen",
@@ -2880,12 +2934,6 @@
         "selectPlaceholder": "Kies een collega…",
         "cancel": "Annuleren",
         "confirm": "Overdragen en verwijderen"
-      },
-      "leave": {
-        "title": "Deze tenant verlaten",
-        "subtitle": "Je verliest toegang tot alle projecten in deze tenant. De beheerder moet je opnieuw uitnodigen om terug te komen.",
-        "confirm": "Tenant verlaten",
-        "cancel": "Annuleren"
       }
     },
     "accessRequests": {
@@ -3234,6 +3282,56 @@
   },
   "activity": {
     "title": "Projectactiviteit",
+    "viewAll": "Alle activiteit bekijken",
+    "hub": {
+      "crumb": "Activiteit",
+      "crumbProjects": "Projecten",
+      "projectNotFound": "Project niet gevonden. Mogelijk is het verwijderd.",
+      "projectLoadError": "Laden van project is mislukt.",
+      "tabs": {
+        "overview": "Overzicht",
+        "activity": "Activiteit"
+      },
+      "panel": {
+        "overviewEyebrow": "Projectgeschiedenis",
+        "overviewTitle": "Activiteitsoverzicht",
+        "activityEyebrow": "Projectgeschiedenis",
+        "activityTitle": "{count} gebeurtenissen"
+      },
+      "hero": {
+        "badge": "Activiteit",
+        "subtitle": "Elke wijziging, scan en upload binnen dit project",
+        "totalLabel": "Totaal",
+        "totalSub": "{count} gebeurtenissen",
+        "weekLabel": "Deze week",
+        "weekSub": "Gebeurtenissen tot nu toe",
+        "busiestLabel": "Drukste",
+        "busiestSub": "{count, plural, =1 {1 gebeurtenis} other {# gebeurtenissen}}",
+        "busiestNone": "—",
+        "busiestNoneSub": "Nog geen activiteit"
+      },
+      "list": {
+        "empty": "Geen activiteit komt overeen met je filters",
+        "loadError": "Laden van activiteit is mislukt."
+      },
+      "overview": {
+        "kpiTotal": "Totaal gebeurtenissen",
+        "kpiTotalSub": "Sinds altijd",
+        "kpiThisWeek": "Deze week",
+        "kpiThisWeekSub": "Gebeurtenissen tot nu toe",
+        "kpiBusiest": "Drukste categorie",
+        "kpiBusiestSub": "{count, plural, =1 {1 gebeurtenis} other {# gebeurtenissen}}",
+        "kpiBusiestNone": "—",
+        "kpiResources": "Resourcetypen",
+        "kpiResourcesSub": "Geraakt",
+        "byCategoryTitle": "Op categorie",
+        "donutCenterLabel": "Gebeurtenissen",
+        "byResourceTitle": "Op resource",
+        "trendTitle": "Activiteit in de tijd",
+        "trendEmpty": "Nog geen activiteit.",
+        "empty": "Nog geen activiteit"
+      }
+    },
     "timeAll": "Alle tijd",
     "timeLastHour": "Afgelopen uur",
     "timeLast24h": "Afgelopen 24 uur",
@@ -3252,14 +3350,46 @@
     "colWhen": "Wanneer",
     "colActor": "Gebruiker",
     "colType": "Type",
+    "colResource": "Onderdeel",
     "colActivity": "Activiteit",
+    "searchPlaceholder": "Activiteit zoeken…",
     "systemActor": "Systeem",
+    "trendTitle": "Activiteit in de tijd",
+    "trendEmpty": "Geen activiteit in deze periode.",
+    "trendTooltipTotal": "{count, plural, =1 {1 activiteit} other {# activiteiten}}",
+    "trendTooltipWeekOf": "Week van {date}",
+    "trendTooltipThisWeek": "Deze week tot nu toe",
+    "trendTooltipByType": "Per type",
+    "trendTooltipMore": "+{count} meer",
+    "resource": {
+      "finding": "Bevindingen",
+      "risk": "Risico's",
+      "bcf_topic": "BCF-kwesties",
+      "bcf_comment": "BCF-reacties",
+      "model": "Modellen",
+      "project_file": "Bestanden",
+      "project_files": "Bestanden",
+      "attachment": "Bijlagen",
+      "certificate": "Certificaten",
+      "certificates": "Certificaten",
+      "report": "Rapporten",
+      "compliance": "Compliancechecks",
+      "borgingsplan": "Borgingsplan",
+      "borgingsmoment": "Borgingsmomenten",
+      "checklist_item": "Checklist-items",
+      "checklist_item_result": "Checklist-resultaten",
+      "capture_links": "Opnamelinks",
+      "deadline": "Deadlines",
+      "project": "Project",
+      "project_member": "Leden"
+    },
     "modelCreated": "Model aangemaakt: {name}",
     "modelUpdated": "Model bijgewerkt: {name}",
     "modelDeleted": "Model verwijderd: {name}",
     "fileCompleted": "Toegevoegd: {filename}",
     "fileRejected": "Afgewezen: {filename}",
     "fileDeleted": "Verwijderd: {filename}",
+    "fileVersionRestored": "{filename} hersteld als huidige versie",
     "extractionSucceeded": "Geëxtraheerd: {filename}",
     "extractionFailed": "Extractie mislukt: {filename}",
     "complianceChecked": "{framework} nalevingscontrole uitgevoerd",
@@ -3394,13 +3524,15 @@
     },
     "sidePanel": {
       "titleExplorer": "Verkenner",
-      "titleInspector": "Inspecteur",
+      "titleFindings": "Bevindingen",
       "titleMeasure": "Meten",
       "titleSection": "Doorsneden",
       "titlePages": "Pagina's",
       "titleDrawingInfo": "Tekeninginfo",
       "titleBcf": "Issues",
-      "comingSoon": "Binnenkort beschikbaar"
+      "comingSoon": "Binnenkort beschikbaar",
+      "layerShow": "{layer} tonen",
+      "layerHide": "{layer} verbergen"
     },
     "markup": {
       "rectangle": "Rechthoek",
@@ -3509,11 +3641,6 @@
     },
     "modeIndicator": {
       "exitHint": "Druk op ESC om af te sluiten"
-    },
-    "pages": {
-      "loading": "Pagina's laden…",
-      "pageLabel": "Pagina {page}",
-      "current": "huidige"
     },
     "toolbar": {
       "homeView": "Beginaanzicht",
@@ -3676,10 +3803,10 @@
       "movementSpeed": "Bewegingssnelheid",
       "turnSpeed": "Draaisnelheid",
       "lookSensitivity": "Muiskijkgevoeligheid",
-      "sprintHint": "Houd Shift ingedrukt tijdens het bewegen om sneller te gaan",
+      "sprintHint": "Geldt voor vliegmodus (druk op F en beweeg met WASD). Houd Shift ingedrukt om sneller te gaan.",
       "behavior": "Gedrag",
-      "behaviorNoteColor": "Kleurwijzigingen laden de viewer opnieuw",
-      "behaviorNoteToggle": "Schakelaar: live · Kleur: opnieuw laden",
+      "behaviorNoteColor": "Markeerkleuren voor hover en selectie",
+      "behaviorNoteToggle": "Schakelaars en kleuren worden live toegepast",
       "hoverHighlight": "Markering bij aanwijzen",
       "hoverColor": "Aanwijskleur",
       "clickToSelect": "Klikken om te selecteren",
@@ -3831,19 +3958,6 @@
       "invertSelection": "Selectie omkeren"
     }
   },
-  "viewerInspector": {
-    "panelTitle": "Bijlagen & Bevindingen",
-    "tabAttachments": "Bijlagen",
-    "tabFindings": "Bevindingen",
-    "tabCertificates": "Certificaten",
-    "pdfPageHeader": "Pagina {page}",
-    "messages": {
-      "allSelected": "Alle {count, number} elementen geselecteerd. Selecteer één element om het te inspecteren.",
-      "noElementData": "Elementgegevens niet beschikbaar. Extraheer het model opnieuw om dit element te inspecteren.",
-      "noGlobalId": "Dit element heeft geen GlobalId; bijlagen kunnen niet worden gekoppeld.",
-      "pdfNotInitialized": "PDF-status niet geïnitialiseerd."
-    }
-  },
   "viewerFindings": {
     "count": "{count, plural, =0 {Geen bevindingen} one {# bevinding} other {# bevindingen}}",
     "filterPlaceholder": "Bevindingen zoeken…",
@@ -3851,7 +3965,14 @@
     "loading": "Bevindingen laden…",
     "emptyNoItems": "Nog geen bevindingen gekoppeld aan dit element.",
     "emptyProjectEmpty": "Geen bevindingen op projectniveau.",
-    "emptyFileEmpty": "Nog geen bevindingen gekoppeld aan dit bestand."
+    "emptyFileEmpty": "Nog geen bevindingen gekoppeld aan dit bestand.",
+    "pdfPageHeader": "Pagina {page}",
+    "messages": {
+      "allSelected": "Alle {count, number} elementen geselecteerd. Selecteer één element om het te inspecteren.",
+      "noElementData": "Elementgegevens niet beschikbaar. Extraheer het model opnieuw om dit element te inspecteren.",
+      "noGlobalId": "Dit element heeft geen GlobalId; bevindingen kunnen niet worden gekoppeld.",
+      "pdfNotInitialized": "PDF-status niet geïnitialiseerd."
+    }
   },
   "viewerCertificates": {
     "filterPlaceholder": "Certificaten zoeken…",

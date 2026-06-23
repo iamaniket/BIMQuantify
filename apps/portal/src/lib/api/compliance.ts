@@ -21,12 +21,14 @@ export async function triggerComplianceCheck(
   projectId: string,
   modelId: string,
   fileId: string,
-  buildingType = 'all',
+  buildingType?: string,
 ): Promise<ComplianceCheckResponse> {
   const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/check`;
+  // Omit building_type unless an explicit override is given — the API then
+  // derives it from the project's building type for rule filtering.
   return apiClient.post(
     path,
-    { building_type: buildingType },
+    buildingType ? { building_type: buildingType } : {},
     ComplianceCheckResponseSchema,
     accessToken,
   );

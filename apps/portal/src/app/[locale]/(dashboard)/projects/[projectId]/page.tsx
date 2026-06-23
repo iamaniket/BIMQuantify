@@ -5,7 +5,9 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 
 import { Button, Skeleton } from '@bimstitch/ui';
-import { Pencil, Settings, Share2 } from '@bimstitch/ui/icons';
+import {
+  ArrowRight, Pencil, Settings, Share2,
+} from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
@@ -20,8 +22,8 @@ import { PageShell } from '@/components/shared/layout/PageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
 import { ProjectChartsPanel } from '@/features/projects/detail/ProjectChartsPanel';
+import { ActivityTimelinePanel } from '@/features/projects/detail/ActivityTimelinePanel';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
-import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
 import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
 import {
   computeDossierCompleteness,
@@ -30,6 +32,7 @@ import {
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
 import { ProjectFormDialog } from '@/features/projects/ProjectFormDialog';
 import { ProjectSettingsDialog } from '@/features/projects/detail/ProjectSettingsDialog';
+import { RemoveProjectButton } from '@/features/projects/detail/RemoveProjectButton';
 import { isProjectArchived } from '@/lib/formatting/projects';
 import { Link } from '@/i18n/navigation';
 
@@ -37,6 +40,7 @@ export default function ProjectDetailPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
   const tHero = useTranslations('projectDetail.hero');
+  const tActivity = useTranslations('activity');
   const projectQuery = useProject(projectId);
   const [editOpen, setEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -150,6 +154,7 @@ export default function ProjectDetailPage(): JSX.Element {
           <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('projectAccess')}
         </Link>
       </Button>
+      <RemoveProjectButton project={project} />
     </>
   );
 
@@ -166,17 +171,32 @@ export default function ProjectDetailPage(): JSX.Element {
           />
         }
       >
-        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-[1fr_1fr] xl:grid-cols-[3fr_3fr_2fr]">
-          <ProjectChartsPanel dossier={dossier} />
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-2">
+          <div className="flex min-h-0 flex-col gap-3.5">
+            <ProjectChartsPanel
+              dossier={dossier}
+              findings={findings}
+              deadlines={deadlines}
+              country={project.country}
+            />
+            <ActivityTimelinePanel
+              projectId={projectId}
+              headerAction={(
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={`/projects/${projectId}/activity`}>
+                    {tActivity('viewAll')}
+                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              )}
+            />
+          </div>
 
           <RightColumnTabs
             projectId={projectId}
             projectCountry={project.country}
             models={models}
           />
-          <div className="hidden lg:block">
-            <ActivityPanel projectId={projectId} />
-          </div>
         </div>
       </PageShell>
       <ProjectFormDialog

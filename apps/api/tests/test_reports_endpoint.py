@@ -574,6 +574,10 @@ async def test_report_callback_transitions_to_ready(
     assert fb["status"] == "ready"
     assert fb["download_url"] is not None
     assert fb["download_url"].startswith("http://fake-storage/")
+    # download_url forces a save; view_url renders inline in the preview dialog.
+    assert "disposition=attachment" in fb["download_url"]
+    assert fb["view_url"] is not None
+    assert "disposition=inline" in fb["view_url"]
 
 
 async def test_report_callback_records_failure(

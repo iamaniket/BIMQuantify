@@ -34,6 +34,7 @@ import type { SimplePlane, World } from '@thatopen/components';
 import type { Plugin, Vec3, ViewerContext } from '../../../core/types.js';
 import { pick } from '../../../core/Raycaster.js';
 import { createMaterialClippingSync } from './material-clipping.js';
+import { computePlaneScreenSize } from './screenSize.js';
 
 const NAME = 'section' as const;
 
@@ -47,8 +48,11 @@ export interface SectionPlane {
 }
 
 export interface SectionPluginOptions {
-  /** Helper plane size as a multiple of the model's largest dimension. Default: 1.1. */
-  helperSize?: number;
+  /**
+   * Helper plane size as a fraction of the viewport height, held constant on
+   * screen regardless of zoom (xeokit-style handle). Default: 0.1 (10%).
+   */
+  screenFraction?: number;
   /** Helper plane colour. Default: 0x1e90ff (dodger blue). */
   helperColor?: number;
   /** Helper plane opacity. Default: 0.12. */
@@ -56,7 +60,7 @@ export interface SectionPluginOptions {
 }
 
 export interface SectionConfig {
-  helperSize: number;
+  screenFraction: number;
   helperColor: number;
   helperOpacity: number;
 }
@@ -80,7 +84,7 @@ interface GizmoControls {
 export function sectionPlugin(
   options: SectionPluginOptions = {},
 ): Plugin & SectionPluginAPI {
-  let helperSize = options.helperSize ?? 1.1;
+  let screenFraction = options.screenFraction ?? 0.1;
   let helperColor = options.helperColor ?? 0x1e90ff;
   let helperOpacity = options.helperOpacity ?? 0.12;
 
@@ -101,6 +105,8 @@ export function sectionPlugin(
   const controlSyncCleanup = new Map<string, () => void>();
 
   let clickUnsub: (() => void) | null = null;
+  /** Unsub for the `camera:change` handler that keeps helper sizes constant on screen. */
+  let camChangeUnsub: (() => void) | null = null;
 
   // Material-clipping subsystem. Owns `material.clippingPlanes` upkeep + the
   // streaming-material / model-loaded subscriptions; reads our live state by
@@ -202,6 +208,7 @@ export function sectionPlugin(
       plane.normal.copy(newNormal);
       plane.origin.copy(helper.position);
       plane.three.setFromNormalAndCoplanarPoint(newNormal, helper.position);
+      refreshPlaneScreenSize(plane);
       ctxRef?.requestRender();
     };
     tc.addEventListener('change', onChange);
@@ -218,18 +225,6 @@ export function sectionPlugin(
 
   // ----- helpers -----
 
-  const getModelMaxDim = (): number => {
-    if (!ctxRef) return 5;
-    const box = new THREE.Box3();
-    for (const model of ctxRef.models().values()) {
-      const mBox = model.box;
-      if (mBox && !mBox.isEmpty()) box.union(mBox);
-    }
-    if (box.isEmpty()) return 5;
-    const size = box.getSize(new THREE.Vector3());
-    return Math.max(size.x, size.y, size.z) || 5;
-  };
-
   const getDefaultPoint = (): THREE.Vector3 => {
     if (!ctxRef) return new THREE.Vector3();
     const box = new THREE.Box3();
@@ -242,8 +237,6 @@ export function sectionPlugin(
   };
 
   const applyStyle = (plane: SimplePlane): void => {
-    // Size the helper to span the model, not OBC's fixed 5 units.
-    plane.size = getModelMaxDim() * helperSize;
     try {
       const mat = plane.planeMaterial;
       if (mat && !Array.isArray(mat)) {
@@ -254,6 +247,26 @@ export function sectionPlugin(
     } catch {
       // Material may not be a MeshBasicMaterial in all cases
     }
+  };
+
+  /**
+   * Hold the helper quad at a constant on-screen size (~`screenFraction` of the
+   * viewport height) regardless of zoom or projection. OBC's built-in
+   * `autoScale` only handles perspective and ignores the fov, so we turn it off
+   * and drive `plane.size` ourselves — with `autoScale = false` the OBC setter
+   * writes `_planeMesh.scale` directly, and the base geometry is a unit plane,
+   * so the world side length equals the value we pass.
+   */
+  const refreshPlaneScreenSize = (plane: SimplePlane): void => {
+    if (!ctxRef) return;
+    plane.autoScale = false;
+    const size = computePlaneScreenSize(ctxRef.camera, plane.origin, screenFraction);
+    if (size !== null) plane.size = size;
+  };
+
+  const refreshAllPlaneSizes = (): void => {
+    if (!clipper) return;
+    for (const plane of clipper.list.values()) refreshPlaneScreenSize(plane);
   };
 
   // ----- commands -----
@@ -276,6 +289,7 @@ export function sectionPlugin(
     const plane = getPlane(ourId);
     if (plane) {
       applyStyle(plane);
+      refreshPlaneScreenSize(plane);
       attachControlSync(ourId, plane);
     }
 
@@ -350,6 +364,10 @@ export function sectionPlugin(
   const selectPlane = (id: string | null): void => {
     selectedId = id;
     applySelectionVisibility();
+    if (id) {
+      const plane = getPlane(id);
+      if (plane) refreshPlaneScreenSize(plane);
+    }
     ctxRef?.events.emit('section:select', { id });
     ctxRef?.requestRender();
   };
@@ -458,6 +476,11 @@ export function sectionPlugin(
       // Keep streamed-in geometry clipped + clip federated models on load.
       materialClipping.install();
 
+      // Hold every helper at a constant on-screen size as the camera zooms /
+      // switches projection. `camera:change` already wakes the renderer
+      // (markActive), so the resized quad paints the same frame.
+      camChangeUnsub = ctx.events.on('camera:change', refreshAllPlaneSizes);
+
       ctx.commands.register('section.add', (args: unknown) => add(args), {
         title: 'Add a section plane',
       });
@@ -522,6 +545,7 @@ export function sectionPlugin(
         if (!plane) return;
         const newPoint = plane.origin.clone().addScaledVector(plane.normal, offset);
         plane.setFromNormalAndCoplanarPoint(plane.normal, newPoint);
+        refreshPlaneScreenSize(plane);
         emitChange();
         ctxRef?.requestRender();
       }, { title: 'Slide section plane along its normal' });
@@ -540,6 +564,7 @@ export function sectionPlugin(
         const plane = getPlane(id);
         if (!plane) return;
         plane.setFromNormalAndCoplanarPoint(plane.normal, new THREE.Vector3(p.x, p.y, p.z));
+        refreshPlaneScreenSize(plane);
         emitChange();
         ctxRef?.requestRender();
       }, { title: 'Set section plane position' });
@@ -586,16 +611,19 @@ export function sectionPlugin(
       }, { title: 'Get slider range for a section plane' });
 
       ctx.commands.register('section.getConfig', (): SectionConfig => ({
-        helperSize, helperColor, helperOpacity,
+        screenFraction, helperColor, helperOpacity,
       }), { title: 'Get section display config' });
 
       ctx.commands.register('section.setConfig', (args: unknown) => {
         const cfg = args as Partial<SectionConfig>;
-        if (cfg.helperSize !== undefined) helperSize = cfg.helperSize;
+        if (cfg.screenFraction !== undefined) screenFraction = cfg.screenFraction;
         if (cfg.helperColor !== undefined) helperColor = cfg.helperColor;
         if (cfg.helperOpacity !== undefined) helperOpacity = cfg.helperOpacity;
         if (clipper) {
-          for (const plane of clipper.list.values()) applyStyle(plane);
+          for (const plane of clipper.list.values()) {
+            applyStyle(plane);
+            refreshPlaneScreenSize(plane);
+          }
         }
         emitChange();
         ctxRef?.requestRender();
@@ -605,6 +633,8 @@ export function sectionPlugin(
     uninstall() {
       clickUnsub?.();
       clickUnsub = null;
+      camChangeUnsub?.();
+      camChangeUnsub = null;
 
       for (const cleanup of controlSyncCleanup.values()) cleanup();
       controlSyncCleanup.clear();

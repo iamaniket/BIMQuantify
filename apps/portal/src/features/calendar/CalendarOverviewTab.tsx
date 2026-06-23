@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Activity,
   AlertTriangle,
   CalendarClock,
   CalendarDays,
@@ -10,44 +11,26 @@ import {
   Layers,
 } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
-import { useMemo, type JSX, type ReactNode } from 'react';
+import { useMemo, type JSX } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
 import type { Locale } from '@bimstitch/i18n';
 
 import { BarChartMini } from '@/components/shared/charts/BarChartMini';
+import { ChartSection } from '@/components/shared/charts/ChartSection';
 import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
 import { StatCard } from '@/components/shared/charts/StatCard';
+import { TrendArea } from '@/components/shared/charts/TrendArea';
 import { TONE_STYLES } from '@/components/shared/calendar/CalendarEventChip';
 import { Link } from '@/i18n/navigation';
-import { formatDate } from '@/lib/formatting/dates';
-import type { CalendarDeadline } from '@/lib/api/schemas/deadlines';
+import { formatDate, formatMonthDay } from '@/lib/formatting/dates';
 
 import { orgDeadlineTone } from './orgDeadlineTone';
 import { useOrgDeadlines, useOrgDeadlineSummary } from './useOrgDeadlines';
 
 const UPCOMING_LIMIT = 8;
-
-type SectionProps = {
-  icon: JSX.Element;
-  title: string;
-  className?: string;
-  children: ReactNode;
-};
-
-function Section({
-  icon, title, className, children,
-}: SectionProps): JSX.Element {
-  return (
-    <div className={`rounded-xl border border-border bg-surface-main p-4 ${className ?? ''}`}>
-      <div className="mb-3 flex items-center gap-2 text-caption font-bold uppercase tracking-widest text-foreground-tertiary">
-        {icon}
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
+const TREND_WEEKS = 8;
+const MS_DAY = 24 * 60 * 60 * 1000;
 
 export function CalendarOverviewTab(): JSX.Element {
   const t = useTranslations('calendar.overview');
@@ -87,6 +70,27 @@ export function CalendarOverviewTab(): JSX.Element {
       .slice(0, UPCOMING_LIMIT),
     [deadlines],
   );
+
+  // Deadlines due per week over the next TREND_WEEKS weeks (forward workload).
+  const trend = useMemo(() => {
+    const today = new Date(new Date().toDateString());
+    const values = new Array<number>(TREND_WEEKS).fill(0);
+    let total = 0;
+    for (const d of deadlines) {
+      const days = d.days_until_due;
+      if (days !== null && days >= 0) {
+        const idx = Math.floor(days / 7);
+        if (idx < TREND_WEEKS) {
+          values[idx] = (values[idx] ?? 0) + 1;
+          total += 1;
+        }
+      }
+    }
+    const labels = values.map(
+      (_, i) => formatMonthDay(new Date(today.getTime() + i * 7 * MS_DAY).toISOString(), locale),
+    );
+    return { values, labels, total };
+  }, [deadlines, locale]);
 
   const metPct = summary !== undefined && summary.total > 0
     ? Math.round((summary.met / summary.total) * 100)
@@ -138,7 +142,7 @@ export function CalendarOverviewTab(): JSX.Element {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Status donut + legend */}
-        <Section icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('statusTitle')}>
+        <ChartSection icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('statusTitle')}>
           <div className="flex flex-col items-center gap-5 sm:flex-row">
             <DonutChart
               segments={statusSegments}
@@ -156,15 +160,28 @@ export function CalendarOverviewTab(): JSX.Element {
               ))}
             </ul>
           </div>
-        </Section>
+        </ChartSection>
 
         {/* Upcoming horizon bar chart */}
-        <Section icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />} title={t('horizonTitle')}>
+        <ChartSection icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />} title={t('horizonTitle')}>
           <BarChartMini categories={bucketCategories} values={bucketValues} height={200} color="var(--warning)" />
-        </Section>
+        </ChartSection>
+
+        {/* Deadlines due over time */}
+        <ChartSection
+          icon={<Activity className="h-3.5 w-3.5" aria-hidden />}
+          title={t('trendTitle')}
+          className="lg:col-span-2"
+        >
+          {trend.total === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('trendEmpty')}</p>
+          ) : (
+            <TrendArea values={trend.values} labels={trend.labels} height={200} color="var(--warning)" />
+          )}
+        </ChartSection>
 
         {/* Upcoming deadlines list */}
-        <Section
+        <ChartSection
           icon={<Clock className="h-3.5 w-3.5" aria-hidden />}
           title={t('upcomingTitle')}
           className="lg:col-span-2"
@@ -211,7 +228,7 @@ export function CalendarOverviewTab(): JSX.Element {
               })}
             </ul>
           )}
-        </Section>
+        </ChartSection>
       </div>
     </div>
   );

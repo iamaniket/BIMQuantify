@@ -6,7 +6,7 @@ import {
 } from 'react';
 
 import {
-  Button, Input, Select, Tabs, TabsContent, TabsList, TabsTrigger,
+  Select, Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@bimstitch/ui';
 import type { ViewerHandle } from '@bimstitch/viewer';
 
@@ -20,7 +20,6 @@ import type { CameraAction, ControlsSettings, ViewerSettings } from '@/lib/viewe
 
 import { prettyKey } from './prettyKey';
 import {
-  CATEGORY_LABEL_KEYS,
   CATEGORY_STYLES,
   classifyCommand,
 } from './shortcutCategories';
@@ -29,7 +28,7 @@ import { MouseDiagram } from './MouseDiagram';
 import { Toggle } from './primitives';
 import { ShortcutList } from './ShortcutList';
 import { VisualKeyboard } from './VisualKeyboard';
-import type { NormalizedBinding, ShortcutCategory } from './types';
+import type { NormalizedBinding } from './types';
 
 type Binding3D = { combo: string; command: string };
 
@@ -191,45 +190,11 @@ function use2DBindings(
 
 // ── Inline helper components ────────────────────────────────────────
 
-const SearchIcon = (): JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-);
-
 const PencilIcon = (): JSX.Element => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
   </svg>
 );
-
-function CategoryFilter({ filter, onFilter, counts }: {
-  filter: ShortcutCategory | null;
-  onFilter: (cat: ShortcutCategory | null) => void;
-  counts: Record<string, number>;
-}): JSX.Element {
-  const t = useTranslations('viewer.shortcuts');
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  const cats = Object.keys(CATEGORY_LABEL_KEYS) as ShortcutCategory[];
-  return (
-    <Select
-      selectSize="md"
-      className="w-full"
-      value={filter ?? ''}
-      onChange={(e) => {
-        const val = e.target.value;
-        onFilter(val === '' ? null : val as ShortcutCategory);
-      }}
-    >
-      <option value="">{t('all')} ({total})</option>
-      {cats.map((id) => (
-        <option key={id} value={id}>
-          {t(CATEGORY_LABEL_KEYS[id])} ({counts[id] ?? 0})
-        </option>
-      ))}
-    </Select>
-  );
-}
 
 function CaptureOverlay({ action, combo, cat, onCancel }: {
   action: string;
@@ -523,8 +488,6 @@ export function KeyBindingsTab(props: Props): JSX.Element {
   const bindings = mode === '3d' ? bindings3D : bindings2D;
   const [capturing, setCapturing] = useState<string | null>(null);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [filter, setFilter] = useState<ShortcutCategory | null>(null);
-  const [query, setQuery] = useState('');
 
 
   const selectedBinding = useMemo(() => {
@@ -536,12 +499,6 @@ export function KeyBindingsTab(props: Props): JSX.Element {
       return mainKey === comboKey && parts.length === 1;
     }) ?? null;
   }, [selectedCode, bindings]);
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const b of bindings) c[b.category] = (c[b.category] ?? 0) + 1;
-    return c;
-  }, [bindings]);
 
   const handleCaptureStart = useCallback((command: string) => {
     setCapturing(command);
@@ -619,48 +576,25 @@ export function KeyBindingsTab(props: Props): JSX.Element {
         <div className="flex flex-1 min-h-0 flex-col">
           {/* Pinned: keyboard visual */}
           <div className="flex shrink-0 justify-center overflow-x-auto pb-2 pt-3">
-            <VisualKeyboard
-              bindings={bindings}
-              capturing={capturing}
-              onCaptureStart={handleCaptureStart}
-              selectedCode={selectedCode}
-              onPick={pickKey}
-            />
-          </div>
-
-          {/* Pinned: toolbar — search + filter */}
-          <div className="flex shrink-0 items-center gap-2 px-1 pb-2 pt-2">
-            <Input
-              inputSize="md"
-              className="w-1/4"
-              leading={<SearchIcon />}
-              trailing={query ? (
-                <button
-                  type="button"
-                  className="text-foreground-tertiary hover:text-foreground"
-                  onClick={() => { setQuery(''); }}
-                  aria-label={t('clearSearch')}
-                >
-                  ×
-                </button>
-              ) : undefined}
-              placeholder={t('searchActions')}
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); }}
-            />
-            <div className="w-1/4">
-              <CategoryFilter filter={filter} onFilter={setFilter} counts={counts} />
+            <div style={{ zoom: 0.9 }}>
+              <VisualKeyboard
+                bindings={bindings}
+                capturing={capturing}
+                onCaptureStart={handleCaptureStart}
+                selectedCode={selectedCode}
+                onPick={pickKey}
+              />
             </div>
           </div>
 
           {/* Scrollable shortcut list */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-1">
+          <div className="min-h-0 flex-1 overflow-y-auto px-1 pt-2">
             <ShortcutList
               bindings={bindings}
               capturing={capturing}
               onCaptureStart={handleCaptureStart}
-              filter={filter}
-              query={query}
+              filter={null}
+              query=""
               selected={selectedBinding?.command ?? null}
               onSelect={selectFromList}
             />
@@ -682,20 +616,22 @@ export function KeyBindingsTab(props: Props): JSX.Element {
         <div className="flex flex-1 min-h-0 flex-col">
           {/* Pinned: mouse diagram */}
           <div className="flex shrink-0 justify-center pb-2 pt-3">
-            {mode === '3d' ? (
-              <Mouse3DDiagram
-                settings={settings}
-                selected={selectedCode}
-                onPick={setSelectedCode}
-              />
-            ) : (
-              <Mouse2DDiagram
-                settings={settings as DocumentSettings}
-                controls3D={(props as Props2D).controls3D}
-                selected={selectedCode}
-                onPick={setSelectedCode}
-              />
-            )}
+            <div style={{ zoom: 0.9 }}>
+              {mode === '3d' ? (
+                <Mouse3DDiagram
+                  settings={settings}
+                  selected={selectedCode}
+                  onPick={setSelectedCode}
+                />
+              ) : (
+                <Mouse2DDiagram
+                  settings={settings as DocumentSettings}
+                  controls3D={(props as Props2D).controls3D}
+                  selected={selectedCode}
+                  onPick={setSelectedCode}
+                />
+              )}
+            </div>
           </div>
 
           {/* Scrollable settings list */}

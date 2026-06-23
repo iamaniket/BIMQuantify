@@ -161,9 +161,10 @@ export function useViewerBridge(handle: ViewerHandle | null, ready?: boolean): v
       });
     });
 
-    // Plugins emit `feature:enabled` whenever they toggle (e.g. the
-    // interactive-performance plugin pauses hover during camera orbit).
-    // Mirror that into the store so the UI stays accurate.
+    // Plugins emit `feature:enabled` only on genuine user toggles (the settings
+    // UI). Transient suppression — e.g. interactive-performance pausing hover
+    // during camera orbit — goes through `setPaused` and stays silent, so this
+    // mirror tracks the user's intent and never flickers mid-orbit.
     const offFeature = handle.events.on('feature:enabled', ({ name, enabled }) => {
       const feature = PLUGIN_TO_FEATURE[name];
       if (!feature) return;

@@ -1,25 +1,30 @@
 'use client';
 
-import { useMemo, useState, type JSX } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useEffect, useMemo, useState, type JSX } from 'react';
 
 import type { Locale } from '@bimstitch/i18n';
 import { Select } from '@bimstitch/ui';
 
-import { DataTable } from '@/components/shared/DataTable';
 import type { Column } from '@/components/shared/PageTable';
-import { UserAvatar } from '@/components/shared/UserAvatar';
-import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { listProjectActivityPage } from '@/lib/api/activity';
 import type { ActivityCategory, ProjectActivityEntry } from '@/lib/api/schemas/activity';
 import { formatDateTime } from '@/lib/formatting/dates';
-import { useTableQuery } from '@/lib/query/useTableQuery';
+import { useTableQuery, type TablePagination } from '@/lib/query/useTableQuery';
+import { humanizeResource } from '@/features/projects/detail/ActivityTrendTooltip';
 import { projectActivityKey } from '@/features/projects/queryKeys';
 
-type TimeWindow = 'all' | '1h' | '24h' | '7d' | '30d';
-type TypeFilter = 'all' | ActivityCategory;
+/**
+ * Shared building blocks for the project activity feed — the column definitions,
+ * the server-paginated table hook, the category styling and the filter selects.
+ * The dedicated Activity page composes these; kept as standalone pieces so the
+ * feed table can be reused elsewhere without re-deriving columns or filters.
+ */
 
-const PAGE_SIZE_OPTIONS = [20, 40, 60, 80, 100] as const;
+export type TimeWindow = 'all' | '1h' | '24h' | '7d' | '30d';
+export type TypeFilter = 'all' | ActivityCategory;
+
+export const PAGE_SIZE_OPTIONS = [20, 40, 60, 80, 100] as const;
 
 const TIME_DURATIONS: Record<Exclude<TimeWindow, 'all'>, number> = {
   '1h': 3_600_000,
@@ -28,7 +33,7 @@ const TIME_DURATIONS: Record<Exclude<TimeWindow, 'all'>, number> = {
   '30d': 2_592_000_000,
 };
 
-function computeSince(window: TimeWindow): string | undefined {
+export function computeSince(window: TimeWindow): string | undefined {
   if (window === 'all') return undefined;
   return new Date(Date.now() - TIME_DURATIONS[window]).toISOString();
 }
@@ -59,6 +64,7 @@ const ACTION_I18N_KEY: Record<string, string> = {
   'project_file.completed': 'fileCompleted',
   'project_file.rejected': 'fileRejected',
   'project_file.deleted': 'fileDeleted',
+  'project_file.version_restored': 'fileVersionRestored',
   'project_file.extraction_succeeded': 'extractionSucceeded',
   'project_file.extraction_failed': 'extractionFailed',
   'compliance.checked': 'complianceChecked',
@@ -133,25 +139,49 @@ function descriptionParams(entry: ProjectActivityEntry): Record<string, string> 
   };
 }
 
-type ActivityFilters = {
+export type ActivityFilters = {
   category: ActivityCategory | undefined;
+  q: string | undefined;
   since: string | undefined;
 };
 
-type ActivityPanelProps = {
-  projectId: string;
-};
+/** Debounce a fast-changing value so each keystroke doesn't fire a server query.
+ * The Input stays controlled by the raw value; only this delayed copy feeds the
+ * query filters. */
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => { setDebounced(value); }, delayMs);
+    return () => { clearTimeout(id); };
+  }, [value, delayMs]);
+  return debounced;
+}
 
-export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
+/** Server-paginated activity feed for a project, plus the time-window + category
+ * + search state that drives it. Shared by the detail-page card and the dedicated
+ * Activity page so both query and paginate identically. */
+export function useActivityTable(projectId: string): {
+  table: TablePagination<ProjectActivityEntry>;
+  timeWindow: TimeWindow;
+  setTimeWindow: (window: TimeWindow) => void;
+  typeFilter: TypeFilter;
+  setTypeFilter: (filter: TypeFilter) => void;
+  search: string;
+  setSearch: (value: string) => void;
+} {
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const t = useTranslations('activity');
-  const locale = useLocale() as Locale;
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const since = useMemo(() => computeSince(timeWindow), [timeWindow]);
   const filters = useMemo<ActivityFilters>(
-    () => ({ category: typeFilter === 'all' ? undefined : typeFilter, since }),
-    [typeFilter, since],
+    () => ({
+      category: typeFilter === 'all' ? undefined : typeFilter,
+      q: debouncedSearch.trim() || undefined,
+      since,
+    }),
+    [typeFilter, debouncedSearch, since],
   );
 
   const table = useTableQuery<ProjectActivityEntry, ActivityFilters>({
@@ -166,23 +196,35 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
     refetchOnWindowFocus: true,
   });
 
-  const columns: Column<ProjectActivityEntry>[] = [
+  return { table, timeWindow, setTimeWindow, typeFilter, setTypeFilter, search, setSearch };
+}
+
+/** The 4-column activity feed table (When / Actor / Type / Activity). A hook
+ * because every cell label is localized via `useTranslations`. */
+export function useActivityColumns(): Column<ProjectActivityEntry>[] {
+  const t = useTranslations('activity');
+  const locale = useLocale() as Locale;
+
+  return [
     {
       header: t('colWhen'),
       sortKey: 'created_at',
-      className: 'whitespace-nowrap font-sans text-caption text-foreground-tertiary',
+      className: 'w-[124px] whitespace-nowrap font-sans text-caption text-foreground-tertiary',
       cell: (entry) => formatDateTime(entry.created_at, locale),
     },
     {
       header: t('colActor'),
-      // Tight column: just the avatar. Full name shows on hover via UserAvatar's title.
-      className: 'w-[1%] whitespace-nowrap',
-      cell: (entry) => <UserAvatar name={entry.actor_name ?? t('systemActor')} size="sm" />,
+      className: 'w-[150px] font-sans text-body3 text-foreground-secondary',
+      cell: (entry) => (
+        <div className="truncate" title={entry.actor_name ?? t('systemActor')}>
+          {entry.actor_name ?? t('systemActor')}
+        </div>
+      ),
     },
     {
       header: t('colType'),
       sortKey: 'action',
-      className: 'font-sans text-body3',
+      className: 'w-[100px] font-sans text-body3',
       cell: (entry) => {
         const s = categoryStyle(entry.category);
         return (
@@ -199,84 +241,78 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
       },
     },
     {
+      header: t('colResource'),
+      sortKey: 'resource_type',
+      className: 'w-[130px] font-sans text-body3 text-foreground-secondary',
+      // activity.resource.<type> labels exist for the known resource types;
+      // anything new title-cases the raw code rather than crashing on a miss.
+      cell: (entry) => {
+        const key = `resource.${entry.resource_type}`;
+        const label = t.has(key) ? t(key) : humanizeResource(entry.resource_type);
+        return <div className="truncate" title={label}>{label}</div>;
+      },
+    },
+    {
       header: t('colActivity'),
+      // Flex column: fills the remaining width under `table-fixed` and ellipsizes
+      // long file names on one line; the full text is available on hover via title.
       className: 'font-sans text-body3',
-      // Cap the width so long file names stay on one line and ellipsize;
-      // the full text is available on hover via title.
       cell: (entry) => {
         const i18nKey = ACTION_I18N_KEY[entry.action];
         const description = i18nKey !== undefined ? t(i18nKey, descriptionParams(entry)) : entry.action;
         return (
-          <div className="max-w-[240px] truncate text-foreground" title={description}>
+          <div className="truncate text-foreground" title={description}>
             {description}
           </div>
         );
       },
     },
   ];
+}
+
+/** The two activity filters (time window + category) as bare `<Select>`s. No
+ * wrapper, so the detail-page card header and the dedicated-page toolbar each
+ * supply their own container. */
+export function ActivityFilterSelects({
+  timeWindow,
+  onTimeWindow,
+  typeFilter,
+  onTypeFilter,
+}: {
+  timeWindow: TimeWindow;
+  onTimeWindow: (window: TimeWindow) => void;
+  typeFilter: TypeFilter;
+  onTypeFilter: (filter: TypeFilter) => void;
+}): JSX.Element {
+  const t = useTranslations('activity');
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-      {/* Header — eyebrow/title + count left, two dropdowns right */}
-      <div className="flex shrink-0 items-center gap-2.5 px-4 pb-2.5 pt-4">
-        <div className="min-w-0">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-foreground-tertiary">
-            {t('title')}
-          </div>
-          <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
-            <span className="font-sans text-[17px] font-bold leading-tight tracking-tight text-foreground tabular-nums">
-              {t('events', { count: table.total })}
-            </span>
-          </div>
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Select
-            selectSize="md"
-            value={timeWindow}
-            onChange={(e) => { setTimeWindow(e.target.value as TimeWindow); }}
-            className="w-auto min-w-0"
-          >
-            <option value="all">{t('timeAll')}</option>
-            <option value="1h">{t('timeLastHour')}</option>
-            <option value="24h">{t('timeLast24h')}</option>
-            <option value="7d">{t('timeLast7d')}</option>
-            <option value="30d">{t('timeLast30d')}</option>
-          </Select>
-          <Select
-            selectSize="md"
-            value={typeFilter}
-            onChange={(e) => { setTypeFilter(e.target.value as TypeFilter); }}
-            className="w-auto min-w-0"
-          >
-            <option value="all">{t('typeAll')}</option>
-            <option value="upload">{t('typeUploads')}</option>
-            <option value="scan">{t('typeScans')}</option>
-            <option value="create">{t('typeCreate')}</option>
-            <option value="change">{t('typeChanges')}</option>
-            <option value="delete">{t('typeDelete')}</option>
-          </Select>
-        </div>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={table.rows}
-        rowKey={(e) => e.id}
-        emptyMessage={t('noActivity')}
-        sort={table.sort}
-        onToggleSort={table.toggleSort}
-        isLoading={table.isLoading}
-        isFetching={table.isFetching}
-        isError={table.isError}
-        errorMessage={t('loadError')}
-        rowClassName="hover:bg-background-hover"
-      />
-
-      <TablePaginationFooter
-        table={table}
-        pageSizeOptions={PAGE_SIZE_OPTIONS}
-        className="shrink-0 border-t border-border px-4 py-2.5"
-      />
-    </div>
+    <>
+      <Select
+        selectSize="md"
+        value={timeWindow}
+        onChange={(e) => { onTimeWindow(e.target.value as TimeWindow); }}
+        className="w-auto min-w-0"
+      >
+        <option value="all">{t('timeAll')}</option>
+        <option value="1h">{t('timeLastHour')}</option>
+        <option value="24h">{t('timeLast24h')}</option>
+        <option value="7d">{t('timeLast7d')}</option>
+        <option value="30d">{t('timeLast30d')}</option>
+      </Select>
+      <Select
+        selectSize="md"
+        value={typeFilter}
+        onChange={(e) => { onTypeFilter(e.target.value as TypeFilter); }}
+        className="w-auto min-w-0"
+      >
+        <option value="all">{t('typeAll')}</option>
+        <option value="upload">{t('typeUploads')}</option>
+        <option value="scan">{t('typeScans')}</option>
+        <option value="create">{t('typeCreate')}</option>
+        <option value="change">{t('typeChanges')}</option>
+        <option value="delete">{t('typeDelete')}</option>
+      </Select>
+    </>
   );
 }

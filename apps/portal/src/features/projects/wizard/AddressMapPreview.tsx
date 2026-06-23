@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 
-export type AddressMapPreviewProps = {
+type AddressMapPreviewProps = {
   latitude: number | undefined;
   longitude: number | undefined;
 };

@@ -286,6 +286,7 @@ export default function ProjectAttachmentsPage(): JSX.Element {
             projectId={projectId}
             open={viewing !== null}
             onOpenChange={(o) => { if (!o) setViewing(null); }}
+            onReplaced={setViewing}
           />
         </>
       )}
@@ -294,7 +295,7 @@ export default function ProjectAttachmentsPage(): JSX.Element {
         {attachments.isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : (
-          <ProjectAttachmentsOverview attachments={attachments.items} />
+          <ProjectAttachmentsOverview attachments={attachments.items} onView={setViewing} />
         )}
       </TabsContent>
 

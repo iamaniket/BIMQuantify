@@ -1386,6 +1386,21 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     emitChange();
   };
 
+  // Whole-layer show/hide — used by the side-rail count pill to toggle every
+  // measurement at once (mirrors per-item `setVisibility`).
+  const setAllVisibility = (args: unknown): void => {
+    const { visible } = args as { visible?: boolean };
+    if (visible === undefined) return;
+
+    for (const measurement of completed.values()) {
+      measurement.visible = visible;
+      const group = sceneGroups.get(measurement.id);
+      if (group) group.visible = visible;
+    }
+
+    emitChange();
+  };
+
   const applyConfig = (partial: Partial<MeasurementConfig>): void => {
     Object.assign(config, partial);
 
@@ -1502,6 +1517,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       });
       ctx.commands.register('measure.setVisible', (args: unknown) => setVisibility(args), {
         title: 'Show or hide a measurement',
+      });
+      ctx.commands.register('measure.setAllVisible', (args: unknown) => setAllVisibility(args), {
+        title: 'Show or hide all measurements',
       });
       ctx.commands.register('measure.toggleAxisLock', () => toggleAxisLock(), {
         title: 'Toggle axis lock',

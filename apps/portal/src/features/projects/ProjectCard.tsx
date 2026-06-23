@@ -17,7 +17,6 @@ import { listDeadlines } from '@/lib/api/deadlines';
 import { listAttachments } from '@/lib/api/attachments';
 import { listFindings } from '@/lib/api/findings';
 import { listCertificates } from '@/lib/api/certificates';
-import { listProjectActivityPage, type ListProjectActivityParams } from '@/lib/api/activity';
 import type { Project, ProjectMember } from '@/lib/api/schemas';
 import { modelsKey } from '@/features/models/queryKeys';
 import { attachmentsKey } from '@/features/attachments/queryKeys';
@@ -29,9 +28,8 @@ import { useLocale, useTranslations } from 'next-intl';
 
 import type { Locale } from '@bimstitch/i18n';
 
-import { projectKey, projectDeadlinesKey, projectActivityKey } from './queryKeys';
+import { projectKey, projectDeadlinesKey } from './queryKeys';
 
-import { ProjectCardMenu } from './ProjectCardMenu';
 import {
   formatProjectBadgeLabel,
   isProjectArchived,
@@ -100,11 +98,6 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
     const { id } = project;
     const swallow = (): undefined => undefined;
     const page = (offset: number): { limit: number; offset: number } => ({ limit: 50, offset });
-    // Mirror ActivityPanel's first-page request exactly (default filters, page 1,
-    // newest-first) so the detail page reads straight from this warmed entry.
-    const activityParams: ListProjectActivityParams = {
-      limit: 25, offset: 0, order_by: 'created_at', order_dir: 'desc',
-    };
 
     queryClient
       .prefetchQuery({
@@ -151,13 +144,6 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
         queryFn: ({ pageParam }) => listCertificates(accessToken, id, page(pageParam)),
         initialPageParam: 0,
         getNextPageParam: () => undefined,
-        staleTime: 30_000,
-      })
-      .catch(swallow);
-    queryClient
-      .prefetchQuery({
-        queryKey: projectActivityKey(id, activityParams),
-        queryFn: () => listProjectActivityPage(accessToken, id, activityParams),
         staleTime: 30_000,
       })
       .catch(swallow);
@@ -290,7 +276,6 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
           </div>
         </CardFooter>
       </Link>
-      <ProjectCardMenu project={project} />
     </Card>
   );
 }

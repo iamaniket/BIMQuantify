@@ -37,6 +37,14 @@ export type DataTableProps<T> = {
   renderAfterRow?: (item: T, index: number) => ReactNode;
   /** Extra classes on the root flex column (e.g. to set `flex-1`). */
   className?: string;
+  /** Clip horizontal overflow instead of scrolling it. Use when the table lives
+   * in a fixed-proportion column and must never emit a horizontal scrollbar
+   * (e.g. the project-detail ActivityPanel, where a transient scrollbar caused
+   * visible flicker). Defaults to `false` — other tables keep both-axis scroll. */
+  clipHorizontal?: boolean;
+  /** Extra classes on the inner `<table>` (e.g. `table-fixed`). Pair with
+   * per-column widths so the table fits its container instead of overflowing. */
+  tableClassName?: string;
 };
 
 /**
@@ -61,14 +69,16 @@ export function DataTable<T>({
   onRowClick,
   renderAfterRow,
   className,
+  clipHorizontal = false,
+  tableClassName,
 }: DataTableProps<T>): ReactNode {
   const resolveRowClass = typeof rowClassName === 'function' ? rowClassName : () => rowClassName;
   const colCount = columns.length;
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
-      <div className="min-h-0 flex-1 overflow-auto px-5">
-        <Table>
+      <div className={cn('min-h-0 flex-1 px-5', clipHorizontal ? 'overflow-y-auto overflow-x-hidden' : 'overflow-auto')}>
+        <Table className={tableClassName}>
           <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:border-b [&_th]:border-border [&_th]:bg-background">
             <TableRow>
               {columns.map((col, i) =>

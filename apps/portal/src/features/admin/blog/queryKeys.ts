@@ -6,7 +6,3 @@ export const adminBlogListKey = (
   params: ListBlogPostsParams,
 ): readonly ['admin', 'blog', 'list', ListBlogPostsParams] =>
   ['admin', 'blog', 'list', params] as const;
-
-export const adminBlogPostKey = (
-  id: string,
-): readonly ['admin', 'blog', string] => ['admin', 'blog', id] as const;

@@ -15,9 +15,9 @@
     "title": "Open BCF interoperability",
     "card": "Import and export findings as BCF to round-trip issues with Solibri, BIMcollab, Revit, and your kwaliteitsborger's tools.",
     "tagline": "Round-trip findings with any BIM tool",
-    "intro": "Import and export findings as BCF — the open BIM Collaboration Format — to round-trip issues with Solibri, BIMcollab, Revit, and whatever tools your kwaliteitsborger and design partners use. Findings move between platforms with their location, comments, and viewpoints intact, so no one is re-typing issues from a screenshot.",
+    "intro": "Import and export findings as BCF, the open BIM Collaboration Format, and round-trip issues with Solibri, BIMcollab, Revit, and whatever tools your kwaliteitsborger and design partners run. Findings move between platforms with their location, comments, and viewpoints intact. Nobody is re-typing an issue from a screenshot.",
     "problemTitle": "Findings get trapped in one tool",
-    "problem": "On any real project, every party works in different software — the architect in one authoring tool, the kwaliteitsborger in a clash detector, the contractor somewhere else again. Without a shared exchange format, findings have to be re-typed from one tool into the next, which is slow, drops detail, and means the same issue ends up tracked differently in three places. Issues drift out of sync, comments get lost, and there's no single agreed status that everyone trusts.",
+    "problem": "On any real project, every party works in different software. The architect is in one authoring tool, the kwaliteitsborger in a clash detector, the contractor somewhere else again. Without a shared exchange format, findings get re-typed from one tool into the next. That's slow, it drops detail, and the same issue ends up tracked three different ways. Comments go missing, copies drift apart, and there's no single status everyone trusts.",
     "solutionTitle": "BCF as the common language",
     "solution": [
       "Export findings as standard BCF to share with any compatible tool.",
@@ -28,33 +28,33 @@
     "highlights": [
       {
         "title": "Open BCF standard",
-        "body": "Findings use the open BIM Collaboration Format, so they exchange with any BCF-capable tool rather than a proprietary export."
+        "body": "Findings use the open BIM Collaboration Format. They exchange with any BCF-capable tool, not just whatever speaks our export."
       },
       {
         "title": "Import and export",
-        "body": "Send findings out as BCF and pull your kwaliteitsborger's issues straight in, so external work lands in your project automatically."
+        "body": "Send findings out as BCF and pull your kwaliteitsborger's issues straight in. External work lands in your project on its own."
       },
       {
         "title": "Full round-trip",
-        "body": "Changes flow both ways, keeping every party working from the same set of issues instead of three diverging copies."
+        "body": "Changes flow both ways, so every party stays on the same set of issues. No more three diverging copies."
       },
       {
         "title": "Context preserved",
-        "body": "Each finding carries its location, comments, and viewpoints through the exchange, so detail isn't lost in translation."
+        "body": "Each finding carries its location, comments, and viewpoints through the exchange. The detail survives the trip."
       }
     ],
     "faq": [
       {
         "q": "What is BCF and why does it matter?",
-        "a": "BCF is the open BIM Collaboration Format, a vendor-neutral standard for exchanging issues between BIM tools. It lets findings move between platforms without anyone re-typing them, so every party can keep working in the software they prefer."
+        "a": "BCF is the open BIM Collaboration Format, a vendor-neutral standard for exchanging issues between BIM tools. Findings move between platforms without anyone re-typing them, so every party keeps working in the software they prefer."
       },
       {
         "q": "Which tools can I exchange findings with?",
-        "a": "Any BCF-capable tool — including Solibri, BIMcollab, and Revit — as well as your kwaliteitsborger's software. You export findings as BCF and import the BCF files they send back."
+        "a": "Any BCF-capable tool, including Solibri, BIMcollab, and Revit, plus your kwaliteitsborger's software. You export findings as BCF and import the BCF files they send back."
       },
       {
         "q": "What information survives the exchange?",
-        "a": "Each finding carries its location, comments, and saved viewpoints through the BCF round-trip, so the full context travels with the issue rather than being lost between tools."
+        "a": "Each finding carries its location, comments, and saved viewpoints through the BCF round-trip. The full context travels with the issue instead of getting lost between tools."
       }
     ],
     "imageCaptions": [
@@ -75,46 +75,46 @@
     "title": "Open BCF-uitwisseling",
     "card": "Importeer en exporteer bevindingen als BCF om issues uit te wisselen met Solibri, BIMcollab, Revit en de tools van uw kwaliteitsborger.",
     "tagline": "Wissel bevindingen uit met elke BIM-tool",
-    "intro": "Importeer en exporteer bevindingen als BCF — het open BIM Collaboration Format — om issues heen en weer uit te wisselen met Solibri, BIMcollab, Revit en alle tools die uw kwaliteitsborger en ontwerppartners gebruiken. Bevindingen bewegen tussen platforms met hun locatie, opmerkingen en viewpoints intact, zodat niemand issues hoeft over te typen vanaf een screenshot.",
+    "intro": "Importeer en exporteer bevindingen als BCF, het open BIM Collaboration Format, en wissel issues in beide richtingen uit met Solibri, BIMcollab, Revit en alle tools die uw kwaliteitsborger en ontwerppartners gebruiken. Bevindingen gaan van platform naar platform met locatie, opmerkingen en viewpoints volledig intact. Niemand hoeft nog een issue over te typen vanaf een screenshot.",
     "problemTitle": "Bevindingen raken opgesloten in één tool",
-    "problem": "Op elk echt project werkt elke partij in andere software — de architect in het ene autoringpakket, de kwaliteitsborger in een clashdetectietool, de aannemer weer ergens anders. Zonder een gedeeld uitwisselformaat moeten bevindingen van de ene tool in de volgende worden overgetypt, wat traag is, detail laat vallen en betekent dat hetzelfde punt op drie plekken verschillend wordt bijgehouden. Issues raken uit de pas, opmerkingen gaan verloren en er is geen enkele afgesproken status die iedereen vertrouwt.",
+    "problem": "Op elk echt project werkt elke partij in andere software. De architect zit in het ene autoringpakket, de kwaliteitsborger in een clashdetectietool, de aannemer weer ergens anders. Zonder een gedeeld uitwisselformaat worden bevindingen van de ene tool in de volgende overgetypt. Dat is traag, er valt detail weg, en hetzelfde punt wordt op drie plekken anders bijgehouden. Opmerkingen gaan verloren, kopieën lopen uiteen, en er is geen status die iedereen vertrouwt.",
     "solutionTitle": "BCF als gemeenschappelijke taal",
     "solution": [
       "Exporteer bevindingen als standaard-BCF om te delen met elke compatibele tool.",
       "Importeer BCF van uw kwaliteitsborger, zodat externe issues direct in uw project landen.",
-      "Heen-en-weer uitwisselen houdt iedereen op dezelfde set issues.",
+      "Uitwisseling in beide richtingen laat iedereen met dezelfde set issues werken.",
       "Locatie, opmerkingen en viewpoints reizen met elke bevinding mee, zodat er niets verloren gaat in de uitwisseling."
     ],
     "highlights": [
       {
         "title": "Open BCF-standaard",
-        "body": "Bevindingen gebruiken het open BIM Collaboration Format, zodat ze uitwisselen met elke BCF-compatibele tool in plaats van een propriëtaire export."
+        "body": "Bevindingen gebruiken het open BIM Collaboration Format. Ze wisselen uit met elke BCF-compatibele tool, niet alleen met wat onze eigen export begrijpt."
       },
       {
         "title": "Importeren en exporteren",
-        "body": "Stuur bevindingen uit als BCF en trek de issues van uw kwaliteitsborger direct binnen, zodat extern werk automatisch in uw project landt."
+        "body": "Stuur bevindingen uit als BCF en trek de issues van uw kwaliteitsborger direct binnen. Extern werk landt vanzelf in uw project."
       },
       {
         "title": "Volledige round-trip",
-        "body": "Wijzigingen stromen beide kanten op, zodat elke partij op dezelfde set issues werkt in plaats van drie uiteenlopende kopieën."
+        "body": "Wijzigingen stromen beide kanten op, zodat elke partij op dezelfde set issues werkt. Geen drie uiteenlopende kopieën meer."
       },
       {
         "title": "Context behouden",
-        "body": "Elke bevinding draagt zijn locatie, opmerkingen en viewpoints door de uitwisseling heen, zodat detail niet verloren gaat."
+        "body": "Elke bevinding behoudt haar locatie, opmerkingen en viewpoints door de hele uitwisseling heen. Alle details blijven onderweg bewaard."
       }
     ],
     "faq": [
       {
         "q": "Wat is BCF en waarom is het belangrijk?",
-        "a": "BCF is het open BIM Collaboration Format, een leveranciersneutrale standaard voor het uitwisselen van issues tussen BIM-tools. Het laat bevindingen tussen platforms bewegen zonder dat iemand ze overtypt, zodat elke partij in de software van voorkeur kan blijven werken."
+        "a": "BCF is het open BIM Collaboration Format, een leveranciersneutrale standaard voor het uitwisselen van issues tussen BIM-tools. Bevindingen bewegen tussen platforms zonder dat iemand ze overtypt, zodat elke partij in de software van voorkeur kan blijven werken."
       },
       {
         "q": "Met welke tools kan ik bevindingen uitwisselen?",
-        "a": "Met elke BCF-compatibele tool — waaronder Solibri, BIMcollab en Revit — en met de software van uw kwaliteitsborger. U exporteert bevindingen als BCF en importeert de BCF-bestanden die zij terugsturen."
+        "a": "Met elke BCF-compatibele tool, waaronder Solibri, BIMcollab en Revit, en met de software van uw kwaliteitsborger. U exporteert bevindingen als BCF en importeert de BCF-bestanden die zij terugsturen."
       },
       {
         "q": "Welke informatie overleeft de uitwisseling?",
-        "a": "Elke bevinding draagt zijn locatie, opmerkingen en opgeslagen viewpoints door de BCF-round-trip heen, zodat de volledige context met het issue meereist in plaats van tussen tools verloren te gaan."
+        "a": "Elke bevinding behoudt haar locatie, opmerkingen en opgeslagen viewpoints door de hele BCF-round-trip heen. De volledige context reist met het issue mee in plaats van tussen tools verloren te gaan."
       }
     ],
     "imageCaptions": [

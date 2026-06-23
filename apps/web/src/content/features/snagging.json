@@ -15,9 +15,9 @@
     "title": "Snag on drawings & in 3D",
     "card": "Pin findings directly onto your PDF floor plans or 3D model. Every snag carries its location, photos, and Bbl reference.",
     "tagline": "Pin findings exactly where they belong",
-    "intro": "Drop a snag straight onto your PDF floor plan or 3D model and it stays put. Every pin carries its exact location, photos, severity, and the relevant Bbl reference, so a finding is never a vague description again — it's a precise point anyone can return to, on screen or on site.",
+    "intro": "Drop a snag straight onto your PDF floor plan or 3D model and it stays put. Every pin carries its exact location, photos, severity, and the relevant Bbl reference. A finding is never a vague description again. It's a precise point anyone can return to, on screen or on site.",
     "problemTitle": "\"Somewhere on the second floor\" isn't good enough",
-    "problem": "A finding described in words — \"crack near the second-floor stairwell\" — is surprisingly hard to locate again once you're on site. Without a precise position, time is lost hunting for the right spot, the wrong element sometimes gets fixed, and the issue has to be re-inspected from scratch to confirm. Across a building with hundreds of snags, that ambiguity compounds into rework, disputes over what was meant, and findings that quietly get dropped because no one could find them.",
+    "problem": "A finding described in words, say \"crack near the second-floor stairwell\", is surprisingly hard to locate again once you're on site. Without a precise position, you lose time hunting for the right spot, the wrong element sometimes gets fixed, and the issue has to be re-inspected from scratch to confirm. Across a building with hundreds of snags, that ambiguity piles up. You get rework, arguments over what was meant, and findings that quietly get dropped because no one could find them.",
     "solutionTitle": "Location-anchored findings on plan and model",
     "solution": [
       "Click the exact spot on a PDF floor plan or in the federated 3D model to place a pin.",
@@ -28,7 +28,7 @@
     "highlights": [
       {
         "title": "Pin on plan or model",
-        "body": "Place a snag directly on a PDF floor plan or in the 3D model — the same finding, wherever it's easiest to point at it."
+        "body": "Place a snag directly on a PDF floor plan or in the 3D model. It's the same finding either way, put wherever it's easiest to point at the problem."
       },
       {
         "title": "Exact coordinates stored",
@@ -46,7 +46,7 @@
     "faq": [
       {
         "q": "Can I place findings on both drawings and the 3D model?",
-        "a": "Yes. You can drop a snag onto a PDF floor plan or directly in the federated 3D model — it's the same finding either way, placed wherever it's easiest to point at the issue."
+        "a": "Yes. Drop a snag onto a PDF floor plan, or place it directly in the federated 3D model. It's the same finding either way, put wherever it's easiest to point at the issue."
       },
       {
         "q": "Will a pin stay in the right place?",
@@ -75,9 +75,9 @@
     "title": "Bevindingen op tekening & in 3D",
     "card": "Plaats bevindingen direct op uw PDF-plattegronden of 3D-model. Elke bevinding bevat de locatie, foto's en Bbl-verwijzing.",
     "tagline": "Plaats bevindingen precies waar ze horen",
-    "intro": "Zet een bevinding direct op uw PDF-plattegrond of 3D-model en hij blijft staan. Elke pin bevat de exacte locatie, foto's, urgentie en de relevante Bbl-verwijzing, zodat een bevinding nooit meer een vage omschrijving is — maar een precies punt waar iedereen naar terug kan, op het scherm of op de bouwplaats.",
+    "intro": "Zet een bevinding direct op uw PDF-plattegrond of 3D-model en hij blijft staan. Elke pin bevat de exacte locatie, foto's, urgentie en de relevante Bbl-verwijzing. Een bevinding is dus nooit meer een vage omschrijving, maar een precies punt waar iedereen naartoe terug kan, op het scherm of op de bouwplaats.",
     "problemTitle": "\"Ergens op de tweede verdieping\" is niet genoeg",
-    "problem": "Een in woorden beschreven bevinding — \"scheur bij het trappenhuis op de tweede verdieping\" — is verrassend moeilijk terug te vinden als u eenmaal op de bouwplaats staat. Zonder exacte positie gaat tijd verloren met zoeken naar de juiste plek, wordt soms het verkeerde element hersteld en moet het punt opnieuw worden geïnspecteerd om het te bevestigen. Over een gebouw met honderden snags stapelt die onduidelijkheid zich op tot herstelwerk, discussie over wat er bedoeld werd en bevindingen die stilletjes sneuvelen omdat niemand ze kon vinden.",
+    "problem": "Een bevinding die u in woorden beschrijft, zoals \"scheur bij het trappenhuis op de tweede verdieping\", is verrassend moeilijk terug te vinden zodra u op de bouwplaats staat. Zonder exacte positie gaat tijd verloren met zoeken naar de juiste plek, wordt soms het verkeerde element hersteld en moet het punt opnieuw worden geïnspecteerd om het te bevestigen. In een gebouw met honderden snags stapelt die onduidelijkheid zich op. Het resultaat is herstelwerk, discussie over wat er bedoeld werd, en bevindingen die stilletjes sneuvelen omdat niemand ze kon vinden.",
     "solutionTitle": "Locatie-verankerde bevindingen op tekening en model",
     "solution": [
       "Klik de exacte plek op een PDF-plattegrond of in het gefedereerde 3D-model om een pin te plaatsen.",
@@ -88,7 +88,7 @@
     "highlights": [
       {
         "title": "Pin op tekening of model",
-        "body": "Plaats een snag direct op een PDF-plattegrond of in het 3D-model — dezelfde bevinding, waar het ook het makkelijkst is om hem aan te wijzen."
+        "body": "Plaats een snag direct op een PDF-plattegrond of in het 3D-model. Het is hoe dan ook dezelfde bevinding, gezet waar u hem het makkelijkst kunt aanwijzen."
       },
       {
         "title": "Exacte coördinaten bewaard",
@@ -99,18 +99,18 @@
         "body": "Elke snag bewaart de bewijsfoto's en het relevante Bbl-artikel direct naast de positie."
       },
       {
-        "title": "Verankerd over weergaven",
-        "body": "Pins blijven aan hun locatie vastzitten terwijl u verdiepingen wisselt, doorsnedes maakt en tussen 2D en 3D beweegt."
+        "title": "Verankerd in elke weergave",
+        "body": "Pins blijven aan hun locatie vastzitten terwijl u tussen verdiepingen wisselt, doorsnedes maakt en tussen 2D en 3D beweegt."
       }
     ],
     "faq": [
       {
         "q": "Kan ik bevindingen op zowel tekeningen als het 3D-model plaatsen?",
-        "a": "Ja. U kunt een snag op een PDF-plattegrond of direct in het gefedereerde 3D-model plaatsen — het is hoe dan ook dezelfde bevinding, geplaatst waar het het makkelijkst is om het punt aan te wijzen."
+        "a": "Ja. U zet een snag op een PDF-plattegrond, of plaatst hem direct in het gefedereerde 3D-model. Het is hoe dan ook dezelfde bevinding, gezet waar u het punt het makkelijkst kunt aanwijzen."
       },
       {
         "q": "Blijft een pin op de juiste plek staan?",
-        "a": "Elke pin bewaart zijn exacte coördinaten en blijft aan die locatie verankerd terwijl u verdiepingen wisselt, doorsnedes maakt of tussen 2D en 3D beweegt, zodat iedereen later naar de precieze plek kan terugkeren."
+        "a": "Elke pin bewaart zijn exacte coördinaten en blijft aan die locatie verankerd terwijl u tussen verdiepingen wisselt, doorsnedes maakt of tussen 2D en 3D beweegt, zodat iedereen later naar de precieze plek kan terugkeren."
       },
       {
         "q": "Wat legt een snag naast de locatie vast?",

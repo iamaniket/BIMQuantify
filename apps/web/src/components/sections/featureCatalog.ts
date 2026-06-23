@@ -35,7 +35,7 @@ export type FeatureItem = {
   status: FeatureStatus;
 };
 
-export const FEATURES: FeatureItem[] = [
+const FEATURES: FeatureItem[] = [
   // Shipped — verified against code.
   { key: 'deadlines', icon: CalendarClock, status: 'available' },
   { key: 'dossier', icon: ClipboardCheck, status: 'available' },

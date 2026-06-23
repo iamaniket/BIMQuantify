@@ -33,11 +33,6 @@ export function useProjectFindings(
   });
 }
 
-export function useProjectFindingCount(projectId: string, enabled = true): number {
-  const query = useProjectFindings(projectId, enabled);
-  return totalFromPages(query.data);
-}
-
 /** File-scoped findings — those linked to a given file (e.g. a PDF document).
  * Shown in the viewer inspector when a PDF is open (no element to anchor to). */
 export function useFileFindings(

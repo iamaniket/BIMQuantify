@@ -560,6 +560,13 @@ export function measurePlugin(): DocumentPlugin & MeasurePluginAPI {
           context.events.emit('measurement:change', { count: completed.size });
         }
       }, { title: 'Toggle measurement visibility' });
+      // Whole-layer show/hide — drives the side-rail count pill (mirrors 3D
+      // `measure.setAllVisible`).
+      context.commands.register<{ visible: boolean }>('measure.setAllVisible', (a) => {
+        for (const m of completed.values()) m.visible = a.visible;
+        rebuildCommitted();
+        context.events.emit('measurement:change', { count: completed.size });
+      }, { title: 'Show or hide all measurements' });
       context.commands.register('measure.clear', () => {
         const page = context.getCurrentPage();
         for (const [id, m] of [...completed]) if (m.page === page) completed.delete(id);

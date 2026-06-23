@@ -14,8 +14,16 @@
  * lands on +Y; the two horizontals on ±x / ±z using the standard Z-up→Y-up
  * convention `(x,y,z)→(x,z,−y)`).
  *
- * SINGLE source of truth for the convention. If the "you are here" marker is
- * mirrored on an axis for some up-axis, flip that entry's sign here.
+ * SINGLE source of truth for the camera↔plan rotation. If the "you are here"
+ * marker is mirrored on an axis for some up-axis, flip that entry's sign here.
+ *
+ * NOTE: `planY` is additionally NEGATED in `viewerToPlan`/`planToViewer` (a pure
+ * sign flip about 0), because the footprint is authored looking-from-above in raw
+ * IFC plan coords but the viewer's 3D top-view renders that axis the opposite way
+ * up the screen — so the 2D plan would otherwise read vertically mirrored vs the
+ * 3D. The footprint data applies the SAME flip in
+ * `apps/portal/.../minimap/useFloorPlans.ts::negateSegmentY`; the two MUST stay in
+ * lockstep so the marker / finding pins / navigation align with the footprint.
  *
  * Owned by the minimap plugin so the IFC↔viewer transform lives next to the
  * camera-sync + storey-isolation logic that consumes it. The portal's minimap
@@ -88,7 +96,10 @@ function ifcFromCamera(i: number, p: ViewerVec3, c: Calibration): number {
 
 /** Project a viewer world-space point onto the IFC plan (planAxisX, planAxisY). */
 export function viewerToPlan(p: ViewerVec3, c: Calibration): PlanVec2 {
-  return { x: ifcFromCamera(c.planAxisX, p, c), y: ifcFromCamera(c.planAxisY, p, c) };
+  // planY is flipped to match the 3D top view (see the file header + the matching
+  // negate in useFloorPlans): the footprint negates ifc[planAxisY], so the
+  // camera→plan projection must negate it too.
+  return { x: ifcFromCamera(c.planAxisX, p, c), y: -ifcFromCamera(c.planAxisY, p, c) };
 }
 
 /** Recover the IFC up-axis component (elevation) of a viewer world-space point. */
@@ -105,7 +116,7 @@ export function planToViewer(
 ): ViewerVec3 {
   const ifc: [number, number, number] = [0, 0, 0];
   ifc[c.planAxisX] = planX;
-  ifc[c.planAxisY] = planY;
+  ifc[c.planAxisY] = -planY; // inverse of viewerToPlan's planY flip (see file header)
   ifc[c.upAxis] = elevation;
   const out: ViewerVec3 = { x: 0, y: 0, z: 0 };
   for (let i = 0; i < 3; i += 1) {

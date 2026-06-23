@@ -15,12 +15,12 @@
     "title": "Mobile inspections on site",
     "card": "A native app for on-site snagging. Place findings, shoot photos, and view the model right where the work is.",
     "tagline": "Inspect right where the work is",
-    "intro": "A native mobile app built for on-site snagging — place findings, shoot photos, and view the model directly where the work is. Capture issues against the real geometry as you walk the building, so nothing gets lost between the site visit and the project record.",
+    "intro": "A native mobile app built for snagging on site. Place findings, shoot photos, and pull up the model right where you're standing. You capture issues against the real geometry as you walk the building, so nothing slips through the cracks between the site visit and the project record.",
     "problemTitle": "Snags get lost between the site and the record",
-    "problem": "Inspections happen on the move, walking a building with a phone in hand. Without a tool made for the site, inspectors fall back to paper notes and camera-roll photos, then spend the evening re-entering everything from memory. That double handling is slow, error-prone, and it's where details quietly go missing between the site visit and the project record.",
+    "problem": "Inspections happen on the move, walking a building with a phone in hand. Without a tool made for the site, inspectors fall back on paper notes and camera-roll photos, then spend the evening re-entering everything from memory. That double handling is slow and error-prone. It's also where details quietly go missing between the site visit and the project record.",
     "solutionTitle": "Snagging built for the site",
     "solution": [
-      "Place findings and capture photos right where the work is — no notes to re-enter later.",
+      "Place findings and capture photos right where the work is, with no notes to re-enter later.",
       "View the model on the same device, so findings are placed against the real geometry.",
       "Everything lands straight in the project, with no double entry back at the office.",
       "A fast, native experience designed for quick capture while you walk the building."
@@ -36,7 +36,7 @@
       },
       {
         "title": "Straight into the project",
-        "body": "Findings and photos land directly in the project record — no manual upload, no double entry."
+        "body": "Findings and photos land directly in the project record. No manual upload, no double entry."
       },
       {
         "title": "Built for one hand",
@@ -46,11 +46,11 @@
     "faq": [
       {
         "q": "What can I do with the mobile app?",
-        "a": "Place findings, capture photos, and view the model on site — everything you need to snag where the work is, instead of taking notes to re-enter later."
+        "a": "Place findings, capture photos, and view the model on site. That's everything you need to snag where the work is, instead of taking notes to re-enter later."
       },
       {
         "q": "Do findings go straight into the project?",
-        "a": "Yes. The findings and photos you capture on the app land directly in the project record — there's no manual upload step and no re-entering notes from paper."
+        "a": "Yes. The findings and photos you capture on the app land directly in the project record. There's no manual upload step and no re-entering notes from paper."
       },
       {
         "q": "Can I view the model on the app?",
@@ -75,12 +75,12 @@
     "title": "Mobiel inspecteren op locatie",
     "card": "Een native app voor inspecties op locatie. Plaats bevindingen, maak foto's en bekijk het model direct waar het werk is.",
     "tagline": "Inspecteer direct waar het werk is",
-    "intro": "Een native mobiele app gebouwd voor snaggen op locatie — plaats bevindingen, maak foto's en bekijk het model direct waar het werk is. Leg problemen vast tegen de echte geometrie terwijl u door het gebouw loopt, zodat er niets verloren gaat tussen het bezoek en de projectvastlegging.",
+    "intro": "Een native mobiele app, gebouwd om op locatie te snaggen. Plaats bevindingen, maak foto's en haal het model erbij precies waar u staat. U legt problemen vast tegen de echte geometrie terwijl u door het gebouw loopt, zodat er niets verloren gaat tussen het bezoek en de projectvastlegging.",
     "problemTitle": "Snags gaan verloren tussen locatie en vastlegging",
-    "problem": "Inspecties gebeuren in beweging, lopend door een gebouw met een telefoon in de hand. Zonder een tool die voor de locatie is gemaakt, vallen inspecteurs terug op papieren notities en telefoonfoto's, om 's avonds alles uit het geheugen over te typen. Dat dubbele werk is traag en foutgevoelig, en juist daar gaan details stilletjes verloren tussen het bezoek en de projectvastlegging.",
+    "problem": "Inspecties gebeuren in beweging, lopend door een gebouw met een telefoon in de hand. Zonder een tool die voor de locatie is gemaakt, vallen inspecteurs terug op papieren notities en telefoonfoto's, om 's avonds alles uit het geheugen over te typen. Dat dubbele werk is traag en foutgevoelig. En juist daar gaan details stilletjes verloren tussen het bezoek en de projectvastlegging.",
     "solutionTitle": "Snaggen gemaakt voor de locatie",
     "solution": [
-      "Plaats bevindingen en maak foto's precies waar het werk is — geen notities om later over te typen.",
+      "Plaats bevindingen en maak foto's precies waar het werk is, zonder notities die u later moet overtypen.",
       "Bekijk het model op hetzelfde apparaat, zodat bevindingen tegen de echte geometrie worden geplaatst.",
       "Alles komt direct in het project terecht, zonder dubbele invoer op kantoor.",
       "Een snelle, native ervaring ontworpen om snel vast te leggen terwijl u door het gebouw loopt."
@@ -96,7 +96,7 @@
       },
       {
         "title": "Direct in het project",
-        "body": "Bevindingen en foto's komen direct in de projectvastlegging terecht — geen handmatige upload, geen dubbele invoer."
+        "body": "Bevindingen en foto's komen direct in de projectvastlegging terecht. Geen handmatige upload, geen dubbele invoer."
       },
       {
         "title": "Gemaakt voor één hand",
@@ -106,11 +106,11 @@
     "faq": [
       {
         "q": "Wat kan ik met de mobiele app doen?",
-        "a": "Plaats bevindingen, maak foto's en bekijk het model op locatie — alles wat u nodig hebt om te snaggen waar het werk is, in plaats van notities te maken om later over te typen."
+        "a": "Plaats bevindingen, maak foto's en bekijk het model op locatie. Alles wat u nodig hebt om te snaggen waar het werk is, in plaats van notities te maken om later over te typen."
       },
       {
         "q": "Komen bevindingen direct in het project terecht?",
-        "a": "Ja. De bevindingen en foto's die u met de app vastlegt, komen direct in de projectvastlegging terecht — er is geen handmatige uploadstap en geen overtypen van papieren notities."
+        "a": "Ja. De bevindingen en foto's die u met de app vastlegt, komen direct in de projectvastlegging terecht. Er is geen handmatige uploadstap en u hoeft geen papieren notities over te typen."
       },
       {
         "q": "Kan ik het model in de app bekijken?",

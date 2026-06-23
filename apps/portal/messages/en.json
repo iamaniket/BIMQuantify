@@ -119,50 +119,6 @@
     "sentBody": "If an account exists for that email, a password reset link is on its way. The link expires in 1 hour.",
     "backToLogin": "Back to sign in"
   },
-  "invitations": {
-    "eyebrow": "Team invitations",
-    "title": "Your pending invitations",
-    "subtitle": "Accept an invitation to join the organization, or decline if it isn't for you.",
-    "loading": "Loading your invitations…",
-    "emptyTitle": "No pending invitations",
-    "emptyBody": "You don't have any open team invitations right now. Ask an admin to invite you again if you're expecting one.",
-    "backToProjects": "Back to projects",
-    "accept": "Accept",
-    "accepting": "Accepting…",
-    "decline": "Decline",
-    "declining": "Declining…",
-    "retry": "Try again",
-    "roleAdmin": "Admin role",
-    "roleMember": "Member role",
-    "invitedBy": "Invited by {email}",
-    "invitedByUnknown": "Invited to join",
-    "expiresOn": "Expires {date}",
-    "errors": {
-      "loadFailed": "We couldn't load your invitations. Please try again.",
-      "acceptFailed": "We couldn't accept this invitation. Please try again.",
-      "declineFailed": "We couldn't decline this invitation. Please try again."
-    },
-    "acceptSuccess": "Invitation accepted — welcome to the team!",
-    "declineSuccess": "Invitation declined."
-  },
-  "onboarding": {
-    "title": "Welcome to {org}!",
-    "roleDescriptionAdmin": "You've joined as an admin. You have full access to manage the team and all projects.",
-    "roleDescriptionMember": "You've joined as a team member. Here's what you can do:",
-    "getStarted": "Get started",
-    "capabilities": {
-      "admin": {
-        "manageTeam": "Invite and manage team members",
-        "createProjects": "Create and configure projects",
-        "fullAccess": "Full access to documents, findings, and reports"
-      },
-      "member": {
-        "viewProjects": "View and collaborate on projects",
-        "uploadDocuments": "Upload documents and certificates",
-        "trackFindings": "Track and resolve findings"
-      }
-    }
-  },
   "resetPassword": {
     "eyebrow": "Set new password",
     "title": "Choose a new password",
@@ -265,7 +221,9 @@
       "upcomingTitle": "Upcoming items",
       "noUpcoming": "Nothing upcoming.",
       "daysRemaining": "{days, plural, =1 {1 day left} other {# days left}}",
-      "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}"
+      "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}",
+      "trendTitle": "Deadlines over time",
+      "trendEmpty": "No upcoming deadlines."
     },
     "month": {
       "today": "Today",
@@ -410,23 +368,6 @@
     }
   },
   "projects": {
-    "about": {
-      "descriptionHeading": "Description",
-      "noDescription": "No description.",
-      "infoHeading": "Project info",
-      "addressHeading": "Site address",
-      "timestampsHeading": "Timestamps",
-      "referenceCode": "Reference code",
-      "status": "Status",
-      "phase": "Phase",
-      "delivery": "Delivery",
-      "permit": "Permit",
-      "address": "Address",
-      "municipality": "Municipality",
-      "bagId": "BAG ID",
-      "created": "Created",
-      "updated": "Updated"
-    },
     "hero": {
       "title": "Projects",
       "badge": "Portfolio overview",
@@ -479,8 +420,6 @@
       "handover": "Delivery"
     },
     "card": {
-      "phaseLabel": "Phase:",
-      "permitLabel": "Permit:",
       "menu": {
         "actions": "Project actions",
         "view": "View",
@@ -488,9 +427,12 @@
         "reactivate": "Reactivate",
         "archive": "Archive",
         "remove": "Remove",
+        "removeAria": "Remove project",
         "deleteTitle": "Delete project",
         "deleteDescription": "Remove \"{name}\" from active views? It will be hidden from normal project lists.",
         "deleteConfirm": "Remove",
+        "deleteConfirmPrompt": "To confirm, type the project name \"{name}\" below.",
+        "deleteConfirmPlaceholder": "Project name",
         "archiveTitle": "Archive project",
         "archiveDescription": "Archive \"{name}\"? The project becomes read-only — no one can edit, run checks, or generate reports until it is reactivated.",
         "archiveConfirm": "Archive",
@@ -878,7 +820,16 @@
       "recentTitle": "Recently added",
       "totalCerts": "Total",
       "validCerts": "Valid",
-      "expiringSoonCerts": "Expiring soon"
+      "expiringSoonCerts": "Expiring soon",
+      "expiringSoonSub": "Within 30 days",
+      "expiredCerts": "Expired",
+      "donutCenterLabel": "certificates",
+      "trendTitle": "Added over time",
+      "trendEmpty": "No certificates yet.",
+      "renewalsTitle": "Renewals due",
+      "renewalsEmpty": "Nothing expiring in the next 90 days.",
+      "daysLeft": "{n}d left",
+      "empty": "No certificates yet"
     }
   },
   "certificates": {
@@ -933,6 +884,14 @@
         "expiringSoonCerts": "Expiring soon",
         "byTypeTitle": "Certificates by type",
         "byExpiryTitle": "Expiry status",
+        "expiringSoonSub": "Within 30 days",
+        "expiredCerts": "Expired",
+        "donutCenterLabel": "certificates",
+        "trendTitle": "Added over time",
+        "trendEmpty": "No certificates yet.",
+        "renewalsTitle": "Renewals due",
+        "renewalsEmpty": "Nothing expiring in the next 90 days.",
+        "daysLeft": "{n}d left",
         "recentTitle": "Recently added",
         "empty": "No certificates yet"
       }
@@ -988,6 +947,10 @@
         "documents": "Documents",
         "totalSize": "Total size",
         "byCategoryTitle": "By category",
+        "donutCenterLabel": "files",
+        "storageTitle": "Storage by category",
+        "trendTitle": "Added over time",
+        "trendEmpty": "No attachments yet.",
         "recentTitle": "Recently added",
         "empty": "No attachments yet"
       },
@@ -1153,7 +1116,7 @@
         "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
         "uploadCta": "Upload",
         "uploadCertificate": "Upload certificate",
-        "uploadModel": "Upload model",
+        "addModel": "Add model",
         "linkExisting": "Link an existing document",
         "uploadSuccess": "Uploaded {name}",
         "linkSuccess": "Document linked to the dossier",
@@ -1189,7 +1152,29 @@
         "findingsOpenDetail": "{count, plural, =1 {1 open} other {# open}}",
         "findingsResolved": "All resolved",
         "deadlinesOverdueDetail": "{count, plural, =1 {1 overdue} other {# overdue}}",
-        "deadlinesOnTrack": "On track"
+        "deadlinesOnTrack": "On track",
+        "rings": {
+          "title": "Project completeness",
+          "findingsLabel": "Findings",
+          "dossierLabel": "Dossier",
+          "deadlinesLabel": "Deadlines",
+          "centerLabel": "Complete",
+          "overallLabel": "Overall",
+          "tooltip": "{filled} of {total} · {pct}%",
+          "tooltipNa": "Not applicable",
+          "ariaLabel": "{label}: {value} of {total} complete, {pct}%"
+        },
+        "expanded": {
+          "back": "Back",
+          "dossierComplete": "Complete",
+          "dossierRemaining": "Remaining",
+          "deadlinesMet": "Met",
+          "deadlinesPending": "Pending",
+          "deadlinesOverdue": "Overdue",
+          "emptyFindings": "No findings yet",
+          "emptyDeadlines": "No deadlines yet",
+          "emptyDossier": "No dossier requirements yet"
+        }
       },
       "models": {
         "label": "Models",
@@ -1263,6 +1248,10 @@
           "removeTitle": "Remove model?",
           "removeBody": "This permanently deletes “{name}” and all its file versions. This cannot be undone.",
           "removeConfirm": "Remove",
+          "restore": "Restore",
+          "restoreTitle": "Restore this version?",
+          "restoreBody": "This makes v{version} the current version. The newer versions stay in the history.",
+          "restoreConfirm": "Restore",
           "cancel": "Cancel",
           "noVersionsUploaded": "No versions uploaded yet.",
           "latest": "LATEST",
@@ -1675,6 +1664,7 @@
       "subtitle": "Edit the finding, assign an owner and a deadline, then promote it.",
       "save": "Save changes",
       "close": "Close",
+      "expand": "Open in dialog",
       "tabs": {
         "edit": "Edit",
         "history": "History"
@@ -1685,7 +1675,8 @@
         "severity": "Severity",
         "bblArticleRef": "Bbl article reference",
         "assignee": "Assignee",
-        "deadline": "Deadline"
+        "deadline": "Deadline",
+        "status": "Status"
       },
       "placeholders": {
         "assignee": "Unassigned"
@@ -1782,24 +1773,6 @@
       "pickerTitle": "Select a document",
       "pickerDescription": "Choose a project document to reference.",
       "empty": "No documents available"
-    },
-    "expanded": {
-      "status": "STATUS",
-      "severity": "SEVERITY",
-      "assignee": "ASSIGNEE",
-      "deadline": "DEADLINE",
-      "bblRef": "Bbl ref",
-      "photos": "PHOTOS",
-      "linkedElement": "LINKED",
-      "created": "ADDED",
-      "updated": "UPDATED",
-      "noAssignee": "Unassigned",
-      "photoCount": "{count, plural, =0 {None} one {1 photo} other {# photos}}",
-      "linkedYes": "Linked to element",
-      "view": "View",
-      "openDetail": "Open detail",
-      "delete": "Delete",
-      "promote": "Promote"
     }
   },
   "findingsBoard": {
@@ -1842,13 +1815,37 @@
       "weeksAgo": "{count}w ago"
     },
     "empty": "No findings",
-    "invalidDrop": "Cannot move here",
+    "dragRejected": {
+      "noPermission": "You don't have permission to move findings.",
+      "needsInspector": "Only the inspector can verify a finding.",
+      "verifiedLocked": "Verified findings are locked and can't be moved.",
+      "openFirst": "A draft must move to Open before any other status.",
+      "resolveFirst": "A finding must be resolved before it can be verified.",
+      "generic": "Can't move a finding from {from} to {to}."
+    },
     "logFinding": "Log finding",
     "searchPlaceholder": "Search findings…",
     "filterAllPriorities": "All priorities",
     "filter": {
       "unassigned": "Unassigned",
       "assigneeTooltip": "Filter by {name}"
+    },
+    "export": {
+      "csv": "Export CSV",
+      "csvError": "Could not export the findings CSV.",
+      "snag": "Snag report",
+      "dialogTitle": "Snag report (PDF)",
+      "dialogSubtitle": "Generate a snag list to hand to a subcontractor. It appears under the project's Reports when ready.",
+      "recipientLabel": "Recipient (assignee)",
+      "recipientAll": "All assignees",
+      "statusLabel": "Status",
+      "severityLabel": "Severity",
+      "anyOption": "Any",
+      "generate": "Generate",
+      "generating": "Generating…",
+      "cancel": "Cancel",
+      "success": "Snag report is being generated — find it under Reports.",
+      "error": "Could not generate the snag report."
     },
     "tabs": {
       "board": "Findings",
@@ -2118,6 +2115,8 @@
         "byTypeTitle": "By type",
         "latestTitle": "Latest per type",
         "latestNotGenerated": "Not generated",
+        "trendTitle": "Generated over time",
+        "trendEmpty": "No reports generated yet.",
         "empty": "No reports generated yet"
       }
     },
@@ -2145,12 +2144,36 @@
         "description": "Bundle the full dossier for the gereedmelding. You'll get an email when it's ready.",
         "generate": "Dossier",
         "missingData": "Not enough data to assemble the dossier yet."
+      },
+      "snag_list": {
+        "title": "Snag list",
+        "description": "A per-recipient snag list to hand to a subcontractor, generated from the findings board.",
+        "generate": "Snag list",
+        "missingData": "No findings match this selection."
       }
     },
     "sign": {
       "sign": "Sign",
       "signing": "Signing…",
       "signed": "Signed"
+    },
+    "viewer": {
+      "title": "Report",
+      "subtitle": "Preview of the generated PDF",
+      "close": "Close",
+      "groupFile": "File",
+      "groupReport": "Report",
+      "groupOrigin": "Origin",
+      "fieldFilename": "Filename",
+      "fieldSize": "Size",
+      "fieldFileType": "File type",
+      "fileTypeValue": "PDF",
+      "fieldType": "Type",
+      "fieldStatus": "Status",
+      "fieldLocale": "Language",
+      "fieldCreated": "Created",
+      "fieldFinished": "Finished",
+      "fieldSignedOn": "Signed on"
     }
   },
   "reportTemplates": {
@@ -2319,7 +2342,23 @@
       "fieldCount": "{count, plural, =0 {No custom fields} one {# custom field} other {# custom fields}}",
       "totalReportTemplates": "Report templates",
       "reportDefaults": "Defaults configured",
-      "noReportTemplates": "No report templates created yet."
+      "noReportTemplates": "No report templates created yet.",
+      "totalTemplates": "Templates",
+      "byTypeTitle": "Templates by type",
+      "fieldTypesTitle": "Field types in use",
+      "fieldsPerTemplateTitle": "Custom fields per template",
+      "fieldsDonutCenter": "fields",
+      "findingType": "Finding",
+      "noFields": "No custom fields yet.",
+      "noFindingTemplates": "No finding templates yet.",
+      "fieldType": {
+        "text": "Text",
+        "textarea": "Text area",
+        "number": "Number",
+        "date": "Date",
+        "select": "Dropdown",
+        "checkbox": "Checkbox"
+      }
     }
   },
   "auth": {
@@ -2491,7 +2530,13 @@
       "exportDataSub": "Members + audit log, CSV",
       "dangerZoneTitle": "Danger zone",
       "dangerZoneDesc": "Permanently delete this organization. All projects, members and audit history will be wiped. This cannot be undone.",
-      "deleteOrg": "Delete organization"
+      "deleteOrg": "Delete organization",
+      "donutCenterLabel": "members",
+      "roleAdmin": "Admin",
+      "roleMember": "Member",
+      "noMembers": "No members yet.",
+      "activityTrendTitle": "Activity over time",
+      "trendEmpty": "No activity yet."
     },
     "members": {
       "inviteButton": "Invite member",
@@ -2611,7 +2656,13 @@
       "exportDataSub": "Members + audit log, CSV",
       "dangerZoneTitle": "Danger zone",
       "dangerZoneDesc": "Permanently delete this organization. All projects, members and audit history will be wiped. This cannot be undone.",
-      "deleteOrg": "Delete organization"
+      "deleteOrg": "Delete organization",
+      "donutCenterLabel": "members",
+      "roleAdmin": "Admin",
+      "roleMember": "Member",
+      "noMembers": "No members yet.",
+      "activityTrendTitle": "Activity over time",
+      "trendEmpty": "No activity yet."
     },
     "members": {
       "inviteButton": "Invite member",
@@ -2689,7 +2740,10 @@
         "createTenant": "Create tenant",
         "createTenantDesc": "Provision a new org schema",
         "exportPlatformData": "Export platform data",
-        "exportPlatformDataDesc": "Tenants, seats, storage — CSV"
+        "exportPlatformDataDesc": "Tenants, seats, storage — CSV",
+        "donutCenterLabel": "Tenants",
+        "trendTitle": "Tenants over time",
+        "trendEmpty": "No tenants yet."
       },
       "statusFilters": {
         "all": "All statuses",
@@ -2880,12 +2934,6 @@
         "selectPlaceholder": "Pick a teammate…",
         "cancel": "Cancel",
         "confirm": "Reassign and remove"
-      },
-      "leave": {
-        "title": "Leave this tenant",
-        "subtitle": "You will lose access to all projects in this tenant. The admin must invite you again to come back.",
-        "confirm": "Leave tenant",
-        "cancel": "Cancel"
       }
     },
     "accessRequests": {
@@ -3234,6 +3282,56 @@
   },
   "activity": {
     "title": "Project activity",
+    "viewAll": "View all activity",
+    "hub": {
+      "crumb": "Activity",
+      "crumbProjects": "Projects",
+      "projectNotFound": "Project not found. It may have been deleted.",
+      "projectLoadError": "Failed to load project.",
+      "tabs": {
+        "overview": "Overview",
+        "activity": "Activity"
+      },
+      "panel": {
+        "overviewEyebrow": "Project history",
+        "overviewTitle": "Activity overview",
+        "activityEyebrow": "Project history",
+        "activityTitle": "{count} events"
+      },
+      "hero": {
+        "badge": "Activity",
+        "subtitle": "Every change, scan and upload across this project",
+        "totalLabel": "Total",
+        "totalSub": "{count} events",
+        "weekLabel": "This week",
+        "weekSub": "Events so far",
+        "busiestLabel": "Busiest",
+        "busiestSub": "{count, plural, =1 {1 event} other {# events}}",
+        "busiestNone": "—",
+        "busiestNoneSub": "No activity yet"
+      },
+      "list": {
+        "empty": "No activity matches your filters",
+        "loadError": "Failed to load activity."
+      },
+      "overview": {
+        "kpiTotal": "Total events",
+        "kpiTotalSub": "All time",
+        "kpiThisWeek": "This week",
+        "kpiThisWeekSub": "Events so far",
+        "kpiBusiest": "Busiest category",
+        "kpiBusiestSub": "{count, plural, =1 {1 event} other {# events}}",
+        "kpiBusiestNone": "—",
+        "kpiResources": "Resource types",
+        "kpiResourcesSub": "Touched",
+        "byCategoryTitle": "By category",
+        "donutCenterLabel": "Events",
+        "byResourceTitle": "By resource",
+        "trendTitle": "Activity over time",
+        "trendEmpty": "No activity yet.",
+        "empty": "No activity yet"
+      }
+    },
     "timeAll": "All time",
     "timeLastHour": "Last hour",
     "timeLast24h": "Last 24 hours",
@@ -3252,14 +3350,46 @@
     "colWhen": "When",
     "colActor": "Actor",
     "colType": "Type",
+    "colResource": "Resource",
     "colActivity": "Activity",
+    "searchPlaceholder": "Search activity…",
     "systemActor": "System",
+    "trendTitle": "Activity over time",
+    "trendEmpty": "No activity in this period.",
+    "trendTooltipTotal": "{count, plural, =1 {1 activity} other {# activities}}",
+    "trendTooltipWeekOf": "Week of {date}",
+    "trendTooltipThisWeek": "This week so far",
+    "trendTooltipByType": "By type",
+    "trendTooltipMore": "+{count} more",
+    "resource": {
+      "finding": "Findings",
+      "risk": "Risks",
+      "bcf_topic": "BCF issues",
+      "bcf_comment": "BCF comments",
+      "model": "Models",
+      "project_file": "Files",
+      "project_files": "Files",
+      "attachment": "Attachments",
+      "certificate": "Certificates",
+      "certificates": "Certificates",
+      "report": "Reports",
+      "compliance": "Compliance checks",
+      "borgingsplan": "Assurance plan",
+      "borgingsmoment": "Assurance moments",
+      "checklist_item": "Checklist items",
+      "checklist_item_result": "Checklist results",
+      "capture_links": "Capture links",
+      "deadline": "Deadlines",
+      "project": "Project",
+      "project_member": "Members"
+    },
     "modelCreated": "Created model {name}",
     "modelUpdated": "Updated model {name}",
     "modelDeleted": "Deleted model {name}",
     "fileCompleted": "Added {filename}",
     "fileRejected": "Rejected {filename}",
     "fileDeleted": "Removed {filename}",
+    "fileVersionRestored": "Restored {filename} as the current version",
     "extractionSucceeded": "Extracted {filename}",
     "extractionFailed": "Extraction failed: {filename}",
     "complianceChecked": "Ran {framework} compliance check",
@@ -3394,13 +3524,15 @@
     },
     "sidePanel": {
       "titleExplorer": "Explorer",
-      "titleInspector": "Inspector",
+      "titleFindings": "Findings",
       "titleMeasure": "Measure",
       "titleSection": "Sections",
       "titlePages": "Pages",
       "titleDrawingInfo": "Drawing Info",
       "titleBcf": "Issues",
-      "comingSoon": "Coming soon"
+      "comingSoon": "Coming soon",
+      "layerShow": "Show {layer}",
+      "layerHide": "Hide {layer}"
     },
     "markup": {
       "rectangle": "Rectangle",
@@ -3509,11 +3641,6 @@
     },
     "modeIndicator": {
       "exitHint": "Press ESC to exit"
-    },
-    "pages": {
-      "loading": "Loading pages…",
-      "pageLabel": "Page {page}",
-      "current": "current"
     },
     "toolbar": {
       "homeView": "Home view",
@@ -3676,10 +3803,10 @@
       "movementSpeed": "Movement speed",
       "turnSpeed": "Turn speed",
       "lookSensitivity": "Mouse-look sensitivity",
-      "sprintHint": "Hold Shift while moving to go faster",
+      "sprintHint": "Applies to fly mode (press F, then move with WASD). Hold Shift to go faster.",
       "behavior": "Behavior",
-      "behaviorNoteColor": "Color changes reload the viewer",
-      "behaviorNoteToggle": "Toggle: live · Color: reload",
+      "behaviorNoteColor": "Highlight colors for hover and selection",
+      "behaviorNoteToggle": "Toggles and colors apply live",
       "hoverHighlight": "Hover highlight",
       "hoverColor": "Hover color",
       "clickToSelect": "Click to select",
@@ -3831,19 +3958,6 @@
       "invertSelection": "Invert Selection"
     }
   },
-  "viewerInspector": {
-    "panelTitle": "Attachments & Findings",
-    "tabAttachments": "Attachments",
-    "tabFindings": "Findings",
-    "tabCertificates": "Certificates",
-    "pdfPageHeader": "Page {page}",
-    "messages": {
-      "allSelected": "All {count, number} elements selected. Select a single element to inspect it.",
-      "noElementData": "Element data not available. Re-extract the model to inspect this element.",
-      "noGlobalId": "This element has no GlobalId; attachments cannot be linked.",
-      "pdfNotInitialized": "PDF state not initialized."
-    }
-  },
   "viewerFindings": {
     "count": "{count, plural, =0 {No findings} one {# finding} other {# findings}}",
     "filterPlaceholder": "Search findings…",
@@ -3851,7 +3965,14 @@
     "loading": "Loading findings…",
     "emptyNoItems": "No findings linked to this element yet.",
     "emptyProjectEmpty": "No project-level findings.",
-    "emptyFileEmpty": "No findings linked to this file yet."
+    "emptyFileEmpty": "No findings linked to this file yet.",
+    "pdfPageHeader": "Page {page}",
+    "messages": {
+      "allSelected": "All {count, number} elements selected. Select a single element to inspect it.",
+      "noElementData": "Element data not available. Re-extract the model to inspect this element.",
+      "noGlobalId": "This element has no GlobalId; findings cannot be linked.",
+      "pdfNotInitialized": "PDF state not initialized."
+    }
   },
   "viewerCertificates": {
     "filterPlaceholder": "Search certificates…",

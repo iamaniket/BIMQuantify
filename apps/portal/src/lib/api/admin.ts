@@ -307,18 +307,6 @@ export type ListAuditLogParams = {
   offset?: number | undefined;
 } & SortQueryParams;
 
-export async function listGlobalAuditLog(
-  accessToken: string,
-  params: ListAuditLogParams = {},
-): Promise<AuditEntryList> {
-  const query = buildQuery(params);
-  return apiClient.get<AuditEntryList>(
-    `/admin/audit-log${query}`,
-    AuditEntryListSchema,
-    accessToken,
-  );
-}
-
 /** Paginated variant — returns the page items plus the total (X-Total-Count). */
 export async function listGlobalAuditLogPage(
   accessToken: string,

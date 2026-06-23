@@ -7,7 +7,7 @@ import {
 } from 'react';
 
 import {
-  AppDialog, DialogField, DialogSection, Select, cn,
+  AppDialog, DialogField, DialogSection, Select, Slider, cn,
 } from '@bimstitch/ui';
 import type {
   Measurement, MeasurementConfig, MeasurementMode, ViewerHandle,
@@ -220,26 +220,24 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
           </DialogField>
 
           <DialogField label={t('labelSize', { size: t(labelSizeKey(cfg.labelScale)) })}>
-            <input
-              type="range"
-              min="0.5"
-              max="2"
-              step="0.1"
+            <Slider
+              min={0.5}
+              max={2}
+              step={0.1}
               value={cfg.labelScale}
               onChange={(e) => { update({ labelScale: parseFloat(e.target.value) }); }}
-              className="w-full accent-primary"
+              className="w-full"
             />
           </DialogField>
 
           <DialogField label={t('dotSize', { size: t(dotSizeKey(cfg.dotScale)) })}>
-            <input
-              type="range"
-              min="0.5"
-              max="3"
-              step="0.25"
+            <Slider
+              min={0.5}
+              max={3}
+              step={0.25}
               value={cfg.dotScale}
               onChange={(e) => { update({ dotScale: parseFloat(e.target.value) }); }}
-              className="w-full accent-primary"
+              className="w-full"
             />
           </DialogField>
         </DialogSection>
@@ -263,14 +261,13 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
             label={t('snapThreshold', { value: cfg.snapThreshold })}
             hint={t('snapThresholdHint')}
           >
-            <input
-              type="range"
-              min="5"
-              max="40"
-              step="1"
+            <Slider
+              min={5}
+              max={40}
+              step={1}
               value={cfg.snapThreshold}
               onChange={(e) => { update({ snapThreshold: parseInt(e.target.value, 10) }); }}
-              className="w-full accent-primary"
+              className="w-full"
             />
           </DialogField>
         </DialogSection>

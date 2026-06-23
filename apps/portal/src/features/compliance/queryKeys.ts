@@ -20,18 +20,6 @@ export const issuesKey = (
   projectId: string,
 ) => ['projects', projectId, 'issues'] as const;
 
-export const activityKey = (
-  projectId: string,
-) => ['projects', projectId, 'activity'] as const;
-
-export const dossierKey = (
-  projectId: string,
-) => ['projects', projectId, 'dossier'] as const;
-
-export const trendKey = (
-  projectId: string,
-) => ['projects', projectId, 'compliance', 'trend'] as const;
-
 export const projectReportsKey = (
   projectId: string,
   framework?: string,

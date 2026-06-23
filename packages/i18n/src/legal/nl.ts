@@ -2,7 +2,7 @@ import type { LegalContent } from './types.js';
 
 export const legalNlContent: LegalContent = {
   meta: {
-    draftBanner: 'Concept – nog te beoordelen door een Nederlandse IT-juridisch specialist voordat het in productie komt.',
+    draftBanner: 'Concept: nog te beoordelen door een Nederlandse IT-juridisch specialist voordat het in productie komt.',
     lastUpdatedLabel: 'Laatst bijgewerkt: {date}',
   },
   privacy: {
@@ -43,7 +43,7 @@ export const legalNlContent: LegalContent = {
       },
       {
         title: 'Jouw verplichtingen',
-        body: 'Je zorgt voor juiste accountgegevens, deelt geen inloggegevens met derden, en gebruikt het portaal in overeenstemming met geldende wet- en regelgeving. De verantwoordelijkheid voor het inhoudelijke werk – zoals het indienen van meldingen bij het bevoegd gezag – blijft bij jou liggen.',
+        body: 'Je zorgt voor juiste accountgegevens, deelt geen inloggegevens met derden, en gebruikt het portaal in overeenstemming met geldende wet- en regelgeving. De verantwoordelijkheid voor het inhoudelijke werk, zoals het indienen van meldingen bij het bevoegd gezag, blijft bij jou liggen.',
       },
       {
         title: 'Abonnement en betaling',

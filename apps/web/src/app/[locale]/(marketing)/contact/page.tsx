@@ -5,7 +5,7 @@ import type { JSX } from 'react';
 import { ContactSalesClient } from './ContactSalesClient';
 
 export const metadata: Metadata = {
-  title: 'BimDossier — Contact sales',
+  title: 'BimDossier · Contact sales',
   description: 'Book a demo or get in touch with the BimDossier team to discuss pricing and plans.',
 };
 

@@ -3,20 +3,23 @@
 import { Search } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
+import { toast } from 'sonner';
 
 import { Input, Select, type KanbanColumnDef } from '@bimstitch/ui';
 import { KanbanBoard } from '@bimstitch/ui';
 
 import { AssigneeFilterChips, UNASSIGNED_FILTER } from '@/features/findings/AssigneeFilterChips';
+import { FindingsExportActions } from '@/features/findings/FindingsExportActions';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useProjectPermissions } from '@/features/permissions';
+import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { FindingDetailPanel } from '@/features/projects/detail/FindingDetailPanel';
 import type { Finding, FindingSeverityValue, FindingStatusValue } from '@/lib/api/schemas';
 import type { ProjectMember } from '@/lib/api/schemas';
 
 import { FindingKanbanCard } from './FindingKanbanCard';
-import { isValidTransition, needsModal } from './kanbanTransitions';
+import { isValidTransition, transitionRejectionReason } from './kanbanTransitions';
 
 const STATUSES: FindingStatusValue[] = ['draft', 'open', 'in_progress', 'resolved', 'verified'];
 
@@ -40,10 +43,13 @@ type Props = {
 export function FindingsKanbanBoard({ projectId, findings, members }: Props): JSX.Element {
   const t = useTranslations('findingsBoard');
   const tColumns = useTranslations('findingsBoard.columns');
+  const tDrag = useTranslations('findingsBoard.dragRejected');
   const tSeverity = useTranslations('findings.severity');
   const updateMutation = useUpdateFinding(projectId);
   const { can, canVerifyFinding } = useProjectPermissions(projectId);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  // 'panel' = right-rail; 'dialog' = expanded into the centered modal.
+  const [detailMode, setDetailMode] = useState<'panel' | 'dialog'>('panel');
   const [search, setSearch] = useState('');
   const [severityFilter, setSeverityFilter] = useState<FindingSeverityValue | undefined>(undefined);
   const [assigneeFilter, setAssigneeFilter] = useState<Set<string>>(new Set());
@@ -99,27 +105,41 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
     [canUpdateFinding, canVerifyFinding],
   );
 
+  // Open a finding in the rail (resets any prior expanded state).
+  const openFinding = useCallback((finding: Finding) => {
+    setSelectedFinding(finding);
+    setDetailMode('panel');
+  }, []);
+
   const handleMove = useCallback(
-    (itemId: string, from: string, to: string) => {
+    (itemId: string, _from: string, to: string) => {
+      // Attempt the move directly. The backend validates the promote (assignee +
+      // deadline) and resolve (note + evidence) requirements and returns a
+      // localized 422 — surfaced as a toast by useUpdateFinding — so dragging a
+      // card gives the same warning as changing status from the detail dropdown.
+      updateMutation.mutate({ findingId: itemId, input: { status: to as FindingStatusValue } });
+    },
+    [updateMutation],
+  );
+
+  // A drop landed on a column `canDrop` rejected — explain why via a toast.
+  const handleInvalidDrop = useCallback(
+    (_itemId: string, from: string, to: string) => {
       const fromStatus = from as FindingStatusValue;
       const toStatus = to as FindingStatusValue;
-
-      if (needsModal(fromStatus, toStatus)) {
-        const finding = findings.find((f) => f.id === itemId);
-        if (finding !== undefined) {
-          setSelectedFinding(finding);
-        }
-        return;
-      }
-
-      updateMutation.mutate({ findingId: itemId, input: { status: toStatus } });
+      const reason = transitionRejectionReason(fromStatus, toStatus, {
+        canUpdate: canUpdateFinding,
+        isInspector: canVerifyFinding,
+      });
+      if (reason === null) return;
+      toast.error(tDrag(reason, { from: tColumns(fromStatus), to: tColumns(toStatus) }));
     },
-    [findings, updateMutation],
+    [canUpdateFinding, canVerifyFinding, tColumns, tDrag],
   );
 
   const handleCardClick = useCallback(
-    (item: Finding) => { setSelectedFinding(item); },
-    [],
+    (item: Finding) => { openFinding(item); },
+    [openFinding],
   );
 
   const renderCard = useCallback(
@@ -167,6 +187,12 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
               <option key={s} value={s}>{tSeverity(s)}</option>
             ))}
           </Select>
+          <FindingsExportActions
+            projectId={projectId}
+            members={members}
+            severityFilter={severityFilter}
+            assigneeFilter={assigneeFilter}
+          />
           <LogFindingButton projectId={projectId} size="lg" variant="primary" />
         </div>
       </div>
@@ -181,6 +207,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
             renderCard={renderCard}
             onMove={handleMove}
             canDrop={canDrop}
+            onInvalidDrop={handleInvalidDrop}
             emptyLabel={t('empty')}
             isItemDisabled={isItemDisabled}
             onCardClick={handleCardClick}
@@ -189,12 +216,22 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
           />
         </div>
 
-        <FindingDetailPanel
-          projectId={projectId}
-          finding={selectedFinding}
-          onClose={() => { setSelectedFinding(null); }}
-        />
+        {detailMode === 'panel' && (
+          <FindingDetailPanel
+            projectId={projectId}
+            finding={selectedFinding}
+            onClose={() => { setSelectedFinding(null); }}
+            onExpand={() => { setDetailMode('dialog'); }}
+          />
+        )}
       </div>
+
+      <FindingDetailModal
+        projectId={projectId}
+        finding={detailMode === 'dialog' ? selectedFinding : null}
+        open={detailMode === 'dialog' && selectedFinding !== null}
+        onOpenChange={(o) => { if (!o) setSelectedFinding(null); }}
+      />
     </div>
   );
 }

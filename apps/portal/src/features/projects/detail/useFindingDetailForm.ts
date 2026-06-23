@@ -155,6 +155,8 @@ export type FindingDetailFormApi = {
   resolve: () => void;
   /** Inspector verifies a resolved finding. */
   verify: () => void;
+  /** Move the finding to an arbitrary legal next status (drives the Status dropdown). */
+  changeStatus: (to: FindingStatusValue) => void;
   /** Delete the finding. */
   remove: () => void;
   /** Drop the element link (coordinate stays). */
@@ -401,6 +403,20 @@ export function useFindingDetailForm(
     promote: form.handleSubmit(onPromoteSubmit),
     resolve: form.handleSubmit(onResolveSubmit),
     verify: () => { mutateWithSaved({ status: 'verified' }); },
+    changeStatus: (to) => {
+      if (finding === null || to === finding.status) return;
+      // `verified` is a minimal patch (no field/anchor write), mirroring verify().
+      if (to === 'verified') { mutateWithSaved({ status: 'verified' }); return; }
+      // Everything else persists the in-flight field edits alongside the new
+      // status, same as the promote/resolve buttons. `resolved` carries the
+      // note + evidence; the backend 422s (→ toast) if they're missing.
+      form.handleSubmit((values) => {
+        const opts: PatchOptions = to === 'resolved'
+          ? { status: to, resolutionNote: resolutionNote.trim(), resolutionEvidenceIds }
+          : { status: to };
+        mutateWithSaved(applyPendingAnchor(buildPatch(values, photoIds, referenceAttachmentIds, opts)));
+      })();
+    },
     remove: () => {
       if (finding === null) return;
       deleteMutation.mutate(finding.id, { onSuccess: () => { onDeleted?.(); } });

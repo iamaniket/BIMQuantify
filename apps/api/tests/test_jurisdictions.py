@@ -163,16 +163,17 @@ async def test_jurisdictions_exposes_dossier_templates(client: AsyncClient) -> N
         "certificate_type",
         "derived",
         "model",
-        "attachment_or_model",
     }
 
     # At least one of each source kind exists across the dwelling set.
     kinds = {r["source_kind"] for r in templates["dwelling"]}
     assert {"attachment_slot", "certificate_type", "derived"} <= kinds
-    # Drawings is satisfied by an uploaded drawing OR a present BIM model.
-    assert "attachment_or_model" in kinds
+    # Drawings is satisfied by a viewable/processed BIM model (model-backed,
+    # never an attachment).
+    assert "model" in kinds
     drawings = next(r for r in templates["dwelling"] if r["code"] == "drawings")
-    assert drawings["source_kind"] == "attachment_or_model"
+    assert drawings["source_kind"] == "model"
+    assert drawings["source_value"] == "models"
 
 
 async def test_dossier_template_labels_localized(client: AsyncClient) -> None:
@@ -204,3 +205,67 @@ async def test_get_dossier_requirements_falls_back_to_other() -> None:
     assert get_dossier_requirements("NL", None) == base
     assert get_dossier_requirements("NL", "warehouse") == base
     assert get_dossier_requirements("DE", "dwelling") == ()
+
+
+# ---------------------------------------------------------------------------
+# Building-type catalog (Bbl gebruiksfuncties)
+# ---------------------------------------------------------------------------
+
+# Neutral codes for the full Dutch Bbl gebruiksfunctie set (excludes the legacy
+# `commercial` code, which is retained valid but not part of the catalog).
+_BBL_GEBRUIKSFUNCTIES = (
+    "dwelling",
+    "assembly",
+    "cell",
+    "healthcare",
+    "industrial",
+    "office",
+    "accommodation",
+    "education",
+    "sport",
+    "retail",
+    "non_building",
+    "other",
+)
+
+
+async def test_jurisdictions_exposes_bbl_building_types_localized(
+    client: AsyncClient,
+) -> None:
+    """NL exposes the full gebruiksfunctie set with NL + EN labels."""
+    nl_resp = await client.get("/jurisdictions", params={"locale": "nl"})
+    en_resp = await client.get("/jurisdictions", params={"locale": "en"})
+    assert nl_resp.status_code == 200, nl_resp.text
+
+    nl = next(i for i in nl_resp.json()["items"] if i["country"] == "NL")
+    en = next(i for i in en_resp.json()["items"] if i["country"] == "NL")
+
+    nl_labels = nl["building_type_labels"]
+    en_labels = en["building_type_labels"]
+
+    # Every gebruiksfunctie code is present in both locales.
+    assert set(_BBL_GEBRUIKSFUNCTIES) <= set(nl_labels)
+    assert set(_BBL_GEBRUIKSFUNCTIES) <= set(en_labels)
+
+    # Spot-check that NL and EN copy actually differ for a new code.
+    assert nl_labels["office"] == "Kantoorfunctie"
+    assert en_labels["office"] == "Office"
+    assert nl_labels["healthcare"] == "Gezondheidszorgfunctie"
+    assert en_labels["healthcare"] == "Healthcare"
+
+    # Legacy `commercial` stays resolvable so old projects still render a label.
+    assert "commercial" in nl_labels
+
+
+async def test_create_project_accepts_new_building_types(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """New gebruiksfunctie codes round-trip through project create/fetch."""
+    for code in ("office", "healthcare", "non_building"):
+        resp = await client.post(
+            "/projects",
+            json={"name": f"BT-{code}", "building_type": code},
+            headers=_auth(org_user["access_token"]),
+        )
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["building_type"] == code

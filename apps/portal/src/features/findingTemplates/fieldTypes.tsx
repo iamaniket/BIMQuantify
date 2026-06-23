@@ -17,10 +17,6 @@ export const FIELD_TYPE_ORDER: readonly FindingFieldTypeValue[] = [
   'checkbox',
 ] as const;
 
-export function emptyValueForType(type: FindingFieldTypeValue): unknown {
-  return type === 'checkbox' ? false : '';
-}
-
 /**
  * Single source of truth mapping a custom field type → its input control.
  * Used by the dynamic finding form (`FindingFormDialog`). Number/date values

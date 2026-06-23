@@ -18,7 +18,7 @@ export type DossierRequirementResult = {
 };
 
 /** Requirements grouped under one localized category header. */
-export type DossierCategoryGroup = {
+type DossierCategoryGroup = {
   category: string;
   requirements: DossierRequirementResult[];
   filled: number;
@@ -37,8 +37,11 @@ export type DossierCompleteness = {
   groups: DossierCategoryGroup[];
 };
 
-export type DossierDerivedInput = {
+type DossierDerivedInput = {
+  /** Total non-deleted models (drives the `derived`/`models` signal). */
   modelCount?: number;
+  /** Models with at least one viewable/processed file (drives `model`-kind). */
+  viewableModelCount?: number;
   findingsOpen?: number;
   deadlinesOverdue?: number;
 };
@@ -65,14 +68,14 @@ function resolveFulfillment(
       return { fulfilled: matching.length > 0, count: matching.length, hasExpiredCert };
     }
     case 'model': {
-      return { fulfilled: derived.modelCount > 0, count: derived.modelCount, hasExpiredCert: false };
-    }
-    case 'attachment_or_model': {
-      // Drawings: satisfied by an uploaded drawing in the slot, or by a BIM model
-      // (the model carries the geometry the per-storey 2D plans derive from).
-      const count = readyAttachments.filter((a) => a.dossier_slot === req.source_value).length;
-      if (count > 0) return { fulfilled: true, count, hasExpiredCert: false };
-      return { fulfilled: derived.modelCount > 0, count: derived.modelCount, hasExpiredCert: false };
+      // Drawings: satisfied by a viewable/processed model (ready+extracted IFC
+      // or ready PDF) — the geometry the per-storey 2D plans derive from. A
+      // model that exists but is still processing does not count.
+      return {
+        fulfilled: derived.viewableModelCount > 0,
+        count: derived.viewableModelCount,
+        hasExpiredCert: false,
+      };
     }
     case 'derived': {
       switch (req.source_value) {
@@ -109,6 +112,7 @@ export function computeDossierCompleteness(
 ): DossierCompleteness {
   const filled0: Required<DossierDerivedInput> = {
     modelCount: derived.modelCount ?? 0,
+    viewableModelCount: derived.viewableModelCount ?? 0,
     findingsOpen: derived.findingsOpen ?? 0,
     deadlinesOverdue: derived.deadlinesOverdue ?? 0,
   };
@@ -188,7 +192,7 @@ export function selectDossierTemplate(
   return templates['other'] ?? [];
 }
 
-export type CompletionPoint = { t: number; pct: number };
+type CompletionPoint = { t: number; pct: number };
 
 /**
  * Replays ready attachments and certificates oldest-first, tracking when each
@@ -201,9 +205,7 @@ export function buildCompletionSeries(
   attachments: Attachment[],
   certificates: Certificate[] = [],
 ): CompletionPoint[] {
-  const slotReqs = template.filter(
-    (r) => r.source_kind === 'attachment_slot' || r.source_kind === 'attachment_or_model',
-  );
+  const slotReqs = template.filter((r) => r.source_kind === 'attachment_slot');
   const certReqs = template.filter((r) => r.source_kind === 'certificate_type');
   const requiredSlots = new Set(slotReqs.map((r) => r.source_value));
   const requiredCertTypes = new Set(certReqs.map((r) => r.source_value));

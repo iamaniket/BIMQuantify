@@ -32,6 +32,7 @@ from sqlalchemy.orm import aliased, selectinload
 
 from bimstitch_api import audit
 from bimstitch_api.access import (
+    get_membership,
     load_project_or_404,
     require_membership,
     require_project_read_access,
@@ -51,7 +52,7 @@ from bimstitch_api.jurisdictions import get as get_jurisdiction
 from bimstitch_api.models.borgingsmoment import Borgingsmoment
 from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
 from bimstitch_api.models.certificate import Certificate, CertificateStatus
-from bimstitch_api.models.finding import Finding
+from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.org_template import OrgTemplate
@@ -70,7 +71,9 @@ from bimstitch_api.routers.reports.payloads import (
     _report_notification_body,
     _report_title,
     _risk_payload,
+    _snag_finding_payload,
     _template_payload,
+    _user_display_name,
 )
 from bimstitch_api.schemas.report import (
     ReportCreateRequest,
@@ -116,12 +119,19 @@ async def _to_response(
     report: Report, storage: StorageBackend
 ) -> ReportResponse:
     download_url: str | None = None
+    view_url: str | None = None
     if report.status is ReportStatus.ready and report.storage_key is not None:
-        download_url = await storage.presigned_get_url(
-            report.storage_key, f"{report.title}.pdf"
+        filename = f"{report.title}.pdf"
+        # Two presigns over the same object: download_url forces a save
+        # (attachment), view_url renders inline so the preview dialog's iframe
+        # shows the PDF instead of triggering a download.
+        download_url = await storage.presigned_get_url(report.storage_key, filename)
+        view_url = await storage.presigned_get_url(
+            report.storage_key, filename, disposition="inline"
         )
     payload = ReportResponse.model_validate(report).model_dump()
     payload["download_url"] = download_url
+    payload["view_url"] = view_url
     return ReportResponse(**payload)
 
 
@@ -180,7 +190,7 @@ class _ReportPlan:
 
 
 async def _resolve_compliance_source(
-    session: AsyncSession, project: Project, user: User, locale: str
+    session: AsyncSession, project: Project, user: User, locale: str, params: dict[str, object]
 ) -> _ReportPlan:
     """compliance_report: render the latest succeeded compliance Job."""
     source_job = await _load_latest_compliance_job(session, project.id)
@@ -240,7 +250,7 @@ async def _load_project_risks(session: AsyncSession, project_id: UUID) -> list[R
 
 
 async def _resolve_assurance_plan_source(
-    session: AsyncSession, project: Project, user: User, locale: str
+    session: AsyncSession, project: Project, user: User, locale: str, params: dict[str, object]
 ) -> _ReportPlan:
     """assurance_plan (#31): render the project's active borgingsplan
     (published preferred, else draft) plus its risicobeoordeling."""
@@ -263,7 +273,7 @@ async def _resolve_assurance_plan_source(
 
 
 async def _resolve_completion_declaration_source(
-    session: AsyncSession, project: Project, user: User, locale: str
+    session: AsyncSession, project: Project, user: User, locale: str, params: dict[str, object]
 ) -> _ReportPlan:
     """completion_declaration (#32): render the kwaliteitsborger's verklaring.
     Generated unsigned; an inspector locks it via POST .../sign, which re-renders
@@ -281,7 +291,7 @@ async def _resolve_completion_declaration_source(
 
 
 async def _resolve_dossier_source(
-    session: AsyncSession, project: Project, user: User, locale: str
+    session: AsyncSession, project: Project, user: User, locale: str, params: dict[str, object]
 ) -> _ReportPlan:
     """dossier (#33): bundle everything for the gereedmelding — project,
     instrument, risicobeoordeling, borgingsplan, findings (with resolution +
@@ -390,14 +400,133 @@ async def _resolve_dossier_source(
     )
 
 
-# report_type → resolver. New types land incrementally (#31/#32/#33); a known
+def _parse_finding_filters(
+    params: dict[str, object],
+) -> tuple[UUID | None, FindingStatus | None, FindingSeverity | None]:
+    """Pull the snag-list scoping filters out of the request params. A malformed
+    UUID/enum is a clean 422 rather than a silently-ignored filter (which would
+    produce a wrong-scope report)."""
+
+    def _err() -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="INVALID_FINDING_FILTER",
+        )
+
+    assignee_raw = params.get("assignee_user_id")
+    assignee_id: UUID | None = None
+    if assignee_raw not in (None, ""):
+        try:
+            assignee_id = UUID(str(assignee_raw))
+        except (ValueError, TypeError) as exc:
+            raise _err() from exc
+
+    status_raw = params.get("status")
+    status_val: FindingStatus | None = None
+    if status_raw not in (None, ""):
+        try:
+            status_val = FindingStatus(str(status_raw))
+        except ValueError as exc:
+            raise _err() from exc
+
+    severity_raw = params.get("severity")
+    severity_val: FindingSeverity | None = None
+    if severity_raw not in (None, ""):
+        try:
+            severity_val = FindingSeverity(str(severity_raw))
+        except ValueError as exc:
+            raise _err() from exc
+
+    return assignee_id, status_val, severity_val
+
+
+async def _resolve_snag_list_source(
+    session: AsyncSession, project: Project, user: User, locale: str, params: dict[str, object]
+) -> _ReportPlan:
+    """snag_list (#G2): a per-recipient bevindingen snag list. Findings are
+    scoped by the request params (assignee / status / severity); setting the
+    assignee filter produces a single subcontractor's personal list, and that
+    assignee becomes the report's recipient on the cover. Image attachments
+    travel as storage keys the worker fetches from MinIO and embeds. No
+    data gate — an empty list is a valid (if dull) report."""
+    assignee_id, status_val, severity_val = _parse_finding_filters(params)
+
+    recipient: dict[str, object] | None = None
+    if assignee_id is not None:
+        membership = await get_membership(session, project.id, assignee_id)
+        if membership is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="ASSIGNEE_NOT_A_PROJECT_MEMBER",
+            )
+        recipient_user = await session.get(User, assignee_id)
+        recipient = {
+            "name": _user_display_name(recipient_user),
+            "email": recipient_user.email if recipient_user is not None else None,
+        }
+
+    stmt = (
+        select(Finding)
+        .where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
+        # assignee feeds the per-finding payload; not selectin by default.
+        .options(selectinload(Finding.assignee))
+        .order_by(Finding.created_at)
+    )
+    if assignee_id is not None:
+        stmt = stmt.where(Finding.assignee_user_id == assignee_id)
+    if status_val is not None:
+        stmt = stmt.where(Finding.status == status_val)
+    if severity_val is not None:
+        stmt = stmt.where(Finding.severity == severity_val)
+    findings = list((await session.execute(stmt)).scalars().all())
+
+    # Resolve every image attachment the findings reference (photos + evidence).
+    att_ids: set[UUID] = set()
+    for f in findings:
+        for aid in list(f.photo_ids or []) + list(f.resolution_evidence_ids or []):
+            try:
+                att_ids.add(UUID(str(aid)))
+            except (ValueError, TypeError):
+                continue
+    atts: dict[str, ProjectFile] = {}
+    if att_ids:
+        rows = (
+            await session.execute(
+                select(ProjectFile).where(
+                    ProjectFile.id.in_(att_ids),
+                    ProjectFile.role == ProjectFileRole.attachment,
+                    ProjectFile.deleted_at.is_(None),
+                )
+            )
+        ).scalars().all()
+        atts = {str(a.id): a for a in rows}
+
+    return _ReportPlan(
+        job_type=JobType.snag_list_report,
+        source_job_id=None,
+        title=_report_title(ReportType.snag_list, project.name, locale),
+        payload_extra={
+            "findings": [_snag_finding_payload(f, atts) for f in findings],
+            "recipient": recipient,
+            "filters": {
+                "status": status_val.value if status_val is not None else None,
+                "severity": severity_val.value if severity_val is not None else None,
+            },
+        },
+    )
+
+
+# report_type → resolver. New types land incrementally (#31/#32/#33/#G2); a known
 # type with no entry yet yields 422 REPORT_TYPE_NOT_AVAILABLE from create_report.
-_Resolver = Callable[[AsyncSession, Project, User, str], Awaitable[_ReportPlan]]
+_Resolver = Callable[
+    [AsyncSession, Project, User, str, dict[str, object]], Awaitable[_ReportPlan]
+]
 _RESOLVERS: dict[ReportType, _Resolver] = {
     ReportType.compliance_report: _resolve_compliance_source,
     ReportType.assurance_plan: _resolve_assurance_plan_source,
     ReportType.completion_declaration: _resolve_completion_declaration_source,
     ReportType.dossier: _resolve_dossier_source,
+    ReportType.snag_list: _resolve_snag_list_source,
 }
 
 
@@ -443,7 +572,7 @@ async def create_report(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="REPORT_TYPE_NOT_AVAILABLE",
         )
-    plan = await resolver(session, project, user, locale)
+    plan = await resolver(session, project, user, locale, payload.params or {})
 
     # Resolve the org report-template (explicit id → org default → built-in).
     template = await _resolve_template(session, payload.report_type, payload.template_id)

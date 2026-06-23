@@ -33,24 +33,24 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   const content = getFeatureContent(slug, locale);
   if (content === null) {
-    return { title: 'Feature not found — BimDossier' };
+    return { title: 'Feature not found · BimDossier' };
   }
   const { title, intro: description, keywords } = content;
 
   return {
-    // The locale layout supplies the `%s — BimDossier` title template, so the
-    // bare feature title is enough — avoids a doubled suffix.
+    // The locale layout supplies the `%s · BimDossier` title template, so the
+    // bare feature title is enough, which avoids a doubled suffix.
     title,
     description,
     keywords,
     openGraph: {
-      title: `${title} — BimDossier`,
+      title: `${title} · BimDossier`,
       description,
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${title} — BimDossier`,
+      title: `${title} · BimDossier`,
       description,
     },
   };

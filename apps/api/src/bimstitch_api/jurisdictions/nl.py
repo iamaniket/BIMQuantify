@@ -886,10 +886,11 @@ _NL_DOSSIER_BASE: tuple[DossierRequirementTemplate, ...] = (
         code="drawings",
         category="documents",
         label={"nl": "Tekeningen", "en": "Drawings"},
-        # Satisfied by an uploaded drawing OR a BIM model (the model carries the
+        # Satisfied by a viewable/processed BIM model (the model carries the
         # geometry and the processor derives per-storey 2D plans from it).
-        source_kind="attachment_or_model",
-        source_value="drawings",
+        # Drawings is model-backed, never an attachment.
+        source_kind="model",
+        source_value="models",
     ),
     DossierRequirementTemplate(
         code="structural-calculations",
@@ -968,10 +969,23 @@ _NL_DOSSIER_BASE: tuple[DossierRequirementTemplate, ...] = (
     ),
 )
 
+# All gebruiksfuncties share the generic dossier base for now; per-function
+# tailoring (e.g. a medical-gas slot for healthcare) is incremental follow-up.
+# `get_dossier_requirements` falls back to "other" for unmapped codes.
 NL_DOSSIER_REQUIREMENT_TEMPLATES: dict[str, tuple[DossierRequirementTemplate, ...]] = {
     "dwelling": _NL_DOSSIER_BASE,
-    "commercial": _NL_DOSSIER_BASE,
+    "assembly": _NL_DOSSIER_BASE,
+    "cell": _NL_DOSSIER_BASE,
+    "healthcare": _NL_DOSSIER_BASE,
+    "industrial": _NL_DOSSIER_BASE,
+    "office": _NL_DOSSIER_BASE,
+    "accommodation": _NL_DOSSIER_BASE,
+    "education": _NL_DOSSIER_BASE,
+    "sport": _NL_DOSSIER_BASE,
+    "retail": _NL_DOSSIER_BASE,
+    "non_building": _NL_DOSSIER_BASE,
     "other": _NL_DOSSIER_BASE,
+    "commercial": _NL_DOSSIER_BASE,
 }
 
 
@@ -995,8 +1009,21 @@ NL = Jurisdiction(
     },
     building_type_labels={
         "dwelling": {"nl": "Woning", "en": "Dwelling"},
-        "commercial": {"nl": "Bedrijfspand", "en": "Commercial building"},
+        "assembly": {"nl": "Bijeenkomstfunctie", "en": "Assembly"},
+        "cell": {"nl": "Celfunctie", "en": "Cell (detention)"},
+        "healthcare": {"nl": "Gezondheidszorgfunctie", "en": "Healthcare"},
+        "industrial": {"nl": "Industriefunctie", "en": "Industrial"},
+        "office": {"nl": "Kantoorfunctie", "en": "Office"},
+        "accommodation": {"nl": "Logiesfunctie", "en": "Accommodation"},
+        "education": {"nl": "Onderwijsfunctie", "en": "Education"},
+        "sport": {"nl": "Sportfunctie", "en": "Sport"},
+        "retail": {"nl": "Winkelfunctie", "en": "Retail"},
+        "non_building": {
+            "nl": "Bouwwerk geen gebouw zijnde",
+            "en": "Non-building structure",
+        },
         "other": {"nl": "Anders", "en": "Other"},
+        "commercial": {"nl": "Bedrijfspand", "en": "Commercial building"},
     },
     phase_labels={
         "design": {"nl": "Ontwerp", "en": "Design"},

@@ -439,16 +439,12 @@ test.describe.serial('Multitenant E2E Journey', () => {
     state.projectId = idMatch[1];
   });
 
-  test('C4: admin edits the project from the projects list', async ({ page }) => {
+  test('C4: admin edits the project from the detail page', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
-    await page.goto('/en/projects');
+    await page.goto(`/en/projects/${state.projectId}`);
 
-    // The project card renders aria-label="Project actions" (hardcoded in ProjectCardMenu.tsx).
-    // This tenant has only one project, so .first() is unambiguous.
-    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
-    await page.getByRole('button', { name: 'Project actions' }).first().click();
-
-    await page.getByRole('menuitem', { name: /edit/i }).click();
+    // Edit lives on the project detail page header (the card no longer has a menu).
+    await page.getByRole('button', { name: /edit project/i }).click();
 
     const editDialog = page.getByRole('dialog');
     await expect(editDialog).toBeVisible();
@@ -910,12 +906,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
   test('H3: guest cannot edit or delete the project', async ({ page }) => {
     await injectSavedAuth(page, state.guestEmail);
-    await page.goto('/en/projects');
-    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+    await page.goto(`/en/projects/${state.projectId}`);
 
-    // --- Edit attempt ---
-    await page.getByRole('button', { name: 'Project actions' }).first().click();
-    await page.getByRole('menuitem', { name: /edit/i }).click();
+    // --- Edit attempt (Edit lives on the detail page header) ---
+    await page.getByRole('button', { name: /edit project/i }).click();
 
     const editDialog = page.getByRole('dialog');
     await expect(editDialog).toBeVisible();
@@ -939,16 +933,17 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.keyboard.press('Escape');
     await expect(editDialog).not.toBeVisible({ timeout: 5_000 });
 
-    // Re-navigate to clear any error toasts that overlay the card controls.
-    await page.goto('/en/projects');
-    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+    // Re-navigate to clear any error toasts that overlay the header controls.
+    await page.goto(`/en/projects/${state.projectId}`);
 
-    // --- Delete attempt ---
-    await page.getByRole('button', { name: 'Project actions' }).first().click();
-    await page.getByRole('menuitem', { name: /remove/i }).click();
+    // --- Delete attempt (Remove button lives on the detail page header) ---
+    await page.getByRole('button', { name: 'Remove project' }).click();
 
     const confirmDialog = page.getByRole('dialog');
     await expect(confirmDialog).toBeVisible();
+
+    // Type-to-confirm: the Remove button stays disabled until the project name is typed.
+    await confirmDialog.getByRole('textbox').fill(state.projectName);
 
     const [deleteResp] = await Promise.all([
       page.waitForResponse(
@@ -998,12 +993,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
   test('I2: guest (now editor) can edit the project', async ({ page }) => {
     await injectSavedAuth(page, state.guestEmail);
-    await page.goto('/en/projects');
-    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
+    await page.goto(`/en/projects/${state.projectId}`);
 
-    // Edit the project name.
-    await page.getByRole('button', { name: 'Project actions' }).first().click();
-    await page.getByRole('menuitem', { name: /edit/i }).click();
+    // Edit the project name (Edit lives on the detail page header).
+    await page.getByRole('button', { name: /edit project/i }).click();
 
     const editDialog = page.getByRole('dialog');
     await expect(editDialog).toBeVisible();
@@ -1034,13 +1027,11 @@ test.describe.serial('Multitenant E2E Journey', () => {
       await page.keyboard.press('Escape');
     }
 
-    // Re-navigate so the card and its dropdown trigger are in a clean state.
-    await page.goto('/en/projects');
-    await expect(page.getByText(editedName)).toBeVisible({ timeout: 10_000 });
+    // Re-navigate so the header Edit button is in a clean state.
+    await page.goto(`/en/projects/${state.projectId}`);
 
     // Restore original name so later tests aren't affected.
-    await page.getByRole('button', { name: 'Project actions' }).first().click();
-    await page.getByRole('menuitem', { name: /edit/i }).click();
+    await page.getByRole('button', { name: /edit project/i }).click();
     await expect(editDialog).toBeVisible();
 
     const restoreInput = editDialog.locator('input[name="name"]');
@@ -1948,23 +1939,14 @@ test.describe.serial('Multitenant E2E Journey', () => {
     state.lifecycleProjectId = idMatch[1];
   });
 
-  test('S2: admin archives the lifecycle project', async ({ page }) => {
+  // Archive/Reactivate (S2–S4) are temporarily removed from the frontend — the
+  // detail-page actions menu now offers only Remove. Skip until archive returns.
+  test.skip('S2: admin archives the lifecycle project', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
-    await page.goto('/en/projects');
+    await page.goto(`/en/projects/${state.lifecycleProjectId}`);
 
-    await expect(page.getByText(state.lifecycleProjectName)).toBeVisible({ timeout: 10_000 });
-
-    // Find the lifecycle project card's action menu.
-    // There may be multiple project cards; target the one containing the lifecycle project name.
-    const cards = page.locator('a[href*="/projects/"]').filter({
-      has: page.getByText(state.lifecycleProjectName),
-    });
-    // "Project actions" button is a sibling of the <a> link (rendered by
-    // <ProjectCardMenu> outside <Link> in ProjectCard.tsx). Step up to the
-    // parent card container with locator('..') before querying the button.
-    const actionsBtn = cards.first().locator('..').getByRole('button', { name: 'Project actions' });
-    await actionsBtn.click();
-
+    // Archive lives in the detail page header actions menu.
+    await page.getByRole('button', { name: 'Project actions' }).click();
     await page.getByRole('menuitem', { name: /archive/i }).click();
 
     const archiveDialog = page.getByRole('dialog');
@@ -1984,7 +1966,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
   });
 
-  test('S3: archived project shows the Archived badge in the default project list', async ({ page }) => {
+  test.skip('S3: archived project shows the Archived badge in the default project list', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto('/en/projects');
 
@@ -2000,19 +1982,12 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await expect(page.getByText('Archived · read only')).toBeVisible({ timeout: 5_000 });
   });
 
-  test('S4: admin reactivates the archived project', async ({ page }) => {
+  test.skip('S4: admin reactivates the archived project', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
-    await page.goto('/en/projects');
+    await page.goto(`/en/projects/${state.lifecycleProjectId}`);
 
-    // The archived lifecycle project is visible in the default list.
-    await expect(page.getByText(state.lifecycleProjectName)).toBeVisible({ timeout: 10_000 });
-
-    // Open the card menu and click Reactivate.
-    const cards = page.locator('a[href*="/projects/"]').filter({
-      has: page.getByText(state.lifecycleProjectName),
-    });
-    const actionsBtn = cards.first().locator('..').getByRole('button', { name: 'Project actions' });
-    await actionsBtn.click();
+    // Reactivate lives in the detail page header actions menu (shown when archived).
+    await page.getByRole('button', { name: 'Project actions' }).click();
 
     const [reactivateResp] = await Promise.all([
       page.waitForResponse(
@@ -2030,26 +2005,25 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
   test('S5: member cannot delete the lifecycle project (403)', async ({ page }) => {
     await injectSavedAuth(page, state.memberEmail);
-    await page.goto('/en/projects');
+    await page.goto(`/en/projects/${state.lifecycleProjectId}`);
 
     // Member was re-added to the org in M3-M5 but may not be on the lifecycle
-    // project. If the project card is visible, try to delete; otherwise the
-    // member simply has no access — which is the correct outcome.
-    const projectCard = page.getByText(state.lifecycleProjectName);
-    const isVisible = await projectCard.isVisible({ timeout: 5_000 }).catch(() => false);
+    // project. If the detail page (and its Remove button) is reachable, try to
+    // delete; otherwise the member simply has no access — the correct outcome.
+    const removeBtn = page.getByRole('button', { name: 'Remove project' });
+    const isVisible = await removeBtn.isVisible({ timeout: 5_000 }).catch(() => false);
     if (!isVisible) {
-      // Member doesn't see the project at all — passes (no access = no delete).
+      // Member has no access to the project at all — passes (no access = no delete).
       return;
     }
 
-    const cards = page.locator('a[href*="/projects/"]').filter({
-      has: page.getByText(state.lifecycleProjectName),
-    });
-    await cards.first().locator('..').getByRole('button', { name: 'Project actions' }).click();
-    await page.getByRole('menuitem', { name: /remove/i }).click();
+    await removeBtn.click();
 
     const confirmDialog = page.getByRole('dialog');
     await expect(confirmDialog).toBeVisible();
+
+    // Type-to-confirm: the Remove button stays disabled until the project name is typed.
+    await confirmDialog.getByRole('textbox').fill(state.lifecycleProjectName);
 
     const [deleteResp] = await Promise.all([
       page.waitForResponse(
@@ -2066,18 +2040,17 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
   test('S6: admin deletes the lifecycle project', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
-    await page.goto('/en/projects');
+    await page.goto(`/en/projects/${state.lifecycleProjectId}`);
 
-    await expect(page.getByText(state.lifecycleProjectName)).toBeVisible({ timeout: 10_000 });
-
-    const cards = page.locator('a[href*="/projects/"]').filter({
-      has: page.getByText(state.lifecycleProjectName),
-    });
-    await cards.first().locator('..').getByRole('button', { name: 'Project actions' }).click();
-    await page.getByRole('menuitem', { name: /remove/i }).click();
+    // Delete lives in the detail page header (Remove button); on success the
+    // component redirects to /projects (the project no longer exists).
+    await page.getByRole('button', { name: 'Remove project' }).click();
 
     const confirmDialog = page.getByRole('dialog');
     await expect(confirmDialog).toBeVisible();
+
+    // Type-to-confirm: the Remove button stays disabled until the project name is typed.
+    await confirmDialog.getByRole('textbox').fill(state.lifecycleProjectName);
 
     const [deleteResp] = await Promise.all([
       page.waitForResponse(
@@ -2190,13 +2163,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
   test('T3: member (now viewer) cannot edit the project', async ({ page }) => {
     await injectSavedAuth(page, state.memberEmail);
-    await page.goto('/en/projects');
+    await page.goto(`/en/projects/${state.projectId}`);
 
-    // The project should still be visible (viewers can read).
-    await expect(page.getByText(state.projectName)).toBeVisible({ timeout: 10_000 });
-
-    await page.getByRole('button', { name: 'Project actions' }).first().click();
-    await page.getByRole('menuitem', { name: /edit/i }).click();
+    // Edit lives on the detail page header; viewers see it but the API rejects the save.
+    await page.getByRole('button', { name: /edit project/i }).click();
 
     const editDialog = page.getByRole('dialog');
     await expect(editDialog).toBeVisible();

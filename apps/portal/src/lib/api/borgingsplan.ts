@@ -2,22 +2,17 @@ import { apiClient } from './client';
 import {
   BorgingsmomentSchema,
   BorgingsplanSchema,
-  BorgingsplanVersionListSchema,
   ChecklistItemSchema,
   ChecklistItemListSchema,
-  MomentListSchema,
   type Borgingsmoment,
-  type BorgingsmomentCreateInput,
   type BorgingsmomentUpdateInput,
   type Borgingsplan,
   type BorgingsplanUpdateInput,
-  type BorgingsplanVersionSummary,
   type ChecklistItem,
   type ChecklistItemCreateInput,
   type ChecklistItemReorderInput,
   type ChecklistItemUpdateInput,
   type GenerateOptionsInput,
-  type MomentReorderInput,
 } from './schemas';
 
 // ----- Plan-level -----
@@ -43,17 +38,6 @@ export async function getBorgingsplan(
     }
     throw err;
   }
-}
-
-export async function listBorgingsplanVersions(
-  accessToken: string,
-  projectId: string,
-): Promise<BorgingsplanVersionSummary[]> {
-  return apiClient.get<BorgingsplanVersionSummary[]>(
-    `/projects/${projectId}/borgingsplan/versions`,
-    BorgingsplanVersionListSchema,
-    accessToken,
-  );
 }
 
 export async function generateBorgingsplan(
@@ -121,19 +105,6 @@ export async function resetBorgingsplan(
 
 // ----- Moment-level -----
 
-export async function createMoment(
-  accessToken: string,
-  planId: string,
-  input: BorgingsmomentCreateInput,
-): Promise<Borgingsmoment> {
-  return apiClient.post<Borgingsmoment>(
-    `/borgingsplans/${planId}/moments`,
-    input,
-    BorgingsmomentSchema,
-    accessToken,
-  );
-}
-
 export async function updateMoment(
   accessToken: string,
   planId: string,
@@ -144,27 +115,6 @@ export async function updateMoment(
     `/borgingsplans/${planId}/moments/${momentId}`,
     input,
     BorgingsmomentSchema,
-    accessToken,
-  );
-}
-
-export async function deleteMoment(
-  accessToken: string,
-  planId: string,
-  momentId: string,
-): Promise<void> {
-  return apiClient.delete(`/borgingsplans/${planId}/moments/${momentId}`, accessToken);
-}
-
-export async function reorderMoments(
-  accessToken: string,
-  planId: string,
-  input: MomentReorderInput,
-): Promise<Borgingsmoment[]> {
-  return apiClient.post<Borgingsmoment[]>(
-    `/borgingsplans/${planId}/moments/reorder`,
-    input,
-    MomentListSchema,
     accessToken,
   );
 }

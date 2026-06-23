@@ -130,44 +130,36 @@ describe('computeDossierCompleteness', () => {
     expect(byCode['d']?.fulfilled).toBe(true); // none overdue
   });
 
-  it('fulfils a model requirement when modelCount > 0', () => {
-    const template = [req({ code: 'model', category: 'models', source_kind: 'model', source_value: 'models' })];
+  it('fulfils a model requirement (Drawings) only from a viewable model', () => {
+    const template = [req({ code: 'drawings', category: 'documents', source_kind: 'model', source_value: 'models' })];
 
-    const empty = computeDossierCompleteness(template, [], [], { modelCount: 0 });
+    // No model at all → missing.
+    const empty = computeDossierCompleteness(template, [], [], { modelCount: 0, viewableModelCount: 0 });
     expect(empty.requirements[0]?.fulfilled).toBe(false);
     expect(empty.pct).toBe(0);
 
-    const present = computeDossierCompleteness(template, [], [], { modelCount: 1 });
-    expect(present.requirements[0]?.fulfilled).toBe(true);
-    expect(present.requirements[0]?.count).toBe(1);
-    expect(present.pct).toBe(100);
+    // A model exists but is still processing (not viewable) → still missing.
+    const processing = computeDossierCompleteness(template, [], [], { modelCount: 1, viewableModelCount: 0 });
+    expect(processing.requirements[0]?.fulfilled).toBe(false);
+    expect(processing.pct).toBe(0);
+
+    // A viewable/processed model → fulfilled.
+    const viewable = computeDossierCompleteness(template, [], [], { modelCount: 1, viewableModelCount: 1 });
+    expect(viewable.requirements[0]?.fulfilled).toBe(true);
+    expect(viewable.requirements[0]?.count).toBe(1);
+    expect(viewable.pct).toBe(100);
   });
 
-  it('fulfils an attachment_or_model requirement from a drawing OR a present model', () => {
-    const template = [
-      req({ code: 'drawings', source_kind: 'attachment_or_model', source_value: 'drawings' }),
-    ];
-
-    // Neither a drawing nor a model → missing.
-    const none = computeDossierCompleteness(template, [], [], { modelCount: 0 });
-    expect(none.requirements[0]?.fulfilled).toBe(false);
-    expect(none.pct).toBe(0);
-
-    // A BIM model present, no drawing attachment → fulfilled via the model.
-    const viaModel = computeDossierCompleteness(template, [], [], { modelCount: 1 });
-    expect(viaModel.requirements[0]?.fulfilled).toBe(true);
-    expect(viaModel.requirements[0]?.count).toBe(1);
-    expect(viaModel.pct).toBe(100);
-
-    // A matching drawing attachment, no model → fulfilled via the attachment.
-    const viaDrawing = computeDossierCompleteness(
+  it('does not fulfil the model-backed Drawings slot from a drawing attachment', () => {
+    const template = [req({ code: 'drawings', category: 'documents', source_kind: 'model', source_value: 'models' })];
+    // A legacy attachment tagged drawings no longer counts — Drawings is model-backed.
+    const res = computeDossierCompleteness(
       template,
       [att({ dossier_slot: 'drawings' })],
       [],
-      { modelCount: 0 },
+      { modelCount: 0, viewableModelCount: 0 },
     );
-    expect(viaDrawing.requirements[0]?.fulfilled).toBe(true);
-    expect(viaDrawing.requirements[0]?.count).toBe(1);
+    expect(res.requirements[0]?.fulfilled).toBe(false);
   });
 
   it('drives pct from required items only; optional tracked separately', () => {
@@ -239,12 +231,12 @@ describe('buildCompletionSeries', () => {
     expect(series.map((p) => p.pct)).toEqual([33, 67, 100]);
   });
 
-  it('tracks an attachment_or_model slot in the completion series', () => {
+  it('does not track a model-backed requirement in the completion series', () => {
+    // Drawings is model-backed — it has no attachment history to replay.
     const template = [
-      req({ code: 'drawings', source_kind: 'attachment_or_model', source_value: 'drawings' }),
+      req({ code: 'drawings', source_kind: 'model', source_value: 'models' }),
     ];
-    const series = buildCompletionSeries(template, [att({ dossier_slot: 'drawings' })]);
-    expect(series.map((p) => p.pct)).toEqual([100]);
+    expect(buildCompletionSeries(template, [att({ dossier_slot: 'drawings' })])).toEqual([]);
   });
 
   it('returns [] when the template has no trackable requirements', () => {

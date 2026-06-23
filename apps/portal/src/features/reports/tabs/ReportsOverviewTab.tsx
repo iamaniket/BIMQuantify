@@ -1,20 +1,20 @@
 'use client';
 
 import {
-  CheckCircle, Clock, FileText, Layers, LayoutGrid,
+  Activity, CheckCircle, Clock, FileText, Layers, LayoutGrid,
 } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
-import {
-  useMemo, type JSX, type ReactNode,
-} from 'react';
+import { useMemo, type JSX } from 'react';
 
 import type { Locale } from '@bimstitch/i18n';
 import { Badge } from '@bimstitch/ui';
 
 import { BarChartMini } from '@/components/shared/charts/BarChartMini';
+import { ChartSection } from '@/components/shared/charts/ChartSection';
 import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
 import { StatCard } from '@/components/shared/charts/StatCard';
-import { formatDate } from '@/lib/formatting/dates';
+import { TrendArea } from '@/components/shared/charts/TrendArea';
+import { formatDate, formatMonthDay } from '@/lib/formatting/dates';
 import type { Report, ReportStatus, ReportType } from '@/lib/api/schemas/reports';
 
 import { REPORT_TYPE_META, REPORT_TYPE_ORDER, STATUS_TONE } from '../reportTypeMeta';
@@ -30,24 +30,8 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
 
 const STATUS_ORDER: ReportStatus[] = ['ready', 'running', 'queued', 'failed'];
 
-function Section({
-  icon, title, className, children,
-}: {
-  icon: JSX.Element;
-  title: string;
-  className?: string;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <div className={`rounded-xl border border-border bg-surface-main p-4 ${className ?? ''}`}>
-      <div className="mb-3 flex items-center gap-2 text-caption font-bold uppercase tracking-widest text-foreground-tertiary">
-        {icon}
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
+const TREND_WEEKS = 8;
+const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 export function ReportsOverviewTab({ reports }: { reports: Report[] }): JSX.Element {
   const t = useTranslations('reports.hub.overview');
@@ -102,6 +86,25 @@ export function ReportsOverviewTab({ reports }: { reports: Report[] }): JSX.Elem
     [typeCounts],
   );
 
+  // Reports generated per week over the last TREND_WEEKS weeks.
+  const trend = useMemo(() => {
+    const today = new Date(new Date().toDateString());
+    const start = today.getTime() - (TREND_WEEKS - 1) * MS_WEEK;
+    const values = new Array<number>(TREND_WEEKS).fill(0);
+    for (const r of reports) {
+      const ts = new Date(r.created_at).getTime();
+      if (!Number.isNaN(ts)) {
+        let idx = Math.floor((ts - start) / MS_WEEK);
+        if (idx >= TREND_WEEKS) idx = TREND_WEEKS - 1; // clamp future-dated
+        if (idx >= 0) values[idx] = (values[idx] ?? 0) + 1;
+      }
+    }
+    const labels = values.map(
+      (_, i) => formatMonthDay(new Date(start + i * MS_WEEK).toISOString(), locale),
+    );
+    return { values, labels };
+  }, [reports, locale]);
+
   return (
     <div className="flex flex-col gap-4">
       {/* KPI stat cards */}
@@ -137,7 +140,7 @@ export function ReportsOverviewTab({ reports }: { reports: Report[] }): JSX.Elem
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Status donut + legend */}
-        <Section icon={<LayoutGrid className="h-3.5 w-3.5" aria-hidden />} title={t('statusTitle')}>
+        <ChartSection icon={<LayoutGrid className="h-3.5 w-3.5" aria-hidden />} title={t('statusTitle')}>
           {total === 0 ? (
             <p className="py-2 text-body3 text-foreground-tertiary">{t('empty')}</p>
           ) : (
@@ -163,19 +166,32 @@ export function ReportsOverviewTab({ reports }: { reports: Report[] }): JSX.Elem
               </ul>
             </div>
           )}
-        </Section>
+        </ChartSection>
 
         {/* Reports per type */}
-        <Section icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('byTypeTitle')}>
+        <ChartSection icon={<Layers className="h-3.5 w-3.5" aria-hidden />} title={t('byTypeTitle')}>
           {total === 0 ? (
             <p className="py-2 text-body3 text-foreground-tertiary">{t('empty')}</p>
           ) : (
             <BarChartMini categories={typeCategories} values={typeValues} height={200} />
           )}
-        </Section>
+        </ChartSection>
+
+        {/* Generated over time */}
+        <ChartSection
+          icon={<Activity className="h-3.5 w-3.5" aria-hidden />}
+          title={t('trendTitle')}
+          className="lg:col-span-2"
+        >
+          {total === 0 ? (
+            <p className="py-2 text-body3 text-foreground-tertiary">{t('trendEmpty')}</p>
+          ) : (
+            <TrendArea values={trend.values} labels={trend.labels} height={200} />
+          )}
+        </ChartSection>
 
         {/* Latest generation per type */}
-        <Section
+        <ChartSection
           icon={<Clock className="h-3.5 w-3.5" aria-hidden />}
           title={t('latestTitle')}
           className="lg:col-span-2"
@@ -214,7 +230,7 @@ export function ReportsOverviewTab({ reports }: { reports: Report[] }): JSX.Elem
               );
             })}
           </ul>
-        </Section>
+        </ChartSection>
       </div>
     </div>
   );

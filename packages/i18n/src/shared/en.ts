@@ -6,7 +6,7 @@ export const sharedEnMessages: SharedMessages = {
     legalEntity: 'BimDossier B.V.',
     tagline: 'The Wkb dossier platform for Dutch contractors.',
     productDescription:
-      'The model-native Wkb dossier platform for Dutch contractors — track deadlines, manage documents, resolve findings, and file on time.',
+      'The Wkb dossier platform for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time.',
     pilotHeading: 'Join the BimDossier pilot.',
   },
   legal: {

@@ -8,7 +8,9 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ComplianceCheckRequest(BaseModel):
-    building_type: str = "all"
+    # None = derive from the project's building_type (the default). Pass an
+    # explicit value to override rule filtering for this one check.
+    building_type: str | None = None
     categories: list[str] | None = None
     framework: str = "bbl"
 

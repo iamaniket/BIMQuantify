@@ -17,6 +17,10 @@ export const ModelSchema = z.object({
   discipline: ModelDisciplineEnum,
   status: ModelStatusEnum,
   primary_file_type: FileTypeEnum.nullable().optional(),
+  // Current-revision pointer (F7). NULL/absent → head is the newest version;
+  // when set, this file id is the model's head (view / compliance / "current"
+  // badge all target it).
+  head_file_id: z.string().uuid().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });

@@ -8,9 +8,6 @@ export const fieldLabelClass = 'text-body3 font-medium text-foreground-secondary
 
 export const fieldErrorClass = 'text-body3 text-error';
 
-export const sectionTitleClass = 'text-caption font-bold uppercase '
-  + 'tracking-[0.08em] text-foreground-tertiary';
-
 /** Narrow an RHF field-error message without optional chaining. */
 export function getFieldErrorMessage<T extends FieldValues>(
   errors: FieldErrors<T>,

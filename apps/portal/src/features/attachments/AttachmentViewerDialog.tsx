@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, Download, FileAudio, FileText, FileVideo, Image, Info, LinkIcon, Pencil } from '@bimstitch/ui/icons';
+import { Camera, FileAudio, FileText, FileVideo, Image, Pencil } from '@bimstitch/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
 import type { Locale } from '@bimstitch/i18n';
@@ -13,24 +13,19 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
+import { Button, Spinner } from '@bimstitch/ui';
+
 import {
-  Button,
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Eyebrow,
-  Spinner,
-} from '@bimstitch/ui';
+  DocumentViewerDialog,
+  NoPreview,
+  StageBadge,
+  type MetaGroupSpec,
+  type MetaRow,
+} from '@/components/shared/DocumentViewerDialog';
 
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
-
-import { ImageAnnotatorDialog } from './ImageAnnotatorDialog';
 
 import {
   extractExifMeta,
@@ -41,12 +36,15 @@ import {
   formatSize,
 } from './attachmentMeta';
 import { useAttachmentViewUrl } from './useAttachmentViewUrl';
+import { useImageAnnotator } from './useImageAnnotator';
 
 type Props = {
   attachment: Attachment | null;
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called with the new head attachment after an inline annotation is saved. */
+  onReplaced?: (next: Attachment) => void;
 };
 
 const CATEGORY_ICONS: Record<string, typeof FileText> = {
@@ -72,28 +70,7 @@ const KIND_LABEL: Record<string, string> = {
   other: 'File',
 };
 
-// ─── Media stage — real preview wrapped in the dialog's stage chrome ──
-
-function NoPreview({
-  attachment,
-  t,
-}: {
-  attachment: Attachment;
-  t: ReturnType<typeof useTranslations>;
-}): JSX.Element {
-  const Icon = CATEGORY_ICONS[attachment.attachment_category ?? 'other'] ?? FileText;
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
-      <Icon className="h-12 w-12 text-foreground-tertiary" />
-      <p className="text-body3 font-medium text-foreground">
-        {attachment.original_filename}
-      </p>
-      <p className="text-caption text-foreground-tertiary">
-        {t('viewerNoPreview')}
-      </p>
-    </div>
-  );
-}
+// ─── Media stage ─────────────────────────────────────────────────────
 
 function ContentPreview({
   attachment,
@@ -107,6 +84,7 @@ function ContentPreview({
   t: ReturnType<typeof useTranslations>;
 }): JSX.Element {
   const [textContent, setTextContent] = useState<string | null>(null);
+  const noPreviewIcon = CATEGORY_ICONS[attachment.attachment_category ?? 'other'] ?? FileText;
 
   useEffect(() => {
     if (viewUrl === undefined) return;
@@ -133,7 +111,7 @@ function ContentPreview({
   }
 
   if (viewUrl === undefined) {
-    return <NoPreview attachment={attachment} t={t} />;
+    return <NoPreview filename={attachment.original_filename} label={t('viewerNoPreview')} icon={noPreviewIcon} />;
   }
 
   if (attachment.attachment_category === 'image') {
@@ -187,7 +165,7 @@ function ContentPreview({
     || attachment.original_filename.endsWith('.txt')
   ) {
     if (textContent === null) {
-      return <NoPreview attachment={attachment} t={t} />;
+      return <NoPreview filename={attachment.original_filename} label={t('viewerNoPreview')} icon={noPreviewIcon} />;
     }
     return (
       <pre className="h-full overflow-auto whitespace-pre-wrap break-words bg-background-secondary p-4 text-caption text-foreground">
@@ -196,55 +174,10 @@ function ContentPreview({
     );
   }
 
-  return <NoPreview attachment={attachment} t={t} />;
-}
-
-function StageBadge({ children }: { children: ReactNode }): JSX.Element {
-  return (
-    <div className="absolute bottom-3 left-3 rounded bg-black/55 px-2 py-1 font-sans text-[10.5px] tracking-wide text-white backdrop-blur-sm">
-      {children}
-    </div>
-  );
+  return <NoPreview filename={attachment.original_filename} label={t('viewerNoPreview')} icon={noPreviewIcon} />;
 }
 
 // ─── Metadata rail bits ──────────────────────────────────────────────
-
-type MetaValue = { label: string; value: ReactNode; mono: boolean };
-
-function MetaGroup({
-  title,
-  rows,
-}: {
-  title: string;
-  rows: MetaValue[];
-}): JSX.Element {
-  return (
-    <div>
-      <Eyebrow as="div" tone="tertiary" className="mb-2.5">
-        {title}
-      </Eyebrow>
-      <div className="flex flex-col">
-        {rows.map(({ label, value, mono }) => (
-          <div
-            key={label}
-            className="flex items-baseline justify-between gap-4 border-b border-border py-[7px] last:border-b-0"
-          >
-            <span className="shrink-0 whitespace-nowrap text-[12.5px] text-foreground-tertiary">
-              {label}
-            </span>
-            <span
-              className={`min-w-0 max-w-[62%] break-words text-right text-[12.5px] font-medium tabular-nums text-foreground ${
-                mono ? 'font-sans' : ''
-              }`}
-            >
-              {value}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function KindChip({ kind }: { kind: string }): JSX.Element {
   const Icon = CATEGORY_ICONS[kind] ?? FileText;
@@ -264,11 +197,31 @@ export function AttachmentViewerDialog({
   projectId,
   open,
   onOpenChange,
+  onReplaced,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.attachments');
+  const tAnnotate = useTranslations('imageAnnotator');
   const locale = useLocale() as Locale;
   const { tokens } = useAuth();
   const [annotating, setAnnotating] = useState(false);
+
+  // Always re-open in view mode (annotate state shouldn't survive a close).
+  useEffect(() => {
+    if (!open) setAnnotating(false);
+  }, [open]);
+
+  const editor = useImageAnnotator({
+    projectId,
+    attachmentId: attachment?.id ?? null,
+    enabled: open && annotating,
+  });
+
+  const handleSaveInline = useCallback(() => {
+    editor.save((next) => {
+      setAnnotating(false);
+      onReplaced?.(next);
+    });
+  }, [editor, onReplaced]);
 
   const viewUrlQuery = useAttachmentViewUrl(
     projectId,
@@ -294,9 +247,16 @@ export function AttachmentViewerDialog({
 
   if (attachment === null) {
     return (
-      <Dialog open={false}>
-        <DialogContent />
-      </Dialog>
+      <DocumentViewerDialog
+        open={false}
+        onOpenChange={onOpenChange}
+        title=""
+        subtitle=""
+        preview={null}
+        metaGroups={[]}
+        footerInfo=""
+        closeLabel={t('viewerClose')}
+      />
     );
   }
 
@@ -305,24 +265,24 @@ export function AttachmentViewerDialog({
   const exif = extractExifMeta(attachment);
   const dims = formatDims(exif.dims);
   const camera = formatCamera(exif.camera);
-  const darkStage = attachment.attachment_category === 'image'
+  const mediaStage = attachment.attachment_category === 'image'
     || attachment.attachment_category === 'video';
 
   // ── File ──
-  const fileRows: MetaValue[] = [
+  const fileRows: MetaRow[] = [
     { label: t('viewerFilename'), value: attachment.original_filename, mono: true },
     { label: t('viewerSize'), value: formatSize(attachment.size_bytes), mono: true },
     { label: t('viewerType'), value: attachment.content_type, mono: true },
-    { label: t('viewerCategory'), value: <KindChip kind={kind} />, mono: false },
+    { label: t('viewerCategory'), value: <KindChip kind={kind} /> },
   ];
 
   // ── Media / Document (only fields we actually have) ──
-  const mediaRows: MetaValue[] = [];
+  const mediaRows: MetaRow[] = [];
   if (dims !== null) {
     mediaRows.push({ label: t('viewerDimensions'), value: dims, mono: true });
   }
   if (camera !== null) {
-    mediaRows.push({ label: t('viewerCamera'), value: camera, mono: false });
+    mediaRows.push({ label: t('viewerCamera'), value: camera });
   }
   if (exif.capturedAt !== null) {
     mediaRows.push({
@@ -352,13 +312,13 @@ export function AttachmentViewerDialog({
     );
   }
 
-  const originRows: MetaValue[] = [
+  const originRows: MetaRow[] = [
     {
       label: t('viewerUploadedAt'),
       value: formatDateFull(attachment.created_at, locale),
       mono: true,
     },
-    { label: t('viewerUploadedBy'), value: uploadedByNode, mono: false },
+    { label: t('viewerUploadedBy'), value: uploadedByNode },
   ];
   if (attachment.version_number > 1) {
     originRows.push({
@@ -371,109 +331,101 @@ export function AttachmentViewerDialog({
   const uploadedByText = attachment.uploaded_by_name
     ?? (attachment.capture_link_id !== null ? t('viaCapture') : '—');
 
-  return (
+  const metaGroups: MetaGroupSpec[] = [{ title: t('viewerGroupFile'), rows: fileRows }];
+  if (mediaRows.length > 0) {
+    metaGroups.push({
+      title: isPdf ? t('viewerGroupDocument') : t('viewerGroupMedia'),
+      rows: mediaRows,
+    });
+  }
+  metaGroups.push({ title: t('viewerGroupOrigin'), rows: originRows });
+
+  const annotatePreview = editor.ready ? (
+    <div className="h-full w-full bg-[#101316]">{editor.canvas}</div>
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      {editor.failed ? (
+        <p className="text-body3 text-foreground-tertiary">{tAnnotate('loadError')}</p>
+      ) : (
+        <div className="flex flex-col items-center gap-2 text-foreground-tertiary">
+          <Spinner className="text-primary" />
+          <span className="text-body3">{tAnnotate('loading')}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const annotateFooter = (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex h-[620px] max-h-[calc(100vh-48px)] w-[880px] max-w-[calc(100vw-48px)] flex-col overflow-hidden p-0"
-        style={{ maxWidth: 'calc(100vw - 48px)' }}
-      >
-        {/* Header */}
-        <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-5">
-          <DialogTitle>{t('viewerTitle')}</DialogTitle>
-          <DialogDescription>{t('viewerSubtitle')}</DialogDescription>
-        </DialogHeader>
-
-        {/* Body — media stage + metadata rail */}
-        <DialogBody className="grid min-h-0 flex-1 grid-cols-[1fr_296px] gap-0 overflow-hidden p-0">
-          <div className="min-h-0 p-5">
-            <div
-              className={`relative h-full w-full overflow-hidden rounded-lg ${
-                darkStage ? 'bg-[#101316]' : 'bg-background-secondary'
-              }`}
-            >
-              <ContentPreview
-                attachment={attachment}
-                viewUrl={viewUrl}
-                isLoading={viewUrlQuery.isLoading}
-                t={t}
-              />
-              {attachment.attachment_category === 'image' && dims !== null && (
-                <StageBadge>{dims}</StageBadge>
-              )}
-            </div>
-          </div>
-
-          <div className="flex min-h-0 flex-col gap-5 overflow-y-auto border-l border-border bg-surface-low px-5 py-5">
-            {attachment.description !== null && (
-              <div className="text-body3 leading-snug text-foreground-secondary">
-                {attachment.description}
-              </div>
-            )}
-            <MetaGroup title={t('viewerGroupFile')} rows={fileRows} />
-            {mediaRows.length > 0 && (
-              <MetaGroup
-                title={isPdf ? t('viewerGroupDocument') : t('viewerGroupMedia')}
-                rows={mediaRows}
-              />
-            )}
-            <MetaGroup title={t('viewerGroupOrigin')} rows={originRows} />
-          </div>
-        </DialogBody>
-
-        {/* Footer — info · Close · Download */}
-        <DialogFooter className="mx-0 shrink-0 items-center justify-between border-border bg-surface-low px-6 py-3.5">
-          <div className="flex min-w-0 items-center gap-2 text-foreground-tertiary">
-            <Info className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate font-sans text-[11.5px]">
-              {`${formatDateFull(attachment.created_at, locale)} · ${uploadedByText}`}
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {attachment.attachment_category === 'image' && (
-              <Button
-                type="button"
-                variant="border"
-                size="md"
-                onClick={() => { setAnnotating(true); }}
-              >
-                <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                {attachment.annotation_state !== null ? t('editAnnotations') : t('annotate')}
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="border"
-              size="md"
-              onClick={() => {
-                onOpenChange(false);
-              }}
-            >
-              {t('viewerClose')}
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              onClick={handleDownload}
-            >
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              {t('download')}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    <ImageAnnotatorDialog
-      projectId={projectId}
-      attachmentId={annotating ? attachment.id : null}
-      open={annotating}
-      onOpenChange={setAnnotating}
-      onAnnotated={() => {
-        setAnnotating(false);
-        onOpenChange(false);
-      }}
-    />
+      <span className="min-w-0 truncate text-caption text-foreground-tertiary">
+        {editor.hint}
+      </span>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button
+          type="button"
+          variant="border"
+          size="md"
+          onClick={() => { setAnnotating(false); }}
+          disabled={editor.isSaving}
+        >
+          {tAnnotate('cancel')}
+        </Button>
+        <Button
+          type="button"
+          variant="primary"
+          size="md"
+          onClick={handleSaveInline}
+          disabled={!editor.canSave}
+        >
+          {editor.isSaving ? tAnnotate('saving') : tAnnotate('save')}
+        </Button>
+      </div>
     </>
+  );
+
+  return (
+    <DocumentViewerDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={annotating ? tAnnotate('title') : t('viewerTitle')}
+      subtitle={annotating ? tAnnotate('subtitle') : t('viewerSubtitle')}
+      imageStage={annotating ? false : mediaStage}
+      toolbar={annotating && editor.ready ? editor.toolbar : undefined}
+      hideRail={annotating}
+      preview={annotating ? annotatePreview : (
+        <>
+          <ContentPreview
+            attachment={attachment}
+            viewUrl={viewUrl}
+            isLoading={viewUrlQuery.isLoading}
+            t={t}
+          />
+          {attachment.attachment_category === 'image' && dims !== null && (
+            <StageBadge>{dims}</StageBadge>
+          )}
+        </>
+      )}
+      description={attachment.description}
+      metaGroups={metaGroups}
+      footerInfo={`${formatDateFull(attachment.created_at, locale)} · ${uploadedByText}`}
+      footerActions={attachment.attachment_category === 'image' ? (
+        <Button
+          type="button"
+          variant="border"
+          size="md"
+          onClick={() => { setAnnotating(true); }}
+        >
+          <Pencil className="mr-1.5 h-3.5 w-3.5" />
+          {attachment.annotation_state !== null ? t('editAnnotations') : t('annotate')}
+        </Button>
+      ) : undefined}
+      footer={annotating ? annotateFooter : undefined}
+      onEscapeKeyDown={annotating
+        ? (e) => { e.preventDefault(); setAnnotating(false); }
+        : undefined}
+      closeLabel={t('viewerClose')}
+      downloadLabel={t('download')}
+      onDownload={handleDownload}
+    />
   );
 }

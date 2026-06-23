@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import {
   AppDialog, Select, Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@bimstitch/ui';
-import type { CameraFlyPluginOptions, CullingMode, ViewerHandle } from '@bimstitch/viewer';
+import type { CameraFlyPluginOptions, CullingMode, ViewerHandle, ZoomOptions } from '@bimstitch/viewer';
 
 import {
   DEFAULT_VIEWER_SETTINGS,
@@ -44,6 +44,7 @@ function Viewer3DSection({
     <div className="space-y-4">
       <Section title={t('shadows')} note={undefined}>
         <Toggle
+          fullWidth
           label={t('enableShadows')}
           checked={settings.shadows.enabled}
           onChange={(enabled) => {
@@ -75,7 +76,7 @@ function Viewer3DSection({
             });
           }}
         />
-        <Field label={t('quality')}>
+        <Field fullWidth label={t('quality')}>
           <Select
             selectSize="md"
             value={settings.effects.quality}
@@ -95,6 +96,22 @@ function Viewer3DSection({
           </Select>
         </Field>
       </Section>
+    </div>
+  );
+}
+
+// ── Controls tab (zoom / navigation / behavior) ─────────────────────
+
+function ControlsTab({
+  settings,
+  onChange,
+}: {
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  const t = useTranslations('viewer.settings');
+  return (
+    <div className="space-y-4">
       <Section title={t('zoomLimits')} note={t('zoomHint')}>
         <RangeField
           label={t('zoomSpeed')}
@@ -262,6 +279,7 @@ function AppearanceTab({
     <div className="space-y-4">
       <Section title={t('common')} note={undefined}>
         <ColorField
+          fullWidth
           label={t('background')}
           value={colorToHex(viewer3D.background.color)}
           onChange={(hex) => {
@@ -325,7 +343,7 @@ function PerformanceTab({
         <p className="text-body3 text-foreground-secondary">
           {t('cullingDescription')}
         </p>
-        <Field label={t('cullingMode')}>
+        <Field fullWidth label={t('cullingMode')}>
           <Select
             selectSize="md"
             value={settings.performance.culling}
@@ -434,9 +452,8 @@ function needsReload(prev: ViewerSettings, next: ViewerSettings): boolean {
   if (prev.controls.middle !== next.controls.middle) return true;
   if (prev.controls.right !== next.controls.right) return true;
   if (prev.controls.wheel !== next.controls.wheel) return true;
-  if (prev.zoom.maxFactor !== next.zoom.maxFactor) return true;
-  if (prev.behavior.hoverHighlight.color !== next.behavior.hoverHighlight.color) return true;
-  if (prev.behavior.selection.color !== next.behavior.selection.color) return true;
+  // zoom (speed/min/maxFactor) and hover/selection colors apply live via
+  // applyLiveCommands3D — no remount needed.
   return false;
 }
 
@@ -451,12 +468,10 @@ function applyLiveCommands3D(
 ): void {
   if (!handle) return;
 
-  if (snapshot.behavior.hoverHighlight.enabled !== draft.behavior.hoverHighlight.enabled) {
-    handle.commands.execute('hover.setEnabled', draft.behavior.hoverHighlight.enabled).catch(() => undefined);
-  }
-  if (snapshot.behavior.selection.enabled !== draft.behavior.selection.enabled) {
-    handle.commands.execute('selection.setEnabled', draft.behavior.selection.enabled).catch(() => undefined);
-  }
+  // Hover/selection enable/disable is owned by the page-level effect that
+  // tracks `settings.behavior.*.enabled` (the single source of truth), so it's
+  // applied via Save → setSettings → effect. Only the live colors are dispatched
+  // here.
 
   const snapIP = snapshot.interactivePerformance;
   const draftIP = draft.interactivePerformance;
@@ -484,6 +499,25 @@ function applyLiveCommands3D(
   }
   if (Object.keys(flyPatch).length > 0) {
     handle.commands.execute('cameraFly.setOptions', flyPatch).catch(() => undefined);
+  }
+
+  // Zoom: retune wheel speed + the scale-aware min/max dolly limits in place.
+  const snapZoom = snapshot.zoom;
+  const draftZoom = draft.zoom;
+  const zoomPatch: Partial<ZoomOptions> = {};
+  if (snapZoom.speed !== draftZoom.speed) zoomPatch.speed = draftZoom.speed;
+  if (snapZoom.minFactor !== draftZoom.minFactor) zoomPatch.minFactor = draftZoom.minFactor;
+  if (snapZoom.maxFactor !== draftZoom.maxFactor) zoomPatch.maxFactor = draftZoom.maxFactor;
+  if (Object.keys(zoomPatch).length > 0) {
+    handle.commands.execute('zoom.setOptions', zoomPatch).catch(() => undefined);
+  }
+
+  // Hover / selection highlight colors — recolor live (no remount).
+  if (snapshot.behavior.hoverHighlight.color !== draft.behavior.hoverHighlight.color) {
+    handle.commands.execute('hover.setColor', draft.behavior.hoverHighlight.color).catch(() => undefined);
+  }
+  if (snapshot.behavior.selection.color !== draft.behavior.selection.color) {
+    handle.commands.execute('selection.setColor', draft.behavior.selection.color).catch(() => undefined);
   }
 
   const snapShortcuts = snapshot.shortcuts;
@@ -592,8 +626,10 @@ export function SettingsDialog(props: Props): JSX.Element {
   };
 
   const handleReset = (): void => {
-    setViewer3D(DEFAULT_VIEWER_SETTINGS);
-    setDoc2D(DEFAULT_DOCUMENT_SETTINGS);
+    // Clone so the draft never holds the shared DEFAULT reference (a later edit
+    // mutating it in place would corrupt the module defaults).
+    setViewer3D(structuredClone(DEFAULT_VIEWER_SETTINGS));
+    setDoc2D(structuredClone(DEFAULT_DOCUMENT_SETTINGS));
   };
 
   return (
@@ -615,6 +651,11 @@ export function SettingsDialog(props: Props): JSX.Element {
             {t('tabAppearance')}
           </TabsTrigger>
           {mode === '3d' && (
+            <TabsTrigger value="controls">
+              {t('tabControls')}
+            </TabsTrigger>
+          )}
+          {mode === '3d' && (
             <TabsTrigger value="performance">
               {t('tabPerformance')}
             </TabsTrigger>
@@ -633,6 +674,15 @@ export function SettingsDialog(props: Props): JSX.Element {
             onDoc2DChange={updateDoc2D}
           />
         </TabsContent>
+
+        {mode === '3d' && (
+          <TabsContent value="controls" className="flex-1 min-h-0 pt-3">
+            <ControlsTab
+              settings={viewer3D}
+              onChange={updateViewer3D}
+            />
+          </TabsContent>
+        )}
 
         {mode === '3d' && (
           <TabsContent value="performance" className="flex-1 min-h-0 pt-3">

@@ -44,7 +44,7 @@ import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { useExplorerModels } from '@/features/viewer/3d/explorer/useExplorerModels';
-import { EntityInspectorPanel } from '@/features/viewer/shared/inspector/EntityInspectorPanel';
+import { EntityFindingsPanel } from '@/features/viewer/shared/inspector/EntityFindingsPanel';
 import { DocumentContextMenu } from '@/features/viewer/2d/DocumentContextMenu';
 import { DrawingCanvas } from '@/features/viewer/2d/drawing/DrawingCanvas';
 import { DrawingInfoBody } from '@/features/viewer/2d/drawing/DrawingInfoBody';
@@ -63,7 +63,12 @@ import { useModelMetadata } from '@/features/viewer/3d/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/3d/useModelProperties';
 import { usePdfGeometry } from '@/features/viewer/2d/usePdfGeometry';
 import { useViewerScope } from '@/features/viewer/shared/useViewerScope';
-import { useViewerSelectionHydrated } from '@/features/viewer/shared/viewerSelectionStore';
+import { useRailBadges } from '@/features/viewer/shared/useRailBadges';
+import { useFindingPinVisibility } from '@/features/viewer/shared/useFindingPinVisibility';
+import {
+  setViewerTarget,
+  useViewerSelectionHydrated,
+} from '@/features/viewer/shared/viewerSelectionStore';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
 import { usePerformanceCulling } from '@/features/viewer/3d/performanceCulling';
@@ -121,6 +126,12 @@ export default function ViewerPage(): JSX.Element {
 
   const bundle = scope.activeBundle;
   const error: string | null = scope.errorMessage;
+  // "All models" -> rehydrate the federated default. Wired to the empty-state
+  // "Load all models" button so a user who unchecked every model in the
+  // dropdown can recover with one click.
+  const loadAllModels = useCallback(() => {
+    setViewerTarget(projectId, { kind: 'all' });
+  }, [projectId]);
   const [viewerError, setViewerError] = useState<string | null>(null);
   // Federated models that failed to load (non-fatal — the rest of the scene
   // still renders). Reset whenever the scene anchor changes (a new IfcViewer).
@@ -171,7 +182,7 @@ export default function ViewerPage(): JSX.Element {
   const tFed = useTranslations('viewer.federated');
   const tLoad = useTranslations('viewer.loadingOverlay');
 
-  const [inspectorRequest, setInspectorRequest] = useState<{
+  const [findingsRequest, setFindingsRequest] = useState<{
     view: 'findings';
     nonce: number;
     /** Set when the request came from the 2D floor-plan pane (IFC-anchored). */
@@ -252,8 +263,8 @@ export default function ViewerPage(): JSX.Element {
         setActivePanel('explorer');
         setPropertiesExpanded(true);
       } else {
-        setActivePanel('inspector');
-        setInspectorRequest((prev) => ({ view: 'findings', nonce: (prev?.nonce ?? 0) + 1 }));
+        setActivePanel('findings');
+        setFindingsRequest((prev) => ({ view: 'findings', nonce: (prev?.nonce ?? 0) + 1 }));
       }
     });
   }, [viewerReady]);
@@ -283,20 +294,21 @@ export default function ViewerPage(): JSX.Element {
     useViewerEntityStore.getState()._setModelId(scope.activeViewerModelId);
   }, [viewerReady, scope.activeViewerModelId]);
 
-  // Apply persisted behavior toggles once the viewer is ready.
-
+  // Apply persisted behavior toggles. The settings value is the single source
+  // of truth: assert the actual enabled state (both branches) whenever the
+  // viewer becomes ready OR the persisted toggles change. Depending on the
+  // toggle booleans makes this self-heal the localStorage load race (settings
+  // load async, after the first render) and keeps the viewer in sync after a
+  // Save — no separate dispatch in the settings dialog needed.
+  const hoverEnabled = settings.behavior.hoverHighlight.enabled;
+  const selectionEnabled = settings.behavior.selection.enabled;
   useEffect(() => {
     if (!viewerReady) return;
     const handle = viewerHandleRef.current;
     if (!handle) return;
-    const { behavior } = settings;
-    if (!behavior.hoverHighlight.enabled) {
-      handle.commands.execute('hover.setEnabled', false).catch(() => undefined);
-    }
-    if (!behavior.selection.enabled) {
-      handle.commands.execute('selection.setEnabled', false).catch(() => undefined);
-    }
-  }, [viewerReady]);
+    handle.commands.execute('hover.setEnabled', hoverEnabled).catch(() => undefined);
+    handle.commands.execute('selection.setEnabled', selectionEnabled).catch(() => undefined);
+  }, [viewerReady, hoverEnabled, selectionEnabled]);
 
   const modeState = useViewerMode(viewerHandleRef.current, viewerReady);
   const isEditMode = modeState.mode === 'edit';
@@ -338,7 +350,7 @@ export default function ViewerPage(): JSX.Element {
   const { data: properties, isLoading: isLoadingProperties } = useModelProperties(
     propertiesUrl,
     (activePanel === 'explorer' && propertiesExpanded && hasSelection && !isAllSelected)
-    || (activePanel === 'inspector' && hasSelection && !isAllSelected),
+    || (activePanel === 'findings' && hasSelection && !isAllSelected),
   );
 
   useAppHeader({ statusLabel: null, statusTone: undefined });
@@ -377,7 +389,7 @@ export default function ViewerPage(): JSX.Element {
     setViewerError(null);
     setProgress(null);
     setViewerBusy(false);
-    setInspectorRequest(null);
+    setFindingsRequest(null);
     setOverlayFading(false);
     setPdfFirstPageRendered(false);
     pdfRenderedRef.current = false;
@@ -419,6 +431,35 @@ export default function ViewerPage(): JSX.Element {
   const isIfc = format === 'ifc';
   // Split / 2D modes (and the view switcher) require a floor-plan artifact.
   const hasFloorPlans = Boolean(isIfc && scope.planFloorPlansUrl);
+
+  // Finding-pin layer visibility (persisted) drives the side-rail Findings
+  // count pill; re-asserted onto the entity-marker plugin on mount/change.
+  const onToggleFindingPins = useCallback(() => {
+    handleSettingsChange({
+      ...settings,
+      annotations: { ...settings.annotations, findingPins: !settings.annotations.findingPins },
+    });
+  }, [settings, handleSettingsChange]);
+  useFindingPinVisibility(
+    viewerHandleRef.current,
+    documentHandle,
+    viewerReady,
+    isIfc,
+    isPdf,
+    settings.annotations.findingPins,
+  );
+  // Live count + visibility indicators for the side-rail tabs (measurements,
+  // section planes, finding pins).
+  const railBadges = useRailBadges({
+    format,
+    viewerHandle: viewerHandleRef.current,
+    documentHandle,
+    viewerReady,
+    projectId,
+    fileId,
+    findingPinsVisible: settings.annotations.findingPins,
+    onToggleFindingPins,
+  });
 
   // Apply fit-to-page only once when a PDF is first loaded.
   useEffect(() => {
@@ -478,8 +519,8 @@ export default function ViewerPage(): JSX.Element {
   // the linked element, or clear selection for coordinate-only / unlinked /
   // PDF findings → project/file scope), then bump the open nonce so the findings
   // body expands that row once its scoped query has loaded it.
-  const openFindingInInspector = useCallback((finding: Finding) => {
-    setActivePanel('inspector');
+  const openFindingInPanel = useCallback((finding: Finding) => {
+    setActivePanel('findings');
     const item =
       finding.linked_element_global_id != null
         ? gidToLocal.get(finding.linked_element_global_id)
@@ -538,7 +579,7 @@ export default function ViewerPage(): JSX.Element {
       if (scope.mode === 'multi' && clickedFinding.linked_model_id !== null) {
         scope.setActiveByModelId(clickedFinding.linked_model_id);
       }
-      openFindingInInspector(clickedFinding);
+      openFindingInPanel(clickedFinding);
       clearClicked();
     }
   }, [clickedFinding]);
@@ -554,7 +595,7 @@ export default function ViewerPage(): JSX.Element {
     const match = fileFindings.find((f) => f.id === deepLinkFindingId);
     if (match !== undefined) {
       deepLinkOpenedRef.current = true;
-      openFindingInInspector(match);
+      openFindingInPanel(match);
     }
   }, [deepLinkFindingId, fileFindings]);
 
@@ -566,7 +607,7 @@ export default function ViewerPage(): JSX.Element {
     fileId,
     page: pdfCurrentPage,
     enabled: isPdf,
-    onFindingClick: (f) => { openFindingInInspector(f); },
+    onFindingClick: (f) => { openFindingInPanel(f); },
   });
 
   // Per-page vector geometry (artifact `i` is 0-based; pdfCurrentPage is 1-based).
@@ -651,16 +692,16 @@ export default function ViewerPage(): JSX.Element {
     setPdfActiveTool(tool);
   }, []);
 
-  const handleDocContextMenuInspector = useCallback((view: 'findings') => {
-    setActivePanel('inspector');
-    setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
+  const handleDocContextMenuFindings = useCallback((view: 'findings') => {
+    setActivePanel('findings');
+    setFindingsRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
 
   // The floor-plan pane's "Add finding" routes here so the inspector uses the
   // IFC-anchored, file-scoped floor-plan findings scope (not project scope).
-  const handleFloorPlanInspector = useCallback((view: 'findings') => {
-    setActivePanel('inspector');
-    setInspectorRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1, surface: 'floorplan' }));
+  const handleFloorPlanFindings = useCallback((view: 'findings') => {
+    setActivePanel('findings');
+    setFindingsRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1, surface: 'floorplan' }));
   }, []);
 
   // Lift a normalized plan point (from a 2D guided pick) to a 3D world anchor:
@@ -716,7 +757,7 @@ export default function ViewerPage(): JSX.Element {
       toolSelect: () => { setPdfActiveTool('select'); },
       toolPan: () => { setPdfActiveTool('pan'); },
       toolZoom: () => { setPdfActiveTool('zoom'); },
-      addFinding: () => { handleDocContextMenuInspector('findings'); },
+      addFinding: () => { handleDocContextMenuFindings('findings'); },
     },
   });
 
@@ -727,9 +768,16 @@ export default function ViewerPage(): JSX.Element {
     );
   } else if (scope.isEmpty) {
     canvas = (
-      <div className="flex h-full flex-col items-center justify-center gap-1 p-6 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-body2 font-semibold text-foreground">{tFed('empty')}</p>
         <p className="max-w-sm text-body3 text-foreground-secondary">{tFed('emptyHint')}</p>
+        <button
+          type="button"
+          onClick={loadAllModels}
+          className="inline-flex h-8 items-center rounded-md border border-border bg-surface-low px-3 text-body3 font-medium text-foreground hover:bg-background-hover"
+        >
+          {tFed('loadAll')}
+        </button>
       </div>
     );
   } else if (bundle === null) {
@@ -796,8 +844,8 @@ export default function ViewerPage(): JSX.Element {
         planMetadata={planMetadata}
         projectId={projectId}
         fileId={fileId}
-        onFindingClick={openFindingInInspector}
-        onRequestFloorPlanInspector={handleFloorPlanInspector}
+        onFindingClick={openFindingInPanel}
+        onRequestFloorPlanFindings={handleFloorPlanFindings}
         onFpHandle={setFpHandle}
         onFpActiveElevationChange={setFpElevation}
       />
@@ -840,23 +888,23 @@ export default function ViewerPage(): JSX.Element {
         ) : null}
 
         {isIfc ? <ContextMenu handle={viewerHandleRef.current} viewerReady={viewerReady} /> : null}
-        {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestInspector={handleDocContextMenuInspector} shortcuts={pdfSettings.shortcuts} ready={pdfFirstPageRendered} /> : null}
+        {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestFindings={handleDocContextMenuFindings} shortcuts={pdfSettings.shortcuts} ready={pdfFirstPageRendered} /> : null}
 
         {showChrome ? (
             <SidePanel
               activePanel={activePanel}
-              inspectorContent={
-                <EntityInspectorPanel
+              findingsContent={
+                <EntityFindingsPanel
                   metadata={metadata}
                   projectId={projectId}
                   modelId={modelId}
                   fileId={fileId}
-                  requestedView={inspectorRequest?.view}
-                  requestNonce={inspectorRequest?.nonce}
+                  requestedView={findingsRequest?.view}
+                  requestNonce={findingsRequest?.nonce}
                   openFindingId={openFinding?.id}
                   openFindingNonce={openFinding?.nonce}
                   openFindingFileId={openFinding?.fileId ?? undefined}
-                  floorPlan={inspectorRequest?.surface === 'floorplan' && viewMode !== '3d'}
+                  floorPlan={findingsRequest?.surface === 'floorplan' && viewMode !== '3d'}
                   documentHandle={documentHandle}
                   viewerHandle={viewerHandleRef.current}
                   viewMode={viewMode}
@@ -1024,6 +1072,7 @@ export default function ViewerPage(): JSX.Element {
           format={format}
           activePanel={activePanel}
           onTogglePanel={togglePanel}
+          badges={railBadges}
         />
       ) : null}
       </div>

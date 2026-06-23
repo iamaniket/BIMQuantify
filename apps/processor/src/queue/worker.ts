@@ -13,6 +13,7 @@ import { classifyError } from '../pipeline/errors.js';
 import { runAssurancePlanReport } from '../pipeline/report/assurance-plan.js';
 import { runDossierReport } from '../pipeline/report/dossier.js';
 import { runComplianceReport } from '../pipeline/report/index.js';
+import { runSnagListReport } from '../pipeline/report/snag-list.js';
 import { runCompletionDeclarationReport } from '../pipeline/report/verklaring.js';
 import { captureException } from '../sentry.js';
 import { getRedis, type ProgressReporter, type WorkerJob } from './queue.js';
@@ -68,6 +69,7 @@ async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void>
     case 'assurance_plan_report':
     case 'completion_declaration_report':
     case 'dossier_report':
+    case 'snag_list_report':
       await postReportCallback({
         report_id: pickStr(data.payload, 'report_id'),
         organization_id: data.organization_id,
@@ -157,6 +159,9 @@ export function startWorker(): Worker<WorkerJob> {
             break;
           case 'dossier_report':
             await runDossierReport(job.data, onProgress);
+            break;
+          case 'snag_list_report':
+            await runSnagListReport(job.data, onProgress);
             break;
           case 'send_email':
             // Handled by the action worker on the "actions" queue.
