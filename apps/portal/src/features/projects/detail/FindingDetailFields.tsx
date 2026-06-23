@@ -2,15 +2,16 @@
 
 import { Unlink } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useCallback, type JSX } from 'react';
+import { useCallback, useId, type JSX } from 'react';
 
-import { Button, Input, Select, Textarea } from '@bimstitch/ui';
+import { Button, FormField, Input, Select, Textarea } from '@bimstitch/ui';
 
 import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 
+import { allowedMoveTargets } from '@/features/findings/board/kanbanTransitions';
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { Field } from '@/components/shared/forms/Field';
-import type { Finding, LinkedFileTypeValue } from '@/lib/api/schemas';
+import type { Finding, FindingStatusValue, LinkedFileTypeValue } from '@/lib/api/schemas';
 
 import { FindingPinButton, type AnchorState, type ConvertFloorPlanPoint } from './FindingPinButton';
 import { FindingPhotos } from './FindingPhotos';
@@ -58,8 +59,11 @@ export function FindingDetailFields({
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const tSeverity = useTranslations('findings.severity');
+  const tStatus = useTranslations('findingsBoard.columns');
   const { form, fields, isPending, canEdit } = api;
   const fieldsDisabled = isPending || !canEdit;
+  const statusFieldId = useId();
+  const moveTargets = allowedMoveTargets(finding.status, canEdit, api.isInspector);
 
   const pinFileType = activeFileType ?? api.anchorFileType;
   const la = api.localAnchor;
@@ -129,6 +133,31 @@ export function FindingDetailFields({
       <Field form={form} name="deadline_date" label={t('fields.deadline')}>
         {({ id }) => <Input id={id} type="date" {...fields.deadline} disabled={fieldsDisabled} />}
       </Field>
+
+      {/* Status mover — pick any legal next state to move the finding directly.
+          Gated moves (promote / resolve) reuse those handlers; the backend 422s
+          with a localized reason (→ toast) when their requirements aren't met. */}
+      <FormField
+        label={t('fields.status')}
+        htmlFor={statusFieldId}
+        labelClassName="text-label2 font-medium normal-case tracking-normal text-foreground"
+        className="col-span-2"
+      >
+        <Select
+          id={statusFieldId}
+          value={finding.status}
+          disabled={fieldsDisabled || moveTargets.length === 0}
+          onChange={(e) => {
+            const to = e.target.value as FindingStatusValue;
+            if (to !== finding.status) api.changeStatus(to);
+          }}
+        >
+          <option value={finding.status}>{tStatus(finding.status)}</option>
+          {moveTargets.map((to) => (
+            <option key={to} value={to}>{tStatus(to)}</option>
+          ))}
+        </Select>
+      </FormField>
 
       <div className="col-span-2">
         <FindingPhotos

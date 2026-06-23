@@ -101,11 +101,12 @@ export function ModelSwitcher({ projectId, activeLabel }: Props): JSX.Element {
     (id: string) => {
       const next = new Set(loadedIds);
       if (next.has(id)) {
-        if (next.size <= 1) return; // keep at least one model loaded
         next.delete(id);
       } else {
         next.add(id);
       }
+      // Empty set is allowed — the viewer clears itself and shows the empty
+      // state with a "Load all models" affordance to bring models back.
       setViewerTarget(projectId, { kind: 'models', modelIds: [...next] });
     },
     [loadedIds, projectId],

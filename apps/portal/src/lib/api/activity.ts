@@ -11,6 +11,7 @@ import {
 /** Filter + pagination + sort params for the project activity feed. */
 export type ListProjectActivityParams = {
   category?: ActivityCategory | undefined;
+  q?: string | undefined;
   since?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;

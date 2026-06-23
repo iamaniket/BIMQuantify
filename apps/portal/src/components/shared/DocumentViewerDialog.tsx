@@ -96,6 +96,13 @@ type DocumentViewerDialogProps = {
   imageStage?: boolean;
   /** Media-stage content — the consumer renders its own iframe / img / spinner. */
   preview: ReactNode;
+  /**
+   * Optional full-width strip rendered between the header and body (e.g. an
+   * annotation toolbar). Inert when omitted.
+   */
+  toolbar?: ReactNode;
+  /** Collapse the metadata rail so the media stage spans the full width. */
+  hideRail?: boolean;
   /** Optional free-text block rendered at the top of the metadata rail. */
   description?: ReactNode;
   /** Grouped key/value rows for the metadata rail. */
@@ -104,10 +111,17 @@ type DocumentViewerDialogProps = {
   footerInfo: ReactNode;
   /** Extra footer buttons rendered before Close (e.g. Annotate / Sign). */
   footerActions?: ReactNode;
+  /**
+   * When provided, fully replaces the default footer (info · actions · Close ·
+   * Download) — the consumer renders its own cluster (e.g. hint · Cancel · Save).
+   */
+  footer?: ReactNode;
   closeLabel: string;
   /** Download button — rendered only when both label and handler are provided. */
   downloadLabel?: string | undefined;
   onDownload?: (() => void) | undefined;
+  /** Forwarded to the underlying dialog (e.g. to keep an edit mode open on Escape). */
+  onEscapeKeyDown?: ((event: KeyboardEvent) => void) | undefined;
 };
 
 /**
@@ -124,19 +138,24 @@ export function DocumentViewerDialog({
   subtitle,
   imageStage = false,
   preview,
+  toolbar,
+  hideRail = false,
   description,
   metaGroups,
   footerInfo,
   footerActions,
+  footer,
   closeLabel,
   downloadLabel,
   onDownload,
+  onEscapeKeyDown,
 }: DocumentViewerDialogProps): JSX.Element {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="flex h-[620px] max-h-[calc(100vh-48px)] w-[880px] max-w-[calc(100vw-48px)] flex-col overflow-hidden p-0"
         style={{ maxWidth: 'calc(100vw - 48px)' }}
+        onEscapeKeyDown={(event) => { onEscapeKeyDown?.(event); }}
       >
         {/* Header */}
         <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-5">
@@ -144,8 +163,17 @@ export function DocumentViewerDialog({
           <DialogDescription>{subtitle}</DialogDescription>
         </DialogHeader>
 
-        {/* Body — media stage + metadata rail */}
-        <DialogBody className="grid min-h-0 flex-1 grid-cols-[1fr_296px] gap-0 overflow-hidden p-0">
+        {/* Optional strip (e.g. annotation toolbar) */}
+        {toolbar !== undefined && toolbar !== null && (
+          <div className="shrink-0 border-b border-border px-4 py-2">{toolbar}</div>
+        )}
+
+        {/* Body — media stage + (optional) metadata rail */}
+        <DialogBody
+          className={`grid min-h-0 flex-1 gap-0 overflow-hidden p-0 ${
+            hideRail ? 'grid-cols-1' : 'grid-cols-[1fr_296px]'
+          }`}
+        >
           <div className="min-h-0 p-5">
             <div
               className={`relative h-full w-full overflow-hidden rounded-lg ${
@@ -156,41 +184,49 @@ export function DocumentViewerDialog({
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-col gap-5 overflow-y-auto border-l border-border bg-surface-low px-5 py-5">
-            {description !== undefined && description !== null && description !== '' && (
-              <div className="text-body3 leading-snug text-foreground-secondary">
-                {description}
-              </div>
-            )}
-            {metaGroups.map((group) => (
-              <MetaGroup key={group.title} title={group.title} rows={group.rows} />
-            ))}
-          </div>
+          {!hideRail && (
+            <div className="flex min-h-0 flex-col gap-5 overflow-y-auto border-l border-border bg-surface-low px-5 py-5">
+              {description !== undefined && description !== null && description !== '' && (
+                <div className="text-body3 leading-snug text-foreground-secondary">
+                  {description}
+                </div>
+              )}
+              {metaGroups.map((group) => (
+                <MetaGroup key={group.title} title={group.title} rows={group.rows} />
+              ))}
+            </div>
+          )}
         </DialogBody>
 
-        {/* Footer — info · actions · Close · Download */}
+        {/* Footer — custom override, or default info · actions · Close · Download */}
         <DialogFooter className="mx-0 shrink-0 items-center justify-between border-border bg-surface-low px-6 py-3.5">
-          <div className="flex min-w-0 items-center gap-2 text-foreground-tertiary">
-            <Info className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate font-sans text-[11.5px]">{footerInfo}</span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {footerActions}
-            <Button
-              type="button"
-              variant="border"
-              size="md"
-              onClick={() => { onOpenChange(false); }}
-            >
-              {closeLabel}
-            </Button>
-            {downloadLabel !== undefined && onDownload !== undefined && (
-              <Button type="button" variant="primary" size="md" onClick={onDownload}>
-                <Download className="mr-1.5 h-3.5 w-3.5" />
-                {downloadLabel}
-              </Button>
-            )}
-          </div>
+          {footer !== undefined && footer !== null ? (
+            footer
+          ) : (
+            <>
+              <div className="flex min-w-0 items-center gap-2 text-foreground-tertiary">
+                <Info className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate font-sans text-[11.5px]">{footerInfo}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {footerActions}
+                <Button
+                  type="button"
+                  variant="border"
+                  size="md"
+                  onClick={() => { onOpenChange(false); }}
+                >
+                  {closeLabel}
+                </Button>
+                {downloadLabel !== undefined && onDownload !== undefined && (
+                  <Button type="button" variant="primary" size="md" onClick={onDownload}>
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                    {downloadLabel}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

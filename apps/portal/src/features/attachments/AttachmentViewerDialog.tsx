@@ -27,8 +27,6 @@ import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
-import { ImageAnnotatorDialog } from './ImageAnnotatorDialog';
-
 import {
   extractExifMeta,
   formatCamera,
@@ -38,12 +36,15 @@ import {
   formatSize,
 } from './attachmentMeta';
 import { useAttachmentViewUrl } from './useAttachmentViewUrl';
+import { useImageAnnotator } from './useImageAnnotator';
 
 type Props = {
   attachment: Attachment | null;
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called with the new head attachment after an inline annotation is saved. */
+  onReplaced?: (next: Attachment) => void;
 };
 
 const CATEGORY_ICONS: Record<string, typeof FileText> = {
@@ -196,11 +197,31 @@ export function AttachmentViewerDialog({
   projectId,
   open,
   onOpenChange,
+  onReplaced,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.attachments');
+  const tAnnotate = useTranslations('imageAnnotator');
   const locale = useLocale() as Locale;
   const { tokens } = useAuth();
   const [annotating, setAnnotating] = useState(false);
+
+  // Always re-open in view mode (annotate state shouldn't survive a close).
+  useEffect(() => {
+    if (!open) setAnnotating(false);
+  }, [open]);
+
+  const editor = useImageAnnotator({
+    projectId,
+    attachmentId: attachment?.id ?? null,
+    enabled: open && annotating,
+  });
+
+  const handleSaveInline = useCallback(() => {
+    editor.save((next) => {
+      setAnnotating(false);
+      onReplaced?.(next);
+    });
+  }, [editor, onReplaced]);
 
   const viewUrlQuery = useAttachmentViewUrl(
     projectId,
@@ -319,55 +340,92 @@ export function AttachmentViewerDialog({
   }
   metaGroups.push({ title: t('viewerGroupOrigin'), rows: originRows });
 
-  return (
+  const annotatePreview = editor.ready ? (
+    <div className="h-full w-full bg-[#101316]">{editor.canvas}</div>
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      {editor.failed ? (
+        <p className="text-body3 text-foreground-tertiary">{tAnnotate('loadError')}</p>
+      ) : (
+        <div className="flex flex-col items-center gap-2 text-foreground-tertiary">
+          <Spinner className="text-primary" />
+          <span className="text-body3">{tAnnotate('loading')}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const annotateFooter = (
     <>
-      <DocumentViewerDialog
-        open={open}
-        onOpenChange={onOpenChange}
-        title={t('viewerTitle')}
-        subtitle={t('viewerSubtitle')}
-        imageStage={mediaStage}
-        preview={(
-          <>
-            <ContentPreview
-              attachment={attachment}
-              viewUrl={viewUrl}
-              isLoading={viewUrlQuery.isLoading}
-              t={t}
-            />
-            {attachment.attachment_category === 'image' && dims !== null && (
-              <StageBadge>{dims}</StageBadge>
-            )}
-          </>
-        )}
-        description={attachment.description}
-        metaGroups={metaGroups}
-        footerInfo={`${formatDateFull(attachment.created_at, locale)} · ${uploadedByText}`}
-        footerActions={attachment.attachment_category === 'image' ? (
-          <Button
-            type="button"
-            variant="border"
-            size="md"
-            onClick={() => { setAnnotating(true); }}
-          >
-            <Pencil className="mr-1.5 h-3.5 w-3.5" />
-            {attachment.annotation_state !== null ? t('editAnnotations') : t('annotate')}
-          </Button>
-        ) : undefined}
-        closeLabel={t('viewerClose')}
-        downloadLabel={t('download')}
-        onDownload={handleDownload}
-      />
-      <ImageAnnotatorDialog
-        projectId={projectId}
-        attachmentId={annotating ? attachment.id : null}
-        open={annotating}
-        onOpenChange={setAnnotating}
-        onAnnotated={() => {
-          setAnnotating(false);
-          onOpenChange(false);
-        }}
-      />
+      <span className="min-w-0 truncate text-caption text-foreground-tertiary">
+        {editor.hint}
+      </span>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button
+          type="button"
+          variant="border"
+          size="md"
+          onClick={() => { setAnnotating(false); }}
+          disabled={editor.isSaving}
+        >
+          {tAnnotate('cancel')}
+        </Button>
+        <Button
+          type="button"
+          variant="primary"
+          size="md"
+          onClick={handleSaveInline}
+          disabled={!editor.canSave}
+        >
+          {editor.isSaving ? tAnnotate('saving') : tAnnotate('save')}
+        </Button>
+      </div>
     </>
+  );
+
+  return (
+    <DocumentViewerDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={annotating ? tAnnotate('title') : t('viewerTitle')}
+      subtitle={annotating ? tAnnotate('subtitle') : t('viewerSubtitle')}
+      imageStage={annotating ? false : mediaStage}
+      toolbar={annotating && editor.ready ? editor.toolbar : undefined}
+      hideRail={annotating}
+      preview={annotating ? annotatePreview : (
+        <>
+          <ContentPreview
+            attachment={attachment}
+            viewUrl={viewUrl}
+            isLoading={viewUrlQuery.isLoading}
+            t={t}
+          />
+          {attachment.attachment_category === 'image' && dims !== null && (
+            <StageBadge>{dims}</StageBadge>
+          )}
+        </>
+      )}
+      description={attachment.description}
+      metaGroups={metaGroups}
+      footerInfo={`${formatDateFull(attachment.created_at, locale)} · ${uploadedByText}`}
+      footerActions={attachment.attachment_category === 'image' ? (
+        <Button
+          type="button"
+          variant="border"
+          size="md"
+          onClick={() => { setAnnotating(true); }}
+        >
+          <Pencil className="mr-1.5 h-3.5 w-3.5" />
+          {attachment.annotation_state !== null ? t('editAnnotations') : t('annotate')}
+        </Button>
+      ) : undefined}
+      footer={annotating ? annotateFooter : undefined}
+      onEscapeKeyDown={annotating
+        ? (e) => { e.preventDefault(); setAnnotating(false); }
+        : undefined}
+      closeLabel={t('viewerClose')}
+      downloadLabel={t('download')}
+      onDownload={handleDownload}
+    />
   );
 }

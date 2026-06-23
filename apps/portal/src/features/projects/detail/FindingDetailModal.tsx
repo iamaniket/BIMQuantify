@@ -1,11 +1,12 @@
 'use client';
 
-import { Trash2 } from '@bimstitch/ui/icons';
+import { Clock, Pencil, Trash2 } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
 import { AppDialog, Badge, Button, Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
 
+import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import type { Finding } from '@/lib/api/schemas';
 
 import { FindingDetailFields } from './FindingDetailFields';
@@ -104,11 +105,17 @@ export function FindingDetailModal({
       footerInfo={isEdit ? deleteFooter : <span aria-hidden />}
       width={680}
     >
-      <div className="sticky top-0 z-10 -mx-5 -mt-4 mb-1 border-b border-border bg-background px-5 pb-2.5 pt-4">
+      <div className="sticky top-0 z-10 -mx-5 -mt-4 mb-3 border-b border-border bg-background px-5 pt-3">
         <Tabs value={tab} onValueChange={(v) => { setTab(v as FindingTab); }}>
-          <TabsList className="inline-flex w-auto">
-            <TabsTrigger value="edit">{t('tabs.edit')}</TabsTrigger>
-            <TabsTrigger value="history">{t('tabs.history')}</TabsTrigger>
+          <TabsList className="gap-1 rounded-none bg-transparent p-0">
+            <TabsTrigger value="edit" className={TAB_TRIGGER_CLASS}>
+              <Pencil className="h-4 w-4" />
+              {t('tabs.edit')}
+            </TabsTrigger>
+            <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
+              <Clock className="h-4 w-4" />
+              {t('tabs.history')}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

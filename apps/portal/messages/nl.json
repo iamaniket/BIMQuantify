@@ -1664,6 +1664,7 @@
       "subtitle": "Bewerk de bevinding, wijs een verantwoordelijke en deadline toe en promoot deze.",
       "save": "Wijzigingen opslaan",
       "close": "Sluiten",
+      "expand": "Openen in dialoogvenster",
       "tabs": {
         "edit": "Bewerken",
         "history": "Geschiedenis"
@@ -1674,7 +1675,8 @@
         "severity": "Ernst",
         "bblArticleRef": "Bbl-artikelverwijzing",
         "assignee": "Verantwoordelijke",
-        "deadline": "Deadline"
+        "deadline": "Deadline",
+        "status": "Status"
       },
       "placeholders": {
         "assignee": "Niet toegewezen"
@@ -1813,7 +1815,14 @@
       "weeksAgo": "{count}w geleden"
     },
     "empty": "Geen bevindingen",
-    "invalidDrop": "Kan hier niet naartoe",
+    "dragRejected": {
+      "noPermission": "Je hebt geen rechten om bevindingen te verplaatsen.",
+      "needsInspector": "Alleen de kwaliteitsborger kan een bevinding verifiëren.",
+      "verifiedLocked": "Geverifieerde bevindingen zijn vergrendeld en kunnen niet worden verplaatst.",
+      "openFirst": "Een concept moet eerst naar Open voordat een andere status mogelijk is.",
+      "resolveFirst": "Een bevinding moet eerst opgelost zijn voordat deze geverifieerd kan worden.",
+      "generic": "Kan een bevinding niet van {from} naar {to} verplaatsen."
+    },
     "logFinding": "Bevinding vastleggen",
     "searchPlaceholder": "Bevindingen zoeken…",
     "filterAllPriorities": "Alle prioriteiten",
@@ -3273,6 +3282,56 @@
   },
   "activity": {
     "title": "Projectactiviteit",
+    "viewAll": "Alle activiteit bekijken",
+    "hub": {
+      "crumb": "Activiteit",
+      "crumbProjects": "Projecten",
+      "projectNotFound": "Project niet gevonden. Mogelijk is het verwijderd.",
+      "projectLoadError": "Laden van project is mislukt.",
+      "tabs": {
+        "overview": "Overzicht",
+        "activity": "Activiteit"
+      },
+      "panel": {
+        "overviewEyebrow": "Projectgeschiedenis",
+        "overviewTitle": "Activiteitsoverzicht",
+        "activityEyebrow": "Projectgeschiedenis",
+        "activityTitle": "{count} gebeurtenissen"
+      },
+      "hero": {
+        "badge": "Activiteit",
+        "subtitle": "Elke wijziging, scan en upload binnen dit project",
+        "totalLabel": "Totaal",
+        "totalSub": "{count} gebeurtenissen",
+        "weekLabel": "Deze week",
+        "weekSub": "Gebeurtenissen tot nu toe",
+        "busiestLabel": "Drukste",
+        "busiestSub": "{count, plural, =1 {1 gebeurtenis} other {# gebeurtenissen}}",
+        "busiestNone": "—",
+        "busiestNoneSub": "Nog geen activiteit"
+      },
+      "list": {
+        "empty": "Geen activiteit komt overeen met je filters",
+        "loadError": "Laden van activiteit is mislukt."
+      },
+      "overview": {
+        "kpiTotal": "Totaal gebeurtenissen",
+        "kpiTotalSub": "Sinds altijd",
+        "kpiThisWeek": "Deze week",
+        "kpiThisWeekSub": "Gebeurtenissen tot nu toe",
+        "kpiBusiest": "Drukste categorie",
+        "kpiBusiestSub": "{count, plural, =1 {1 gebeurtenis} other {# gebeurtenissen}}",
+        "kpiBusiestNone": "—",
+        "kpiResources": "Resourcetypen",
+        "kpiResourcesSub": "Geraakt",
+        "byCategoryTitle": "Op categorie",
+        "donutCenterLabel": "Gebeurtenissen",
+        "byResourceTitle": "Op resource",
+        "trendTitle": "Activiteit in de tijd",
+        "trendEmpty": "Nog geen activiteit.",
+        "empty": "Nog geen activiteit"
+      }
+    },
     "timeAll": "Alle tijd",
     "timeLastHour": "Afgelopen uur",
     "timeLast24h": "Afgelopen 24 uur",
@@ -3291,7 +3350,9 @@
     "colWhen": "Wanneer",
     "colActor": "Gebruiker",
     "colType": "Type",
+    "colResource": "Onderdeel",
     "colActivity": "Activiteit",
+    "searchPlaceholder": "Activiteit zoeken…",
     "systemActor": "Systeem",
     "trendTitle": "Activiteit in de tijd",
     "trendEmpty": "Geen activiteit in deze periode.",

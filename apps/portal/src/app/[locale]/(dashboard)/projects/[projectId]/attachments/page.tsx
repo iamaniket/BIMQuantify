@@ -286,6 +286,7 @@ export default function ProjectAttachmentsPage(): JSX.Element {
             projectId={projectId}
             open={viewing !== null}
             onOpenChange={(o) => { if (!o) setViewing(null); }}
+            onReplaced={setViewing}
           />
         </>
       )}

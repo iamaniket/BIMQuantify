@@ -1664,6 +1664,7 @@
       "subtitle": "Edit the finding, assign an owner and a deadline, then promote it.",
       "save": "Save changes",
       "close": "Close",
+      "expand": "Open in dialog",
       "tabs": {
         "edit": "Edit",
         "history": "History"
@@ -1674,7 +1675,8 @@
         "severity": "Severity",
         "bblArticleRef": "Bbl article reference",
         "assignee": "Assignee",
-        "deadline": "Deadline"
+        "deadline": "Deadline",
+        "status": "Status"
       },
       "placeholders": {
         "assignee": "Unassigned"
@@ -1813,7 +1815,14 @@
       "weeksAgo": "{count}w ago"
     },
     "empty": "No findings",
-    "invalidDrop": "Cannot move here",
+    "dragRejected": {
+      "noPermission": "You don't have permission to move findings.",
+      "needsInspector": "Only the inspector can verify a finding.",
+      "verifiedLocked": "Verified findings are locked and can't be moved.",
+      "openFirst": "A draft must move to Open before any other status.",
+      "resolveFirst": "A finding must be resolved before it can be verified.",
+      "generic": "Can't move a finding from {from} to {to}."
+    },
     "logFinding": "Log finding",
     "searchPlaceholder": "Search findings…",
     "filterAllPriorities": "All priorities",
@@ -3273,6 +3282,56 @@
   },
   "activity": {
     "title": "Project activity",
+    "viewAll": "View all activity",
+    "hub": {
+      "crumb": "Activity",
+      "crumbProjects": "Projects",
+      "projectNotFound": "Project not found. It may have been deleted.",
+      "projectLoadError": "Failed to load project.",
+      "tabs": {
+        "overview": "Overview",
+        "activity": "Activity"
+      },
+      "panel": {
+        "overviewEyebrow": "Project history",
+        "overviewTitle": "Activity overview",
+        "activityEyebrow": "Project history",
+        "activityTitle": "{count} events"
+      },
+      "hero": {
+        "badge": "Activity",
+        "subtitle": "Every change, scan and upload across this project",
+        "totalLabel": "Total",
+        "totalSub": "{count} events",
+        "weekLabel": "This week",
+        "weekSub": "Events so far",
+        "busiestLabel": "Busiest",
+        "busiestSub": "{count, plural, =1 {1 event} other {# events}}",
+        "busiestNone": "—",
+        "busiestNoneSub": "No activity yet"
+      },
+      "list": {
+        "empty": "No activity matches your filters",
+        "loadError": "Failed to load activity."
+      },
+      "overview": {
+        "kpiTotal": "Total events",
+        "kpiTotalSub": "All time",
+        "kpiThisWeek": "This week",
+        "kpiThisWeekSub": "Events so far",
+        "kpiBusiest": "Busiest category",
+        "kpiBusiestSub": "{count, plural, =1 {1 event} other {# events}}",
+        "kpiBusiestNone": "—",
+        "kpiResources": "Resource types",
+        "kpiResourcesSub": "Touched",
+        "byCategoryTitle": "By category",
+        "donutCenterLabel": "Events",
+        "byResourceTitle": "By resource",
+        "trendTitle": "Activity over time",
+        "trendEmpty": "No activity yet.",
+        "empty": "No activity yet"
+      }
+    },
     "timeAll": "All time",
     "timeLastHour": "Last hour",
     "timeLast24h": "Last 24 hours",
@@ -3291,7 +3350,9 @@
     "colWhen": "When",
     "colActor": "Actor",
     "colType": "Type",
+    "colResource": "Resource",
     "colActivity": "Activity",
+    "searchPlaceholder": "Search activity…",
     "systemActor": "System",
     "trendTitle": "Activity over time",
     "trendEmpty": "No activity in this period.",

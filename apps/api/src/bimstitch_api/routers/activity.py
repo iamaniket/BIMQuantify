@@ -15,7 +15,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api.access import (
@@ -144,6 +144,7 @@ async def list_project_activity(
     project_id: UUID,
     response: Response,
     category: str | None = Query(default=None, pattern="^(upload|scan|create|change|delete)$"),
+    q: str | None = Query(default=None, max_length=200),
     since: datetime | None = Query(default=None),
     limit: int = Query(default=20, ge=20, le=100),
     offset: int = Query(default=0, ge=0),
@@ -178,19 +179,45 @@ async def list_project_activity(
 
     base = _apply_category_filter(base, category)
 
+    if q is not None and q.strip():
+        # The rendered "Activity" label is built client-side from i18n keys, so
+        # it isn't stored to search against. Match the underlying fields that
+        # feed those labels instead: the actor, the action/resource codes, and
+        # the title/name/filename pulled out of the before/after snapshots. NULL
+        # JSON -> astext NULL -> no match, which is safe.
+        pattern = f"%{q.strip().lower()}%"
+        base = base.where(
+            or_(
+                func.lower(User.full_name).like(pattern),
+                func.lower(AuditLog.action).like(pattern),
+                func.lower(AuditLog.resource_type).like(pattern),
+                func.lower(AuditLog.after["title"].astext).like(pattern),
+                func.lower(AuditLog.after["name"].astext).like(pattern),
+                func.lower(AuditLog.after["original_filename"].astext).like(pattern),
+                func.lower(AuditLog.before["title"].astext).like(pattern),
+                func.lower(AuditLog.before["name"].astext).like(pattern),
+                func.lower(AuditLog.before["original_filename"].astext).like(pattern),
+            )
+        )
+
     if since is not None:
         since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)
         base = base.where(AuditLog.created_at >= since_aware)
 
     set_total_count(response, await count_query(session, base))
 
-    # Whitelisted sort: date (created_at) and type (action, the dotted code that
-    # clusters events by kind). id tiebreaker keeps offset paging deterministic.
+    # Whitelisted sort: date (created_at), type (action, the dotted code that
+    # clusters events by kind), and resource (resource_type, the feed's Resource
+    # column). id tiebreaker keeps offset paging deterministic.
     stmt = (
         apply_sort(
             base,
             sort,
-            {"created_at": AuditLog.created_at, "action": AuditLog.action},
+            {
+                "created_at": AuditLog.created_at,
+                "action": AuditLog.action,
+                "resource_type": AuditLog.resource_type,
+            },
             default="created_at",
             default_dir="desc",
             tiebreaker=AuditLog.id,

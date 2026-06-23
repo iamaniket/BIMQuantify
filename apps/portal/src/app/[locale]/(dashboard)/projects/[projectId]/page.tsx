@@ -5,7 +5,9 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 
 import { Button, Skeleton } from '@bimstitch/ui';
-import { Pencil, Settings, Share2 } from '@bimstitch/ui/icons';
+import {
+  ArrowRight, Pencil, Settings, Share2,
+} from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
@@ -22,7 +24,6 @@ import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHea
 import { ProjectChartsPanel } from '@/features/projects/detail/ProjectChartsPanel';
 import { ActivityTimelinePanel } from '@/features/projects/detail/ActivityTimelinePanel';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
-import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
 import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
 import {
   computeDossierCompleteness,
@@ -39,6 +40,7 @@ export default function ProjectDetailPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
   const tHero = useTranslations('projectDetail.hero');
+  const tActivity = useTranslations('activity');
   const projectQuery = useProject(projectId);
   const [editOpen, setEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -169,7 +171,7 @@ export default function ProjectDetailPage(): JSX.Element {
           />
         }
       >
-        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-2 xl:grid-cols-[18fr_11fr_11fr]">
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-2">
           <div className="flex min-h-0 flex-col gap-3.5">
             <ProjectChartsPanel
               dossier={dossier}
@@ -177,7 +179,17 @@ export default function ProjectDetailPage(): JSX.Element {
               deadlines={deadlines}
               country={project.country}
             />
-            <ActivityTimelinePanel projectId={projectId} />
+            <ActivityTimelinePanel
+              projectId={projectId}
+              headerAction={(
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={`/projects/${projectId}/activity`}>
+                    {tActivity('viewAll')}
+                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              )}
+            />
           </div>
 
           <RightColumnTabs
@@ -185,9 +197,6 @@ export default function ProjectDetailPage(): JSX.Element {
             projectCountry={project.country}
             models={models}
           />
-          <div className="hidden lg:block">
-            <ActivityPanel projectId={projectId} />
-          </div>
         </div>
       </PageShell>
       <ProjectFormDialog

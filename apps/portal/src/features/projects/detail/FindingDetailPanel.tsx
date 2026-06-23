@@ -1,11 +1,12 @@
 'use client';
 
-import { Trash2, X } from '@bimstitch/ui/icons';
+import { Clock, FrameCorners, Pencil, Trash2, X } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState, type JSX } from 'react';
 
 import { Badge, Button, IconButton, Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
 
+import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import type { Finding } from '@/lib/api/schemas';
 
 import { FindingDetailFields } from './FindingDetailFields';
@@ -17,6 +18,8 @@ type Props = {
   projectId: string;
   finding: Finding | null;
   onClose: () => void;
+  /** When provided, render an "open in dialog" button beside the close button. */
+  onExpand?: () => void;
 };
 
 type FindingTab = 'edit' | 'history';
@@ -28,7 +31,7 @@ type FindingTab = 'edit' | 'history';
  * keep their context visible while a finding is open. Renders nothing when
  * `finding` is `null`, mirroring the modal's closed state.
  */
-export function FindingDetailPanel({ projectId, finding, onClose }: Props): JSX.Element {
+export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const tStatus = useTranslations('findings.status');
   const [tab, setTab] = useState<FindingTab>('edit');
@@ -86,14 +89,25 @@ export function FindingDetailPanel({ projectId, finding, onClose }: Props): JSX.
             {tStatus(finding.status)}
           </Badge>
         </div>
-        <IconButton icon={X} aria-label={t('close')} onClick={onClose} />
+        <div className="flex items-center gap-1">
+          {onExpand !== undefined && (
+            <IconButton icon={FrameCorners} aria-label={t('expand')} onClick={onExpand} />
+          )}
+          <IconButton icon={X} aria-label={t('close')} onClick={onClose} />
+        </div>
       </div>
 
-      <div className="shrink-0 border-b border-border px-4 pt-2.5">
+      <div className="shrink-0 border-b border-border px-2">
         <Tabs value={tab} onValueChange={(v) => { setTab(v as FindingTab); }}>
-          <TabsList className="inline-flex w-auto">
-            <TabsTrigger value="edit">{t('tabs.edit')}</TabsTrigger>
-            <TabsTrigger value="history">{t('tabs.history')}</TabsTrigger>
+          <TabsList className="gap-1 rounded-none bg-transparent p-0">
+            <TabsTrigger value="edit" className={TAB_TRIGGER_CLASS}>
+              <Pencil className="h-4 w-4" />
+              {t('tabs.edit')}
+            </TabsTrigger>
+            <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
+              <Clock className="h-4 w-4" />
+              {t('tabs.history')}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

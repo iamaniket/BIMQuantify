@@ -214,6 +214,22 @@ async def test_activity_sort_by_action(
 
 
 @pytest.mark.asyncio
+async def test_activity_sort_by_resource_type(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """`resource_type` is a whitelisted sort key (the 'resource' column)."""
+    project = await _create_project(client, org_user["access_token"])
+    await _create_model(client, org_user["access_token"], project["id"])
+
+    resp = await client.get(
+        _activity_url(project["id"], order_by="resource_type", order_dir="asc"),
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_activity_sort_invalid_key(
     client: AsyncClient,
     org_user: dict[str, str],
@@ -223,10 +239,58 @@ async def test_activity_sort_invalid_key(
     await _create_model(client, org_user["access_token"], project["id"])
 
     resp = await client.get(
-        _activity_url(project["id"], order_by="resource_type"),
+        _activity_url(project["id"], order_by="actor_name"),
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_activity_search_matches_model_name(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """`q` searches the JSON behind the activity label — a model's name (stored in
+    `after`) matches case-insensitively; a non-matching query returns nothing and
+    a zero total."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"], name="Zoekbaarhuis")
+
+    hit = await client.get(_activity_url(project["id"], q="zoekbaar"), headers=_auth(token))
+    assert hit.status_code == 200
+    entries = hit.json()
+    assert entries, "expected the model.created row to match"
+    assert "model.created" in {e["action"] for e in entries}
+
+    miss = await client.get(_activity_url(project["id"], q="zzznomatch"), headers=_auth(token))
+    assert miss.status_code == 200
+    assert miss.json() == []
+    assert int(miss.headers["X-Total-Count"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_activity_search_matches_finding_title(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """`q` matches a finding title (stored in `after`), the substantive text the
+    activity label interpolates."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    created = await client.post(
+        f"/projects/{project['id']}/findings",
+        json={"title": "Brandwerende doorvoer", "description": "x"},
+        headers=_auth(token),
+    )
+    assert created.status_code == 201, created.text
+
+    resp = await client.get(
+        _activity_url(project["id"], q="brandwerende"), headers=_auth(token)
+    )
+    assert resp.status_code == 200
+    assert "finding.created" in {e["action"] for e in resp.json()}
 
 
 @pytest.mark.asyncio

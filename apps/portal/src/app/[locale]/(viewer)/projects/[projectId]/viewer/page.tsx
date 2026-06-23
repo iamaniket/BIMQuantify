@@ -65,7 +65,10 @@ import { usePdfGeometry } from '@/features/viewer/2d/usePdfGeometry';
 import { useViewerScope } from '@/features/viewer/shared/useViewerScope';
 import { useRailBadges } from '@/features/viewer/shared/useRailBadges';
 import { useFindingPinVisibility } from '@/features/viewer/shared/useFindingPinVisibility';
-import { useViewerSelectionHydrated } from '@/features/viewer/shared/viewerSelectionStore';
+import {
+  setViewerTarget,
+  useViewerSelectionHydrated,
+} from '@/features/viewer/shared/viewerSelectionStore';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
 import { usePerformanceCulling } from '@/features/viewer/3d/performanceCulling';
@@ -123,6 +126,12 @@ export default function ViewerPage(): JSX.Element {
 
   const bundle = scope.activeBundle;
   const error: string | null = scope.errorMessage;
+  // "All models" -> rehydrate the federated default. Wired to the empty-state
+  // "Load all models" button so a user who unchecked every model in the
+  // dropdown can recover with one click.
+  const loadAllModels = useCallback(() => {
+    setViewerTarget(projectId, { kind: 'all' });
+  }, [projectId]);
   const [viewerError, setViewerError] = useState<string | null>(null);
   // Federated models that failed to load (non-fatal — the rest of the scene
   // still renders). Reset whenever the scene anchor changes (a new IfcViewer).
@@ -759,9 +768,16 @@ export default function ViewerPage(): JSX.Element {
     );
   } else if (scope.isEmpty) {
     canvas = (
-      <div className="flex h-full flex-col items-center justify-center gap-1 p-6 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-body2 font-semibold text-foreground">{tFed('empty')}</p>
         <p className="max-w-sm text-body3 text-foreground-secondary">{tFed('emptyHint')}</p>
+        <button
+          type="button"
+          onClick={loadAllModels}
+          className="inline-flex h-8 items-center rounded-md border border-border bg-surface-low px-3 text-body3 font-medium text-foreground hover:bg-background-hover"
+        >
+          {tFed('loadAll')}
+        </button>
       </div>
     );
   } else if (bundle === null) {

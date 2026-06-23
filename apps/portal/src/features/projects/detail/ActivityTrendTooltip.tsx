@@ -25,7 +25,7 @@ const MAX_RESOURCE_ROWS = 4;
 
 /** Title-case a raw resource_type ("project_file" -> "Project file") as a
  * fallback for any type without an `activity.resource.<type>` label. */
-function humanizeResource(type: string): string {
+export function humanizeResource(type: string): string {
   const spaced = type.replace(/_/g, ' ');
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

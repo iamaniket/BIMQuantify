@@ -1,7 +1,7 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { useMemo, type JSX } from 'react';
+import { useMemo, type JSX, type ReactNode } from 'react';
 
 import type { Locale } from '@bimstitch/i18n';
 
@@ -22,7 +22,7 @@ const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
 // `since`) and slot the most recent 8 weeks client-side.
 const TIMELINE_PARAMS = { bucket: 'week' } as const;
 
-function useProjectActivityTimeline(projectId: string) {
+export function useProjectActivityTimeline(projectId: string) {
   return useAuthQuery<ActivityTimeline>({
     queryKey: [...projectActivityTimelineKey(projectId, TIMELINE_PARAMS)],
     queryFn: (token) => listProjectActivityTimeline(token, projectId, TIMELINE_PARAMS),
@@ -104,9 +104,12 @@ export function buildActivityTrend(
 export function ActivityTimelineView({
   timeline,
   isLoading,
+  headerAction,
 }: {
   timeline: ActivityTimeline | undefined;
   isLoading: boolean;
+  /** Optional control rendered to the right of the title (e.g. a "View all" link). */
+  headerAction?: ReactNode;
 }): JSX.Element {
   const t = useTranslations('activity');
   const locale = useLocale() as Locale;
@@ -127,6 +130,7 @@ export function ActivityTimelineView({
     <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h3 className="text-body2 font-bold text-foreground">{t('trendTitle')}</h3>
+        {headerAction}
       </div>
       <div className="p-4">
         {isLoading ? (
@@ -155,7 +159,18 @@ export function ActivityTimelineView({
 /** Activity-over-time trend card. Sits directly below the "Project completeness"
  * section on the project detail page; fetches its own data and is independent of
  * the activity-list filters. */
-export function ActivityTimelinePanel({ projectId }: { projectId: string }): JSX.Element {
+export function ActivityTimelinePanel({
+  projectId,
+  headerAction,
+}: {
+  projectId: string;
+  /** Optional control rendered in the card header (e.g. a "View all" link). The
+   * caller owns it so this module stays free of the next-intl navigation import
+   * that breaks the pure-view unit test. */
+  headerAction?: ReactNode;
+}): JSX.Element {
   const { data, isLoading } = useProjectActivityTimeline(projectId);
-  return <ActivityTimelineView timeline={data} isLoading={isLoading} />;
+  return (
+    <ActivityTimelineView timeline={data} isLoading={isLoading} headerAction={headerAction} />
+  );
 }
