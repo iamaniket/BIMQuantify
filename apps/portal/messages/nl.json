@@ -2205,6 +2205,24 @@
       "sign": "Onderteken",
       "signing": "Bezig met ondertekenen…",
       "signed": "Ondertekend"
+    },
+    "viewer": {
+      "title": "Rapport",
+      "subtitle": "Voorbeeld van de gegenereerde PDF",
+      "close": "Sluiten",
+      "groupFile": "Bestand",
+      "groupReport": "Rapport",
+      "groupOrigin": "Herkomst",
+      "fieldFilename": "Bestandsnaam",
+      "fieldSize": "Grootte",
+      "fieldFileType": "Bestandstype",
+      "fileTypeValue": "PDF",
+      "fieldType": "Type",
+      "fieldStatus": "Status",
+      "fieldLocale": "Taal",
+      "fieldCreated": "Aangemaakt",
+      "fieldFinished": "Voltooid",
+      "fieldSignedOn": "Ondertekend op"
     }
   },
   "reportTemplates": {
@@ -3486,7 +3504,9 @@
       "titlePages": "Pagina's",
       "titleDrawingInfo": "Tekeninginfo",
       "titleBcf": "Issues",
-      "comingSoon": "Binnenkort beschikbaar"
+      "comingSoon": "Binnenkort beschikbaar",
+      "layerShow": "{layer} tonen",
+      "layerHide": "{layer} verbergen"
     },
     "markup": {
       "rectangle": "Rechthoek",

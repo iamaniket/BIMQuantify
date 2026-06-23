@@ -25,11 +25,27 @@ export interface HoverPluginOptions {
   color?: number;
   /** Reserved — color highlight via setColor preserves item opacity. */
   opacity?: number;
+  /**
+   * Initial user-enabled state (the persistent settings toggle). Default: true.
+   * This is the single source of truth for "does the user want hover highlight";
+   * transient motion suppression goes through `setPaused`, not this flag.
+   */
+  enabled?: boolean;
 }
 
 export interface HoverPluginAPI {
-  /** Pause/resume hover raycasts. Clears the current highlight on pause. */
+  /**
+   * The persistent user setting (settings UI). When false, hover never paints,
+   * regardless of pause state. This is the single source of truth.
+   */
   setEnabled(enabled: boolean): void;
+  /**
+   * Transient suppression (e.g. the interactive-performance plugin during
+   * camera motion). Clears the current highlight on pause and resumes painting
+   * on the next pointer move — but only if the user has hover enabled. Never
+   * overrides `setEnabled`.
+   */
+  setPaused(paused: boolean): void;
   isEnabled(): boolean;
 }
 
@@ -52,7 +68,13 @@ export function hoverHighlightPlugin(
   let painted: ItemId | null = null;
   let inFlight = false;
   let pending: { x: number; y: number } | null = null;
-  let enabled = true;
+  // Two independent axes. `userEnabled` is the persistent settings toggle (the
+  // single source of truth); `paused` is transient motion suppression driven by
+  // the interactive-performance plugin. Hover paints only when BOTH allow it,
+  // so pausing/resuming during an orbit can never override the user's choice.
+  let userEnabled = options.enabled ?? true;
+  let paused = false;
+  const isActive = (): boolean => userEnabled && !paused;
   const edges = new EdgeOverlay({ lineWidth: 1.5 });
   let cachedSectionPlanes: SectionPlaneData[] = [];
 
@@ -87,8 +109,8 @@ export function hoverHighlightPlugin(
       painted = null;
     }
 
-    // Paint new only if eligible (enabled + not already selected).
-    if (next && enabled && !isSelected(next)) {
+    // Paint new only if eligible (active + not already selected).
+    if (next && isActive() && !isSelected(next)) {
       void modelOf(next)?.setColor([next.localId], color).catch(() => undefined);
       void edges.add(ctxRef, [next], color);
       painted = next;
@@ -109,7 +131,7 @@ export function hoverHighlightPlugin(
       edges.remove(ctxRef, [painted]);
       painted = null;
     }
-    if (current && !painted && removed.some((r) => sameItem(r, current)) && !isSelected(current) && enabled) {
+    if (current && !painted && removed.some((r) => sameItem(r, current)) && !isSelected(current) && isActive()) {
       void modelOf(current)?.setColor([current.localId], color).catch(() => undefined);
       void edges.add(ctxRef, [current], color);
       painted = current;
@@ -122,7 +144,7 @@ export function hoverHighlightPlugin(
   // would queue a backlog at high pointermove rates.
   const dispatch = async (ndc: { x: number; y: number } | null): Promise<void> => {
     if (!ctxRef) return;
-    if (!enabled) {
+    if (!isActive()) {
       pending = null;
       return;
     }
@@ -147,18 +169,36 @@ export function hoverHighlightPlugin(
     }
   };
 
+  // Persistent user setting. Emits `feature:enabled` so the portal's UI mirror
+  // tracks the user's intent (NOT transient pauses).
+  const doSetEnabled = (next: boolean): void => {
+    if (userEnabled === next) return;
+    userEnabled = next;
+    if (!isActive() && current) apply(null);
+    ctxRef?.events.emit('feature:enabled', { name: NAME, enabled: userEnabled });
+  };
+
+  // Transient suppression (camera motion). Deliberately silent — it must not
+  // emit `feature:enabled`, or the settings UI would flicker off/on every orbit
+  // and could mistake a pause for the user disabling hover.
+  const doSetPaused = (next: boolean): void => {
+    if (paused === next) return;
+    paused = next;
+    if (!isActive() && current) apply(null);
+  };
+
   return {
     name: NAME,
     optionalDependencies: ['selection'],
 
     setEnabled(next: boolean) {
-      if (enabled === next) return;
-      enabled = next;
-      if (!enabled && current) apply(null);
-      ctxRef?.events.emit('feature:enabled', { name: NAME, enabled });
+      doSetEnabled(next);
+    },
+    setPaused(next: boolean) {
+      doSetPaused(next);
     },
     isEnabled() {
-      return enabled;
+      return userEnabled;
     },
 
     install(ctx: ViewerContext) {
@@ -196,15 +236,15 @@ export function hoverHighlightPlugin(
 
       ctx.commands.register('hover.setEnabled', (args: unknown) => {
         const on = typeof args === 'boolean' ? args : (args as { enabled?: boolean })?.enabled;
-        if (typeof on === 'boolean') {
-          if (enabled === on) return enabled;
-          enabled = on;
-          if (!enabled && current) apply(null);
-          ctxRef?.events.emit('feature:enabled', { name: NAME, enabled });
-        }
-        return enabled;
+        if (typeof on === 'boolean') doSetEnabled(on);
+        return userEnabled;
       }, { title: 'Enable/disable hover feature' });
-      ctx.commands.register('hover.isEnabled', () => enabled, {
+      ctx.commands.register('hover.setPaused', (args: unknown) => {
+        const on = typeof args === 'boolean' ? args : (args as { paused?: boolean })?.paused;
+        if (typeof on === 'boolean') doSetPaused(on);
+        return paused;
+      }, { title: 'Pause/resume hover raycasts (transient)' });
+      ctx.commands.register('hover.isEnabled', () => userEnabled, {
         title: 'Get hover enabled state',
       });
 

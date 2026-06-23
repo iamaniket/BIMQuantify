@@ -107,7 +107,13 @@ interface VisibilityPluginShape {
 }
 
 interface HoverPluginShape {
-  setEnabled(enabled: boolean): void;
+  /**
+   * Transient pause — NOT the user's enable setting. Using setPaused (instead of
+   * setEnabled) keeps motion suppression from clobbering the persistent
+   * "hover highlight" toggle: a user who turned hover off stays off through any
+   * number of orbits.
+   */
+  setPaused(paused: boolean): void;
 }
 
 interface XrayPluginShape {
@@ -358,7 +364,7 @@ export function interactivePerformancePlugin(
     }
 
     if (opts.pauseHover) {
-      ctxRef.plugins.get<HoverPluginShape>('hover-highlight')?.setEnabled(false);
+      ctxRef.plugins.get<HoverPluginShape>('hover-highlight')?.setPaused(true);
       hoverWasPaused = true;
     }
 
@@ -472,7 +478,7 @@ export function interactivePerformancePlugin(
     }
 
     if (hoverWasPaused) {
-      ctxRef.plugins.get<HoverPluginShape>('hover-highlight')?.setEnabled(true);
+      ctxRef.plugins.get<HoverPluginShape>('hover-highlight')?.setPaused(false);
       hoverWasPaused = false;
     }
 

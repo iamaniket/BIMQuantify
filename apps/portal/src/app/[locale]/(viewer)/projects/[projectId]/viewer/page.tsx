@@ -63,6 +63,8 @@ import { useModelMetadata } from '@/features/viewer/3d/useModelMetadata';
 import { useModelProperties } from '@/features/viewer/3d/useModelProperties';
 import { usePdfGeometry } from '@/features/viewer/2d/usePdfGeometry';
 import { useViewerScope } from '@/features/viewer/shared/useViewerScope';
+import { useRailBadges } from '@/features/viewer/shared/useRailBadges';
+import { useFindingPinVisibility } from '@/features/viewer/shared/useFindingPinVisibility';
 import { useViewerSelectionHydrated } from '@/features/viewer/shared/viewerSelectionStore';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
@@ -420,6 +422,35 @@ export default function ViewerPage(): JSX.Element {
   const isIfc = format === 'ifc';
   // Split / 2D modes (and the view switcher) require a floor-plan artifact.
   const hasFloorPlans = Boolean(isIfc && scope.planFloorPlansUrl);
+
+  // Finding-pin layer visibility (persisted) drives the side-rail Inspector
+  // count pill; re-asserted onto the entity-marker plugin on mount/change.
+  const onToggleFindingPins = useCallback(() => {
+    handleSettingsChange({
+      ...settings,
+      annotations: { ...settings.annotations, findingPins: !settings.annotations.findingPins },
+    });
+  }, [settings, handleSettingsChange]);
+  useFindingPinVisibility(
+    viewerHandleRef.current,
+    documentHandle,
+    viewerReady,
+    isIfc,
+    isPdf,
+    settings.annotations.findingPins,
+  );
+  // Live count + visibility indicators for the side-rail tabs (measurements,
+  // section planes, finding pins).
+  const railBadges = useRailBadges({
+    format,
+    viewerHandle: viewerHandleRef.current,
+    documentHandle,
+    viewerReady,
+    projectId,
+    fileId,
+    findingPinsVisible: settings.annotations.findingPins,
+    onToggleFindingPins,
+  });
 
   // Apply fit-to-page only once when a PDF is first loaded.
   useEffect(() => {
@@ -1025,6 +1056,7 @@ export default function ViewerPage(): JSX.Element {
           format={format}
           activePanel={activePanel}
           onTogglePanel={togglePanel}
+          badges={railBadges}
         />
       ) : null}
       </div>

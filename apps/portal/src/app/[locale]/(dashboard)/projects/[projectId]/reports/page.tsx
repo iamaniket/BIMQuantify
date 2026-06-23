@@ -17,7 +17,7 @@ import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter
 import { useProjectPermissions } from '@/features/permissions';
 import { useReports } from '@/features/reports/hooks';
 import { ReportGenerateButtons } from '@/features/reports/ReportGenerateButtons';
-import { ReportPreviewDrawer } from '@/features/reports/ReportPreviewDrawer';
+import { ReportViewerDialog } from '@/features/reports/ReportViewerDialog';
 import { ReportsPageHero } from '@/features/reports/ReportsPageHero';
 import { ReportsOverviewTab } from '@/features/reports/tabs/ReportsOverviewTab';
 import { ReportsTable, type ReportRow } from '@/features/reports/ReportsTable';
@@ -204,7 +204,7 @@ export default function ProjectReportsPage(): JSX.Element {
         </div>
       ) : undefined}
       afterTabs={(
-        <ReportPreviewDrawer
+        <ReportViewerDialog
           projectId={projectId}
           reportId={previewId}
           onClose={() => { setPreviewId(null); }}

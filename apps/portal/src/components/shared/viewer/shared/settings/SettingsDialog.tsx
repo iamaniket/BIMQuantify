@@ -44,6 +44,7 @@ function Viewer3DSection({
     <div className="space-y-4">
       <Section title={t('shadows')} note={undefined}>
         <Toggle
+          fullWidth
           label={t('enableShadows')}
           checked={settings.shadows.enabled}
           onChange={(enabled) => {
@@ -75,7 +76,7 @@ function Viewer3DSection({
             });
           }}
         />
-        <Field label={t('quality')}>
+        <Field fullWidth label={t('quality')}>
           <Select
             selectSize="md"
             value={settings.effects.quality}
@@ -95,6 +96,22 @@ function Viewer3DSection({
           </Select>
         </Field>
       </Section>
+    </div>
+  );
+}
+
+// ── Controls tab (zoom / navigation / behavior) ─────────────────────
+
+function ControlsTab({
+  settings,
+  onChange,
+}: {
+  settings: ViewerSettings;
+  onChange: (next: ViewerSettings) => void;
+}): JSX.Element {
+  const t = useTranslations('viewer.settings');
+  return (
+    <div className="space-y-4">
       <Section title={t('zoomLimits')} note={t('zoomHint')}>
         <RangeField
           label={t('zoomSpeed')}
@@ -262,6 +279,7 @@ function AppearanceTab({
     <div className="space-y-4">
       <Section title={t('common')} note={undefined}>
         <ColorField
+          fullWidth
           label={t('background')}
           value={colorToHex(viewer3D.background.color)}
           onChange={(hex) => {
@@ -325,7 +343,7 @@ function PerformanceTab({
         <p className="text-body3 text-foreground-secondary">
           {t('cullingDescription')}
         </p>
-        <Field label={t('cullingMode')}>
+        <Field fullWidth label={t('cullingMode')}>
           <Select
             selectSize="md"
             value={settings.performance.culling}
@@ -608,8 +626,10 @@ export function SettingsDialog(props: Props): JSX.Element {
   };
 
   const handleReset = (): void => {
-    setViewer3D(DEFAULT_VIEWER_SETTINGS);
-    setDoc2D(DEFAULT_DOCUMENT_SETTINGS);
+    // Clone so the draft never holds the shared DEFAULT reference (a later edit
+    // mutating it in place would corrupt the module defaults).
+    setViewer3D(structuredClone(DEFAULT_VIEWER_SETTINGS));
+    setDoc2D(structuredClone(DEFAULT_DOCUMENT_SETTINGS));
   };
 
   return (
@@ -631,6 +651,11 @@ export function SettingsDialog(props: Props): JSX.Element {
             {t('tabAppearance')}
           </TabsTrigger>
           {mode === '3d' && (
+            <TabsTrigger value="controls">
+              {t('tabControls')}
+            </TabsTrigger>
+          )}
+          {mode === '3d' && (
             <TabsTrigger value="performance">
               {t('tabPerformance')}
             </TabsTrigger>
@@ -649,6 +674,15 @@ export function SettingsDialog(props: Props): JSX.Element {
             onDoc2DChange={updateDoc2D}
           />
         </TabsContent>
+
+        {mode === '3d' && (
+          <TabsContent value="controls" className="flex-1 min-h-0 pt-3">
+            <ControlsTab
+              settings={viewer3D}
+              onChange={updateViewer3D}
+            />
+          </TabsContent>
+        )}
 
         {mode === '3d' && (
           <TabsContent value="performance" className="flex-1 min-h-0 pt-3">

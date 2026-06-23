@@ -40,6 +40,7 @@ import {
   type PivotCandidates,
   type PivotHit,
 } from './resolvePivot.js';
+import { setOrbitPointNoClamp } from './setOrbitPointNoClamp.js';
 
 const NAME = 'pivot-rotate' as const;
 
@@ -151,6 +152,8 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
         getTarget: (out: THREE.Vector3) => THREE.Vector3;
         truckSpeed: number;
         distance: number;
+        minDistance: number;
+        maxDistance: number;
         mouseButtons: { left: number; middle: number; right: number; wheel: number };
         constructor: { ACTION?: Record<string, number> };
       };
@@ -424,8 +427,13 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       };
 
       const applyPivot = (p: THREE.Vector3, source: string): void => {
-        controls.setOrbitPoint(p.x, p.y, p.z);
-        // setOrbitPoint moves the target to `p`, so targetDist == geoDist.
+        // setOrbitPoint moves the target to `p` while keeping the camera fixed —
+        // but it clamps the orbit radius to [minDistance, maxDistance], which
+        // makes the camera snap when the pivot is nearer/farther than that band.
+        // setOrbitPointNoClamp relaxes the band for this one call so the camera
+        // stays exactly put regardless of the click depth (see that helper).
+        setOrbitPointNoClamp(controls, p.x, p.y, p.z);
+        // Target now sits at `p`, so targetDist == geoDist.
         // 1:1 tracking → truckSpeed = defaultTruckSpeed (2.0).
         controls.truckSpeed = defaultTruckSpeed;
         if (opts.debug) {

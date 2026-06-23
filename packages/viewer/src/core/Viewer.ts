@@ -1129,6 +1129,11 @@ export class Viewer {
       ZOOM_IN_DISTANCE_CEIL,
     );
     world.camera.controls.minDistance = this.zoomInDistance;
+    // Re-assert the uncapped upper bound: ThatOpen's OrbitMode reverts
+    // maxDistance to 300 on every projection/mode switch, which would otherwise
+    // clamp far orbit pivots (camera snap) and cap zoom-out below our own
+    // zoomOutLimit. Max zoom-out is governed by zoomOutLimit in onCamChange.
+    world.camera.controls.maxDistance = Infinity;
     if (isViewerDebug()) this.debugBounds(maxDim);
   }
 

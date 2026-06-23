@@ -6,7 +6,7 @@ import {
   useCallback, useEffect, useRef, useState, type JSX,
 } from 'react';
 
-import { ConfirmDialog, cn } from '@bimstitch/ui';
+import { ConfirmDialog, Slider, cn } from '@bimstitch/ui';
 import type { SectionPlane, ViewerHandle } from '@bimstitch/viewer';
 
 import { PanelButton } from '@/components/shared/viewer/shared/PanelButton';
@@ -288,14 +288,13 @@ export function SectionPanel({ handle }: Props): JSX.Element {
                   {/* Position slider */}
                   {ext && (
                     <div className="mt-1.5 px-2">
-                      <input
-                        type="range"
+                      <Slider
                         min={ext.min}
                         max={ext.max}
                         step={(ext.max - ext.min) / 200}
                         value={ext.current}
                         onChange={(e) => { handleSlider(p.id, Number(e.target.value)); }}
-                        className="w-full accent-primary"
+                        className="w-full"
                       />
                     </div>
                   )}

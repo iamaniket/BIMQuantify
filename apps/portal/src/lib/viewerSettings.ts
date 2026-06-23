@@ -59,6 +59,8 @@ export type ViewerSettings = {
   cameraFly: CameraFlySettings;
   /** IfcSpace visibility — off by default; the toolbar toggle is the only control. */
   spaces: SpacesSettings;
+  /** Scene annotation layers controlled from the side-rail count pills. */
+  annotations: AnnotationSettings;
   /** Native frustum-culling policy for large/federated scenes. `auto` by default. */
   performance: PerformanceSettings;
   /** Persisted whole-model look. X-ray is session-only, so it's never stored here. */
@@ -66,6 +68,15 @@ export type ViewerSettings = {
 };
 
 export type SpacesSettings = { show: boolean };
+
+/**
+ * Scene annotation layers whose visibility is toggled from the side-rail count
+ * pills. Only finding pins persist across reloads (they re-fetch + re-sync);
+ * measurements and section planes are session-only, so they're not stored here.
+ */
+export type AnnotationSettings = { findingPins: boolean };
+
+export const DEFAULT_ANNOTATIONS: AnnotationSettings = { findingPins: true };
 
 /**
  * Whole-model display look persisted across reloads. Stores only the material
@@ -115,7 +126,9 @@ export const DEFAULT_ZOOM: Required<ZoomOptions> = {
 
 export const DEFAULT_BEHAVIOR: BehaviorSettings = {
   hoverHighlight: { enabled: true, color: 0xffd700 },
-  selection: { enabled: true, color: 0x4a90d9 },
+  // Brand primary (`--primary` / light theme `primary.DEFAULT` = #2c5697) so a
+  // fresh selection highlight matches the SaaS accent.
+  selection: { enabled: true, color: 0x2c5697 },
 };
 
 export const DEFAULT_CAMERA_FLY: CameraFlySettings = {
@@ -183,12 +196,16 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   behavior: DEFAULT_BEHAVIOR,
   cameraFly: DEFAULT_CAMERA_FLY,
   spaces: DEFAULT_SPACES,
+  annotations: DEFAULT_ANNOTATIONS,
   performance: DEFAULT_PERFORMANCE,
   displayMode: DEFAULT_DISPLAY_MODE,
 };
 
 function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
-  const d = DEFAULT_VIEWER_SETTINGS;
+  // Clone so `?? d.x` fallbacks never hand out a live reference to the shared
+  // DEFAULT_VIEWER_SETTINGS sub-objects — a later in-place mutation would
+  // otherwise corrupt the module-level defaults (breaks "Reset defaults").
+  const d = structuredClone(DEFAULT_VIEWER_SETTINGS);
   return {
     viewCube: p.viewCube ?? d.viewCube,
     shadows: p.shadows ?? d.shadows,
@@ -209,20 +226,23 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
     },
     cameraFly: { ...d.cameraFly, ...(p.cameraFly ?? {}) },
     spaces: { ...d.spaces, ...(p.spaces ?? {}) },
+    annotations: { ...d.annotations, ...(p.annotations ?? {}) },
     performance: { ...d.performance, ...(p.performance ?? {}) },
     displayMode: { ...d.displayMode, ...(p.displayMode ?? {}) },
   };
 }
 
 export function loadViewerSettings(): ViewerSettings {
-  if (typeof window === 'undefined') return DEFAULT_VIEWER_SETTINGS;
+  // Always return a fresh clone of the defaults — never the shared reference —
+  // so consumers that store/mutate the result can't corrupt the module defaults.
+  if (typeof window === 'undefined') return structuredClone(DEFAULT_VIEWER_SETTINGS);
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return DEFAULT_VIEWER_SETTINGS;
+    if (raw === null) return structuredClone(DEFAULT_VIEWER_SETTINGS);
     const parsed = JSON.parse(raw) as Partial<ViewerSettings>;
     return mergeWithDefaults(parsed);
   } catch {
-    return DEFAULT_VIEWER_SETTINGS;
+    return structuredClone(DEFAULT_VIEWER_SETTINGS);
   }
 }
 

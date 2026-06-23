@@ -168,7 +168,7 @@ export default function ProjectDetailPage(): JSX.Element {
           />
         }
       >
-        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-[1fr_1fr] xl:grid-cols-[3fr_3fr_2fr]">
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-2 xl:grid-cols-3">
           <ProjectChartsPanel
             dossier={dossier}
             findings={findings}

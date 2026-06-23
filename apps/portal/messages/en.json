@@ -2205,6 +2205,24 @@
       "sign": "Sign",
       "signing": "Signing…",
       "signed": "Signed"
+    },
+    "viewer": {
+      "title": "Report",
+      "subtitle": "Preview of the generated PDF",
+      "close": "Close",
+      "groupFile": "File",
+      "groupReport": "Report",
+      "groupOrigin": "Origin",
+      "fieldFilename": "Filename",
+      "fieldSize": "Size",
+      "fieldFileType": "File type",
+      "fileTypeValue": "PDF",
+      "fieldType": "Type",
+      "fieldStatus": "Status",
+      "fieldLocale": "Language",
+      "fieldCreated": "Created",
+      "fieldFinished": "Finished",
+      "fieldSignedOn": "Signed on"
     }
   },
   "reportTemplates": {
@@ -3486,7 +3504,9 @@
       "titlePages": "Pages",
       "titleDrawingInfo": "Drawing Info",
       "titleBcf": "Issues",
-      "comingSoon": "Coming soon"
+      "comingSoon": "Coming soon",
+      "layerShow": "Show {layer}",
+      "layerHide": "Hide {layer}"
     },
     "markup": {
       "rectangle": "Rectangle",

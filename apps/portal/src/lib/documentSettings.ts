@@ -96,7 +96,9 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
 };
 
 function mergeWithDefaults(p: Partial<DocumentSettings>): DocumentSettings {
-  const d = DEFAULT_DOCUMENT_SETTINGS;
+  // Clone so `?? d.x` fallbacks never alias the shared DEFAULT_DOCUMENT_SETTINGS
+  // sub-objects (mirrors viewerSettings.ts — keeps "Reset defaults" honest).
+  const d = structuredClone(DEFAULT_DOCUMENT_SETTINGS);
   return {
     pageBackground: p.pageBackground ?? d.pageBackground,
     shortcuts: { ...d.shortcuts, ...(p.shortcuts ?? {}) },
@@ -138,14 +140,15 @@ export function controlsFrom3D(controls3D: {
 }
 
 export function loadDocumentSettings(): DocumentSettings {
-  if (typeof window === 'undefined') return DEFAULT_DOCUMENT_SETTINGS;
+  // Always return a fresh clone of the defaults — never the shared reference.
+  if (typeof window === 'undefined') return structuredClone(DEFAULT_DOCUMENT_SETTINGS);
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return DEFAULT_DOCUMENT_SETTINGS;
+    if (raw === null) return structuredClone(DEFAULT_DOCUMENT_SETTINGS);
     const parsed = JSON.parse(raw) as Partial<DocumentSettings>;
     return mergeWithDefaults(parsed);
   } catch {
-    return DEFAULT_DOCUMENT_SETTINGS;
+    return structuredClone(DEFAULT_DOCUMENT_SETTINGS);
   }
 }
 

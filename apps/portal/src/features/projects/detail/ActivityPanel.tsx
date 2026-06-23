@@ -171,19 +171,19 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
     {
       header: t('colWhen'),
       sortKey: 'created_at',
-      className: 'whitespace-nowrap font-sans text-caption text-foreground-tertiary',
+      className: 'w-[124px] whitespace-nowrap font-sans text-caption text-foreground-tertiary',
       cell: (entry) => formatDateTime(entry.created_at, locale),
     },
     {
       header: t('colActor'),
       // Tight column: just the avatar. Full name shows on hover via UserAvatar's title.
-      className: 'w-[1%] whitespace-nowrap',
+      className: 'w-[52px] whitespace-nowrap',
       cell: (entry) => <UserAvatar name={entry.actor_name ?? t('systemActor')} size="sm" />,
     },
     {
       header: t('colType'),
       sortKey: 'action',
-      className: 'font-sans text-body3',
+      className: 'w-[100px] font-sans text-body3',
       cell: (entry) => {
         const s = categoryStyle(entry.category);
         return (
@@ -201,14 +201,14 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
     },
     {
       header: t('colActivity'),
+      // Flex column: fills the remaining width under `table-fixed` and ellipsizes
+      // long file names on one line; the full text is available on hover via title.
       className: 'font-sans text-body3',
-      // Cap the width so long file names stay on one line and ellipsize;
-      // the full text is available on hover via title.
       cell: (entry) => {
         const i18nKey = ACTION_I18N_KEY[entry.action];
         const description = i18nKey !== undefined ? t(i18nKey, descriptionParams(entry)) : entry.action;
         return (
-          <div className="max-w-[240px] truncate text-foreground" title={description}>
+          <div className="truncate text-foreground" title={description}>
             {description}
           </div>
         );
@@ -271,6 +271,8 @@ export function ActivityPanel({ projectId }: ActivityPanelProps): JSX.Element {
         isError={table.isError}
         errorMessage={t('loadError')}
         rowClassName="hover:bg-background-hover"
+        tableClassName="table-fixed"
+        clipHorizontal
       />
 
       <TablePaginationFooter
