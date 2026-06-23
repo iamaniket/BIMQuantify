@@ -120,6 +120,14 @@ async def check_compliance(
             ),
         )
 
+    # Building type drives which rules the Arbiter applies. Prefer an explicit
+    # per-request override, else derive from the project's building type, else
+    # "all" (no narrowing). The Arbiter's rule codes share the project's
+    # neutral building-type vocabulary.
+    effective_building_type = payload.building_type or (
+        project.building_type.value if project.building_type else "all"
+    )
+
     job = Job(
         id=uuid4(),
         project_id=project.id,
@@ -129,7 +137,7 @@ async def check_compliance(
         payload={
             "metadata_key": pf.metadata_storage_key,
             "properties_key": pf.properties_storage_key,
-            "building_type": payload.building_type,
+            "building_type": effective_building_type,
             "categories": payload.categories,
             "framework": payload.framework,
             "jurisdiction": project.country,
@@ -147,7 +155,7 @@ async def check_compliance(
             properties_key=pf.properties_storage_key,
             file_id=str(pf.id),
             settings=settings,
-            building_type=payload.building_type,
+            building_type=effective_building_type,
             categories=payload.categories,
             framework=payload.framework,
         )

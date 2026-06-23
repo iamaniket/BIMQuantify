@@ -215,7 +215,7 @@ export function CertificateViewerDialog({
   }
 
   const expiry = getCertificateExpiryState(certificate.valid_until);
-  const darkStage = isImage(certificate);
+  const mediaStage = isImage(certificate);
 
   // ── File ──
   const fileRows: MetaValue[] = [
@@ -277,7 +277,7 @@ export function CertificateViewerDialog({
           <div className="min-h-0 p-5">
             <div
               className={`relative h-full w-full overflow-hidden rounded-lg ${
-                darkStage ? 'bg-[#101316]' : 'bg-background-secondary'
+                mediaStage ? 'bg-surface-highest' : 'bg-background-secondary'
               }`}
             >
               <CertificatePreview
@@ -387,7 +387,7 @@ export function OrgCertificateViewerDialog({
   }
 
   const expiry = getCertificateExpiryState(certificate.valid_until);
-  const darkStage = isImage(certificate);
+  const mediaStage = isImage(certificate);
 
   const fileRows: MetaValue[] = [
     { label: t('fieldFilename'), value: certificate.original_filename, mono: true },
@@ -464,7 +464,7 @@ export function OrgCertificateViewerDialog({
           <div className="min-h-0 p-5">
             <div
               className={`relative h-full w-full overflow-hidden rounded-lg ${
-                darkStage ? 'bg-[#101316]' : 'bg-background-secondary'
+                mediaStage ? 'bg-surface-highest' : 'bg-background-secondary'
               }`}
             >
               <CertificatePreview

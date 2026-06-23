@@ -30,7 +30,7 @@ import {
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
 import { ProjectFormDialog } from '@/features/projects/ProjectFormDialog';
 import { ProjectSettingsDialog } from '@/features/projects/detail/ProjectSettingsDialog';
-import { ProjectActionsMenu } from '@/features/projects/detail/ProjectActionsMenu';
+import { RemoveProjectButton } from '@/features/projects/detail/RemoveProjectButton';
 import { isProjectArchived } from '@/lib/formatting/projects';
 import { Link } from '@/i18n/navigation';
 
@@ -151,7 +151,7 @@ export default function ProjectDetailPage(): JSX.Element {
           <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('projectAccess')}
         </Link>
       </Button>
-      <ProjectActionsMenu project={project} />
+      <RemoveProjectButton project={project} />
     </>
   );
 
@@ -169,7 +169,12 @@ export default function ProjectDetailPage(): JSX.Element {
         }
       >
         <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-[1fr_1fr] xl:grid-cols-[3fr_3fr_2fr]">
-          <ProjectChartsPanel dossier={dossier} />
+          <ProjectChartsPanel
+            dossier={dossier}
+            findings={findings}
+            deadlines={deadlines}
+            country={project.country}
+          />
 
           <RightColumnTabs
             projectId={projectId}

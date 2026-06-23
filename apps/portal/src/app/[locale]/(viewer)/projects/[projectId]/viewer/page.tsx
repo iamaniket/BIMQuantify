@@ -283,20 +283,21 @@ export default function ViewerPage(): JSX.Element {
     useViewerEntityStore.getState()._setModelId(scope.activeViewerModelId);
   }, [viewerReady, scope.activeViewerModelId]);
 
-  // Apply persisted behavior toggles once the viewer is ready.
-
+  // Apply persisted behavior toggles. The settings value is the single source
+  // of truth: assert the actual enabled state (both branches) whenever the
+  // viewer becomes ready OR the persisted toggles change. Depending on the
+  // toggle booleans makes this self-heal the localStorage load race (settings
+  // load async, after the first render) and keeps the viewer in sync after a
+  // Save — no separate dispatch in the settings dialog needed.
+  const hoverEnabled = settings.behavior.hoverHighlight.enabled;
+  const selectionEnabled = settings.behavior.selection.enabled;
   useEffect(() => {
     if (!viewerReady) return;
     const handle = viewerHandleRef.current;
     if (!handle) return;
-    const { behavior } = settings;
-    if (!behavior.hoverHighlight.enabled) {
-      handle.commands.execute('hover.setEnabled', false).catch(() => undefined);
-    }
-    if (!behavior.selection.enabled) {
-      handle.commands.execute('selection.setEnabled', false).catch(() => undefined);
-    }
-  }, [viewerReady]);
+    handle.commands.execute('hover.setEnabled', hoverEnabled).catch(() => undefined);
+    handle.commands.execute('selection.setEnabled', selectionEnabled).catch(() => undefined);
+  }, [viewerReady, hoverEnabled, selectionEnabled]);
 
   const modeState = useViewerMode(viewerHandleRef.current, viewerReady);
   const isEditMode = modeState.mode === 'edit';

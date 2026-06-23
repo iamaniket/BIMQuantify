@@ -20,14 +20,27 @@ export const PHASE_OPTIONS: readonly { value: ProjectPhaseValue; label: string }
   { value: 'handover', label: 'Handover' },
 ];
 
-// Neutral English fallback labels. Overlaid by `useWizardOptions.ts`
-// with the country/locale-specific labels from GET /jurisdictions.
+// Selectable building types, aligned with the Dutch Bbl "gebruiksfuncties".
+// Neutral English fallback labels — overlaid by `useWizardOptions.ts` with the
+// country/locale-specific labels from GET /jurisdictions. The legacy
+// `commercial` code stays valid for existing projects (see `BuildingTypeEnum`)
+// but is intentionally NOT offered here — it's superseded by office/retail/
+// industrial.
 export const BUILDING_TYPE_OPTIONS: readonly {
   value: BuildingTypeValue;
   label: string;
 }[] = [
   { value: 'dwelling', label: 'Dwelling' },
-  { value: 'commercial', label: 'Commercial building' },
+  { value: 'assembly', label: 'Assembly' },
+  { value: 'cell', label: 'Cell (detention)' },
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'industrial', label: 'Industrial' },
+  { value: 'office', label: 'Office' },
+  { value: 'accommodation', label: 'Accommodation' },
+  { value: 'education', label: 'Education' },
+  { value: 'sport', label: 'Sport' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'non_building', label: 'Non-building structure' },
   { value: 'other', label: 'Other' },
 ];
 

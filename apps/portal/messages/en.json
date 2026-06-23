@@ -490,9 +490,12 @@
         "reactivate": "Reactivate",
         "archive": "Archive",
         "remove": "Remove",
+        "removeAria": "Remove project",
         "deleteTitle": "Delete project",
         "deleteDescription": "Remove \"{name}\" from active views? It will be hidden from normal project lists.",
         "deleteConfirm": "Remove",
+        "deleteConfirmPrompt": "To confirm, type the project name \"{name}\" below.",
+        "deleteConfirmPlaceholder": "Project name",
         "archiveTitle": "Archive project",
         "archiveDescription": "Archive \"{name}\"? The project becomes read-only — no one can edit, run checks, or generate reports until it is reactivated.",
         "archiveConfirm": "Archive",
@@ -1212,7 +1215,29 @@
         "findingsOpenDetail": "{count, plural, =1 {1 open} other {# open}}",
         "findingsResolved": "All resolved",
         "deadlinesOverdueDetail": "{count, plural, =1 {1 overdue} other {# overdue}}",
-        "deadlinesOnTrack": "On track"
+        "deadlinesOnTrack": "On track",
+        "rings": {
+          "title": "Project completeness",
+          "findingsLabel": "Findings",
+          "dossierLabel": "Dossier",
+          "deadlinesLabel": "Deadlines",
+          "centerLabel": "Complete",
+          "overallLabel": "Overall",
+          "tooltip": "{filled} of {total} · {pct}%",
+          "tooltipNa": "Not applicable",
+          "ariaLabel": "{label}: {value} of {total} complete, {pct}%"
+        },
+        "expanded": {
+          "back": "Back",
+          "dossierComplete": "Complete",
+          "dossierRemaining": "Remaining",
+          "deadlinesMet": "Met",
+          "deadlinesPending": "Pending",
+          "deadlinesOverdue": "Overdue",
+          "emptyFindings": "No findings yet",
+          "emptyDeadlines": "No deadlines yet",
+          "emptyDossier": "No dossier requirements yet"
+        }
       },
       "models": {
         "label": "Models",

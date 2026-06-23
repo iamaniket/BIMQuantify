@@ -31,7 +31,7 @@ export function RightColumnTabs({
   models,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
-  const [topTab, setTopTab] = useState('readiness');
+  const [topTab, setTopTab] = useState('models');
   const attachmentCount = totalFromPages(useAttachments(projectId).data);
   const certificateCount = totalFromPages(useCertificates(projectId).data);
   const findingsCount = totalFromPages(useFindings(projectId).data);
@@ -124,13 +124,13 @@ export function RightColumnTabs({
           <div className="mb-2 flex min-w-max items-end justify-between gap-x-3">
             <Tabs value={topTab} onValueChange={setTopTab}>
               <TabsList className="inline-flex w-auto">
-                <TabsTrigger value="readiness">{t('readiness.label')}</TabsTrigger>
                 <TabsTrigger value="models">
                   {t('models.label')}
                   <Badge variant="default" size="md" bordered={false}>
                     {models.length}
                   </Badge>
                 </TabsTrigger>
+                <TabsTrigger value="readiness">{t('readiness.label')}</TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="text-right">

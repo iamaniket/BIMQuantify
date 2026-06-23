@@ -34,11 +34,25 @@ class ProjectPhase(StrEnum):
 
 
 class BuildingType(StrEnum):
-    # Neutral building-type codes. Localized labels live in the jurisdiction
-    # registry (e.g. NL: 'dwelling' -> 'Woning').
-    dwelling = "dwelling"
+    # Neutral building-type codes aligned with the Dutch Bbl "gebruiksfuncties"
+    # (building-code use functions). Localized labels live in the jurisdiction
+    # registry (e.g. NL: 'dwelling' -> 'Woning'), keeping codes language-neutral
+    # so other jurisdictions render their own labels for the same codes.
+    dwelling = "dwelling"  # woonfunctie
+    assembly = "assembly"  # bijeenkomstfunctie
+    cell = "cell"  # celfunctie
+    healthcare = "healthcare"  # gezondheidszorgfunctie
+    industrial = "industrial"  # industriefunctie
+    office = "office"  # kantoorfunctie
+    accommodation = "accommodation"  # logiesfunctie
+    education = "education"  # onderwijsfunctie
+    sport = "sport"  # sportfunctie
+    retail = "retail"  # winkelfunctie
+    non_building = "non_building"  # bouwwerk geen gebouw zijnde
+    other = "other"  # overige gebruiksfunctie / catch-all (dossier fallback)
+    # Legacy: superseded by the gebruiksfunctie codes above (kept valid for
+    # existing rows; not offered in the project wizard).
     commercial = "commercial"
-    other = "other"
 
 
 class Project(TimestampMixin, TenantBase):

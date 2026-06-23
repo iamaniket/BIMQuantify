@@ -490,9 +490,12 @@
         "reactivate": "Heractiveren",
         "archive": "Archiveren",
         "remove": "Verwijderen",
+        "removeAria": "Project verwijderen",
         "deleteTitle": "Project verwijderen",
         "deleteDescription": "\"{name}\" verwijderen uit actieve weergaven? Het wordt verborgen in normale projectlijsten.",
         "deleteConfirm": "Verwijderen",
+        "deleteConfirmPrompt": "Typ ter bevestiging de projectnaam \"{name}\" hieronder.",
+        "deleteConfirmPlaceholder": "Projectnaam",
         "archiveTitle": "Project archiveren",
         "archiveDescription": "\"{name}\" archiveren? Het project wordt alleen-lezen — niemand kan bewerken, controles uitvoeren of rapporten genereren totdat het opnieuw is geactiveerd.",
         "archiveConfirm": "Archiveren",
@@ -1212,7 +1215,29 @@
         "findingsOpenDetail": "{count, plural, =1 {1 open} other {# open}}",
         "findingsResolved": "Alle opgelost",
         "deadlinesOverdueDetail": "{count, plural, =1 {1 te laat} other {# te laat}}",
-        "deadlinesOnTrack": "Op schema"
+        "deadlinesOnTrack": "Op schema",
+        "rings": {
+          "title": "Projectvolledigheid",
+          "findingsLabel": "Bevindingen",
+          "dossierLabel": "Dossier",
+          "deadlinesLabel": "Deadlines",
+          "centerLabel": "Compleet",
+          "overallLabel": "Totaal",
+          "tooltip": "{filled} van {total} · {pct}%",
+          "tooltipNa": "Niet van toepassing",
+          "ariaLabel": "{label}: {value} van {total} compleet, {pct}%"
+        },
+        "expanded": {
+          "back": "Terug",
+          "dossierComplete": "Compleet",
+          "dossierRemaining": "Resterend",
+          "deadlinesMet": "Behaald",
+          "deadlinesPending": "Openstaand",
+          "deadlinesOverdue": "Verlopen",
+          "emptyFindings": "Nog geen bevindingen",
+          "emptyDeadlines": "Nog geen deadlines",
+          "emptyDossier": "Nog geen dossiervereisten"
+        }
       },
       "models": {
         "label": "Modellen",

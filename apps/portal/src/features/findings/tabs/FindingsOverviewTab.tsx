@@ -24,6 +24,7 @@ import { ChartSection } from '@/components/shared/charts/ChartSection';
 import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
 import { StatCard } from '@/components/shared/charts/StatCard';
 import { TrendArea } from '@/components/shared/charts/TrendArea';
+import { STATUS_COLORS, STATUS_ORDER, SEVERITY_ORDER } from '@/features/findings/findingChartConstants';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { severityBadgeVariant } from '@/features/projects/detail/findingBadges';
 import { formatDate, formatMonthDay } from '@/lib/formatting/dates';
@@ -33,19 +34,6 @@ import type {
   FindingStatusValue,
   ProjectMember,
 } from '@/lib/api/schemas';
-
-// Status colors lean on primary (open / in-progress) with success reserved for
-// the "done" states and a neutral for drafts — see CLAUDE.md token rule.
-const STATUS_COLORS: Record<FindingStatusValue, string> = {
-  draft: 'var(--foreground-tertiary)',
-  open: 'var(--primary)',
-  in_progress: 'var(--primary-hover)',
-  resolved: 'var(--success)',
-  verified: 'var(--success-hover)',
-};
-
-const STATUS_ORDER: FindingStatusValue[] = ['draft', 'open', 'in_progress', 'resolved', 'verified'];
-const SEVERITY_ORDER: FindingSeverityValue[] = ['high', 'medium', 'low'];
 
 const TREND_WEEKS = 8;
 const MS_WEEK = 7 * 24 * 60 * 60 * 1000;

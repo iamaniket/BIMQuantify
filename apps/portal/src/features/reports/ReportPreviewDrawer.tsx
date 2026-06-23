@@ -74,9 +74,11 @@ export function ReportPreviewDrawer({
                 <div className="mt-2 font-sans text-caption">{report.error}</div>
               ) : null}
             </div>
-          ) : report.download_url !== null ? (
+          ) : (report.view_url ?? report.download_url) !== null ? (
             <iframe
-              src={report.download_url}
+              // Prefer the inline-disposition URL so the PDF renders here; the
+              // attachment URL would make the iframe download instead of show.
+              src={report.view_url ?? report.download_url ?? undefined}
               title={report.title}
               className="h-[70vh] w-full rounded-md border border-border bg-background"
             />

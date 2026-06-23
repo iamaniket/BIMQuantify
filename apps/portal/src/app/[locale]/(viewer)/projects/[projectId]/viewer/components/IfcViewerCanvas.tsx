@@ -102,7 +102,10 @@ export function IfcViewerCanvas({
       background={{ color: settings.background.color }}
       effects={settings.effects}
       outline={{ enabled: settings.outline.enabled }}
-      hoverHighlight={{ color: settings.behavior.hoverHighlight.color }}
+      hoverHighlight={{
+        color: settings.behavior.hoverHighlight.color,
+        enabled: settings.behavior.hoverHighlight.enabled,
+      }}
       selectionHighlight={{ color: settings.behavior.selection.color }}
       shortcuts={settings.shortcuts}
       mouseBindings={settings.mouseBindings}

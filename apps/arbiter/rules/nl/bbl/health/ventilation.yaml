@@ -40,7 +40,7 @@ rules:
   chapter: '4'
   severity: warning
   applicable_building_types:
-  - residential
+  - dwelling
   applicability_filters:
   - operator: contains
     value: Living

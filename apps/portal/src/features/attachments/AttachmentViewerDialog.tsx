@@ -305,7 +305,7 @@ export function AttachmentViewerDialog({
   const exif = extractExifMeta(attachment);
   const dims = formatDims(exif.dims);
   const camera = formatCamera(exif.camera);
-  const darkStage = attachment.attachment_category === 'image'
+  const mediaStage = attachment.attachment_category === 'image'
     || attachment.attachment_category === 'video';
 
   // ── File ──
@@ -389,7 +389,7 @@ export function AttachmentViewerDialog({
           <div className="min-h-0 p-5">
             <div
               className={`relative h-full w-full overflow-hidden rounded-lg ${
-                darkStage ? 'bg-[#101316]' : 'bg-background-secondary'
+                mediaStage ? 'bg-surface-highest' : 'bg-background-secondary'
               }`}
             >
               <ContentPreview

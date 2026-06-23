@@ -26,6 +26,9 @@ export const ReportSchema = z.object({
   sha256: z.string().nullable(),
   error: z.string().nullable(),
   download_url: z.string().nullable(),
+  // Inline-disposition presigned URL — renders the PDF in the preview dialog's
+  // iframe (download_url forces a save). Populated alongside download_url.
+  view_url: z.string().nullable(),
   created_at: z.string(),
   finished_at: z.string().nullable(),
   // Verklaring sign-to-lock (#32). signed_at !== null ⇒ locked.

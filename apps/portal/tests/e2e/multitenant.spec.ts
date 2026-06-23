@@ -936,12 +936,14 @@ test.describe.serial('Multitenant E2E Journey', () => {
     // Re-navigate to clear any error toasts that overlay the header controls.
     await page.goto(`/en/projects/${state.projectId}`);
 
-    // --- Delete attempt (actions menu lives on the detail page header) ---
-    await page.getByRole('button', { name: 'Project actions' }).click();
-    await page.getByRole('menuitem', { name: /remove/i }).click();
+    // --- Delete attempt (Remove button lives on the detail page header) ---
+    await page.getByRole('button', { name: 'Remove project' }).click();
 
     const confirmDialog = page.getByRole('dialog');
     await expect(confirmDialog).toBeVisible();
+
+    // Type-to-confirm: the Remove button stays disabled until the project name is typed.
+    await confirmDialog.getByRole('textbox').fill(state.projectName);
 
     const [deleteResp] = await Promise.all([
       page.waitForResponse(
@@ -1937,7 +1939,9 @@ test.describe.serial('Multitenant E2E Journey', () => {
     state.lifecycleProjectId = idMatch[1];
   });
 
-  test('S2: admin archives the lifecycle project', async ({ page }) => {
+  // Archive/Reactivate (S2–S4) are temporarily removed from the frontend — the
+  // detail-page actions menu now offers only Remove. Skip until archive returns.
+  test.skip('S2: admin archives the lifecycle project', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto(`/en/projects/${state.lifecycleProjectId}`);
 
@@ -1962,7 +1966,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
   });
 
-  test('S3: archived project shows the Archived badge in the default project list', async ({ page }) => {
+  test.skip('S3: archived project shows the Archived badge in the default project list', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto('/en/projects');
 
@@ -1978,7 +1982,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await expect(page.getByText('Archived · read only')).toBeVisible({ timeout: 5_000 });
   });
 
-  test('S4: admin reactivates the archived project', async ({ page }) => {
+  test.skip('S4: admin reactivates the archived project', async ({ page }) => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto(`/en/projects/${state.lifecycleProjectId}`);
 
@@ -2004,20 +2008,22 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await page.goto(`/en/projects/${state.lifecycleProjectId}`);
 
     // Member was re-added to the org in M3-M5 but may not be on the lifecycle
-    // project. If the detail page (and its actions menu) is reachable, try to
+    // project. If the detail page (and its Remove button) is reachable, try to
     // delete; otherwise the member simply has no access — the correct outcome.
-    const actionsBtn = page.getByRole('button', { name: 'Project actions' });
-    const isVisible = await actionsBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+    const removeBtn = page.getByRole('button', { name: 'Remove project' });
+    const isVisible = await removeBtn.isVisible({ timeout: 5_000 }).catch(() => false);
     if (!isVisible) {
       // Member has no access to the project at all — passes (no access = no delete).
       return;
     }
 
-    await actionsBtn.click();
-    await page.getByRole('menuitem', { name: /remove/i }).click();
+    await removeBtn.click();
 
     const confirmDialog = page.getByRole('dialog');
     await expect(confirmDialog).toBeVisible();
+
+    // Type-to-confirm: the Remove button stays disabled until the project name is typed.
+    await confirmDialog.getByRole('textbox').fill(state.lifecycleProjectName);
 
     const [deleteResp] = await Promise.all([
       page.waitForResponse(
@@ -2036,13 +2042,15 @@ test.describe.serial('Multitenant E2E Journey', () => {
     await injectSavedAuth(page, state.adminEmail);
     await page.goto(`/en/projects/${state.lifecycleProjectId}`);
 
-    // Delete lives in the detail page header actions menu; on success the
+    // Delete lives in the detail page header (Remove button); on success the
     // component redirects to /projects (the project no longer exists).
-    await page.getByRole('button', { name: 'Project actions' }).click();
-    await page.getByRole('menuitem', { name: /remove/i }).click();
+    await page.getByRole('button', { name: 'Remove project' }).click();
 
     const confirmDialog = page.getByRole('dialog');
     await expect(confirmDialog).toBeVisible();
+
+    // Type-to-confirm: the Remove button stays disabled until the project name is typed.
+    await confirmDialog.getByRole('textbox').fill(state.lifecycleProjectName);
 
     const [deleteResp] = await Promise.all([
       page.waitForResponse(

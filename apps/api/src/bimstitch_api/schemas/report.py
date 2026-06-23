@@ -53,6 +53,9 @@ class ReportResponse(BaseModel):
     sha256: str | None
     error: str | None
     download_url: str | None = None  # Populated only when status=ready, presigned 15min.
+    # Same artifact, inline disposition — renders in-browser (the preview dialog's
+    # iframe) instead of triggering a download. Populated alongside download_url.
+    view_url: str | None = None
     created_at: datetime
     finished_at: datetime | None
     # Verklaring sign-to-lock (#32). signed_at != null ⇒ locked.

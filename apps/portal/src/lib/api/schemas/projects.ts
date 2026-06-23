@@ -15,9 +15,27 @@ export const ProjectPhaseEnum = z.enum([
 
 export type ProjectPhaseValue = z.infer<typeof ProjectPhaseEnum>;
 
-// Neutral building-type codes. Localized labels are registered per
-// jurisdiction on the API (e.g. NL: 'dwelling' -> 'Woning').
-export const BuildingTypeEnum = z.enum(['dwelling', 'commercial', 'other']);
+// Neutral building-type codes aligned with the Dutch Bbl "gebruiksfuncties".
+// Localized labels are registered per jurisdiction on the API (e.g. NL:
+// 'dwelling' -> 'Woning'). Must list EVERY code the API can return —
+// including the legacy `commercial` — or response validation rejects
+// existing projects. The wizard offers a narrower selectable subset
+// (see `BUILDING_TYPE_OPTIONS`).
+export const BuildingTypeEnum = z.enum([
+  'dwelling',
+  'assembly',
+  'cell',
+  'healthcare',
+  'industrial',
+  'office',
+  'accommodation',
+  'education',
+  'sport',
+  'retail',
+  'non_building',
+  'other',
+  'commercial',
+]);
 export type BuildingTypeValue = z.infer<typeof BuildingTypeEnum>;
 
 export const ProjectRoleEnum = z.enum([

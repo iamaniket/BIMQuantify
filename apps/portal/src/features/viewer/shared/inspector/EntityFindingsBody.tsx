@@ -25,6 +25,7 @@ import {
 } from '@/features/projects/detail/findingBadges';
 import type { FindingTemplate, LinkedFileTypeValue } from '@/lib/api/schemas';
 import { formatDate } from '@/lib/formatting/dates';
+import { useViewerEntityStore } from '@/stores/viewerEntityStore';
 import type { Locale } from '@bimstitch/i18n';
 
 import { consumePendingElementPoint } from './pendingElementPoint';
@@ -251,6 +252,14 @@ export function EntityFindingsBody({
                 setCreateExpanded(false);
                 setPendingPoint(null);
                 setExpandedId(id);
+                // Right-click "Add finding" highlighted the entity to anchor the
+                // finding. On save the creation workflow is done — drop the 3D
+                // highlight. The bridge mirrors this to the viewer (selection.set([])
+                // → repaint). Inspector stays open and falls back to project-scope
+                // findings (new finding included).
+                if (scope.kind === 'element') {
+                  useViewerEntityStore.getState().clearSelection();
+                }
               }}
               onCancel={() => {
                 setCreateExpanded(false);

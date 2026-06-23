@@ -12,7 +12,7 @@ rules:
   chapter: '4'
   severity: error
   applicable_building_types:
-  - residential
+  - dwelling
   applicability_filters:
   - operator: contains
     value: Storage

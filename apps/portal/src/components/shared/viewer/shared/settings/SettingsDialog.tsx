@@ -450,12 +450,10 @@ function applyLiveCommands3D(
 ): void {
   if (!handle) return;
 
-  if (snapshot.behavior.hoverHighlight.enabled !== draft.behavior.hoverHighlight.enabled) {
-    handle.commands.execute('hover.setEnabled', draft.behavior.hoverHighlight.enabled).catch(() => undefined);
-  }
-  if (snapshot.behavior.selection.enabled !== draft.behavior.selection.enabled) {
-    handle.commands.execute('selection.setEnabled', draft.behavior.selection.enabled).catch(() => undefined);
-  }
+  // Hover/selection enable/disable is owned by the page-level effect that
+  // tracks `settings.behavior.*.enabled` (the single source of truth), so it's
+  // applied via Save → setSettings → effect. Only the live colors are dispatched
+  // here.
 
   const snapIP = snapshot.interactivePerformance;
   const draftIP = draft.interactivePerformance;

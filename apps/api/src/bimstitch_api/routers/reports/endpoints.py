@@ -116,12 +116,19 @@ async def _to_response(
     report: Report, storage: StorageBackend
 ) -> ReportResponse:
     download_url: str | None = None
+    view_url: str | None = None
     if report.status is ReportStatus.ready and report.storage_key is not None:
-        download_url = await storage.presigned_get_url(
-            report.storage_key, f"{report.title}.pdf"
+        filename = f"{report.title}.pdf"
+        # Two presigns over the same object: download_url forces a save
+        # (attachment), view_url renders inline so the preview dialog's iframe
+        # shows the PDF instead of triggering a download.
+        download_url = await storage.presigned_get_url(report.storage_key, filename)
+        view_url = await storage.presigned_get_url(
+            report.storage_key, filename, disposition="inline"
         )
     payload = ReportResponse.model_validate(report).model_dump()
     payload["download_url"] = download_url
+    payload["view_url"] = view_url
     return ReportResponse(**payload)
 
 
