@@ -18,7 +18,7 @@ export type DossierRequirementResult = {
 };
 
 /** Requirements grouped under one localized category header. */
-export type DossierCategoryGroup = {
+type DossierCategoryGroup = {
   category: string;
   requirements: DossierRequirementResult[];
   filled: number;
@@ -37,7 +37,7 @@ export type DossierCompleteness = {
   groups: DossierCategoryGroup[];
 };
 
-export type DossierDerivedInput = {
+type DossierDerivedInput = {
   /** Total non-deleted models (drives the `derived`/`models` signal). */
   modelCount?: number;
   /** Models with at least one viewable/processed file (drives `model`-kind). */
@@ -192,7 +192,7 @@ export function selectDossierTemplate(
   return templates['other'] ?? [];
 }
 
-export type CompletionPoint = { t: number; pct: number };
+type CompletionPoint = { t: number; pct: number };
 
 /**
  * Replays ready attachments and certificates oldest-first, tracking when each

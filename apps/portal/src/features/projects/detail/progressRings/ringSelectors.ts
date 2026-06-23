@@ -29,7 +29,7 @@ export function isFindingComplete(f: Finding): boolean {
 /** Which kind of thing a finding is anchored to. Element-anchored findings also
  * carry their model/file links as provenance, so the ladder checks the most
  * specific link first. */
-export type FindingEntityKind = 'element' | 'model' | 'file' | 'unlinked';
+type FindingEntityKind = 'element' | 'model' | 'file' | 'unlinked';
 
 export function findingEntityKind(f: Finding): FindingEntityKind {
   if (f.linked_element_global_id !== null) return 'element';
@@ -41,9 +41,9 @@ export function findingEntityKind(f: Finding): FindingEntityKind {
 /** Sentinel category key for findings with no `bbl_article_ref`. */
 export const UNCATEGORIZED = '__uncategorized__';
 
-export type CategoryCount = { ref: string; count: number };
+type CategoryCount = { ref: string; count: number };
 
-export type FindingsBreakdown = {
+type FindingsBreakdown = {
   total: number;
   /** resolved + verified. */
   complete: number;
@@ -107,7 +107,7 @@ export function selectFindingsBreakdown(findings: Finding[]): FindingsBreakdown 
 // Deadlines
 // ---------------------------------------------------------------------------
 
-export type DeadlinesBreakdown = {
+type DeadlinesBreakdown = {
   /** Excludes `not_applicable` — those are not part of the obligation. */
   total: number;
   met: number;

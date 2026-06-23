@@ -17,7 +17,7 @@ export type FindingCreateFormValues = {
  * is the version-independent element identity; `linkedFileId` records the raised-on
  * version; `linkedPoint` + `linkedFileType` drive the flattened anchor columns.
  */
-export type FindingCreateLinkVars = {
+type FindingCreateLinkVars = {
   linkedModelId?: string | null | undefined;
   linkedFileId?: string | null | undefined;
   linkedElementGlobalId?: string | null | undefined;
@@ -32,7 +32,7 @@ export type FindingCreateExtra = {
   template?: FindingTemplate | null | undefined;
 };
 
-export type BuildFindingCreateResult =
+type BuildFindingCreateResult =
   | { ok: true; payload: FindingCreateInput }
   | { ok: false };
 

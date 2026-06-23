@@ -18,7 +18,7 @@ import {
 } from './dossierTemplate';
 import { useDeadlines } from './deadlines/useDeadlines';
 
-export type DossierCompletenessState = DossierCompleteness & {
+type DossierCompletenessState = DossierCompleteness & {
   /** True once the queries are in flight — the percentage is not yet meaningful. */
   isLoading: boolean;
   /** No requirement template for this jurisdiction/building type. */

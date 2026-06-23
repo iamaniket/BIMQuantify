@@ -24,7 +24,7 @@ export type PendingProjectInvite = {
   role: ProjectRole;
 };
 
-export type ProjectCreatePayload = ProjectCreateInput & {
+type ProjectCreatePayload = ProjectCreateInput & {
   thumbnailFile: File | undefined;
   members?: PendingProjectMember[];
   invites?: PendingProjectInvite[];
@@ -32,9 +32,9 @@ export type ProjectCreatePayload = ProjectCreateInput & {
 
 /** A team add/invite that failed after the project was already created. The
  * project still exists, so we surface these rather than rolling back. */
-export type ProjectTeamFailure = { label: string; reason: string };
+type ProjectTeamFailure = { label: string; reason: string };
 
-export type ProjectCreateResult = {
+type ProjectCreateResult = {
   project: Project;
   failures: ProjectTeamFailure[];
 };

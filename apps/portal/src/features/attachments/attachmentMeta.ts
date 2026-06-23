@@ -18,11 +18,11 @@ export function formatCoord(lat: number, lon: number): string {
   return `${Math.abs(lat).toFixed(6)}° ${latDir}, ${Math.abs(lon).toFixed(6)}° ${lonDir}`;
 }
 
-export type GpsData = { latitude: number; longitude: number; altitude: number | null };
-export type CameraData = { make: string | null; model: string | null };
-export type ImageDims = { width: number | null; height: number | null };
+type GpsData = { latitude: number; longitude: number; altitude: number | null };
+type CameraData = { make: string | null; model: string | null };
+type ImageDims = { width: number | null; height: number | null };
 
-export type ExifMeta = {
+type ExifMeta = {
   gps: GpsData | null;
   camera: CameraData | null;
   dims: ImageDims | null;

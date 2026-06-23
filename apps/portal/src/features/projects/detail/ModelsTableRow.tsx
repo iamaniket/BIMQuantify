@@ -34,6 +34,7 @@ import { viewerKeys } from '@/features/viewer/shared/queryKeys';
 import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
+import { formatFileSize } from '@/lib/formatting/files';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { RowActionPill } from '@/components/shared/resource/RowActionPill';
@@ -324,7 +325,7 @@ export function ModelsTableRow({
               <>
                 <span className="truncate">{latestFile.original_filename}</span>
                 <span className="shrink-0">·</span>
-                <span className="shrink-0">{(latestFile.size_bytes / 1048576).toFixed(0)} MB</span>
+                <span className="shrink-0">{formatFileSize(latestFile.size_bytes)}</span>
                 <span className="shrink-0">·</span>
                 <span className="shrink-0">{formatRelativeTime(latestFile.updated_at, t)}</span>
               </>

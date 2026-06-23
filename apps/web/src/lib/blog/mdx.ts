@@ -38,7 +38,7 @@ export function getAllSlugs(_locale: Locale): string[] {
     .map((f) => f.replace(/\.mdx$/, ''));
 }
 
-export function getPostBySlug(slug: string, locale: Locale): { meta: PostMeta; content: string } {
+function getPostBySlug(slug: string, locale: Locale): { meta: PostMeta; content: string } {
   const filePath = resolvePostPath(slug, locale);
   const raw = fs.readFileSync(filePath, 'utf-8');
   const { data, content } = matter(raw);
@@ -59,7 +59,7 @@ export function getPostBySlug(slug: string, locale: Locale): { meta: PostMeta; c
   };
 }
 
-export function getAllPosts(locale: Locale): PostMeta[] {
+function getAllPosts(locale: Locale): PostMeta[] {
   return getAllSlugs(locale)
     .map((slug) => getPostBySlug(slug, locale).meta)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

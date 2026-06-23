@@ -13,10 +13,10 @@ import {
   PHASE_OPTIONS as FALLBACK_PHASE,
 } from './projectWizardSteps';
 
-export type WizardPhaseOption = { value: ProjectPhaseValue; label: string };
-export type WizardBuildingTypeOption = { value: BuildingTypeValue; label: string };
+type WizardPhaseOption = { value: ProjectPhaseValue; label: string };
+type WizardBuildingTypeOption = { value: BuildingTypeValue; label: string };
 
-export type WizardOptions = {
+type WizardOptions = {
   phaseOptions: readonly WizardPhaseOption[];
   buildingTypeOptions: readonly WizardBuildingTypeOption[];
 };
