@@ -199,6 +199,66 @@ def _dossier_finding_payload(
     }
 
 
+def _snag_photo_payload(att: ProjectFile) -> dict[str, object]:
+    """A finding photo's storage key + content type + a best-effort capture
+    timestamp (the server-stamped `server_received_at` when present, else the
+    upload time). The worker fetches the object and embeds it; the timestamp is
+    printed under the image (Ed Controls evidence pattern)."""
+    captured_at: str | None = None
+    meta = att.capture_metadata if isinstance(att.capture_metadata, dict) else None
+    raw = meta.get("server_received_at") if meta else None
+    if isinstance(raw, str) and raw:
+        captured_at = raw
+    elif att.created_at is not None:
+        captured_at = att.created_at.isoformat()
+    return {
+        "storage_key": att.storage_key,
+        "content_type": att.content_type,
+        "captured_at": captured_at,
+    }
+
+
+def _snag_finding_payload(
+    finding: Finding, atts: dict[str, ProjectFile]
+) -> dict[str, object]:
+    """A finding for the per-recipient snag list — the human fields a
+    subcontractor needs to act (title, severity, status, deadline, assignee,
+    Bbl ref, location), plus its image attachments (the worker embeds them).
+    Mirrors `_dossier_finding_payload` but adds the assignee + per-photo capture
+    timestamp and drops the dossier-only model-id field. `assignee` must be
+    eager-loaded by the resolver."""
+    photos: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for aid in list(finding.photo_ids or []) + list(finding.resolution_evidence_ids or []):
+        key = str(aid)
+        if key in seen:
+            continue
+        seen.add(key)
+        att = atts.get(key)
+        if att is None or not att.content_type.startswith("image/"):
+            continue
+        photos.append(_snag_photo_payload(att))
+    return {
+        "title": finding.title,
+        "description": finding.description,
+        "severity": finding.severity.value,
+        "status": finding.status.value,
+        "assignee": _user_display_name(finding.assignee),
+        "deadline_date": finding.deadline_date.isoformat() if finding.deadline_date else None,
+        "bbl_article_ref": finding.bbl_article_ref,
+        "resolution_note": finding.resolution_note,
+        "created_at": finding.created_at.isoformat() if finding.created_at else None,
+        # Anchored BIM element identity + location (the "snap" GUID/location).
+        "linked_element_global_id": finding.linked_element_global_id,
+        "linked_file_type": finding.linked_file_type,
+        "anchor_page": finding.anchor_page,
+        "anchor_x": finding.anchor_x,
+        "anchor_y": finding.anchor_y,
+        "anchor_z": finding.anchor_z,
+        "photos": photos,
+    }
+
+
 def _dossier_certificate_payload(cert: Certificate) -> dict[str, object]:
     """A certificate's metadata + storage key (the worker merges PDF certs)."""
     return {

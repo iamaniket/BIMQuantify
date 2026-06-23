@@ -5,6 +5,7 @@ export const ReportTypeSchema = z.enum([
   'assurance_plan', // NL: borgingsplan (#31)
   'completion_declaration', // NL: verklaring (#32)
   'dossier', // dossier bevoegd gezag (#33)
+  'snag_list', // per-recipient bevindingen snag list (#G2)
 ]);
 export type ReportType = z.infer<typeof ReportTypeSchema>;
 

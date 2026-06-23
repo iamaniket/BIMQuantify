@@ -1,8 +1,8 @@
 {
   "metadata": {
     "title": "BimDossier",
-    "defaultTitle": "BimDossier — the Wkb dossier platform for Dutch contractors",
-    "description": "The model-native Wkb dossier platform for Dutch contractors, built for the Wet kwaliteitsborging voor het bouwen. Snags pinned in 3D, deadlines that track themselves, a dossier ready for gereedmelding. EU-hosted."
+    "defaultTitle": "BimDossier · the Wkb dossier platform for Dutch contractors",
+    "description": "The Wkb dossier platform for Dutch contractors, built on your model and made for the Wet kwaliteitsborging voor het bouwen. Pin snags in 3D, let deadlines track themselves, and walk into gereedmelding with the dossier already done. EU-hosted."
   },
   "header": {
     "brand": "BimDossier",
@@ -14,7 +14,7 @@
   "hero": {
     "badge": "Private pilot · limited spots for Dutch aannemers",
     "headline": "The Wkb dossier platform, built on your model.",
-    "subtitle": "The dedicated platform for the Wet kwaliteitsborging voor het bouwen. Pin every finding on your 3D BIM model — or straight onto a PDF floor plan when that's all you have. Deadlines track themselves from bouwmelding to gereedmelding, and your dossier stays ready for the kwaliteitsborger and bevoegd gezag — not scattered across folders and spreadsheets.",
+    "subtitle": "Built only for the Wet kwaliteitsborging voor het bouwen. Pin every finding on your 3D BIM model. No model yet? Pin it straight onto a PDF floor plan. Deadlines track themselves from bouwmelding to gereedmelding, so your dossier is always ready for the kwaliteitsborger and bevoegd gezag instead of scattered across folders and spreadsheets.",
     "trust": "In private pilot with Dutch aannemers · EU-hosted, DPA included · Works alongside any kwaliteitsborger and instrument",
     "ctaPrimary": "Request early access",
     "ctaDemo": "See it on the model"
@@ -22,8 +22,7 @@
   "features": {
     "eyebrow": "Capabilities",
     "headline": "Your whole Wkb dossier, built on your model",
-    "subtitle": "From bouwmelding to gereedmelding, your entire Wkb dossier runs in one place: snags in 3D, certificates tracked, deadlines computed, filed on time.",
-    "readMore": "Read more"
+    "subtitle": "From bouwmelding to gereedmelding, your whole Wkb dossier runs in one place: snags pinned on the model, certificates kept up to date, deadlines worked out for you, and everything filed on time."
   },
   "featureDetail": {
     "backToFeatures": "Back to features",
@@ -38,7 +37,7 @@
   "roadmap": {
     "eyebrow": "On the roadmap",
     "headline": "What we're building next",
-    "subtitle": "Already in design or in progress — not available yet.",
+    "subtitle": "Already in design or in progress. Not available yet.",
     "badge": "Coming soon",
     "items": {
       "comments": {
@@ -51,7 +50,7 @@
       },
       "ai": {
         "title": "AI dossier assistant",
-        "body": "Ask questions across your documents and drawings. Self-hosted and privacy-first — your data never leaves our EU infrastructure."
+        "body": "Ask questions across your documents and drawings. Self-hosted and privacy-first, so your data never leaves our EU infrastructure."
       },
       "push": {
         "title": "Mobile push reminders",
@@ -64,19 +63,19 @@
     "headline": "From project start to gereedmelding in four steps",
     "step1": {
       "title": "Create your project",
-      "body": "Enter the address with Dutch autocomplete, select building type and gevolgklasse, set planned dates. Deadlines are computed automatically."
+      "body": "Enter the address with Dutch autocomplete, pick the building type and gevolgklasse, and set your planned dates. We compute the deadlines automatically."
     },
     "step2": {
       "title": "Upload documents",
-      "body": "Drawings, certificates, KB documents — upload everything in one place. The dossier checklist shows what is still missing."
+      "body": "Drawings, certificates, KB documents: upload everything in one place. The dossier checklist shows what's still missing."
     },
     "step3": {
       "title": "Track findings",
-      "body": "Log inspection findings, assign resolution to your team, upload evidence photos. Full lifecycle from open to verified."
+      "body": "Log inspection findings, assign them to your team, and upload evidence photos. Each one runs its full lifecycle, from open to verified."
     },
     "step4": {
       "title": "File on time",
-      "body": "Email reminders before every deadline. Download the complete dossier package for gereedmelding filing at the Omgevingsloket."
+      "body": "Email reminders land before every deadline. When it's time, download the complete dossier package and file your gereedmelding at the Omgevingsloket."
     }
   },
   "cta": {
@@ -96,7 +95,7 @@
   "blog": {
     "eyebrow": "Blog",
     "headline": "Insights & updates",
-    "subtitle": "Wkb compliance, Dutch building regulations, and product updates — from the team building the model-native dossier.",
+    "subtitle": "Wkb compliance, Dutch building regulations, and product updates, straight from the team building the dossier that runs on your model.",
     "empty": "No posts yet. Check back soon.",
     "readingTime": "min read"
   },
@@ -111,22 +110,22 @@
     "headline": "Let's find the right plan for your team",
     "subtitle": "We'll walk you through BimDossier, answer your questions, and help you choose the plan that fits your projects.",
     "bookCall": "Book a call",
-    "bookCallDescription": "Schedule a 30-minute demo with our team. We'll show you the platform and discuss pricing tailored to your situation.",
+    "bookCallDescription": "Schedule a 30-minute demo with our team. We'll show you the platform and talk through pricing that fits your situation.",
     "orEmail": "Or send us an email",
     "emailDescription": "Prefer email? Reach out and we'll get back to you within one business day.",
     "emailButton": "Email us",
-    "noBookingUrl": "Booking link coming soon — please reach out via email in the meantime."
+    "noBookingUrl": "Booking link coming soon. For now, just reach out by email."
   },
   "requestAccessPage": {
     "backToHome": "Back to home",
     "intro": {
       "eyebrow": "Pilot program",
-      "subtitle": "We're opening a limited pilot to a small group of Dutch contractors. Tell us about your team — if it's a fit, we'll be in touch."
+      "subtitle": "We're opening a limited pilot to a small group of Dutch contractors. Tell us about your team, and if it's a fit we'll be in touch."
     },
     "errors": {
-      "pendingDuplicate": "We've already received your request. Give us a day to review — we'll email you.",
+      "pendingDuplicate": "We've already got your request. Give us a day to look it over and we'll email you.",
       "alreadyApproved": "Your BimDossier account is already set up. Check your email for the activation link, or contact support if you didn't receive one.",
-      "rateLimited": "Too many requests from your network — please try again in an hour.",
+      "rateLimited": "Too many requests from your network. Please try again in an hour.",
       "generic": "We couldn't submit your request: {detail}",
       "unreachable": "We couldn't reach the BimDossier API. Please try again in a moment."
     }
@@ -140,7 +139,7 @@
     "hintWatch": "Each pin flags a real Wkb snag",
     "learnMoreBlog": "Learn how Wkb borging works on the blog",
     "fallbackTitle": "Interactive 3D snag inspection",
-    "fallbackBody": "Your browser cannot show the live 3D model, but here are the snags it carries:",
+    "fallbackBody": "Your browser can't show the live 3D model, but here are the snags it carries:",
     "fallbackAlt": "Interactive 3D building model with quality-assurance snags",
     "severity": {
       "low": "Low",
@@ -174,8 +173,8 @@
   },
   "trust": {
     "eyebrow": "Why you can trust it",
-    "headline": "Built for a regulated pilot — and honest about it",
-    "subtitle": "Your dossier is legally load-bearing. Here is exactly who is behind the platform, where your data lives, and where it stops.",
+    "headline": "Built for a regulated pilot, and honest about it",
+    "subtitle": "Your dossier is legally load-bearing. So here's exactly who builds the platform, where your data lives, and where our responsibility ends.",
     "items": {
       "hosting": {
         "title": "EU-hosted, DPA included",
@@ -187,7 +186,7 @@
       },
       "team": {
         "title": "A Dutch team, reachable",
-        "body": "Built in the Netherlands by the team behind BimDossier. During the pilot you reach us directly — no ticket queue."
+        "body": "Built in the Netherlands by the team behind BimDossier. During the pilot you reach us directly. No ticket queue."
       }
     },
     "dpaLink": "Read our DPA"
@@ -198,15 +197,15 @@
     "items": [
       {
         "q": "What does \"private pilot\" mean for me?",
-        "a": "We onboard a small group of Dutch aannemers by hand. You get early access, a direct line to the team, and a say in what we build next — in exchange for real-world feedback."
+        "a": "We onboard a small group of Dutch aannemers by hand. You get early access, a direct line to the team, and a say in what we build next. In exchange, we ask for honest real-world feedback."
       },
       {
         "q": "Where does my data live, and is there a DPA?",
-        "a": "Everything runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with every pilot partner — read our DPA for the details."
+        "a": "Everything runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with every pilot partner. Read our DPA for the details."
       },
       {
         "q": "Do I need BIM models, or do PDF floor plans work too?",
-        "a": "Both. Pin findings straight onto a PDF plattegrond when that's all you have, or onto a federated IFC model when you do — the dossier works the same either way."
+        "a": "Both. Pin findings straight onto a PDF plattegrond when that's all you have, or onto a federated IFC model when you've got one. Either way, the dossier works the same."
       },
       {
         "q": "Does this replace my kwaliteitsborger or instrument?",
@@ -218,7 +217,7 @@
       },
       {
         "q": "What does the pilot cost?",
-        "a": "Pilot pricing is tailored to your team and projects. Request access and we'll talk it through — starting the conversation commits you to nothing."
+        "a": "Pilot pricing depends on your team and projects. Request access and we'll talk it through. Starting the conversation commits you to nothing."
       }
     ]
   },
@@ -227,7 +226,7 @@
     "eyebrow": "Platform for the Wet kwaliteitsborging voor het bouwen (Wkb)",
     "statusReady": "Wkb {version} ready",
     "headline": "Your <em>models</em>, <em>findings</em> and <em>dossier</em> in one Wkb record.",
-    "body": "Pin findings on your model, track every deadline, and keep the dossier ready for the kwaliteitsborger and bevoegd gezag — built for the Wet kwaliteitsborging voor het bouwen (Wkb).",
+    "body": "Pin findings on your model, track every deadline, and keep the dossier ready for the kwaliteitsborger and bevoegd gezag. Built for the Wet kwaliteitsborging voor het bouwen (Wkb).",
     "status": {
       "normal": "Normal",
       "degraded": "Degraded",

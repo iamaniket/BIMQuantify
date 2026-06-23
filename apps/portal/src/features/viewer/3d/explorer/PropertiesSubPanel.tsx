@@ -36,7 +36,7 @@ export function PropertiesSubPanel({
   onToggle,
 }: PropertiesSubPanelProps): JSX.Element {
   const t = useTranslations('viewer.explorer');
-  const tInspector = useTranslations('viewerInspector');
+  const tFindings = useTranslations('viewerFindings');
 
   const {
     element,
@@ -94,7 +94,7 @@ export function PropertiesSubPanel({
       body = (
         <PanelEmptyState
           icon={Info}
-          message={tInspector('messages.allSelected', {
+          message={tFindings('messages.allSelected', {
             count: metadata?.totalElements ?? 0,
           })}
         />

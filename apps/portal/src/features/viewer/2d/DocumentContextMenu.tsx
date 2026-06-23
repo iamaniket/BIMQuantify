@@ -38,13 +38,13 @@ type MenuItem = {
 
 type Props = {
   handle: ContextMenuHandle | null;
-  onRequestInspector: (view: 'findings') => void;
+  onRequestFindings: (view: 'findings') => void;
   shortcuts?: DocumentShortcutMap;
   ready: boolean | undefined;
   /**
    * Override for the "Add finding" action. When provided (the floor-plan pane),
    * it replaces the default PDF normalized-point stash: the floor plan converts
-   * the click to a 3D world anchor before the inspector opens. Awaited so the
+   * the click to a 3D world anchor before the Findings panel opens. Awaited so the
    * anchor is stashed before the create dialog reads it. PDF callers omit it.
    */
   onAddFinding?: (menu: ContextMenuData) => void | Promise<void>;
@@ -156,7 +156,7 @@ const PositionedMenu = forwardRef(function PositionedMenu(
 // Root component
 // ---------------------------------------------------------------------------
 
-export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, ready, onAddFinding }: Props): JSX.Element | null {
+export function DocumentContextMenu({ handle, onRequestFindings, shortcuts, ready, onAddFinding }: Props): JSX.Element | null {
   const t = useTranslations('viewer.docContextMenu');
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -228,7 +228,7 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, rea
             } else {
               stashPoint();
             }
-            onRequestInspector('findings');
+            onRequestFindings('findings');
             closeMenu();
           })();
         },
@@ -244,7 +244,7 @@ export function DocumentContextMenu({ handle, onRequestInspector, shortcuts, rea
         },
       },
     ];
-  }, [t, menu, handle, closeMenu, onRequestInspector, sc, stashPoint, onAddFinding]);
+  }, [t, menu, handle, closeMenu, onRequestFindings, sc, stashPoint, onAddFinding]);
 
   if (!menu) return null;
 

@@ -255,7 +255,7 @@ export function EntityFindingsBody({
                 // Right-click "Add finding" highlighted the entity to anchor the
                 // finding. On save the creation workflow is done — drop the 3D
                 // highlight. The bridge mirrors this to the viewer (selection.set([])
-                // → repaint). Inspector stays open and falls back to project-scope
+                // → repaint). The Findings panel stays open and falls back to project-scope
                 // findings (new finding included).
                 if (scope.kind === 'element') {
                   useViewerEntityStore.getState().clearSelection();

@@ -1,8 +1,10 @@
 import type { SortQueryParams } from './admin';
 import { apiClient, type PaginatedResponse } from './client';
 import {
+  ActivityTimelineSchema,
   ProjectActivityListSchema,
   type ActivityCategory,
+  type ActivityTimeline,
   type ProjectActivityList,
 } from './schemas/activity';
 
@@ -13,6 +15,13 @@ export type ListProjectActivityParams = {
   limit?: number | undefined;
   offset?: number | undefined;
 } & SortQueryParams;
+
+/** Bucketing + filter params for the activity-over-time trend. */
+export type ListProjectActivityTimelineParams = {
+  bucket?: 'day' | 'week' | undefined;
+  since?: string | undefined;
+  category?: ActivityCategory | undefined;
+};
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
   const parts: string[] = [];
@@ -33,6 +42,21 @@ export async function listProjectActivityPage(
   return apiClient.getWithMeta<ProjectActivityList>(
     `/projects/${projectId}/activity${query}`,
     ProjectActivityListSchema,
+    accessToken,
+  );
+}
+
+/** Activity-over-time trend — non-empty time buckets, ascending by start. No
+ * total-count header, so a plain `get` (not `getWithMeta`). */
+export async function listProjectActivityTimeline(
+  accessToken: string,
+  projectId: string,
+  params: ListProjectActivityTimelineParams = {},
+): Promise<ActivityTimeline> {
+  const query = buildQuery(params);
+  return apiClient.get<ActivityTimeline>(
+    `/projects/${projectId}/activity/timeline${query}`,
+    ActivityTimelineSchema,
     accessToken,
   );
 }

@@ -64,9 +64,9 @@ type Props = {
   /** Current viewer layout — drives the Split-entry camera/first-person behavior. */
   viewMode: ViewMode;
   onFindingClick: (finding: Finding) => void;
-  /** Open a side-panel inspector view (e.g. from the right-click "Add finding"). */
-  onRequestInspector: (view: 'findings') => void;
-  /** Surface the plan handle up so the inspector can pin on the plan in 2D mode. */
+  /** Open the Findings side-panel view (e.g. from the right-click "Add finding"). */
+  onRequestFindings: (view: 'findings') => void;
+  /** Surface the plan handle up so the Findings panel can pin on the plan in 2D mode. */
   onFpHandle?: ((handle: FloorPlanViewerHandle | null) => void) | undefined;
   /** Report the active storey elevation so a plan pick lifts to the right floor. */
   onActiveElevationChange?: ((elevation: number | null) => void) | undefined;
@@ -86,7 +86,7 @@ export function FloorPlanPane({
   fileId,
   viewMode,
   onFindingClick,
-  onRequestInspector,
+  onRequestFindings,
   onFpHandle,
   onActiveElevationChange,
 }: Props): ReactElement | null {
@@ -296,7 +296,7 @@ export function FloorPlanPane({
       />
       <DocumentContextMenu
         handle={fpHandle}
-        onRequestInspector={onRequestInspector}
+        onRequestFindings={onRequestFindings}
         onAddFinding={handleAddFinding}
         ready={planRendered}
       />

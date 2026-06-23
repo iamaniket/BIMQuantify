@@ -20,6 +20,7 @@ import { PageShell } from '@/components/shared/layout/PageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
 import { ProjectChartsPanel } from '@/features/projects/detail/ProjectChartsPanel';
+import { ActivityTimelinePanel } from '@/features/projects/detail/ActivityTimelinePanel';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
 import { ActivityPanel } from '@/features/projects/detail/ActivityPanel';
 import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
@@ -168,13 +169,16 @@ export default function ProjectDetailPage(): JSX.Element {
           />
         }
       >
-        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-2 xl:grid-cols-3">
-          <ProjectChartsPanel
-            dossier={dossier}
-            findings={findings}
-            deadlines={deadlines}
-            country={project.country}
-          />
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-2 xl:grid-cols-[18fr_11fr_11fr]">
+          <div className="flex min-h-0 flex-col gap-3.5">
+            <ProjectChartsPanel
+              dossier={dossier}
+              findings={findings}
+              deadlines={deadlines}
+              country={project.country}
+            />
+            <ActivityTimelinePanel projectId={projectId} />
+          </div>
 
           <RightColumnTabs
             projectId={projectId}

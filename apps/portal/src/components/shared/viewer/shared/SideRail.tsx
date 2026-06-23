@@ -11,7 +11,7 @@ import type { ViewerFormat } from '@/components/shared/viewer/shared/viewerMode'
 
 export type PanelId =
   | 'explorer'
-  | 'inspector'
+  | 'findings'
   | 'measure'
   | 'section'
   | 'drawingInfo'
@@ -45,7 +45,7 @@ type RailButton = {
 };
 
 const IFC_BUTTONS: RailButton[] = [
-  { id: 'inspector', labelKey: 'titleInspector', icon: Info },
+  { id: 'findings', labelKey: 'titleFindings', icon: Info },
   { id: 'explorer', labelKey: 'titleExplorer', icon: ListTree },
   { id: 'measure', labelKey: 'titleMeasure', icon: Ruler },
   { id: 'section', labelKey: 'titleSection', icon: Scan },
@@ -53,7 +53,7 @@ const IFC_BUTTONS: RailButton[] = [
 ];
 
 const PDF_BUTTONS: RailButton[] = [
-  { id: 'inspector', labelKey: 'titleInspector', icon: Info },
+  { id: 'findings', labelKey: 'titleFindings', icon: Info },
   { id: 'measure', labelKey: 'titleMeasure', icon: Ruler },
   { id: 'bcf', labelKey: 'titleBcf', icon: Flag },
 ];

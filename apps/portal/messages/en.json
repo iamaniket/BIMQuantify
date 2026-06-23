@@ -1821,6 +1821,23 @@
       "unassigned": "Unassigned",
       "assigneeTooltip": "Filter by {name}"
     },
+    "export": {
+      "csv": "Export CSV",
+      "csvError": "Could not export the findings CSV.",
+      "snag": "Snag report",
+      "dialogTitle": "Snag report (PDF)",
+      "dialogSubtitle": "Generate a snag list to hand to a subcontractor. It appears under the project's Reports when ready.",
+      "recipientLabel": "Recipient (assignee)",
+      "recipientAll": "All assignees",
+      "statusLabel": "Status",
+      "severityLabel": "Severity",
+      "anyOption": "Any",
+      "generate": "Generate",
+      "generating": "Generating…",
+      "cancel": "Cancel",
+      "success": "Snag report is being generated — find it under Reports.",
+      "error": "Could not generate the snag report."
+    },
     "tabs": {
       "board": "Findings",
       "overview": "Overview",
@@ -2118,6 +2135,12 @@
         "description": "Bundle the full dossier for the gereedmelding. You'll get an email when it's ready.",
         "generate": "Dossier",
         "missingData": "Not enough data to assemble the dossier yet."
+      },
+      "snag_list": {
+        "title": "Snag list",
+        "description": "A per-recipient snag list to hand to a subcontractor, generated from the findings board.",
+        "generate": "Snag list",
+        "missingData": "No findings match this selection."
       }
     },
     "sign": {
@@ -3270,6 +3293,8 @@
     "colType": "Type",
     "colActivity": "Activity",
     "systemActor": "System",
+    "trendTitle": "Activity over time",
+    "trendEmpty": "No activity in this period.",
     "modelCreated": "Created model {name}",
     "modelUpdated": "Updated model {name}",
     "modelDeleted": "Deleted model {name}",
@@ -3411,7 +3436,7 @@
     },
     "sidePanel": {
       "titleExplorer": "Explorer",
-      "titleInspector": "Inspector",
+      "titleFindings": "Findings",
       "titleMeasure": "Measure",
       "titleSection": "Sections",
       "titlePages": "Pages",
@@ -3845,19 +3870,6 @@
       "invertSelection": "Invert Selection"
     }
   },
-  "viewerInspector": {
-    "panelTitle": "Attachments & Findings",
-    "tabAttachments": "Attachments",
-    "tabFindings": "Findings",
-    "tabCertificates": "Certificates",
-    "pdfPageHeader": "Page {page}",
-    "messages": {
-      "allSelected": "All {count, number} elements selected. Select a single element to inspect it.",
-      "noElementData": "Element data not available. Re-extract the model to inspect this element.",
-      "noGlobalId": "This element has no GlobalId; attachments cannot be linked.",
-      "pdfNotInitialized": "PDF state not initialized."
-    }
-  },
   "viewerFindings": {
     "count": "{count, plural, =0 {No findings} one {# finding} other {# findings}}",
     "filterPlaceholder": "Search findings…",
@@ -3865,7 +3877,14 @@
     "loading": "Loading findings…",
     "emptyNoItems": "No findings linked to this element yet.",
     "emptyProjectEmpty": "No project-level findings.",
-    "emptyFileEmpty": "No findings linked to this file yet."
+    "emptyFileEmpty": "No findings linked to this file yet.",
+    "pdfPageHeader": "Page {page}",
+    "messages": {
+      "allSelected": "All {count, number} elements selected. Select a single element to inspect it.",
+      "noElementData": "Element data not available. Re-extract the model to inspect this element.",
+      "noGlobalId": "This element has no GlobalId; findings cannot be linked.",
+      "pdfNotInitialized": "PDF state not initialized."
+    }
   },
   "viewerCertificates": {
     "filterPlaceholder": "Search certificates…",

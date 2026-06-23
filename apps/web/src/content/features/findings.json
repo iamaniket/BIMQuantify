@@ -13,30 +13,30 @@
   ],
   "en": {
     "title": "Finding management",
-    "card": "Log inspection findings from your kwaliteitsborger, assign resolution, and upload evidence photos. Track every finding from open to verified.",
+    "card": "Log inspection findings from your kwaliteitsborger and assign who fixes each one. Upload the photos that prove it, and follow every finding from open to verified.",
     "tagline": "Every inspection finding, from open to verified",
-    "intro": "Log what your kwaliteitsborger finds during an inspection, assign who fixes it, attach the photos that prove resolution, and follow each finding all the way from open to verified. Every issue lives in one place with its location, severity, and history, so quality assurance under the Wkb becomes a tracked process instead of a scramble through inboxes.",
+    "intro": "Log what your kwaliteitsborger finds during an inspection. Assign who fixes it, attach the photos that prove resolution, and follow each finding all the way from open to verified. Every issue lives in one place, with its location, severity, and history attached. That turns quality assurance under the Wkb into a tracked process instead of a scramble through inboxes.",
     "problemTitle": "Findings get lost between site and dossier",
-    "problem": "Kwaliteitsborgers raise findings during inspections, but those findings usually scatter the moment they're recorded — into email threads, photo rolls, and a spreadsheet someone keeps locally. Resolution stalls because no one is sure who owns what, the same issue gets re-inspected from memory, and when handover arrives there's no defensible record that each point was actually closed. For a regime built on demonstrable quality assurance, an untraceable finding is a liability.",
+    "problem": "Kwaliteitsborgers raise findings during inspections, but those findings usually scatter the moment they're recorded. One ends up in an email thread, another on someone's camera roll, the rest in a spreadsheet kept on a local drive. Resolution stalls because no one's sure who owns what. The same issue gets re-inspected from memory. And when handover arrives, there's nothing that proves each point was actually closed. For a regime built on demonstrable quality assurance, a finding you can't trace is a liability.",
     "solutionTitle": "A single, auditable lifecycle for every finding",
     "solution": [
-      "Each finding carries its location, severity, assignee, due date, and evidence photos in one place.",
-      "Status moves through a clear flow — open, in progress, resolved, verified — that everyone on the project can see.",
+      "Each finding keeps its location, severity, assignee, due date, and evidence photos together in one record.",
+      "Status moves through a clear flow that everyone on the project can see: open, in progress, resolved, verified.",
       "A full audit trail records who changed what and when, ready to hand to the bevoegd gezag.",
       "Findings link straight to their location on the drawing or 3D model, so anyone can jump back to the exact spot."
     ],
     "highlights": [
       {
         "title": "One record per finding",
-        "body": "Location, severity, assignee, due date, and evidence photos live together, so nothing about an issue is spread across tools."
+        "body": "Location, severity, assignee, due date, and evidence photos all live together. Nothing about an issue gets spread across separate tools."
       },
       {
         "title": "Clear status lifecycle",
-        "body": "Open, in progress, resolved, verified — a visible flow everyone follows, so resolution never quietly stalls."
+        "body": "Open, in progress, resolved, verified. It's a visible flow everyone follows, so resolution never quietly stalls."
       },
       {
         "title": "Field-level audit trail",
-        "body": "Every change is logged with who and when, giving the bevoegd gezag a defensible record that each issue was closed."
+        "body": "Every change is logged with who made it and when. That gives the bevoegd gezag a defensible record that each issue was closed."
       },
       {
         "title": "Anchored to the model",
@@ -46,15 +46,15 @@
     "faq": [
       {
         "q": "What information does a finding hold?",
-        "a": "A finding records its location, severity, assignee, due date, status, and evidence photos, along with a full history of changes — everything needed to track and prove resolution in one record."
+        "a": "A finding records its location, severity, assignee, due date, status, and evidence photos, plus a full history of every change. It's everything you need to track and prove resolution, all in one record."
       },
       {
         "q": "How do findings move from open to verified?",
-        "a": "Each finding follows a visible status flow — open, in progress, resolved, then verified — so the whole team can see where every issue stands and resolution doesn't stall in someone's inbox."
+        "a": "Each finding follows a visible status flow: open, in progress, resolved, then verified. The whole team can see where every issue stands, so resolution doesn't stall in someone's inbox."
       },
       {
         "q": "Is there an audit trail for the bevoegd gezag?",
-        "a": "Yes. Every change to a finding is recorded with who made it and when, producing a defensible, field-level audit trail you can hand to the bevoegd gezag at handover."
+        "a": "Yes. Every change to a finding is recorded with who made it and when. That produces a defensible, field-level audit trail you can hand to the bevoegd gezag at handover."
       }
     ],
     "imageCaptions": [
@@ -73,30 +73,30 @@
   },
   "nl": {
     "title": "Bevindingen beheren",
-    "card": "Registreer inspectiebevindingen van uw kwaliteitsborger, wijs oplossingen toe en upload bewijsfoto's. Volg elke bevinding van open tot geverifieerd.",
+    "card": "Registreer inspectiebevindingen van uw kwaliteitsborger en wijs per punt toe wie het oplost. Upload de foto's die de oplossing aantonen en volg elke bevinding van open tot geverifieerd.",
     "tagline": "Elke inspectiebevinding, van open tot geverifieerd",
-    "intro": "Registreer wat uw kwaliteitsborger tijdens een inspectie vindt, wijs toe wie het oplost, voeg de foto's toe die de oplossing bewijzen en volg elke bevinding van open tot geverifieerd. Elk punt staat op één plek met locatie, urgentie en historie, zodat kwaliteitsborging onder de Wkb een gevolgd proces wordt in plaats van zoeken in inboxen.",
+    "intro": "Registreer wat uw kwaliteitsborger tijdens een inspectie vindt. Wijs toe wie het oplost, voeg de foto's toe die de oplossing bewijzen en volg elke bevinding van open tot geverifieerd. Elk punt staat op één plek, met locatie, urgentie en historie erbij. Zo wordt kwaliteitsborging onder de Wkb een proces dat u kunt volgen in plaats van een zoektocht door inboxen.",
     "problemTitle": "Bevindingen gaan verloren tussen bouwplaats en dossier",
-    "problem": "Kwaliteitsborgers melden bevindingen tijdens inspecties, maar die bevindingen raken meestal verspreid zodra ze worden vastgelegd — in e-mailthreads, fotorollen en een spreadsheet die iemand lokaal bijhoudt. De afhandeling stokt omdat niemand zeker weet wie wat oppakt, hetzelfde punt wordt uit het geheugen opnieuw geïnspecteerd, en bij oplevering is er geen verdedigbaar bewijs dat elk punt echt is afgesloten. Voor een stelsel dat draait om aantoonbare kwaliteitsborging is een niet-traceerbare bevinding een risico.",
+    "problem": "Kwaliteitsborgers melden bevindingen tijdens inspecties, maar die bevindingen raken meestal verspreid zodra ze worden vastgelegd. De ene belandt in een e-mailthread, de andere op iemands camera, de rest in een spreadsheet op een lokale schijf. De afhandeling stokt omdat niemand zeker weet wie wat oppakt. Hetzelfde punt wordt uit het geheugen opnieuw geïnspecteerd. En bij oplevering is er niets dat aantoont dat elk punt echt is afgesloten. Voor een stelsel dat draait om aantoonbare kwaliteitsborging is een bevinding die u niet kunt traceren een risico.",
     "solutionTitle": "Eén controleerbare levenscyclus voor elke bevinding",
     "solution": [
-      "Elke bevinding bevat de locatie, urgentie, toegewezen persoon, einddatum en bewijsfoto's op één plek.",
-      "De status doorloopt een duidelijke flow — open, in behandeling, opgelost, geverifieerd — die voor iedereen in het project zichtbaar is.",
+      "Elke bevinding houdt de locatie, urgentie, toegewezen persoon, einddatum en bewijsfoto's bij elkaar in één record.",
+      "De status doorloopt een duidelijke flow die voor iedereen in het project zichtbaar is: open, in behandeling, opgelost, geverifieerd.",
       "Een volledige audittrail legt vast wie wat wanneer wijzigde, klaar om aan het bevoegd gezag te overhandigen.",
       "Bevindingen linken direct naar hun locatie op de tekening of het 3D-model, zodat iedereen naar de exacte plek terug kan springen."
     ],
     "highlights": [
       {
         "title": "Eén record per bevinding",
-        "body": "Locatie, urgentie, toegewezen persoon, einddatum en bewijsfoto's staan bij elkaar, zodat niets over een punt verspreid raakt over tools."
+        "body": "Locatie, urgentie, toegewezen persoon, einddatum en bewijsfoto's staan bij elkaar. Niets over een punt raakt verspreid over losse tools."
       },
       {
         "title": "Duidelijke statuslevenscyclus",
-        "body": "Open, in behandeling, opgelost, geverifieerd — een zichtbare flow die iedereen volgt, zodat de afhandeling nooit stilletjes stokt."
+        "body": "Open, in behandeling, opgelost, geverifieerd. Het is een zichtbare flow die iedereen volgt, zodat de afhandeling nooit stilletjes stokt."
       },
       {
         "title": "Audittrail op veldniveau",
-        "body": "Elke wijziging wordt vastgelegd met wie en wanneer, wat het bevoegd gezag een verdedigbaar bewijs geeft dat elk punt is afgesloten."
+        "body": "Elke wijziging wordt vastgelegd met wie en wanneer. Zo geeft u het bevoegd gezag een verdedigbaar bewijs dat elk punt is afgesloten."
       },
       {
         "title": "Verankerd aan het model",
@@ -106,15 +106,15 @@
     "faq": [
       {
         "q": "Welke informatie bevat een bevinding?",
-        "a": "Een bevinding legt de locatie, urgentie, toegewezen persoon, einddatum, status en bewijsfoto's vast, samen met een volledige wijzigingshistorie — alles wat nodig is om de oplossing te volgen en aan te tonen in één record."
+        "a": "Een bevinding legt de locatie, urgentie, toegewezen persoon, einddatum, status en bewijsfoto's vast, plus een volledige wijzigingshistorie. Alles wat u nodig hebt om de oplossing te volgen en aan te tonen, staat in één record."
       },
       {
         "q": "Hoe gaan bevindingen van open naar geverifieerd?",
-        "a": "Elke bevinding volgt een zichtbare statusflow — open, in behandeling, opgelost en daarna geverifieerd — zodat het hele team ziet waar elk punt staat en de afhandeling niet in een inbox blijft hangen."
+        "a": "Elke bevinding volgt een zichtbare statusflow: open, in behandeling, opgelost en daarna geverifieerd. Het hele team ziet waar elk punt staat, zodat de afhandeling niet in een inbox blijft hangen."
       },
       {
         "q": "Is er een audittrail voor het bevoegd gezag?",
-        "a": "Ja. Elke wijziging aan een bevinding wordt vastgelegd met wie het deed en wanneer, wat een verdedigbare audittrail op veldniveau oplevert die u bij oplevering aan het bevoegd gezag kunt overhandigen."
+        "a": "Ja. Elke wijziging aan een bevinding wordt vastgelegd met wie het deed en wanneer. Dat levert een verdedigbare audittrail op veldniveau op die u bij oplevering aan het bevoegd gezag kunt overhandigen."
       }
     ],
     "imageCaptions": [

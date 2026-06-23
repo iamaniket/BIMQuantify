@@ -18,3 +18,14 @@ class ProjectActivityEntry(BaseModel):
     before: dict[str, Any] | None
     after: dict[str, Any] | None
     created_at: datetime
+
+
+class ActivityTimelineBucket(BaseModel):
+    """One time bucket of the project activity-over-time trend.
+
+    Only buckets with at least one event are returned (ascending by
+    ``bucket_start``); the client zero-fills gaps over its fixed time axis.
+    """
+
+    bucket_start: datetime
+    count: int

@@ -39,7 +39,7 @@ export function RequestAccessSuccess({
           We&rsquo;ve logged your pilot application for{' '}
           <strong className="text-foreground-secondary">{company}</strong> and will send a
           personalised invitation to <strong className="text-foreground-secondary">{email}</strong> after
-          a quick review — usually within one business day.
+          a quick review, usually within one business day.
         </p>
       </div>
 

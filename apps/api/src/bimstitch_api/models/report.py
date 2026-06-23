@@ -36,6 +36,7 @@ class ReportType(StrEnum):
     assurance_plan = "assurance_plan"  # NL: borgingsplan (#31)
     completion_declaration = "completion_declaration"  # NL: verklaring (#32)
     dossier = "dossier"  # dossier bevoegd gezag (#33)
+    snag_list = "snag_list"  # per-recipient bevindingen snag-list PDF (#G2)
 
 
 class ReportStatus(StrEnum):

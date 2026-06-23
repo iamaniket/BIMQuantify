@@ -10,12 +10,19 @@ import {
   type FindingUpdateInput,
 } from './schemas';
 
+export type FindingExportFilters = {
+  status?: string;
+  severity?: string;
+  assigneeUserId?: string;
+};
+
 export async function listFindings(
   accessToken: string,
   projectId: string,
   filters?: {
     status?: string;
     severity?: string;
+    assignee?: string;
     linkedModelId?: string;
     linkedFileId?: string;
     linkedElementGlobalId?: string;
@@ -27,6 +34,7 @@ export async function listFindings(
   const params = new URLSearchParams();
   if (filters?.status !== undefined) params.set('status_filter', filters.status);
   if (filters?.severity !== undefined) params.set('severity', filters.severity);
+  if (filters?.assignee) params.set('assignee_user_id', filters.assignee);
   // UUID params: an empty string is not a valid UUID and 422s server-side, so
   // only send them when non-empty (truthy), not merely `!== undefined`.
   if (filters?.linkedModelId) params.set('linked_model_id', filters.linkedModelId);
@@ -90,4 +98,20 @@ export async function deleteFinding(
   findingId: string,
 ): Promise<void> {
   return apiClient.delete(`/projects/${projectId}/findings/${findingId}`, accessToken);
+}
+
+/** Download the project's findings (bevindingen) as CSV, honouring the same
+ * filters as the list view. Returns the blob + the server-suggested filename
+ * (parsed from Content-Disposition). Mirrors `downloadComplianceCsv`. */
+export async function downloadFindingsCsv(
+  accessToken: string,
+  projectId: string,
+  filters?: FindingExportFilters,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set('status_filter', filters.status);
+  if (filters?.severity) params.set('severity', filters.severity);
+  if (filters?.assigneeUserId) params.set('assignee_user_id', filters.assigneeUserId);
+  const query = params.size === 0 ? '' : `?${params.toString()}`;
+  return apiClient.getBlob(`/projects/${projectId}/findings/export.csv${query}`, accessToken);
 }

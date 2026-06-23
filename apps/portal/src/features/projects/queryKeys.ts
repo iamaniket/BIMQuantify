@@ -15,6 +15,15 @@ export const projectActivityKey = <P>(
 ): readonly ['projects', string, 'activity', P] =>
   ['projects', projectId, 'activity', params] as const;
 
+/** Activity-over-time trend key. Nested under the `activity` segment so the
+ * `isProjectActivityQueryKey` predicate refreshes the chart alongside the list
+ * when a new event arrives. */
+export const projectActivityTimelineKey = <P>(
+  projectId: string,
+  params: P,
+): readonly ['projects', string, 'activity', 'timeline', P] =>
+  ['projects', projectId, 'activity', 'timeline', params] as const;
+
 /** True for any project-activity feed query key, regardless of project/params.
  * Used by the global mutation + WebSocket hooks that don't know the active id. */
 export const isProjectActivityQueryKey = (key: readonly unknown[]): boolean =>

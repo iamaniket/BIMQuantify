@@ -25,6 +25,7 @@ class JobType(StrEnum):
     assurance_plan_report = "assurance_plan_report"  # NL: borgingsplan PDF (#31)
     completion_declaration_report = "completion_declaration_report"  # NL: verklaring (#32)
     dossier_report = "dossier_report"  # dossier bevoegd gezag (#33)
+    snag_list_report = "snag_list_report"  # per-recipient bevindingen snag-list PDF (#G2)
 
 
 class JobStatus(StrEnum):

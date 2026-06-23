@@ -13,48 +13,48 @@
   ],
   "en": {
     "title": "Team roles & audit trail",
-    "card": "Invite your team with the right permissions (owner, editor, viewer, inspector). Every change is logged for an audit-ready history.",
+    "card": "Invite your team with the right permissions (owner, editor, viewer, inspector). Every change is logged, so you always have a history you can show.",
     "tagline": "The right access, with a full audit trail",
-    "intro": "Invite your whole team — and your kwaliteitsborger — with precise, role-based permissions, then let the platform log every change automatically. Owner, editor, viewer, and inspector roles control exactly who can see and do what, while a complete audit trail builds the defensible who-did-what history the Wkb dossier needs to stand up to scrutiny.",
+    "intro": "Invite your whole team, plus your kwaliteitsborger, with precise role-based permissions. The platform then logs every change on its own. Owner, editor, viewer, and inspector roles control who can see and do what. Meanwhile a complete audit trail builds the who-did-what history the Wkb dossier needs to hold up when someone checks it.",
     "problemTitle": "Open access and no record is a liability",
-    "problem": "Construction projects involve many hands — the contractor, subcontractors, the client, and the kwaliteitsborger — and without role-based access, every one of them can change anything, including records that are supposed to be fixed. Without a log, you also can't show who did what or when. Both are a real liability under the Wkb, where the dossier has to demonstrate a controlled process; an editable history with no accountability is exactly what a reviewer will not accept.",
+    "problem": "Construction projects involve many hands: the contractor, subcontractors, the client, the kwaliteitsborger. Without role-based access, every one of them can change anything, including records that are supposed to stay fixed. And without a log, you can't show who did what or when. Both are a real liability under the Wkb, where the dossier has to demonstrate a controlled process. An editable history with no accountability is exactly what a reviewer won't accept.",
     "solutionTitle": "Role-based access plus a complete log",
     "solution": [
-      "Assign each member a role — owner, editor, viewer, or inspector — that fits their job.",
-      "Permissions gate what each person can see and change across the project.",
+      "Give each member a role that fits their job: owner, editor, viewer, or inspector.",
+      "Permissions decide what each person can see and change across the project.",
       "Every change is recorded in an audit trail you can hand to the bevoegd gezag.",
-      "Invite your kwaliteitsborger and external parties with exactly the access they need, no more."
+      "Invite your kwaliteitsborger and external parties with exactly the access they need, nothing more."
     ],
     "highlights": [
       {
         "title": "Role-based permissions",
-        "body": "Owner, editor, viewer, and inspector roles set exactly what each person can see and change, so access matches the job."
+        "body": "Owner, editor, viewer, and inspector roles set what each person can see and change, so access matches the job."
       },
       {
         "title": "Scoped invitations",
-        "body": "Invite your team, client, and kwaliteitsborger with precisely the access they need — and nothing they don't."
+        "body": "Invite your team, client, and kwaliteitsborger with the access their role needs, and nothing it doesn't."
       },
       {
         "title": "Complete audit trail",
-        "body": "Every change is logged with who and when, building the defensible history the Wkb dossier has to demonstrate."
+        "body": "Every change is logged with who and when. That's the defensible history the Wkb dossier has to show."
       },
       {
         "title": "Built for scrutiny",
-        "body": "An accountable, controlled record is exactly what the bevoegd gezag expects when the dossier is reviewed."
+        "body": "A controlled, accountable record is what the bevoegd gezag expects when the dossier comes up for review."
       }
     ],
     "faq": [
       {
         "q": "What roles can I assign to team members?",
-        "a": "You can assign owner, editor, viewer, and inspector roles, each granting a different level of access. Permissions then gate exactly what every person can see and change across the project."
+        "a": "You can assign owner, editor, viewer, and inspector roles, each with a different level of access. Permissions then decide exactly what every person can see and change across the project."
       },
       {
         "q": "Can I give my kwaliteitsborger limited access?",
-        "a": "Yes. You can invite external parties — including your kwaliteitsborger — with precisely the access their role needs and nothing more, so they can do their job without exposing the rest of the project."
+        "a": "Yes. You can invite external parties, including your kwaliteitsborger, with the access their role needs and nothing more. They can do their job without seeing the rest of the project."
       },
       {
         "q": "Is there a record of who changed what?",
-        "a": "Every change is captured in a complete, project-wide audit trail with the user and timestamp, giving you the accountable, defensible history the Wkb dossier needs to stand up to the bevoegd gezag."
+        "a": "Every change is captured in a complete, project-wide audit trail with the user and timestamp. That gives you the accountable, defensible history the Wkb dossier needs to hold up in front of the bevoegd gezag."
       }
     ],
     "imageCaptions": [
@@ -73,34 +73,34 @@
   },
   "nl": {
     "title": "Teamrollen & audittrail",
-    "card": "Nodig uw team uit met de juiste rechten (eigenaar, bewerker, lezer, inspecteur). Elke wijziging wordt vastgelegd voor een audit-ready historie.",
+    "card": "Nodig uw team uit met de juiste rechten (eigenaar, bewerker, lezer, inspecteur). Elke wijziging wordt vastgelegd, zodat u altijd een historie heeft die u kunt laten zien.",
     "tagline": "De juiste toegang, met een volledige audittrail",
-    "intro": "Nodig uw hele team — en uw kwaliteitsborger — uit met precieze, rolgebaseerde rechten en laat het platform elke wijziging automatisch vastleggen. De rollen eigenaar, bewerker, lezer en inspecteur bepalen exact wie wat mag zien en doen, terwijl een volledige audittrail de verdedigbare wie-deed-wat-historie opbouwt die het Wkb-dossier nodig heeft om de toets te doorstaan.",
+    "intro": "Nodig uw hele team uit, en uw kwaliteitsborger, met precieze rolgebaseerde rechten. Het platform legt vervolgens elke wijziging vanzelf vast. De rollen eigenaar, bewerker, lezer en inspecteur bepalen wie wat mag zien en doen. Ondertussen legt een volledige audittrail vast wie wat deed, het overzicht dat het Wkb-dossier nodig heeft om stand te houden zodra iemand het controleert.",
     "problemTitle": "Open toegang zonder registratie is een risico",
-    "problem": "Bouwprojecten kennen veel handen — de aannemer, onderaannemers, de opdrachtgever en de kwaliteitsborger — en zonder rolgebaseerde toegang kan ieder van hen alles wijzigen, inclusief vastleggingen die juist vast horen te staan. Zonder logboek kunt u bovendien niet aantonen wie wat wanneer deed. Beide zijn een echt risico onder de Wkb, waar het dossier een beheerst proces moet aantonen; een bewerkbare historie zonder verantwoording is precies wat een beoordelaar niet accepteert.",
+    "problem": "Bouwprojecten kennen veel handen: de aannemer, onderaannemers, de opdrachtgever, de kwaliteitsborger. Zonder rolgebaseerde toegang kan ieder van hen alles wijzigen, inclusief vastleggingen die juist vast horen te staan. En zonder logboek kunt u niet aantonen wie wat wanneer deed. Beide vormen een echt risico onder de Wkb, waar het dossier een beheerst proces moet aantonen. Een bewerkbare historie zonder verantwoording is precies wat een beoordelaar niet accepteert.",
     "solutionTitle": "Rolgebaseerde toegang plus een volledig logboek",
     "solution": [
-      "Wijs elk lid een rol toe — eigenaar, bewerker, lezer of inspecteur — die bij hun taak past.",
-      "Rechten bepalen wat elke persoon kan zien en wijzigen binnen het project.",
+      "Geef elk lid een rol die bij de taak past: eigenaar, bewerker, lezer of inspecteur.",
+      "Rechten bepalen wat elke persoon binnen het project kan zien en wijzigen.",
       "Elke wijziging wordt vastgelegd in een audittrail die u aan het bevoegd gezag kunt overhandigen.",
       "Nodig uw kwaliteitsborger en externe partijen uit met precies de toegang die ze nodig hebben, niet meer."
     ],
     "highlights": [
       {
         "title": "Rolgebaseerde rechten",
-        "body": "De rollen eigenaar, bewerker, lezer en inspecteur bepalen exact wat elke persoon kan zien en wijzigen, zodat toegang bij de taak past."
+        "body": "De rollen eigenaar, bewerker, lezer en inspecteur bepalen wat elke persoon kan zien en wijzigen, zodat de toegang bij de taak past."
       },
       {
         "title": "Afgebakende uitnodigingen",
-        "body": "Nodig uw team, opdrachtgever en kwaliteitsborger uit met precies de toegang die ze nodig hebben — en niets wat ze niet nodig hebben."
+        "body": "Nodig uw team, opdrachtgever en kwaliteitsborger uit met de toegang die hun rol nodig heeft, en niets daarbuiten."
       },
       {
         "title": "Volledige audittrail",
-        "body": "Elke wijziging wordt vastgelegd met wie en wanneer, en bouwt de verdedigbare historie op die het Wkb-dossier moet aantonen."
+        "body": "Elke wijziging wordt vastgelegd met wie en wanneer. Dat is de verdedigbare historie die het Wkb-dossier moet kunnen tonen."
       },
       {
         "title": "Gebouwd voor de toets",
-        "body": "Een verantwoorde, beheerste vastlegging is precies wat het bevoegd gezag verwacht wanneer het dossier wordt beoordeeld."
+        "body": "Een beheerste, verantwoorde vastlegging is wat het bevoegd gezag verwacht wanneer het dossier wordt beoordeeld."
       }
     ],
     "faq": [
@@ -110,11 +110,11 @@
       },
       {
         "q": "Kan ik mijn kwaliteitsborger beperkte toegang geven?",
-        "a": "Ja. U kunt externe partijen — waaronder uw kwaliteitsborger — uitnodigen met precies de toegang die hun rol nodig heeft en niets meer, zodat zij hun werk kunnen doen zonder de rest van het project bloot te leggen."
+        "a": "Ja. U kunt externe partijen uitnodigen, waaronder uw kwaliteitsborger, met precies de toegang die hun rol nodig heeft en niets meer. Zo kunnen ze hun werk doen zonder de rest van het project in te zien."
       },
       {
         "q": "Is er een vastlegging van wie wat wijzigde?",
-        "a": "Elke wijziging wordt vastgelegd in een volledige, projectbrede audittrail met de gebruiker en het tijdstip, wat u de verantwoorde, verdedigbare historie geeft die het Wkb-dossier nodig heeft om de toets van het bevoegd gezag te doorstaan."
+        "a": "Elke wijziging wordt vastgelegd in een volledige, projectbrede audittrail met de gebruiker en het tijdstip. Dat geeft u de verantwoorde, verdedigbare historie die het Wkb-dossier nodig heeft om de toets van het bevoegd gezag te doorstaan."
       }
     ],
     "imageCaptions": [

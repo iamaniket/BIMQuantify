@@ -1,8 +1,8 @@
 {
   "metadata": {
     "title": "BimDossier",
-    "defaultTitle": "BimDossier — het Wkb-dossierplatform voor Nederlandse aannemers",
-    "description": "BimDossier is het Wkb-dossierplatform dat op uw model draait, voor Nederlandse aannemers. Gebouwd voor de Wet kwaliteitsborging voor het bouwen: bevindingen vastgezet in 3D, deadlines die automatisch bewaakt worden en een dossier dat klaarligt voor uw gereedmelding. EU-gehost, privacy-first."
+    "defaultTitle": "BimDossier · het Wkb-dossierplatform voor Nederlandse aannemers",
+    "description": "BimDossier is het Wkb-dossierplatform dat op uw model draait, gemaakt voor Nederlandse aannemers. Gebouwd voor de Wet kwaliteitsborging voor het bouwen: bevindingen vastgezet in 3D, deadlines die zichzelf bewaken en een dossier dat klaarligt voor uw gereedmelding. EU-gehost, privacy-first."
   },
   "header": {
     "brand": "BimDossier",
@@ -14,7 +14,7 @@
   "hero": {
     "badge": "Private pilot · beperkt aantal plekken voor Nederlandse aannemers",
     "headline": "Het Wkb-dossierplatform, gebouwd op uw model.",
-    "subtitle": "Het platform speciaal voor de Wet kwaliteitsborging voor het bouwen. Zet elke bevinding vast op uw 3D-BIM-model — of gewoon op een PDF-plattegrond als u meer niet heeft. Deadlines worden automatisch bewaakt van bouwmelding tot gereedmelding, en uw dossier ligt klaar voor de kwaliteitsborger en het bevoegd gezag — niet verspreid over mappen en spreadsheets.",
+    "subtitle": "Gebouwd puur voor de Wet kwaliteitsborging voor het bouwen. Zet elke bevinding vast op uw 3D-BIM-model. Nog geen model? Zet hem dan gewoon op een PDF-plattegrond. Deadlines worden bewaakt van bouwmelding tot gereedmelding, zodat uw dossier altijd klaarligt voor de kwaliteitsborger en het bevoegd gezag in plaats van verspreid over mappen en spreadsheets.",
     "trust": "In private pilot met Nederlandse aannemers · EU-gehost, inclusief verwerkersovereenkomst · Werkt naast elke kwaliteitsborger en elk instrument",
     "ctaPrimary": "Vraag early access aan",
     "ctaDemo": "Bekijk het op het model"
@@ -22,8 +22,7 @@
   "features": {
     "eyebrow": "Mogelijkheden",
     "headline": "Uw complete Wkb-dossier, gebouwd op uw model",
-    "subtitle": "Van bouwmelding tot gereedmelding draait uw complete Wkb-dossier op één plek: bevindingen in 3D, certificaten bewaakt, deadlines in beeld en op tijd ingediend.",
-    "readMore": "Lees meer"
+    "subtitle": "Van bouwmelding tot gereedmelding draait uw hele Wkb-dossier op één plek: bevindingen vastgezet op het model, certificaten bijgehouden, deadlines voor u uitgerekend en alles op tijd ingediend."
   },
   "featureDetail": {
     "backToFeatures": "Terug naar functies",
@@ -38,7 +37,7 @@
   "roadmap": {
     "eyebrow": "Op de roadmap",
     "headline": "Wat we hierna bouwen",
-    "subtitle": "Al in ontwerp of in ontwikkeling — nog niet beschikbaar.",
+    "subtitle": "Al in ontwerp of in ontwikkeling. Nog niet beschikbaar.",
     "badge": "Binnenkort",
     "items": {
       "comments": {
@@ -51,7 +50,7 @@
       },
       "ai": {
         "title": "AI-dossierassistent",
-        "body": "Stel vragen over al uw documenten en tekeningen. Zelf-gehost en privacy-first — uw data verlaat onze EU-infrastructuur nooit."
+        "body": "Stel vragen over al uw documenten en tekeningen. Zelf-gehost en privacy-first, dus uw data verlaat onze EU-infrastructuur nooit."
       },
       "push": {
         "title": "Mobiele push-herinneringen",
@@ -64,19 +63,19 @@
     "headline": "Van projectstart tot gereedmelding in vier stappen",
     "step1": {
       "title": "Maak uw project aan",
-      "body": "Voer het adres in met Nederlandse autocomplete, selecteer gebouwtype en gevolgklasse, stel geplande data in. Deadlines worden automatisch berekend."
+      "body": "Voer het adres in met Nederlandse autocomplete, kies het gebouwtype en de gevolgklasse en stel uw geplande data in. De deadlines rekenen wij automatisch uit."
     },
     "step2": {
       "title": "Upload documenten",
-      "body": "Tekeningen, certificaten, KB-documenten — upload alles op één plek. De dossier-checklist laat zien wat er nog ontbreekt."
+      "body": "Tekeningen, certificaten, KB-documenten: upload alles op één plek. De dossier-checklist laat zien wat er nog ontbreekt."
     },
     "step3": {
       "title": "Volg bevindingen",
-      "body": "Registreer inspectiebevindingen, wijs oplossingen toe aan uw team, upload bewijsfoto's. Volledige levenscyclus van open tot geverifieerd."
+      "body": "Registreer inspectiebevindingen, wijs ze toe aan uw team en upload bewijsfoto's. Elke bevinding doorloopt de volledige levenscyclus, van open tot geverifieerd."
     },
     "step4": {
       "title": "Dien op tijd in",
-      "body": "E-mailherinneringen vóór elke deadline. Download het volledige dossierpakket voor gereedmelding bij het Omgevingsloket."
+      "body": "E-mailherinneringen vóór elke deadline. Als het zover is, downloadt u het volledige dossierpakket en dient u uw gereedmelding in bij het Omgevingsloket."
     }
   },
   "cta": {
@@ -96,7 +95,7 @@
   "blog": {
     "eyebrow": "Blog",
     "headline": "Inzichten & updates",
-    "subtitle": "Wkb-compliance, Nederlandse bouwregelgeving en productupdates — van het team achter het dossier dat op uw BIM-model draait.",
+    "subtitle": "Wkb-compliance, Nederlandse bouwregelgeving en productupdates, rechtstreeks van het team achter het dossier dat op uw BIM-model draait.",
     "empty": "Nog geen berichten. Kom snel terug.",
     "readingTime": "min leestijd"
   },
@@ -115,18 +114,18 @@
     "orEmail": "Of stuur ons een e-mail",
     "emailDescription": "Liever e-mailen? Neem contact op en we reageren binnen één werkdag.",
     "emailButton": "Mail ons",
-    "noBookingUrl": "Boekingslink volgt binnenkort — neem in de tussentijd contact op via e-mail."
+    "noBookingUrl": "Boekingslink volgt binnenkort. Neem in de tussentijd gerust contact op via e-mail."
   },
   "requestAccessPage": {
     "backToHome": "Terug naar home",
     "intro": {
       "eyebrow": "Pilotprogramma",
-      "subtitle": "We openen een beperkte pilot voor een kleine groep Nederlandse aannemers. Vertel ons over uw team — als het past, nemen we contact op."
+      "subtitle": "We openen een beperkte pilot voor een kleine groep Nederlandse aannemers. Vertel ons over uw team, en als het past nemen we contact op."
     },
     "errors": {
-      "pendingDuplicate": "We hebben je aanvraag al ontvangen. Geef ons een dag om hem te beoordelen — we sturen je een e-mail.",
+      "pendingDuplicate": "We hebben je aanvraag al binnen. Geef ons een dag om ernaar te kijken, dan sturen we je een e-mail.",
       "alreadyApproved": "Je BimDossier-account staat al klaar. Controleer je e-mail voor de activatielink, of neem contact op met support als je hem niet hebt ontvangen.",
-      "rateLimited": "Te veel verzoeken vanuit jouw netwerk — probeer het over een uur opnieuw.",
+      "rateLimited": "Te veel verzoeken vanuit jouw netwerk. Probeer het over een uur opnieuw.",
       "generic": "We konden je aanvraag niet versturen: {detail}",
       "unreachable": "We konden de BimDossier-API niet bereiken. Probeer het zo opnieuw."
     }
@@ -174,8 +173,8 @@
   },
   "trust": {
     "eyebrow": "Waarom u erop kunt vertrouwen",
-    "headline": "Gebouwd voor een pilot — en daar eerlijk over",
-    "subtitle": "Uw dossier is juridisch dragend. Hier staat precies wie er achter het platform zit, waar uw gegevens staan en waar het ophoudt.",
+    "headline": "Gebouwd voor een pilot, en daar eerlijk over",
+    "subtitle": "Uw dossier is juridisch dragend. Daarom leest u hier precies wie er achter het platform zit, waar uw gegevens staan en waar onze verantwoordelijkheid ophoudt.",
     "items": {
       "hosting": {
         "title": "EU-gehost, inclusief verwerkersovereenkomst",
@@ -187,7 +186,7 @@
       },
       "team": {
         "title": "Een Nederlands team, bereikbaar",
-        "body": "Gebouwd in Nederland door het team achter BimDossier. Tijdens de pilot heeft u direct contact — geen ticketwachtrij."
+        "body": "Gebouwd in Nederland door het team achter BimDossier. Tijdens de pilot heeft u direct contact met ons. Geen ticketwachtrij."
       }
     },
     "dpaLink": "Lees onze verwerkersovereenkomst"
@@ -198,15 +197,15 @@
     "items": [
       {
         "q": "Wat betekent \"private pilot\" voor mij?",
-        "a": "We nemen een kleine groep Nederlandse aannemers persoonlijk aan boord. U krijgt vroege toegang, een directe lijn met het team en inspraak in wat we hierna bouwen — in ruil voor praktijkfeedback."
+        "a": "We nemen een kleine groep Nederlandse aannemers persoonlijk aan boord. U krijgt vroege toegang, een directe lijn met het team en inspraak in wat we hierna bouwen. In ruil vragen we om eerlijke feedback uit de praktijk."
       },
       {
         "q": "Waar staan mijn gegevens, en is er een verwerkersovereenkomst?",
-        "a": "Alles draait op EU-infrastructuur en verlaat die nooit. Met elke pilotpartner sluiten we een verwerkersovereenkomst (DPA) — bekijk onze verwerkersovereenkomst voor de details."
+        "a": "Alles draait op EU-infrastructuur en verlaat die nooit. Met elke pilotpartner sluiten we een verwerkersovereenkomst (DPA). Bekijk onze verwerkersovereenkomst voor de details."
       },
       {
         "q": "Heb ik BIM-modellen nodig, of werken PDF-plattegronden ook?",
-        "a": "Allebei. Zet bevindingen direct op een PDF-plattegrond als u meer niet heeft, of op een gefedereerd IFC-model wanneer dat er wel is — het dossier werkt in beide gevallen hetzelfde."
+        "a": "Allebei. Zet bevindingen direct op een PDF-plattegrond als u meer niet heeft, of op een gefedereerd IFC-model wanneer dat er wel is. In beide gevallen werkt het dossier hetzelfde."
       },
       {
         "q": "Vervangt dit mijn kwaliteitsborger of instrument?",
@@ -218,7 +217,7 @@
       },
       {
         "q": "Wat kost de pilot?",
-        "a": "De pilotprijs is afgestemd op uw team en projecten. Vraag toegang aan en we bespreken het — een gesprek beginnen verplicht u tot niets."
+        "a": "De pilotprijs hangt af van uw team en projecten. Vraag toegang aan, dan bespreken we het. Een gesprek beginnen verplicht u tot niets."
       }
     ]
   },
@@ -227,7 +226,7 @@
     "eyebrow": "Platform voor de Wet kwaliteitsborging voor het bouwen (Wkb)",
     "statusReady": "Wkb {version} gereed",
     "headline": "Uw <em>modellen</em>, <em>bevindingen</em> en <em>dossier</em> in één Wkb-record.",
-    "body": "Zet bevindingen vast op uw model, bewaak elke deadline en houd het dossier klaar voor de kwaliteitsborger en het bevoegd gezag — gebouwd voor de Wet kwaliteitsborging voor het bouwen (Wkb).",
+    "body": "Zet bevindingen vast op uw model, bewaak elke deadline en houd het dossier klaar voor de kwaliteitsborger en het bevoegd gezag. Gebouwd voor de Wet kwaliteitsborging voor het bouwen (Wkb).",
     "status": {
       "normal": "Normaal",
       "degraded": "Verminderd",

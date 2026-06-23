@@ -136,7 +136,7 @@ export function ProjectChartsPanel({ dossier, findings, deadlines, country }: Pr
     });
 
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
       <TooltipProvider delayDuration={150}>
         <DrilldownDonut
           wedges={wedges}

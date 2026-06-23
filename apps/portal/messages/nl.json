@@ -1821,6 +1821,23 @@
       "unassigned": "Niet toegewezen",
       "assigneeTooltip": "Filter op {name}"
     },
+    "export": {
+      "csv": "CSV exporteren",
+      "csvError": "Kon de bevindingen-CSV niet exporteren.",
+      "snag": "Bevindingenrapport",
+      "dialogTitle": "Bevindingenrapport (PDF)",
+      "dialogSubtitle": "Genereer een bevindingenlijst om aan een onderaannemer te geven. Verschijnt zodra klaar onder Rapporten van het project.",
+      "recipientLabel": "Ontvanger (toegewezen aan)",
+      "recipientAll": "Alle toegewezenen",
+      "statusLabel": "Status",
+      "severityLabel": "Ernst",
+      "anyOption": "Alle",
+      "generate": "Genereren",
+      "generating": "Genereren…",
+      "cancel": "Annuleren",
+      "success": "Het bevindingenrapport wordt gegenereerd — te vinden onder Rapporten.",
+      "error": "Kon het bevindingenrapport niet genereren."
+    },
     "tabs": {
       "board": "Bevindingen",
       "overview": "Overzicht",
@@ -2118,6 +2135,12 @@
         "description": "Bundel het volledige dossier voor de gereedmelding. Je ontvangt een e-mail zodra het klaar is.",
         "generate": "Dossier",
         "missingData": "Onvoldoende gegevens om het dossier samen te stellen."
+      },
+      "snag_list": {
+        "title": "Bevindingenlijst",
+        "description": "Een bevindingenlijst per ontvanger om aan een onderaannemer te geven, gegenereerd vanuit het bevindingenbord.",
+        "generate": "Bevindingenlijst",
+        "missingData": "Geen bevindingen gevonden voor deze selectie."
       }
     },
     "sign": {
@@ -3270,6 +3293,8 @@
     "colType": "Type",
     "colActivity": "Activiteit",
     "systemActor": "Systeem",
+    "trendTitle": "Activiteit in de tijd",
+    "trendEmpty": "Geen activiteit in deze periode.",
     "modelCreated": "Model aangemaakt: {name}",
     "modelUpdated": "Model bijgewerkt: {name}",
     "modelDeleted": "Model verwijderd: {name}",
@@ -3411,7 +3436,7 @@
     },
     "sidePanel": {
       "titleExplorer": "Verkenner",
-      "titleInspector": "Inspecteur",
+      "titleFindings": "Bevindingen",
       "titleMeasure": "Meten",
       "titleSection": "Doorsneden",
       "titlePages": "Pagina's",
@@ -3845,19 +3870,6 @@
       "invertSelection": "Selectie omkeren"
     }
   },
-  "viewerInspector": {
-    "panelTitle": "Bijlagen & Bevindingen",
-    "tabAttachments": "Bijlagen",
-    "tabFindings": "Bevindingen",
-    "tabCertificates": "Certificaten",
-    "pdfPageHeader": "Pagina {page}",
-    "messages": {
-      "allSelected": "Alle {count, number} elementen geselecteerd. Selecteer één element om het te inspecteren.",
-      "noElementData": "Elementgegevens niet beschikbaar. Extraheer het model opnieuw om dit element te inspecteren.",
-      "noGlobalId": "Dit element heeft geen GlobalId; bijlagen kunnen niet worden gekoppeld.",
-      "pdfNotInitialized": "PDF-status niet geïnitialiseerd."
-    }
-  },
   "viewerFindings": {
     "count": "{count, plural, =0 {Geen bevindingen} one {# bevinding} other {# bevindingen}}",
     "filterPlaceholder": "Bevindingen zoeken…",
@@ -3865,7 +3877,14 @@
     "loading": "Bevindingen laden…",
     "emptyNoItems": "Nog geen bevindingen gekoppeld aan dit element.",
     "emptyProjectEmpty": "Geen bevindingen op projectniveau.",
-    "emptyFileEmpty": "Nog geen bevindingen gekoppeld aan dit bestand."
+    "emptyFileEmpty": "Nog geen bevindingen gekoppeld aan dit bestand.",
+    "pdfPageHeader": "Pagina {page}",
+    "messages": {
+      "allSelected": "Alle {count, number} elementen geselecteerd. Selecteer één element om het te inspecteren.",
+      "noElementData": "Elementgegevens niet beschikbaar. Extraheer het model opnieuw om dit element te inspecteren.",
+      "noGlobalId": "Dit element heeft geen GlobalId; bevindingen kunnen niet worden gekoppeld.",
+      "pdfNotInitialized": "PDF-status niet geïnitialiseerd."
+    }
   },
   "viewerCertificates": {
     "filterPlaceholder": "Certificaten zoeken…",

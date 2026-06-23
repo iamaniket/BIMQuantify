@@ -1,5 +1,5 @@
 import {
-  ClipboardCheck, FolderOpen, PenLine, ShieldCheck,
+  ClipboardCheck, Flag, FolderOpen, PenLine, ShieldCheck,
 } from '@bimstitch/ui/icons';
 import type { AppIcon } from '@bimstitch/ui/icons';
 
@@ -41,4 +41,8 @@ export const REPORT_TYPE_META: Record<ReportType, ReportTypeMeta> = {
   assurance_plan: { icon: ClipboardCheck, tileClass: 'bg-info-light text-info' },
   completion_declaration: { icon: PenLine, tileClass: 'bg-success-light text-success' },
   dossier: { icon: FolderOpen, tileClass: 'bg-warning-light text-warning' },
+  // Per-recipient bevindingen snag list (#G2). Not in REPORT_TYPE_ORDER — it's
+  // generated from the findings board (with a recipient/filter dialog), not the
+  // one-click report toolbar — but still rendered in the reports list.
+  snag_list: { icon: Flag, tileClass: 'bg-error-light text-error' },
 };

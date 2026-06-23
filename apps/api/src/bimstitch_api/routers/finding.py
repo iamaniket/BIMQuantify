@@ -11,12 +11,15 @@ the `Resource.finding` permission matrix gate the writes. A finding is promoted
 from `draft` to `open` by setting a deadline and an assignee.
 """
 
+import csv
+import io
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from bimstitch_api import audit
 from bimstitch_api.access import (
@@ -246,6 +249,7 @@ async def list_findings(
     response: Response,
     status_filter: FindingStatus | None = None,
     severity: FindingSeverity | None = None,
+    assignee_user_id: UUID | None = None,
     linked_model_id: UUID | None = None,
     linked_file_id: UUID | None = None,
     linked_element_global_id: str | None = Query(default=None, max_length=255),
@@ -264,6 +268,8 @@ async def list_findings(
         stmt = stmt.where(Finding.status == status_filter)
     if severity is not None:
         stmt = stmt.where(Finding.severity == severity)
+    if assignee_user_id is not None:
+        stmt = stmt.where(Finding.assignee_user_id == assignee_user_id)
     # Version-independent identity: model + GlobalId. This is what the viewer
     # element panel queries so a finding follows the element across versions.
     if linked_model_id is not None:
@@ -281,6 +287,117 @@ async def list_findings(
     stmt = stmt.order_by(Finding.created_at.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+# One row per finding (#G2). Columns are the full human-relevant inventory;
+# enum columns emit neutral `.value` codes (Dutch labels are a UI concern).
+_FINDINGS_CSV_COLUMNS: tuple[str, ...] = (
+    "id",
+    "title",
+    "description",
+    "severity",
+    "status",
+    "bbl_article_ref",
+    "assignee",
+    "deadline_date",
+    "created_by",
+    "created_at",
+    "updated_at",
+    "element_reference",
+    "photo_count",
+    "resolution_evidence_count",
+    "resolution_note",
+)
+
+
+def _display_name(u: User | None) -> str:
+    """Display name (full_name, else email) for an eager-loaded User, or blank."""
+    if u is None:
+        return ""
+    return u.full_name or u.email
+
+
+def _finding_element_reference(f: Finding) -> str:
+    """A single readable location/element string for the export. IFC → the
+    element GlobalId; a drawing-anchored finding → the file (+ page for PDF);
+    otherwise blank."""
+    if f.linked_element_global_id:
+        return f.linked_element_global_id
+    if f.linked_file_id is not None:
+        if f.linked_file_type == "pdf" and f.anchor_page is not None:
+            return f"file:{f.linked_file_id} p.{f.anchor_page}"
+        return f"file:{f.linked_file_id}"
+    return ""
+
+
+def _finding_csv_row(f: Finding) -> dict[str, str]:
+    return {
+        "id": str(f.id),
+        "title": f.title,
+        "description": f.description,
+        "severity": f.severity.value,
+        "status": f.status.value,
+        "bbl_article_ref": f.bbl_article_ref or "",
+        "assignee": _display_name(f.assignee),
+        "deadline_date": f.deadline_date.isoformat() if f.deadline_date else "",
+        "created_by": _display_name(f.created_by),
+        "created_at": f.created_at.isoformat() if f.created_at else "",
+        "updated_at": f.updated_at.isoformat() if f.updated_at else "",
+        "element_reference": _finding_element_reference(f),
+        "photo_count": str(len(f.photo_ids or [])),
+        "resolution_evidence_count": str(len(f.resolution_evidence_ids or [])),
+        "resolution_note": f.resolution_note or "",
+    }
+
+
+@router.get("/export.csv", response_class=Response)
+async def export_findings_csv(
+    project_id: UUID,
+    status_filter: FindingStatus | None = None,
+    severity: FindingSeverity | None = None,
+    assignee_user_id: UUID | None = None,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> Response:
+    """Stream the project's findings (bevindingen) as CSV — one row per finding.
+
+    Mirrors the compliance CSV exports (A17/A18). Honours the same filters as
+    the list endpoint (status / severity / assignee) so the download matches
+    what the user sees; soft-deleted rows are excluded. Read-gated like the
+    list view — project-read access suffices.
+    """
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
+
+    stmt = (
+        select(Finding)
+        .where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
+        # assignee + created_by are not selectin by default — eager-load them so
+        # the display-name columns don't trigger an async lazy-load.
+        .options(selectinload(Finding.assignee), selectinload(Finding.created_by))
+        .order_by(Finding.created_at.desc())
+    )
+    if status_filter is not None:
+        stmt = stmt.where(Finding.status == status_filter)
+    if severity is not None:
+        stmt = stmt.where(Finding.severity == severity)
+    if assignee_user_id is not None:
+        stmt = stmt.where(Finding.assignee_user_id == assignee_user_id)
+    findings = (await session.execute(stmt)).scalars().all()
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=list(_FINDINGS_CSV_COLUMNS), extrasaction="ignore")
+    writer.writeheader()
+    for finding in findings:
+        writer.writerow(_finding_csv_row(finding))
+
+    filename = f"findings-{project_id}.csv"
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{finding_id}", response_model=FindingRead)

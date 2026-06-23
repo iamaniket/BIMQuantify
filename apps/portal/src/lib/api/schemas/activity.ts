@@ -19,3 +19,14 @@ export type ProjectActivityEntry = z.infer<typeof ProjectActivityEntrySchema>;
 
 export const ProjectActivityListSchema = z.array(ProjectActivityEntrySchema);
 export type ProjectActivityList = z.infer<typeof ProjectActivityListSchema>;
+
+/** One time bucket of the activity-over-time trend (only non-empty buckets are
+ * returned; the client zero-fills its fixed time axis). */
+export const ActivityTimelineBucketSchema = z.object({
+  bucket_start: z.string(),
+  count: z.number(),
+});
+export type ActivityTimelineBucket = z.infer<typeof ActivityTimelineBucketSchema>;
+
+export const ActivityTimelineSchema = z.array(ActivityTimelineBucketSchema);
+export type ActivityTimeline = z.infer<typeof ActivityTimelineSchema>;

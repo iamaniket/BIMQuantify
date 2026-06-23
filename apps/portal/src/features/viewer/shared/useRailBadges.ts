@@ -31,7 +31,7 @@ type Params = {
 /**
  * Computes the side-rail count + visibility indicators (`RailBadge`s) for the
  * annotation layers drawn in the scene: measurements (3D & PDF), section planes
- * (3D), and finding pins (counted on the Inspector tab, 3D & PDF). Each badge's
+ * (3D), and finding pins (counted on the Findings tab, 3D & PDF). Each badge's
  * count is live (viewer events / React Query) and its toggle drives the matching
  * viewer command. Returns `{}` for drawing formats (no annotation layers).
  */
@@ -120,7 +120,7 @@ export function useRailBadges({
       .catch(() => undefined);
   }, [viewerHandle, sectionEnabled]);
 
-  // ── Findings (Inspector tab; matches the status bar's count) ───────────────
+  // ── Findings (Findings tab; matches the status bar's count) ────────────────
   const findingCount = useFileFindingCount(
     projectId,
     (isIfc || isPdf) ? (fileId ?? null) : null,
@@ -135,11 +135,11 @@ export function useRailBadges({
         onToggleVisible: toggleMeasure,
         toggleLabel: t(measureVisible ? 'layerHide' : 'layerShow', { layer: t('titleMeasure') }),
       };
-      badges.inspector = {
+      badges.findings = {
         count: findingCount,
         visible: findingPinsVisible,
         onToggleVisible: onToggleFindingPins,
-        toggleLabel: t(findingPinsVisible ? 'layerHide' : 'layerShow', { layer: t('titleInspector') }),
+        toggleLabel: t(findingPinsVisible ? 'layerHide' : 'layerShow', { layer: t('titleFindings') }),
       };
     }
     if (isIfc) {

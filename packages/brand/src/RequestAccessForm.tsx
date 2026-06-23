@@ -149,7 +149,7 @@ function validate(values: RequestAccessValues): Errors {
     const parts = email.split('@');
     const domain = parts[1];
     if (domain !== undefined && FREE_DOMAINS.has(domain)) {
-      errs.work_email = 'Please use your work email — not a personal address.';
+      errs.work_email = 'Please use your work email, not a personal address.';
     }
   }
 
@@ -372,7 +372,7 @@ export function RequestAccessForm({
         <FormField
           label="What do you want to get out of the pilot?"
           className="col-span-2"
-          hint="Optional — your biggest Wet kwaliteitsborging voor het bouwen (Wkb) challenge, what success looks like, etc."
+          hint="Optional: your biggest Wet kwaliteitsborging voor het bouwen (Wkb) challenge, what success looks like, etc."
         >
           <Textarea
             value={values.notes}

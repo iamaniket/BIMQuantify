@@ -118,6 +118,8 @@ en_messages: Catalog = {
     "notifications.report.completion_declaration.body": "Completion declaration is being generated…",
     "notifications.report.dossier.title": "Dossier for the competent authority — {name}",
     "notifications.report.dossier.body": "Dossier for the competent authority is being generated…",
+    "notifications.report.snag_list.title": "Snag list — {name}",
+    "notifications.report.snag_list.body": "Snag-list PDF is being generated…",
 
     # Job-status notifications (report pipeline). Absorbed from
     # routers/jobs_internal.py inline title/body maps.
@@ -201,6 +203,7 @@ en_messages: Catalog = {
     "errors.DEMOTE_ADMIN_BEFORE_GUEST": "Remove this member's admin rights before making them a guest.",
     "errors.REASSIGN_TARGET_NOT_ELIGIBLE": "That user can't receive these projects.",
     "errors.ASSIGNEE_NOT_A_PROJECT_MEMBER": "The assignee must be a member of this project.",
+    "errors.INVALID_FINDING_FILTER": "One of the report filters is not valid.",
 
     # --- invitations / access requests ---
     "errors.INVITATION_NOT_FOUND": "That invitation could not be found.",

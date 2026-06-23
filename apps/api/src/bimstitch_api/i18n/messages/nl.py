@@ -95,6 +95,8 @@ nl_messages: Catalog = {
     "notifications.report.completion_declaration.body": "Verklaring wordt gegenereerd…",
     "notifications.report.dossier.title": "Dossier bevoegd gezag — {name}",
     "notifications.report.dossier.body": "Dossier bevoegd gezag wordt gegenereerd…",
+    "notifications.report.snag_list.title": "Bevindingenlijst — {name}",
+    "notifications.report.snag_list.body": "Bevindingenlijst-PDF wordt gegenereerd…",
 
     "notifications.job.running.title": "Rapport wordt gegenereerd",
     "notifications.job.running.body": "{report_title} wordt gegenereerd…",
@@ -169,6 +171,7 @@ nl_messages: Catalog = {
     "errors.DEMOTE_ADMIN_BEFORE_GUEST": "Ontneem dit lid eerst de beheerdersrechten voordat u het een gast maakt.",
     "errors.REASSIGN_TARGET_NOT_ELIGIBLE": "Die gebruiker kan deze projecten niet ontvangen.",
     "errors.ASSIGNEE_NOT_A_PROJECT_MEMBER": "De toegewezen persoon moet lid zijn van dit project.",
+    "errors.INVALID_FINDING_FILTER": "Een van de rapportfilters is ongeldig.",
 
     # --- uitnodigingen / toegangsverzoeken ---
     "errors.INVITATION_NOT_FOUND": "Die uitnodiging kon niet worden gevonden.",

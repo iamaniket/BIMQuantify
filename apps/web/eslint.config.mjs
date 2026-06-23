@@ -78,16 +78,12 @@ export default tseslint.config(
     },
   },
   {
-    // Literals are allowed in: test assertions and OG/icon routes
-    // (Satori needs literal strings; no runtime translation pipeline).
+    // Literals are allowed in: test assertions.
     files: [
       '**/*.test.{ts,tsx}',
       '**/*.spec.{ts,tsx}',
       'tests/**',
       'src/__tests__/**',
-      'src/app/**/apple-icon.tsx',
-      'src/app/**/icon.tsx',
-      'src/app/**/opengraph-image.tsx',
     ],
     rules: {
       'i18next/no-literal-string': 'off',

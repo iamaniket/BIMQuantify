@@ -28,6 +28,13 @@ def _activity_url(project_id: str, **params: object) -> str:
     return f"/projects/{project_id}/activity" + (f"?{qs}" if qs else "")
 
 
+def _timeline_url(project_id: str, **params: object) -> str:
+    from urllib.parse import urlencode
+
+    qs = urlencode({k: v for k, v in params.items() if v is not None})
+    return f"/projects/{project_id}/activity/timeline" + (f"?{qs}" if qs else "")
+
+
 @pytest.mark.asyncio
 async def test_activity_returns_entries(
     client: AsyncClient,
@@ -389,3 +396,173 @@ async def test_activity_includes_certificate_upload(
     completed = next(e for e in entries if e["action"] == "certificate.completed")
     assert completed["category"] == "upload"
     assert completed["resource_type"] == "certificates"
+
+
+# --------------------------------------------------------------------------- #
+# Timeline endpoint
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.asyncio
+async def test_timeline_buckets_sum_to_list_total(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """Each bucket carries a start + count, and the counts sum to the list's
+    X-Total-Count (the timeline counts the same rows, just grouped by time)."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    for i in range(3):
+        await _create_model(client, token, project["id"], name=f"M{i}")
+
+    resp = await client.get(_timeline_url(project["id"]), headers=_auth(token))
+    assert resp.status_code == 200, resp.text
+    buckets = resp.json()
+    assert buckets, "expected at least one bucket"
+    assert all("bucket_start" in b and "count" in b for b in buckets)
+
+    listing = await client.get(_activity_url(project["id"]), headers=_auth(token))
+    total = int(listing.headers["X-Total-Count"])
+    assert sum(b["count"] for b in buckets) == total
+
+
+@pytest.mark.asyncio
+async def test_timeline_day_and_week_agree_on_total(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """`day` and `week` change the grouping, not the total event count. Because
+    every event in the test happens 'now', both collapse to a single bucket."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    for i in range(3):
+        await _create_model(client, token, project["id"], name=f"M{i}")
+
+    day = await client.get(_timeline_url(project["id"], bucket="day"), headers=_auth(token))
+    week = await client.get(_timeline_url(project["id"], bucket="week"), headers=_auth(token))
+    assert day.status_code == 200
+    assert week.status_code == 200
+    day_total = sum(b["count"] for b in day.json())
+    week_total = sum(b["count"] for b in week.json())
+    assert day_total == week_total
+    assert day_total >= 3
+
+
+@pytest.mark.asyncio
+async def test_timeline_category_filter_matches_list(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """The timeline's `category` filter buckets the same rows the list filter
+    returns (shared `_apply_category_filter`)."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"])
+
+    timeline = await client.get(
+        _timeline_url(project["id"], category="create"), headers=_auth(token)
+    )
+    assert timeline.status_code == 200
+    timeline_total = sum(b["count"] for b in timeline.json())
+
+    listing = await client.get(
+        _activity_url(project["id"], category="create"), headers=_auth(token)
+    )
+    list_total = int(listing.headers["X-Total-Count"])
+    assert timeline_total == list_total
+    assert timeline_total >= 1  # at least model.created
+
+
+@pytest.mark.asyncio
+async def test_timeline_excludes_initiated(
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    org_user: dict[str, str],
+) -> None:
+    """The noisy '.initiated' rows are excluded from the timeline just like the
+    list — the shared `_EXCLUDED_ACTIONS` denylist applies, so the timeline
+    total equals the list total."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    init = await client.post(
+        f"/projects/{project['id']}/certificates/initiate",
+        json={
+            "filename": "ce-cert.pdf",
+            "size_bytes": 4096,
+            "content_type": "application/pdf",
+            "content_sha256": _new_hash(),
+            "certificate_type": "product",
+        },
+        headers=_auth(token),
+    )
+    assert init.status_code == 201, init.text
+    cert = init.json()
+    fake.objects[cert["storage_key"]] = b"x" * 4096
+    complete = await client.post(
+        f"/projects/{project['id']}/certificates/{cert['certificate_id']}/complete",
+        headers=_auth(token),
+    )
+    assert complete.status_code == 200, complete.text
+
+    timeline = await client.get(_timeline_url(project["id"]), headers=_auth(token))
+    assert timeline.status_code == 200
+    timeline_total = sum(b["count"] for b in timeline.json())
+
+    listing = await client.get(_activity_url(project["id"]), headers=_auth(token))
+    assert timeline_total == int(listing.headers["X-Total-Count"])
+
+
+@pytest.mark.asyncio
+async def test_timeline_returns_only_nonempty_buckets(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """Server returns ONLY buckets that have events (client zero-fills the rest):
+    a fresh project's events all land 'now', so day-grain yields exactly one
+    bucket — never a run of zero rows for the preceding days."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"])
+
+    resp = await client.get(_timeline_url(project["id"], bucket="day"), headers=_auth(token))
+    assert resp.status_code == 200
+    buckets = resp.json()
+    assert len(buckets) == 1
+    assert buckets[0]["count"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_timeline_since_future_is_empty(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """A `since` far in the future returns no buckets."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"])
+
+    future = (datetime.now(tz=timezone.utc) + timedelta(hours=1)).isoformat()
+    resp = await client.get(
+        _timeline_url(project["id"], since=future), headers=_auth(token)
+    )
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+@pytest.mark.asyncio
+async def test_timeline_requires_membership(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    other_org_user: dict[str, str],
+) -> None:
+    """A verified user from a different org can't read the timeline — the
+    project doesn't exist in their tenant schema, so it's a 404."""
+    project = await _create_project(client, org_user["access_token"])
+    await _create_model(client, org_user["access_token"], project["id"])
+
+    resp = await client.get(
+        _timeline_url(project["id"]),
+        headers=_auth(other_org_user["access_token"]),
+    )
+    assert resp.status_code == 404

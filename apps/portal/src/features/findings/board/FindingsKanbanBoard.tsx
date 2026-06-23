@@ -8,6 +8,7 @@ import { Input, Select, type KanbanColumnDef } from '@bimstitch/ui';
 import { KanbanBoard } from '@bimstitch/ui';
 
 import { AssigneeFilterChips, UNASSIGNED_FILTER } from '@/features/findings/AssigneeFilterChips';
+import { FindingsExportActions } from '@/features/findings/FindingsExportActions';
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useProjectPermissions } from '@/features/permissions';
@@ -167,6 +168,12 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
               <option key={s} value={s}>{tSeverity(s)}</option>
             ))}
           </Select>
+          <FindingsExportActions
+            projectId={projectId}
+            members={members}
+            severityFilter={severityFilter}
+            assigneeFilter={assigneeFilter}
+          />
           <LogFindingButton projectId={projectId} size="lg" variant="primary" />
         </div>
       </div>

@@ -13,7 +13,7 @@ export type { PanelId } from '@/components/shared/viewer/shared/SideRail';
 
 const PANEL_TITLE_KEYS: Record<PanelId, string> = {
   explorer: 'titleExplorer',
-  inspector: 'titleInspector',
+  findings: 'titleFindings',
   measure: 'titleMeasure',
   section: 'titleSection',
   drawingInfo: 'titleDrawingInfo',
@@ -23,7 +23,7 @@ const PANEL_TITLE_KEYS: Record<PanelId, string> = {
 type SidePanelProps = {
   activePanel: PanelId | null;
   explorerContent?: ReactNode | undefined;
-  inspectorContent?: ReactNode | undefined;
+  findingsContent?: ReactNode | undefined;
   measureContent?: ReactNode | undefined;
   sectionContent?: ReactNode | undefined;
   drawingInfoContent?: ReactNode | undefined;
@@ -54,7 +54,7 @@ const DEFAULT_WIDTH = 360;
 export function SidePanel({
   activePanel,
   explorerContent,
-  inspectorContent,
+  findingsContent,
   measureContent,
   sectionContent,
   drawingInfoContent,
@@ -173,7 +173,7 @@ export function SidePanel({
             )}
             <div className="min-h-0 flex-1 overflow-auto">
               {activePanel === 'explorer' && explorerContent}
-              {activePanel === 'inspector' && (inspectorContent ?? <PlaceholderContent label={t('titleInspector')} />)}
+              {activePanel === 'findings' && (findingsContent ?? <PlaceholderContent label={t('titleFindings')} />)}
               {activePanel === 'measure' && measureContent}
               {activePanel === 'section' && sectionContent}
               {activePanel === 'drawingInfo' && drawingInfoContent}

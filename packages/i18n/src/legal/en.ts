@@ -2,7 +2,7 @@ import type { LegalContent } from './types.js';
 
 export const legalEnContent: LegalContent = {
   meta: {
-    draftBanner: 'Draft – pending review by a Dutch IT-law specialist before going live.',
+    draftBanner: 'Draft: still to be reviewed by a Dutch IT-law specialist before it goes live.',
     lastUpdatedLabel: 'Last updated: {date}',
   },
   privacy: {
@@ -43,7 +43,7 @@ export const legalEnContent: LegalContent = {
       },
       {
         title: 'Your obligations',
-        body: 'You provide accurate account information, do not share login credentials with third parties, and use the portal in compliance with applicable laws and regulations. Responsibility for the underlying work – such as filing notifications with the competent authority – remains with you.',
+        body: 'You provide accurate account information, do not share login credentials with third parties, and use the portal in compliance with applicable laws and regulations. Responsibility for the underlying work, such as filing notifications with the competent authority, stays with you.',
       },
       {
         title: 'Subscription and payment',
