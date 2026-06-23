@@ -8,6 +8,8 @@ project member can read; org admins and superusers bypass the membership check.
 
 from __future__ import annotations
 
+from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -74,6 +76,16 @@ _EXCLUDED_ACTIONS: frozenset[str] = frozenset(
         "certificate.initiated",
     }
 )
+
+
+@dataclass
+class _BucketAccumulator:
+    """Mutable running tally for one timeline bucket while folding the grouped
+    ``(bucket, action, resource_type)`` rows back up to a single entry."""
+
+    count: int = 0
+    by_category: defaultdict[str, int] = field(default_factory=lambda: defaultdict(int))
+    by_resource: defaultdict[str, int] = field(default_factory=lambda: defaultdict(int))
 
 
 def _category_for(action: str) -> str:
@@ -223,6 +235,12 @@ async def project_activity_timeline(
     category mapping) so the chart matches the table. Returns only buckets with
     at least one event, ascending by ``bucket_start`` — the client zero-fills
     gaps over its fixed time axis. Not paginated (no ``X-Total-Count``).
+
+    Each bucket also carries ``by_category`` / ``by_resource`` breakdowns. We
+    group by ``(bucket, action, resource_type)`` and fold in Python through
+    :func:`_category_for`, so the category mapping has a single source of truth
+    (no second SQL mirror to drift). The grouped result set is tiny — at most
+    ``distinct actions x resource types x buckets`` rows.
     """
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
@@ -230,7 +248,14 @@ async def project_activity_timeline(
     grain = "week" if bucket == "week" else "day"
     bucket_col = func.date_trunc(grain, AuditLog.created_at).label("bucket_start")
 
-    stmt = select(bucket_col, func.count().label("count")).where(
+    stmt = select(
+        bucket_col,
+        AuditLog.action,
+        AuditLog.resource_type,
+        # Label "n", not "count": a SQLAlchemy Row is tuple-like, so a "count"
+        # label collides with tuple.count and mypy reads row.count as a method.
+        func.count().label("n"),
+    ).where(
         AuditLog.project_id == project.id,
         AuditLog.action.notin_(_EXCLUDED_ACTIONS),
     )
@@ -240,12 +265,34 @@ async def project_activity_timeline(
         since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)
         stmt = stmt.where(AuditLog.created_at >= since_aware)
 
-    stmt = stmt.group_by(bucket_col).order_by(bucket_col.asc())
+    stmt = stmt.group_by(bucket_col, AuditLog.action, AuditLog.resource_type).order_by(
+        bucket_col.asc()
+    )
     rows = (await session.execute(stmt)).all()
 
+    # Fold the (bucket, action, resource_type) grain back up to one entry per
+    # bucket. Rows arrive ascending by bucket_start, so first-seen order is the
+    # ascending bucket order the client expects.
+    buckets: dict[datetime, _BucketAccumulator] = {}
+    order: list[datetime] = []
+    for row in rows:
+        acc = buckets.get(row.bucket_start)
+        if acc is None:
+            acc = _BucketAccumulator()
+            buckets[row.bucket_start] = acc
+            order.append(row.bucket_start)
+        acc.count += row.n
+        acc.by_category[_category_for(row.action)] += row.n
+        acc.by_resource[row.resource_type] += row.n
+
     return [
-        ActivityTimelineBucket(bucket_start=row.bucket_start, count=row.count)
-        for row in rows
+        ActivityTimelineBucket(
+            bucket_start=bucket_start,
+            count=buckets[bucket_start].count,
+            by_category=dict(buckets[bucket_start].by_category),
+            by_resource=dict(buckets[bucket_start].by_resource),
+        )
+        for bucket_start in order
     ]
 
 

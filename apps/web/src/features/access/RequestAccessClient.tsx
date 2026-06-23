@@ -49,7 +49,6 @@ export function RequestAccessClient(): JSX.Element {
         company_size: values.company_size,
         country: values.country,
         role: values.role,
-        budget: values.budget,
       });
     } catch (err) {
       if (err instanceof WebApiError) {

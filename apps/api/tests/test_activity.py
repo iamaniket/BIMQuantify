@@ -427,6 +427,53 @@ async def test_timeline_buckets_sum_to_list_total(
 
 
 @pytest.mark.asyncio
+async def test_timeline_buckets_carry_category_and_resource_breakdowns(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """Each bucket breaks its count down by feed category and resource type, and
+    both breakdowns sum back to the bucket count. A created finding lands in the
+    "create"/"finding" cells; a model in "create"/"model". All events happen
+    'now', so they collapse into one week bucket."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _create_model(client, token, project["id"], name="Arch")
+
+    created = await client.post(
+        f"/projects/{project['id']}/findings",
+        json={"title": "Breakdown finding", "description": "x"},
+        headers=_auth(token),
+    )
+    assert created.status_code == 201, created.text
+
+    resp = await client.get(_timeline_url(project["id"]), headers=_auth(token))
+    assert resp.status_code == 200, resp.text
+    buckets = resp.json()
+    assert buckets, "expected at least one bucket"
+
+    for b in buckets:
+        assert "by_category" in b and "by_resource" in b
+        # Only non-zero cells, and each breakdown reconstitutes the total.
+        assert all(v > 0 for v in b["by_category"].values())
+        assert all(v > 0 for v in b["by_resource"].values())
+        assert sum(b["by_category"].values()) == b["count"]
+        assert sum(b["by_resource"].values()) == b["count"]
+
+    # Fold every bucket together (all events are 'now' but don't assume one
+    # bucket) and assert the create/finding + create/model cells are present.
+    cats: dict[str, int] = {}
+    resources: dict[str, int] = {}
+    for b in buckets:
+        for k, v in b["by_category"].items():
+            cats[k] = cats.get(k, 0) + v
+        for k, v in b["by_resource"].items():
+            resources[k] = resources.get(k, 0) + v
+    assert cats.get("create", 0) >= 2  # model.created + finding.created
+    assert resources.get("finding", 0) >= 1
+    assert resources.get("model", 0) >= 1
+
+
+@pytest.mark.asyncio
 async def test_timeline_day_and_week_agree_on_total(
     client: AsyncClient,
     org_user: dict[str, str],

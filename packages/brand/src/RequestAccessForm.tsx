@@ -49,13 +49,6 @@ const COUNTRIES: ReadonlyArray<readonly [string, string]> = [
  * and a short `notesLabel` used when folding the answer into the access
  * request's free-text `notes` (see `composeAccessRequestNotes`).
  */
-const BUDGET_OPTIONS = [
-  { value: 'free', label: 'Free', notesLabel: 'Free' },
-  { value: '49', label: '€49 / month', notesLabel: '€49/month' },
-  { value: '149', label: '€149 / month', notesLabel: '€149/month' },
-  { value: '199', label: '€199 / month', notesLabel: '€199/month' },
-] as const;
-
 const TIMELINE_OPTIONS = [
   { value: 'asap', label: 'As soon as possible', notesLabel: 'As soon as possible' },
   { value: '1-3m', label: 'Within 1–3 months', notesLabel: 'Within 1–3 months' },
@@ -83,8 +76,6 @@ export interface RequestAccessValues {
   role: string;
   company_size: string;
   country: string;
-  /** Monthly subscription willingness to pay — optional. */
-  budget: string;
   /** When they'd want to start the pilot — optional. */
   timeline: string;
   /** Projects per year — optional. */
@@ -110,8 +101,6 @@ export function composeAccessRequestNotes(
   ): string | undefined => opts.find((o) => o.value === selected)?.notesLabel;
 
   const lines: string[] = [];
-  const budget = labelFor(BUDGET_OPTIONS, values.budget);
-  if (budget !== undefined) lines.push(`Budget: ${budget}`);
   const timeline = labelFor(TIMELINE_OPTIONS, values.timeline);
   if (timeline !== undefined) lines.push(`Start: ${timeline}`);
   const volume = labelFor(VOLUME_OPTIONS, values.project_volume);
@@ -171,7 +160,6 @@ const INITIAL: RequestAccessValues = {
   role: '',
   company_size: '',
   country: 'NL',
-  budget: '',
   timeline: '',
   project_volume: '',
   live_commitment: '',
@@ -318,17 +306,6 @@ export function RequestAccessForm({
             (optional)
           </span>
         </div>
-
-        <FormField label="Monthly budget" hint="What you'd pay per month after the pilot.">
-          <Select value={values.budget} onChange={(e) => update('budget', e.target.value)}>
-            <option value="">No preference</option>
-            {BUDGET_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </FormField>
 
         <FormField label="When would you start?">
           <Select value={values.timeline} onChange={(e) => update('timeline', e.target.value)}>

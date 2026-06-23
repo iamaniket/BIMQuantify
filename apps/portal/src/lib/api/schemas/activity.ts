@@ -21,10 +21,14 @@ export const ProjectActivityListSchema = z.array(ProjectActivityEntrySchema);
 export type ProjectActivityList = z.infer<typeof ProjectActivityListSchema>;
 
 /** One time bucket of the activity-over-time trend (only non-empty buckets are
- * returned; the client zero-fills its fixed time axis). */
+ * returned; the client zero-fills its fixed time axis). `by_category` /
+ * `by_resource` break `count` down for the hover tooltip; both carry only
+ * non-zero entries and each sums to `count`. */
 export const ActivityTimelineBucketSchema = z.object({
   bucket_start: z.string(),
   count: z.number(),
+  by_category: z.record(z.number()),
+  by_resource: z.record(z.number()),
 });
 export type ActivityTimelineBucket = z.infer<typeof ActivityTimelineBucketSchema>;
 
